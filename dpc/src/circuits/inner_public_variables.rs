@@ -15,25 +15,27 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AleoAmount, Parameters, TransactionKernel};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::CommitmentScheme};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, CommitmentScheme};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+
+use anyhow::Result;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct InnerPublicVariables<C: Parameters> {
     /// Transaction kernel
-    pub kernel: TransactionKernel<C>,
+    pub(super) kernel: TransactionKernel<C>,
     /// Ledger digest
-    pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+    pub(super) ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     /// Output encrypted record hashes
-    pub encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
+    pub(super) encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
     /// Program commitment
-    pub program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
+    pub(super) program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
     /// Local data root
-    pub local_data_root: Option<C::LocalDataRoot>,
+    pub(super) local_data_root: Option<C::LocalDataRoot>,
 }
 
 impl<C: Parameters> InnerPublicVariables<C> {
@@ -52,6 +54,25 @@ impl<C: Parameters> InnerPublicVariables<C> {
             local_data_root: Some(C::LocalDataRoot::default()),
         }
     }
+
+    pub fn new(
+        kernel: &TransactionKernel<C>,
+        ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        encrypted_record_hashes: &Vec<C::EncryptedRecordDigest>,
+        program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
+        local_data_root: Option<C::LocalDataRoot>,
+    ) -> Result<Self> {
+        assert!(kernel.is_valid());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_record_hashes.len());
+
+        Ok(Self {
+            kernel: kernel.clone(),
+            ledger_digest: ledger_digest.clone(),
+            encrypted_record_hashes: encrypted_record_hashes.clone(),
+            program_commitment,
+            local_data_root,
+        })
+    }
 }
 
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerPublicVariables<C>
@@ -62,11 +83,17 @@ where
         let mut v = Vec::new();
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
-        for sn in &self.kernel.serial_numbers {
-            v.extend_from_slice(&sn.to_field_elements()?);
+        for serial_number in self.kernel.serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
+            v.extend_from_slice(&serial_number.to_field_elements()?);
         }
 
-        for (cm, encrypted_record_hash) in self.kernel.commitments.iter().zip(&self.encrypted_record_hashes) {
+        for (cm, encrypted_record_hash) in self
+            .kernel
+            .commitments
+            .iter()
+            .zip(&self.encrypted_record_hashes)
+            .take(C::NUM_OUTPUT_RECORDS)
+        {
             v.extend_from_slice(&cm.to_field_elements()?);
             v.extend_from_slice(&encrypted_record_hash.to_field_elements()?);
         }

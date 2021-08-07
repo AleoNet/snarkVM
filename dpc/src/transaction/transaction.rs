@@ -26,6 +26,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use anyhow::Result;
 use blake2::{digest::Digest, Blake2s as b2s};
 use std::{
     fmt,
@@ -109,6 +110,18 @@ impl<C: Parameters> Transaction<C> {
         };
         debug_assert!(kernel.is_valid());
         kernel
+    }
+
+    /// Returns the encrypted record hashes.
+    pub fn to_encrypted_record_hashes(&self) -> Result<Vec<C::EncryptedRecordDigest>> {
+        assert_eq!(C::NUM_OUTPUT_RECORDS, self.encrypted_records.len());
+
+        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        for encrypted_record in self.encrypted_records.iter().take(C::NUM_OUTPUT_RECORDS) {
+            encrypted_record_hashes.push(encrypted_record.to_hash()?);
+        }
+
+        Ok(encrypted_record_hashes)
     }
 }
 

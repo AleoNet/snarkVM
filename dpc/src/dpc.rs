@@ -231,13 +231,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Construct the inner circuit public and private variables.
-        let inner_public_variables = InnerPublicVariables {
-            kernel: kernel.clone(),
-            ledger_digest: ledger_digest.clone(),
-            encrypted_record_hashes: encrypted_record_hashes.clone(),
-            program_commitment: Some(program_commitment.clone()),
-            local_data_root: Some(local_data.root().clone()),
-        };
+        let inner_public_variables = InnerPublicVariables::new(
+            &kernel,
+            &ledger_digest,
+            &encrypted_record_hashes,
+            Some(program_commitment.clone()),
+            Some(local_data.root().clone()),
+        )?;
         let inner_private_variables = InnerPrivateVariables::new(
             input_records,
             old_witnesses,

@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{prelude::*, Parameters, Transaction};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_algorithms::CRH;
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
@@ -59,6 +60,33 @@ impl<C: Parameters> TransactionKernel<C> {
                 Err(DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into())
             }
         }
+    }
+
+    #[inline]
+    pub fn to_output_serial_number_nonces(&self) -> Result<Vec<C::SerialNumberNonce>> {
+        // Ensure the kernel is well-formed before computing the output serial number nonces.
+        if !self.is_valid() {
+            return Err(
+                DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into(),
+            );
+        }
+
+        // Compute the joint serial numbers.
+        let mut joint_serial_numbers = vec![];
+        for serial_number in self.serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
+            joint_serial_numbers.extend_from_slice(&to_bytes_le![serial_number]?);
+        }
+
+        // Compute the output serial number nonces.
+        let mut output_serial_number_nonces = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        for i in 0..C::NUM_OUTPUT_RECORDS {
+            let position = (C::NUM_INPUT_RECORDS + i) as u8;
+            let serial_number_nonce =
+                C::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
+            output_serial_number_nonces.push(serial_number_nonce);
+        }
+
+        Ok(output_serial_number_nonces)
     }
 }
 
