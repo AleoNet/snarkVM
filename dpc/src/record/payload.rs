@@ -66,3 +66,22 @@ impl Default for Payload {
         Self([0u8; PAYLOAD_SIZE])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::UniformRand;
+
+    #[test]
+    fn test_payload_from() {
+        let rng = &mut rand::thread_rng();
+
+        // Create a random byte array, construct a payload from it, and check its byte array matches.
+        for i in 0..PAYLOAD_SIZE {
+            let expected_payload = (0..i).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
+            let candidate_payload = Payload::from(&expected_payload).to_bytes_le().unwrap();
+            assert_eq!(expected_payload, candidate_payload[0..i]);
+            assert_eq!(vec![0u8; PAYLOAD_SIZE - i], candidate_payload[i..]);
+        }
+    }
+}
