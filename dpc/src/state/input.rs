@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::SignatureScheme;
+use snarkvm_algorithms::{CommitmentScheme, SignatureScheme};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -59,14 +59,14 @@ impl<C: Parameters> Input<C> {
     }
 
     /// Initializes a new instance of `Input`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new(
         private_key: PrivateKey<C>,
         executable: Executable<C>,
         is_dummy: bool,
         value: u64,
         payload: Payload,
         serial_number_nonce: C::SerialNumberNonce,
-        rng: &mut R,
+        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
         let address = Address::from_private_key(&private_key)?;
@@ -79,7 +79,7 @@ impl<C: Parameters> Input<C> {
             value,
             payload,
             serial_number_nonce,
-            rng,
+            commitment_randomness,
         )?;
 
         // Compute the serial number.

@@ -24,17 +24,16 @@ use std::{convert::TryInto, sync::Arc};
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Output<C: Parameters> {
     executable: Executable<C>,
-    record: Record<C>,
+    address: Address<C>,
+    is_dummy: bool,
+    value: u64,
+    payload: Payload,
+    position: u8,
 }
 
 impl<C: Parameters> Output<C> {
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-    pub fn new_noop<R: Rng + CryptoRng>(
-        noop: Arc<NoopProgram<C>>,
-        position: u8,
-        joint_serial_numbers: Vec<u8>,
-        rng: &mut R,
-    ) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, position: u8, rng: &mut R) -> Result<Self> {
         // Construct the noop executable.
         let executable = Executable::Noop(noop);
 
@@ -42,35 +41,46 @@ impl<C: Parameters> Output<C> {
         let noop_private_key = PrivateKey::new(rng)?;
         let noop_address = noop_private_key.try_into()?;
 
-        // Construct the noop output record.
-        let record = Record::new_noop_output(executable.program(), noop_address, position, joint_serial_numbers, rng)?;
-
-        Ok(Self { executable, record })
+        Ok(Self {
+            executable,
+            address: noop_address,
+            is_dummy: true,
+            value: 0,
+            payload: Payload::default(),
+            position,
+        })
     }
 
     /// Initializes a new instance of `Output`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new(
         executable: Executable<C>,
         address: Address<C>,
         is_dummy: bool,
         value: u64,
         payload: Payload,
         position: u8,
-        joint_serial_numbers: Vec<u8>,
-        rng: &mut R,
     ) -> Result<Self> {
-        // Construct the output record.
-        let record = Record::new_output(
-            executable.program(),
+        Ok(Self {
+            executable,
             address,
             is_dummy,
             value,
             payload,
             position,
+        })
+    }
+
+    /// Returns the output record, given the joint serial numbers.
+    pub fn to_record<R: Rng + CryptoRng>(&self, joint_serial_numbers: Vec<u8>, rng: &mut R) -> Result<Record<C>> {
+        Ok(Record::new_output(
+            self.executable.program(),
+            self.address,
+            self.is_dummy,
+            self.value,
+            self.payload.clone(),
+            self.position,
             joint_serial_numbers,
             rng,
-        )?;
-
-        Ok(Self { executable, record })
+        )?)
     }
 }

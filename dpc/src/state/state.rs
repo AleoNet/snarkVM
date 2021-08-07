@@ -38,6 +38,7 @@ impl<C: Parameters> State<C> {
 pub struct StateBuilder<C: Parameters> {
     inputs: Vec<Input<C>>,
     outputs: Vec<Output<C>>,
+    joint_serial_numbers: Vec<u8>,
     errors: Vec<String>,
 }
 
@@ -47,6 +48,7 @@ impl<C: Parameters> StateBuilder<C> {
         Self {
             inputs: Vec::new(),
             outputs: Vec::new(),
+            joint_serial_numbers: Vec::new(),
             errors: Vec::new(),
         }
     }
@@ -76,7 +78,7 @@ impl<C: Parameters> StateBuilder<C> {
 
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Finalizes the builder and returns a new instance of `State`.
-    pub fn build<R: Rng + CryptoRng>(&self, noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<State<C>> {
+    pub fn build<R: Rng + CryptoRng>(&mut self, noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<State<C>> {
         // Ensure there are no errors in the build process yet.
         if !self.errors.is_empty() {
             for error in &self.errors {
@@ -93,11 +95,8 @@ impl<C: Parameters> StateBuilder<C> {
             inputs.push(Input::new_noop(noop.clone(), rng)?);
         }
 
-        // Compute the joint serial numbers.
-        let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for input in inputs.iter().take(C::NUM_INPUT_RECORDS) {
-            joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le()?);
-        }
+        // Update the joint serial numbers.
+        self.update_joint_serial_numbers()?;
 
         // Construct the outputs.
         let mut outputs = self.outputs.clone();
@@ -105,14 +104,19 @@ impl<C: Parameters> StateBuilder<C> {
         while outputs.len() < C::NUM_OUTPUT_RECORDS {
             let position = (C::NUM_INPUT_RECORDS + outputs.len()) as u8;
             // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
-            outputs.push(Output::new_noop(
-                noop.clone(),
-                position,
-                joint_serial_numbers.clone(),
-                rng,
-            )?);
+            outputs.push(Output::new_noop(noop.clone(), position, rng)?);
         }
 
         Ok(State { inputs, outputs })
+    }
+
+    fn update_joint_serial_numbers(&mut self) -> Result<()> {
+        // Compute the joint serial numbers.
+        let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for input in self.inputs.iter().take(C::NUM_INPUT_RECORDS) {
+            joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le()?);
+        }
+        self.joint_serial_numbers = joint_serial_numbers;
+        Ok(())
     }
 }

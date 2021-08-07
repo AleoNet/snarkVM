@@ -58,6 +58,9 @@ impl<C: Parameters> Record<C> {
         owner: Address<C>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
+        // Sample a new record commitment randomness.
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+
         Self::new_input(
             noop_program,
             owner,
@@ -65,7 +68,29 @@ impl<C: Parameters> Record<C> {
             0,
             Payload::default(),
             C::serial_number_nonce_crh().hash(&rng.gen::<[u8; 32]>())?,
-            rng,
+            commitment_randomness,
+        )
+    }
+
+    /// Returns a new input record.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_input(
+        program: &dyn ProgramScheme<C>,
+        owner: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        serial_number_nonce: C::SerialNumberNonce,
+        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+    ) -> Result<Self, RecordError> {
+        Self::from(
+            &program.program_id().to_bytes_le()?,
+            owner,
+            is_dummy,
+            value,
+            payload,
+            serial_number_nonce,
+            commitment_randomness,
         )
     }
 
@@ -87,31 +112,6 @@ impl<C: Parameters> Record<C> {
             position,
             joint_serial_numbers,
             rng,
-        )
-    }
-
-    /// Returns a new input record.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_input<R: Rng + CryptoRng>(
-        program: &dyn ProgramScheme<C>,
-        owner: Address<C>,
-        is_dummy: bool,
-        value: u64,
-        payload: Payload,
-        serial_number_nonce: C::SerialNumberNonce,
-        rng: &mut R,
-    ) -> Result<Self, RecordError> {
-        // Sample a new record commitment randomness.
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-
-        Self::from(
-            &program.program_id().to_bytes_le()?,
-            owner,
-            is_dummy,
-            value,
-            payload,
-            serial_number_nonce,
-            commitment_randomness,
         )
     }
 
