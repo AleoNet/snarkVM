@@ -22,9 +22,12 @@ use snarkvm_gadgets::{
     fields::FpGadget,
     traits::alloc::AllocGadget,
     AllocBytesGadget,
+    Boolean,
     PrepareGadget,
+    ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
+    ToMinimalBitRepresentationGadget,
     UInt8,
 };
 use snarkvm_polycommit::PCCheckVar;
@@ -263,6 +266,28 @@ impl<
         // Intentionally skip the PC verifier key
 
         Ok(res)
+    }
+}
+
+impl<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField, BaseField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> ToMinimalBitRepresentationGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+{
+    fn to_minimal_bit_representation<CS: ConstraintSystem<BaseField>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<Boolean>, SynthesisError> {
+        let domain_h_size_booleans = self.domain_h_size_gadget.to_bits_le(cs.ns(|| "domain_h_size"))?;
+        let domain_k_size_booleans = self.domain_k_size_gadget.to_bits_le(cs.ns(|| "domain_k_size"))?;
+
+        let index_comms_booleans = self
+            .index_comms
+            .to_minimal_bit_representation(cs.ns(|| "index_comms"))?;
+
+        Ok([domain_h_size_booleans, domain_k_size_booleans, index_comms_booleans].concat())
     }
 }
 

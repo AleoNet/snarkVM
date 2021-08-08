@@ -17,7 +17,7 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{from_bytes_le_to_bits_le, BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
 
 use once_cell::sync::OnceCell;
 use std::{
@@ -86,26 +86,24 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         }
     }
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
         let eval_time = start_timer!(|| "BoweHopwoodPedersenCRH::hash");
 
-        if (input.len() * 8) > WINDOW_SIZE * NUM_WINDOWS {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
         assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
         assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
-        let mut buffer = [0u8; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buffer[..input.len()].copy_from_slice(input);
-        let buf_slice = from_bytes_le_to_bits_le(&buffer[..]).collect::<Vec<_>>();
+        let mut buf_slice = input.to_vec();
+        buf_slice.resize(WINDOW_SIZE * NUM_WINDOWS, false);
 
-        let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
-        if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
-            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
+        if buf_slice.len() % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
+            let current_length = buf_slice.len();
+            let target_length = current_length + BOWE_HOPWOOD_CHUNK_SIZE - current_length % BOWE_HOPWOOD_CHUNK_SIZE;
+            buf_slice.resize(target_length, false);
         }
-
-        assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
         assert_eq!(
             self.bases.len(),
@@ -131,7 +129,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol
         // specification.
-        let result = buf_slice[..bit_len]
+        let result = buf_slice
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
             .zip(base_lookup)
             .map(|(segment_bits, segment_generators)| {

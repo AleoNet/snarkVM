@@ -16,7 +16,7 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
-use snarkvm_utilities::{biginteger::BigInteger, serialize::*, BitIteratorBE, ToBytes};
+use snarkvm_utilities::{biginteger::BigInteger, serialize::*, BitIteratorBE, ToBytes, ToMinimalBitRepresentation};
 
 use std::{fmt::Debug, iter};
 
@@ -160,6 +160,7 @@ pub trait AffineCurve:
     + ConstantSerializedSize
     + CanonicalDeserialize
     + From<<Self as AffineCurve>::Projective>
+    + ToMinimalBitRepresentation
 {
     type BaseField: Field;
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;

@@ -90,17 +90,23 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
 {
     type OutputGadget = GG;
 
-    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        input: Vec<UInt8>,
+        input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
         assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
         // Pad the input if it is not the correct length.
-        let input_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(input);
-
+        let input_in_bits = pad_input::<NUM_WINDOWS, WINDOW_SIZE>(input);
         GG::multi_scalar_multiplication(cs, &self.crh.bases, input_in_bits.chunks(WINDOW_SIZE))
     }
+}
+
+fn pad_input<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(input: Vec<Boolean>) -> Vec<Boolean> {
+    let mut padded_input = input;
+    padded_input.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
+    assert_eq!(padded_input.len(), WINDOW_SIZE * NUM_WINDOWS);
+    padded_input
 }
 
 fn pad_input_and_bitify<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(input: Vec<UInt8>) -> Vec<Boolean> {

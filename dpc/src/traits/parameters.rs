@@ -29,6 +29,7 @@ use snarkvm_utilities::{
     CanonicalSerialize,
     FromBytes,
     ToBytes,
+    ToMinimalBitRepresentation,
 };
 
 use anyhow::Result;
@@ -193,7 +194,22 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Send
         + Sync
         + Copy;
-    type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDCRH>;
+
+    type ProgramCircuitIDTreeCRH: CRH<Output = Self::ProgramCircuitIDTreeDigest>;
+    type ProgramCircuitIDTreeCRHGadget: CRHGadget<Self::ProgramCircuitIDTreeCRH, Self::OuterScalarField>;
+    type ProgramCircuitIDTreeDigest: ToConstraintField<Self::OuterScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDTreeCRH>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -271,6 +287,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
+    fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
@@ -298,7 +315,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     fn program_circuit_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
     ) -> Result<Self::ProgramCircuitID> {
-        Ok(Self::program_circuit_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?)
+        Ok(Self::program_circuit_id_crh().hash_bits(&verifying_key.to_minimal_bit_representation())?)
     }
 
     /// Returns the program SRS for Aleo applications.

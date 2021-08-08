@@ -16,8 +16,8 @@
 
 use crate::{
     algorithms::crh::BHPCRHGadget,
-    integers::uint::UInt8,
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
+    Boolean,
 };
 use snarkvm_algorithms::{
     crh::{BHPCompressedCRH, BHPCRH},
@@ -97,12 +97,12 @@ impl<
 {
     type OutputGadget = GG::BaseFieldGadget;
 
-    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        input: Vec<UInt8>,
+        input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        let output = self.bhp_gadget.check_evaluation_gadget(cs, input)?;
+        let output = self.bhp_gadget.check_evaluation_gadget_on_bits(cs, input)?;
         Ok(output.to_x_coordinate())
     }
 }

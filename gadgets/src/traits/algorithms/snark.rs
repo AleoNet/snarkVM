@@ -26,6 +26,7 @@ use crate::{
     ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
+    ToMinimalBitRepresentationGadget,
 };
 
 pub trait PrepareGadget<T, F: PrimeField> {
@@ -38,7 +39,8 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         + ToConstraintFieldGadget<S::BaseField>
         + ToBytesGadget<S::BaseField>
         + PrepareGadget<Self::PreparedVerificationKeyGadget, S::BaseField>
-        + AllocBytesGadget<Vec<u8>, S::BaseField>;
+        + AllocBytesGadget<Vec<u8>, S::BaseField>
+        + ToMinimalBitRepresentationGadget<S::BaseField>;
     type ProofGadget: AllocGadget<S::Proof, S::BaseField> + AllocBytesGadget<Vec<u8>, S::BaseField>;
     type InputGadget: Clone
         + AllocGadget<Vec<S::ScalarField>, S::BaseField>

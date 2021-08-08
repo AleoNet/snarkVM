@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Boolean;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -35,4 +36,22 @@ pub trait MergeGadget<F: PrimeField>: Clone {
 pub trait SumGadget<F: PrimeField>: Clone {
     fn zero<CS: ConstraintSystem<F>>(cs: CS) -> Result<Self, SynthesisError>;
     fn sum<CS: ConstraintSystem<F>>(cs: CS, elems: &[Self]) -> Result<Self, SynthesisError>;
+}
+
+pub trait ToMinimalBitRepresentationGadget<F: PrimeField>: Clone {
+    fn to_minimal_bit_representation<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
+}
+
+impl<F: PrimeField, T: ToMinimalBitRepresentationGadget<F>> ToMinimalBitRepresentationGadget<F> for Vec<T> {
+    fn to_minimal_bit_representation<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut res_booleans = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            res_booleans.extend(elem.to_minimal_bit_representation(cs.ns(|| format!("{}", i)))?);
+        }
+
+        Ok(res_booleans)
+    }
 }

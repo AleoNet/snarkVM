@@ -26,9 +26,6 @@ pub use pedersen::*;
 pub mod pedersen_compressed;
 pub use pedersen_compressed::*;
 
-pub mod poseidon;
-pub use poseidon::*;
-
 pub mod sha256;
 pub use sha256::*;
 

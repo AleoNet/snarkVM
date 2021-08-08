@@ -27,7 +27,9 @@ use snarkvm_gadgets::{
         curves::{GroupGadget, PairingGadget},
         fields::ToConstraintFieldGadget,
     },
+    Boolean,
     PrepareGadget,
+    ToMinimalBitRepresentationGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -56,6 +58,21 @@ where
         Self {
             comm: self.comm.clone(),
         }
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG> ToMinimalBitRepresentationGadget<<BaseCurve as PairingEngine>::Fr>
+    for CommitmentVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+{
+    fn to_minimal_bit_representation<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<Boolean>, SynthesisError> {
+        self.comm.to_minimal_bit_representation(cs.ns(|| "comm"))
     }
 }
 

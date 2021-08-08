@@ -31,7 +31,22 @@ pub trait CRH: Clone + ToBytes + FromBytes + From<<Self as CRH>::Parameters> {
 
     fn setup(message: &str) -> Self;
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError>;
+    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+        let mut bits = Vec::with_capacity(input.len() * 8);
+        for byte in input.iter() {
+            bits.push(byte & 1 != 0);
+            bits.push(byte & 2 != 0);
+            bits.push(byte & 4 != 0);
+            bits.push(byte & 8 != 0);
+            bits.push(byte & 16 != 0);
+            bits.push(byte & 32 != 0);
+            bits.push(byte & 64 != 0);
+            bits.push(byte & 128 != 0);
+        }
+        self.hash_bits(&bits)
+    }
+
+    fn hash_bits(&self, input_bits: &[bool]) -> Result<Self::Output, CRHError>;
 
     fn hash_field_elements<F: PrimeField>(&self, input: &[F]) -> Result<Self::Output, CRHError> {
         let mut input_bytes = vec![];
