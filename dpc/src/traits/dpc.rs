@@ -39,16 +39,15 @@ pub trait DPCScheme<C: Parameters>: Sized {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: Self::StateTransition,
+        state: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         authorization: Self::Authorization,
-        executables: Vec<Executable<C>>,
+        executables: &Vec<Executable<C>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction>;

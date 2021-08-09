@@ -135,11 +135,11 @@ impl<C: Parameters> StateBuilder<C> {
             .map(|input| input.serial_number().clone())
             .collect();
 
-        // Compute the signature randomizers.
+        // Compute the signature randomizers and noop private keys.
         let signature_randomizers: Vec<_> = inputs
             .iter()
             .take(C::NUM_INPUT_RECORDS)
-            .map(|input| input.signature_randomizer().clone())
+            .map(|input| (input.signature_randomizer().clone(), input.noop_private_key().clone()))
             .collect();
 
         // Compute an instance of the output records, commitments, and value balance.

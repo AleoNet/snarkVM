@@ -27,6 +27,7 @@ pub struct Input<C: Parameters> {
     record: Record<C>,
     serial_number: C::AccountSignaturePublicKey,
     signature_randomizer: <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
+    noop_private_key: Option<PrivateKey<C>>,
     executable: Executable<C>,
 }
 
@@ -43,7 +44,16 @@ impl<C: Parameters> Input<C> {
         // Construct the noop input record.
         let record = Record::new_noop_input(executable.program(), noop_address, rng)?;
 
-        Self::new(&noop_private_key, record, None, noop)
+        // Compute the serial number and signature randomizer.
+        let (serial_number, signature_randomizer) = record.to_serial_number(&noop_private_key)?;
+
+        Ok(Self {
+            record,
+            serial_number,
+            signature_randomizer,
+            noop_private_key: Some(noop_private_key),
+            executable,
+        })
     }
 
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
@@ -77,6 +87,7 @@ impl<C: Parameters> Input<C> {
             record,
             serial_number,
             signature_randomizer,
+            noop_private_key: None,
             executable,
         })
     }
@@ -114,6 +125,7 @@ impl<C: Parameters> Input<C> {
             record,
             serial_number,
             signature_randomizer,
+            noop_private_key: None,
             executable,
         })
     }
@@ -131,6 +143,11 @@ impl<C: Parameters> Input<C> {
     /// Returns a reference to the input signature randomizer.
     pub fn signature_randomizer(&self) -> &<C::AccountSignatureScheme as SignatureScheme>::Randomizer {
         &self.signature_randomizer
+    }
+
+    /// Returns a reference to the noop private key, if it exists.
+    pub fn noop_private_key(&self) -> &Option<PrivateKey<C>> {
+        &self.noop_private_key
     }
 
     /// Returns a reference to the executable.
@@ -160,7 +177,7 @@ mod tests {
             let seed: u64 = thread_rng().gen();
 
             // Generate the expected input state.
-            let (expected_record, expected_serial_number, expected_signature_randomizer) = {
+            let (expected_record, expected_serial_number, expected_signature_randomizer, expected_noop_private_key) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
@@ -168,17 +185,24 @@ mod tests {
                 let (serial_number, signature_randomizer) =
                     input_record.to_serial_number(&account.private_key).unwrap();
 
-                (input_record, serial_number, signature_randomizer)
+                (input_record, serial_number, signature_randomizer, account.private_key)
             };
 
             // Generate the candidate input state.
-            let (candidate_record, candidate_serial_number, candidate_signature_randomizer, candidate_executable) = {
+            let (
+                candidate_record,
+                candidate_serial_number,
+                candidate_signature_randomizer,
+                candidate_noop_private_key,
+                candidate_executable,
+            ) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
                 let input = Input::new_noop(noop.clone(), rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),
                     input.signature_randomizer().clone(),
+                    input.noop_private_key().clone(),
                     input.executable().clone(),
                 )
             };
@@ -186,6 +210,7 @@ mod tests {
             assert_eq!(expected_record, candidate_record);
             assert_eq!(expected_serial_number, candidate_serial_number);
             assert_eq!(expected_signature_randomizer, candidate_signature_randomizer);
+            assert_eq!(Some(expected_noop_private_key), candidate_noop_private_key);
             assert!(candidate_executable.is_noop());
         }
     }

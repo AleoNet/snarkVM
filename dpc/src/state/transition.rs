@@ -32,7 +32,10 @@ pub struct StateTransition<C: Parameters> {
     pub(super) kernel: TransactionKernel<C>,
     pub(super) input_records: Vec<Record<C>>,
     pub(super) output_records: Vec<Record<C>>,
-    pub(super) signature_randomizers: Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer>,
+    pub(super) signature_randomizers: Vec<(
+        <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
+        Option<PrivateKey<C>>,
+    )>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub(super) executables: Vec<Executable<C>>,
 }
@@ -121,7 +124,12 @@ impl<C: Parameters> StateTransition<C> {
     }
 
     /// Returns a reference to the signature randomizers.
-    pub fn signature_randomizers(&self) -> &Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer> {
+    pub fn signature_randomizers(
+        &self,
+    ) -> &Vec<(
+        <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
+        Option<PrivateKey<C>>,
+    )> {
         &self.signature_randomizers
     }
 

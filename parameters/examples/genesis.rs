@@ -20,13 +20,12 @@ use snarkvm_ledger::{
     posw::{txids_to_roots, PoswMarlin},
     prelude::*,
 };
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::{
     fs::File,
     io::{Result as IoResult, Write},
-    ops::Deref,
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -55,8 +54,8 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
 
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, noop, rng)?;
-    let authorization = dpc.authorize(&private_keys, state, None, rng)?;
-    let transaction = dpc.execute(&private_keys, authorization, executables, &temporary_ledger, rng)?;
+    let authorization = dpc.authorize(&vec![], &state, rng)?;
+    let transaction = dpc.execute(authorization, state.executables(), &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     println!("transaction size - {}\n", transaction_bytes.len());

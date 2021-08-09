@@ -92,25 +92,42 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: Self::StateTransition,
+        state: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
+
+        // Keep a cursor for the private keys.
+        let mut index = 0;
 
         // Construct the signature message.
         let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
+        let mut prover_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for (i, signature_randomizer) in state
-            .signature_randomizers()
-            .iter()
-            .enumerate()
-            .take(C::NUM_INPUT_RECORDS)
+        for (signature_randomizer, noop_private_key) in state.signature_randomizers().iter().take(C::NUM_INPUT_RECORDS)
         {
+            // Determine the private key.
+            let private_key = match noop_private_key {
+                Some(noop_private_key) => noop_private_key,
+                None => {
+                    index += 1;
+                    &private_keys[index]
+                }
+            };
+
+            // Construct the prover key.
+            prover_keys.push((
+                private_key.pk_sig().clone(),
+                private_key.sk_prf.clone(),
+                private_key.r_pk.clone(),
+                private_key.to_decryption_key()?,
+            ));
+
             // Randomize the private key.
             let randomized_private_key =
-                C::account_signature_scheme().randomize_private_key(&private_keys[i].sk_sig, &signature_randomizer)?;
+                C::account_signature_scheme().randomize_private_key(&private_key.sk_sig, &signature_randomizer)?;
 
             // Sign and randomize the signature.
             signatures.push(C::account_signature_scheme().sign_randomized(
@@ -121,19 +138,17 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization::from(state, signatures))
+        Ok(TransactionAuthorization::from(prover_keys, state, signatures))
     }
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         authorization: Self::Authorization,
-        executables: Vec<Executable<C>>,
+        executables: &Vec<Executable<C>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, executables.len());
 
         let execution_timer = start_timer!(|| "DPC::execute");
@@ -155,6 +170,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             authorization.to_encrypted_records(rng)?;
 
         let TransactionAuthorization {
+            prover_keys,
             kernel,
             input_records,
             output_records,
@@ -184,7 +200,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let inner_private_variables = InnerPrivateVariables::new(
             input_records,
             old_witnesses,
-            private_keys.clone(),
+            prover_keys,
             output_records.clone(),
             encrypted_record_randomizers,
             program_randomness.clone(),
