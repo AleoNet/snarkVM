@@ -15,109 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::ToBytes;
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
-
-#[derive(Clone)]
-pub struct State<C: Parameters> {
-    kernel: TransactionKernel<C>,
-    input_records: Vec<Record<C>>,
-    output_records: Vec<Record<C>>,
-    signature_randomizers: Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer>,
-}
-
-impl<C: Parameters> State<C> {
-    /// Returns a new state transition with no operations performed.
-    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
-        Ok(Self::builder().build(noop, rng)?)
-    }
-
-    /// Returns a new state transition that mints the given amount to the recipient.
-    pub fn new_coinbase<R: Rng + CryptoRng>(
-        recipient: Address<C>,
-        amount: AleoAmount,
-        noop: Arc<NoopProgram<C>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        Ok(Self::builder()
-            .add_output(Output::new(recipient, amount, Payload::default(), None, noop.clone())?)
-            .build(noop, rng)?)
-    }
-
-    /// Returns a new state transition that transfers a given amount of Aleo credits from a sender to a recipient.
-    pub fn new_transfer<R: Rng + CryptoRng>(
-        sender: &PrivateKey<C>,
-        records: &Vec<Record<C>>,
-        recipient: Address<C>,
-        amount: AleoAmount,
-        fee: AleoAmount,
-        noop: Arc<NoopProgram<C>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        assert!(records.len() <= C::NUM_INPUT_RECORDS);
-
-        // Calculate the available balance of the sender.
-        let mut balance = AleoAmount::ZERO;
-        let mut inputs = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for record in records {
-            balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
-            inputs.push(Input::new(sender, record.clone(), None, noop.clone())?);
-        }
-
-        // Ensure the sender has sufficient balance.
-        let total_cost = amount.add(fee);
-        if balance < total_cost {
-            return Err(anyhow!("Sender(s) has insufficient balance"));
-        }
-
-        // Construct the recipient output.
-        let recipient_output = Output::new(recipient, amount, Payload::default(), None, noop.clone())?;
-
-        // Construct the change output for the sender.
-        let sender_output = Output::new(
-            Address::from_private_key(sender)?,
-            balance.sub(total_cost),
-            Payload::default(),
-            None,
-            noop.clone(),
-        )?;
-
-        Ok(Self::builder()
-            .add_inputs(inputs)
-            .add_output(recipient_output)
-            .add_output(sender_output)
-            .build(noop, rng)?)
-    }
-
-    /// Returns a new instance of `StateBuilder`.
-    pub fn builder() -> StateBuilder<C> {
-        StateBuilder::new()
-    }
-
-    /// Returns a reference to the transaction kernel.
-    pub fn transaction_kernel(&self) -> &TransactionKernel<C> {
-        &self.kernel
-    }
-
-    /// Returns a reference to the input records.
-    pub fn input_records(&self) -> &Vec<Record<C>> {
-        &self.input_records
-    }
-
-    /// Returns a reference to the output records.
-    pub fn output_records(&self) -> &Vec<Record<C>> {
-        &self.output_records
-    }
-
-    /// Returns a reference to the signature randomizers.
-    pub fn signature_randomizers(&self) -> &Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer> {
-        &self.signature_randomizers
-    }
-}
 
 #[derive(Clone)]
 pub struct StateBuilder<C: Parameters> {
