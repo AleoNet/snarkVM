@@ -32,6 +32,14 @@ pub enum Executable<C: Parameters> {
 }
 
 impl<C: Parameters> Executable<C> {
+    /// Returns `true` if the executable is a noop.
+    pub fn is_noop(&self) -> bool {
+        match self {
+            Self::Noop(_) => true,
+            _ => false,
+        }
+    }
+
     /// Returns the execution of the executable given the public variables.
     pub fn execute(&self, record_position: u8, local_data: &LocalData<C>) -> Result<Execution<C>> {
         // Construct the public variables.

@@ -124,7 +124,7 @@ impl<C: Parameters> Record<C> {
         value: u64,
         payload: Payload,
         position: u8,
-        joint_serial_numbers: Vec<u8>,
+        joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         // Ensure the output record position is valid.

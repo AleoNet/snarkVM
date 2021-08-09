@@ -54,11 +54,30 @@ impl<C: Parameters> Input<C> {
         })
     }
 
+    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Initializes a new instance of `Input`.
-    pub fn new(private_key: PrivateKey<C>, executable: Executable<C>, record: Record<C>) -> Result<Self> {
+    pub fn new(
+        private_key: &PrivateKey<C>,
+        record: Record<C>,
+        executable: Option<Executable<C>>,
+        noop: Arc<NoopProgram<C>>,
+    ) -> Result<Self> {
         // Ensure the account address matches.
-        let address = Address::from_private_key(&private_key)?;
-        assert_eq!(&address, record.owner());
+        let address = Address::from_private_key(private_key)?;
+        if &address != record.owner() {
+            return Err(anyhow!("Address of private key does not match the record owner"));
+        }
+
+        // Retrieve the executable. If `None` is provided, construct the noop executable.
+        let executable = match executable {
+            Some(executable) => executable,
+            None => Executable::Noop(noop),
+        };
+
+        // Ensure its program ID matches what is declared in the record.
+        if executable.program_id() != record.program_id() {
+            return Err(anyhow!("Executable program ID does not match record program ID"));
+        }
 
         // Compute the serial number.
         let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
@@ -73,7 +92,7 @@ impl<C: Parameters> Input<C> {
 
     /// Initializes a new instance of `Input`.
     pub fn new_full(
-        private_key: PrivateKey<C>,
+        private_key: &PrivateKey<C>,
         executable: Executable<C>,
         is_dummy: bool,
         value: u64,
@@ -82,7 +101,7 @@ impl<C: Parameters> Input<C> {
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
-        let address = Address::from_private_key(&private_key)?;
+        let address = Address::from_private_key(private_key)?;
 
         // Construct the input record.
         let record = Record::new_input(
@@ -106,8 +125,18 @@ impl<C: Parameters> Input<C> {
         })
     }
 
+    /// Returns a reference to the input record.
+    pub fn record(&self) -> &Record<C> {
+        &self.record
+    }
+
     /// Returns a reference to the input serial number.
     pub fn serial_number(&self) -> &C::AccountSignaturePublicKey {
         &self.serial_number
+    }
+
+    /// Returns a reference to the input signature randomizer.
+    pub fn signature_randomizer(&self) -> &<C::AccountSignatureScheme as SignatureScheme>::Randomizer {
+        &self.signature_randomizer
     }
 }

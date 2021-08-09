@@ -34,7 +34,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Authorization = TransactionAuthorization<C>;
     type Execution = Execution<C>;
-    type Record = Record<C>;
+    type State = State<C>;
     type Transaction = Transaction<C>;
 
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
@@ -91,80 +91,31 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        input_records: Vec<Self::Record>,
-        output_records: Vec<Self::Record>,
-        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
+        state: Self::State,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
         assert_eq!(C::NUM_INPUT_RECORDS, input_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, output_records.len());
 
-        // Initialize the transaction kernel.
-        let mut kernel = TransactionKernel {
-            network_id: C::NETWORK_ID,
-            serial_numbers: Vec::with_capacity(C::NUM_INPUT_RECORDS),
-            commitments: Vec::with_capacity(C::NUM_OUTPUT_RECORDS),
-            value_balance: AleoAmount::ZERO,
-            memo: [0u8; 64],
-        };
-
-        // Initialize a vector for randomized private keys.
-        let mut randomized_private_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-
-        // Process the input records.
-        for (i, record) in input_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
-            // Compute the serial numbers.
-            let (serial_number, signature_randomizer) = record.to_serial_number(&private_keys[i])?;
-            kernel.serial_numbers.push(serial_number);
-
-            // Randomize the private key.
-            randomized_private_keys.push(
-                C::account_signature_scheme().randomize_private_key(&private_keys[i].sk_sig, &signature_randomizer)?,
-            );
-
-            if !record.is_dummy() {
-                kernel.value_balance = kernel.value_balance.add(AleoAmount::from_bytes(record.value() as i64));
-            }
-        }
-
-        // Process the output records.
-        for record in output_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            // Compute the commitments.
-            kernel.commitments.push(record.commitment());
-
-            if !record.is_dummy() {
-                kernel.value_balance = kernel.value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
-            }
-        }
-
-        // Process the memo.
-        match memo {
-            Some(memo) => memo.write_le(&mut kernel.memo[..])?,
-            None => (0..64)
-                .map(|_| u8::rand(rng))
-                .collect::<Vec<u8>>()
-                .write_le(&mut kernel.memo[..])?,
-        };
-
         // Construct the signature message.
-        let signature_message = match kernel.is_valid() {
-            true => kernel.to_signature_message()?,
-            false => {
-                return Err(DPCError::InvalidKernel(
-                    kernel.network_id,
-                    kernel.serial_numbers.len(),
-                    kernel.commitments.len(),
-                )
-                .into());
-            }
-        };
+        let signature_message = state.transaction_kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for i in 0..C::NUM_INPUT_RECORDS {
+        for (i, signature_randomizer) in state
+            .signature_randomizers()
+            .iter()
+            .enumerate()
+            .take(C::NUM_INPUT_RECORDS)
+        {
+            // Randomize the private key.
+            let randomized_private_key =
+                C::account_signature_scheme().randomize_private_key(&private_keys[i].sk_sig, &signature_randomizer)?;
+
+            // Sign and randomize the signature.
             signatures.push(C::account_signature_scheme().sign_randomized(
-                &randomized_private_keys[i],
+                &randomized_private_key,
                 &signature_message,
                 rng,
             )?);
@@ -172,9 +123,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Return the transaction authorization.
         Ok(TransactionAuthorization {
-            kernel,
-            input_records,
-            output_records,
+            kernel: state.transaction_kernel().clone(),
+            input_records: state.input_records().clone(),
+            output_records: state.output_records().clone(),
             signatures,
         })
     }

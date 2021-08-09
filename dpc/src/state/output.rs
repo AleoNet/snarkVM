@@ -25,15 +25,14 @@ use std::{convert::TryInto, sync::Arc};
 pub struct Output<C: Parameters> {
     executable: Executable<C>,
     address: Address<C>,
-    is_dummy: bool,
     value: u64,
     payload: Payload,
-    position: u8,
+    is_dummy: bool,
 }
 
 impl<C: Parameters> Output<C> {
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, position: u8, rng: &mut R) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
         // Construct the noop executable.
         let executable = Executable::Noop(noop);
 
@@ -44,41 +43,53 @@ impl<C: Parameters> Output<C> {
         Ok(Self {
             executable,
             address: noop_address,
-            is_dummy: true,
             value: 0,
             payload: Payload::default(),
-            position,
+            is_dummy: true,
         })
     }
 
+    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Initializes a new instance of `Output`.
     pub fn new(
-        executable: Executable<C>,
         address: Address<C>,
-        is_dummy: bool,
         value: u64,
         payload: Payload,
-        position: u8,
+        executable: Option<Executable<C>>,
+        noop: Arc<NoopProgram<C>>,
     ) -> Result<Self> {
+        // Retrieve the executable. If `None` is provided, construct the noop executable.
+        let executable = match executable {
+            Some(executable) => executable,
+            None => Executable::Noop(noop),
+        };
+
+        // Determine if the record is a dummy.
+        let is_dummy = value == 0 && payload.is_empty() && executable.is_noop();
+
         Ok(Self {
             executable,
             address,
-            is_dummy,
             value,
             payload,
-            position,
+            is_dummy,
         })
     }
 
-    /// Returns the output record, given the joint serial numbers.
-    pub fn to_record<R: Rng + CryptoRng>(&self, joint_serial_numbers: Vec<u8>, rng: &mut R) -> Result<Record<C>> {
+    /// Returns the output record, given the position and joint serial numbers.
+    pub fn to_record<R: Rng + CryptoRng>(
+        &self,
+        position: u8,
+        joint_serial_numbers: &Vec<u8>,
+        rng: &mut R,
+    ) -> Result<Record<C>> {
         Ok(Record::new_output(
             self.executable.program(),
             self.address,
             self.is_dummy,
             self.value,
             self.payload.clone(),
-            self.position,
+            position,
             joint_serial_numbers,
             rng,
         )?)

@@ -33,8 +33,8 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
     type Authorization;
     type Execution;
-    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
-    type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
+    type State;
+    type Transaction: TransactionScheme;
 
     /// Initializes a new instance of DPC.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self>;
@@ -47,9 +47,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        input_records: Vec<Self::Record>,
-        output_records: Vec<Self::Record>,
-        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
+        state: Vec<Self::State>,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
