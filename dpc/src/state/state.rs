@@ -111,6 +111,8 @@ impl<C: Parameters> StateBuilder<C> {
     }
 
     fn update_joint_serial_numbers(&mut self) -> Result<()> {
+        assert_eq!(C::NUM_INPUT_RECORDS, self.inputs.len());
+
         // Compute the joint serial numbers.
         let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for input in self.inputs.iter().take(C::NUM_INPUT_RECORDS) {
