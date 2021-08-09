@@ -93,9 +93,9 @@ impl<C: Parameters> EncryptedRecord<C> {
 
         // Encrypt the record plaintext.
         let encryption_key = record.owner().to_encryption_key();
-        let encryption_randomness = C::account_encryption_scheme().generate_randomness(encryption_key, rng)?;
+        let encryption_randomness = C::account_encryption_scheme().generate_randomness(&encryption_key, rng)?;
         let encrypted_record =
-            C::account_encryption_scheme().encrypt(encryption_key, &encryption_randomness, &bytes)?;
+            C::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &bytes)?;
         let encrypted_record = Self::new(encrypted_record);
 
         Ok((encrypted_record, encryption_randomness))

@@ -244,3 +244,120 @@ impl<C: Parameters> StateBuilder<C> {
         Ok((inputs, outputs))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::*;
+
+    use rand::{thread_rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+    use std::ops::Deref;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_add_noop_input() {
+        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
+        let noop = Arc::new(noop_program.clone());
+
+        for _ in 0..ITERATIONS {
+            // Sample a random seed for the RNG.
+            let seed: u64 = thread_rng().gen();
+
+            // Generate the expected input state.
+            let (expected_record, expected_serial_number, expected_signature_randomizer) = {
+                let rng = &mut ChaChaRng::seed_from_u64(seed);
+
+                let account = Account::new(rng).unwrap();
+                let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
+                let (serial_number, signature_randomizer) =
+                    input_record.to_serial_number(&account.private_key).unwrap();
+
+                (input_record, serial_number, signature_randomizer)
+            };
+
+            // Generate the candidate input state.
+            let (candidate_record, candidate_serial_number, candidate_signature_randomizer, candidate_executable) = {
+                let rng = &mut ChaChaRng::seed_from_u64(seed);
+
+                let mut builder = StateBuilder::new();
+                builder = builder.add_input(Input::new_noop(noop.clone(), rng).unwrap());
+                builder.build(noop.clone(), rng).unwrap();
+
+                (
+                    builder.inputs[0].record().clone(),
+                    builder.inputs[0].serial_number().clone(),
+                    builder.inputs[0].signature_randomizer().clone(),
+                    builder.inputs[0].executable().clone(),
+                )
+            };
+
+            assert_eq!(expected_record, candidate_record);
+            assert_eq!(expected_serial_number, candidate_serial_number);
+            assert_eq!(expected_signature_randomizer, candidate_signature_randomizer);
+            assert!(candidate_executable.is_noop());
+        }
+    }
+
+    #[test]
+    fn test_add_noop_output() {
+        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
+        let noop = Arc::new(noop_program.clone());
+
+        for _ in 0..ITERATIONS {
+            // Sample a random seed for the RNG.
+            let seed: u64 = thread_rng().gen();
+
+            // Generate the given inputs.
+            let mut given_rng = ChaChaRng::seed_from_u64(seed);
+            let (_given_inputs, given_joint_serial_numbers) = {
+                let mut inputs = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
+                let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
+                for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
+                    let input = Input::new_noop(noop.clone(), &mut given_rng).unwrap();
+                    let serial_number = input.serial_number().to_bytes_le().unwrap();
+
+                    inputs.push(input);
+                    joint_serial_numbers.extend_from_slice(&serial_number);
+                }
+                (inputs, joint_serial_numbers)
+            };
+
+            // Checkpoint the RNG and clone it.
+            let mut expected_rng = given_rng.clone();
+            let mut candidate_rng = given_rng.clone();
+
+            // Generate the expected output state.
+            let expected_record = {
+                let account = Account::new(&mut expected_rng).unwrap();
+                Record::new_noop_output(
+                    noop_program.deref(),
+                    account.address,
+                    Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                    &given_joint_serial_numbers,
+                    &mut expected_rng,
+                )
+                .unwrap()
+            };
+
+            // Generate the candidate output state.
+            let (candidate_address, candidate_value, candidate_payload, candidate_executable) = {
+                let mut builder = StateBuilder::new();
+                builder = builder.add_output(Output::new_noop(noop.clone(), &mut candidate_rng).unwrap());
+                builder.build(noop.clone(), &mut candidate_rng).unwrap();
+                (
+                    builder.outputs[0].address(),
+                    builder.outputs[0].value(),
+                    builder.outputs[0].payload().clone(),
+                    builder.outputs[0].executable().clone(),
+                )
+            };
+
+            assert_eq!(expected_record.owner(), candidate_address);
+            assert_eq!(expected_record.value(), candidate_value.0 as u64);
+            assert_eq!(expected_record.payload(), &candidate_payload);
+            assert!(candidate_executable.is_noop());
+        }
+    }
+}

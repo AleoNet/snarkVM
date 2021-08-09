@@ -21,12 +21,19 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
+)]
 pub struct StateTransition<C: Parameters> {
     pub(super) kernel: TransactionKernel<C>,
     pub(super) input_records: Vec<Record<C>>,
     pub(super) output_records: Vec<Record<C>>,
     pub(super) signature_randomizers: Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer>,
+    #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub(super) executables: Vec<Executable<C>>,
 }
 

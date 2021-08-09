@@ -34,7 +34,7 @@ impl<C: Parameters> Input<C> {
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
         // Construct the noop executable.
-        let executable = Executable::Noop(noop);
+        let executable = Executable::Noop(noop.clone());
 
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
@@ -43,15 +43,7 @@ impl<C: Parameters> Input<C> {
         // Construct the noop input record.
         let record = Record::new_noop_input(executable.program(), noop_address, rng)?;
 
-        // Compute the serial number.
-        let (serial_number, signature_randomizer) = record.to_serial_number(&noop_private_key)?;
-
-        Ok(Self {
-            record,
-            serial_number,
-            signature_randomizer,
-            executable,
-        })
+        Self::new(&noop_private_key, record, None, noop)
     }
 
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
@@ -63,8 +55,7 @@ impl<C: Parameters> Input<C> {
         noop: Arc<NoopProgram<C>>,
     ) -> Result<Self> {
         // Ensure the account address matches.
-        let address = Address::from_private_key(private_key)?;
-        if &address != record.owner() {
+        if Address::from_private_key(private_key)? != record.owner() {
             return Err(anyhow!("Address of private key does not match the record owner"));
         }
 
@@ -79,7 +70,7 @@ impl<C: Parameters> Input<C> {
             return Err(anyhow!("Executable program ID does not match record program ID"));
         }
 
-        // Compute the serial number.
+        // Compute the serial number and signature randomizer.
         let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
 
         Ok(Self {
@@ -145,5 +136,57 @@ impl<C: Parameters> Input<C> {
     /// Returns a reference to the executable.
     pub fn executable(&self) -> &Executable<C> {
         &self.executable
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::*;
+
+    use rand::{thread_rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+    use std::ops::Deref;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_new_noop() {
+        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
+        let noop = Arc::new(noop_program.clone());
+
+        for _ in 0..ITERATIONS {
+            // Sample a random seed for the RNG.
+            let seed: u64 = thread_rng().gen();
+
+            // Generate the expected input state.
+            let (expected_record, expected_serial_number, expected_signature_randomizer) = {
+                let rng = &mut ChaChaRng::seed_from_u64(seed);
+
+                let account = Account::new(rng).unwrap();
+                let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
+                let (serial_number, signature_randomizer) =
+                    input_record.to_serial_number(&account.private_key).unwrap();
+
+                (input_record, serial_number, signature_randomizer)
+            };
+
+            // Generate the candidate input state.
+            let (candidate_record, candidate_serial_number, candidate_signature_randomizer, candidate_executable) = {
+                let rng = &mut ChaChaRng::seed_from_u64(seed);
+                let input = Input::new_noop(noop.clone(), rng).unwrap();
+                (
+                    input.record().clone(),
+                    input.serial_number().clone(),
+                    input.signature_randomizer().clone(),
+                    input.executable().clone(),
+                )
+            };
+
+            assert_eq!(expected_record, candidate_record);
+            assert_eq!(expected_serial_number, candidate_serial_number);
+            assert_eq!(expected_signature_randomizer, candidate_signature_randomizer);
+            assert!(candidate_executable.is_noop());
+        }
     }
 }

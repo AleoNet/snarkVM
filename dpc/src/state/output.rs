@@ -36,12 +36,7 @@ impl<C: Parameters> Output<C> {
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
-        Ok(Self {
-            address: noop_address,
-            value: AleoAmount::from_bytes(0),
-            payload: Payload::default(),
-            executable: Executable::Noop(noop),
-        })
+        Self::new(noop_address, AleoAmount::from_bytes(0), Payload::default(), None, noop)
     }
 
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
@@ -89,8 +84,100 @@ impl<C: Parameters> Output<C> {
         )?)
     }
 
+    /// Returns the address.
+    pub fn address(&self) -> Address<C> {
+        self.address
+    }
+
+    /// Returns the value.
+    pub fn value(&self) -> AleoAmount {
+        self.value
+    }
+
+    /// Returns a reference to the payload.
+    pub fn payload(&self) -> &Payload {
+        &self.payload
+    }
+
     /// Returns a reference to the executable.
     pub fn executable(&self) -> &Executable<C> {
         &self.executable
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::*;
+    use snarkvm_utilities::ToBytes;
+
+    use rand::{thread_rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+    use std::ops::Deref;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_new_noop_and_to_record() {
+        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
+        let noop = Arc::new(noop_program.clone());
+
+        for _ in 0..ITERATIONS {
+            // Sample a random seed for the RNG.
+            let seed: u64 = thread_rng().gen();
+
+            // Generate the given inputs.
+            let mut given_rng = ChaChaRng::seed_from_u64(seed);
+            let given_joint_serial_numbers = {
+                let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
+                for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
+                    let input = Input::new_noop(noop.clone(), &mut given_rng).unwrap();
+                    joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
+                }
+                joint_serial_numbers
+            };
+
+            // Checkpoint the RNG and clone it.
+            let mut expected_rng = given_rng.clone();
+            let mut candidate_rng = given_rng.clone();
+
+            // Generate the expected output state.
+            let expected_record = {
+                let account = Account::new(&mut expected_rng).unwrap();
+                Record::new_noop_output(
+                    noop_program.deref(),
+                    account.address,
+                    Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                    &given_joint_serial_numbers,
+                    &mut expected_rng,
+                )
+                .unwrap()
+            };
+
+            // Generate the candidate output state.
+            let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_executable) = {
+                let output = Output::new_noop(noop.clone(), &mut candidate_rng).unwrap();
+                let record = output
+                    .to_record(
+                        Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                        &given_joint_serial_numbers,
+                        &mut candidate_rng,
+                    )
+                    .unwrap();
+                (
+                    record,
+                    output.address(),
+                    output.value(),
+                    output.payload().clone(),
+                    output.executable().clone(),
+                )
+            };
+
+            assert_eq!(expected_record, candidate_record);
+            assert_eq!(expected_record.owner(), candidate_address);
+            assert_eq!(expected_record.value(), candidate_value.0 as u64);
+            assert_eq!(expected_record.payload(), &candidate_payload);
+            assert!(candidate_executable.is_noop());
+        }
     }
 }

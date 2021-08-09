@@ -31,7 +31,7 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     fn program_id(&self) -> &Self::ProgramID;
 
     /// Returns the record owner.
-    fn owner(&self) -> &Self::Owner;
+    fn owner(&self) -> Self::Owner;
 
     /// Returns whether or not the record is dummy.
     fn is_dummy(&self) -> bool;

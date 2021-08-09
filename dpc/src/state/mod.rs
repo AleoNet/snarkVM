@@ -26,5 +26,5 @@ pub use output::*;
 pub mod transition;
 pub use transition::*;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;

@@ -181,7 +181,6 @@ impl<C: Parameters> Record<C> {
         })
     }
 
-    // TODO (howardwu) - Change the private_key input to a signature_public_key.
     pub fn to_serial_number(
         &self,
         private_key: &PrivateKey<C>,
@@ -224,8 +223,8 @@ impl<C: Parameters> RecordScheme for Record<C> {
         &self.program_id
     }
 
-    fn owner(&self) -> &Self::Owner {
-        &self.owner
+    fn owner(&self) -> Self::Owner {
+        self.owner
     }
 
     fn is_dummy(&self) -> bool {
