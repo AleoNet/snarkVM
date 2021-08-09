@@ -406,8 +406,8 @@ impl<P: Fp256Parameters> ToBits for Fp256<P> {
     }
 
     fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_repr().to_bits_be();
-        bits_vec.truncate(P::MODULUS_BITS as usize);
+        let mut bits_vec = self.to_bits_le();
+        bits_vec.reverse();
 
         bits_vec
     }
