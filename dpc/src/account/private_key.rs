@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
 };
-use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBits, ToBytes};
 
 use base58::{FromBase58, ToBase58};
 use rand::{thread_rng, CryptoRng, Rng};
