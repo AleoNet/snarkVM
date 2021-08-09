@@ -49,6 +49,21 @@ pub struct TransactionAuthorization<C: Parameters> {
 
 impl<C: Parameters> TransactionAuthorization<C> {
     #[inline]
+    pub fn from(state: StateTransition<C>, signatures: Vec<C::AccountSignature>) -> Self {
+        debug_assert!(state.kernel().is_valid());
+        debug_assert_eq!(C::NUM_INPUT_RECORDS, state.input_records().len());
+        debug_assert_eq!(C::NUM_OUTPUT_RECORDS, state.output_records().len());
+        debug_assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
+
+        Self {
+            kernel: state.kernel().clone(),
+            input_records: state.input_records().clone(),
+            output_records: state.output_records().clone(),
+            signatures,
+        }
+    }
+
+    #[inline]
     pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<C>> {
         Ok(LocalData::new(
             &self.kernel,

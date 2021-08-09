@@ -92,17 +92,17 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state_transition: Self::StateTransition,
+        state: Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
 
         // Construct the signature message.
-        let signature_message = state_transition.kernel().to_signature_message()?;
+        let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for (i, signature_randomizer) in state_transition
+        for (i, signature_randomizer) in state
             .signature_randomizers()
             .iter()
             .enumerate()
@@ -121,12 +121,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization {
-            kernel: state_transition.kernel().clone(),
-            input_records: state_transition.input_records().clone(),
-            output_records: state_transition.output_records().clone(),
-            signatures,
-        })
+        Ok(TransactionAuthorization::from(state, signatures))
     }
 
     /// Returns a transaction by executing an authorized state transition.

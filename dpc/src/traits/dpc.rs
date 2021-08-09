@@ -39,7 +39,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state_transition: Self::StateTransition,
+        state: Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
