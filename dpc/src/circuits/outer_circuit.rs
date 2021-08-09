@@ -27,7 +27,7 @@ use snarkvm_gadgets::{
     },
     MergeGadget,
     ToBitsLEGadget,
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 

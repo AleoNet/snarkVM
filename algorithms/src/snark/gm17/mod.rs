@@ -19,7 +19,7 @@
 
 use snarkvm_curves::traits::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_r1cs::errors::SynthesisResult;
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBitRepresentation};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use std::io::{
     Read,
@@ -227,14 +227,14 @@ impl<E: PairingEngine> PartialEq for VerifyingKey<E> {
     }
 }
 
-impl<E: PairingEngine> ToMinimalBitRepresentation for VerifyingKey<E> {
-    fn to_minimal_bit_representation(&self) -> Vec<bool> {
-        let h_g2_bits = self.h_g2.to_minimal_bit_representation();
-        let g_alpha_g1_bits = self.g_alpha_g1.to_minimal_bit_representation();
-        let h_beta_g2_bits = self.h_beta_g2.to_minimal_bit_representation();
-        let g_gamma_g1_bits = self.g_gamma_g1.to_minimal_bit_representation();
-        let h_gamma_g2_bits = self.h_gamma_g2.to_minimal_bit_representation();
-        let query_bits = self.query.to_minimal_bit_representation();
+impl<E: PairingEngine> ToMinimalBits for VerifyingKey<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let h_g2_bits = self.h_g2.to_minimal_bits();
+        let g_alpha_g1_bits = self.g_alpha_g1.to_minimal_bits();
+        let h_beta_g2_bits = self.h_beta_g2.to_minimal_bits();
+        let g_gamma_g1_bits = self.g_gamma_g1.to_minimal_bits();
+        let h_gamma_g2_bits = self.h_gamma_g2.to_minimal_bits();
+        let query_bits = self.query.to_minimal_bits();
 
         [
             h_g2_bits,

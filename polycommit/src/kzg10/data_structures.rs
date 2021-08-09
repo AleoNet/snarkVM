@@ -186,9 +186,9 @@ pub struct Commitment<E: PairingEngine>(
 
 impl_bytes!(Commitment);
 
-impl<E: PairingEngine> ToMinimalBitRepresentation for Commitment<E> {
-    fn to_minimal_bit_representation(&self) -> Vec<bool> {
-        self.0.to_minimal_bit_representation()
+impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        self.0.to_minimal_bits()
     }
 }
 

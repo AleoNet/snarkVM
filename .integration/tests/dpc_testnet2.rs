@@ -20,7 +20,7 @@ use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_integration::testnet2::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBitRepresentation};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -424,7 +424,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     // NOTE: Do not change this to `Testnet2Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_bits(&inner_snark_vk.to_minimal_bit_representation())
+        .hash_bits(&inner_snark_vk.to_minimal_bits())
         .unwrap();
 
     let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(

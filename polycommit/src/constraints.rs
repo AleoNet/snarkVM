@@ -27,7 +27,7 @@ use snarkvm_gadgets::{
     PrepareGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -173,7 +173,7 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF, ConstraintF>
         + ToBytesGadget<ConstraintF>
         + ToConstraintFieldGadget<ConstraintF>
         + PrepareGadget<Self::PreparedCommitmentVar, ConstraintF>
-        + ToMinimalBitRepresentationGadget<ConstraintF>;
+        + ToMinimalBitsGadget<ConstraintF>;
     /// An allocated version of `PC::PreparedCommitment`.
     type PreparedCommitmentVar: AllocGadget<PC::PreparedCommitment, ConstraintF> + Clone;
     /// An allocated version of `LabeledCommitment<PC::Commitment>`.

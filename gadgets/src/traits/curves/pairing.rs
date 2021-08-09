@@ -26,12 +26,12 @@ use crate::{
     CondSelectGadget,
     SumGadget,
     ToConstraintFieldGadget,
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
 };
 
 pub trait PairingGadget<E: PairingEngine, F: PrimeField = <E as PairingEngine>::Fq> {
-    type G1Gadget: GroupGadget<E::G1Projective, F> + ToConstraintFieldGadget<F> + ToMinimalBitRepresentationGadget<F>;
-    type G2Gadget: GroupGadget<E::G2Projective, F> + ToConstraintFieldGadget<F> + ToMinimalBitRepresentationGadget<F>;
+    type G1Gadget: GroupGadget<E::G1Projective, F> + ToConstraintFieldGadget<F> + ToMinimalBitsGadget<F>;
+    type G2Gadget: GroupGadget<E::G2Projective, F> + ToConstraintFieldGadget<F> + ToMinimalBitsGadget<F>;
     type G1PreparedGadget: ToBytesGadget<F> + Clone + Debug;
     type G2PreparedGadget: ToBytesGadget<F>
         + AllocGadget<<E::G2Affine as PairingCurve>::Prepared, F>

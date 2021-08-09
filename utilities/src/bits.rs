@@ -53,16 +53,16 @@ pub trait FromBits: Sized {
     fn from_bits_be(bits: &[bool]) -> Self;
 }
 
-pub trait ToMinimalBitRepresentation: Sized {
+pub trait ToMinimalBits: Sized {
     /// Returns `self` as a minimal boolean array.
-    fn to_minimal_bit_representation(&self) -> Vec<bool>;
+    fn to_minimal_bits(&self) -> Vec<bool>;
 }
 
-impl<T: ToMinimalBitRepresentation> ToMinimalBitRepresentation for Vec<T> {
-    fn to_minimal_bit_representation(&self) -> Vec<bool> {
+impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
         let mut res_bits = vec![];
         for elem in self.iter() {
-            res_bits.extend(elem.to_minimal_bit_representation());
+            res_bits.extend(elem.to_minimal_bits());
         }
         res_bits
     }

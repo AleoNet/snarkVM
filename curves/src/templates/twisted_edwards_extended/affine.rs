@@ -27,7 +27,7 @@ use snarkvm_utilities::{
     FromBytes,
     ToBits,
     ToBytes,
-    ToMinimalBitRepresentation,
+    ToMinimalBits,
 };
 
 use rand::{
@@ -217,8 +217,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 }
 
-impl<P: Parameters> ToMinimalBitRepresentation for Affine<P> {
-    fn to_minimal_bit_representation(&self) -> Vec<bool> {
+impl<P: Parameters> ToMinimalBits for Affine<P> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
         self.x.to_bits_le()
     }
 }

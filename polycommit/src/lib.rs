@@ -38,7 +38,7 @@ use snarkvm_utilities::{
     serialize::*,
     FromBytes,
     ToBytes,
-    ToMinimalBitRepresentation,
+    ToMinimalBits,
 };
 
 use core::fmt::Debug;
@@ -170,7 +170,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     type Commitment: PCCommitment
         + Prepare<Self::PreparedCommitment>
         + ToConstraintField<CF>
-        + ToMinimalBitRepresentation
+        + ToMinimalBits
         + Clone
         + Send
         + Sync;

@@ -35,7 +35,7 @@ use crate::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         select::CondSelectGadget,
     },
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
 };
 
 #[derive(Derivative)]
@@ -677,16 +677,13 @@ where
     }
 }
 
-impl<P, F, FG> ToMinimalBitRepresentationGadget<F> for AffineGadget<P, F, FG>
+impl<P, F, FG> ToMinimalBitsGadget<F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: PrimeField,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn to_minimal_bit_representation<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_minimal_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let mut res_bits = self.x.to_bits_le(cs.ns(|| "X Coordinate To Bits"))?;
         res_bits.push(
             self.y

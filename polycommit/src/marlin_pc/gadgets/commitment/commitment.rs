@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
     },
     Boolean,
     PrepareGadget,
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -64,25 +64,24 @@ where
     }
 }
 
-impl<TargetCurve, BaseCurve, PG> ToMinimalBitRepresentationGadget<<BaseCurve as PairingEngine>::Fr>
+impl<TargetCurve, BaseCurve, PG> ToMinimalBitsGadget<<BaseCurve as PairingEngine>::Fr>
     for CommitmentVar<TargetCurve, BaseCurve, PG>
 where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
-    fn to_minimal_bit_representation<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+    fn to_minimal_bits<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
         mut cs: CS,
     ) -> Result<Vec<Boolean>, SynthesisError> {
-        let comm_booleans = self.comm.to_minimal_bit_representation(cs.ns(|| "comm"))?;
-        let shifted_comm_booleans = if let Some(shifted_comm) = &self.shifted_comm {
-            shifted_comm.to_minimal_bit_representation(cs.ns(|| "shifted_comm"))?
-        } else {
-            vec![]
-        };
+        let comm_booleans = self.comm.to_minimal_bits(cs.ns(|| "comm"))?;
 
-        Ok([comm_booleans, shifted_comm_booleans].concat())
+        if let Some(shifted_comm) = &self.shifted_comm {
+            Ok([comm_booleans, shifted_comm.to_minimal_bits(cs.ns(|| "shifted_comm"))?].concat())
+        } else {
+            Ok(comm_booleans)
+        }
     }
 }
 

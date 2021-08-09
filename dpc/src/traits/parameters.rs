@@ -29,7 +29,7 @@ use snarkvm_utilities::{
     CanonicalSerialize,
     FromBytes,
     ToBytes,
-    ToMinimalBitRepresentation,
+    ToMinimalBits,
 };
 
 use anyhow::Result;

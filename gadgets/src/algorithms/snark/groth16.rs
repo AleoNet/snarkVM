@@ -35,7 +35,7 @@ use crate::{
     PrepareGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
     UInt8,
 };
 use snarkvm_utilities::FromBytes;
@@ -169,22 +169,17 @@ where
     }
 }
 
-impl<PairingE, P> ToMinimalBitRepresentationGadget<PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
+impl<PairingE, P> ToMinimalBitsGadget<PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
 where
     PairingE: PairingEngine,
     P: PairingGadget<PairingE>,
 {
-    fn to_minimal_bit_representation<CS: ConstraintSystem<PairingE::Fq>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<Vec<Boolean>, SynthesisError> {
-        let alpha_g1_booleans = self.alpha_g1.to_minimal_bit_representation(cs.ns(|| "alpha_g1"))?;
-        let beta_g2_booleans = self.beta_g2.to_minimal_bit_representation(cs.ns(|| "beta_g2"))?;
-        let gamma_g2_booleans = self.gamma_g2.to_minimal_bit_representation(cs.ns(|| "gamma_g2"))?;
-        let delta_g2_booleans = self.delta_g2.to_minimal_bit_representation(cs.ns(|| "delta_g2"))?;
-        let gamma_abc_g1_booleans = self
-            .gamma_abc_g1
-            .to_minimal_bit_representation(cs.ns(|| "gamma_abc_g1"))?;
+    fn to_minimal_bits<CS: ConstraintSystem<PairingE::Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let alpha_g1_booleans = self.alpha_g1.to_minimal_bits(cs.ns(|| "alpha_g1"))?;
+        let beta_g2_booleans = self.beta_g2.to_minimal_bits(cs.ns(|| "beta_g2"))?;
+        let gamma_g2_booleans = self.gamma_g2.to_minimal_bits(cs.ns(|| "gamma_g2"))?;
+        let delta_g2_booleans = self.delta_g2.to_minimal_bits(cs.ns(|| "delta_g2"))?;
+        let gamma_abc_g1_booleans = self.gamma_abc_g1.to_minimal_bits(cs.ns(|| "gamma_abc_g1"))?;
 
         Ok([
             alpha_g1_booleans,

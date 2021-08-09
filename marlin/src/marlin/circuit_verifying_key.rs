@@ -23,14 +23,7 @@ use crate::{
 use snarkvm_algorithms::Prepare;
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{
-    error,
-    errors::SerializationError,
-    serialize::*,
-    FromBytes,
-    ToBytes,
-    ToMinimalBitRepresentation,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use derivative::Derivative;
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -60,10 +53,8 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToMinimalBitRepresentation
-    for CircuitVerifyingKey<F, CF, PC>
-{
-    fn to_minimal_bit_representation(&self) -> Vec<bool> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToMinimalBits for CircuitVerifyingKey<F, CF, PC> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
         let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
@@ -74,7 +65,7 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToMinimalBi
         let domain_h_size_bits = CF::from(domain_h.size() as u128).to_bits_le();
         let domain_k_size_bits = CF::from(domain_k.size() as u128).to_bits_le();
 
-        let circuit_commitments_bits = self.circuit_commitments.to_minimal_bit_representation();
+        let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 
         [domain_h_size_bits, domain_k_size_bits, circuit_commitments_bits].concat()
     }

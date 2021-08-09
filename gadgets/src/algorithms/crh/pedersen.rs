@@ -105,7 +105,6 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
 fn pad_input<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(input: Vec<Boolean>) -> Vec<Boolean> {
     let mut padded_input = input;
     padded_input.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
-    assert_eq!(padded_input.len(), WINDOW_SIZE * NUM_WINDOWS);
     padded_input
 }
 

@@ -21,7 +21,7 @@
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBitRepresentation};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use std::io::{
     Read,
@@ -195,13 +195,13 @@ impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
     }
 }
 
-impl<E: PairingEngine> ToMinimalBitRepresentation for VerifyingKey<E> {
-    fn to_minimal_bit_representation(&self) -> Vec<bool> {
-        let alpha_g1_bits = self.alpha_g1.to_minimal_bit_representation();
-        let beta_g2_bits = self.beta_g2.to_minimal_bit_representation();
-        let gamma_g2_bits = self.gamma_g2.to_minimal_bit_representation();
-        let delta_g2_bits = self.delta_g2.to_minimal_bit_representation();
-        let gamma_abc_g1_bits = self.gamma_abc_g1.to_minimal_bit_representation();
+impl<E: PairingEngine> ToMinimalBits for VerifyingKey<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let alpha_g1_bits = self.alpha_g1.to_minimal_bits();
+        let beta_g2_bits = self.beta_g2.to_minimal_bits();
+        let gamma_g2_bits = self.gamma_g2.to_minimal_bits();
+        let delta_g2_bits = self.delta_g2.to_minimal_bits();
+        let gamma_abc_g1_bits = self.gamma_abc_g1.to_minimal_bits();
 
         [
             alpha_g1_bits,

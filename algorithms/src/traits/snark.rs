@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SNARKError;
-use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBitRepresentation};
+use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -56,7 +56,7 @@ pub trait SNARK {
         + From<Self::PreparedVerifyingKey>
         + From<Self::ProvingKey>
         + ToConstraintField<Self::BaseField>
-        + ToMinimalBitRepresentation;
+        + ToMinimalBits;
 
     fn universal_setup<R: Rng + CryptoRng>(
         _config: &Self::UniversalSetupConfig,

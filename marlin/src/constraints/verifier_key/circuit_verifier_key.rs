@@ -27,7 +27,7 @@ use snarkvm_gadgets::{
     ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
-    ToMinimalBitRepresentationGadget,
+    ToMinimalBitsGadget,
     UInt8,
 };
 use snarkvm_polycommit::PCCheckVar;
@@ -274,18 +274,13 @@ impl<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-> ToMinimalBitRepresentationGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+> ToMinimalBitsGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
-    fn to_minimal_bit_representation<CS: ConstraintSystem<BaseField>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_minimal_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let domain_h_size_booleans = self.domain_h_size_gadget.to_bits_le(cs.ns(|| "domain_h_size"))?;
         let domain_k_size_booleans = self.domain_k_size_gadget.to_bits_le(cs.ns(|| "domain_k_size"))?;
 
-        let index_comms_booleans = self
-            .index_comms
-            .to_minimal_bit_representation(cs.ns(|| "index_comms"))?;
+        let index_comms_booleans = self.index_comms.to_minimal_bits(cs.ns(|| "index_comms"))?;
 
         Ok([domain_h_size_booleans, domain_k_size_booleans, index_comms_booleans].concat())
     }

@@ -60,7 +60,7 @@ use snarkvm_marlin::{
 };
 use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
-use snarkvm_utilities::{FromBytes, ToMinimalBitRepresentation};
+use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
@@ -212,7 +212,7 @@ impl Parameters for Testnet2Parameters {
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
-            .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bit_representation())
+            .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
