@@ -24,10 +24,10 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Input<C: Parameters> {
-    executable: Executable<C>,
     record: Record<C>,
     serial_number: C::AccountSignaturePublicKey,
     signature_randomizer: <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
+    executable: Executable<C>,
 }
 
 impl<C: Parameters> Input<C> {
@@ -47,10 +47,10 @@ impl<C: Parameters> Input<C> {
         let (serial_number, signature_randomizer) = record.to_serial_number(&noop_private_key)?;
 
         Ok(Self {
-            executable,
             record,
             serial_number,
             signature_randomizer,
+            executable,
         })
     }
 
@@ -83,32 +83,34 @@ impl<C: Parameters> Input<C> {
         let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
 
         Ok(Self {
-            executable,
             record,
             serial_number,
             signature_randomizer,
+            executable,
         })
     }
 
     /// Initializes a new instance of `Input`.
     pub fn new_full(
         private_key: &PrivateKey<C>,
-        executable: Executable<C>,
-        is_dummy: bool,
-        value: u64,
+        value: AleoAmount,
         payload: Payload,
+        executable: Executable<C>,
         serial_number_nonce: C::SerialNumberNonce,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
         let address = Address::from_private_key(private_key)?;
 
+        // Determine if the record is a dummy.
+        let is_dummy = value == AleoAmount::from_bytes(0) && payload.is_empty() && executable.is_noop();
+
         // Construct the input record.
         let record = Record::new_input(
             executable.program(),
             address,
             is_dummy,
-            value,
+            value.0 as u64,
             payload,
             serial_number_nonce,
             commitment_randomness,
@@ -118,10 +120,10 @@ impl<C: Parameters> Input<C> {
         let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
 
         Ok(Self {
-            executable,
             record,
             serial_number,
             signature_randomizer,
+            executable,
         })
     }
 
@@ -138,5 +140,10 @@ impl<C: Parameters> Input<C> {
     /// Returns a reference to the input signature randomizer.
     pub fn signature_randomizer(&self) -> &<C::AccountSignatureScheme as SignatureScheme>::Randomizer {
         &self.signature_randomizer
+    }
+
+    /// Returns a reference to the executable.
+    pub fn executable(&self) -> &Executable<C> {
+        &self.executable
     }
 }

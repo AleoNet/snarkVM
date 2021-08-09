@@ -109,7 +109,7 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     /// Finalizes the builder and returns a new instance of `State`.
     ///
-    pub fn build<R: Rng + CryptoRng>(&mut self, noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<State<C>> {
+    pub fn build<R: Rng + CryptoRng>(&mut self, noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<StateTransition<C>> {
         // Ensure there are no errors in the build process yet.
         if !self.errors.is_empty() {
             for error in &self.errors {
@@ -184,15 +184,23 @@ impl<C: Parameters> StateBuilder<C> {
         // Construct the transaction kernel.
         let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo)?;
 
+        // Construct the executables.
+        let executables: Vec<_> = inputs
+            .iter()
+            .map(|state| state.executable().clone())
+            .chain(outputs.iter().map(|state| state.executable().clone()))
+            .collect();
+
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;
         self.outputs = outputs;
 
-        Ok(State {
+        Ok(StateTransition {
             kernel,
             input_records,
             output_records,
             signature_randomizers,
+            executables,
         })
     }
 

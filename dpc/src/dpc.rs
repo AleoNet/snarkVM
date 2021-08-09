@@ -34,7 +34,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Authorization = TransactionAuthorization<C>;
     type Execution = Execution<C>;
-    type State = State<C>;
+    type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
@@ -88,20 +88,21 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         })
     }
 
+    /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: Self::State,
+        state_transition: Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
 
         // Construct the signature message.
-        let signature_message = state.transaction_kernel().to_signature_message()?;
+        let signature_message = state_transition.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for (i, signature_randomizer) in state
+        for (i, signature_randomizer) in state_transition
             .signature_randomizers()
             .iter()
             .enumerate()
@@ -121,13 +122,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Return the transaction authorization.
         Ok(TransactionAuthorization {
-            kernel: state.transaction_kernel().clone(),
-            input_records: state.input_records().clone(),
-            output_records: state.output_records().clone(),
+            kernel: state_transition.kernel().clone(),
+            input_records: state_transition.input_records().clone(),
+            output_records: state_transition.output_records().clone(),
             signatures,
         })
     }
 
+    /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,

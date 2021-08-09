@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, EncryptedRecord, Parameters, Record};
+use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 

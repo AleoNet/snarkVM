@@ -23,29 +23,24 @@ use std::{convert::TryInto, sync::Arc};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Output<C: Parameters> {
-    executable: Executable<C>,
     address: Address<C>,
     value: AleoAmount,
     payload: Payload,
-    is_dummy: bool,
+    executable: Executable<C>,
 }
 
 impl<C: Parameters> Output<C> {
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
-        // Construct the noop executable.
-        let executable = Executable::Noop(noop);
-
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
         Ok(Self {
-            executable,
             address: noop_address,
             value: AleoAmount::from_bytes(0),
             payload: Payload::default(),
-            is_dummy: true,
+            executable: Executable::Noop(noop),
         })
     }
 
@@ -64,15 +59,11 @@ impl<C: Parameters> Output<C> {
             None => Executable::Noop(noop),
         };
 
-        // Determine if the record is a dummy.
-        let is_dummy = value == AleoAmount::from_bytes(0) && payload.is_empty() && executable.is_noop();
-
         Ok(Self {
-            executable,
             address,
             value,
             payload,
-            is_dummy,
+            executable,
         })
     }
 
@@ -83,15 +74,23 @@ impl<C: Parameters> Output<C> {
         joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Record<C>> {
+        // Determine if the record is a dummy.
+        let is_dummy = self.value == AleoAmount::from_bytes(0) && self.payload.is_empty() && self.executable.is_noop();
+
         Ok(Record::new_output(
             self.executable.program(),
             self.address,
-            self.is_dummy,
+            is_dummy,
             self.value.0 as u64,
             self.payload.clone(),
             position,
             joint_serial_numbers,
             rng,
         )?)
+    }
+
+    /// Returns a reference to the executable.
+    pub fn executable(&self) -> &Executable<C> {
+        &self.executable
     }
 }

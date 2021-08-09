@@ -26,7 +26,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
     type Authorization;
     type Execution;
-    type State;
+    type StateTransition;
     type Transaction: TransactionScheme;
 
     /// Initializes a new instance of DPC.
@@ -35,16 +35,15 @@ pub trait DPCScheme<C: Parameters>: Sized {
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> Result<Self>;
 
-    /// Returns a transaction authorization to execute an Aleo transaction.
-    #[allow(clippy::too_many_arguments)]
+    /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: Self::State,
+        state_transition: Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
-    /// Returns a transaction based on the transaction authorization.
+    /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,

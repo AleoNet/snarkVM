@@ -22,14 +22,15 @@ use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct State<C: Parameters> {
+pub struct StateTransition<C: Parameters> {
     pub(super) kernel: TransactionKernel<C>,
     pub(super) input_records: Vec<Record<C>>,
     pub(super) output_records: Vec<Record<C>>,
     pub(super) signature_randomizers: Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer>,
+    pub(super) executables: Vec<Executable<C>>,
 }
 
-impl<C: Parameters> State<C> {
+impl<C: Parameters> StateTransition<C> {
     /// Returns a new state transition with no operations performed.
     pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
         Ok(Self::builder().build(noop, rng)?)
@@ -98,7 +99,7 @@ impl<C: Parameters> State<C> {
     }
 
     /// Returns a reference to the transaction kernel.
-    pub fn transaction_kernel(&self) -> &TransactionKernel<C> {
+    pub fn kernel(&self) -> &TransactionKernel<C> {
         &self.kernel
     }
 
@@ -115,5 +116,10 @@ impl<C: Parameters> State<C> {
     /// Returns a reference to the signature randomizers.
     pub fn signature_randomizers(&self) -> &Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer> {
         &self.signature_randomizers
+    }
+
+    /// Returns a reference to the executables.
+    pub fn executables(&self) -> &Vec<Executable<C>> {
+        &self.executables
     }
 }
