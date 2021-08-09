@@ -41,10 +41,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(rng)?;
-        let noop_circuit = noop_program
-            .find_circuit_by_index(0)
-            .ok_or(DPCError::MissingNoopCircuit)?;
-        let noop_program_execution = noop_program.execute_blank(noop_circuit.circuit_id())?;
+        let noop_program_execution = noop_program.execute_blank_noop()?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
@@ -308,25 +305,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         };
         end_timer!(execution_timer);
 
-        let TransactionKernel {
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-        } = kernel;
-
-        Ok(Self::Transaction::new(
-            Network::from_id(network_id),
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
+        Ok(Self::Transaction::from(
+            kernel,
+            signatures,
             ledger_digest,
             C::inner_circuit_id().clone(),
-            transaction_proof,
-            signatures,
             encrypted_records,
+            transaction_proof,
         ))
     }
 
@@ -391,7 +376,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Returns false if the number of signatures in the transaction is incorrect.
         if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
+            eprintln!("Transaction contains incorrect number of signatures");
             return false;
         }
 

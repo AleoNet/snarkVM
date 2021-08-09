@@ -19,16 +19,15 @@ use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
 };
-use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBits, ToBytes};
 
 use base58::{FromBase58, ToBase58};
-use rand::{CryptoRng, Rng};
+use rand::{thread_rng, CryptoRng, Rng};
 use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
-    Default(bound = "C: Parameters"),
     PartialEq(bound = "C: Parameters"),
     Eq(bound = "C: Parameters")
 )]
@@ -39,9 +38,10 @@ pub struct PrivateKey<C: Parameters> {
     pub sk_prf: <C::PRF as PRF>::Seed,
     pub r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     pub r_pk_counter: u16,
-    // This dummy flag is set to true for use in the `inner_snark` setup.
-    #[derivative(Default(value = "true"))]
-    pub is_dummy: bool,
+    // TODO (howardwu): Move this into a `ProverKey` struct.
+    pk_sig: C::AccountSignaturePublicKey,
+    // TODO (howardwu): Move this into a `ProverKey` struct.
+    commitment_input: Vec<u8>,
 }
 
 impl<C: Parameters> PrivateKey<C> {
@@ -53,61 +53,59 @@ impl<C: Parameters> PrivateKey<C> {
     const INPUT_SK_SIG: [u8; 32] = [0u8; 32];
 
     /// Creates a new account private key.
-    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError> {
+    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         // Sample randomly until a valid private key is found.
         loop {
             // Samples a random account private key seed.
             let seed: [u8; 32] = rng.gen();
 
             // Returns the private key if it is valid.
-            match Self::from_seed(&seed) {
-                Ok(private_key) => return Ok(private_key),
-                _ => continue,
-            };
+            if let Ok(private_key) = Self::from_seed(&seed) {
+                return private_key;
+            }
         }
     }
 
     /// Derives the account private key from a given seed and verifies it is well-formed.
     pub fn from_seed(seed: &[u8; 32]) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
-        let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignatureScheme as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
+        let sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey =
+            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?.as_ref())?;
+        let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
 
         // Generate the PRF secret key.
-        let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
-        let sk_prf = <C::PRF as PRF>::Seed::read_le(&sk_prf_bytes[..])?;
+        let sk_prf: <C::PRF as PRF>::Seed =
+            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?.as_ref())?;
 
-        let mut r_pk_counter = Self::INITIAL_R_PK_COUNTER;
-        loop {
-            if r_pk_counter == u16::MAX {
-                return Err(AccountError::InvalidPrivateKeySeed);
-            }
+        // Construct the commitment input for the account address.
+        let commitment_input = to_bytes_le![pk_sig, sk_prf]?;
 
-            // Derive the private key by iterating on the r_pk counter
-            let private_key = match Self::derive_r_pk(seed, r_pk_counter) {
-                Ok(r_pk) => Self {
-                    seed: *seed,
-                    sk_sig: sk_sig.clone(),
-                    sk_prf: sk_prf.clone(),
-                    r_pk,
-                    r_pk_counter,
-                    is_dummy: false,
-                },
-                _ => {
-                    r_pk_counter += 1;
-                    continue;
-                }
-            };
+        // Initialize a candidate private key.
+        let mut private_key = Self {
+            seed: *seed,
+            sk_sig,
+            sk_prf,
+            r_pk: Default::default(),
+            r_pk_counter: Self::INITIAL_R_PK_COUNTER,
+            pk_sig,
+            commitment_input,
+        };
 
-            // Returns the private key if it is valid.
-            match private_key.is_valid() {
-                true => return Ok(private_key),
-                false => {
-                    r_pk_counter += 1;
-                    continue;
+        // Derive the private key by iterating on the r_pk counter, until a valid r_pk is found.
+        for r_pk_counter in Self::INITIAL_R_PK_COUNTER..u16::MAX {
+            if let Ok(r_pk) = Self::derive_r_pk(seed, r_pk_counter) {
+                // Update the candidate private key with the derived values.
+                private_key.r_pk = r_pk;
+                private_key.r_pk_counter = r_pk_counter;
+
+                // Returns the private key if it is valid.
+                if private_key.is_valid() {
+                    return Ok(private_key);
                 }
             }
         }
+
+        Err(AccountError::InvalidPrivateKeySeed)
     }
 
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
@@ -119,70 +117,86 @@ impl<C: Parameters> PrivateKey<C> {
     pub fn to_decryption_key(
         &self,
     ) -> Result<<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey, AccountError> {
-        let commitment = self.commit()?;
-        let decryption_key_bytes = to_bytes_le![commitment]?;
+        // Compute the commitment, which is used as the decryption key.
+        let commitment = C::account_commitment_scheme().commit(&self.commitment_input, &self.r_pk)?;
+        let commitment_bytes = commitment.to_bytes_le()?;
 
-        // This operation implicitly enforces that the unused MSB bits
-        // for the scalar field representation are correctly set to 0.
-        let decryption_key = match self.is_dummy {
-            true => <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::default(),
-            false => <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&decryption_key_bytes[..])?,
+        // Determine the number of MSB bits we must enforce are zero,
+        // for the isomorphism from the base field to the scalar field.
+        let enforce_zero_on_num_bits = {
+            debug_assert!(C::AccountEncryptionScheme::private_key_size_in_bits() > 0);
+            // We must enforce that the MSB bit of the scalar field is also set to 0.
+            let capacity = C::AccountEncryptionScheme::private_key_size_in_bits() - 1;
+            let commitment_num_bits = commitment_bytes.len() * 8;
+            assert!(capacity < commitment_num_bits);
+
+            commitment_num_bits - capacity
         };
 
         // This operation explicitly enforces that the unused MSB bits
         // for the scalar field representation are correctly set to 0.
-        //
-        // To simplify verification of this isomorphism from the base field
-        // to the scalar field in the `inner_snark`, we additionally enforce
-        // that the MSB bit of the scalar field is also set to 0.
-        if !self.is_dummy {
-            let account_decryption_key_bits = from_bytes_le_to_bits_le(&decryption_key_bytes[..]).collect::<Vec<_>>();
-            let account_decryption_key_length = account_decryption_key_bits.len();
-
-            let decryption_private_key_length = C::AccountEncryptionScheme::private_key_size_in_bits();
-            assert!(decryption_private_key_length > 0);
-            assert!(decryption_private_key_length <= account_decryption_key_length);
-
-            for i in (decryption_private_key_length - 1)..account_decryption_key_length {
-                let bit_index = account_decryption_key_length - i - 1;
-                if account_decryption_key_bits[bit_index] {
-                    return Err(AccountError::InvalidAccountCommitment);
-                }
+        for msb_bit in from_bytes_le_to_bits_le(&commitment_bytes[..])
+            .rev()
+            .take(enforce_zero_on_num_bits)
+        {
+            // Pop the next MSB bit, and enforce it is zero.
+            if msb_bit {
+                return Err(AccountError::InvalidAccountCommitment);
             }
         }
+
+        // This operation enforces that the base field element fits within the scalar field.
+        // However, this operation does not enforce that the MSB of the scalar field element is 0.
+        let decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey =
+            FromBytes::read_le(&commitment_bytes[..])?;
+
+        // Enforce the MSB of the scalar field element is 0 by convention.
+        debug_assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
 
         Ok(decryption_key)
     }
 
     /// Returns the signature public key for deriving the account view key.
-    pub fn pk_sig(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
-        Ok(C::account_signature_scheme().generate_public_key(&self.sk_sig)?)
+    pub fn pk_sig(&self) -> &C::AccountSignaturePublicKey {
+        &self.pk_sig
     }
 
     /// Derives the account private key from a given seed and counter without verifying if it is well-formed.
-    fn from_seed_and_counter_unsafe(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
+    fn from_seed_and_counter(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
-        let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignatureScheme as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
+        let sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey =
+            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?.as_ref())?;
+        let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
 
         // Generate the PRF secret key.
-        let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
-        let sk_prf = <C::PRF as PRF>::Seed::read_le(&sk_prf_bytes[..])?;
+        let sk_prf: <C::PRF as PRF>::Seed =
+            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?.as_ref())?;
 
         // Generate the randomness rpk for the commitment scheme.
         let r_pk = Self::derive_r_pk(seed, r_pk_counter)?;
 
-        Ok(Self {
+        // Construct the commitment input for the account address.
+        let commitment_input = to_bytes_le![pk_sig, sk_prf]?;
+
+        // Construct the candidate private key.
+        let private_key = Self {
             seed: *seed,
             sk_sig,
             sk_prf,
             r_pk,
             r_pk_counter,
-            is_dummy: false,
-        })
+            pk_sig,
+            commitment_input,
+        };
+
+        // Returns the private key if it is valid.
+        match private_key.is_valid() {
+            true => Ok(private_key),
+            false => Err(AccountError::InvalidPrivateKey),
+        }
     }
 
-    /// Generate the randomness rpk for the commitment scheme from a given seed and counter
+    /// Generate the randomness r_pk for the commitment scheme from a given seed and counter.
     fn derive_r_pk(
         seed: &[u8; 32],
         counter: u16,
@@ -190,19 +204,8 @@ impl<C: Parameters> PrivateKey<C> {
         let mut r_pk_input = [0u8; 32];
         r_pk_input[0..2].copy_from_slice(&counter.to_le_bytes());
 
-        // Generate the randomness rpk for the commitment scheme.
-        let r_pk_bytes = Blake2s::evaluate(seed, &r_pk_input)?;
-        let r_pk = <C::AccountCommitmentScheme as CommitmentScheme>::Randomness::read_le(&r_pk_bytes[..])?;
-
-        Ok(r_pk)
-    }
-
-    /// Returns the commitment output of the private key.
-    fn commit(&self) -> Result<<C::AccountCommitmentScheme as CommitmentScheme>::Output, AccountError> {
-        // Construct the commitment input for the account address.
-        let commit_input = to_bytes_le![self.pk_sig()?, self.sk_prf]?;
-
-        Ok(C::account_commitment_scheme().commit(&commit_input, &self.r_pk)?)
+        // Generate the randomness r_pk for the commitment scheme.
+        Ok(FromBytes::read_le(Blake2s::evaluate(seed, &r_pk_input)?.as_ref())?)
     }
 }
 
@@ -224,7 +227,7 @@ impl<C: Parameters> FromStr for PrivateKey<C> {
         let counter_bytes: [u8; 2] = FromBytes::read_le(&mut reader)?;
         let seed: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
-        Self::from_seed_and_counter_unsafe(&seed, u16::from_le_bytes(counter_bytes))
+        Self::from_seed_and_counter(&seed, u16::from_le_bytes(counter_bytes))
     }
 }
 
@@ -251,5 +254,11 @@ impl<C: Parameters> fmt::Debug for PrivateKey<C> {
             "PrivateKey {{ seed: {:?}, r_pk_counter: {:?} }}",
             self.seed, self.r_pk_counter
         )
+    }
+}
+
+impl<C: Parameters> Default for PrivateKey<C> {
+    fn default() -> Self {
+        Self::new(&mut thread_rng())
     }
 }
