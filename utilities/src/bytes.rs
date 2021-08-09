@@ -21,7 +21,7 @@ use crate::{
 };
 
 #[inline]
-pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + '_ {
+pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
     bytes
         .iter()
         .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))

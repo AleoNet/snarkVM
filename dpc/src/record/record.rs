@@ -206,7 +206,7 @@ impl<C: Parameters> Record<C> {
         let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature_scheme().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
+        let serial_number = C::account_signature_scheme().randomize_public_key(private_key.pk_sig(), &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))

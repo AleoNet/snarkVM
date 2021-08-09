@@ -274,14 +274,12 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             // Allocate the account private key.
             let (pk_sig, sk_prf, r_pk) = {
-                let pk_sig_native = account_private_key
-                    .pk_sig()
-                    .map_err(|_| SynthesisError::AssignmentMissing)?;
+                let pk_sig_native = account_private_key.pk_sig();
                 let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
                     C::AccountSignatureScheme,
                     C::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
-                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(&pk_sig_native)
+                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
                 let sk_prf =
                     C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &account_private_key.sk_prf);
