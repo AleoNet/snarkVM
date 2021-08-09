@@ -27,7 +27,7 @@ fn account_private_key(c: &mut Criterion) {
 
     c.bench_function("account_private_key", move |b| {
         b.iter(|| {
-            let _private_key = PrivateKey::<Testnet2Parameters>::new(rng).unwrap();
+            let _private_key = PrivateKey::<Testnet2Parameters>::new(rng);
         })
     });
 }
@@ -36,7 +36,7 @@ fn account_view_key(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("account_view_key", move |b| {
-        let private_key = PrivateKey::<Testnet2Parameters>::new(rng).unwrap();
+        let private_key = PrivateKey::<Testnet2Parameters>::new(rng);
 
         b.iter(|| {
             let _view_key = ViewKey::from_private_key(&private_key).unwrap();
@@ -48,7 +48,7 @@ fn account_address(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("account_address", move |b| {
-        let private_key = PrivateKey::<Testnet2Parameters>::new(rng).unwrap();
+        let private_key = PrivateKey::<Testnet2Parameters>::new(rng);
 
         b.iter(|| {
             let _address = Address::from_private_key(&private_key).unwrap();

@@ -38,7 +38,7 @@ impl<C: Parameters> Output<C> {
         let executable = Executable::Noop(noop);
 
         // Sample a burner noop private key.
-        let noop_private_key = PrivateKey::new(rng)?;
+        let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
         Ok(Self {

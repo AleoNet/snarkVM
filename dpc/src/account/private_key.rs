@@ -22,13 +22,12 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
-use rand::{CryptoRng, Rng};
+use rand::{thread_rng, CryptoRng, Rng};
 use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
-    Default(bound = "C: Parameters"),
     PartialEq(bound = "C: Parameters"),
     Eq(bound = "C: Parameters")
 )]
@@ -39,10 +38,9 @@ pub struct PrivateKey<C: Parameters> {
     pub sk_prf: <C::PRF as PRF>::Seed,
     pub r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     pub r_pk_counter: u16,
-    // This dummy flag is set to true for use in the `inner_circuit` setup.
-    #[derivative(Default(value = "true"))]
-    is_dummy: bool,
+    // TODO (howardwu): Move this into a `ProverKey` struct.
     pk_sig: C::AccountSignaturePublicKey,
+    // TODO (howardwu): Move this into a `ProverKey` struct.
     commitment_input: Vec<u8>,
 }
 
@@ -55,7 +53,7 @@ impl<C: Parameters> PrivateKey<C> {
     const INPUT_SK_SIG: [u8; 32] = [0u8; 32];
 
     /// Creates a new account private key.
-    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError> {
+    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         // Sample randomly until a valid private key is found.
         loop {
             // Samples a random account private key seed.
@@ -63,7 +61,7 @@ impl<C: Parameters> PrivateKey<C> {
 
             // Returns the private key if it is valid.
             if let Ok(private_key) = Self::from_seed(&seed) {
-                return Ok(private_key);
+                return private_key;
             }
         }
     }
@@ -89,7 +87,6 @@ impl<C: Parameters> PrivateKey<C> {
             sk_prf,
             r_pk: Default::default(),
             r_pk_counter: Self::INITIAL_R_PK_COUNTER,
-            is_dummy: false,
             pk_sig,
             commitment_input,
         };
@@ -120,11 +117,6 @@ impl<C: Parameters> PrivateKey<C> {
     pub fn to_decryption_key(
         &self,
     ) -> Result<<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey, AccountError> {
-        // If this private key is a dummy, then immediately return a fake value.
-        if self.is_dummy {
-            return Ok(<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::default());
-        }
-
         // Compute the commitment, which is used as the decryption key.
         let commitment = C::account_commitment_scheme().commit(&self.commitment_input, &self.r_pk)?;
         let commitment_bytes = commitment.to_bytes_le()?;
@@ -190,7 +182,6 @@ impl<C: Parameters> PrivateKey<C> {
             sk_prf,
             r_pk,
             r_pk_counter,
-            is_dummy: false,
             pk_sig,
             commitment_input,
         };
@@ -260,5 +251,11 @@ impl<C: Parameters> fmt::Debug for PrivateKey<C> {
             "PrivateKey {{ seed: {:?}, r_pk_counter: {:?} }}",
             self.seed, self.r_pk_counter
         )
+    }
+}
+
+impl<C: Parameters> Default for PrivateKey<C> {
+    fn default() -> Self {
+        Self::new(&mut thread_rng())
     }
 }
