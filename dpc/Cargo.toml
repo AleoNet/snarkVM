@@ -18,6 +18,11 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
+name = "account"
+path = "benches/account.rs"
+harness = false
+
+[[bench]]
 name = "noop_program"
 path = "benches/noop_program.rs"
 harness = false

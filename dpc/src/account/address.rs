@@ -55,11 +55,7 @@ impl<C: Parameters> Address<C> {
 
     /// Verifies a signature on a message signed by the account view key.
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
-    pub fn verify_signature(
-        &self,
-        message: &[u8],
-        signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
-    ) -> Result<bool, AccountError> {
+    pub fn verify_signature(&self, message: &[u8], signature: &C::AccountSignature) -> Result<bool, AccountError> {
         let signature_public_key = self.to_signature_public_key()?;
         Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }

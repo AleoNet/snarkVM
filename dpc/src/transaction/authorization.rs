@@ -44,7 +44,7 @@ pub struct TransactionAuthorization<C: Parameters> {
     pub kernel: TransactionKernel<C>,
     pub input_records: Vec<Record<C>>,
     pub output_records: Vec<Record<C>>,
-    pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+    pub signatures: Vec<C::AccountSignature>,
 }
 
 impl<C: Parameters> TransactionAuthorization<C> {
@@ -126,8 +126,7 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
             output_records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut signatures =
-            Vec::<<C::AccountSignatureScheme as SignatureScheme>::Signature>::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut signatures = Vec::<C::AccountSignature>::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {
             signatures.push(FromBytes::read_le(&mut reader)?);
         }

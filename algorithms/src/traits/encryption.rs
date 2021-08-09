@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::EncryptionError;
-use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
+use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBits, ToBytes};
 
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
@@ -24,7 +24,7 @@ pub trait EncryptionScheme:
     Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncryptionScheme>::Parameters>
 {
     type Parameters: Clone + Debug + Eq;
-    type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
+    type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
 
