@@ -14,17 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, AleoAmount, Network, Parameters, TransactionError, TransactionKernel, TransactionScheme};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{SignatureScheme, SNARK},
-};
-use snarkvm_utilities::{
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes_le,
-    FromBytes,
-    ToBytes,
-};
+use crate::{record::*, AleoAmount, Network, Parameters, TransactionKernel, TransactionScheme};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use blake2::{digest::Digest, Blake2s as b2s};
@@ -43,7 +35,7 @@ pub struct Transaction<C: Parameters> {
     /// The network this transaction for.
     pub network: Network,
     /// The serial numbers of the input records.
-    pub serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
+    pub serial_numbers: Vec<C::AccountSignaturePublicKey>,
     /// The commitment of the output records.
     pub commitments: Vec<C::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
@@ -54,7 +46,7 @@ pub struct Transaction<C: Parameters> {
     #[derivative(Default(value = "[0u8; 64]"))]
     pub memo: [u8; 64],
     /// The signatures that authorized the transaction kernel.
-    pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+    pub signatures: Vec<C::AccountSignature>,
     /// The root of the ledger commitment tree.
     pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
@@ -67,6 +59,7 @@ pub struct Transaction<C: Parameters> {
 }
 
 impl<C: Parameters> Transaction<C> {
+    /// Initializes a new instance of `Transaction` from the given inputs.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         network: Network,
@@ -74,11 +67,11 @@ impl<C: Parameters> Transaction<C> {
         commitments: Vec<<Self as TransactionScheme>::Commitment>,
         value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memo,
+        signatures: Vec<C::AccountSignature>,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
-        proof: <C::OuterSNARK as SNARK>::Proof,
-        signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
+        proof: <C::OuterSNARK as SNARK>::Proof,
     ) -> Self {
         assert_eq!(C::NUM_INPUT_RECORDS, serial_numbers.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, commitments.len());
@@ -89,14 +82,45 @@ impl<C: Parameters> Transaction<C> {
             network,
             serial_numbers,
             commitments,
+            value_balance,
             memo,
+            signatures,
             ledger_digest,
             inner_circuit_id,
-            proof,
-            value_balance,
-            signatures,
             encrypted_records,
+            proof,
         }
+    }
+
+    /// Initializes an instance of `Transaction` from the given inputs.
+    pub fn from(
+        kernel: TransactionKernel<C>,
+        signatures: Vec<C::AccountSignature>,
+        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        inner_circuit_id: C::InnerCircuitID,
+        encrypted_records: Vec<EncryptedRecord<C>>,
+        proof: <C::OuterSNARK as SNARK>::Proof,
+    ) -> Self {
+        let TransactionKernel {
+            network_id,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+        } = kernel;
+
+        Self::new(
+            Network::from_id(network_id),
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+            signatures,
+            ledger_digest,
+            inner_circuit_id,
+            encrypted_records,
+            proof,
+        )
     }
 
     /// Returns the kernel of the transaction.
@@ -131,30 +155,19 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = C::InnerCircuitID;
     type Memo = [u8; 64];
-    type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
-    type Signature = <C::AccountSignatureScheme as SignatureScheme>::Signature;
+    type SerialNumber = C::AccountSignaturePublicKey;
+    type Signature = C::AccountSignature;
     type ValueBalance = AleoAmount;
 
-    /// Transaction id = Hash of (serial numbers || commitments || memo)
-    fn transaction_id(&self) -> Result<[u8; 32], TransactionError> {
-        let mut pre_image_bytes: Vec<u8> = vec![];
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    fn transaction_id(&self) -> Result<[u8; 32]> {
+        let mut blake2s = b2s::new();
+        blake2s.update(&self.to_kernel().to_bytes_le()?);
 
-        for serial_number in self.serial_numbers() {
-            pre_image_bytes.extend(&serial_number.to_bytes_le()?);
-        }
+        let mut transaction_id = [0u8; 32];
+        transaction_id.copy_from_slice(&blake2s.finalize());
 
-        for commitment in self.commitments() {
-            pre_image_bytes.extend(&commitment.to_bytes_le()?);
-        }
-
-        pre_image_bytes.extend(self.memo());
-
-        let mut h = b2s::new();
-        h.update(&pre_image_bytes);
-
-        let mut result = [0u8; 32];
-        result.copy_from_slice(&h.finalize());
-        Ok(result)
+        Ok(transaction_id)
     }
 
     fn network_id(&self) -> u8 {
@@ -192,23 +205,12 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
         &self.encrypted_records
     }
-
-    fn size(&self) -> usize {
-        let transaction_bytes = to_bytes_le![self].unwrap();
-        transaction_bytes.len()
-    }
 }
 
 impl<C: Parameters> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.network.write_le(&mut writer)?;
-        for old_serial_number in &self.serial_numbers {
-            CanonicalSerialize::serialize(old_serial_number, &mut writer).unwrap();
-        }
-        self.commitments.write_le(&mut writer)?;
-        self.value_balance.write_le(&mut writer)?;
-        self.memo.write_le(&mut writer)?;
+        self.to_kernel().write_le(&mut writer)?;
 
         for signature in &self.signatures {
             signature.write_le(&mut writer)?;
@@ -228,23 +230,8 @@ impl<C: Parameters> ToBytes for Transaction<C> {
 impl<C: Parameters> FromBytes for Transaction<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the network ID.
-        let network: Network = FromBytes::read_le(&mut reader)?;
-
-        // Read the serial numbers.
-        let mut serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            serial_numbers.push(CanonicalDeserialize::deserialize(&mut reader).unwrap());
-        }
-
-        // Read the commitments
-        let mut commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            commitments.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memo: <Self as TransactionScheme>::Memo = FromBytes::read_le(&mut reader)?;
+        // Read the transaction kernel.
+        let kernel: TransactionKernel<C> = FromBytes::read_le(&mut reader)?;
 
         // Read the signatures
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -263,18 +250,14 @@ impl<C: Parameters> FromBytes for Transaction<C> {
 
         let proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            network,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
+        Ok(Self::from(
+            kernel,
             signatures,
             ledger_digest,
             inner_circuit_id,
             encrypted_records,
             proof,
-        })
+        ))
     }
 }
 

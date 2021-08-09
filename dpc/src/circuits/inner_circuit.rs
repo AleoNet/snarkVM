@@ -150,7 +150,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // Declares a constant for a 0 value in a record.
     let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
     // Declares a constant for an empty payload in a record.
-    let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes());
+    let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
 
     let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
@@ -205,7 +205,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
-            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
+            let given_payload =
+                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
             let given_serial_number_nonce_bytes = UInt8::alloc_vec(
                 &mut declare_cs.ns(|| "given_serial_number_nonce_bytes"),
@@ -273,14 +274,12 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             // Allocate the account private key.
             let (pk_sig, sk_prf, r_pk) = {
-                let pk_sig_native = account_private_key
-                    .pk_sig()
-                    .map_err(|_| SynthesisError::AssignmentMissing)?;
+                let pk_sig_native = account_private_key.pk_sig();
                 let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
                     C::AccountSignatureScheme,
                     C::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
-                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(&pk_sig_native)
+                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
                 let sk_prf =
                     C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &account_private_key.sk_prf);
@@ -305,6 +304,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                     &account_view_key_input,
                     &r_pk,
                 )?;
+
+                // TODO (howardwu): Enforce 6 MSB bits are 0.
+                {
+                    // TODO (howardwu): Enforce 6 MSB bits are 0.
+                }
 
                 // Enforce the account commitment bytes (padded) correspond to the
                 // given account's view key bytes (padded). This is equivalent to
@@ -484,7 +488,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
-            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
+            let given_payload =
+                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
             let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
                 C::SerialNumberNonceCRH,

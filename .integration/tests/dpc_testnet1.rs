@@ -26,6 +26,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::{
+    ops::Deref,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -76,7 +77,7 @@ fn dpc_testnet1_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new_noop_input(&dpc.noop_program, genesis_account.address, &mut rng).unwrap();
+        let input_record = Record::new_noop_input(dpc.noop_program.deref(), genesis_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -89,7 +90,7 @@ fn dpc_testnet1_integration_test() {
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
             Record::new_output(
-                &dpc.noop_program,
+                dpc.noop_program.deref(),
                 recipient.address,
                 false,
                 10,
@@ -107,16 +108,8 @@ fn dpc_testnet1_integration_test() {
         .authorize(&private_keys, input_records, output_records, None, &mut rng)
         .unwrap();
 
-    // Fetch the noop circuit ID.
-    let noop_circuit_id = dpc
-        .noop_program
-        .find_circuit_by_index(0)
-        .ok_or(DPCError::MissingNoopCircuit)
-        .unwrap()
-        .circuit_id();
-
     // Construct the executable.
-    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()));
     let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
 
     let new_records = authorization.output_records.clone();
@@ -194,7 +187,7 @@ fn test_testnet1_transaction_authorization_serialization() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new_noop_input(&dpc.noop_program, test_account.address, &mut rng).unwrap();
+        let input_record = Record::new_noop_input(dpc.noop_program.deref(), test_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&old_private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -209,7 +202,7 @@ fn test_testnet1_transaction_authorization_serialization() {
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
             Record::new_output(
-                &dpc.noop_program,
+                dpc.noop_program.deref(),
                 test_account.address,
                 false,
                 10,
@@ -266,7 +259,8 @@ fn test_testnet1_dpc_execute_constraints() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new_noop_input(&alternate_noop_program, dummy_account.address, &mut rng).unwrap();
+        let input_record =
+            Record::new_noop_input(alternate_noop_program.deref(), dummy_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -284,7 +278,7 @@ fn test_testnet1_dpc_execute_constraints() {
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
             Record::new_output(
-                &dpc.noop_program,
+                dpc.noop_program.deref(),
                 new_account.address,
                 false,
                 10,
@@ -304,24 +298,9 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
-    // Fetch the alternate noop circuit ID.
-    let alternate_noop_circuit_id = alternate_noop_program
-        .find_circuit_by_index(0)
-        .ok_or(DPCError::MissingNoopCircuit)
-        .unwrap()
-        .circuit_id();
-
-    // Fetch the noop circuit ID.
-    let noop_circuit_id = dpc
-        .noop_program
-        .find_circuit_by_index(0)
-        .ok_or(DPCError::MissingNoopCircuit)
-        .unwrap()
-        .circuit_id();
-
     // Construct the executable.
-    let alternate_noop = Executable::Noop(Arc::new(alternate_noop_program.clone()), *alternate_noop_circuit_id);
-    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let alternate_noop = Executable::Noop(Arc::new(alternate_noop_program.clone()));
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()));
     let executables = vec![alternate_noop.clone(), alternate_noop, noop.clone(), noop];
 
     // Execute the programs.

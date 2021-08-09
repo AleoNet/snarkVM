@@ -23,7 +23,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use criterion::Criterion;
 use rand::thread_rng;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 fn coinbase_transaction<C: Parameters>(
     dpc: &DPC<C>,
@@ -42,7 +42,7 @@ fn coinbase_transaction<C: Parameters>(
     let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     let mut input_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     for i in 0..C::NUM_INPUT_RECORDS {
-        let input_record = Record::new_noop_input(&dpc.noop_program, genesis_account.address, rng)?;
+        let input_record = Record::new_noop_input(dpc.noop_program.deref(), genesis_account.address, rng)?;
 
         let (sn, _) = input_record.to_serial_number(&private_keys[i])?;
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
@@ -53,7 +53,7 @@ fn coinbase_transaction<C: Parameters>(
     // Construct the output records.
     let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     output_records.push(Record::new_output(
-        &dpc.noop_program,
+        dpc.noop_program.deref(),
         recipient,
         false,
         value,
@@ -63,7 +63,7 @@ fn coinbase_transaction<C: Parameters>(
         rng,
     )?);
     output_records.push(Record::new_noop_output(
-        &dpc.noop_program,
+        dpc.noop_program.deref(),
         recipient,
         (C::NUM_INPUT_RECORDS + 1) as u8,
         joint_serial_numbers.clone(),
@@ -72,15 +72,8 @@ fn coinbase_transaction<C: Parameters>(
 
     let authorization = dpc.authorize(&private_keys, input_records, output_records, None, rng)?;
 
-    // Fetch the noop circuit ID.
-    let noop_circuit_id = dpc
-        .noop_program
-        .find_circuit_by_index(0)
-        .ok_or(DPCError::MissingNoopCircuit)?
-        .circuit_id();
-
     // Construct the executable.
-    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()));
     let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
 
     // Generate the transaction.

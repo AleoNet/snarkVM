@@ -17,16 +17,17 @@
 #[cfg(test)]
 mod testnet1 {
     use crate::{testnet1::Testnet1Parameters, Account, AccountScheme, Address, PrivateKey, ViewKey};
+    use snarkvm_utilities::ToBits;
 
-    use rand::SeedableRng;
+    use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1tn8cnHPNtcZ9pH89YBMmpPS3fP5kxooguzpbRz3pLWoSzhg";
-    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1m9cmnBtfWziAmT1SBC63a96fo18hLddrjweMxhcqhNo5";
-    const ALEO_TESTNET1_ADDRESS: &str = "aleo1h47qwdqqv25gwp0fkxgnqvm7ykrz0ud2vaw2cj4ac68w8wq5vqqqv58jvr";
+    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1tyBgFoCXAq8RfZT3W2mzVV9XzJb2hVFL2LrHLToEC37tXrz";
+    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1gFRs4gG66wFW1FypYRfwy6pDqix6rtquQ8uJ15RgHCC8";
+    const ALEO_TESTNET1_ADDRESS: &str = "aleo1shhq355tyaptcej65tkrweej5wth7wqg5hcqg3hf8as5s9rtrypqs8vy3u";
 
-    const ITERATIONS: usize = 25;
+    const ITERATIONS: usize = 1000;
 
     #[test]
     fn test_account_new() {
@@ -53,6 +54,17 @@ mod testnet1 {
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, private_key.to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, view_key.to_string());
         assert_eq!(ALEO_TESTNET1_ADDRESS, address.to_string());
+    }
+
+    #[test]
+    fn test_private_key_to_decryption_key() {
+        // Attempt to sample for a new account ITERATIONS times.
+        for _ in 0..ITERATIONS {
+            let private_key = PrivateKey::<Testnet1Parameters>::new(&mut thread_rng());
+            let decryption_key = private_key.to_decryption_key().unwrap();
+            // Enforce the MSB of the scalar field element is 0 by convention.
+            assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
+        }
     }
 
     #[test]
@@ -122,7 +134,7 @@ mod testnet1 {
 
     #[test]
     fn test_account_encryption_and_signature_compatibility() {
-        let rng = &mut rand::thread_rng();
+        let rng = &mut thread_rng();
 
         let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         let view_key = ViewKey::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
@@ -138,7 +150,7 @@ mod testnet1 {
 
     #[test]
     fn test_invalid_account_encryption_and_signature_compatibility() {
-        let rng = &mut rand::thread_rng();
+        let rng = &mut thread_rng();
 
         let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         let view_key = ViewKey::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
@@ -158,16 +170,17 @@ mod testnet1 {
 #[cfg(test)]
 mod testnet2 {
     use crate::{testnet2::Testnet2Parameters, Account, AccountScheme, Address, PrivateKey, ViewKey};
+    use snarkvm_utilities::ToBits;
 
-    use rand::SeedableRng;
+    use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1tn8cnHPNtcZ9pH89YBMmpPS3fP5kxooguzpbRz3pLWoSzhg";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1m9cmnBtfWziAmT1SBC63a96fo18hLddrjweMxhcqhNo5";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo1h47qwdqqv25gwp0fkxgnqvm7ykrz0ud2vaw2cj4ac68w8wq5vqqqv58jvr";
+    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1tyBgFoCXAq8RfZT3W2mzVV9XzJb2hVFL2LrHLToEC37tXrz";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1gFRs4gG66wFW1FypYRfwy6pDqix6rtquQ8uJ15RgHCC8";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo1shhq355tyaptcej65tkrweej5wth7wqg5hcqg3hf8as5s9rtrypqs8vy3u";
 
-    const ITERATIONS: usize = 25;
+    const ITERATIONS: usize = 1000;
 
     #[test]
     fn test_account_new() {
@@ -194,6 +207,17 @@ mod testnet2 {
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, private_key.to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, view_key.to_string());
         assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
+    }
+
+    #[test]
+    fn test_private_key_to_decryption_key() {
+        // Attempt to sample for a new account ITERATIONS times.
+        for _ in 0..ITERATIONS {
+            let private_key = PrivateKey::<Testnet2Parameters>::new(&mut thread_rng());
+            let decryption_key = private_key.to_decryption_key().unwrap();
+            // Enforce the MSB of the scalar field element is 0 by convention.
+            assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
+        }
     }
 
     #[test]
@@ -264,7 +288,7 @@ mod testnet2 {
 
     #[test]
     fn test_account_encryption_and_signature_compatibility() {
-        let rng = &mut rand::thread_rng();
+        let rng = &mut thread_rng();
 
         let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
         let view_key = ViewKey::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
@@ -280,7 +304,7 @@ mod testnet2 {
 
     #[test]
     fn test_invalid_account_encryption_and_signature_compatibility() {
-        let rng = &mut rand::thread_rng();
+        let rng = &mut thread_rng();
 
         let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
         let view_key = ViewKey::<Testnet2Parameters>::from_private_key(&private_key).unwrap();

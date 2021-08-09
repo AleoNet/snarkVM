@@ -84,6 +84,9 @@ pub use program::*;
 pub mod record;
 pub use record::*;
 
+pub mod state;
+pub use state::*;
+
 pub mod traits;
 pub use traits::*;
 
@@ -91,5 +94,15 @@ pub mod transaction;
 pub use transaction::*;
 
 pub mod prelude {
-    pub use crate::{account::*, circuits::*, dpc::*, errors::*, program::*, record::*, traits::*, transaction::*};
+    pub use crate::{
+        account::*,
+        circuits::*,
+        dpc::*,
+        errors::*,
+        program::*,
+        record::*,
+        state::*,
+        traits::*,
+        transaction::*,
+    };
 }
