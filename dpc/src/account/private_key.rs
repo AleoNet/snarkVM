@@ -145,10 +145,13 @@ impl<C: Parameters> PrivateKey<C> {
             }
         }
 
-        // This operation implicitly enforces that the unused MSB bits
-        // for the scalar field representation are correctly set to 0.
+        // This operation enforces that the base field element fits within the scalar field.
+        // However, this operation does not enforce that the MSB of the scalar field element is 0.
         let decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey =
             FromBytes::read_le(&commitment_bytes[..])?;
+
+        // Enforce the MSB of the scalar field element is 0 by convention.
+        debug_assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
 
         Ok(decryption_key)
     }
