@@ -305,6 +305,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                     &r_pk,
                 )?;
 
+                // TODO (howardwu): Enforce 6 MSB bits are 0.
+                {
+                    // TODO (howardwu): Enforce 6 MSB bits are 0.
+                }
+
                 // Enforce the account commitment bytes (padded) correspond to the
                 // given account's view key bytes (padded). This is equivalent to
                 // verifying that the base field element from the computed account

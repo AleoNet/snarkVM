@@ -143,7 +143,10 @@ impl<C: Parameters> PrivateKey<C> {
 
         // This operation explicitly enforces that the unused MSB bits
         // for the scalar field representation are correctly set to 0.
-        for msb_bit in from_bytes_le_to_bits_le(&commitment_bytes[..]).take(enforce_zero_on_num_bits) {
+        for msb_bit in from_bytes_le_to_bits_le(&commitment_bytes[..])
+            .rev()
+            .take(enforce_zero_on_num_bits)
+        {
             // Pop the next MSB bit, and enforce it is zero.
             if msb_bit {
                 return Err(AccountError::InvalidAccountCommitment);
