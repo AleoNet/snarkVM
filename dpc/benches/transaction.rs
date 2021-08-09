@@ -59,14 +59,14 @@ fn coinbase_transaction<C: Parameters>(
         value,
         Payload::default(),
         C::NUM_INPUT_RECORDS as u8,
-        joint_serial_numbers.clone(),
+        &joint_serial_numbers,
         rng,
     )?);
     output_records.push(Record::new_noop_output(
         dpc.noop_program.deref(),
         recipient,
         (C::NUM_INPUT_RECORDS + 1) as u8,
-        joint_serial_numbers.clone(),
+        &joint_serial_numbers,
         rng,
     )?);
 

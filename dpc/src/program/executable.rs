@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, LocalData, NoopProgram, Parameters, PrivateVariables, ProgramScheme, PublicVariables};
+use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 
 use anyhow::Result;
 use std::{ops::Deref, sync::Arc};
@@ -37,6 +38,14 @@ impl<C: Parameters> Executable<C> {
         match self {
             Self::Noop(_) => true,
             _ => false,
+        }
+    }
+
+    /// Returns a reference to the program ID of the executable.
+    pub fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+        match self {
+            Self::Noop(program) => program.program_id(),
+            Self::Circuit(program, _, _) => program.program_id(),
         }
     }
 

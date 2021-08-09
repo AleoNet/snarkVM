@@ -185,7 +185,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare input record");
 
-            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
+            let given_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_program_id"),
+                &record.program_id().to_bytes_le()?,
+            )?;
             old_program_ids_gadgets.push(given_program_id.clone());
 
             // No need to check that commitments, public keys and hashes are in
@@ -473,7 +476,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare output record");
 
-            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
+            let given_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_program_id"),
+                &record.program_id().to_bytes_le()?,
+            )?;
             new_program_ids_gadgets.push(given_program_id.clone());
 
             let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<

@@ -68,9 +68,13 @@ impl<C: Parameters> TransactionAuthorization<C> {
             .iter()
             .chain(self.output_records.iter())
             .take(C::NUM_TOTAL_RECORDS)
-            .flat_map(|r| r.program_id())
-            .cloned()
-            .collect::<Vec<u8>>();
+            .flat_map(|record| {
+                record
+                    .program_id()
+                    .to_bytes_le()
+                    .expect("Failed to convert program ID to bytes")
+            })
+            .collect::<Vec<_>>();
 
         let program_randomness = UniformRand::rand(rng);
         let program_commitment = C::program_commitment_scheme().commit(&program_ids, &program_randomness)?;

@@ -46,7 +46,7 @@ impl<C: Parameters> ProgramScheme<C> for Program<C> {
         })
     }
 
-    /// Returns the program ID.
+    /// Returns a reference to the program ID.
     fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
         self.circuits.to_program_id()
     }

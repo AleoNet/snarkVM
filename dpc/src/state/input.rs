@@ -17,7 +17,7 @@
 use crate::prelude::*;
 use snarkvm_algorithms::{CommitmentScheme, SignatureScheme};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 

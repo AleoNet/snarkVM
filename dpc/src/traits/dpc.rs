@@ -15,14 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{
-        AccountScheme,
-        Parameters,
-        RecordCommitmentTree,
-        RecordScheme,
-        RecordSerialNumberTree,
-        TransactionScheme,
-    },
+    traits::{AccountScheme, Parameters, RecordCommitmentTree, RecordSerialNumberTree, TransactionScheme},
     Executable,
 };
 
@@ -47,7 +40,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: Vec<Self::State>,
+        state: Self::State,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 

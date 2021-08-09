@@ -17,7 +17,7 @@
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, UniformRand};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -95,8 +95,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
-        assert_eq!(C::NUM_INPUT_RECORDS, input_records.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, output_records.len());
 
         // Construct the signature message.
         let signature_message = state.transaction_kernel().to_signature_message()?;

@@ -25,7 +25,7 @@ use std::{convert::TryInto, sync::Arc};
 pub struct Output<C: Parameters> {
     executable: Executable<C>,
     address: Address<C>,
-    value: u64,
+    value: AleoAmount,
     payload: Payload,
     is_dummy: bool,
 }
@@ -43,7 +43,7 @@ impl<C: Parameters> Output<C> {
         Ok(Self {
             executable,
             address: noop_address,
-            value: 0,
+            value: AleoAmount::from_bytes(0),
             payload: Payload::default(),
             is_dummy: true,
         })
@@ -53,7 +53,7 @@ impl<C: Parameters> Output<C> {
     /// Initializes a new instance of `Output`.
     pub fn new(
         address: Address<C>,
-        value: u64,
+        value: AleoAmount,
         payload: Payload,
         executable: Option<Executable<C>>,
         noop: Arc<NoopProgram<C>>,
@@ -65,7 +65,7 @@ impl<C: Parameters> Output<C> {
         };
 
         // Determine if the record is a dummy.
-        let is_dummy = value == 0 && payload.is_empty() && executable.is_noop();
+        let is_dummy = value == AleoAmount::from_bytes(0) && payload.is_empty() && executable.is_noop();
 
         Ok(Self {
             executable,
@@ -87,7 +87,7 @@ impl<C: Parameters> Output<C> {
             self.executable.program(),
             self.address,
             self.is_dummy,
-            self.value,
+            self.value.0 as u64,
             self.payload.clone(),
             position,
             joint_serial_numbers,

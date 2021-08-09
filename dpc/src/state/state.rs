@@ -36,28 +36,61 @@ impl<C: Parameters> State<C> {
         Ok(Self::builder().build(noop, rng)?)
     }
 
-    /// Returns a new state transition that sends a given amount to a given recipient.
-    pub fn new_send<R: Rng + CryptoRng>(
-        inputs: &Vec<(PrivateKey<C>, Record<C>)>,
+    /// Returns a new state transition that mints the given amount to the recipient.
+    pub fn new_coinbase<R: Rng + CryptoRng>(
         recipient: Address<C>,
-        amount: u64,
+        amount: AleoAmount,
         noop: Arc<NoopProgram<C>>,
         rng: &mut R,
     ) -> Result<Self> {
-        assert!(inputs.len() <= C::NUM_INPUT_RECORDS);
+        Ok(Self::builder()
+            .add_output(Output::new(recipient, amount, Payload::default(), None, noop.clone())?)
+            .build(noop, rng)?)
+    }
 
-        // Construct the inputs.
-        let inputs = inputs
-            .iter()
-            .map(|(private_key, record)| {
-                Input::new(private_key, record.clone(), None, noop.clone()).expect("Failed to construct input")
-            })
-            .collect();
+    /// Returns a new state transition that transfers a given amount of Aleo credits from a sender to a recipient.
+    pub fn new_transfer<R: Rng + CryptoRng>(
+        sender: &PrivateKey<C>,
+        records: &Vec<Record<C>>,
+        recipient: Address<C>,
+        amount: AleoAmount,
+        fee: AleoAmount,
+        noop: Arc<NoopProgram<C>>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        assert!(records.len() <= C::NUM_INPUT_RECORDS);
 
-        // Construct the record for the recipient.
+        // Calculate the available balance of the sender.
+        let mut balance = AleoAmount::ZERO;
+        let mut inputs = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for record in records {
+            balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
+            inputs.push(Input::new(sender, record.clone(), None, noop.clone())?);
+        }
+
+        // Ensure the sender has sufficient balance.
+        let total_cost = amount.add(fee);
+        if balance < total_cost {
+            return Err(anyhow!("Sender(s) has insufficient balance"));
+        }
+
+        // Construct the recipient output.
         let recipient_output = Output::new(recipient, amount, Payload::default(), None, noop.clone())?;
 
-        Ok(Self::builder().add_inputs(inputs).build(noop, rng)?)
+        // Construct the change output for the sender.
+        let sender_output = Output::new(
+            Address::from_private_key(sender)?,
+            balance.sub(total_cost),
+            Payload::default(),
+            None,
+            noop.clone(),
+        )?;
+
+        Ok(Self::builder()
+            .add_inputs(inputs)
+            .add_output(recipient_output)
+            .add_output(sender_output)
+            .build(noop, rng)?)
     }
 
     /// Returns a new instance of `StateBuilder`.
@@ -187,21 +220,21 @@ impl<C: Parameters> StateBuilder<C> {
         let (inputs, outputs) = self.prepare_inputs_and_outputs(noop, rng)?;
 
         // Compute the input records.
-        let input_records = inputs
+        let input_records: Vec<_> = inputs
             .iter()
             .take(C::NUM_INPUT_RECORDS)
             .map(|input| input.record().clone())
             .collect();
 
         // Compute the serial numbers.
-        let serial_numbers = inputs
+        let serial_numbers: Vec<_> = inputs
             .iter()
             .take(C::NUM_INPUT_RECORDS)
             .map(|input| input.serial_number().clone())
             .collect();
 
         // Compute the signature randomizers.
-        let signature_randomizers = inputs
+        let signature_randomizers: Vec<_> = inputs
             .iter()
             .take(C::NUM_INPUT_RECORDS)
             .map(|input| input.signature_randomizer().clone())
@@ -232,16 +265,10 @@ impl<C: Parameters> StateBuilder<C> {
             // Compute the value balance.
             let mut value_balance = AleoAmount::ZERO;
             for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
-                // Process the input records.
-                if !record.is_dummy() {
-                    value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
-                }
+                value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
             for record in output_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-                // Process the output records.
-                if !record.is_dummy() {
-                    value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
-                }
+                value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
             }
 
             (output_records, commitments, value_balance)
@@ -253,7 +280,7 @@ impl<C: Parameters> StateBuilder<C> {
         self.memo.write_le(&mut memo[..])?;
 
         // Construct the transaction kernel.
-        let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo);
+        let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo)?;
 
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;

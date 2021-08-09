@@ -15,17 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, DPCError, Parameters, Payload, Record, RecordScheme, ViewKey};
-use rand::{thread_rng, CryptoRng, Rng};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, CRH},
+};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
-    to_bytes_le,
     FromBytes,
     Read,
     ToBytes,
     Write,
 };
+
+use rand::{thread_rng, CryptoRng, Rng};
 
 #[derive(Derivative)]
 #[derivative(
@@ -106,12 +109,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let mut cursor = Cursor::new(plaintext);
 
         // Program ID
-        let program_id_length = to_bytes_le!(C::ProgramCircuitID::default())?.len();
-        let program_id = {
-            let mut program_id = vec![0u8; program_id_length];
-            cursor.read_exact(&mut program_id)?;
-            program_id
-        };
+        let program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
 
         // Value
         let value = u64::read_le(&mut cursor)?;

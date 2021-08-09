@@ -19,6 +19,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use std::hash::Hash;
 
 pub trait RecordScheme: Default + FromBytes + ToBytes {
+    type ProgramID;
     type Owner;
     type Commitment: FromBytes + ToBytes;
     type CommitmentRandomness;
@@ -27,7 +28,7 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
 
     /// Returns the program id of this record.
-    fn program_id(&self) -> &[u8];
+    fn program_id(&self) -> &Self::ProgramID;
 
     /// Returns the record owner.
     fn owner(&self) -> &Self::Owner;
