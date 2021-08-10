@@ -95,8 +95,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         state: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
-        assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
-
         // Keep a cursor for the private keys.
         let mut index = 0;
 
