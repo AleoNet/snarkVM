@@ -19,7 +19,10 @@ use snarkvm_algorithms::{CommitmentScheme, EncryptionScheme, PRF};
 use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBits, ToBytes};
 
 use rand::thread_rng;
-use std::fmt;
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+};
 
 #[derive(Derivative)]
 #[derivative(
@@ -123,6 +126,26 @@ impl<C: Parameters> ComputeKey<C> {
         debug_assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
 
         Ok(decryption_key)
+    }
+}
+
+impl<C: Parameters> FromBytes for ComputeKey<C> {
+    /// Reads in an account compute key buffer.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let pk_sig = FromBytes::read_le(&mut reader)?;
+        let sk_prf = FromBytes::read_le(&mut reader)?;
+        let r_pk = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self::new(pk_sig, sk_prf, r_pk)?)
+    }
+}
+
+impl<C: Parameters> ToBytes for ComputeKey<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.pk_sig.write_le(&mut writer)?;
+        self.sk_prf.write_le(&mut writer)?;
+        self.r_pk.write_le(&mut writer)
     }
 }
 

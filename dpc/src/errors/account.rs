@@ -84,3 +84,9 @@ impl From<std::io::Error> for AccountError {
         AccountError::Crate("std::io", format!("{:?}", error))
     }
 }
+
+impl From<AccountError> for std::io::Error {
+    fn from(error: AccountError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
+}

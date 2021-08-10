@@ -139,7 +139,7 @@ impl<C: Parameters> StateTransition<C> {
     /// Returns a reference to the noop compute keys.
     pub fn to_noop_compute_keys(&self) -> Vec<Option<ComputeKey<C>>> {
         self.noop_private_keys
-            .into_iter()
+            .iter()
             .map(|key| match key {
                 Some(private_key) => Some(private_key.compute_key().clone()),
                 None => None,
