@@ -87,7 +87,7 @@ impl<C: Parameters> Address<C> {
     }
 
     /// Returns the address as an encryption public key.
-    pub fn to_encryption_key(self) -> <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
+    pub fn to_encryption_key(&self) -> <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         self.encryption_key
     }
 }

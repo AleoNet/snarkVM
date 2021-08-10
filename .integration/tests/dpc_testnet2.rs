@@ -206,9 +206,6 @@ fn test_testnet2_dpc_execute_constraints() {
     let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
         authorization.to_encrypted_records(&mut rng).unwrap();
 
-    // Fetch the compute keys.
-    let compute_keys = vec![recipient.compute_key().clone(), recipient.compute_key().clone()];
-
     let TransactionAuthorization {
         kernel,
         input_records: old_records,
