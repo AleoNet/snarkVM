@@ -162,11 +162,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
     let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
 
-    for (i, (((record, witness), prover_key), given_serial_number)) in private
+    for (i, (((record, witness), compute_key), given_serial_number)) in private
         .input_records
         .iter()
         .zip(&private.input_witnesses)
-        .zip(&private.prover_keys)
+        .zip(&private.compute_keys)
         .zip(&public.kernel.serial_numbers)
         .enumerate()
     {
@@ -277,19 +277,19 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             // Allocate the account private key.
             let (pk_sig, sk_prf, r_pk) = {
-                let pk_sig_native = &prover_key.0;
+                let pk_sig_native = compute_key.pk_sig();
                 let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
                     C::AccountSignatureScheme,
                     C::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
-                let sk_prf = C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &prover_key.1);
+                let sk_prf = C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
                 let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
                     C::AccountCommitmentScheme,
                     C::InnerScalarField,
                 >>::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
-                    Ok(&prover_key.2)
+                    Ok(compute_key.r_pk())
                 })?;
 
                 (pk_sig, sk_prf, r_pk)
@@ -324,7 +324,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                         C::InnerScalarField,
                     >>::PrivateKeyGadget::alloc(
                         &mut account_cs.ns(|| "Allocate account view key"),
-                        || Ok(&prover_key.3), // private_key.to_decryption_key()
+                        || {
+                            Ok(compute_key
+                                .to_decryption_key()
+                                .map_err(|_| SynthesisError::AssignmentMissing)?)
+                        },
                     )?;
 
                     let given_account_view_key_bytes =

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Parameters, Payload, PrivateKey, ProgramScheme, RecordError, RecordScheme};
+use crate::{Address, ComputeKey, Parameters, Payload, ProgramScheme, RecordError, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, SignatureScheme, CRH, PRF},
@@ -183,7 +183,7 @@ impl<C: Parameters> Record<C> {
 
     pub fn to_serial_number(
         &self,
-        private_key: &PrivateKey<C>,
+        compute_key: &ComputeKey<C>,
     ) -> Result<
         (
             C::AccountSignaturePublicKey,
@@ -200,10 +200,10 @@ impl<C: Parameters> Record<C> {
         // }
 
         // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
+        let seed = FromBytes::read_le(to_bytes_le!(&compute_key.sk_prf())?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature_scheme().randomize_public_key(private_key.pk_sig(), &randomizer)?;
+        let serial_number = C::account_signature_scheme().randomize_public_key(compute_key.pk_sig(), &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))

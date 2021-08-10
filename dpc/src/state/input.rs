@@ -39,13 +39,14 @@ impl<C: Parameters> Input<C> {
 
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
+        let noop_compute_key = noop_private_key.compute_key();
         let noop_address = Address::from_private_key(&noop_private_key)?;
 
         // Construct the noop input record.
         let record = Record::new_noop_input(executable.program(), noop_address, rng)?;
 
         // Compute the serial number and signature randomizer.
-        let (serial_number, signature_randomizer) = record.to_serial_number(&noop_private_key)?;
+        let (serial_number, signature_randomizer) = record.to_serial_number(noop_compute_key)?;
 
         Ok(Self {
             record,
@@ -59,14 +60,14 @@ impl<C: Parameters> Input<C> {
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Initializes a new instance of `Input`.
     pub fn new(
-        private_key: &PrivateKey<C>,
+        compute_key: &ComputeKey<C>,
         record: Record<C>,
         executable: Option<Executable<C>>,
         noop: Arc<NoopProgram<C>>,
     ) -> Result<Self> {
         // Ensure the account address matches.
-        if Address::from_private_key(private_key)? != record.owner() {
-            return Err(anyhow!("Address of private key does not match the record owner"));
+        if Address::from_compute_key(compute_key)? != record.owner() {
+            return Err(anyhow!("Address from compute key does not match the record owner"));
         }
 
         // Retrieve the executable. If `None` is provided, construct the noop executable.
@@ -81,7 +82,7 @@ impl<C: Parameters> Input<C> {
         }
 
         // Compute the serial number and signature randomizer.
-        let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
+        let (serial_number, signature_randomizer) = record.to_serial_number(&compute_key)?;
 
         Ok(Self {
             record,
@@ -94,7 +95,7 @@ impl<C: Parameters> Input<C> {
 
     /// Initializes a new instance of `Input`.
     pub fn new_full(
-        private_key: &PrivateKey<C>,
+        compute_key: &ComputeKey<C>,
         value: AleoAmount,
         payload: Payload,
         executable: Executable<C>,
@@ -102,7 +103,7 @@ impl<C: Parameters> Input<C> {
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
-        let address = Address::from_private_key(private_key)?;
+        let address = Address::from_compute_key(compute_key)?;
 
         // Determine if the record is a dummy.
         let is_dummy = value == AleoAmount::from_bytes(0) && payload.is_empty() && executable.is_noop();
@@ -119,7 +120,7 @@ impl<C: Parameters> Input<C> {
         )?;
 
         // Compute the serial number.
-        let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
+        let (serial_number, signature_randomizer) = record.to_serial_number(&compute_key)?;
 
         Ok(Self {
             record,
@@ -182,8 +183,9 @@ mod tests {
 
                 let account = Account::new(rng).unwrap();
                 let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
-                let (serial_number, signature_randomizer) =
-                    input_record.to_serial_number(&account.private_key).unwrap();
+                let (serial_number, signature_randomizer) = input_record
+                    .to_serial_number(&account.private_key.compute_key())
+                    .unwrap();
 
                 (input_record, serial_number, signature_randomizer, account.private_key)
             };

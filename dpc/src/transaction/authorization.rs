@@ -26,14 +26,6 @@ use std::{
     str::FromStr,
 };
 
-/// TODO (howardwu): TEMPORARY - Implement a proper struct.
-pub type ProverKey<C> = (
-    <C as Parameters>::AccountSignaturePublicKey,
-    <<C as Parameters>::PRF as PRF>::Seed,
-    <<C as Parameters>::AccountCommitmentScheme as CommitmentScheme>::Randomness,
-    <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::PrivateKey,
-);
-
 type EncryptedRecordHash<C> = <<C as Parameters>::EncryptedRecordCRH as CRH>::Output;
 type EncryptedRecordRandomizer<C> = <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
 type ProgramCommitment<C> = <<C as Parameters>::ProgramCommitmentScheme as CommitmentScheme>::Output;
@@ -49,7 +41,7 @@ type ProgramCommitmentRandomness<C> = <<C as Parameters>::ProgramCommitmentSchem
     Eq(bound = "C: Parameters")
 )]
 pub struct TransactionAuthorization<C: Parameters> {
-    pub prover_keys: Vec<ProverKey<C>>,
+    pub compute_keys: Vec<ComputeKey<C>>,
     pub kernel: TransactionKernel<C>,
     pub input_records: Vec<Record<C>>,
     pub output_records: Vec<Record<C>>,
@@ -59,18 +51,18 @@ pub struct TransactionAuthorization<C: Parameters> {
 impl<C: Parameters> TransactionAuthorization<C> {
     #[inline]
     pub fn from(
-        prover_keys: Vec<ProverKey<C>>,
+        compute_keys: Vec<ComputeKey<C>>,
         state: &StateTransition<C>,
         signatures: Vec<C::AccountSignature>,
     ) -> Self {
-        debug_assert_eq!(C::NUM_INPUT_RECORDS, prover_keys.len());
+        debug_assert_eq!(C::NUM_INPUT_RECORDS, compute_keys.len());
         debug_assert!(state.kernel().is_valid());
         debug_assert_eq!(C::NUM_INPUT_RECORDS, state.input_records().len());
         debug_assert_eq!(C::NUM_OUTPUT_RECORDS, state.output_records().len());
         debug_assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
 
         Self {
-            prover_keys,
+            compute_keys,
             kernel: state.kernel().clone(),
             input_records: state.input_records().clone(),
             output_records: state.output_records().clone(),
@@ -167,7 +159,7 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
 
         Ok(Self {
             // TODO (howardwu): TEMPORARY - Fix me when a proper ProverKey struct is implemented.
-            prover_keys: vec![],
+            compute_keys: vec![],
             kernel,
             input_records,
             output_records,

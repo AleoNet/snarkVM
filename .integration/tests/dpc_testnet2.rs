@@ -207,7 +207,7 @@ fn test_testnet2_dpc_execute_constraints() {
         authorization.to_encrypted_records(&mut rng).unwrap();
 
     let TransactionAuthorization {
-        prover_keys,
+        compute_keys: prover_keys,
         kernel,
         input_records: old_records,
         output_records: new_records,

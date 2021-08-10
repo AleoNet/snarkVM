@@ -42,6 +42,9 @@ pub enum AccountError {
     #[error("invalid character length: {}", _0)]
     InvalidCharacterLength(usize),
 
+    #[error("invalid account compute key")]
+    InvalidComputeKey,
+
     #[error("invalid prefix: {:?}", _0)]
     InvalidPrefix(String),
 

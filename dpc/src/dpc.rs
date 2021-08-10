@@ -104,11 +104,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
-        let mut prover_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut compute_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for (signature_randomizer, noop_private_key) in state.signature_randomizers().iter().take(C::NUM_INPUT_RECORDS)
         {
-            // Determine the private key.
+            // Fetch the correct private key.
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
                 None => {
@@ -117,17 +117,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 }
             };
 
-            // Construct the prover key.
-            prover_keys.push((
-                private_key.pk_sig().clone(),
-                private_key.sk_prf.clone(),
-                private_key.r_pk.clone(),
-                private_key.to_decryption_key()?,
-            ));
+            // Store the compute key.
+            compute_keys.push(private_key.compute_key().clone());
 
             // Randomize the private key.
             let randomized_private_key =
-                C::account_signature_scheme().randomize_private_key(&private_key.sk_sig, &signature_randomizer)?;
+                C::account_signature_scheme().randomize_private_key(private_key.sk_sig(), &signature_randomizer)?;
 
             // Sign and randomize the signature.
             signatures.push(C::account_signature_scheme().sign_randomized(
@@ -138,7 +133,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization::from(prover_keys, state, signatures))
+        Ok(TransactionAuthorization::from(compute_keys, state, signatures))
     }
 
     /// Returns a transaction by executing an authorized state transition.
@@ -170,7 +165,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             authorization.to_encrypted_records(rng)?;
 
         let TransactionAuthorization {
-            prover_keys,
+            compute_keys: prover_keys,
             kernel,
             input_records,
             output_records,
