@@ -31,6 +31,7 @@ pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommit
 use blake2::Blake2s;
 use core::marker::PhantomData;
 use rand_core::RngCore;
+use std::sync::atomic::AtomicBool;
 
 /// A structured reference string which will be used to derive a circuit-specific
 /// common reference string
@@ -104,14 +105,16 @@ where
         Ok((parameters, verifying_key))
     }
 
-    fn prove<R: RngCore>(
+    fn prove_with_terminator<R: RngCore>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &Self::AllocatedCircuit,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
-        let proof = MarlinTestnet1::<E>::prove(&proving_key.proving_key, input_and_witness, rng)
-            .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
+        let proof =
+            MarlinTestnet1::<E>::prove_with_terminator(&proving_key.proving_key, input_and_witness, terminator, rng)
+                .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
     }

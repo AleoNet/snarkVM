@@ -17,6 +17,7 @@
 use std::{
     fmt::{Debug, Formatter},
     marker::PhantomData,
+    sync::atomic::AtomicBool,
 };
 
 use rand::{CryptoRng, Rng, RngCore};
@@ -190,12 +191,18 @@ where
         Ok((circuit_proving_key, circuit_verifier_key.into()))
     }
 
-    fn prove<R: Rng>(
+    fn prove_with_terminator<R: Rng>(
         parameters: &Self::ProvingKey,
         circuit: &Self::AllocatedCircuit,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove(&parameters, circuit, rng) {
+        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove_with_terminator(
+            &parameters,
+            circuit,
+            terminator,
+            rng,
+        ) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }

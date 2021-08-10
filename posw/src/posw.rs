@@ -50,7 +50,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{rngs::OsRng, Rng};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 /// Commits to the nonce and pedersen merkle root
 pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
@@ -217,6 +217,7 @@ where
         &self,
         subroots: &[[u8; 32]],
         difficulty_target: u64, // TODO: Change to Bignum?
+        terminator: &AtomicBool,
         rng: &mut R,
         max_nonce: u32,
     ) -> Result<(u32, Vec<u8>), PoswError> {
@@ -227,7 +228,7 @@ where
         let mut serialized_proof;
         loop {
             nonce = rng.gen_range(0..max_nonce);
-            proof = Self::prove(&pk, nonce, subroots, rng)?;
+            proof = Self::prove(&pk, nonce, subroots, terminator, rng)?;
 
             serialized_proof = to_bytes_le!(proof)?;
             if self.check_difficulty(&serialized_proof, difficulty_target) {
@@ -244,6 +245,7 @@ where
         pk: &S::ProvingKey,
         nonce: u32,
         subroots: &[[u8; 32]],
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<S::Proof, PoswError> {
         // instantiate the circuit with the nonce
@@ -251,7 +253,7 @@ where
 
         // generate the proof
         let proof_timer = start_timer!(|| "POSW proof");
-        let proof = S::prove(pk, &circuit, rng)?;
+        let proof = S::prove_with_terminator(pk, &circuit, terminator, rng)?;
         end_timer!(proof_timer);
 
         Ok(proof)

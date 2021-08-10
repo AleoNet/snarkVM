@@ -33,6 +33,9 @@ pub enum SNARKError {
 
     #[error("{}", _0)]
     SynthesisError(SynthesisError),
+
+    #[error("terminated")]
+    Terminated,
 }
 
 impl From<ConstraintFieldError> for SNARKError {
