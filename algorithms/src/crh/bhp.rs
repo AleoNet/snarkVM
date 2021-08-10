@@ -93,8 +93,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
-        assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
-        assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
+        debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
+        debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
         let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
@@ -102,10 +102,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
-            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len) % BOWE_HOPWOOD_CHUNK_SIZE;
+            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
         }
 
-        assert_eq!(
+        debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
+
+        debug_assert_eq!(
             self.bases.len(),
             NUM_WINDOWS,
             "Incorrect number of windows ({:?}) for BHP of {:?}x{:?}x{}",
@@ -114,16 +116,16 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             NUM_WINDOWS,
             BOWE_HOPWOOD_CHUNK_SIZE,
         );
-        assert_eq!(self.bases.len(), NUM_WINDOWS);
+        debug_assert_eq!(self.bases.len(), NUM_WINDOWS);
         for bases in self.bases.iter() {
-            assert_eq!(bases.len(), WINDOW_SIZE);
+            debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }
         let base_lookup = self.base_lookup(&self.bases);
-        assert_eq!(base_lookup.len(), NUM_WINDOWS);
+        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
         for bases in base_lookup.iter() {
-            assert_eq!(bases.len(), WINDOW_SIZE);
+            debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }
-        assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
+        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
 
         // Compute sum of h_i^{sum of
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
