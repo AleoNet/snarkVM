@@ -42,9 +42,9 @@ use core::{
     convert::TryInto,
     marker::PhantomData,
     ops::{Mul, MulAssign},
+    sync::atomic::{AtomicBool, Ordering},
 };
 use rand_core::RngCore;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 mod data_structures;
 pub use data_structures::*;

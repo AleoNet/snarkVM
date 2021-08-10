@@ -42,9 +42,14 @@ use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, Projectiv
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{convert::TryInto, iter::FromIterator, marker::PhantomData, ops::Mul};
+use core::{
+    convert::TryInto,
+    iter::FromIterator,
+    marker::PhantomData,
+    ops::Mul,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use rand_core::RngCore;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 mod data_structures;
 pub use data_structures::*;

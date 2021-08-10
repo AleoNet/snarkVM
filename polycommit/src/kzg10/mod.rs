@@ -30,9 +30,12 @@ use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, Projectiv
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{marker::PhantomData, ops::Mul};
+use core::{
+    marker::PhantomData,
+    ops::Mul,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use rand_core::RngCore;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

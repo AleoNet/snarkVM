@@ -34,9 +34,8 @@ pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::Field;
 use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use core::fmt::Debug;
+use core::{fmt::Debug, sync::atomic::AtomicBool};
 use rand_core::RngCore;
-use std::sync::atomic::AtomicBool;
 
 #[cfg(not(feature = "std"))]
 #[macro_use]
