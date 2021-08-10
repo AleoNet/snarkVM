@@ -226,18 +226,15 @@ where
         let mut nonce;
         let mut proof;
         let mut serialized_proof;
-        let mut i = 0;
         loop {
             nonce = rng.gen_range(0..max_nonce);
             proof = Self::prove(&pk, nonce, subroots, terminator, rng)?;
-            i += 1;
 
             serialized_proof = to_bytes_le!(proof)?;
             if self.check_difficulty(&serialized_proof, difficulty_target) {
                 break;
             }
         }
-        println!("{} rounds", i);
 
         Ok((nonce, serialized_proof))
     }
