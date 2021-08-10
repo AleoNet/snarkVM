@@ -284,7 +284,7 @@ impl<
         let mut domain_k_size_booleans = self.domain_k_size_gadget.to_bits_le(cs.ns(|| "domain_k_size"))?;
         domain_k_size_booleans.truncate(64);
 
-        // A sanity check that the domain_h and domain_k are smaller than u64.
+        // A sanity check that the sizes of domain_h and domain_k are smaller than u64.
         {
             let domain_h_size_reconstructed =
                 Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct domain_h_size"), &domain_h_size_booleans)?;
