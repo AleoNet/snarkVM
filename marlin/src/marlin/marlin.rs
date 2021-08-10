@@ -29,6 +29,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 use crate::marlin::PreparedCircuitVerifyingKey;
 use core::marker::PhantomData;
 use rand_core::RngCore;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// The Marlin proof system.
 pub struct MarlinSNARK<
@@ -243,12 +244,17 @@ where
     pub fn prove<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
         circuit_proving_key: &CircuitProvingKey<TargetField, PC>,
         circuit: &C,
+        terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Proof<TargetField, PC>, MarlinError<PC::Error>> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         // TODO: Add check that c is in the correct mode.
 
         let is_recursion = MM::RECURSION;
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let prover_init_state = AHPForR1CS::prover_init(&circuit_proving_key.circuit, circuit)?;
         let public_input = prover_init_state.public_input();
@@ -277,8 +283,16 @@ where
         // --------------------------------------------------------------------
         // First round
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (prover_first_message, prover_first_oracles, prover_state) =
             AHPForR1CS::prover_first_round(prover_init_state, zk_rng, hiding)?;
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = PC::commit(
@@ -298,12 +312,20 @@ where
             fs_rng.absorb_bytes(&to_bytes_le![first_commitments, prover_first_message].unwrap());
         }
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (verifier_first_message, verifier_state) =
             AHPForR1CS::verifier_first_round(circuit_proving_key.circuit_verifying_key.circuit_info, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Second round
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let (prover_second_message, prover_second_oracles, prover_state) =
             AHPForR1CS::prover_second_round(&verifier_first_message, prover_state, zk_rng, hiding);
@@ -326,11 +348,20 @@ where
             fs_rng.absorb_bytes(&to_bytes_le![second_commitments, prover_second_message].unwrap());
         }
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (prover_third_message, prover_third_oracles) =
             AHPForR1CS::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
 
@@ -352,8 +383,16 @@ where
             fs_rng.absorb_bytes(&to_bytes_le![third_commitments, prover_third_message].unwrap());
         }
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let vanishing_polys = if is_recursion {
             let domain_h = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_constraints)
@@ -395,6 +434,10 @@ where
             false => assert_eq!(21, polynomials.len()),
         };
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         // Gather commitments in one vector.
         #[rustfmt::skip]
             let commitments = vec![
@@ -432,10 +475,18 @@ where
             .chain(third_commitment_randomnesses)
             .collect();
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::verifier_query_set(verifier_state, &mut fs_rng, is_recursion);
         let lc_s =
             AHPForR1CS::construct_linear_combinations(&public_input, &polynomials, &verifier_state, is_recursion)?;
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations_unsorted = Vec::new();
@@ -450,9 +501,17 @@ where
             }
         }
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         evaluations_unsorted.sort_by(|a, b| a.0.cmp(&b.0));
         let evaluations = evaluations_unsorted.iter().map(|x| x.1).collect::<Vec<TargetField>>();
         end_timer!(eval_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
@@ -493,6 +552,10 @@ where
             )
             .map_err(MarlinError::from_pc_err)?
         };
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         // Gather prover messages together.
         let prover_messages = vec![prover_first_message, prover_second_message, prover_third_message];

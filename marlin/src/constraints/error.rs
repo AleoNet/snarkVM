@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::marlin::MarlinError;
+use crate::{ahp::AHPError, marlin::MarlinError};
 
 use core::fmt::Display;
 use std::fmt::{Debug, Formatter};
@@ -31,37 +31,40 @@ where
 {
     fn from(e: MarlinError<E>) -> Self {
         match e {
-            crate::marlin::MarlinError::<E>::IndexTooLarge(u, v) => Self {
+            MarlinError::<E>::IndexTooLarge(u, v) => Self {
                 error_msg: format!("index of {} is too large, maximum degree of {}", v, u),
             },
-            crate::marlin::MarlinError::<E>::AHPError(err) => match err {
-                crate::ahp::AHPError::ConstraintSystemError(error) => Self {
+            MarlinError::<E>::AHPError(err) => match err {
+                AHPError::ConstraintSystemError(error) => Self {
                     error_msg: error.to_string(),
                 },
-                crate::ahp::AHPError::FiatShamirError(error) => Self {
+                AHPError::FiatShamirError(error) => Self {
                     error_msg: error.to_string(),
                 },
-                crate::ahp::AHPError::InvalidPublicInputLength => Self {
+                AHPError::InvalidPublicInputLength => Self {
                     error_msg: String::from("invalid public input length"),
                 },
-                crate::ahp::AHPError::InstanceDoesNotMatchIndex => Self {
+                AHPError::InstanceDoesNotMatchIndex => Self {
                     error_msg: String::from("instance does not match index"),
                 },
-                crate::ahp::AHPError::MissingEval(str) => Self {
+                AHPError::MissingEval(str) => Self {
                     error_msg: String::from("missing eval: ") + &*str,
                 },
-                crate::ahp::AHPError::NonSquareMatrix => Self {
+                AHPError::NonSquareMatrix => Self {
                     error_msg: String::from("non-sqaure matrix"),
                 },
             },
-            crate::marlin::MarlinError::<E>::R1CSError(err) => Self {
+            MarlinError::<E>::R1CSError(err) => Self {
                 error_msg: err.to_string(),
             },
-            crate::marlin::MarlinError::<E>::FiatShamirError(err) => Self {
+            MarlinError::<E>::FiatShamirError(err) => Self {
                 error_msg: err.to_string(),
             },
-            crate::marlin::MarlinError::<E>::PolynomialCommitmentError(err) => Self {
+            MarlinError::<E>::PolynomialCommitmentError(err) => Self {
                 error_msg: err.to_string(),
+            },
+            MarlinError::Terminated => Self {
+                error_msg: "terminated".to_string(),
             },
         }
     }

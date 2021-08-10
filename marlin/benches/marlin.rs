@@ -39,7 +39,7 @@ use snarkvm_utilities::UniformRand;
 
 use criterion::Criterion;
 use rand::{self, thread_rng};
-use std::ops::MulAssign;
+use std::{ops::MulAssign, sync::atomic::AtomicBool};
 
 // TODO (raychu86): Unify the Marlin instances. Currently too convoluted.
 
@@ -196,6 +196,7 @@ fn snark_verify(c: &mut Criterion) {
             num_constraints,
             num_variables,
         },
+        &AtomicBool::new(false),
         rng,
     )
     .unwrap();
@@ -237,6 +238,7 @@ fn snark_verify_gadget(c: &mut Criterion) {
             num_constraints,
             num_variables,
         },
+        &AtomicBool::new(false),
         rng,
     )
     .unwrap();

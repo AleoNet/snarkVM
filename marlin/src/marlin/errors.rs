@@ -31,6 +31,7 @@ pub enum MarlinError<E> {
     R1CSError(snarkvm_r1cs::SynthesisError),
     /// There was an error in the underlying polynomial commitment.
     PolynomialCommitmentError(E),
+    Terminated,
 }
 
 impl<E> From<crate::ahp::AHPError> for MarlinError<E> {
