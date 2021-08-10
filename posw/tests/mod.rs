@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::atomic::AtomicBool;
+
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_dpc::block::PedersenMerkleRootHash;
@@ -36,7 +38,13 @@ fn test_posw_load_and_mine() {
 
     // Generate the proof.
     let (nonce, proof) = posw
-        .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
+        .mine(
+            &subroots,
+            difficulty_target,
+            &AtomicBool::new(false),
+            &mut rand::thread_rng(),
+            std::u32::MAX,
+        )
         .unwrap();
 
     assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization

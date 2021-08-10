@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::atomic::AtomicBool;
+
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
@@ -45,11 +47,27 @@ fn gm17_posw(c: &mut Criterion) {
     // Proof Generation Bench
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+            let (_nonce, _proof) = posw
+                .mine(
+                    &subroots,
+                    difficulty_target,
+                    &AtomicBool::new(false),
+                    rng,
+                    std::u32::MAX,
+                )
+                .unwrap();
         });
     });
 
-    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+    let (nonce, proof) = posw
+        .mine(
+            &subroots,
+            difficulty_target,
+            &AtomicBool::new(false),
+            rng,
+            std::u32::MAX,
+        )
+        .unwrap();
     let proof = <GM17<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {
@@ -76,11 +94,27 @@ fn marlin_posw(c: &mut Criterion) {
     // Proof Generation Bench
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+            let (_nonce, _proof) = posw
+                .mine(
+                    &subroots,
+                    difficulty_target,
+                    &AtomicBool::new(false),
+                    rng,
+                    std::u32::MAX,
+                )
+                .unwrap();
         });
     });
 
-    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+    let (nonce, proof) = posw
+        .mine(
+            &subroots,
+            difficulty_target,
+            &AtomicBool::new(false),
+            rng,
+            std::u32::MAX,
+        )
+        .unwrap();
     let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {
