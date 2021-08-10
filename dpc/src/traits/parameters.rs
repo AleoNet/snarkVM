@@ -319,7 +319,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     fn program_circuit_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
     ) -> Result<Self::ProgramCircuitID> {
-        Ok(Self::program_circuit_id_crh().hash_bits(&verifying_key.to_minimal_bit_representation())?)
+        Ok(Self::program_circuit_id_crh().hash_bits(&verifying_key.to_minimal_bits())?)
     }
 
     /// Returns the program SRS for Aleo applications.

@@ -417,3 +417,54 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
         update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
     }
 }
+
+mod merkle_tree_poseidon {
+    use super::*;
+    use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
+    use snarkvm_algorithms::crypto_hash::PoseidonCryptoHash;
+
+    define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
+
+    type H = PoseidonCryptoHash<Fr, 4, false>;
+    type HG = PoseidonCryptoHashGadget<Fr, 4, false>;
+
+    #[test]
+    fn good_root_test() {
+        let mut rng = thread_rng();
+        let mut leaves = Vec::new();
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
+            leaves.push(input);
+        }
+        generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, false);
+    }
+
+    #[should_panic]
+    #[test]
+    fn bad_root_test() {
+        let mut rng = thread_rng();
+        let mut leaves = Vec::new();
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
+            leaves.push(input);
+        }
+        generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
+    }
+
+    #[test]
+    fn update_merkle_tree_test() {
+        let mut rng = thread_rng();
+        let mut leaves = Vec::new();
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
+            leaves.push(input);
+        }
+        update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
+    }
+}

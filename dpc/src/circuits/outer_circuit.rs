@@ -246,7 +246,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
             )?;
 
         let program_circuit_verifying_key_bits = program_circuit_verifying_key
-            .to_minimal_bit_representation(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
+            .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
         let claimed_circuit_id = program_circuit_id_crh
             .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute circuit ID"), program_circuit_verifying_key_bits)?;
@@ -327,8 +327,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_bits =
-        inner_snark_vk.to_minimal_bit_representation(&mut cs.ns(|| "Convert inner snark vk to bits"))?;
+    let inner_snark_vk_bits = inner_snark_vk.to_minimal_bits(&mut cs.ns(|| "Convert inner snark vk to bits"))?;
 
     let given_inner_circuit_id =
         <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(

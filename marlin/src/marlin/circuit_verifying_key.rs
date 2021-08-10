@@ -62,8 +62,22 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToMinimalBi
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
 
-        let domain_h_size_bits = CF::from(domain_h.size() as u128).to_bits_le();
-        let domain_k_size_bits = CF::from(domain_k.size() as u128).to_bits_le();
+        assert!(domain_h.size() < u64::MAX as usize);
+        assert!(domain_k.size() < u64::MAX as usize);
+
+        let domain_h_size = domain_h.size() as u64;
+        let domain_k_size = domain_k.size() as u64;
+
+        let domain_h_size_bits = domain_h_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        let domain_k_size_bits = domain_k_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
 
         let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 

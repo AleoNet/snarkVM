@@ -32,17 +32,10 @@ pub trait CRH: Clone + ToBytes + FromBytes + From<<Self as CRH>::Parameters> {
     fn setup(message: &str) -> Self;
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let mut bits = Vec::with_capacity(input.len() * 8);
-        for byte in input.iter() {
-            bits.push(byte & 1 != 0);
-            bits.push(byte & 2 != 0);
-            bits.push(byte & 4 != 0);
-            bits.push(byte & 8 != 0);
-            bits.push(byte & 16 != 0);
-            bits.push(byte & 32 != 0);
-            bits.push(byte & 64 != 0);
-            bits.push(byte & 128 != 0);
-        }
+        let bits = input
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
         self.hash_bits(&bits)
     }
 

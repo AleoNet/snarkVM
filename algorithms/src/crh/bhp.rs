@@ -28,7 +28,8 @@ use std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-// we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
+// The stack is currently allocated with the following size
+// because we cannot specify them using the trait consts.
 const MAX_WINDOW_SIZE: usize = 256;
 const MAX_NUM_WINDOWS: usize = 4096;
 
@@ -96,13 +97,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
-        let mut buf_slice = input.to_vec();
-        buf_slice.resize(WINDOW_SIZE * NUM_WINDOWS, false);
+        let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        buf_slice[..input.len()].copy_from_slice(input);
 
-        if buf_slice.len() % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
-            let current_length = buf_slice.len();
-            let target_length = current_length + BOWE_HOPWOOD_CHUNK_SIZE - current_length % BOWE_HOPWOOD_CHUNK_SIZE;
-            buf_slice.resize(target_length, false);
+        let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
+        if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
+            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len) % BOWE_HOPWOOD_CHUNK_SIZE;
         }
 
         assert_eq!(
@@ -129,7 +129,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol
         // specification.
-        let result = buf_slice
+        let result = buf_slice[..bit_len]
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
             .zip(base_lookup)
             .map(|(segment_bits, segment_generators)| {
