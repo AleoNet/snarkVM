@@ -19,11 +19,10 @@ extern crate criterion;
 
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_ledger::{ledger::*, prelude::*};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use criterion::Criterion;
 use rand::thread_rng;
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 fn coinbase_transaction<C: Parameters>(
     dpc: &DPC<C>,
@@ -37,7 +36,7 @@ fn coinbase_transaction<C: Parameters>(
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, noop, rng)?;
     let authorization = dpc.authorize(&vec![], &state, rng)?;
-    let transaction = dpc.execute(&vec![], authorization, state.executables(), &ledger, rng)?;
+    let transaction = dpc.execute(&vec![], authorization, state.executables(), ledger, rng)?;
 
     Ok(transaction)
 }
