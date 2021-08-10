@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
-use snarkvm_utilities::{to_bytes_le, variable_length_integer, FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -132,7 +132,6 @@ impl<C: Parameters> ToBytes for TransactionAuthorization<C> {
 
         // Serialize the noop compute keys with Option ordering in order to
         // dedup with user-specified compute keys during execution.
-        variable_length_integer(self.noop_compute_keys.len() as u64).write_le(&mut writer)?;
         for noop_compute_key in self.noop_compute_keys.iter().take(C::NUM_INPUT_RECORDS) {
             match noop_compute_key {
                 Some(noop_compute_key) => {
