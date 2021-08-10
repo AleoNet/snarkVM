@@ -41,32 +41,27 @@ type ProgramCommitmentRandomness<C> = <<C as Parameters>::ProgramCommitmentSchem
     Eq(bound = "C: Parameters")
 )]
 pub struct TransactionAuthorization<C: Parameters> {
-    pub compute_keys: Vec<ComputeKey<C>>,
     pub kernel: TransactionKernel<C>,
     pub input_records: Vec<Record<C>>,
     pub output_records: Vec<Record<C>>,
     pub signatures: Vec<C::AccountSignature>,
+    pub noop_compute_keys: Vec<Option<ComputeKey<C>>>,
 }
 
 impl<C: Parameters> TransactionAuthorization<C> {
     #[inline]
-    pub fn from(
-        compute_keys: Vec<ComputeKey<C>>,
-        state: &StateTransition<C>,
-        signatures: Vec<C::AccountSignature>,
-    ) -> Self {
-        debug_assert_eq!(C::NUM_INPUT_RECORDS, compute_keys.len());
+    pub fn from(state: &StateTransition<C>, signatures: Vec<C::AccountSignature>) -> Self {
         debug_assert!(state.kernel().is_valid());
         debug_assert_eq!(C::NUM_INPUT_RECORDS, state.input_records().len());
         debug_assert_eq!(C::NUM_OUTPUT_RECORDS, state.output_records().len());
         debug_assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
 
         Self {
-            compute_keys,
             kernel: state.kernel().clone(),
             input_records: state.input_records().clone(),
             output_records: state.output_records().clone(),
             signatures,
+            noop_compute_keys: state.to_noop_compute_keys().clone(),
         }
     }
 
@@ -157,9 +152,12 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
             signatures.push(FromBytes::read_le(&mut reader)?);
         }
 
+        // let mut noop_compute_keys = Vec::<Option<ComputeKey<C>>>::with_capacity(C::NUM_INPUT_RECORDS);
+        // for _ in 0..C::NUM_INPUT_RECORDS {
+        //     noop_compute_keys.push(FromBytes::read_le(&mut reader)?);
+        // }
+
         Ok(Self {
-            // TODO (howardwu): TEMPORARY - Fix me when a proper ProverKey struct is implemented.
-            compute_keys: vec![],
             kernel,
             input_records,
             output_records,

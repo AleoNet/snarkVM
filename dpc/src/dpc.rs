@@ -104,9 +104,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
-        let mut compute_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for (signature_randomizer, noop_private_key) in state.signature_randomizers().iter().take(C::NUM_INPUT_RECORDS)
+        for (signature_randomizer, noop_private_key) in state
+            .signature_randomizers()
+            .iter()
+            .zip(state.noop_private_keys().iter())
+            .take(C::NUM_INPUT_RECORDS)
         {
             // Fetch the correct private key.
             let private_key = match noop_private_key {
@@ -116,9 +119,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                     &private_keys[index]
                 }
             };
-
-            // Store the compute key.
-            compute_keys.push(private_key.compute_key().clone());
 
             // Randomize the private key.
             let randomized_private_key =
@@ -133,12 +133,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization::from(compute_keys, state, signatures))
+        Ok(TransactionAuthorization::from(state, signatures))
     }
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
+        compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
         executables: &Vec<Executable<C>>,
         ledger: &L,
@@ -165,20 +166,33 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             authorization.to_encrypted_records(rng)?;
 
         let TransactionAuthorization {
-            compute_keys,
             kernel,
             input_records,
             output_records,
             signatures,
+            noop_compute_keys,
         } = authorization;
+
+        // Dedup the compute keys.
+        let mut index = 0;
+        let mut full_compute_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for noop_compute_key in noop_compute_keys {
+            match noop_compute_key {
+                Some(compute_key) => full_compute_keys.push(compute_key),
+                None => {
+                    full_compute_keys.push(compute_keys[index].clone());
+                    index += 1;
+                }
+            }
+        }
 
         // Construct the ledger witnesses.
         let ledger_digest = ledger.latest_digest()?;
 
         // Compute the ledger membership witnesses.
-        let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut input_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
-            old_witnesses.push(match record.is_dummy() {
+            input_witnesses.push(match record.is_dummy() {
                 true => MerklePath::default(),
                 false => ledger.prove_cm(&record.commitment())?,
             });
@@ -194,8 +208,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         )?;
         let inner_private_variables = InnerPrivateVariables::new(
             input_records,
-            old_witnesses,
-            compute_keys,
+            input_witnesses,
+            full_compute_keys,
             output_records.clone(),
             encrypted_record_randomizers,
             program_randomness.clone(),

@@ -32,10 +32,8 @@ pub struct StateTransition<C: Parameters> {
     pub(super) kernel: TransactionKernel<C>,
     pub(super) input_records: Vec<Record<C>>,
     pub(super) output_records: Vec<Record<C>>,
-    pub(super) signature_randomizers: Vec<(
-        <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
-        Option<PrivateKey<C>>,
-    )>,
+    pub(super) signature_randomizers: Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer>,
+    pub(super) noop_private_keys: Vec<Option<PrivateKey<C>>>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub(super) executables: Vec<Executable<C>>,
 }
@@ -124,17 +122,28 @@ impl<C: Parameters> StateTransition<C> {
     }
 
     /// Returns a reference to the signature randomizers.
-    pub fn signature_randomizers(
-        &self,
-    ) -> &Vec<(
-        <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
-        Option<PrivateKey<C>>,
-    )> {
+    pub fn signature_randomizers(&self) -> &Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer> {
         &self.signature_randomizers
+    }
+
+    /// Returns a reference to the noop private keys.
+    pub fn noop_private_keys(&self) -> &Vec<Option<PrivateKey<C>>> {
+        &self.noop_private_keys
     }
 
     /// Returns a reference to the executables.
     pub fn executables(&self) -> &Vec<Executable<C>> {
         &self.executables
+    }
+
+    /// Returns a reference to the noop compute keys.
+    pub fn to_noop_compute_keys(&self) -> Vec<Option<ComputeKey<C>>> {
+        self.noop_private_keys
+            .into_iter()
+            .map(|key| match key {
+                Some(private_key) => Some(private_key.compute_key().clone()),
+                None => None,
+            })
+            .collect::<Vec<_>>()
     }
 }
