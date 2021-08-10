@@ -25,16 +25,13 @@ pub struct MarlinConstraintsError {
     pub error_msg: String,
 }
 
-impl<E> From<MarlinError<E>> for MarlinConstraintsError
-where
-    E: std::error::Error,
-{
-    fn from(e: MarlinError<E>) -> Self {
+impl From<MarlinError> for MarlinConstraintsError {
+    fn from(e: MarlinError) -> Self {
         match e {
-            MarlinError::<E>::IndexTooLarge(u, v) => Self {
+            MarlinError::IndexTooLarge(u, v) => Self {
                 error_msg: format!("index of {} is too large, maximum degree of {}", v, u),
             },
-            MarlinError::<E>::AHPError(err) => match err {
+            MarlinError::AHPError(err) => match err {
                 AHPError::ConstraintSystemError(error) => Self {
                     error_msg: error.to_string(),
                 },
@@ -54,13 +51,13 @@ where
                     error_msg: String::from("non-sqaure matrix"),
                 },
             },
-            MarlinError::<E>::R1CSError(err) => Self {
+            MarlinError::R1CSError(err) => Self {
                 error_msg: err.to_string(),
             },
-            MarlinError::<E>::FiatShamirError(err) => Self {
+            MarlinError::FiatShamirError(err) => Self {
                 error_msg: err.to_string(),
             },
-            MarlinError::<E>::PolynomialCommitmentError(err) => Self {
+            MarlinError::PolynomialCommitmentError(err) => Self {
                 error_msg: err.to_string(),
             },
             MarlinError::Terminated => Self {

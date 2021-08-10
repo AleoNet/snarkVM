@@ -78,7 +78,6 @@ mod marlin {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
-    use std::sync::atomic::AtomicBool;
 
     use blake2::Blake2s;
     use core::ops::MulAssign;
@@ -116,7 +115,7 @@ mod marlin {
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
 
-                        let proof = $marlin_inst::prove(&index_pk, &circ, &AtomicBool::new(false), rng).unwrap();
+                        let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
                         assert!($marlin_inst::verify(&index_vk, &[c, d], &proof).unwrap());
@@ -189,7 +188,6 @@ mod marlin_recursion {
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use core::ops::MulAssign;
-    use std::sync::atomic::AtomicBool;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
     type MarlinInst =
@@ -218,7 +216,7 @@ mod marlin_recursion {
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &circuit, &AtomicBool::new(false), rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &circuit, rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&index_vk, &[c, d], &proof).unwrap());

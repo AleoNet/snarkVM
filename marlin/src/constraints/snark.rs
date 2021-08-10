@@ -197,7 +197,12 @@ where
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove(&parameters, circuit, terminator, rng) {
+        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove_with_terminator(
+            &parameters,
+            circuit,
+            terminator,
+            rng,
+        ) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }

@@ -934,7 +934,6 @@ where
 #[cfg(test)]
 mod test {
     use core::ops::MulAssign;
-    use std::sync::atomic::AtomicBool;
 
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
@@ -1056,7 +1055,7 @@ mod test {
         let public_input = [c];
 
         // Construct a proof.
-        let proof = MarlinInst::prove(&circuit_pk, &circ, &AtomicBool::new(false), rng).unwrap();
+        let proof = MarlinInst::prove(&circuit_pk, &circ, rng).unwrap();
 
         let verification = MarlinInst::verify(&circuit_vk, &public_input, &proof).unwrap();
 

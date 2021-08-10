@@ -112,8 +112,9 @@ where
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
-        let proof = MarlinTestnet1::<E>::prove(&proving_key.proving_key, input_and_witness, terminator, rng)
-            .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
+        let proof =
+            MarlinTestnet1::<E>::prove_with_terminator(&proving_key.proving_key, input_and_witness, terminator, rng)
+                .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
     }
