@@ -165,7 +165,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             authorization.to_encrypted_records(rng)?;
 
         let TransactionAuthorization {
-            compute_keys: prover_keys,
+            compute_keys,
             kernel,
             input_records,
             output_records,
@@ -195,7 +195,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let inner_private_variables = InnerPrivateVariables::new(
             input_records,
             old_witnesses,
-            prover_keys,
+            compute_keys,
             output_records.clone(),
             encrypted_record_randomizers,
             program_randomness.clone(),

@@ -207,7 +207,7 @@ fn test_testnet2_dpc_execute_constraints() {
         authorization.to_encrypted_records(&mut rng).unwrap();
 
     let TransactionAuthorization {
-        compute_keys: prover_keys,
+        compute_keys,
         kernel,
         input_records: old_records,
         output_records: new_records,
@@ -246,7 +246,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_private_variables = InnerPrivateVariables::new(
         old_records.clone(),
         old_witnesses,
-        prover_keys,
+        compute_keys,
         new_records.clone(),
         encrypted_record_randomizers,
         program_randomness.clone(),
