@@ -70,7 +70,11 @@ fn dpc_testnet2_integration_test() {
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::new_coinbase(recipient.address, amount, noop, &mut rng).unwrap();
+    let state = StateTransition::builder()
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
+        .build(noop, &mut rng)
+        .unwrap();
     let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
 
     let new_records = authorization.output_records.clone();
