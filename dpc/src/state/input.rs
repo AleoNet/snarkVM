@@ -183,11 +183,14 @@ mod tests {
 
                 let account = Account::new(rng).unwrap();
                 let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
-                let (serial_number, signature_randomizer) = input_record
-                    .to_serial_number(&account.private_key.compute_key())
-                    .unwrap();
-
-                (input_record, serial_number, signature_randomizer, account.private_key)
+                let (serial_number, signature_randomizer) =
+                    input_record.to_serial_number(&account.compute_key()).unwrap();
+                (
+                    input_record,
+                    serial_number,
+                    signature_randomizer,
+                    account.private_key().clone(),
+                )
             };
 
             // Generate the candidate input state.

@@ -35,7 +35,7 @@ mod testnet1 {
 
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
         let account = Account::<Testnet1Parameters>::new(&mut rng).unwrap();
-        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
         assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
 
@@ -188,7 +188,7 @@ mod testnet2 {
 
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
         let account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
-        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
         assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
 

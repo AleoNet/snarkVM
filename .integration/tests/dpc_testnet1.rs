@@ -86,7 +86,7 @@ fn dpc_testnet1_integration_test() {
     // Check that new_records can be decrypted from the transaction.
     {
         let encrypted_records = transaction.encrypted_records();
-        let new_account_private_keys = vec![recipient.private_key; Testnet1Parameters::NUM_OUTPUT_RECORDS];
+        let new_account_private_keys = vec![recipient.private_key(); Testnet1Parameters::NUM_OUTPUT_RECORDS];
 
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
