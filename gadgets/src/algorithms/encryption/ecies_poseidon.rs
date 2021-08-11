@@ -14,7 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget}, AllocGadget, Boolean, ConditionalEqGadget, EncryptionGadget, EqGadget, FieldGadget, FpGadget, GroupGadget, Integer, ToBytesGadget, UInt8, ToBitsLEGadget};
+use crate::{
+    algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
+    AllocGadget,
+    Boolean,
+    ConditionalEqGadget,
+    EncryptionGadget,
+    EqGadget,
+    FieldGadget,
+    FpGadget,
+    GroupGadget,
+    Integer,
+    ToBitsLEGadget,
+    ToBytesGadget,
+    UInt8,
+};
 use itertools::Itertools;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
@@ -73,20 +87,19 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE:
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
 
-        let bytes = UInt8::alloc_vec(cs.ns(||"allocate the private key as bytes"), &private_key)?;
+        let bytes = UInt8::alloc_vec(cs.ns(|| "allocate the private key as bytes"), &private_key)?;
 
         // Enforce that the key is within the capacity limit.
         let bits = bytes.to_bits_le(cs.ns(|| "convert the private key to bits"))?;
         let capacity = <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize;
         for (i, bit) in bits.iter().skip(capacity).enumerate() {
-            bit.enforce_equal(cs.ns(|| format!("enforce the {}-th MSB to be false", i)), &Boolean::Constant(false))?;
+            bit.enforce_equal(
+                cs.ns(|| format!("enforce the {}-th MSB to be false", i)),
+                &Boolean::Constant(false),
+            )?;
         }
 
-        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(
-            bytes,
-            PhantomData,
-            PhantomData,
-        ))
+        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(bytes, PhantomData, PhantomData))
     }
 
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::ScalarField>, CS: ConstraintSystem<F>>(
@@ -95,20 +108,19 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE:
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
 
-        let bytes = UInt8::alloc_input_vec_le(cs.ns(||"allocate the private key as bytes"), &private_key)?;
+        let bytes = UInt8::alloc_input_vec_le(cs.ns(|| "allocate the private key as bytes"), &private_key)?;
 
         // Enforce that the key is within the capacity limit.
         let bits = bytes.to_bits_le(cs.ns(|| "convert the private key to bits"))?;
         let capacity = <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize;
         for (i, bit) in bits.iter().skip(capacity).enumerate() {
-            bit.enforce_equal(cs.ns(|| format!("enforce the {}-th MSB to be false", i)), &Boolean::Constant(false))?;
+            bit.enforce_equal(
+                cs.ns(|| format!("enforce the {}-th MSB to be false", i)),
+                &Boolean::Constant(false),
+            )?;
         }
 
-        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(
-            bytes,
-            PhantomData,
-            PhantomData,
-        ))
+        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(bytes, PhantomData, PhantomData))
     }
 }
 
