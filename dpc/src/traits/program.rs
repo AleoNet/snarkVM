@@ -25,7 +25,7 @@ pub trait ProgramScheme<C: Parameters>: Send + Sync {
     where
         Self: Sized;
 
-    /// Returns the program ID.
+    /// Returns a reference to the program ID.
     fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
 
     /// Returns `true` if the given circuit ID exists in the program.

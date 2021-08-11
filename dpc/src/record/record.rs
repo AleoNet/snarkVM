@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Parameters, Payload, PrivateKey, ProgramScheme, RecordError, RecordScheme};
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
-use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
+use crate::{Address, ComputeKey, Parameters, Payload, ProgramScheme, RecordError, RecordScheme};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, SignatureScheme, CRH, PRF},
+};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
 use std::{
@@ -24,10 +27,6 @@ use std::{
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
-
-fn default_program_id<C: CRH>() -> Vec<u8> {
-    C::Output::default().to_bytes_le().unwrap()
-}
 
 #[derive(Derivative)]
 #[derivative(
@@ -38,8 +37,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     Eq(bound = "C: Parameters")
 )]
 pub struct Record<C: Parameters> {
-    #[derivative(Default(value = "default_program_id::<C::ProgramCircuitIDCRH>()"))]
-    pub(crate) program_id: Vec<u8>,
+    pub(crate) program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -84,7 +82,7 @@ impl<C: Parameters> Record<C> {
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         Self::from(
-            &program.program_id().to_bytes_le()?,
+            program.program_id(),
             owner,
             is_dummy,
             value,
@@ -100,7 +98,7 @@ impl<C: Parameters> Record<C> {
         noop_program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         position: u8,
-        joint_serial_numbers: Vec<u8>,
+        joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
@@ -124,7 +122,7 @@ impl<C: Parameters> Record<C> {
         value: u64,
         payload: Payload,
         position: u8,
-        joint_serial_numbers: Vec<u8>,
+        joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         // Ensure the output record position is valid.
@@ -138,7 +136,7 @@ impl<C: Parameters> Record<C> {
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::from(
-            &program.program_id().to_bytes_le()?,
+            program.program_id(),
             owner,
             is_dummy,
             value,
@@ -150,7 +148,7 @@ impl<C: Parameters> Record<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn from(
-        program_id: &Vec<u8>,
+        program_id: &MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -183,10 +181,9 @@ impl<C: Parameters> Record<C> {
         })
     }
 
-    // TODO (howardwu) - Change the private_key input to a signature_public_key.
     pub fn to_serial_number(
         &self,
-        private_key: &PrivateKey<C>,
+        compute_key: &ComputeKey<C>,
     ) -> Result<
         (
             C::AccountSignaturePublicKey,
@@ -203,10 +200,10 @@ impl<C: Parameters> Record<C> {
         // }
 
         // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
+        let seed = FromBytes::read_le(to_bytes_le!(&compute_key.sk_prf())?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature_scheme().randomize_public_key(private_key.pk_sig(), &randomizer)?;
+        let serial_number = C::account_signature_scheme().randomize_public_key(compute_key.pk_sig(), &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))
@@ -218,15 +215,16 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
+    type ProgramID = MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
     type SerialNumber = C::AccountSignaturePublicKey;
     type SerialNumberNonce = C::SerialNumberNonce;
 
-    fn program_id(&self) -> &[u8] {
+    fn program_id(&self) -> &Self::ProgramID {
         &self.program_id
     }
 
-    fn owner(&self) -> &Self::Owner {
-        &self.owner
+    fn owner(&self) -> Self::Owner {
+        self.owner
     }
 
     fn is_dummy(&self) -> bool {
@@ -257,9 +255,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
 impl<C: Parameters> ToBytes for Record<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        variable_length_integer(self.program_id.len() as u64).write_le(&mut writer)?;
         self.program_id.write_le(&mut writer)?;
-
         self.owner.write_le(&mut writer)?;
         self.is_dummy.write_le(&mut writer)?;
         self.value.write_le(&mut writer)?;
@@ -273,13 +269,7 @@ impl<C: Parameters> ToBytes for Record<C> {
 impl<C: Parameters> FromBytes for Record<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let program_id_size: usize = read_variable_length_integer(&mut reader)?;
-        let mut program_id = Vec::with_capacity(program_id_size);
-        for _ in 0..program_id_size {
-            let byte: u8 = FromBytes::read_le(&mut reader)?;
-            program_id.push(byte);
-        }
-
+        let program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut reader)?;
         let owner: Address<C> = FromBytes::read_le(&mut reader)?;
         let is_dummy: bool = FromBytes::read_le(&mut reader)?;
         let value: u64 = FromBytes::read_le(&mut reader)?;

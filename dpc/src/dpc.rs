@@ -17,7 +17,7 @@
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, UniformRand};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -34,7 +34,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Authorization = TransactionAuthorization<C>;
     type Execution = Execution<C>;
-    type Record = Record<C>;
+    type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
@@ -88,106 +88,61 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         })
     }
 
+    /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        input_records: Vec<Self::Record>,
-        output_records: Vec<Self::Record>,
-        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
+        state: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
-        assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
-        assert_eq!(C::NUM_INPUT_RECORDS, input_records.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, output_records.len());
-
-        // Initialize the transaction kernel.
-        let mut kernel = TransactionKernel {
-            network_id: C::NETWORK_ID,
-            serial_numbers: Vec::with_capacity(C::NUM_INPUT_RECORDS),
-            commitments: Vec::with_capacity(C::NUM_OUTPUT_RECORDS),
-            value_balance: AleoAmount::ZERO,
-            memo: [0u8; 64],
-        };
-
-        // Initialize a vector for randomized private keys.
-        let mut randomized_private_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-
-        // Process the input records.
-        for (i, record) in input_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
-            // Compute the serial numbers.
-            let (serial_number, signature_randomizer) = record.to_serial_number(&private_keys[i])?;
-            kernel.serial_numbers.push(serial_number);
-
-            // Randomize the private key.
-            randomized_private_keys.push(
-                C::account_signature_scheme().randomize_private_key(&private_keys[i].sk_sig, &signature_randomizer)?,
-            );
-
-            if !record.is_dummy() {
-                kernel.value_balance = kernel.value_balance.add(AleoAmount::from_bytes(record.value() as i64));
-            }
-        }
-
-        // Process the output records.
-        for record in output_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            // Compute the commitments.
-            kernel.commitments.push(record.commitment());
-
-            if !record.is_dummy() {
-                kernel.value_balance = kernel.value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
-            }
-        }
-
-        // Process the memo.
-        match memo {
-            Some(memo) => memo.write_le(&mut kernel.memo[..])?,
-            None => (0..64)
-                .map(|_| u8::rand(rng))
-                .collect::<Vec<u8>>()
-                .write_le(&mut kernel.memo[..])?,
-        };
+        // Keep a cursor for the private keys.
+        let mut index = 0;
 
         // Construct the signature message.
-        let signature_message = match kernel.is_valid() {
-            true => kernel.to_signature_message()?,
-            false => {
-                return Err(DPCError::InvalidKernel(
-                    kernel.network_id,
-                    kernel.serial_numbers.len(),
-                    kernel.commitments.len(),
-                )
-                .into());
-            }
-        };
+        let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for i in 0..C::NUM_INPUT_RECORDS {
+        for (signature_randomizer, noop_private_key) in state
+            .signature_randomizers()
+            .iter()
+            .zip(state.noop_private_keys().iter())
+            .take(C::NUM_INPUT_RECORDS)
+        {
+            // Fetch the correct private key.
+            let private_key = match noop_private_key {
+                Some(noop_private_key) => noop_private_key,
+                None => {
+                    index += 1;
+                    &private_keys[index]
+                }
+            };
+
+            // Randomize the private key.
+            let randomized_private_key =
+                C::account_signature_scheme().randomize_private_key(private_key.sk_sig(), &signature_randomizer)?;
+
+            // Sign and randomize the signature.
             signatures.push(C::account_signature_scheme().sign_randomized(
-                &randomized_private_keys[i],
+                &randomized_private_key,
                 &signature_message,
                 rng,
             )?);
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization {
-            kernel,
-            input_records,
-            output_records,
-            signatures,
-        })
+        Ok(TransactionAuthorization::from(state, signatures))
     }
 
+    /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
-        executables: Vec<Executable<C>>,
+        executables: &Vec<Executable<C>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, executables.len());
 
         let execution_timer = start_timer!(|| "DPC::execute");
@@ -213,15 +168,29 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             input_records,
             output_records,
             signatures,
+            noop_compute_keys,
         } = authorization;
+
+        // Dedup the compute keys.
+        let mut index = 0;
+        let mut full_compute_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for noop_compute_key in noop_compute_keys {
+            match noop_compute_key {
+                Some(compute_key) => full_compute_keys.push(compute_key),
+                None => {
+                    full_compute_keys.push(compute_keys[index].clone());
+                    index += 1;
+                }
+            }
+        }
 
         // Construct the ledger witnesses.
         let ledger_digest = ledger.latest_digest()?;
 
         // Compute the ledger membership witnesses.
-        let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut input_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
-            old_witnesses.push(match record.is_dummy() {
+            input_witnesses.push(match record.is_dummy() {
                 true => MerklePath::default(),
                 false => ledger.prove_cm(&record.commitment())?,
             });
@@ -237,8 +206,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         )?;
         let inner_private_variables = InnerPrivateVariables::new(
             input_records,
-            old_witnesses,
-            private_keys.clone(),
+            input_witnesses,
+            full_compute_keys,
             output_records.clone(),
             encrypted_record_randomizers,
             program_randomness.clone(),

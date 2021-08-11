@@ -162,11 +162,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
     let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
 
-    for (i, (((record, witness), account_private_key), given_serial_number)) in private
+    for (i, (((record, witness), compute_key), given_serial_number)) in private
         .input_records
         .iter()
         .zip(&private.input_witnesses)
-        .zip(&private.private_keys)
+        .zip(&private.compute_keys)
         .zip(&public.kernel.serial_numbers)
         .enumerate()
     {
@@ -185,7 +185,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare input record");
 
-            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
+            let given_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_program_id"),
+                &record.program_id().to_bytes_le()?,
+            )?;
             old_program_ids_gadgets.push(given_program_id.clone());
 
             // No need to check that commitments, public keys and hashes are in
@@ -274,20 +277,19 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             // Allocate the account private key.
             let (pk_sig, sk_prf, r_pk) = {
-                let pk_sig_native = account_private_key.pk_sig();
+                let pk_sig_native = compute_key.pk_sig();
                 let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
                     C::AccountSignatureScheme,
                     C::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
-                let sk_prf =
-                    C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &account_private_key.sk_prf);
+                let sk_prf = C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
                 let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
                     C::AccountCommitmentScheme,
                     C::InnerScalarField,
                 >>::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
-                    Ok(&account_private_key.r_pk)
+                    Ok(compute_key.r_pk())
                 })?;
 
                 (pk_sig, sk_prf, r_pk)
@@ -323,9 +325,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                     >>::PrivateKeyGadget::alloc(
                         &mut account_cs.ns(|| "Allocate account view key"),
                         || {
-                            account_private_key
+                            Ok(compute_key
                                 .to_decryption_key()
-                                .map_err(|_| SynthesisError::AssignmentMissing)
+                                .map_err(|_| SynthesisError::AssignmentMissing)?)
                         },
                     )?;
 
@@ -473,7 +475,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare output record");
 
-            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
+            let given_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_program_id"),
+                &record.program_id().to_bytes_le()?,
+            )?;
             new_program_ids_gadgets.push(given_program_id.clone());
 
             let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<

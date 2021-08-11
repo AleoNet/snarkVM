@@ -20,13 +20,12 @@ use snarkvm_ledger::{
     posw::{txids_to_roots, PoswMarlin},
     prelude::*,
 };
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::{
     fs::File,
     io::{Result as IoResult, Write},
-    ops::Deref,
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -51,56 +50,15 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     .unwrap();
 
     let dpc = DPC::<C>::load(false)?;
+    let noop = Arc::new(dpc.noop_program.clone());
 
-    // Generate accounts.
-    let genesis_account = Account::new(rng)?;
-
-    // Generate input records having as address the genesis address.
-    let private_keys = vec![genesis_account.private_key.clone(); C::NUM_INPUT_RECORDS];
-
-    let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-    let mut input_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-    for i in 0..C::NUM_INPUT_RECORDS {
-        let input_record = Record::new_noop_input(dpc.noop_program.deref(), genesis_account.address, rng)?;
-
-        let (sn, _) = input_record.to_serial_number(&private_keys[i])?;
-        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
-
-        input_records.push(input_record);
-    }
-
-    // Construct the output records.
-    let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-    output_records.push(Record::new_output(
-        dpc.noop_program.deref(),
-        recipient,
-        false,
-        value,
-        Payload::default(),
-        C::NUM_INPUT_RECORDS as u8,
-        joint_serial_numbers.clone(),
-        rng,
-    )?);
-    output_records.push(Record::new_noop_output(
-        dpc.noop_program.deref(),
-        recipient,
-        (C::NUM_INPUT_RECORDS + 1) as u8,
-        joint_serial_numbers.clone(),
-        rng,
-    )?);
-
-    // Offline execution to generate a transaction authorization.
-    let authorization = dpc.authorize(&private_keys, input_records, output_records, None, rng)?;
-
-    // Construct the executable.
-    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()));
-    let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
-
-    let transaction = dpc.execute(&private_keys, authorization, executables, &temporary_ledger, rng)?;
+    let amount = AleoAmount::from_bytes(value as i64);
+    let state = StateTransition::new_coinbase(recipient, amount, noop, rng)?;
+    let authorization = dpc.authorize(&vec![], &state, rng)?;
+    let transaction = dpc.execute(&vec![], authorization, state.executables(), &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
-    let transaction_size = transaction_bytes.len();
-    println!("transaction size - {}\n", transaction_size);
+    println!("transaction size - {}\n", transaction_bytes.len());
 
     // Add genesis transaction to block.
     let mut transactions = Transactions::new();
@@ -136,7 +94,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
 
     println!(
         "block size - {}\n",
-        transaction_size + BlockHeader::size() + 1 /* variable_length_integer for number of transaction */
+        transaction_bytes.len() + BlockHeader::size() + 1 /* variable_length_integer for number of transaction */
     );
 
     Ok((genesis_header.serialize().to_vec(), transaction_bytes))

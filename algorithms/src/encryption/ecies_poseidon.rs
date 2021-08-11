@@ -278,7 +278,7 @@ where
 
         if bits.len() % 8 != 0 {
             return Err(EncryptionError::Message(
-                "The number of bits in the packed field elements is not a multiply of 8.".to_string(),
+                "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
             )
             .into());
         }

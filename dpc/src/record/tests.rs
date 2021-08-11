@@ -71,7 +71,7 @@ fn test_record_encryption() {
 
             // Encrypt the record
             let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
+            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
 
             // Decrypt the record
             let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
