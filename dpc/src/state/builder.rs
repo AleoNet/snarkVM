@@ -98,7 +98,7 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     pub fn append_memo(mut self, data: &Vec<u8>) -> Self {
         // TODO (howardwu): Change this to not be hardcoded to 64.
-        match self.memo.len() < 64 && (self.memo.len() + data.len()) < 64 {
+        match self.memo.len() < 64 && (self.memo.len() + data.len()) <= 64 {
             true => self.memo.extend_from_slice(data),
             false => self.errors.push("Builder exceeded maximum memo size".into()),
         };
