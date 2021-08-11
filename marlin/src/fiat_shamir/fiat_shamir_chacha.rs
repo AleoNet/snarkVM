@@ -27,6 +27,7 @@ use rand_core::{Error, RngCore, SeedableRng};
 /// the seed based on new messages in the proof transcript.
 /// Use a ChaCha stream cipher to generate the actual pseudorandom bits.
 /// Use a digest function to do absorbing.
+#[derive(Clone, Debug)]
 pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D: Digest> {
     /// The ChaCha RNG.
     r: Option<ChaChaRng>,
