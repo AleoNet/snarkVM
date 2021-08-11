@@ -25,8 +25,8 @@ pub enum EncryptionError {
     #[error("Invalid private key")]
     InvalidPrivateKey,
 
-    #[error("MAC value mismatches")]
-    MismatchedMAC,
+    #[error("The ciphertext does not seem to be encrypted under this key.")]
+    MismatchedPublicKey,
 
     #[error("Missing inverse for group element")]
     MissingInverse,

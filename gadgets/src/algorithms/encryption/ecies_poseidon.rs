@@ -386,7 +386,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     ) -> Result<Vec<UInt8>, SynthesisError> {
         let affine_zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
-        let field_zero = FpGadget::<TE::BaseField>::zero(cs.ns(|| "field zero"))?;
 
         // Compute the ECDH value.
         let randomness_bits = randomness.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
@@ -403,14 +402,23 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
 
-        // Squeeze two elements for the polynomial MAC.
-        let (polymac_y, polymac_z) = {
-            let polymac_elems = sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 2)?;
-            (polymac_elems[0].clone(), polymac_elems[1].clone())
+        // Squeeze one element for the commitment randomness.
+        let commitment_randomness =
+            sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 1)?[0].clone();
+
+        // Add a commitment to the public key.
+        let public_key_commitment = {
+            let mut sponge =
+                PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge for public key commitment"), &params);
+            sponge.absorb(
+                cs.ns(|| "absorb for public key commitment"),
+                [commitment_randomness, public_key.0.x.clone()].iter(),
+            )?;
+            sponge.squeeze_field_elements(cs.ns(|| "squeeze for public key commitment"), 1)?[0].clone()
         };
 
         // Convert the message into bits.
-        let mut bits = Vec::with_capacity(message.len() * 8 + 1);
+        let mut bits = Vec::with_capacity(message.len() * 8);
         for byte in message.iter() {
             bits.extend_from_slice(&byte.to_bits_le());
         }
@@ -427,33 +435,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
                 chunk,
             )?);
         }
-
-        // Compute the polynomial MAC and put it into the `res` array.
-        let polymac_val = {
-            let mut polymac_val = field_zero.clone();
-            let mut cur = polymac_y.clone();
-
-            for (i, elem) in res.iter().rev().enumerate() {
-                let elem_times_cur = elem.mul(cs.ns(|| format!("compute the inner product in polyMAC {}", i)), &cur)?;
-                polymac_val.add_in_place(
-                    cs.ns(|| format!("add the partial inner product {}", i)),
-                    &elem_times_cur,
-                )?;
-                cur.mul_in_place(cs.ns(|| format!("update the randomizer in polyMAC {}", i)), &polymac_y)?;
-            }
-
-            let len_times_cur = cur.mul_by_constant(
-                cs.ns(|| "compute the inner product about the length"),
-                &<TE::BaseField as From<u128>>::from(res.len() as u128),
-            )?;
-            polymac_val.add_in_place(
-                cs.ns(|| "add the partial inner product about the length"),
-                &len_times_cur,
-            )?;
-            polymac_val.add_in_place(cs.ns(|| "add the mask"), &polymac_z)?;
-            polymac_val
-        };
-        res.push(polymac_val);
 
         // Obtain random field elements from Poseidon.
         let sponge_field_elements =
@@ -483,7 +464,9 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let random_elem_bytes = randomness_elem
             .x
             .to_bytes(cs.ns(|| "convert the randomness element to bytes"))?;
+        let public_key_commitment_bytes =
+            public_key_commitment.to_bytes(cs.ns(|| "convert the public key commitment to bytes"))?;
 
-        Ok([random_elem_bytes, res_bytes].concat())
+        Ok([random_elem_bytes, public_key_commitment_bytes, res_bytes].concat())
     }
 }
