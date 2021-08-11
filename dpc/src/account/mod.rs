@@ -25,6 +25,9 @@ pub use account_format::*;
 pub mod address;
 pub use address::*;
 
+pub mod compute_key;
+pub use compute_key::*;
+
 pub mod private_key;
 pub use private_key::*;
 

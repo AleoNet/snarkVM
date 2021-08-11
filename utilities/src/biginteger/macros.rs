@@ -200,7 +200,7 @@ macro_rules! biginteger {
                 BitIteratorLE::new(self).collect::<Vec<_>>()
             }
 
-            /// Returns `self` as a boolean array in big-endian order, without leading zeros.
+            /// Returns `self` as a boolean array in big-endian order, with leading zeros.
             fn to_bits_be(&self) -> Vec<bool> {
                 BitIteratorBE::new(self).collect::<Vec<_>>()
             }

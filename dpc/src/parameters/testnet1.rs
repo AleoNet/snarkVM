@@ -16,9 +16,9 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
-    InnerCircuitVerifierInput,
+    InnerPublicVariables,
     Network,
-    OuterCircuitVerifierInput,
+    OuterPublicVariables,
     Parameters,
     PublicVariables,
     Transaction,
@@ -108,10 +108,10 @@ impl Parameters for Testnet1Parameters {
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1Parameters>>;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
@@ -126,6 +126,7 @@ impl Parameters for Testnet1Parameters {
     type AccountSignatureScheme = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
+    type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
     type EncryptedRecordCRH = PoseidonCryptoHash<Self::InnerScalarField, 4, false>;
     type EncryptedRecordCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
@@ -166,9 +167,10 @@ impl Parameters for Testnet1Parameters {
     type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
-    
+
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
+    type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
     
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
-use snarkvm_dpc::{DPCError, InnerCircuit, NoopProgram, OuterCircuit, Parameters, Program};
+use snarkvm_dpc::{DPCError, InnerCircuit, NoopProgram, OuterCircuit, Parameters};
 use snarkvm_parameters::{
     testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
     traits::Parameter,
@@ -40,17 +40,9 @@ pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_pk, &InnerCircuit::<C>::blank(), rng)?;
 
     let noop_program = NoopProgram::<C>::load()?;
-    let noop_circuit_id = noop_program
-        .find_circuit_by_index(0)
-        .ok_or(DPCError::MissingNoopCircuit)?
-        .circuit_id();
 
     let outer_snark_parameters = C::OuterSNARK::setup(
-        &OuterCircuit::<C>::blank(
-            inner_snark_vk,
-            inner_snark_proof,
-            noop_program.execute_blank(noop_circuit_id)?,
-        ),
+        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank_noop()?),
         &mut SRS::CircuitSpecific(rng),
     )?;
 

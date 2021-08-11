@@ -153,8 +153,8 @@ where
         for comm in self.circuit_commitments.iter() {
             res.append(&mut comm.to_field_elements()?);
         }
-        // TODO: this overhead can be cut.
-        res.append(&mut self.verifier_key.to_field_elements()?);
+
+        // Intentionally ignore the appending of the PC verifier key.
 
         Ok(res)
     }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::Parameters, AccountError, PrivateKey, ViewKey};
+use crate::{account_format, AccountError, ComputeKey, Parameters, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -42,7 +42,12 @@ pub struct Address<C: Parameters> {
 impl<C: Parameters> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
-        let decryption_key = private_key.to_decryption_key()?;
+        Self::from_compute_key(private_key.compute_key())
+    }
+
+    /// Derives the account address from an account compute key.
+    pub fn from_compute_key(compute_key: &ComputeKey<C>) -> Result<Self, AccountError> {
+        let decryption_key = compute_key.to_decryption_key()?;
         let encryption_key = C::account_encryption_scheme().generate_public_key(&decryption_key)?;
         Ok(Self { encryption_key })
     }
@@ -55,11 +60,7 @@ impl<C: Parameters> Address<C> {
 
     /// Verifies a signature on a message signed by the account view key.
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
-    pub fn verify_signature(
-        &self,
-        message: &[u8],
-        signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
-    ) -> Result<bool, AccountError> {
+    pub fn verify_signature(&self, message: &[u8], signature: &C::AccountSignature) -> Result<bool, AccountError> {
         let signature_public_key = self.to_signature_public_key()?;
         Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
@@ -86,8 +87,8 @@ impl<C: Parameters> Address<C> {
     }
 
     /// Returns the address as an encryption public key.
-    pub fn to_encryption_key(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
-        &self.encryption_key
+    pub fn to_encryption_key(&self) -> <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
+        self.encryption_key
     }
 }
 

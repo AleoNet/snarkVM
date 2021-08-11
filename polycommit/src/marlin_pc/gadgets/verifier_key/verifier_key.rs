@@ -69,10 +69,10 @@ where
         &self,
         mut cs: CS,
         bound: &FpGadget<<BaseCurve as PairingEngine>::Fr>,
-    ) -> Option<PG::G1Gadget> {
+    ) -> Result<PG::G1Gadget, SynthesisError> {
         // Search the bound using PIR
         if self.degree_bounds_and_shift_powers.is_none() {
-            None
+            return Err(SynthesisError::UnexpectedIdentity);
         } else {
             let degree_bounds_and_shift_powers = self.degree_bounds_and_shift_powers.clone().unwrap();
 
@@ -89,56 +89,53 @@ where
 
             let mut pir_vector_gadgets = Vec::new();
             for (i, bit) in pir_vector.iter().enumerate() {
-                pir_vector_gadgets.push(Boolean::alloc(cs.ns(|| format!("alloc_pir_{}", i)), || Ok(bit)).unwrap());
+                pir_vector_gadgets.push(Boolean::alloc(cs.ns(|| format!("alloc_pir_{}", i)), || Ok(bit))?);
             }
 
             // Sum of the PIR values are equal to one
-            let mut sum = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero(cs.ns(|| "zero")).unwrap();
-            let one = FpGadget::<<BaseCurve as PairingEngine>::Fr>::one(cs.ns(|| "one")).unwrap();
+            let mut sum = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero(cs.ns(|| "zero"))?;
+            let one = FpGadget::<<BaseCurve as PairingEngine>::Fr>::one(cs.ns(|| "one"))?;
             for (i, pir_gadget) in pir_vector_gadgets.iter().enumerate() {
                 let temp = FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
                     cs.ns(|| format!("from_boolean_{}", i)),
                     pir_gadget.clone(),
-                )
-                .unwrap();
+                )?;
 
-                sum = sum.add(cs.ns(|| format!("sum_add_pir{}", i)), &temp).unwrap();
+                sum = sum.add(cs.ns(|| format!("sum_add_pir{}", i)), &temp)?;
             }
-            sum.enforce_equal(cs.ns(|| "sum_enforce_equal"), &one).unwrap();
+            sum.enforce_equal(cs.ns(|| "sum_enforce_equal"), &one)?;
 
             // PIR the value
-            let mut found_bound =
-                FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero(cs.ns(|| "found_bound_zero")).unwrap();
+            let zero_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero(cs.ns(|| "zero_bound"))?;
+            let zero_shift_power = PG::G1Gadget::zero(cs.ns(|| "zero_shift_power"))?;
 
-            let mut found_shift_power = PG::G1Gadget::zero(cs.ns(|| "found_shift_power_zero")).unwrap();
+            let mut sum_bound = zero_bound.clone();
+            let mut found_shift_power = zero_shift_power.clone();
 
             for (i, (pir_gadget, (_, degree, shift_power))) in pir_vector_gadgets
                 .iter()
                 .zip(degree_bounds_and_shift_powers.iter())
                 .enumerate()
             {
-                found_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::conditionally_select(
+                let found_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::conditionally_select(
                     cs.ns(|| format!("found_bound_coond_select{}", i)),
                     pir_gadget,
                     degree,
-                    &found_bound,
-                )
-                .unwrap();
+                    &zero_bound,
+                )?;
+                sum_bound.add_in_place(cs.ns(|| format!("update sum_bound{}", i)), &found_bound)?;
 
                 found_shift_power = PG::G1Gadget::conditionally_select(
                     cs.ns(|| format!("found_shift_conditionally_select+{}", i)),
                     pir_gadget,
                     shift_power,
                     &found_shift_power,
-                )
-                .unwrap();
+                )?;
             }
 
-            found_bound
-                .enforce_equal(cs.ns(|| "found_bound_enforce_equal"), &bound)
-                .unwrap();
+            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), &bound)?;
 
-            Some(found_shift_power)
+            Ok(found_shift_power)
         }
     }
 }
@@ -394,7 +391,14 @@ where
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
             for (d, d_gadget, shift_power) in self.degree_bounds_and_shift_powers.as_ref().unwrap().iter() {
-                res.push((*d, (*d_gadget).clone(), vec![shift_power.clone()]));
+                let mut prepared_shift_power = Vec::<PG::G1Gadget>::new();
+                let mut shift_power: PG::G1Gadget = shift_power.clone();
+                for i in 0..supported_bits {
+                    prepared_shift_power.push(shift_power.clone());
+                    shift_power.double_in_place(cs.ns(|| format!("double_in_place_{}_{}", d, i)))?;
+                }
+
+                res.push((*d, (*d_gadget).clone(), prepared_shift_power));
             }
 
             Some(res)
@@ -407,8 +411,7 @@ where
             prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
-            prepared_degree_bounds_and_shift_powers,
-            constant_allocation: false,
+            degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
             origin_vk: Some(self.clone()),
         })
     }
@@ -472,7 +475,7 @@ mod tests {
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;
 
-    use crate::{marlin_pc::MarlinKZG10, PolynomialCommitment};
+    use crate::{marlin_pc::MarlinKZG10, PCUniversalParams, PolynomialCommitment};
 
     use super::*;
 
@@ -571,7 +574,8 @@ mod tests {
         let pp = PC::setup(MAX_DEGREE, rng).unwrap();
 
         // Establish the bound
-        let bound = rng.gen_range(1..=SUPPORTED_DEGREE);
+        let supported_degree_bounds = pp.supported_degree_bounds();
+        let bound = supported_degree_bounds[rng.gen_range(0..supported_degree_bounds.len())];
 
         let bound_field = <BaseCurve as PairingEngine>::Fr::from_repr(
             <<BaseCurve as PairingEngine>::Fr as PrimeField>::BigInteger::from(bound as u64),

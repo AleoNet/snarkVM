@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_ledger::posw::{txids_to_roots, Marlin, Posw, PoswMarlin};
+use snarkvm_ledger::posw::{txids_to_roots, Marlin, PoswMarlin};
 use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -29,7 +29,7 @@ fn marlin_posw(c: &mut Criterion) {
     let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-    let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
+    let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
     let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
 
@@ -41,11 +41,11 @@ fn marlin_posw(c: &mut Criterion) {
     // Proof Generation Bench
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, u32::MAX).unwrap();
         });
     });
 
-    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, u32::MAX).unwrap();
     let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {

@@ -15,17 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, DPCError, Parameters, Payload, Record, RecordScheme, ViewKey};
-use rand::{thread_rng, CryptoRng, Rng};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, CRH},
+};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
-    to_bytes_le,
     FromBytes,
     Read,
     ToBytes,
     Write,
 };
+
+use rand::{thread_rng, CryptoRng, Rng};
 
 #[derive(Derivative)]
 #[derivative(
@@ -88,11 +91,11 @@ impl<C: Parameters> EncryptedRecord<C> {
             "The DPC assumes that the record is less than 65535 bytes."
         );
 
-        // Encrypt the record plaintext
-        let record_public_key = record.owner().to_encryption_key();
-        let encryption_randomness = C::account_encryption_scheme().generate_randomness(record_public_key, rng)?;
+        // Encrypt the record plaintext.
+        let encryption_key = record.owner().to_encryption_key();
+        let encryption_randomness = C::account_encryption_scheme().generate_randomness(&encryption_key, rng)?;
         let encrypted_record =
-            C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &bytes)?;
+            C::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &bytes)?;
         let encrypted_record = Self::new(encrypted_record);
 
         Ok((encrypted_record, encryption_randomness))
@@ -106,12 +109,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let mut cursor = Cursor::new(plaintext);
 
         // Program ID
-        let program_id_length = to_bytes_le!(C::ProgramCircuitID::default())?.len();
-        let program_id = {
-            let mut program_id = vec![0u8; program_id_length];
-            cursor.read_exact(&mut program_id)?;
-            program_id
-        };
+        let program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
 
         // Value
         let value = u64::read_le(&mut cursor)?;
@@ -120,7 +118,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let payload = Payload::read_le(&mut cursor)?;
 
         // Serial number nonce
-        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&mut cursor)?;
+        let serial_number_nonce = C::SerialNumberNonce::read_le(&mut cursor)?;
 
         // Commitment randomness
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;

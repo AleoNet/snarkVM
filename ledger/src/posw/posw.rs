@@ -40,7 +40,6 @@ use snarkvm_gadgets::{
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
-use snarkvm_marlin::snark::MarlinSRS;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
@@ -50,7 +49,11 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{CryptoRng, Rng};
+use snarkvm_marlin::constraints::UniversalSRS;
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use std::marker::PhantomData;
+
+pub(crate) type MarlinSRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, SonicKZG10<E>>;
 
 /// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
 /// Commits to the nonce and pedersen merkle root.

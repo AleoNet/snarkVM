@@ -34,6 +34,9 @@ pub type PolynomialLabel = String;
 pub trait PCUniversalParams: CanonicalSerialize + CanonicalDeserialize + Clone + Debug + ToBytes + FromBytes {
     /// Outputs the maximum degree supported by the committer key.
     fn max_degree(&self) -> usize;
+
+    /// Supported degree bounds
+    fn supported_degree_bounds(&self) -> &[usize];
 }
 
 /// Defines the minimal interface of committer keys for any polynomial
@@ -49,7 +52,7 @@ pub trait PCCommitterKey: CanonicalSerialize + CanonicalDeserialize + Clone + De
 
 /// Defines the minimal interface of verifier keys for any polynomial
 /// commitment scheme.
-pub trait PCVerifierKey: CanonicalSerialize + CanonicalDeserialize + Clone + Debug {
+pub trait PCVerifierKey: CanonicalSerialize + CanonicalDeserialize + Clone + Debug + ToBytes + FromBytes {
     /// Outputs the maximum degree supported by the universal parameters
     /// `Self` was derived from.
     fn max_degree(&self) -> usize;

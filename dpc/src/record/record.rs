@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, NoopProgram, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
-use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
+use crate::{Address, ComputeKey, Parameters, Payload, ProgramScheme, RecordError, RecordScheme};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, SignatureScheme, CRH, PRF},
+};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
 use std::{
@@ -24,10 +27,6 @@ use std::{
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
-
-fn default_program_id<C: CRH>() -> Vec<u8> {
-    C::Output::default().to_bytes_le().unwrap()
-}
 
 #[derive(Derivative)]
 #[derivative(
@@ -38,14 +37,13 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     Eq(bound = "C: Parameters")
 )]
 pub struct Record<C: Parameters> {
-    #[derivative(Default(value = "default_program_id::<C::ProgramCircuitIDCRH>()"))]
-    pub(crate) program_id: Vec<u8>,
+    pub(crate) program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
     pub(crate) value: u64,
     pub(crate) payload: Payload,
-    pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+    pub(crate) serial_number_nonce: C::SerialNumberNonce,
     pub(crate) commitment: C::RecordCommitment,
     pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 }
@@ -53,10 +51,14 @@ pub struct Record<C: Parameters> {
 impl<C: Parameters> Record<C> {
     /// Returns a new noop input record.
     pub fn new_noop_input<R: Rng + CryptoRng>(
-        noop_program: &NoopProgram<C>,
+        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
+        noop_program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
+        // Sample a new record commitment randomness.
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+
         Self::new_input(
             noop_program,
             owner,
@@ -64,16 +66,39 @@ impl<C: Parameters> Record<C> {
             0,
             Payload::default(),
             C::serial_number_nonce_crh().hash(&rng.gen::<[u8; 32]>())?,
-            rng,
+            commitment_randomness,
+        )
+    }
+
+    /// Returns a new input record.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_input(
+        program: &dyn ProgramScheme<C>,
+        owner: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        serial_number_nonce: C::SerialNumberNonce,
+        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+    ) -> Result<Self, RecordError> {
+        Self::from(
+            program.program_id(),
+            owner,
+            is_dummy,
+            value,
+            payload,
+            serial_number_nonce,
+            commitment_randomness,
         )
     }
 
     /// Returns a new noop output record.
     pub fn new_noop_output<R: Rng + CryptoRng>(
-        noop_program: &NoopProgram<C>,
+        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
+        noop_program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         position: u8,
-        joint_serial_numbers: Vec<u8>,
+        joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
@@ -88,41 +113,16 @@ impl<C: Parameters> Record<C> {
         )
     }
 
-    /// Returns a new input record.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_input<R: Rng + CryptoRng>(
-        program: &dyn Program<C>,
-        owner: Address<C>,
-        is_dummy: bool,
-        value: u64,
-        payload: Payload,
-        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-        rng: &mut R,
-    ) -> Result<Self, RecordError> {
-        // Sample a new record commitment randomness.
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-
-        Self::from(
-            &program.program_id().to_bytes_le()?,
-            owner,
-            is_dummy,
-            value,
-            payload,
-            serial_number_nonce,
-            commitment_randomness,
-        )
-    }
-
     /// Returns a new output record.
     #[allow(clippy::too_many_arguments)]
     pub fn new_output<R: Rng + CryptoRng>(
-        program: &dyn Program<C>,
+        program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
         payload: Payload,
         position: u8,
-        joint_serial_numbers: Vec<u8>,
+        joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         // Ensure the output record position is valid.
@@ -136,7 +136,7 @@ impl<C: Parameters> Record<C> {
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::from(
-            &program.program_id().to_bytes_le()?,
+            program.program_id(),
             owner,
             is_dummy,
             value,
@@ -148,12 +148,12 @@ impl<C: Parameters> Record<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn from(
-        program_id: &Vec<u8>,
+        program_id: &MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        serial_number_nonce: C::SerialNumberNonce,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
@@ -181,13 +181,12 @@ impl<C: Parameters> Record<C> {
         })
     }
 
-    // TODO (howardwu) - Change the private_key input to a signature_public_key.
     pub fn to_serial_number(
         &self,
-        private_key: &PrivateKey<C>,
+        compute_key: &ComputeKey<C>,
     ) -> Result<
         (
-            <C::AccountSignatureScheme as SignatureScheme>::PublicKey,
+            C::AccountSignaturePublicKey,
             <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
         ),
         RecordError,
@@ -201,10 +200,10 @@ impl<C: Parameters> Record<C> {
         // }
 
         // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
+        let seed = FromBytes::read_le(to_bytes_le!(&compute_key.sk_prf())?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature_scheme().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
+        let serial_number = C::account_signature_scheme().randomize_public_key(compute_key.pk_sig(), &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))
@@ -216,15 +215,16 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
-    type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
-    type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
+    type ProgramID = MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
+    type SerialNumber = C::AccountSignaturePublicKey;
+    type SerialNumberNonce = C::SerialNumberNonce;
 
-    fn program_id(&self) -> &[u8] {
+    fn program_id(&self) -> &Self::ProgramID {
         &self.program_id
     }
 
-    fn owner(&self) -> &Self::Owner {
-        &self.owner
+    fn owner(&self) -> Self::Owner {
+        self.owner
     }
 
     fn is_dummy(&self) -> bool {
@@ -255,9 +255,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
 impl<C: Parameters> ToBytes for Record<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        variable_length_integer(self.program_id.len() as u64).write_le(&mut writer)?;
         self.program_id.write_le(&mut writer)?;
-
         self.owner.write_le(&mut writer)?;
         self.is_dummy.write_le(&mut writer)?;
         self.value.write_le(&mut writer)?;
@@ -271,18 +269,12 @@ impl<C: Parameters> ToBytes for Record<C> {
 impl<C: Parameters> FromBytes for Record<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let program_id_size: usize = read_variable_length_integer(&mut reader)?;
-        let mut program_id = Vec::with_capacity(program_id_size);
-        for _ in 0..program_id_size {
-            let byte: u8 = FromBytes::read_le(&mut reader)?;
-            program_id.push(byte);
-        }
-
+        let program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut reader)?;
         let owner: Address<C> = FromBytes::read_le(&mut reader)?;
         let is_dummy: bool = FromBytes::read_le(&mut reader)?;
         let value: u64 = FromBytes::read_le(&mut reader)?;
         let payload: Payload = FromBytes::read_le(&mut reader)?;
-        let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+        let serial_number_nonce: C::SerialNumberNonce = FromBytes::read_le(&mut reader)?;
         let commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
         let commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;

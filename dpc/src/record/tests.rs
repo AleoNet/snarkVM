@@ -22,14 +22,16 @@ use crate::{
     NoopProgram,
     Parameters,
     Payload,
-    Program,
     Record,
     ViewKey,
     PAYLOAD_SIZE,
 };
+use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
+use snarkvm_utilities::{FromBytes, UniformRand};
+
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use snarkvm_algorithms::traits::CRH;
+use std::ops::Deref;
 
 pub(crate) const ITERATIONS: usize = 5;
 
@@ -48,22 +50,28 @@ fn test_record_encryption() {
             let mut payload = [0u8; PAYLOAD_SIZE];
             rng.fill(&mut payload);
 
+            // Sample a new record commitment randomness.
+            let commitment_randomness =
+                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(
+                    &mut rng,
+                );
+
             let given_record = Record::new_input(
-                &noop_program,
+                noop_program.deref(),
                 dummy_account.address,
                 false,
                 value,
-                Payload::from_bytes(&payload),
+                Payload::from_bytes_le(&payload).unwrap(),
                 <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
-                &mut rng,
+                commitment_randomness,
             )
             .unwrap();
 
             // Encrypt the record
             let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
+            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
 
             // Decrypt the record
             let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();

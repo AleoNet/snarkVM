@@ -80,8 +80,8 @@ pub enum DPCError {
     #[error("{}", _0)]
     Message(String),
 
-    #[error("missing inner snark proving parameters")]
-    MissingInnerSnarkProvingParameters,
+    #[error("missing inner circuit proving key")]
+    MissingInnerProvingKey,
 
     #[error("Missing circuit - {}", _0)]
     MissingCircuit(&'static str),
@@ -89,8 +89,8 @@ pub enum DPCError {
     #[error("missing noop circuit")]
     MissingNoopCircuit,
 
-    #[error("missing outer snark proving parameters")]
-    MissingOuterSnarkProvingParameters,
+    #[error("missing outer circuit proving key")]
+    MissingOuterProvingKey,
 
     #[error("{}", _0)]
     ParameterError(#[from] ParameterError),

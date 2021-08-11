@@ -26,6 +26,9 @@ pub use noop_circuit::*;
 pub mod noop_program;
 pub use noop_program::*;
 
+pub mod program;
+pub use program::*;
+
 pub mod program_circuit_tree;
 pub use program_circuit_tree::*;
 

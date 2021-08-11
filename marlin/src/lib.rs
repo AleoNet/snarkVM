@@ -56,6 +56,7 @@ use std::{
     string::{String, ToString},
     vec::Vec,
 };
+use snarkvm_polycommit::PolynomialCommitment;
 
 #[cfg(not(feature = "std"))]
 macro_rules! eprintln {
@@ -72,14 +73,6 @@ pub mod constraints;
 
 /// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;
-
-/// The Marlin public parameters for a given circuit.
-pub mod parameters;
-pub use parameters::*;
-
-/// Implements the snarkVM-compatible Marlin SNARK interface.
-pub mod snark;
-pub use snark::*;
 
 /// RNGs for the Marlin SNARK.
 pub mod fiat_shamir;

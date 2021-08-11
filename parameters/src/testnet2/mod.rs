@@ -24,9 +24,9 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "posw_snark_pk",
-    162891216
+    68815608
 );
-impl_params_local!(PoswSNARKVKParameters, posw_snark_vk_test, "./", "posw_snark_vk", 40807);
+impl_params_local!(PoswSNARKVKParameters, posw_snark_vk_test, "./", "posw_snark_vk", 380285);
 
 // Program SNARK
 impl_params_local!(
@@ -34,14 +34,14 @@ impl_params_local!(
     noop_program_snark_pk_test,
     "./",
     "noop_program_snark_pk",
-    1320733
+    904998
 );
 impl_params_local!(
     NoopProgramSNARKVKParameters,
     noop_program_snark_vk_test,
     "./",
     "noop_program_snark_vk",
-    40849
+    340395
 );
 
 // Inner SNARK
@@ -51,7 +51,7 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "inner_snark_pk",
-    190484441
+    190452497
 );
 impl_params_local!(
     InnerSNARKVKParameters,
@@ -68,7 +68,7 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "outer_snark_pk",
-    977393133
+    923600173
 );
 impl_params_local!(
     OuterSNARKVKParameters,
@@ -84,5 +84,5 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "universal_srs",
-    5151842
+    5154378
 );

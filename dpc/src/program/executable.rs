@@ -14,16 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    Execution,
-    LocalData,
-    NoopPrivateVariables,
-    NoopProgram,
-    Parameters,
-    PrivateVariables,
-    Program,
-    PublicVariables,
-};
+use crate::{Execution, LocalData, NoopProgram, Parameters, PrivateVariables, ProgramScheme, PublicVariables};
+use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 
 use anyhow::Result;
 use std::{ops::Deref, sync::Arc};
@@ -31,23 +23,50 @@ use std::{ops::Deref, sync::Arc};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub enum Executable<C: Parameters> {
-    Noop(Arc<NoopProgram<C>>, C::ProgramCircuitID),
-    Circuit(Arc<dyn Program<C>>, C::ProgramCircuitID, Arc<dyn PrivateVariables<C>>),
+    /// TODO (howardwu): TEMPORARY - `Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
+    Noop(Arc<NoopProgram<C>>),
+    Circuit(
+        Arc<dyn ProgramScheme<C>>,
+        C::ProgramCircuitID,
+        Arc<dyn PrivateVariables<C>>,
+    ),
 }
 
 impl<C: Parameters> Executable<C> {
+    /// Returns `true` if the executable is a noop.
+    pub fn is_noop(&self) -> bool {
+        match self {
+            Self::Noop(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns a reference to the program ID of the executable.
+    pub fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+        match self {
+            Self::Noop(program) => program.program_id(),
+            Self::Circuit(program, _, _) => program.program_id(),
+        }
+    }
+
     /// Returns the execution of the executable given the public variables.
     pub fn execute(&self, record_position: u8, local_data: &LocalData<C>) -> Result<Execution<C>> {
         // Construct the public variables.
         let public_variables = PublicVariables::new(record_position, local_data.root());
-        // Execute the program circuit with the declared private variables.
+        // Execute the program circuit with the declared variables.
         match self {
-            Self::Noop(program, circuit_id) => {
-                Ok(program.execute(circuit_id, &public_variables, &NoopPrivateVariables::new())?)
-            }
+            Self::Noop(program) => Ok(program.execute_noop(&public_variables)?),
             Self::Circuit(program, circuit_id, private_variables) => {
                 Ok(program.execute(circuit_id, &public_variables, private_variables.deref())?)
             }
+        }
+    }
+
+    /// Returns a reference to the executable program.
+    pub fn program(&self) -> &dyn ProgramScheme<C> {
+        match self {
+            Self::Noop(program) => program.deref().deref(),
+            Self::Circuit(program, _, _) => program.deref(),
         }
     }
 }

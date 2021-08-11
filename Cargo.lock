@@ -1694,6 +1694,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
+ "snarkvm-ledger",
  "snarkvm-marlin",
  "snarkvm-parameters",
  "snarkvm-polycommit",
@@ -1870,6 +1871,7 @@ dependencies = [
 name = "snarkvm-r1cs"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "cfg-if 1.0.0",
  "fxhash",
  "indexmap",

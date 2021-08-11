@@ -42,11 +42,17 @@ pub enum AccountError {
     #[error("invalid character length: {}", _0)]
     InvalidCharacterLength(usize),
 
+    #[error("invalid account compute key")]
+    InvalidComputeKey,
+
     #[error("invalid prefix: {:?}", _0)]
     InvalidPrefix(String),
 
     #[error("invalid prefix bytes: {:?}", _0)]
     InvalidPrefixBytes(Vec<u8>),
+
+    #[error("invalid account private key")]
+    InvalidPrivateKey,
 
     #[error("invalid account private key seed")]
     InvalidPrivateKeySeed,
@@ -76,5 +82,11 @@ impl From<bech32::Error> for AccountError {
 impl From<std::io::Error> for AccountError {
     fn from(error: std::io::Error) -> Self {
         AccountError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+impl From<AccountError> for std::io::Error {
+    fn from(error: AccountError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

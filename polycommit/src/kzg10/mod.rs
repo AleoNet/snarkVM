@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     msm::{FixedBaseMSM, VariableBaseMSM},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::{marker::PhantomData, ops::Mul};
@@ -38,6 +38,45 @@ use rayon::prelude::*;
 
 mod data_structures;
 pub use data_structures::*;
+
+#[derive(Debug, PartialEq, Eq)]
+#[allow(deprecated)]
+pub enum KZG10DegreeBoundsConfig {
+    #[deprecated]
+    ALL,
+    MARLIN,
+    LIST(Vec<usize>),
+    NONE,
+}
+
+#[allow(deprecated)]
+impl KZG10DegreeBoundsConfig {
+    pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
+        match self {
+            KZG10DegreeBoundsConfig::ALL => (0..max_degree).collect(),
+            KZG10DegreeBoundsConfig::MARLIN => {
+                // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
+                // Consider that we are using radix-2 FFT,
+                // there are only a few possible domain sizes and therefore degree bounds.
+                //
+                // We do not consider mixed-radix FFT for simplicity, as the curves that we
+                // are using have very high two-arity.
+
+                let mut radix_2_possible_domain_sizes = vec![];
+
+                let mut cur = 2usize;
+                while cur - 2 <= max_degree {
+                    radix_2_possible_domain_sizes.push(cur - 2);
+                    cur *= 2;
+                }
+
+                radix_2_possible_domain_sizes
+            }
+            KZG10DegreeBoundsConfig::LIST(v) => v.clone(),
+            KZG10DegreeBoundsConfig::NONE => vec![],
+        }
+    }
+}
 
 /// `KZG10` is an implementation of the polynomial commitment scheme of
 /// [Kate, Zaverucha and Goldbgerg][kzg10]
@@ -51,6 +90,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// for the polynomial commitment scheme.
     pub fn setup<R: RngCore>(
         max_degree: usize,
+        supported_degree_bounds_config: &KZG10DegreeBoundsConfig,
         produce_g2_powers: bool,
         rng: &mut R,
     ) -> Result<UniversalParams<E>, Error> {
@@ -58,27 +98,32 @@ impl<E: PairingEngine> KZG10<E> {
             return Err(Error::DegreeIsZero);
         }
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
+        let scalar_bits = E::Fr::size_in_bits();
+
+        // Compute the `toxic waste`.
         let beta = E::Fr::rand(rng);
         let g = E::G1Projective::rand(rng);
         let gamma_g = E::G1Projective::rand(rng);
         let h = E::G2Projective::rand(rng);
 
-        let mut powers_of_beta = vec![E::Fr::one()];
-
-        let mut cur = beta;
-        for _ in 0..max_degree {
-            powers_of_beta.push(cur);
-            cur *= &beta;
-        }
-
+        // Compute `beta^i G`.
+        let powers_of_beta = {
+            let mut powers_of_beta = vec![E::Fr::one()];
+            let mut cur = beta;
+            for _ in 0..max_degree {
+                powers_of_beta.push(cur);
+                cur *= &beta;
+            }
+            powers_of_beta
+        };
         let window_size = FixedBaseMSM::get_mul_window_size(max_degree + 1);
-
-        let scalar_bits = E::Fr::size_in_bits();
         let g_time = start_timer!(|| "Generating powers of G");
         let g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, g);
         let powers_of_g =
             FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
+
+        // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
         let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
         let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
@@ -92,44 +137,65 @@ impl<E: PairingEngine> KZG10<E> {
         powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
         end_timer!(gamma_g_time);
 
+        // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
         let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
         let powers_of_gamma_g = E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g)
             .into_iter()
             .enumerate()
             .collect();
 
-        let prepared_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let prepared_neg_powers_of_h = if produce_g2_powers {
-            let mut neg_powers_of_beta = vec![E::Fr::one()];
-            let mut cur = E::Fr::one() / &beta;
-            for _ in 0..max_degree {
-                neg_powers_of_beta.push(cur);
-                cur /= &beta;
+        // Compute `inverse_powers_of_g`.
+        //
+        // This part is used to derive the universal verification parameters.
+        let list = supported_degree_bounds_config.get_list::<E::Fr>(max_degree);
+
+        let supported_degree_bounds = if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
+            list.clone()
+        } else {
+            vec![]
+        };
+
+        let inverse_powers_of_g = if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
+            let mut map = BTreeMap::<usize, E::G1Affine>::new();
+            for i in list.iter() {
+                map.insert(*i, powers_of_g[max_degree - i]);
             }
-
-            let neg_h_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, h);
-            let neg_powers_of_h = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(
-                scalar_bits,
-                window_size,
-                &neg_h_table,
-                &neg_powers_of_beta,
-            );
-
-            let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
-            let mut affines_map = BTreeMap::new();
-            affines
-                .into_iter()
-                .enumerate()
-                .map(|(i, a)| (i, a.prepare()))
-                .for_each(|(i, a)| {
-                    affines_map.insert(i, a);
-                });
-            affines_map
+            map
         } else {
             BTreeMap::new()
         };
 
-        end_timer!(prepared_neg_powers_of_h_time);
+        // Compute `neg_powers_of_h`.
+        let inverse_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
+        let inverse_neg_powers_of_h =
+            if produce_g2_powers && *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
+                let mut map = BTreeMap::<usize, E::G2Affine>::new();
+
+                let mut neg_powers_of_beta = vec![];
+                for i in list.iter() {
+                    neg_powers_of_beta.push(beta.pow(&[(max_degree - *i) as u64]).inverse().unwrap());
+                }
+
+                let window_size = FixedBaseMSM::get_mul_window_size(neg_powers_of_beta.len());
+                let neg_h_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, h);
+                let neg_powers_of_h = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(
+                    scalar_bits,
+                    window_size,
+                    &neg_h_table,
+                    &neg_powers_of_beta,
+                );
+
+                let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
+
+                for (i, affine) in list.iter().zip(affines.iter()) {
+                    map.insert(*i, affine.clone());
+                }
+
+                map
+            } else {
+                BTreeMap::new()
+            };
+        end_timer!(inverse_neg_powers_of_h_time);
 
         let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
@@ -141,7 +207,9 @@ impl<E: PairingEngine> KZG10<E> {
             powers_of_gamma_g,
             h,
             beta_h,
-            prepared_neg_powers_of_h,
+            supported_degree_bounds,
+            inverse_powers_of_g,
+            inverse_neg_powers_of_h,
             prepared_h,
             prepared_beta_h,
         };
@@ -485,7 +553,7 @@ mod tests {
         f_p += (f, &p);
 
         let degree = 4;
-        let pp = KZG_Bls12_377::setup(degree, false, rng).unwrap();
+        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
         let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
 
         let hiding_bound = None;
@@ -504,7 +572,7 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::setup(degree, false, rng)?;
+            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, degree);
             let p = Polynomial::rand(degree, rng);
             let hiding_bound = Some(1);
@@ -527,7 +595,7 @@ mod tests {
         let rng = &mut test_rng();
         for _ in 0..100 {
             let degree = 50;
-            let pp = KZG10::<E>::setup(degree, false, rng)?;
+            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, 2);
             let p = Polynomial::rand(1, rng);
             let hiding_bound = Some(1);
@@ -553,7 +621,7 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::setup(degree, false, rng)?;
+            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, degree);
 
             let mut comms = Vec::new();
@@ -600,7 +668,7 @@ mod tests {
         let rng = &mut test_rng();
 
         let max_degree = 123;
-        let pp = KZG_Bls12_377::setup(max_degree, false, rng).unwrap();
+        let pp = KZG_Bls12_377::setup(max_degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
         let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree);
 
         let p = Polynomial::<Fr>::rand(max_degree + 1, rng);

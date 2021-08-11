@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::Parameters, AccountError, PrivateKey};
+use crate::{account_format, AccountError, ComputeKey, Parameters, PrivateKey};
 use snarkvm_algorithms::{traits::EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -41,17 +41,18 @@ pub struct ViewKey<C: Parameters> {
 impl<C: Parameters> ViewKey<C> {
     /// Creates a new account view key from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
+        Self::from_compute_key(private_key.compute_key())
+    }
+
+    /// Creates a new account view key from an account compute key.
+    pub fn from_compute_key(compute_key: &ComputeKey<C>) -> Result<Self, AccountError> {
         Ok(Self {
-            decryption_key: private_key.to_decryption_key()?,
+            decryption_key: compute_key.to_decryption_key()?,
         })
     }
 
     /// Signs a message using the account view key.
-    pub fn sign<R: Rng + CryptoRng>(
-        &self,
-        message: &[u8],
-        rng: &mut R,
-    ) -> Result<<C::AccountSignatureScheme as SignatureScheme>::Signature, AccountError> {
+    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<C::AccountSignature, AccountError> {
         let signature_private_key = FromBytes::from_bytes_le(&self.decryption_key.to_bytes_le()?)?;
         Ok(C::account_signature_scheme().sign(&signature_private_key, message, rng)?)
     }

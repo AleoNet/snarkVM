@@ -44,11 +44,61 @@ pub struct TransactionKernel<C: Parameters> {
 }
 
 impl<C: Parameters> TransactionKernel<C> {
+    /// Initializes a new instance of a transaction kernel.
+    #[inline]
+    pub fn new(
+        serial_numbers: Vec<C::AccountSignaturePublicKey>,
+        commitments: Vec<C::RecordCommitment>,
+        value_balance: AleoAmount,
+        memo: <Transaction<C> as TransactionScheme>::Memo,
+    ) -> Result<Self> {
+        // Construct the transaction kernel.
+        let kernel = Self {
+            network_id: C::NETWORK_ID,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+        };
+
+        // Ensure the transaction kernel is well-formed.
+        match kernel.is_valid() {
+            true => Ok(kernel),
+            false => Err(
+                DPCError::InvalidKernel(C::NETWORK_ID, kernel.serial_numbers.len(), kernel.commitments.len()).into(),
+            ),
+        }
+    }
+
+    /// Returns `true` if the transaction kernel is well-formed.
     #[inline]
     pub fn is_valid(&self) -> bool {
         self.network_id == C::NETWORK_ID
             && self.serial_numbers.len() == C::NUM_INPUT_RECORDS
             && self.commitments.len() == C::NUM_OUTPUT_RECORDS
+    }
+
+    /// Returns a reference to the serial numbers.
+    #[inline]
+    pub fn serial_numbers(&self) -> &Vec<C::AccountSignaturePublicKey> {
+        &self.serial_numbers
+    }
+
+    /// Returns a reference to the commitments.
+    #[inline]
+    pub fn commitments(&self) -> &Vec<C::RecordCommitment> {
+        &self.commitments
+    }
+
+    /// Returns a reference to the value balance.
+    #[inline]
+    pub fn value_balance(&self) -> &AleoAmount {
+        &self.value_balance
+    }
+
+    /// Returns a reference to the memo.
+    pub fn memo(&self) -> &<Transaction<C> as TransactionScheme>::Memo {
+        &self.memo
     }
 
     #[inline]
@@ -59,6 +109,23 @@ impl<C: Parameters> TransactionKernel<C> {
                 Err(DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into())
             }
         }
+    }
+
+    #[inline]
+    pub fn to_joint_serial_numbers(&self) -> Result<Vec<u8>> {
+        // Ensure the kernel is well-formed before computing the output serial number nonces.
+        if !self.is_valid() {
+            return Err(
+                DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into(),
+            );
+        }
+
+        // Compute the joint serial numbers.
+        let mut joint_serial_numbers = vec![];
+        for serial_number in self.serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
+            joint_serial_numbers.extend_from_slice(&serial_number.to_bytes_le()?);
+        }
+        Ok(joint_serial_numbers)
     }
 }
 

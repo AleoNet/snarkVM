@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, PublicVariables};
+use crate::{InnerPublicVariables, OuterPublicVariables, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -53,7 +53,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type InnerSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        VerifierInput = InnerCircuitVerifierInput<Self>,
+        VerifierInput = InnerPublicVariables<Self>,
     >;
     /// SNARK Verifier gadget for the inner circuit.
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
@@ -62,7 +62,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type OuterSNARK: SNARK<
         ScalarField = Self::OuterScalarField,
         BaseField = Self::OuterBaseField,
-        VerifierInput = OuterCircuitVerifierInput<Self>,
+        VerifierInput = OuterPublicVariables<Self>,
     >;
 
     /// Program SNARK for Aleo applications.
@@ -93,7 +93,10 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignatureScheme: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>;
+    type AccountSignatureScheme: SignatureScheme<
+        PublicKey = Self::AccountSignaturePublicKey,
+        Signature = Self::AccountSignature,
+    >;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
         + Clone
@@ -102,11 +105,14 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + ToBytes
         + FromBytes
         + Hash
+        + PartialEq
         + Eq
         + Send
         + Sync
         + CanonicalSerialize
-        + CanonicalDeserialize;
+        + CanonicalDeserialize
+        + PartialEq;
+    type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.
     type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordDigest>;
@@ -247,8 +253,18 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type RecordSerialNumberTreeParameters: LoadableMerkleParameters<H = Self::RecordSerialNumberTreeCRH>;
 
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberNonceCRH: CRH;
+    type SerialNumberNonceCRH: CRH<Output = Self::SerialNumberNonce>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
+    type SerialNumberNonce: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + Sync
+        + Send;
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;

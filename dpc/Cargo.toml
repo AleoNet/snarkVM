@@ -18,8 +18,18 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
+name = "account"
+path = "benches/account.rs"
+harness = false
+
+[[bench]]
 name = "noop_program"
 path = "benches/noop_program.rs"
+harness = false
+
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
 harness = false
 
 [dependencies.snarkvm-algorithms]
@@ -111,6 +121,10 @@ version = "0.9"
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dev-dependencies.snarkvm-ledger]
+path = "../ledger"
+default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.4"

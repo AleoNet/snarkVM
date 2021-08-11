@@ -19,18 +19,13 @@ use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, SNARK};
 
 use rand::{CryptoRng, Rng};
 
-pub trait Program<C: Parameters>: Send + Sync {
-    /// Initializes a new instance of the program.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError>
+pub trait ProgramScheme<C: Parameters>: Send + Sync {
+    /// Initializes an instance of the program with the given circuits.
+    fn new(circuits: Vec<Box<dyn ProgramCircuit<C>>>) -> Result<Self, ProgramError>
     where
         Self: Sized;
 
-    /// Loads an instance of a program.
-    fn load() -> Result<Self, ProgramError>
-    where
-        Self: Sized;
-
-    /// Returns the program ID.
+    /// Returns a reference to the program ID.
     fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
 
     /// Returns `true` if the given circuit ID exists in the program.

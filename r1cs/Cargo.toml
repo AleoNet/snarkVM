@@ -31,6 +31,9 @@ default-features = false
 path = "../utilities"
 version = "0.7.5"
 
+[dependencies.anyhow]
+version = "1.0.42"
+
 [dependencies.cfg-if]
 version = "1.0.0"
 

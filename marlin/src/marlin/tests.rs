@@ -95,7 +95,7 @@ mod marlin {
                 pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
                     let rng = &mut test_rng();
 
-                    let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+                    let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
 
                     for _ in 0..100 {
@@ -185,19 +185,19 @@ mod marlin_recursion {
         marlin::{MarlinRecursiveMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
+    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use core::ops::MulAssign;
 
-    type MultiPC = MarlinKZG10<Bls12_377>;
+    type MultiPC = SonicKZG10<Bls12_377>;
     type MarlinInst =
         MarlinSNARK<Fr, Fq, MultiPC, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>, MarlinRecursiveMode>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         for _ in 0..100 {
