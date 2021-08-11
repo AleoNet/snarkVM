@@ -152,6 +152,13 @@ where
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
+        // Squeeze two elements for the polynomial MAC.
+        // The polynomial MAC is defined in https://eprint.iacr.org/2021/318.
+        let (polymac_y, polymac_z) = {
+            let polymac_elems = sponge.squeeze_field_elements(2);
+            (polymac_elems[0], polymac_elems[1])
+        };
+
         // Convert the message into bits.
         let mut bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
@@ -167,10 +174,27 @@ where
 
         // Pack the bits into field elements.
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
+        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity + 1);
         for chunk in bits.chunks(capacity) {
             res.push(TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap());
         }
+
+        // Compute the polynomial MAC and put it into the `res` array.
+        let polymac_val = {
+            let mut polymac_val = TE::BaseField::zero();
+            let mut cur = polymac_y.clone();
+
+            for elem in res.iter().rev() {
+                polymac_val += *elem * &cur;
+                cur *= &polymac_y;
+            }
+
+            polymac_val += <TE::BaseField as From<u128>>::from(res.len() as u128) * &cur;
+            polymac_val += &polymac_z;
+
+            polymac_val
+        };
+        res.push(polymac_val);
 
         // Obtain random field elements from Poseidon.
         let sponge_field_elements = sponge.squeeze_field_elements(res.len());
@@ -227,6 +251,12 @@ where
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
+        // Squeeze two elements for the polynomial MAC.
+        let (polymac_y, polymac_z) = {
+            let polymac_elems = sponge.squeeze_field_elements(2);
+            (polymac_elems[0], polymac_elems[1])
+        };
+
         // Compute the number of sponge elements needed.
         let num_field_elements = (ciphertext.len() - per_field_element_bytes) / per_field_element_bytes;
 
@@ -244,6 +274,30 @@ where
         for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
             res_field_elements[i] = res_field_elements[i] - sponge_field_element;
         }
+
+        // Recompute the polynomial MAC.
+        let polymac_val = {
+            let mut polymac_val = TE::BaseField::zero();
+            let mut cur = polymac_y.clone();
+
+            for elem in res_field_elements.iter().take(num_field_elements - 1).rev() {
+                polymac_val += *elem * &cur;
+                cur *= &polymac_y;
+            }
+
+            polymac_val += <TE::BaseField as From<u128>>::from((num_field_elements - 1) as u128) * &cur;
+            polymac_val += &polymac_z;
+
+            polymac_val
+        };
+        if res_field_elements[num_field_elements - 1] != polymac_val {
+            return Err(EncryptionError::MismatchedMAC);
+        }
+
+        // drop the polynomial MAC element to simplify the remaining computation.
+        res_field_elements.truncate(num_field_elements - 1);
+
+        // Return a decryption error if the polynomial MAC value does not match.
 
         // Unpack the packed bits.
         if res_field_elements.is_empty() {

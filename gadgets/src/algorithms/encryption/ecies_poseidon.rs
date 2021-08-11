@@ -367,7 +367,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     ) -> Result<Vec<UInt8>, SynthesisError> {
         let affine_zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
-        let group_zero = FpGadget::<TE::BaseField>::zero(cs.ns(|| "field zero"))?;
+        let field_zero = FpGadget::<TE::BaseField>::zero(cs.ns(|| "field zero"))?;
 
         // Compute the ECDH value.
         let randomness_bits = randomness.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
@@ -384,6 +384,12 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
 
+        // Squeeze two elements for the polynomial MAC.
+        let (polymac_y, polymac_z) = {
+            let polymac_elems = sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 2)?;
+            (polymac_elems[0].clone(), polymac_elems[1].clone())
+        };
+
         // Convert the message into bits.
         let mut bits = Vec::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
@@ -397,23 +403,38 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
         let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
         for (i, chunk) in bits.chunks(capacity).enumerate() {
-            let mut sum = group_zero.clone();
+            res.push(Boolean::le_bits_to_fp_var(
+                cs.ns(|| format!("convert a bit to a field element {}", i)),
+                chunk,
+            )?);
+        }
 
-            let mut cur = TE::BaseField::one();
-            for (j, bit) in chunk.iter().enumerate() {
-                let add =
-                    FpGadget::from_boolean(cs.ns(|| format!("convert a bit to a field element {} {}", i, j)), *bit)?
-                        .mul_by_constant(cs.ns(|| format!("multiply by the shift {} {}", i, j)), &cur)?;
-                sum.add_in_place(
-                    cs.ns(|| format!("assemble the bit result into field elements {} {}", i, j)),
-                    &add,
+        // Compute the polynomial MAC and put it into the `res` array.
+        let polymac_val = {
+            let mut polymac_val = field_zero.clone();
+            let mut cur = polymac_y.clone();
+
+            for (i, elem) in res.iter().rev().enumerate() {
+                let elem_times_cur = elem.mul(cs.ns(|| format!("compute the inner product in polyMAC {}", i)), &cur)?;
+                polymac_val.add_in_place(
+                    cs.ns(|| format!("add the partial inner product {}", i)),
+                    &elem_times_cur,
                 )?;
-
-                cur.double_in_place();
+                cur.mul_in_place(cs.ns(|| format!("update the randomizer in polyMAC {}", i)), &polymac_y)?;
             }
 
-            res.push(sum);
-        }
+            let len_times_cur = cur.mul_by_constant(
+                cs.ns(|| "compute the inner product about the length"),
+                &<TE::BaseField as From<u128>>::from(res.len() as u128),
+            )?;
+            polymac_val.add_in_place(
+                cs.ns(|| "add the partial inner product about the length"),
+                &len_times_cur,
+            )?;
+            polymac_val.add_in_place(cs.ns(|| "add the mask"), &polymac_z)?;
+            polymac_val
+        };
+        res.push(polymac_val);
 
         // Obtain random field elements from Poseidon.
         let sponge_field_elements =
