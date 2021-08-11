@@ -113,8 +113,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
                 None => {
+                    let private_key = &private_keys[index];
                     index += 1;
-                    &private_keys[index]
+                    private_key
                 }
             };
 
