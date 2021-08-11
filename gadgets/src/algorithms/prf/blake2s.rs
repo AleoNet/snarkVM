@@ -20,18 +20,14 @@ use snarkvm_algorithms::prf::Blake2s;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use crate::{
-    bits::{Boolean, ToBytesGadget},
-    integers::uint::{UInt, UInt32, UInt8},
-    traits::{
-        algorithms::PRFGadget,
-        alloc::AllocGadget,
-        bits::Xor,
-        eq::{ConditionalEqGadget, EqGadget},
-        integers::integer::Integer,
-        select::CondSelectGadget,
-    },
-};
+use crate::{bits::{Boolean, ToBytesGadget}, integers::uint::{UInt, UInt32, UInt8}, traits::{
+    algorithms::PRFGadget,
+    alloc::AllocGadget,
+    bits::Xor,
+    eq::{ConditionalEqGadget, EqGadget},
+    integers::integer::Integer,
+    select::CondSelectGadget,
+}, ToBitsBEGadget, ToBitsLEGadget};
 
 // 2.1.  Parameters
 // The following table summarizes various parameters and their ranges:
@@ -456,6 +452,16 @@ impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sOutputGadget {
                 Err(_) => [0u8; 32],
             },
         )?))
+    }
+}
+
+impl<F: PrimeField> ToBitsBEGadget<F> for Blake2sOutputGadget {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le(cs)
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le_strict(cs)
     }
 }
 

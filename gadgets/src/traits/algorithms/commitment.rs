@@ -20,21 +20,18 @@ use snarkvm_algorithms::traits::CommitmentScheme;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use crate::{
-    bits::ToBytesGadget,
-    integers::uint::UInt8,
-    traits::{
-        alloc::AllocGadget,
-        eq::{ConditionalEqGadget, EqGadget},
-        select::CondSelectGadget,
-    },
-};
+use crate::{bits::ToBytesGadget, integers::uint::UInt8, traits::{
+    alloc::AllocGadget,
+    eq::{ConditionalEqGadget, EqGadget},
+    select::CondSelectGadget,
+}, ToBitsBEGadget};
 
 pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + Clone + Sized {
     type OutputGadget: ConditionalEqGadget<F>
         + CondSelectGadget<F>
         + EqGadget<F>
         + ToBytesGadget<F>
+        + ToBitsBEGadget<F>
         + AllocGadget<C::Output, F>
         + Clone
         + Sized

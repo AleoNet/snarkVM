@@ -22,6 +22,9 @@ pub enum EncryptionError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
+    #[error("Invalid private key")]
+    InvalidPrivateKey,
+
     #[error("MAC value mismatches")]
     MismatchedMAC,
 
