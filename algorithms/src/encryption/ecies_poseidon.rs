@@ -190,7 +190,7 @@ where
 
         // Pack the bits into field elements.
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity + 1);
+        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
         for chunk in bits.chunks(capacity) {
             res.push(TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap());
         }
