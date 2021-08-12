@@ -122,18 +122,12 @@ where
             let key = Self::PrivateKey::rand(rng);
             let bits = key.to_bits_le();
 
-            let mut flag = false;
-            for bit in bits
+            let flag = bits
                 .iter()
                 .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
-            {
-                if *bit == true {
-                    flag = true;
-                    break;
-                }
-            }
+                .any(|bit| *bit);
 
-            if flag == false {
+            if !flag {
                 return key;
             }
         }
@@ -234,13 +228,12 @@ where
         // Ensure that the private key follows the format requirement.
         {
             let bits = private_key.to_bits_le();
-            for bit in bits
+            if bits
                 .iter()
                 .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
+                .any(|bit| *bit)
             {
-                if *bit == true {
-                    return Err(EncryptionError::InvalidPrivateKey);
-                }
+                return Err(EncryptionError::InvalidPrivateKey);
             }
         }
 
