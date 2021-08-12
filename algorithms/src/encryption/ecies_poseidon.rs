@@ -122,16 +122,20 @@ where
             let key = Self::PrivateKey::rand(rng);
             let bits = key.to_bits_le();
 
+            let mut flag = false;
             for bit in bits
                 .iter()
                 .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
             {
                 if *bit == true {
-                    continue;
+                    flag = true;
+                    break;
                 }
             }
 
-            return key;
+            if flag == false {
+                return key;
+            }
         }
     }
 
