@@ -16,8 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_fields::ToConstraintField;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, ToMinimalBits, UniformRand};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
