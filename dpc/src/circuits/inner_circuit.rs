@@ -297,7 +297,16 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             // Construct the account view key.
             let candidate_account_view_key = {
-                let mut account_view_key_input = pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?;
+                let mut account_view_key_input = {
+                    let pk_sig_field_elements =
+                        pk_sig.to_constraint_field(&mut account_cs.ns(|| "pk_sig to_field_elements"))?;
+                    let pk_sig_x_bytes =
+                        pk_sig_field_elements[0].to_bytes(&mut account_cs.ns(|| "pk_sig x to_bytes"))?;
+                    let pk_sig_y_bytes =
+                        pk_sig_field_elements[1].to_bytes(&mut account_cs.ns(|| "pk_sig y to_bytes"))?;
+
+                    [pk_sig_x_bytes, pk_sig_y_bytes].concat()
+                };
                 account_view_key_input.extend_from_slice(&sk_prf);
 
                 // This is the record decryption key.

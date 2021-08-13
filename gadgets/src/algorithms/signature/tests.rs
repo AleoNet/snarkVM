@@ -16,22 +16,21 @@
 
 use crate::{
     algorithms::signature::{SchnorrGadget, SchnorrPublicKeyGadget},
-    curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{algorithms::SignatureGadget, alloc::AllocGadget, eq::EqGadget},
     Boolean,
 };
 use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsParameters};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
-type SchnorrScheme = Schnorr<EdwardsProjective>;
-type TestSignature = Schnorr<EdwardsProjective>;
-type TestSignatureGadget = SchnorrGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+type SchnorrScheme = Schnorr<EdwardsParameters>;
+type TestSignature = Schnorr<EdwardsParameters>;
+type TestSignatureGadget = SchnorrGadget<EdwardsParameters, Fr>;
 
 #[test]
 fn test_schnorr_signature_randomize_public_key_gadget() {
@@ -63,11 +62,11 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
 
     // Circuit Schnorr randomized public key (candidate)
     let schnorr_gadget = TestSignatureGadget::alloc_constant(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
-    let candidate_public_key = SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc(
-        &mut cs.ns(|| "candidate_public_key"),
-        || Ok(&public_key),
-    )
-    .unwrap();
+    let candidate_public_key =
+        SchnorrPublicKeyGadget::<EdwardsParameters, Fr>::alloc(&mut cs.ns(|| "candidate_public_key"), || {
+            Ok(&public_key)
+        })
+        .unwrap();
     let candidate_randomizer = UInt8::alloc_vec(
         &mut cs.ns(|| "candidate_randomizer"),
         &randomizer.to_bytes_le().unwrap(),
@@ -82,7 +81,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
         .unwrap();
 
     // Circuit Schnorr randomized public key (given)
-    let given_randomized_public_key = SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc_input(
+    let given_randomized_public_key = SchnorrPublicKeyGadget::<EdwardsParameters, Fr>::alloc_input(
         &mut cs.ns(|| "given_randomized_public_key"),
         || Ok(randomized_public_key),
     )
@@ -144,7 +143,7 @@ fn schnorr_signature_verification_test() {
         )
         .unwrap();
 
-    assert_eq!(cs.num_constraints(), 6582);
+    assert_eq!(cs.num_constraints(), 6085);
 
     verification
         .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))

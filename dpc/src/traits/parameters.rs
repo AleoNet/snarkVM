@@ -25,8 +25,6 @@ use snarkvm_gadgets::{
 use snarkvm_utilities::{
     fmt::{Debug, Display},
     hash::Hash,
-    CanonicalDeserialize,
-    CanonicalSerialize,
     FromBytes,
     ToBytes,
 };
@@ -108,10 +106,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + PartialEq
         + Eq
         + Send
-        + Sync
-        + CanonicalSerialize
-        + CanonicalDeserialize
-        + PartialEq;
+        + Sync;
     type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.

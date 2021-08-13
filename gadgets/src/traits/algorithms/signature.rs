@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::traits::SignatureScheme;
-use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -23,10 +23,15 @@ use crate::{
     integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
     Boolean,
+    ToConstraintFieldGadget,
 };
 
-pub trait SignatureGadget<S: SignatureScheme, F: Field>: AllocGadget<S, F> {
-    type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
+pub trait SignatureGadget<S: SignatureScheme, F: PrimeField>: AllocGadget<S, F> {
+    type PublicKeyGadget: ToBytesGadget<F>
+        + ToConstraintFieldGadget<F>
+        + EqGadget<F>
+        + AllocGadget<S::PublicKey, F>
+        + Clone;
     type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
     fn randomize_public_key<CS: ConstraintSystem<F>>(

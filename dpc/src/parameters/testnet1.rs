@@ -123,8 +123,8 @@ impl Parameters for Testnet1Parameters {
     type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
 
-    type AccountSignatureScheme = Schnorr<EdwardsBls12>;
-    type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountSignatureScheme = Schnorr<EdwardsParameters>;
+    type AccountSignatureGadget = SchnorrGadget<EdwardsParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 

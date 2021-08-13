@@ -19,6 +19,7 @@ use snarkvm_algorithms::{CommitmentScheme, EncryptionScheme, PRF};
 use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBits, ToBytes};
 
 use rand::thread_rng;
+use snarkvm_fields::ToConstraintField;
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -47,8 +48,14 @@ impl<C: Parameters> ComputeKey<C> {
         sk_prf: <C::PRF as PRF>::Seed,
         r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, AccountError> {
+        // TODO (howard, weikeng) Temporary workaround to keep the address format unchanged
+        let (pk_sig_x, pk_sig_y) = {
+            let pk_sig_field_elements = pk_sig.to_field_elements()?;
+            (pk_sig_field_elements[0], pk_sig_field_elements[1])
+        };
+
         // Construct the commitment input for the account address.
-        let commitment_input = to_bytes_le![pk_sig, sk_prf]?;
+        let commitment_input = to_bytes_le![pk_sig_x, pk_sig_y, sk_prf]?;
 
         // Initialize a candidate compute key.
         let compute_key = Self {

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::errors::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
+use snarkvm_fields::ConstraintFieldError;
 
 #[derive(Debug, Error)]
 pub enum AccountError {
@@ -23,6 +24,9 @@ pub enum AccountError {
 
     #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
+
+    #[error("{}", _0)]
+    ConstraintFieldError(#[from] ConstraintFieldError),
 
     #[error("{}", _0)]
     CRHError(#[from] CRHError),
