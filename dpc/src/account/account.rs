@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
+use crate::{AccountError, AccountScheme, Address, ComputeKey, Parameters, PrivateKey, ViewKey};
 
 use rand::{CryptoRng, Rng};
 use std::{convert::TryFrom, fmt};
@@ -22,13 +22,14 @@ use std::{convert::TryFrom, fmt};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Account<C: Parameters> {
-    pub private_key: PrivateKey<C>,
+    private_key: PrivateKey<C>,
     pub view_key: ViewKey<C>,
     pub address: Address<C>,
 }
 
 impl<C: Parameters> AccountScheme for Account<C> {
     type Address = Address<C>;
+    type ComputeKey = ComputeKey<C>;
     type PrivateKey = PrivateKey<C>;
     type ViewKey = ViewKey<C>;
 
@@ -43,6 +44,16 @@ impl<C: Parameters> AccountScheme for Account<C> {
             view_key,
             address,
         })
+    }
+
+    /// Returns a reference to the private key.
+    fn private_key(&self) -> &Self::PrivateKey {
+        &self.private_key
+    }
+
+    /// Returns a reference to the compute key.
+    fn compute_key(&self) -> &Self::ComputeKey {
+        self.private_key.compute_key()
     }
 }
 

@@ -35,7 +35,7 @@ mod testnet1 {
 
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
         let account = Account::<Testnet1Parameters>::new(&mut rng).unwrap();
-        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
         assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
 
@@ -61,7 +61,7 @@ mod testnet1 {
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
             let private_key = PrivateKey::<Testnet1Parameters>::new(&mut thread_rng());
-            let decryption_key = private_key.to_decryption_key().unwrap();
+            let decryption_key = private_key.compute_key().to_decryption_key().unwrap();
             // Enforce the MSB of the scalar field element is 0 by convention.
             assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
         }
@@ -188,7 +188,7 @@ mod testnet2 {
 
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
         let account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
-        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
         assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
 
@@ -214,7 +214,7 @@ mod testnet2 {
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
             let private_key = PrivateKey::<Testnet2Parameters>::new(&mut thread_rng());
-            let decryption_key = private_key.to_decryption_key().unwrap();
+            let decryption_key = private_key.compute_key().to_decryption_key().unwrap();
             // Enforce the MSB of the scalar field element is 0 by convention.
             assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
         }

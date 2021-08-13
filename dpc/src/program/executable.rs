@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, LocalData, NoopProgram, Parameters, PrivateVariables, ProgramScheme, PublicVariables};
+use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 
 use anyhow::Result;
 use std::{ops::Deref, sync::Arc};
@@ -32,6 +33,22 @@ pub enum Executable<C: Parameters> {
 }
 
 impl<C: Parameters> Executable<C> {
+    /// Returns `true` if the executable is a noop.
+    pub fn is_noop(&self) -> bool {
+        match self {
+            Self::Noop(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns a reference to the program ID of the executable.
+    pub fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+        match self {
+            Self::Noop(program) => program.program_id(),
+            Self::Circuit(program, _, _) => program.program_id(),
+        }
+    }
+
     /// Returns the execution of the executable given the public variables.
     pub fn execute(&self, record_position: u8, local_data: &LocalData<C>) -> Result<Execution<C>> {
         // Construct the public variables.

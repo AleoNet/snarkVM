@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, EncryptedRecord, Parameters, Record};
+use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
@@ -45,9 +45,26 @@ pub struct TransactionAuthorization<C: Parameters> {
     pub input_records: Vec<Record<C>>,
     pub output_records: Vec<Record<C>>,
     pub signatures: Vec<C::AccountSignature>,
+    pub noop_compute_keys: Vec<Option<ComputeKey<C>>>,
 }
 
 impl<C: Parameters> TransactionAuthorization<C> {
+    #[inline]
+    pub fn from(state: &StateTransition<C>, signatures: Vec<C::AccountSignature>) -> Self {
+        debug_assert!(state.kernel().is_valid());
+        debug_assert_eq!(C::NUM_INPUT_RECORDS, state.input_records().len());
+        debug_assert_eq!(C::NUM_OUTPUT_RECORDS, state.output_records().len());
+        debug_assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
+
+        Self {
+            kernel: state.kernel().clone(),
+            input_records: state.input_records().clone(),
+            output_records: state.output_records().clone(),
+            signatures,
+            noop_compute_keys: state.to_noop_compute_keys().clone(),
+        }
+    }
+
     #[inline]
     pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<C>> {
         Ok(LocalData::new(
@@ -68,9 +85,13 @@ impl<C: Parameters> TransactionAuthorization<C> {
             .iter()
             .chain(self.output_records.iter())
             .take(C::NUM_TOTAL_RECORDS)
-            .flat_map(|r| r.program_id())
-            .cloned()
-            .collect::<Vec<u8>>();
+            .flat_map(|record| {
+                record
+                    .program_id()
+                    .to_bytes_le()
+                    .expect("Failed to convert program ID to bytes")
+            })
+            .collect::<Vec<_>>();
 
         let program_randomness = UniformRand::rand(rng);
         let program_commitment = C::program_commitment_scheme().commit(&program_ids, &program_randomness)?;
@@ -107,7 +128,20 @@ impl<C: Parameters> ToBytes for TransactionAuthorization<C> {
         self.kernel.write_le(&mut writer)?;
         self.input_records.write_le(&mut writer)?;
         self.output_records.write_le(&mut writer)?;
-        self.signatures.write_le(&mut writer)
+        self.signatures.write_le(&mut writer)?;
+
+        // Serialize the noop compute keys with Option ordering in order to
+        // dedup with user-specified compute keys during execution.
+        for noop_compute_key in self.noop_compute_keys.iter().take(C::NUM_INPUT_RECORDS) {
+            match noop_compute_key {
+                Some(noop_compute_key) => {
+                    true.write_le(&mut writer)?;
+                    noop_compute_key.write_le(&mut writer)?;
+                }
+                None => false.write_le(&mut writer)?,
+            }
+        }
+        Ok(())
     }
 }
 
@@ -131,11 +165,21 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
             signatures.push(FromBytes::read_le(&mut reader)?);
         }
 
+        let mut noop_compute_keys = Vec::<Option<ComputeKey<C>>>::with_capacity(C::NUM_INPUT_RECORDS);
+        for _ in 0..C::NUM_INPUT_RECORDS {
+            let option_indicator: bool = FromBytes::read_le(&mut reader)?;
+            match option_indicator {
+                true => noop_compute_keys.push(Some(FromBytes::read_le(&mut reader)?)),
+                false => noop_compute_keys.push(None),
+            }
+        }
+
         Ok(Self {
             kernel,
             input_records,
             output_records,
             signatures,
+            noop_compute_keys,
         })
     }
 }

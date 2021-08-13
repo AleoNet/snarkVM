@@ -35,6 +35,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 /// The Marlin proof system.
+#[derive(Clone, Debug)]
 pub struct MarlinSNARK<
     F: PrimeField,
     FSF: PrimeField,

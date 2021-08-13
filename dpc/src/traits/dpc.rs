@@ -15,14 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{
-        AccountScheme,
-        Parameters,
-        RecordCommitmentTree,
-        RecordScheme,
-        RecordSerialNumberTree,
-        TransactionScheme,
-    },
+    traits::{AccountScheme, Parameters, RecordCommitmentTree, RecordSerialNumberTree, TransactionScheme},
     Executable,
 };
 
@@ -33,8 +26,8 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
     type Authorization;
     type Execution;
-    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
-    type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
+    type StateTransition;
+    type Transaction: TransactionScheme;
 
     /// Initializes a new instance of DPC.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self>;
@@ -42,23 +35,20 @@ pub trait DPCScheme<C: Parameters>: Sized {
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> Result<Self>;
 
-    /// Returns a transaction authorization to execute an Aleo transaction.
-    #[allow(clippy::too_many_arguments)]
+    /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        input_records: Vec<Self::Record>,
-        output_records: Vec<Self::Record>,
-        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
+        state: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
-    /// Returns a transaction based on the transaction authorization.
+    /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
-        executables: Vec<Executable<C>>,
+        executables: &Vec<Executable<C>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction>;
