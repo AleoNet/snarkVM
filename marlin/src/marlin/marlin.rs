@@ -31,6 +31,7 @@ use core::marker::PhantomData;
 use rand_core::RngCore;
 
 /// The Marlin proof system.
+#[derive(Clone, Debug)]
 pub struct MarlinSNARK<
     TargetField: PrimeField,
     BaseField: PrimeField,

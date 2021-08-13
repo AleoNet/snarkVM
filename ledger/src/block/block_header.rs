@@ -24,6 +24,16 @@ use std::{
     mem::size_of,
 };
 
+const HEADER_SIZE: usize = {
+    BlockHeaderHash::size()
+        + MerkleRootHash::size()
+        + PedersenMerkleRootHash::size()
+        + ProofOfSuccinctWork::size()
+        + size_of::<i64>()
+        + size_of::<u64>()
+        + size_of::<u32>()
+};
+
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BlockHeader {
@@ -43,16 +53,6 @@ pub struct BlockHeader {
     /// Nonce for solving the PoW puzzle - 4 bytes
     pub nonce: u32,
 }
-
-const HEADER_SIZE: usize = {
-    BlockHeaderHash::size()
-        + MerkleRootHash::size()
-        + PedersenMerkleRootHash::size()
-        + ProofOfSuccinctWork::size()
-        + size_of::<i64>()
-        + size_of::<u64>()
-        + size_of::<u32>()
-};
 
 impl BlockHeader {
     pub const fn size() -> usize {

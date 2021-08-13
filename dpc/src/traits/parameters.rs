@@ -106,11 +106,13 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + ToBytes
         + FromBytes
         + Hash
+        + PartialEq
         + Eq
         + Send
         + Sync
         + CanonicalSerialize
-        + CanonicalDeserialize;
+        + CanonicalDeserialize
+        + PartialEq;
     type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.

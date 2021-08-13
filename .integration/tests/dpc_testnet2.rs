@@ -25,7 +25,6 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::{
-    ops::Deref,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -48,10 +47,6 @@ fn test_testnet2_inner_circuit_sanity_check() {
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate accounts.
-    let genesis_account = Account::new(&mut rng).unwrap();
-    let recipient = Account::new(&mut rng).unwrap();
-
     // Create a genesis block.
     let genesis_block = Block {
         header: BlockHeader {
@@ -70,52 +65,21 @@ fn dpc_testnet2_integration_test() {
 
     // Generate or load DPC.
     let dpc = setup_or_load_dpc(false, &mut rng);
+    let noop = Arc::new(dpc.noop_program.clone());
 
-    // Generate dummy input records having as address the genesis address.
-    let private_keys = vec![genesis_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
-
-    let mut joint_serial_numbers = vec![];
-    let mut input_records = vec![];
-    for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new_noop_input(dpc.noop_program.deref(), genesis_account.address, &mut rng).unwrap();
-
-        let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
-
-        input_records.push(input_record);
-    }
-
-    // Construct new records.
-    let mut output_records = vec![];
-    for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
-        output_records.push(
-            Record::new_output(
-                dpc.noop_program.deref(),
-                recipient.address,
-                false,
-                10,
-                Payload::default(),
-                (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
-                joint_serial_numbers.clone(),
-                &mut rng,
-            )
-            .unwrap(),
-        );
-    }
-
-    // Offline execution to generate a transaction authorization.
-    let authorization = dpc
-        .authorize(&private_keys, input_records, output_records, None, &mut rng)
+    let recipient = Account::new(&mut rng).unwrap();
+    let amount = AleoAmount::from_bytes(10 as i64);
+    let state = StateTransition::builder()
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
+        .build(noop, &mut rng)
         .unwrap();
-
-    // Construct the executable.
-    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()));
-    let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
+    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
 
     let new_records = authorization.output_records.clone();
 
     let transaction = dpc
-        .execute(&private_keys, authorization, executables, &ledger, &mut rng)
+        .execute(&vec![], authorization, state.executables(), &ledger, &mut rng)
         .unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
@@ -126,7 +90,7 @@ fn dpc_testnet2_integration_test() {
     // Check that new_records can be decrypted from the transaction
     {
         let encrypted_records = transaction.encrypted_records();
-        let new_account_private_keys = vec![recipient.private_key; Testnet2Parameters::NUM_OUTPUT_RECORDS];
+        let new_account_private_keys = vec![recipient.private_key(); Testnet2Parameters::NUM_OUTPUT_RECORDS];
 
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
@@ -176,67 +140,24 @@ fn dpc_testnet2_integration_test() {
 fn test_testnet_2_transaction_authorization_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    let dpc = Testnet2DPC::load(false).unwrap();
+    // Generate or load DPC.
+    let dpc = setup_or_load_dpc(false, &mut rng);
+    let noop = Arc::new(dpc.noop_program.clone());
 
-    // Generate metadata and an account for a dummy initial record.
-    let test_account = Account::new(&mut rng).unwrap();
+    let recipient = Account::new(&mut rng).unwrap();
+    let amount = AleoAmount::from_bytes(10 as i64);
+    let state = StateTransition::new_coinbase(recipient.address, amount, noop, &mut rng).unwrap();
+    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
 
-    let old_private_keys = vec![test_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
+    // Serialize and recover the transaction authorization.
+    let recovered_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
 
-    // Set the input records for our transaction to be the initial dummy records.
-    let mut joint_serial_numbers = vec![];
-    let mut input_records = vec![];
-    for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let old_record = Record::new_noop_input(dpc.noop_program.deref(), test_account.address, &mut rng).unwrap();
-
-        let (sn, _) = old_record.to_serial_number(&old_private_keys[i]).unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
-
-        input_records.push(old_record);
-    }
-
-    // Construct new records.
-
-    // Set the new record's program to be the "always-accept" program.
-    let mut output_records = vec![];
-    for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
-        output_records.push(
-            Record::new_output(
-                dpc.noop_program.deref(),
-                test_account.address,
-                false,
-                10,
-                Payload::default(),
-                (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
-                joint_serial_numbers.clone(),
-                &mut rng,
-            )
-            .unwrap(),
-        );
-    }
-
-    // Generate transaction authorization
-    let transaction_authorization = dpc
-        .authorize(&old_private_keys, input_records, output_records, None, &mut rng)
-        .unwrap();
-
-    // Serialize the transaction kernel
-    let recovered_transaction_authorization =
-        FromBytes::read_le(&transaction_authorization.to_bytes_le().unwrap()[..]).unwrap();
-
-    assert_eq!(transaction_authorization, recovered_transaction_authorization);
+    assert_eq!(authorization, recovered_authorization);
 }
 
 #[test]
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-    let dpc = Testnet2DPC::setup(&mut rng).unwrap();
-
-    let alternate_noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
-
-    // Generate metadata and an account for a dummy initial record.
-    let dummy_account = Account::new(&mut rng).unwrap();
 
     let genesis_block = Block {
         header: BlockHeader {
@@ -254,55 +175,26 @@ fn test_testnet2_dpc_execute_constraints() {
     // Use genesis block to initialize the ledger.
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
 
-    let private_keys = vec![dummy_account.private_key; Testnet2Parameters::NUM_INPUT_RECORDS];
+    let dpc = Testnet2DPC::setup(&mut rng).unwrap();
+    let noop = Arc::new(dpc.noop_program.clone());
 
-    // Set the input records for our transaction to be the initial dummy records.
-    let mut joint_serial_numbers = vec![];
-    let mut input_records = vec![];
-    for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let input_record =
-            Record::new_noop_input(alternate_noop_program.deref(), dummy_account.address, &mut rng).unwrap();
+    let alternate_noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+    let alternate_noop = Arc::new(alternate_noop_program.clone());
 
-        let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
+    let recipient = Account::new(&mut rng).unwrap();
+    let amount = AleoAmount::from_bytes(10 as i64);
 
-        input_records.push(input_record);
-    }
-
-    // Create an account for an actual new record.
-    let new_account = Account::new(&mut rng).unwrap();
-
-    // Construct new records.
-
-    // Set the new record's program to be the "always-accept" program.
-    let mut output_records = vec![];
-    for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
-        output_records.push(
-            Record::new_output(
-                dpc.noop_program.deref(),
-                new_account.address,
-                false,
-                10,
-                Payload::default(),
-                (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
-                joint_serial_numbers.clone(),
-                &mut rng,
-            )
-            .unwrap(),
-        );
-    }
-
-    let authorization = dpc
-        .authorize(&private_keys, input_records, output_records, None, &mut rng)
+    let state = StateTransition::builder()
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None, alternate_noop).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
+        .build(noop, &mut rng)
         .unwrap();
+    let executables = state.executables();
+
+    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
 
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
-
-    // Construct the executable.
-    let alternate_noop = Executable::Noop(Arc::new(alternate_noop_program.clone()));
-    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()));
-    let executables = vec![alternate_noop.clone(), alternate_noop, noop.clone(), noop];
 
     // Execute the programs.
     let mut executions = Vec::with_capacity(Testnet2Parameters::NUM_TOTAL_RECORDS);
@@ -322,6 +214,7 @@ fn test_testnet2_dpc_execute_constraints() {
         input_records: old_records,
         output_records: new_records,
         signatures: _,
+        noop_compute_keys,
     } = authorization;
 
     let local_data_root = local_data.root();
@@ -356,7 +249,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_private_variables = InnerPrivateVariables::new(
         old_records.clone(),
         old_witnesses,
-        private_keys.clone(),
+        noop_compute_keys.iter().map(|key| key.clone().unwrap()).collect(), // This is safe only for this test case.
         new_records.clone(),
         encrypted_record_randomizers,
         program_randomness.clone(),

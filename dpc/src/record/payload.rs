@@ -38,6 +38,10 @@ impl Payload {
         Self(payload)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0 == [0u8; PAYLOAD_SIZE]
+    }
+
     pub fn as_any(&self) -> &dyn std::any::Any {
         self
     }
