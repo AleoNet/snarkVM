@@ -173,8 +173,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
     type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
 
-    type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 8, 48>;
-    type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 8, 48>;
+    type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
+    type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
     type ProgramCircuitIDTreeDigest = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
     type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
     
@@ -182,12 +182,12 @@ impl Parameters for Testnet2Parameters {
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
-    type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
-    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
+    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
     type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
-    type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
+    type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
 
@@ -207,7 +207,7 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{program_circuit_id_tree_crh, PROGRAM_CIRCUIT_ID_TREE_CRH, ProgramCircuitIDTreeCRH, "AleoProgramIDTreeCRH0"} // TODO (howardwu): Rename to "AleoProgramCircuitIDTreeCRH0".
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
-    dpc_setup!{record_serial_number_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
+    dpc_setup!{record_serial_number_tree_crh, RECORD_SERIAL_NUMBER_TREE_CRH, RecordSerialNumberTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {

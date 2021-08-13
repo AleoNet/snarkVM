@@ -89,6 +89,8 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
         cs: CS,
         input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
+        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS);
+
         // Pad the input bytes.
         let mut input_in_bits = input;
         input_in_bits.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
