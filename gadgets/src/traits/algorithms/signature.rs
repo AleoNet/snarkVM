@@ -23,15 +23,10 @@ use crate::{
     integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
     Boolean,
-    ToConstraintFieldGadget,
 };
 
 pub trait SignatureGadget<S: SignatureScheme, F: PrimeField>: AllocGadget<S, F> {
-    type PublicKeyGadget: ToBytesGadget<F>
-        + ToConstraintFieldGadget<F>
-        + EqGadget<F>
-        + AllocGadget<S::PublicKey, F>
-        + Clone;
+    type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
     type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
     fn randomize_public_key<CS: ConstraintSystem<F>>(

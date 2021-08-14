@@ -23,9 +23,9 @@ mod testnet1 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1tyBgFoCXAq8RfZT3W2mzVV9XzJb2hVFL2LrHLToEC37tXrz";
-    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1gFRs4gG66wFW1FypYRfwy6pDqix6rtquQ8uJ15RgHCC8";
-    const ALEO_TESTNET1_ADDRESS: &str = "aleo1shhq355tyaptcej65tkrweej5wth7wqg5hcqg3hf8as5s9rtrypqs8vy3u";
+    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1y9jeNQybT9Mxk1AssbFmSXcFu9dG7sWkfYEsBUZrMin816z";
+    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1hNsfjkmrfiYWqMKtpKUW9LfGw93Pzz82UmmMn7pHHqZc";
+    const ALEO_TESTNET1_ADDRESS: &str = "aleo10kkut299n0fsmwu9z20hjmcdym4nv5s8adgtqaev3n3yqjlasqyqq6rk4d";
 
     const ITERATIONS: usize = 1000;
 
@@ -176,9 +176,9 @@ mod testnet2 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1tyBgFoCXAq8RfZT3W2mzVV9XzJb2hVFL2LrHLToEC37tXrz";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1gFRs4gG66wFW1FypYRfwy6pDqix6rtquQ8uJ15RgHCC8";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo1shhq355tyaptcej65tkrweej5wth7wqg5hcqg3hf8as5s9rtrypqs8vy3u";
+    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1y9jeNQybT9Mxk1AssbFmSXcFu9dG7sWkfYEsBUZrMin816z";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1hNsfjkmrfiYWqMKtpKUW9LfGw93Pzz82UmmMn7pHHqZc";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo10kkut299n0fsmwu9z20hjmcdym4nv5s8adgtqaev3n3yqjlasqyqq6rk4d";
 
     const ITERATIONS: usize = 1000;
 

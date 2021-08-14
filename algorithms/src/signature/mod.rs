@@ -17,8 +17,8 @@
 pub mod schnorr;
 pub use schnorr::*;
 
-// pub mod schnorr_parameters;
-// pub use schnorr_parameters::*;
+pub mod schnorr_compressed;
+pub use schnorr_compressed::*;
 
 #[cfg(test)]
 mod tests;
