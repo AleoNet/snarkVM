@@ -80,8 +80,8 @@ impl BlockHeader {
 
         // TODO (howardwu): Make this a static once_cell.
         // Mine the block.
-        let posw = PoswMarlin::load().expect("could not instantiate the PoSW miner");
-        let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce).unwrap();
+        let posw = PoswMarlin::load()?;
+        let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
 
         Ok(Self {
             previous_block_hash,
@@ -183,6 +183,35 @@ impl FromBytes for BlockHeader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_dpc::{testnet2::Testnet2Parameters, Transaction};
+
+    use rand::thread_rng;
+
+    #[test]
+    fn test_block_header_genesis() {
+        let block_header = BlockHeader::new_genesis(
+            &Transactions::<Transaction<Testnet2Parameters>>::new(),
+            &mut thread_rng(),
+        )
+        .unwrap();
+        assert!(block_header.is_genesis());
+
+        // Ensure the genesis block contains the following.
+        assert_eq!(block_header.previous_block_hash, BlockHeaderHash([0u8; 32]));
+        assert_eq!(block_header.time, 0);
+        assert_eq!(block_header.difficulty_target, u64::MAX);
+
+        // Ensure the genesis block does *not* contain the following.
+        assert_ne!(block_header.merkle_root_hash, MerkleRootHash([0u8; 32]));
+        assert_ne!(
+            block_header.pedersen_merkle_root_hash,
+            PedersenMerkleRootHash([0u8; 32])
+        );
+        assert_ne!(
+            block_header.proof,
+            ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
+        );
+    }
 
     #[test]
     fn test_block_header_serialization() {
