@@ -186,6 +186,12 @@ pub struct Commitment<E: PairingEngine>(
 
 impl_bytes!(Commitment);
 
+impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        self.0.to_minimal_bits()
+    }
+}
+
 impl<E: PairingEngine> PCCommitment for Commitment<E> {
     #[inline]
     fn empty() -> Self {

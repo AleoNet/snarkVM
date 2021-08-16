@@ -22,9 +22,13 @@ use snarkvm_gadgets::{
     fields::FpGadget,
     traits::alloc::AllocGadget,
     AllocBytesGadget,
+    Boolean,
+    EqGadget,
     PrepareGadget,
+    ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
+    ToMinimalBitsGadget,
     UInt8,
 };
 use snarkvm_polycommit::PCCheckVar;
@@ -263,6 +267,37 @@ impl<
         // Intentionally skip the PC verifier key
 
         Ok(res)
+    }
+}
+
+impl<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField, BaseField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> ToMinimalBitsGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+{
+    fn to_minimal_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut domain_h_size_booleans = self.domain_h_size_gadget.to_bits_le(cs.ns(|| "domain_h_size"))?;
+        domain_h_size_booleans.truncate(64);
+
+        let mut domain_k_size_booleans = self.domain_k_size_gadget.to_bits_le(cs.ns(|| "domain_k_size"))?;
+        domain_k_size_booleans.truncate(64);
+
+        // A sanity check that the sizes of domain_h and domain_k are smaller than u64.
+        {
+            let domain_h_size_reconstructed =
+                Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct domain_h_size"), &domain_h_size_booleans)?;
+            let domain_k_size_reconstructed =
+                Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct domain_k_size"), &domain_k_size_booleans)?;
+
+            domain_h_size_reconstructed.enforce_equal(cs.ns(|| "check domain_h_size"), &self.domain_h_size_gadget)?;
+            domain_k_size_reconstructed.enforce_equal(cs.ns(|| "check domain_k_size"), &self.domain_k_size_gadget)?;
+        }
+
+        let index_comms_booleans = self.index_comms.to_minimal_bits(cs.ns(|| "index_comms"))?;
+
+        Ok([domain_h_size_booleans, domain_k_size_booleans, index_comms_booleans].concat())
     }
 }
 

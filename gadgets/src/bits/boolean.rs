@@ -988,6 +988,27 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for Boolean {
     }
 }
 
+impl<F: PrimeField> ToConstraintFieldGadget<F> for [Boolean] {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
+
+        let mut res = Vec::with_capacity((self.len() + capacity - 1) / capacity);
+        for (i, booleans) in self.chunks(capacity).enumerate() {
+            res.push(Boolean::le_bits_to_fp_var(
+                cs.ns(|| format!("combine {}", i)),
+                booleans,
+            )?);
+        }
+        Ok(res)
+    }
+}
+
+impl<F: PrimeField> ToConstraintFieldGadget<F> for Vec<Boolean> {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        self.as_slice().to_constraint_field(cs)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::str::FromStr;

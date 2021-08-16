@@ -17,11 +17,10 @@
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet2::*};
-use snarkvm_fields::ToConstraintField;
 use snarkvm_integration::testnet2::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -281,7 +280,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(289761, num_constraints);
+    assert_eq!(321107, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -297,7 +296,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     // NOTE: Do not change this to `Testnet2Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
+        .hash_bits(&inner_snark_vk.to_minimal_bits())
         .unwrap();
 
     let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(
@@ -342,7 +341,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(787899, num_constraints);
+    assert_eq!(885164, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

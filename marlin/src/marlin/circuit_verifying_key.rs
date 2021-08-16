@@ -23,7 +23,7 @@ use crate::{
 use snarkvm_algorithms::Prepare;
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use derivative::Derivative;
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -50,6 +50,38 @@ pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialComm
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitVerifyingKey<F, CF, PC> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToMinimalBits for CircuitVerifyingKey<F, CF, PC> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let domain_k = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+
+        assert!(domain_h.size() < u64::MAX as usize);
+        assert!(domain_k.size() < u64::MAX as usize);
+
+        let domain_h_size = domain_h.size() as u64;
+        let domain_k_size = domain_k.size() as u64;
+
+        let domain_h_size_bits = domain_h_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        let domain_k_size_bits = domain_k_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+
+        let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
+
+        [domain_h_size_bits, domain_k_size_bits, circuit_commitments_bits].concat()
     }
 }
 
