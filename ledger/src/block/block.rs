@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, BlockHeader, BlockScheme, Transactions};
+use crate::{BlockHeader, BlockScheme, Transactions};
 use snarkvm_dpc::TransactionScheme;
-use snarkvm_utilities::{to_bytes_le, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -58,32 +58,5 @@ impl<T: TransactionScheme> FromBytes for Block<T> {
         let transactions: Transactions<T> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { header, transactions })
-    }
-}
-
-impl<T: TransactionScheme> Block<T> {
-    pub fn serialize(&self) -> Result<Vec<u8>, BlockError> {
-        let mut serialization = vec![];
-        serialization.extend(&self.header.serialize().to_vec());
-        serialization.extend(&variable_length_integer(self.transactions.len() as u64));
-
-        for transaction in self.transactions.iter() {
-            serialization.extend(to_bytes_le![transaction]?)
-        }
-
-        Ok(serialization)
-    }
-
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, BlockError> {
-        const HEADER_SIZE: usize = BlockHeader::size();
-        let (header_bytes, transactions_bytes) = bytes.split_at(HEADER_SIZE);
-
-        let mut header_array = [0u8; HEADER_SIZE];
-        header_array.copy_from_slice(&header_bytes[0..HEADER_SIZE]);
-        let header = BlockHeader::deserialize(&header_array);
-
-        let transactions: Transactions<T> = FromBytes::read_le(transactions_bytes)?;
-
-        Ok(Block { header, transactions })
     }
 }

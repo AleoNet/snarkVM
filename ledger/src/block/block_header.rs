@@ -18,6 +18,7 @@ use crate::{BlockHeaderHash, MerkleRootHash, PedersenMerkleRootHash, ProofOfSucc
 use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
@@ -55,10 +56,6 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
-    pub const fn size() -> usize {
-        HEADER_SIZE
-    }
-
     /// Returns `true` if the block header is uniquely a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
@@ -67,98 +64,20 @@ impl BlockHeader {
             || self.previous_block_hash == BlockHeaderHash([0u8; 32])
     }
 
-    pub fn serialize(&self) -> [u8; HEADER_SIZE] {
-        let mut header_bytes = [0u8; HEADER_SIZE];
-        let mut start = 0;
-        let mut end = BlockHeaderHash::size();
-
-        header_bytes[start..end].copy_from_slice(&self.previous_block_hash.0);
-
-        start = end;
-        end += MerkleRootHash::size();
-        header_bytes[start..end].copy_from_slice(&self.merkle_root_hash.0);
-
-        start = end;
-        end += PedersenMerkleRootHash::size();
-        header_bytes[start..end].copy_from_slice(&self.pedersen_merkle_root_hash.0);
-
-        start = end;
-        end += ProofOfSuccinctWork::size();
-        header_bytes[start..end].copy_from_slice(&self.proof.0);
-
-        start = end;
-        end += size_of::<i64>();
-        header_bytes[start..end].copy_from_slice(&self.time.to_le_bytes());
-
-        start = end;
-        end += size_of::<u64>();
-        header_bytes[start..end].copy_from_slice(&self.difficulty_target.to_le_bytes());
-
-        start = end;
-        end += size_of::<u32>();
-        header_bytes[start..end].copy_from_slice(&self.nonce.to_le_bytes());
-
-        header_bytes
-    }
-
-    pub fn deserialize(bytes: &[u8; HEADER_SIZE]) -> Self {
-        let mut previous_block_hash = [0u8; 32];
-        let mut merkle_root_hash = [0u8; 32];
-        let mut pedersen_merkle_root_hash = [0u8; 32];
-        let mut proof = [0u8; ProofOfSuccinctWork::size()];
-        let mut time = [0u8; 8];
-        let mut difficulty_target = [0u8; 8];
-        let mut nonce = [0u8; 4];
-
-        let mut start = 0;
-        let mut end = BlockHeaderHash::size();
-        previous_block_hash.copy_from_slice(&bytes[start..end]);
-
-        start = end;
-        end += MerkleRootHash::size();
-        merkle_root_hash.copy_from_slice(&bytes[start..end]);
-
-        start = end;
-        end += PedersenMerkleRootHash::size();
-        pedersen_merkle_root_hash.copy_from_slice(&bytes[start..end]);
-
-        start = end;
-        end += ProofOfSuccinctWork::size();
-        proof.copy_from_slice(&bytes[start..end]);
-
-        start = end;
-        end += size_of::<i64>();
-        time.copy_from_slice(&bytes[start..end]);
-
-        start = end;
-        end += size_of::<u64>();
-        difficulty_target.copy_from_slice(&bytes[start..end]);
-
-        start = end;
-        end += size_of::<u32>();
-        nonce.copy_from_slice(&bytes[start..end]);
-
-        Self {
-            previous_block_hash: BlockHeaderHash(previous_block_hash),
-            merkle_root_hash: MerkleRootHash(merkle_root_hash),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash(pedersen_merkle_root_hash),
-            proof: ProofOfSuccinctWork(proof),
-            time: i64::from_le_bytes(time),
-            difficulty_target: u64::from_le_bytes(difficulty_target),
-            nonce: u32::from_le_bytes(nonce),
-        }
-    }
-
-    pub fn get_hash(&self) -> BlockHeaderHash {
-        let serialized = self.serialize();
+    pub fn get_hash(&self) -> Result<BlockHeaderHash> {
+        let serialized = self.to_bytes_le()?;
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&double_sha256(&serialized));
 
-        BlockHeaderHash(hash)
+        Ok(BlockHeaderHash(hash))
     }
 
     pub fn to_difficulty_hash(&self) -> u64 {
         sha256d_to_u64(&self.proof.0[..])
+    }
+
+    pub const fn size() -> usize {
+        HEADER_SIZE
     }
 }
 
@@ -205,7 +124,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn serialize() {
+    fn test_block_header_serialization() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),
@@ -216,16 +135,11 @@ mod tests {
             nonce: 0u32,
         };
 
-        let serialized1 = block_header.serialize();
-        let result = BlockHeader::deserialize(&serialized1);
+        let mut serialized = vec![];
+        block_header.write_le(&mut serialized).unwrap();
+        let deserialized = BlockHeader::read_le(&serialized[..]).unwrap();
 
-        let mut serialized2 = vec![];
-        block_header.write_le(&mut serialized2).unwrap();
-        let de = BlockHeader::read_le(&serialized2[..]).unwrap();
-
-        assert_eq!(&serialized1[..], &serialized2[..]);
-        assert_eq!(&serialized1[..], &bincode::serialize(&block_header).unwrap()[..]);
-        assert_eq!(block_header, result);
-        assert_eq!(block_header, de);
+        assert_eq!(&serialized[..], &bincode::serialize(&block_header).unwrap()[..]);
+        assert_eq!(block_header, deserialized);
     }
 }

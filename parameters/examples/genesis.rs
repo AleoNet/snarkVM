@@ -97,7 +97,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
         transaction_bytes.len() + BlockHeader::size() + 1 /* variable_length_integer for number of transaction */
     );
 
-    Ok((genesis_header.serialize().to_vec(), transaction_bytes))
+    Ok((genesis_header.to_bytes_le()?.to_vec(), transaction_bytes))
 }
 
 pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
