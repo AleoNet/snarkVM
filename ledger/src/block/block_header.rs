@@ -64,7 +64,7 @@ impl BlockHeader {
             || self.previous_block_hash == BlockHeaderHash([0u8; 32])
     }
 
-    pub fn get_hash(&self) -> Result<BlockHeaderHash> {
+    pub fn to_hash(&self) -> Result<BlockHeaderHash> {
         let serialized = self.to_bytes_le()?;
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&double_sha256(&serialized));
@@ -72,8 +72,8 @@ impl BlockHeader {
         Ok(BlockHeaderHash(hash))
     }
 
-    pub fn to_difficulty_hash(&self) -> u64 {
-        sha256d_to_u64(&self.proof.0[..])
+    pub fn to_difficulty_target(&self) -> Result<u64> {
+        Ok(sha256d_to_u64(&self.proof.0[..]))
     }
 
     pub const fn size() -> usize {
@@ -135,11 +135,24 @@ mod tests {
             nonce: 0u32,
         };
 
-        let mut serialized = vec![];
-        block_header.write_le(&mut serialized).unwrap();
-        let deserialized = BlockHeader::read_le(&serialized[..]).unwrap();
-
+        let serialized = block_header.to_bytes_le().unwrap();
         assert_eq!(&serialized[..], &bincode::serialize(&block_header).unwrap()[..]);
-        assert_eq!(block_header, deserialized);
+
+        let deserialized = BlockHeader::read_le(&serialized[..]).unwrap();
+        assert_eq!(deserialized, block_header);
+    }
+
+    #[test]
+    fn test_block_header_size() {
+        let block_header = BlockHeader {
+            previous_block_hash: BlockHeaderHash([0u8; 32]),
+            merkle_root_hash: MerkleRootHash([0u8; 32]),
+            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
+            time: Utc::now().timestamp(),
+            difficulty_target: 0u64,
+            nonce: 0u32,
+        };
+        assert_eq!(block_header.to_bytes_le().unwrap().len(), BlockHeader::size());
     }
 }

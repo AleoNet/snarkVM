@@ -118,7 +118,7 @@ fn dpc_testnet1_integration_test() {
         .as_secs() as i64;
 
     let header = BlockHeader {
-        previous_block_hash: previous_block.header.get_hash().unwrap(),
+        previous_block_hash: previous_block.header.to_hash().unwrap(),
         merkle_root_hash: MerkleRootHash(merkle_root_bytes),
         time,
         difficulty_target: previous_block.header.difficulty_target,
