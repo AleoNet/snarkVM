@@ -14,11 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeaderHash, MerkleRootHash, PedersenMerkleRootHash, ProofOfSuccinctWork};
+use crate::{
+    posw::{txids_to_roots, PoswMarlin},
+    BlockHeaderHash,
+    MerkleRootHash,
+    PedersenMerkleRootHash,
+    ProofOfSuccinctWork,
+    Transactions,
+};
 use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
+use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use chrono::Utc;
+use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
@@ -56,6 +66,59 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
+    /// Initializes a new instance of a block header.
+    pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
+        previous_block_hash: BlockHeaderHash,
+        transactions: &Transactions<T>,
+        timestamp: i64,
+        difficulty_target: u64,
+        max_nonce: u32,
+        rng: &mut R,
+    ) -> Result<Self> {
+        let txids = transactions.to_transaction_ids()?;
+        let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
+
+        // TODO (howardwu): Make this a static once_cell.
+        // Mine the block.
+        let posw = PoswMarlin::load().expect("could not instantiate the PoSW miner");
+        let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce).unwrap();
+
+        Ok(Self {
+            previous_block_hash,
+            merkle_root_hash,
+            pedersen_merkle_root_hash,
+            time: timestamp,
+            difficulty_target,
+            nonce,
+            proof: proof.into(),
+        })
+    }
+
+    /// Initializes a new instance of a genesis block header.
+    pub fn new_genesis<T: TransactionScheme, R: Rng + CryptoRng>(
+        transactions: &Transactions<T>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        let previous_block_hash = BlockHeaderHash([0u8; 32]);
+        let timestamp = Utc::now().timestamp();
+        let difficulty_target = u64::MAX;
+        let max_nonce = u32::MAX;
+
+        let block_header = Self::new(
+            previous_block_hash,
+            transactions,
+            timestamp,
+            difficulty_target,
+            max_nonce,
+            rng,
+        )?;
+
+        match block_header.is_genesis() {
+            true => Ok(block_header),
+            false => Err(anyhow!("Failed to initialize a genesis block header")),
+        }
+    }
+
     /// Returns `true` if the block header is uniquely a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
@@ -119,8 +182,6 @@ impl FromBytes for BlockHeader {
 
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
-
     use super::*;
 
     #[test]
