@@ -1942,6 +1942,7 @@ dependencies = [
  "snarkvm-posw",
  "snarkvm-utilities",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

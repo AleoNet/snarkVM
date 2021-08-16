@@ -22,6 +22,8 @@ extern crate thiserror;
 #[macro_use]
 pub mod macros;
 
+pub mod param_check;
+
 pub mod errors;
 pub use errors::*;
 
