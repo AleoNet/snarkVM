@@ -37,7 +37,7 @@ impl<P: MerkleParameters> MerklePath<P> {
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
         // Check that the given leaf matches the leaf in the membership proof.
         if !self.path.is_empty() {
-            let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+            let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
             let mut buffer = vec![0u8; hash_input_size_in_bytes];
 
             let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf, &mut buffer)?;

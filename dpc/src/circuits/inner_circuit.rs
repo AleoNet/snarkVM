@@ -704,14 +704,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 || Ok(encrypted_record_hash),
             )?;
 
-            let candidate_encrypted_record_gadget_field_elements = candidate_encrypted_record_gadget
-                .to_constraint_field(
-                    &mut encryption_cs.ns(|| format!("convert encrypted record {} to field elements", j)),
-                )?;
-
-            let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget_on_field_elements(
+            let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget(
                 &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
-                candidate_encrypted_record_gadget_field_elements,
+                candidate_encrypted_record_gadget,
             )?;
 
             encrypted_record_hash_gadget.enforce_equal(

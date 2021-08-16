@@ -27,7 +27,6 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::BHPCompressedCRH,
-    crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
@@ -39,14 +38,13 @@ use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
     edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
+    edwards_bw6::EdwardsProjective as EdwardsBW6,
     PairingEngine,
 };
-use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
-        crypto_hash::PoseidonCryptoHashGadget,
         encryption::ECIESPoseidonEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrCompressedGadget,
@@ -62,10 +60,11 @@ use snarkvm_marlin::{
 };
 use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
-use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
+use snarkvm_gadgets::curves::edwards_bw6::EdwardsBW6Gadget;
 use std::{cell::RefCell, rc::Rc};
 
 macro_rules! dpc_setup {
@@ -83,7 +82,7 @@ pub type Testnet2Transaction = Transaction<Testnet2Parameters>;
 
 define_merkle_tree_parameters!(
     ProgramIDMerkleTreeParameters,
-    <Testnet2Parameters as Parameters>::ProgramCircuitIDCRH,
+    <Testnet2Parameters as Parameters>::ProgramCircuitIDTreeCRH,
     8
 );
 
@@ -148,12 +147,12 @@ impl Parameters for Testnet2Parameters {
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
-    type EncryptedRecordCRH = PoseidonCryptoHash<Self::InnerScalarField, 4, false>;
-    type EncryptedRecordCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
+    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 72, 32>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 72, 32>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
-    type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
-    type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;
+    type InnerCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
@@ -170,21 +169,25 @@ impl Parameters for Testnet2Parameters {
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
     type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
-    type ProgramCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
-    type ProgramCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type ProgramCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 237, 16>;
+    type ProgramCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
     type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
+
+    type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
+    type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
+    type ProgramCircuitIDTreeDigest = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
     type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
     
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
-    type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
-    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
+    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
     type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
-    type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
+    type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
 
@@ -201,15 +204,16 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
     dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramIDCommitment0"} // TODO (howardwu): Rename to "AleoProgramCommitmentScheme0".
     dpc_setup!{program_circuit_id_crh, PROGRAM_CIRCUIT_ID_CRH, ProgramCircuitIDCRH, "AleoProgramIDCRH0"} // TODO (howardwu): Rename to "AleoProgramCircuitIDCRH0".
+    dpc_setup!{program_circuit_id_tree_crh, PROGRAM_CIRCUIT_ID_TREE_CRH, ProgramCircuitIDTreeCRH, "AleoProgramIDTreeCRH0"} // TODO (howardwu): Rename to "AleoProgramCircuitIDTreeCRH0".
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
-    dpc_setup!{record_serial_number_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
+    dpc_setup!{record_serial_number_tree_crh, RECORD_SERIAL_NUMBER_TREE_CRH, RecordSerialNumberTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
-            .hash_field_elements(&Self::inner_circuit_verifying_key().to_field_elements().expect("Failed to convert inner circuit verifying key to elements"))
+            .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
@@ -229,7 +233,7 @@ impl Parameters for Testnet2Parameters {
 
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
         static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::ProgramCircuitTreeParameters> = OnceCell::new();
-        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_crh().clone()))
+        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
 
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {

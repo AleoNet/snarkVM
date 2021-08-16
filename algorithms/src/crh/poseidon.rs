@@ -38,7 +38,11 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         }
     }
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+        assert!(input.len() <= Self::INPUT_SIZE_BITS);
+
+        let mut input = input.to_vec();
+        input.resize(Self::INPUT_SIZE_BITS, false);
         Ok(Self::evaluate(&input.to_field_elements().unwrap())?)
     }
 
