@@ -17,7 +17,7 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{from_bytes_le_to_bits_le, BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
 
 use once_cell::sync::OnceCell;
 use std::{
@@ -28,7 +28,8 @@ use std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-// we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
+// The stack is currently allocated with the following size
+// because we cannot specify them using the trait consts.
 const MAX_WINDOW_SIZE: usize = 256;
 const MAX_NUM_WINDOWS: usize = 4096;
 
@@ -86,28 +87,27 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         }
     }
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
         let eval_time = start_timer!(|| "BoweHopwoodPedersenCRH::hash");
 
-        if (input.len() * 8) > WINDOW_SIZE * NUM_WINDOWS {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
-        assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
-        assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
+        debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
+        debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
-        let mut buffer = [0u8; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buffer[..input.len()].copy_from_slice(input);
-        let buf_slice = from_bytes_le_to_bits_le(&buffer[..]).collect::<Vec<_>>();
+        let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        buf_slice[..input.len()].copy_from_slice(input);
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
             bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
         }
 
-        assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
+        debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
-        assert_eq!(
+        debug_assert_eq!(
             self.bases.len(),
             NUM_WINDOWS,
             "Incorrect number of windows ({:?}) for BHP of {:?}x{:?}x{}",
@@ -116,16 +116,16 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             NUM_WINDOWS,
             BOWE_HOPWOOD_CHUNK_SIZE,
         );
-        assert_eq!(self.bases.len(), NUM_WINDOWS);
+        debug_assert_eq!(self.bases.len(), NUM_WINDOWS);
         for bases in self.bases.iter() {
-            assert_eq!(bases.len(), WINDOW_SIZE);
+            debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }
         let base_lookup = self.base_lookup(&self.bases);
-        assert_eq!(base_lookup.len(), NUM_WINDOWS);
+        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
         for bases in base_lookup.iter() {
-            assert_eq!(bases.len(), WINDOW_SIZE);
+            debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }
-        assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
+        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
 
         // Compute sum of h_i^{sum of
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}

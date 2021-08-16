@@ -17,7 +17,7 @@
 use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
 use snarkvm_curves::{traits::PairingEngine, Group};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::ops::{Add, AddAssign};
 use rand_core::RngCore;
@@ -233,6 +233,18 @@ pub struct Commitment<E: PairingEngine> {
     pub(crate) shifted_comm: Option<kzg10::Commitment<E>>,
 }
 impl_bytes!(Commitment);
+
+impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let comm_bits = self.comm.to_minimal_bits();
+
+        if let Some(shifted_comm) = &self.shifted_comm {
+            [comm_bits, shifted_comm.to_minimal_bits()].concat()
+        } else {
+            comm_bits
+        }
+    }
+}
 
 impl<E: PairingEngine> PCCommitment for Commitment<E> {
     #[inline]
