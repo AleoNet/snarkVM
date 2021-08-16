@@ -27,7 +27,6 @@ use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
-use chrono::Utc;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -75,6 +74,8 @@ impl BlockHeader {
         max_nonce: u32,
         rng: &mut R,
     ) -> Result<Self> {
+        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
+
         let txids = transactions.to_transaction_ids()?;
         let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
 
@@ -100,7 +101,7 @@ impl BlockHeader {
         rng: &mut R,
     ) -> Result<Self> {
         let previous_block_hash = BlockHeaderHash([0u8; 32]);
-        let timestamp = Utc::now().timestamp();
+        let timestamp = 0i64;
         let difficulty_target = u64::MAX;
         let max_nonce = u32::MAX;
 
@@ -119,7 +120,7 @@ impl BlockHeader {
         }
     }
 
-    /// Returns `true` if the block header is uniquely a genesis block header.
+    /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
         self.time == 0
@@ -184,13 +185,17 @@ impl FromBytes for BlockHeader {
 mod tests {
     use super::*;
     use snarkvm_dpc::{testnet2::Testnet2Parameters, Transaction};
+    use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 
+    use chrono::Utc;
     use rand::thread_rng;
 
     #[test]
     fn test_block_header_genesis() {
         let block_header = BlockHeader::new_genesis(
-            &Transactions::<Transaction<Testnet2Parameters>>::new(),
+            &Transactions::from(&[
+                Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap(),
+            ]),
             &mut thread_rng(),
         )
         .unwrap();

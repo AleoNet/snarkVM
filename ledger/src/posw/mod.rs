@@ -50,6 +50,11 @@ pub type Marlin<E> = MarlinSNARK<
 
 /// Subtree calculation
 pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, PedersenMerkleRootHash, Vec<[u8; 32]>) {
+    assert!(
+        !transaction_ids.is_empty(),
+        "Cannot compute a Merkle tree with no transaction IDs"
+    );
+
     let (root, subroots) = merkle_root_with_subroots(transaction_ids, MASKED_TREE_DEPTH);
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
