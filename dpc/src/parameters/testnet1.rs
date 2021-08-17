@@ -127,8 +127,8 @@ impl Parameters for Testnet1Parameters {
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 72, 32>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 72, 32>;
+    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 80, 32>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 80, 32>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;
