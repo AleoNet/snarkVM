@@ -114,7 +114,7 @@ where
         let proving_time = start_timer!(|| "{Marlin}::Proving");
         let proof =
             MarlinTestnet1::<E>::prove_with_terminator(&proving_key.proving_key, input_and_witness, terminator, rng)
-                .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
+                .map_err(|error| error.into_snark_error("Failed to generate proof"))?;
         end_timer!(proving_time);
         Ok(proof)
     }
@@ -126,7 +126,7 @@ where
     ) -> Result<bool, SNARKError> {
         let verification_time = start_timer!(|| "{Marlin}::Verifying");
         let res = MarlinTestnet1::<E>::verify(&verifying_key, &input.to_field_elements()?, &proof)
-            .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
+            .map_err(|error| error.into_snark_error("Could not verify proof"))?;
         end_timer!(verification_time);
 
         Ok(res)
