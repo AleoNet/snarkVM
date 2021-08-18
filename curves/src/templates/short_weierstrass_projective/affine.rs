@@ -20,7 +20,15 @@ use crate::{
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    rand::UniformRand,
+    serialize::*,
+    FromBytes,
+    ToBits,
+    ToBytes,
+    ToMinimalBits,
+};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -164,6 +172,16 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             let x3b = P::add_b(&((self.x.square() * self.x) + P::mul_by_a(&self.x)));
             y2 == x3b
         }
+    }
+}
+
+impl<P: Parameters> ToMinimalBits for Affine<P> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let mut res_bits = self.x.to_bits_le();
+        res_bits.push(self.y.to_bits_le().first().unwrap().clone());
+        res_bits.push(self.infinity);
+
+        res_bits
     }
 }
 

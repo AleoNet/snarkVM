@@ -16,8 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_fields::ToConstraintField;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -239,7 +238,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let transaction_proof = {
             debug_assert_eq!(
                 C::inner_circuit_id(),
-                &C::inner_circuit_id_crh().hash_field_elements(&self.inner_verifying_key.to_field_elements()?)?,
+                &C::inner_circuit_id_crh().hash_bits(&self.inner_verifying_key.to_minimal_bits())?,
                 "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
             );
 
@@ -393,7 +392,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         debug_assert_eq!(
             C::inner_circuit_id(),
             &C::inner_circuit_id_crh()
-                .hash_field_elements(&self.inner_verifying_key.to_field_elements().unwrap())
+                .hash_bits(&self.inner_verifying_key.to_minimal_bits())
                 .unwrap(),
             "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
         );

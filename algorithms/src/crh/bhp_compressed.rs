@@ -41,8 +41,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into()
     }
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let affine = self.bhp.hash(input)?;
+    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+        let affine = self.bhp.hash_bits(input)?;
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }

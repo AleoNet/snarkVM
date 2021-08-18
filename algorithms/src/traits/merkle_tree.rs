@@ -32,6 +32,7 @@ pub trait MerkleParameters: Send + Sync + Clone {
 
     /// Returns the hash of a given leaf.
     fn hash_leaf<L: ToBytes>(&self, leaf: &L, buffer: &mut [u8]) -> Result<<Self::H as CRH>::Output, MerkleError> {
+        debug_assert_eq!(buffer.len(), Self::H::INPUT_SIZE_BITS / 8);
         let mut writer = Cursor::new(buffer);
         leaf.write_le(&mut writer)?;
 
@@ -46,6 +47,7 @@ pub trait MerkleParameters: Send + Sync + Clone {
         right: &<Self::H as CRH>::Output,
         buffer: &mut [u8],
     ) -> Result<<Self::H as CRH>::Output, MerkleError> {
+        debug_assert_eq!(buffer.len(), Self::H::INPUT_SIZE_BITS / 8);
         let mut writer = Cursor::new(buffer);
 
         // Construct left input.

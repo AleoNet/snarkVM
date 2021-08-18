@@ -27,7 +27,7 @@ use snarkvm_gadgets::{
     },
     MergeGadget,
     ToBitsLEGadget,
-    ToConstraintFieldGadget,
+    ToMinimalBitsGadget,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
@@ -97,6 +97,11 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     let program_circuit_id_crh = C::ProgramCircuitIDCRHGadget::alloc_constant(
         &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
         || Ok(C::program_circuit_id_crh().clone()),
+    )?;
+
+    let program_circuit_id_tree_crh = C::ProgramCircuitIDTreeCRHGadget::alloc_constant(
+        &mut cs.ns(|| "Declare program_circuit_id_tree_crh_parameters"),
+        || Ok(C::program_circuit_id_tree_crh().clone()),
     )?;
 
     let inner_circuit_id_crh =
@@ -240,25 +245,23 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
                 || Ok(&input.verifying_key),
             )?;
 
-        let program_circuit_verifying_key_field_elements = program_circuit_verifying_key
-            .to_constraint_field(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
+        let program_circuit_verifying_key_bits = program_circuit_verifying_key
+            .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
-        let claimed_circuit_id = program_circuit_id_crh.check_evaluation_gadget_on_field_elements(
-            &mut cs.ns(|| "Compute circuit ID"),
-            program_circuit_verifying_key_field_elements,
-        )?;
+        let claimed_circuit_id = program_circuit_id_crh
+            .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute circuit ID"), program_circuit_verifying_key_bits)?;
 
         let claimed_circuit_id_bytes =
             claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
-        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramCircuitIDCRHGadget, _>::alloc(
+        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramCircuitIDTreeCRHGadget, _>::alloc(
             &mut cs.ns(|| "Declare program path for circuit"),
             || Ok(&input.program_path),
         )?;
 
         let claimed_program_id = death_program_merkle_path_gadget.calculate_root(
             &mut cs.ns(|| "calculate_program_id"),
-            &program_circuit_id_crh,
+            &program_circuit_id_tree_crh,
             claimed_circuit_id_bytes,
         )?;
 
@@ -324,8 +327,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_field_elements =
-        inner_snark_vk.to_constraint_field(&mut cs.ns(|| "Convert inner snark vk to field elements"))?;
+    let inner_snark_vk_bits = inner_snark_vk.to_minimal_bits(&mut cs.ns(|| "Convert inner snark vk to bits"))?;
 
     let given_inner_circuit_id =
         <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
@@ -333,10 +335,8 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
             || Ok(inner_circuit_id),
         )?;
 
-    let candidate_inner_circuit_id = inner_circuit_id_crh.check_evaluation_gadget_on_field_elements(
-        &mut cs.ns(|| "Compute inner circuit ID"),
-        inner_snark_vk_field_elements,
-    )?;
+    let candidate_inner_circuit_id = inner_circuit_id_crh
+        .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute inner circuit ID"), inner_snark_vk_bits)?;
 
     candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),

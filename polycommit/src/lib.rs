@@ -32,7 +32,14 @@ extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    error as error_fn,
+    errors::SerializationError,
+    serialize::*,
+    FromBytes,
+    ToBytes,
+    ToMinimalBits,
+};
 
 use core::fmt::Debug;
 use rand_core::RngCore;
@@ -160,7 +167,13 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     /// The prepared verifier key for the scheme; used to check an evaluation proof.
     type PreparedVerifierKey: Clone;
     /// The commitment to a polynomial.
-    type Commitment: PCCommitment + Prepare<Self::PreparedCommitment> + ToConstraintField<CF> + Clone + Send + Sync;
+    type Commitment: PCCommitment
+        + Prepare<Self::PreparedCommitment>
+        + ToConstraintField<CF>
+        + ToMinimalBits
+        + Clone
+        + Send
+        + Sync;
     /// The prepared commitment to a polynomial.
     type PreparedCommitment: Clone;
     /// The commitment randomness.
