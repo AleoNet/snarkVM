@@ -273,7 +273,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let tree_index = convert_index_to_last_level(index, tree_depth);
 
         // Check that the given index corresponds to the correct leaf.
-        if leaf_hash != self.tree[tree_index] {
+        if tree_index >= self.tree.len() || leaf_hash != self.tree[tree_index] {
             return Err(MerkleError::IncorrectLeafIndex(tree_index));
         }
 
