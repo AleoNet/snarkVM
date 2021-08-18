@@ -274,7 +274,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Check that the given index corresponds to the correct leaf.
         if tree_index >= self.tree.len() || leaf_hash != self.tree[tree_index] {
-            return Err(MerkleError::IncorrectLeafIndex(tree_index));
+            return Err(MerkleError::IncorrectLeafIndex(tree_index, self.tree.len()));
         }
 
         // Iterate from the leaf's parent up to the root, storing all intermediate hash values.

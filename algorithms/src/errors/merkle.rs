@@ -25,8 +25,8 @@ pub enum MerkleError {
     #[error("{}", _0)]
     CRHError(#[from] crate::CRHError),
 
-    #[error("Incorrect leaf index: {}", _0)]
-    IncorrectLeafIndex(usize),
+    #[error("Incorrect leaf index: {}. Must be less than: {}", _0, _1)]
+    IncorrectLeafIndex(usize, usize),
 
     #[error("Incorrect path length: {}", _0)]
     IncorrectPathLength(usize),
