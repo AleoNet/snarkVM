@@ -407,17 +407,13 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             .prover_response
             .to_bytes(cs.ns(|| "prover_response_to_bytes"))?;
 
-        let prover_response_bits = prover_response_bytes
-            .iter()
-            .flat_map(|byte| byte.to_bits_le())
-            .collect::<Vec<_>>();
+        let prover_response_bits = prover_response_bytes.iter().flat_map(|byte| byte.to_bits_le());
         let verifier_challenge_bits = signature
             .verifier_challenge
             .to_bits_le(cs.ns(|| "verifier_challenge_to_bits"))?;
 
         let mut claimed_prover_commitment = affine_zero.clone();
         for (i, (bit, base_power)) in prover_response_bits
-            .iter()
             .zip_eq(&self.signature.generator_powers)
             .enumerate()
         {
@@ -477,6 +473,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             .verifier_challenge
             .is_eq(cs.ns(|| "check verifier challenge"), &hash)?;
 
-        return Ok(result);
+        Ok(result)
     }
 }
