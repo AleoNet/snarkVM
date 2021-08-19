@@ -16,8 +16,7 @@
 
 use crate::{
     bits::Boolean,
-    integers::uint::UInt8,
-    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
+    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget},
 };
 use snarkvm_algorithms::crh::{BHPCRH, BOWE_HOPWOOD_CHUNK_SIZE};
 use snarkvm_curves::ProjectiveCurve;
@@ -85,21 +84,18 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
 {
     type OutputGadget = GG;
 
-    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        input: Vec<UInt8>,
+        input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        // Pad the input bytes.
-        let mut padded_input_bytes = input;
-        padded_input_bytes.resize(WINDOW_SIZE * NUM_WINDOWS / 8, UInt8::constant(0u8));
-        assert_eq!(padded_input_bytes.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
+        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS);
 
-        // Pad the input bits if it is not the current length.
-        let mut input_in_bits: Vec<_> = padded_input_bytes
-            .into_iter()
-            .flat_map(|byte| byte.to_bits_le())
-            .collect();
+        // Pad the input bytes.
+        let mut input_in_bits = input;
+        input_in_bits.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
+        assert_eq!(input_in_bits.len(), WINDOW_SIZE * NUM_WINDOWS);
+
         if (input_in_bits.len()) % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
             let current_length = input_in_bits.len();
             let target_length = current_length + BOWE_HOPWOOD_CHUNK_SIZE - current_length % BOWE_HOPWOOD_CHUNK_SIZE;

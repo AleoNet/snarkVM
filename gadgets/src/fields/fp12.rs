@@ -672,15 +672,15 @@ where
     <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
 {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits_be(&mut cs)?;
-        let mut c1 = self.c1.to_bits_be(cs)?;
+        let mut c0 = self.c0.to_bits_be(cs.ns(|| "c0"))?;
+        let mut c1 = self.c1.to_bits_be(cs.ns(|| "c1"))?;
         c0.append(&mut c1);
         Ok(c0)
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits_be_strict(&mut cs)?;
-        let mut c1 = self.c1.to_bits_be_strict(cs)?;
+        let mut c0 = self.c0.to_bits_be_strict(cs.ns(|| "c0"))?;
+        let mut c1 = self.c1.to_bits_be_strict(cs.ns(|| "c1"))?;
         c0.append(&mut c1);
         Ok(c0)
     }
@@ -692,15 +692,15 @@ where
     <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
 {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits_le(&mut cs)?;
-        let mut c1 = self.c1.to_bits_le(cs)?;
+        let mut c0 = self.c0.to_bits_le(cs.ns(|| "c0"))?;
+        let mut c1 = self.c1.to_bits_le(cs.ns(|| "c1"))?;
         c0.append(&mut c1);
         Ok(c0)
     }
 
     fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits_le_strict(&mut cs)?;
-        let mut c1 = self.c1.to_bits_le_strict(cs)?;
+        let mut c0 = self.c0.to_bits_le_strict(cs.ns(|| "c0"))?;
+        let mut c1 = self.c1.to_bits_le_strict(cs.ns(|| "c1"))?;
         c0.append(&mut c1);
         Ok(c0)
     }

@@ -22,6 +22,7 @@ use crate::{
         alloc::AllocGadget,
         curves::CompressedGroupGadget,
     },
+    Boolean,
 };
 use snarkvm_algorithms::{
     crh::{PedersenCRH, PedersenCompressedCRH},
@@ -102,12 +103,12 @@ impl<
 {
     type OutputGadget = GG::BaseFieldGadget;
 
-    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        input: Vec<UInt8>,
+        input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        let output = self.crh_gadget.check_evaluation_gadget(cs, input)?;
+        let output = self.crh_gadget.check_evaluation_gadget_on_bits(cs, input)?;
         Ok(output.to_x_coordinate())
     }
 }

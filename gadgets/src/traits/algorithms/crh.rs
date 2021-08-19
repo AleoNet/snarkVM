@@ -29,7 +29,9 @@ use crate::{
         integers::Integer,
         select::CondSelectGadget,
     },
+    Boolean,
     FpGadget,
+    ToBitsLEGadget,
 };
 
 pub trait CRHGadget<H: CRH, F: PrimeField>: AllocGadget<H, F> + Sized + Clone {
@@ -44,8 +46,18 @@ pub trait CRHGadget<H: CRH, F: PrimeField>: AllocGadget<H, F> + Sized + Clone {
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         &self,
-        cs: CS,
+        mut cs: CS,
         input: Vec<UInt8>,
+    ) -> Result<Self::OutputGadget, SynthesisError> {
+        let input = input.to_bits_le(cs.ns(|| "to_bits"))?;
+
+        self.check_evaluation_gadget_on_bits(cs.ns(|| "hash"), input)
+    }
+
+    fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError>;
 
     fn check_evaluation_gadget_on_field_elements<CS: ConstraintSystem<F>>(

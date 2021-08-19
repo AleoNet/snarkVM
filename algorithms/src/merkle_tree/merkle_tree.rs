@@ -67,7 +67,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         }
 
         // Compute and store the hash values for each leaf.
-        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+        let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
         let last_level_index = level_indices.pop().unwrap_or(0);
 
         let subsections = Self::hash_row(&*parameters, leaves)?;
@@ -155,7 +155,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let new_indices = (start_index..start_index + new_leaves.len()).collect::<Vec<_>>();
 
         // Compute and store the hash values for each leaf.
-        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+        let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
         let last_level_index = level_indices.pop().unwrap_or(0);
 
         // The beginning of the tree can be reconstructed from pre-existing hashed leaves.
@@ -264,7 +264,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let prove_time = start_timer!(|| "MerkleTree::generate_proof");
         let mut path = vec![];
 
-        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+        let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
         let mut buffer = vec![0u8; hash_input_size_in_bytes];
 
         let leaf_hash = self.parameters.hash_leaf(leaf, &mut buffer)?;
@@ -273,7 +273,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let tree_index = convert_index_to_last_level(index, tree_depth);
 
         // Check that the given index corresponds to the correct leaf.
-        if leaf_hash != self.tree[tree_index] {
+        if tree_index >= self.tree.len() || leaf_hash != self.tree[tree_index] {
             return Err(MerkleError::IncorrectLeafIndex(tree_index));
         }
 
@@ -315,7 +315,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         parameters: &P,
         leaves: &[L],
     ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
-        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+        let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
         cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
             .map(|chunk| -> Result<Vec<_>, MerkleError> {
                 let mut buffer = vec![0u8; hash_input_size_in_bytes];
