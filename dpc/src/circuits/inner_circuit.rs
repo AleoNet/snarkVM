@@ -26,6 +26,7 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
+    ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
@@ -150,6 +151,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
     // Declares a constant for an empty payload in a record.
     let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
+
+    let zero_value_field_elements =
+        zero_value.to_constraint_field(&mut cs.ns(|| "convert zero value to field elements"))?;
+    let empty_payload_field_elements =
+        empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
 
     let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
@@ -409,17 +415,25 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
             // Perform noop safety checks.
-            given_value.conditional_enforce_equal(
-                &mut commitment_cs.ns(|| format!("If the input record {} is a noop, enforce it has a value of 0", i)),
-                &zero_value,
-                &given_is_dummy,
-            )?;
-            given_payload.conditional_enforce_equal(
-                &mut commitment_cs
-                    .ns(|| format!("If the input record {} is a noop, enforce it has an empty payload", i)),
-                &empty_payload,
-                &given_is_dummy,
-            )?;
+            {
+                let given_value_field_elements = given_value
+                    .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
+                let given_payload_field_elements = given_payload
+                    .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
+
+                given_value_field_elements.conditional_enforce_equal(
+                    &mut commitment_cs
+                        .ns(|| format!("If the input record {} is a noop, enforce it has a value of 0", i)),
+                    &zero_value_field_elements,
+                    &given_is_dummy,
+                )?;
+                given_payload_field_elements.conditional_enforce_equal(
+                    &mut commitment_cs
+                        .ns(|| format!("If the input record {} is a noop, enforce it has an empty payload", i)),
+                    &empty_payload_field_elements,
+                    &given_is_dummy,
+                )?;
+            }
 
             // Compute the record commitment and check that it matches the declared commitment.
             let record_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
@@ -579,17 +593,25 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
             // Perform noop safety checks.
-            given_value.conditional_enforce_equal(
-                &mut commitment_cs.ns(|| format!("If the output record {} is a noop, enforce it has a value of 0", j)),
-                &zero_value,
-                &given_is_dummy,
-            )?;
-            given_payload.conditional_enforce_equal(
-                &mut commitment_cs
-                    .ns(|| format!("If the output record {} is a noop, enforce it has an empty payload", j)),
-                &empty_payload,
-                &given_is_dummy,
-            )?;
+            {
+                let given_value_field_elements = given_value
+                    .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
+                let given_payload_field_elements = given_payload
+                    .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
+
+                given_value_field_elements.conditional_enforce_equal(
+                    &mut commitment_cs
+                        .ns(|| format!("If the output record {} is a noop, enforce it has a value of 0", j)),
+                    &zero_value_field_elements,
+                    &given_is_dummy,
+                )?;
+                given_payload_field_elements.conditional_enforce_equal(
+                    &mut commitment_cs
+                        .ns(|| format!("If the output record {} is a noop, enforce it has an empty payload", j)),
+                    &empty_payload_field_elements,
+                    &given_is_dummy,
+                )?;
+            }
 
             // Compute the record commitment and check that it matches the declared commitment.
             let given_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;

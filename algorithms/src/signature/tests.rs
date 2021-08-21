@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{signature::Schnorr, SignatureScheme};
-use snarkvm_curves::{edwards_bls12::EdwardsProjective as EdwardsBls12, edwards_bw6::EdwardsProjective as EdwardsBW6};
-use snarkvm_utilities::FromBytes;
-
-use rand::{Rng, SeedableRng};
+use crate::SignatureScheme;
+use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use snarkvm_utilities::FromBytes;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
@@ -74,34 +72,92 @@ fn signature_scheme_serialization<S: SignatureScheme>() {
     assert_eq!(signature_scheme, recovered_signature_scheme);
 }
 
-#[test]
-fn test_schnorr_signature_on_edwards_bls12_377() {
-    type TestSignature = Schnorr<EdwardsBls12>;
+mod schnorr {
+    use crate::signature::{
+        tests::{failed_verification, randomize_and_verify, sign_and_verify, signature_scheme_serialization},
+        Schnorr,
+    };
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+    use snarkvm_curves::{
+        edwards_bls12::EdwardsProjective as EdwardsBls12,
+        edwards_bw6::EdwardsProjective as EdwardsBW6,
+    };
 
-    let message = "Hi, I am a Schnorr signature!";
-    sign_and_verify::<TestSignature>(message.as_bytes());
-    failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+    #[test]
+    fn test_schnorr_signature_on_edwards_bls12_377() {
+        type TestSignature = Schnorr<EdwardsBls12>;
 
-    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let randomizer: [u8; 32] = rng.gen();
-    randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let randomizer: [u8; 32] = rng.gen();
+        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
+    }
+
+    #[test]
+    fn test_schnorr_signature_on_edwards_bw6() {
+        type TestSignature = Schnorr<EdwardsBW6>;
+
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let randomizer: [u8; 32] = rng.gen();
+        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
+    }
+
+    #[test]
+    fn schnorr_signature_scheme_serialization() {
+        signature_scheme_serialization::<Schnorr<EdwardsBls12>>();
+        signature_scheme_serialization::<Schnorr<EdwardsBW6>>();
+    }
 }
 
-#[test]
-fn test_schnorr_signature_on_edwards_bw6() {
-    type TestSignature = Schnorr<EdwardsBW6>;
+mod schnorr_compressed {
+    use crate::signature::{
+        tests::{failed_verification, randomize_and_verify, sign_and_verify, signature_scheme_serialization},
+        SchnorrCompressed,
+    };
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+    use snarkvm_curves::{
+        edwards_bls12::EdwardsParameters as EdwardsBls12,
+        edwards_bw6::EdwardsParameters as EdwardsBW6,
+    };
 
-    let message = "Hi, I am a Schnorr signature!";
-    sign_and_verify::<TestSignature>(message.as_bytes());
-    failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+    #[test]
+    fn test_schnorr_signature_on_edwards_bls12_377() {
+        type TestSignature = SchnorrCompressed<EdwardsBls12>;
 
-    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let randomizer: [u8; 32] = rng.gen();
-    randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
-}
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
 
-#[test]
-fn schnorr_signature_scheme_serialization() {
-    signature_scheme_serialization::<Schnorr<EdwardsBls12>>();
-    signature_scheme_serialization::<Schnorr<EdwardsBW6>>();
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let randomizer: [u8; 32] = rng.gen();
+        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
+    }
+
+    #[test]
+    fn test_schnorr_signature_on_edwards_bw6() {
+        type TestSignature = SchnorrCompressed<EdwardsBW6>;
+
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let randomizer: [u8; 32] = rng.gen();
+        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
+    }
+
+    #[test]
+    fn schnorr_signature_scheme_serialization() {
+        signature_scheme_serialization::<SchnorrCompressed<EdwardsBls12>>();
+        signature_scheme_serialization::<SchnorrCompressed<EdwardsBW6>>();
+    }
 }

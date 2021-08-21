@@ -15,11 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SignatureError;
-use snarkvm_utilities::{
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    FromBytes,
-    ToBytes,
-};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
@@ -28,17 +24,7 @@ pub trait SignatureScheme:
     Sized + ToBytes + FromBytes + Debug + Clone + Eq + Send + Sync + From<<Self as SignatureScheme>::Parameters>
 {
     type Parameters: Clone + Debug + Eq;
-    type PublicKey: Clone
-        + Debug
-        + Default
-        + ToBytes
-        + FromBytes
-        + Hash
-        + Eq
-        + Send
-        + Sync
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+    type PublicKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
     type RandomizedPrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Into<Self::PrivateKey>;
     type Randomizer: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
