@@ -24,7 +24,7 @@ pub struct GenesisBlock;
 
 impl Genesis for GenesisBlock {
     const CHECKSUM: &'static str = "";
-    const SIZE: u64 = 2230;
+    const SIZE: u64 = 2166;
 
     fn load_bytes() -> Vec<u8> {
         let block_header_bytes = GenesisBlockHeader::load_bytes();
