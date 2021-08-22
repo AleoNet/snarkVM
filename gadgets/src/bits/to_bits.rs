@@ -69,7 +69,6 @@ impl<F: Field> ToBitsBEGadget<F> for [UInt8] {
     }
 }
 
-
 pub trait ToBitsLEGadget<F: Field> {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
 
