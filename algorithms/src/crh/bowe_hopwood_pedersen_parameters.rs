@@ -18,6 +18,8 @@ use snarkvm_curves::Group;
 
 use super::PedersenCRHParameters;
 
+use std::sync::Arc;
+
 pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
 
@@ -26,7 +28,7 @@ use rayon::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCRHParameters<G: Group> {
-    base_lookup: Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>,
+    base_lookup: Arc<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
 }
 
 impl<G: Group> BoweHopwoodPedersenCRHParameters<G> {
@@ -57,7 +59,9 @@ impl<G: Group> BoweHopwoodPedersenCRHParameters<G> {
             })
             .collect();
 
-        Self { base_lookup }
+        Self {
+            base_lookup: Arc::new(base_lookup),
+        }
     }
 
     pub fn base_lookup(&self) -> &[Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>] {

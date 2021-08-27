@@ -69,7 +69,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH for Peder
         let bits = input.view_bits::<Lsb0>();
         let result = bits
             .chunks(WINDOW_SIZE)
-            .zip(&self.parameters.bases)
+            .zip(&*self.parameters.bases)
             .map(|(bits, powers)| {
                 let mut encoded = G::zero();
                 for (bit, base) in bits.iter().zip(powers.iter()) {

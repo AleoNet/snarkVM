@@ -23,11 +23,12 @@ use rand::Rng;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PedersenCRHParameters<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub bases: Vec<Vec<G>>,
+    pub bases: Arc<Vec<Vec<G>>>,
 }
 
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRHParameters
@@ -35,14 +36,14 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRHParameters
 {
     fn setup<R: Rng>(rng: &mut R) -> Self {
         Self {
-            bases: (0..NUM_WINDOWS).map(|_| Self::base(WINDOW_SIZE, rng)).collect(),
+            bases: Arc::new((0..NUM_WINDOWS).map(|_| Self::base(WINDOW_SIZE, rng)).collect()),
         }
     }
 }
 
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn from(bases: Vec<Vec<G>>) -> Self {
-        Self { bases }
+        Self { bases: Arc::new(bases) }
     }
 
     fn base<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<G> {
@@ -61,7 +62,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.bases.len() as u32).write_le(&mut writer)?;
-        for base in &self.bases {
+        for base in &*self.bases {
             (base.len() as u32).write_le(&mut writer)?;
             for g in base {
                 g.write_le(&mut writer)?;
@@ -90,7 +91,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
             bases.push(base);
         }
 
-        Ok(Self { bases })
+        Ok(Self { bases: Arc::new(bases) })
     }
 }
 
