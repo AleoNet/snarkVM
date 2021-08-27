@@ -37,7 +37,7 @@ use std::sync::Arc;
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct InnerCircuit<C: Testnet1Components> {
     // Parameters
-    system_parameters: SystemParameters<C>,
+    system_parameters: Arc<SystemParameters<C>>,
     ledger_parameters: Arc<C::MerkleParameters>,
 
     ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
@@ -71,7 +71,7 @@ pub struct InnerCircuit<C: Testnet1Components> {
 }
 
 impl<C: Testnet1Components> InnerCircuit<C> {
-    pub fn blank(system_parameters: &SystemParameters<C>, ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
+    pub fn blank(system_parameters: &Arc<SystemParameters<C>>, ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
         let digest = MerkleTreeDigest::<C::MerkleParameters>::default();
@@ -146,7 +146,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         // Parameters
-        system_parameters: SystemParameters<C>,
+        system_parameters: Arc<SystemParameters<C>>,
         ledger_parameters: Arc<C::MerkleParameters>,
 
         // Digest
