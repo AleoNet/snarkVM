@@ -35,7 +35,7 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct OuterCircuit<C: Testnet2Components> {
-    system_parameters: SystemParameters<C>,
+    system_parameters: Arc<SystemParameters<C>>,
 
     // Inner snark verifier public inputs
     ledger_parameters: Arc<C::MerkleParameters>,
@@ -61,7 +61,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
 
 impl<C: Testnet2Components> OuterCircuit<C> {
     pub fn blank(
-        system_parameters: SystemParameters<C>,
+        system_parameters: Arc<SystemParameters<C>>,
         ledger_parameters: Arc<C::MerkleParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
@@ -106,7 +106,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        system_parameters: SystemParameters<C>,
+        system_parameters: Arc<SystemParameters<C>>,
 
         // Inner SNARK public inputs
         ledger_parameters: Arc<C::MerkleParameters>,
