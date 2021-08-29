@@ -312,11 +312,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                     &r_pk,
                 )?;
 
-                // TODO (howardwu): Enforce 6 MSB bits are 0.
-                {
-                    // TODO (howardwu): Enforce 6 MSB bits are 0.
-                }
-
                 // Enforce the account commitment bytes (padded) correspond to the
                 // given account's view key bytes (padded). This is equivalent to
                 // verifying that the base field element from the computed account
@@ -324,6 +319,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 // computed from the given account private key.
                 {
                     // Derive the given account view key based on the given account private key.
+                    //
+                    // This allocation also enforces that the private key is well-formed in our definition,
+                    // i.e., the private key is within the limit of the capacity.
                     let given_account_view_key = <C::AccountEncryptionGadget as EncryptionGadget<
                         C::AccountEncryptionScheme,
                         C::InnerScalarField,
