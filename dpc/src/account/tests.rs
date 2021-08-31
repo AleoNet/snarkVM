@@ -46,6 +46,17 @@ mod testnet1 {
     }
 
     #[test]
+    fn test_from_private_key() {
+        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+
+        let account = Account::<Testnet1Parameters>::from_private_key(private_key).unwrap();
+
+        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
+        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
+        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
+    }
+
+    #[test]
     fn test_account_derivation() {
         let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         let view_key = ViewKey::<Testnet1Parameters>::from_private_key(&private_key).unwrap();

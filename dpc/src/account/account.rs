@@ -36,6 +36,12 @@ impl<C: Parameters> AccountScheme for Account<C> {
     /// Creates a new account.
     fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError> {
         let private_key = PrivateKey::new(rng);
+
+        Self::from_private_key(private_key)
+    }
+
+    /// Creates an account from a private key.
+    fn from_private_key(private_key: PrivateKey<C>) -> Result<Self, AccountError> {
         let view_key = ViewKey::try_from(&private_key)?;
         let address = Address::try_from(&view_key)?;
 
