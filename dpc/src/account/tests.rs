@@ -48,7 +48,6 @@ mod testnet1 {
     #[test]
     fn test_from_private_key() {
         let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
-
         let account = Account::<Testnet1Parameters>::from_private_key(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
@@ -207,6 +206,16 @@ mod testnet2 {
         for _ in 0..ITERATIONS {
             assert!(Account::<Testnet2Parameters>::new(&mut rng).is_ok());
         }
+    }
+
+    #[test]
+    fn test_from_private_key() {
+        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let account = Account::<Testnet2Parameters>::from_private_key(private_key).unwrap();
+
+        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
+        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
+        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
     }
 
     #[test]
