@@ -73,6 +73,8 @@ pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, Pedersen
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::AtomicBool;
+
     use super::*;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -107,7 +109,13 @@ mod tests {
 
         // generate the proof
         let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
+            .mine(
+                &subroots,
+                difficulty_target,
+                &AtomicBool::new(false),
+                &mut rand::thread_rng(),
+                std::u32::MAX,
+            )
             .unwrap();
         assert_eq!(proof.len(), 193); // NOTE: GM17 compressed serialization
 
@@ -133,7 +141,13 @@ mod tests {
 
         // generate the proof
         let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
+            .mine(
+                &subroots,
+                difficulty_target,
+                &AtomicBool::new(false),
+                &mut rand::thread_rng(),
+                std::u32::MAX,
+            )
             .unwrap();
 
         assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization

@@ -244,6 +244,10 @@ impl<C: Testnet2Components> RecordScheme for Record<C> {
         &self.serial_number_nonce_randomness
     }
 
+    fn position(&self) -> &Option<u8> {
+        &self.position
+    }
+
     fn commitment(&self) -> Self::Commitment {
         self.commitment.clone()
     }

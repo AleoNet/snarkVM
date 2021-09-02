@@ -18,7 +18,7 @@ use crate::errors::SNARKError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::atomic::AtomicBool};
 
 pub trait SNARK {
     type AllocatedCircuit;
@@ -37,6 +37,15 @@ pub trait SNARK {
     fn prove<R: Rng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &Self::AllocatedCircuit,
+        rng: &mut R,
+    ) -> Result<Self::Proof, SNARKError> {
+        Self::prove_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
+    }
+
+    fn prove_with_terminator<R: Rng>(
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &Self::AllocatedCircuit,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
