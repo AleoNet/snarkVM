@@ -17,7 +17,10 @@
 use crate::{AccountError, AccountScheme, Address, ComputeKey, Parameters, PrivateKey, ViewKey};
 
 use rand::{CryptoRng, Rng};
-use std::{convert::TryFrom, fmt};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -35,21 +38,7 @@ impl<C: Parameters> AccountScheme for Account<C> {
 
     /// Creates a new account.
     fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError> {
-        let private_key = PrivateKey::new(rng);
-
-        Self::from_private_key(private_key)
-    }
-
-    /// Creates an account from a private key.
-    fn from_private_key(private_key: PrivateKey<C>) -> Result<Self, AccountError> {
-        let view_key = ViewKey::try_from(&private_key)?;
-        let address = Address::try_from(&view_key)?;
-
-        Ok(Self {
-            private_key,
-            view_key,
-            address,
-        })
+        PrivateKey::new(rng).try_into()
     }
 
     /// Returns a reference to the private key.
@@ -60,6 +49,22 @@ impl<C: Parameters> AccountScheme for Account<C> {
     /// Returns a reference to the compute key.
     fn compute_key(&self) -> &Self::ComputeKey {
         self.private_key.compute_key()
+    }
+}
+
+impl<C: Parameters> TryFrom<PrivateKey<C>> for Account<C> {
+    type Error = AccountError;
+
+    /// Creates an account from a private key.
+    fn try_from(private_key: PrivateKey<C>) -> Result<Self, Self::Error> {
+        let view_key = ViewKey::try_from(&private_key)?;
+        let address = Address::try_from(&private_key)?;
+
+        Ok(Self {
+            private_key,
+            view_key,
+            address,
+        })
     }
 }
 

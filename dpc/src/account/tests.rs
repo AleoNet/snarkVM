@@ -21,7 +21,10 @@ mod testnet1 {
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::{convert::TryInto, str::FromStr};
+    use std::{
+        convert::{TryFrom, TryInto},
+        str::FromStr,
+    };
 
     const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1y9jeNQybT9Mxk1AssbFmSXcFu9dG7sWkfYEsBUZrMin816z";
     const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1hNsfjkmrfiYWqMKtpKUW9LfGw93Pzz82UmmMn7pHHqZc";
@@ -48,7 +51,7 @@ mod testnet1 {
     #[test]
     fn test_from_private_key() {
         let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
-        let account = Account::<Testnet1Parameters>::from_private_key(private_key).unwrap();
+        let account = Account::<Testnet1Parameters>::try_from(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
@@ -184,7 +187,10 @@ mod testnet2 {
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::{convert::TryInto, str::FromStr};
+    use std::{
+        convert::{TryFrom, TryInto},
+        str::FromStr,
+    };
 
     const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1y9jeNQybT9Mxk1AssbFmSXcFu9dG7sWkfYEsBUZrMin816z";
     const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1hNsfjkmrfiYWqMKtpKUW9LfGw93Pzz82UmmMn7pHHqZc";
@@ -211,7 +217,7 @@ mod testnet2 {
     #[test]
     fn test_from_private_key() {
         let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
-        let account = Account::<Testnet2Parameters>::from_private_key(private_key).unwrap();
+        let account = Account::<Testnet2Parameters>::try_from(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());

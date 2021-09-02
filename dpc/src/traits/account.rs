@@ -27,9 +27,6 @@ pub trait AccountScheme: Sized {
     /// Creates a new account.
     fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError>;
 
-    /// Creates an account from a private key.
-    fn from_private_key(private_key: Self::PrivateKey) -> Result<Self, AccountError>;
-
     /// Returns a reference to the private key.
     fn private_key(&self) -> &Self::PrivateKey;
 
