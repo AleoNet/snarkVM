@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{boolean::Boolean, eq::EvaluateEqGadget};
+use snarkvm_gadgets::{boolean::Boolean, traits::eq::EvaluateEqGadget};
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{errors::ValueError, operations::enforce_and, ConstrainedValue, GroupType};

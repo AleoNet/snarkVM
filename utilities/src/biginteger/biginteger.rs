@@ -104,19 +104,6 @@ pub trait BigInteger:
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;
 
-    /// Writes this `BigInteger` as a big endian integer. Always writes
-    /// `(num_bits` / 8) bytes.
-    fn write_le<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        self.write(writer)
-    }
-
-    /// Reads a big endian integer occupying (`num_bits` / 8) bytes into this
-    /// representation.
-    fn read_le<R: Read>(&mut self, reader: &mut R) -> IoResult<()> {
-        *self = Self::read(reader)?;
-        Ok(())
-    }
-
     /// Creates a BigInteger by copying `input`. Will truncate or expand as needed.
     fn from_slice(input: &[u64]) -> Self;
 }

@@ -16,7 +16,7 @@
 
 use crate::{errors::AddressError, ConstrainedValue, GroupType};
 
-use snarkvm_dpc::{account::AccountAddress, testnet1::instantiated::Components};
+use snarkvm_dpc::{account::address::Address as AccountAddress, testnet1::instantiated::Components};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     boolean::Boolean,
@@ -43,7 +43,7 @@ pub struct Address {
 impl Address {
     pub(crate) fn constant(address_bytes: &[u8]) -> Result<Self, AddressError> {
         let mut address_bytes_reader = address_bytes;
-        let address = AccountAddress::read(&mut address_bytes_reader)
+        let address = AccountAddress::read_le(&mut address_bytes_reader)
             .map_err(|error| AddressError::account_error(error.into()))?;
 
         let bytes = UInt8::constant_vec(address_bytes);
@@ -68,7 +68,7 @@ impl Address {
         };
 
         let account =
-            AccountAddress::read(&mut &value[..]).map_err(|error| AddressError::account_error(error.into()))?;
+            AccountAddress::read_le(&mut &value[..]).map_err(|error| AddressError::account_error(error.into()))?;
         let bytes = UInt8::alloc_vec(cs, &value[..])?;
 
         let address = Address {
@@ -102,7 +102,7 @@ impl<F: PrimeField> AllocGadget<String, F> for Address {
         let address = Self::alloc_helper(value_gen)?;
         let mut address_bytes = vec![];
         address
-            .write(&mut address_bytes)
+            .write_le(&mut address_bytes)
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
         let bytes = UInt8::alloc_vec(cs, &address_bytes[..])?;
@@ -117,7 +117,7 @@ impl<F: PrimeField> AllocGadget<String, F> for Address {
         let address = Self::alloc_helper(value_gen)?;
         let mut address_bytes = vec![];
         address
-            .write(&mut address_bytes)
+            .write_le(&mut address_bytes)
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
         let bytes = UInt8::alloc_input_vec_le(cs, &address_bytes[..])?;
@@ -196,7 +196,11 @@ impl<F: PrimeField> ConditionalEqGadget<F> for Address {
 }
 
 fn cond_select_helper(first: &Address, second: &Address, cond: bool) -> Address {
-    if cond { first.clone() } else { second.clone() }
+    if cond {
+        first.clone()
+    } else {
+        second.clone()
+    }
 }
 
 impl<F: PrimeField> CondSelectGadget<F> for Address {

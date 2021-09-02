@@ -17,9 +17,9 @@
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     boolean::Boolean,
-    eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget, NEqGadget},
-    select::CondSelectGadget,
     traits::bits::comparator::{ComparatorGadget, EvaluateLtGadget},
+    traits::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget, NEqGadget},
+    traits::select::CondSelectGadget,
 };
 use snarkvm_ir::{Field, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -37,10 +37,13 @@ impl<F: PrimeField> Char<F> {
     pub fn constant<CS: ConstraintSystem<F>>(cs: CS, character: u32) -> Result<Self, CharError> {
         Ok(Self {
             character,
-            field: FieldType::constant(cs, &Field {
-                values: vec![character as u64],
-                negate: false,
-            })?,
+            field: FieldType::constant(
+                cs,
+                &Field {
+                    values: vec![character as u64],
+                    negate: false,
+                },
+            )?,
         })
     }
 
