@@ -22,7 +22,9 @@ use crate::{
         Testnet2Components,
     },
     traits::{DPCComponents, EncodedRecordScheme, RecordScheme},
-    Address, DPCError, ViewKey,
+    Address,
+    DPCError,
+    ViewKey,
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -31,7 +33,12 @@ use snarkvm_algorithms::{
 use snarkvm_curves::traits::{AffineCurve, ModelParameters, ProjectiveCurve};
 use snarkvm_fields::One;
 use snarkvm_utilities::{
-    from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, to_bytes_le, variable_length_integer::*, FromBytes, ToBytes,
+    from_bits_le_to_bytes_le,
+    from_bytes_le_to_bits_le,
+    to_bytes_le,
+    variable_length_integer::*,
+    FromBytes,
+    ToBytes,
 };
 
 use itertools::Itertools;

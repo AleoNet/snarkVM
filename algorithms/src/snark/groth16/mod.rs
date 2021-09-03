@@ -24,7 +24,10 @@ use snarkvm_r1cs::{Index, LinearCombination};
 use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use std::io::{
-    Read, Result as IoResult, Write, {self},
+    Read,
+    Result as IoResult,
+    Write,
+    {self},
 };
 
 /// Reduce an R1CS instance to a *Quadratic Arithmetic Program* instance.

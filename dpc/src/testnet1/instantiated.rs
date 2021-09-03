@@ -22,9 +22,11 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        Testnet1Components, DPC,
+        Testnet1Components,
+        DPC,
     },
-    DPCComponents, Network,
+    DPCComponents,
+    Network,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},

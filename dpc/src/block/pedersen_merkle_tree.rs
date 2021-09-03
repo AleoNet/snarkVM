@@ -22,7 +22,9 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{
-        Display, Formatter, {self},
+        Display,
+        Formatter,
+        {self},
     },
     sync::Arc,
 };

@@ -31,17 +31,28 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_polycommit::{
-    EvaluationsVar, LCTerm, LabeledPointVar, LinearCombinationCoeffVar, LinearCombinationVar, PCCheckVar,
-    PrepareGadget, QuerySetVar,
+    EvaluationsVar,
+    LCTerm,
+    LabeledPointVar,
+    LinearCombinationCoeffVar,
+    LinearCombinationVar,
+    PCCheckVar,
+    PrepareGadget,
+    QuerySetVar,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
     constraints::{
-        lagrange_interpolation::LagrangeInterpolationVar, polynomial::AlgebraForAHP, proof::ProofVar,
+        lagrange_interpolation::LagrangeInterpolationVar,
+        polynomial::AlgebraForAHP,
+        proof::ProofVar,
         verifier_key::PreparedCircuitVerifyingKeyVar,
     },
-    AHPError, FiatShamirRng, FiatShamirRngVar, PolynomialCommitment,
+    AHPError,
+    FiatShamirRng,
+    FiatShamirRngVar,
+    PolynomialCommitment,
 };
 
 /// The Marlin verifier round state gadget used to output the state of each round.
@@ -100,11 +111,11 @@ pub struct AHPForR1CS<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        PCG: PCCheckVar<TargetField, PC, BaseField>,
-    > AHPForR1CS<TargetField, BaseField, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> AHPForR1CS<TargetField, BaseField, PC, PCG>
 where
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
@@ -674,90 +685,64 @@ where
 
         let mut query_set_gadget = QuerySetVar::<TargetField, BaseField> { 0: HashSet::new() };
 
-        query_set_gadget.0.insert((
-            "g_1".to_string(),
-            LabeledPointVar {
+        query_set_gadget.0.insert(("g_1".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget.0.insert(("z_b".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget.0.insert(("t".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget
+            .0
+            .insert(("outer_sumcheck".to_string(), LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "z_b".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "t".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "outer_sumcheck".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "g_2".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget.0.insert(("g_2".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("a_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("b_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("c_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget
+            .0
+            .insert(("inner_sumcheck".to_string(), LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "a_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "b_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "c_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "inner_sumcheck".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_h_alpha".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_h_alpha".to_string(), LabeledPointVar {
                 name: "alpha".to_string(),
                 value: alpha.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_h_beta".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_h_beta".to_string(), LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_k_gamma".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_k_gamma".to_string(), LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            },
-        ));
+            }));
 
         let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField> { 0: HashMap::new() };
 
@@ -959,13 +944,15 @@ mod test {
     use snarkvm_polycommit::{
         marlin_pc::{
             commitment::{
-                commitment::CommitmentVar, labeled_commitment::LabeledCommitmentVar,
+                commitment::CommitmentVar,
+                labeled_commitment::LabeledCommitmentVar,
                 prepared_commitment::PreparedCommitmentVar,
             },
             marlin_kzg10::MarlinKZG10Gadget,
             MarlinKZG10,
         },
-        Evaluations, LabeledCommitment,
+        Evaluations,
+        LabeledCommitment,
     };
     use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes_le, ToBytes, UniformRand};
@@ -973,10 +960,19 @@ mod test {
     use crate::{
         ahp::AHPForR1CS as AHPForR1CSNative,
         marlin::{
-            compute_vk_hash, CircuitProvingKey, CircuitVerifyingKey, MarlinMode, MarlinRecursiveMode, MarlinSNARK,
-            PreparedCircuitVerifyingKey, Proof,
+            compute_vk_hash,
+            CircuitProvingKey,
+            CircuitVerifyingKey,
+            MarlinMode,
+            MarlinRecursiveMode,
+            MarlinSNARK,
+            PreparedCircuitVerifyingKey,
+            Proof,
         },
-        FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, PoseidonSponge, PoseidonSpongeVar,
+        FiatShamirAlgebraicSpongeRng,
+        FiatShamirAlgebraicSpongeRngVar,
+        PoseidonSponge,
+        PoseidonSpongeVar,
     };
 
     use super::*;
@@ -2249,10 +2245,10 @@ mod test {
 
         for (i, (evaluation_native, evaluation_gadget)) in evaluations.iter().zip(sorted_evaluation_gadgets).enumerate()
         {
-            assert_eq!(evaluation_native.0 .0, evaluation_gadget.0.name);
+            assert_eq!(evaluation_native.0.0, evaluation_gadget.0.name);
 
             let expected_eval_key =
-                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_eval_key_{}", i)), || Ok(evaluation_native.0 .1))
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_eval_key_{}", i)), || Ok(evaluation_native.0.1))
                     .unwrap();
 
             let expected_eval_value =

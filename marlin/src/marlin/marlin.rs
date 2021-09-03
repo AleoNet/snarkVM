@@ -47,12 +47,12 @@ pub struct MarlinSNARK<
 );
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        FS: FiatShamirRng<TargetField, BaseField>,
-        MM: MarlinMode,
-    > MarlinSNARK<TargetField, BaseField, PC, FS, MM>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+    MM: MarlinMode,
+> MarlinSNARK<TargetField, BaseField, PC, FS, MM>
 where
     PC::VerifierKey: ToConstraintField<BaseField>,
     PC::Commitment: ToConstraintField<BaseField>,

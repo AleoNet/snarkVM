@@ -67,11 +67,8 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
     }
 }
 
-impl<
-        G: Group + ProjectiveCurve,
-        SG: Group + Hash + CanonicalSerialize + CanonicalDeserialize,
-        D: Digest + Send + Sync,
-    > SignatureScheme for GroupEncryption<G, SG, D>
+impl<G: Group + ProjectiveCurve, SG: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
+    SignatureScheme for GroupEncryption<G, SG, D>
 where
     <G as Group>::ScalarField: PrimeField,
 {

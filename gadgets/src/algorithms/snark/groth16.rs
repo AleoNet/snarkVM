@@ -162,11 +162,11 @@ where
 
             let g_ic_prep = P::prepare_g1(cs.ns(|| "Prepare g_ic"), g_ic)?;
 
-            P::miller_loop(
-                cs.ns(|| "Miller loop 1"),
-                &[proof_a_prep, g_ic_prep, proof_c_prep],
-                &[proof_b_prep, gamma_g2_neg_pc, delta_g2_neg_pc],
-            )?
+            P::miller_loop(cs.ns(|| "Miller loop 1"), &[proof_a_prep, g_ic_prep, proof_c_prep], &[
+                proof_b_prep,
+                gamma_g2_neg_pc,
+                delta_g2_neg_pc,
+            ])?
         };
 
         let test = P::final_exponentiation(cs.ns(|| "Final Exp"), &test_exp).unwrap();

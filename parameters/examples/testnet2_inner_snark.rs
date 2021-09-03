@@ -21,7 +21,10 @@ use snarkvm_algorithms::{
 use snarkvm_dpc::{
     errors::DPCError,
     testnet2::{
-        inner_circuit::InnerCircuit, instantiated::Components, parameters::SystemParameters, Testnet2Components,
+        inner_circuit::InnerCircuit,
+        instantiated::Components,
+        parameters::SystemParameters,
+        Testnet2Components,
     },
 };
 use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};

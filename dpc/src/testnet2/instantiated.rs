@@ -22,9 +22,11 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        Testnet2Components, DPC,
+        Testnet2Components,
+        DPC,
     },
-    DPCComponents, Network,
+    DPCComponents,
+    Network,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
@@ -57,7 +59,8 @@ use snarkvm_gadgets::{
 use snarkvm_marlin::{
     constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
     marlin::MarlinTestnet2Mode,
-    FiatShamirAlgebraicSpongeRng, PoseidonSponge,
+    FiatShamirAlgebraicSpongeRng,
+    PoseidonSponge,
 };
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 

@@ -26,7 +26,12 @@ use snarkvm_algorithms::{
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
-    from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, to_bytes_le, BigInteger, FromBytes, ToBytes,
+    from_bits_le_to_bytes_le,
+    from_bytes_le_to_bits_le,
+    to_bytes_le,
+    BigInteger,
+    FromBytes,
+    ToBytes,
 };
 
 use itertools::Itertools;

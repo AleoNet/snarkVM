@@ -35,10 +35,22 @@ use crate::{
         prepared_labeled_commitment::PreparedLabeledCommitmentVar,
         proof::{batch_lc_proof::BatchLCProofVar, ProofVar},
         verifier_key::{prepared_verifier_key::PreparedVerifierKeyVar, VerifierKeyVar},
-        CommitmentVar, LabeledCommitmentVar, MarlinKZG10, PreparedCommitmentVar,
+        CommitmentVar,
+        LabeledCommitmentVar,
+        MarlinKZG10,
+        PreparedCommitmentVar,
     },
-    BTreeMap, BTreeSet, EvaluationsVar, LabeledPointVar, LinearCombinationCoeffVar, LinearCombinationVar,
-    PCCheckRandomDataVar, PCCheckVar, QuerySetVar, String, Vec,
+    BTreeMap,
+    BTreeSet,
+    EvaluationsVar,
+    LabeledPointVar,
+    LinearCombinationCoeffVar,
+    LinearCombinationVar,
+    PCCheckRandomDataVar,
+    PCCheckVar,
+    QuerySetVar,
+    String,
+    Vec,
 };
 
 /// Gadget for the Marlin-KZG10 polynomial commitment verifier.
@@ -733,11 +745,10 @@ where
                 (prepared_total_w, prepared_beta_h, prepared_total_c, prepared_h)
             };
 
-            let lhs = PG::product_of_pairings(
-                cs.ns(|| "lhs"),
-                &[prepared_total_w, prepared_total_c],
-                &[prepared_beta_h, prepared_h],
-            )?;
+            let lhs = PG::product_of_pairings(cs.ns(|| "lhs"), &[prepared_total_w, prepared_total_c], &[
+                prepared_beta_h,
+                prepared_h,
+            ])?;
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
 

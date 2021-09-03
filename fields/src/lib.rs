@@ -62,10 +62,14 @@ pub use traits::*;
 use snarkvm_utilities::{
     biginteger::*,
     serialize::{
-        CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize, CanonicalSerializeWithFlags,
+        CanonicalDeserialize,
+        CanonicalDeserializeWithFlags,
+        CanonicalSerialize,
+        CanonicalSerializeWithFlags,
         ConstantSerializedSize,
     },
-    FromBytes, ToBytes,
+    FromBytes,
+    ToBytes,
 };
 
 impl_field_into_biginteger!(Fp256, BigInteger256, Fp256Parameters);

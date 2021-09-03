@@ -67,9 +67,11 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     let randomized_signature = schnorr_signature
         .randomize_signature(&signature, &random_scalar)
         .unwrap();
-    assert!(schnorr_signature
-        .verify(&randomized_public_key, &message, &randomized_signature)
-        .unwrap());
+    assert!(
+        schnorr_signature
+            .verify(&randomized_public_key, &message, &randomized_signature)
+            .unwrap()
+    );
 
     // Circuit Schnorr randomized public key (candidate)
 

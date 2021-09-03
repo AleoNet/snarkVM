@@ -22,7 +22,8 @@ use crate::{
     bits::ToBytesGadget,
     integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
-    Boolean, PRFGadget,
+    Boolean,
+    PRFGadget,
 };
 
 pub trait SignaturePublicKeyRandomizationGadget<S: SignatureScheme, F: Field> {

@@ -16,7 +16,11 @@
 
 use crate::{
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
-    Account, AleoAmount, DPCError, Network, ProgramScheme,
+    Account,
+    AleoAmount,
+    DPCError,
+    Network,
+    ProgramScheme,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -563,10 +567,10 @@ where
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::hash(
-            &self.system_parameters.inner_circuit_id_crh,
-            &to_bytes_le![inner_snark_vk]?,
-        )?;
+        let inner_circuit_id =
+            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes_le![
+                inner_snark_vk
+            ]?)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(

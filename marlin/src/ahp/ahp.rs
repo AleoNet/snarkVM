@@ -16,7 +16,9 @@
 
 use crate::{
     ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
-    String, ToString, Vec,
+    String,
+    ToString,
+    Vec,
 };
 use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
@@ -208,35 +210,26 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let beta_alpha = beta * alpha;
         let g_2 = LinearCombination::new("g_2", vec![(F::one(), "g_2")]);
 
-        let a_denom = LinearCombination::new(
-            "a_denom",
-            vec![
-                (beta_alpha, LCTerm::One),
-                (-alpha, "a_row".into()),
-                (-beta, "a_col".into()),
-                (F::one(), "a_row_col".into()),
-            ],
-        );
+        let a_denom = LinearCombination::new("a_denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "a_row".into()),
+            (-beta, "a_col".into()),
+            (F::one(), "a_row_col".into()),
+        ]);
 
-        let b_denom = LinearCombination::new(
-            "b_denom",
-            vec![
-                (beta_alpha, LCTerm::One),
-                (-alpha, "b_row".into()),
-                (-beta, "b_col".into()),
-                (F::one(), "b_row_col".into()),
-            ],
-        );
+        let b_denom = LinearCombination::new("b_denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "b_row".into()),
+            (-beta, "b_col".into()),
+            (F::one(), "b_row_col".into()),
+        ]);
 
-        let c_denom = LinearCombination::new(
-            "c_denom",
-            vec![
-                (beta_alpha, LCTerm::One),
-                (-alpha, "c_row".into()),
-                (-beta, "c_col".into()),
-                (F::one(), "c_row_col".into()),
-            ],
-        );
+        let c_denom = LinearCombination::new("c_denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "c_row".into()),
+            (-beta, "c_col".into()),
+            (F::one(), "c_row_col".into()),
+        ]);
 
         let a_denom_at_gamma = evals.get_lc_eval(&a_denom, gamma)?;
         let b_denom_at_gamma = evals.get_lc_eval(&b_denom, gamma)?;
@@ -245,14 +238,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
 
-        let mut a = LinearCombination::new(
-            "a_poly",
-            vec![
-                (eta_a * b_denom_at_gamma * c_denom_at_gamma, "a_val"),
-                (eta_b * a_denom_at_gamma * c_denom_at_gamma, "b_val"),
-                (eta_c * b_denom_at_gamma * a_denom_at_gamma, "c_val"),
-            ],
-        );
+        let mut a = LinearCombination::new("a_poly", vec![
+            (eta_a * b_denom_at_gamma * c_denom_at_gamma, "a_val"),
+            (eta_b * a_denom_at_gamma * c_denom_at_gamma, "b_val"),
+            (eta_c * b_denom_at_gamma * a_denom_at_gamma, "c_val"),
+        ]);
 
         a *= v_H_at_alpha * v_H_at_beta;
         let b_at_gamma = a_denom_at_gamma * b_denom_at_gamma * c_denom_at_gamma;

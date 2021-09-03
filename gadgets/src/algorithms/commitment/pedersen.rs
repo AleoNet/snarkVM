@@ -160,12 +160,12 @@ pub struct PedersenCompressedCommitmentGadget<G: Group + ProjectiveCurve, F: Fie
 );
 
 impl<
-        F: PrimeField,
-        G: Group + ProjectiveCurve,
-        GG: CompressedGroupGadget<G, F>,
-        const NUM_WINDOWS: usize,
-        const WINDOW_SIZE: usize,
-    > CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    F: PrimeField,
+    G: Group + ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;

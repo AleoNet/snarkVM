@@ -24,7 +24,11 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use snarkvm_fields::{
     fp6_2over3::{Fp6, Fp6Parameters},
-    Field, Fp3Parameters, One, PrimeField, SquareRootField,
+    Field,
+    Fp3Parameters,
+    One,
+    PrimeField,
+    SquareRootField,
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 

@@ -23,7 +23,8 @@ use snarkvm_gadgets::{
     integers::uint::UInt8,
     nonnative::{
         params::{get_params, OptimizationType},
-        AllocatedNonNativeFieldVar, NonNativeFieldVar,
+        AllocatedNonNativeFieldVar,
+        NonNativeFieldVar,
     },
     overhead,
     traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
@@ -32,7 +33,8 @@ use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, Synt
 
 use crate::fiat_shamir::{
     traits::{AlgebraicSpongeVar, FiatShamirRngVar},
-    AlgebraicSponge, FiatShamirAlgebraicSpongeRng,
+    AlgebraicSponge,
+    FiatShamirAlgebraicSpongeRng,
 };
 
 /// Building the Fiat-Shamir sponge's gadget from any algebraic sponge's gadget.
@@ -54,11 +56,11 @@ pub struct FiatShamirAlgebraicSpongeRngVar<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PS: AlgebraicSponge<BaseField>,
-        S: AlgebraicSpongeVar<BaseField, PS>,
-    > FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PS: AlgebraicSponge<BaseField>,
+    S: AlgebraicSpongeVar<BaseField, PS>,
+> FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions),
     /// both of which are BaseField.
@@ -307,11 +309,11 @@ impl<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PS: AlgebraicSponge<BaseField>,
-        S: AlgebraicSpongeVar<BaseField, PS>,
-    > FiatShamirRngVar<TargetField, BaseField, FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PS: AlgebraicSponge<BaseField>,
+    S: AlgebraicSpongeVar<BaseField, PS>,
+> FiatShamirRngVar<TargetField, BaseField, FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>>
     for FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self {
@@ -459,7 +461,8 @@ mod tests {
     use snarkvm_utilities::rand::UniformRand;
 
     use crate::fiat_shamir::{
-        fiat_shamir_poseidon_sponge::PoseidonSponge, fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
+        fiat_shamir_poseidon_sponge::PoseidonSponge,
+        fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
         traits::FiatShamirRng,
     };
 

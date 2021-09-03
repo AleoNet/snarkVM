@@ -16,7 +16,7 @@
 
 use crate::{errors::AddressError, ConstrainedValue, GroupType};
 
-use snarkvm_dpc::{account::address, testnet1::instantiated::Components};
+use snarkvm_dpc::{account::address::Address as AccountAddress, testnet1::instantiated::Components};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     boolean::Boolean,
@@ -36,14 +36,14 @@ use std::{borrow::Borrow, str::FromStr};
 /// A public address
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Address {
-    pub address: address::Address<Components>,
+    pub address: AccountAddress<Components>,
     pub bytes: Vec<UInt8>,
 }
 
 impl Address {
     pub(crate) fn constant(address_bytes: &[u8]) -> Result<Self, AddressError> {
         let mut address_bytes_reader = address_bytes;
-        let address = address::Address::read_le(&mut address_bytes_reader)
+        let address = AccountAddress::read_le(&mut address_bytes_reader)
             .map_err(|error| AddressError::account_error(error.into()))?;
 
         let bytes = UInt8::constant_vec(address_bytes);
@@ -68,7 +68,7 @@ impl Address {
         };
 
         let account =
-            address::Address::read_le(&mut &value[..]).map_err(|error| AddressError::account_error(error.into()))?;
+            AccountAddress::read_le(&mut &value[..]).map_err(|error| AddressError::account_error(error.into()))?;
         let bytes = UInt8::alloc_vec(cs, &value[..])?;
 
         let address = Address {
@@ -81,7 +81,7 @@ impl Address {
 
     pub(crate) fn alloc_helper<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<String>>(
         value_gen: Fn,
-    ) -> Result<address::Address<Components>, SynthesisError> {
+    ) -> Result<AccountAddress<Components>, SynthesisError> {
         let address_string = match value_gen() {
             Ok(value) => {
                 let string_value = value.borrow().clone();
@@ -90,7 +90,7 @@ impl Address {
             _ => Err(SynthesisError::AssignmentMissing),
         }?;
 
-        address::Address::from_str(&address_string).map_err(|_| SynthesisError::AssignmentMissing)
+        AccountAddress::from_str(&address_string).map_err(|_| SynthesisError::AssignmentMissing)
     }
 }
 

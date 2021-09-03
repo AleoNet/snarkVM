@@ -25,7 +25,9 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 use crate::{
     marlin_pc::{Commitment, CommitmentVar},
-    LabeledCommitment, String, ToString,
+    LabeledCommitment,
+    String,
+    ToString,
 };
 
 /// Gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
@@ -187,7 +189,9 @@ mod tests {
         AffineCurve,
     };
     use snarkvm_gadgets::{
-        bits::ToBytesGadget, curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget,
+        bits::ToBytesGadget,
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::eq::EqGadget,
     };
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;

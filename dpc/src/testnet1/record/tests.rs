@@ -17,7 +17,12 @@
 use super::{encoded::*, encrypted::*};
 use crate::{
     testnet1::{instantiated::*, NoopProgram, Payload, Record, SystemParameters},
-    Account, AccountScheme, DPCComponents, EncodedRecordScheme, ProgramScheme, ViewKey,
+    Account,
+    AccountScheme,
+    DPCComponents,
+    EncodedRecordScheme,
+    ProgramScheme,
+    ViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};

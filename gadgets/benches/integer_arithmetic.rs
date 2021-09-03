@@ -38,10 +38,9 @@ macro_rules! create_addmany_bench {
                 let b_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: b (addmany)", bench_run_id)), || Ok(b)).unwrap();
                 let c_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: c (addmany)", bench_run_id)), || Ok(c)).unwrap();
 
-                <$bit_type>::addmany(
-                    cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)),
-                    &[a_bit, b_bit, c_bit],
-                )
+                <$bit_type>::addmany(cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)), &[
+                    a_bit, b_bit, c_bit,
+                ])
                 .unwrap();
             }
 
@@ -70,10 +69,9 @@ macro_rules! create_addmany_const_bench {
                 let b_bit = <$bit_type>::constant(b);
                 let c_bit = <$bit_type>::constant(c);
 
-                <$bit_type>::addmany(
-                    cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)),
-                    &[a_bit, b_bit, c_bit],
-                )
+                <$bit_type>::addmany(cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)), &[
+                    a_bit, b_bit, c_bit,
+                ])
                 .unwrap();
             }
 

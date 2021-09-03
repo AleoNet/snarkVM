@@ -24,7 +24,9 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 
 use criterion::Criterion;
 use rand::{
-    thread_rng, Rng, {self},
+    thread_rng,
+    Rng,
+    {self},
 };
 
 type GM17SNARK = GM17<Bls12_377, Benchmark<Fr>, Fr>;

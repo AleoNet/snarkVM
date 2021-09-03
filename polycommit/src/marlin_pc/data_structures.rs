@@ -15,7 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_bytes, PCCommitment, PCCommitterKey, PCPreparedCommitment, PCPreparedVerifierKey, PCRandomness, PCVerifierKey,
+    impl_bytes,
+    PCCommitment,
+    PCCommitterKey,
+    PCPreparedCommitment,
+    PCPreparedVerifierKey,
+    PCRandomness,
+    PCVerifierKey,
     Vec,
 };
 use snarkvm_curves::{traits::PairingEngine, Group};

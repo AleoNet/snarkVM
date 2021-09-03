@@ -65,11 +65,11 @@ pub struct ProofVar<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        PCG: PCCheckVar<TargetField, PC, BaseField>,
-    > Clone for ProofVar<TargetField, BaseField, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> Clone for ProofVar<TargetField, BaseField, PC, PCG>
 {
     fn clone(&self) -> Self {
         ProofVar {
@@ -82,11 +82,11 @@ impl<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        PCG: PCCheckVar<TargetField, PC, BaseField>,
-    > ProofVar<TargetField, BaseField, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> ProofVar<TargetField, BaseField, PC, PCG>
 {
     /// Instantiates a new instance of `ProofGadget`.
     pub fn new(

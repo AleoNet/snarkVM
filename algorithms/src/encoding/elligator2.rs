@@ -17,7 +17,9 @@
 use crate::errors::EncodingError;
 use snarkvm_curves::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    Group, MontgomeryParameters, TwistedEdwardsParameters,
+    Group,
+    MontgomeryParameters,
+    TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};

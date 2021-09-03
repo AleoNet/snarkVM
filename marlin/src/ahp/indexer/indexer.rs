@@ -17,7 +17,8 @@
 use crate::ahp::{
     indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
     matrices::arithmetize_matrix,
-    AHPError, AHPForR1CS,
+    AHPError,
+    AHPForR1CS,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;

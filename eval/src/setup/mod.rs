@@ -21,7 +21,9 @@ use indexmap::IndexMap;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     integers::{UInt16, UInt32, UInt8},
-    Boolean, CondSelectGadget, Integer as IntegerTrait,
+    Boolean,
+    CondSelectGadget,
+    Integer as IntegerTrait,
 };
 use snarkvm_ir::{Input as IrInput, InputData, Instruction, MaskData, Program, RepeatData, Type, Value};
 use snarkvm_r1cs::ConstraintSystem;
@@ -29,7 +31,14 @@ use snarkvm_r1cs::ConstraintSystem;
 use crate::{
     bool_from_input,
     errors::{GroupError, ValueError},
-    Address, Char, ConstrainedValue, Evaluator, FieldType, GroupType, Integer, IntegerType,
+    Address,
+    Char,
+    ConstrainedValue,
+    Evaluator,
+    FieldType,
+    GroupType,
+    Integer,
+    IntegerType,
 };
 use im::HashMap;
 

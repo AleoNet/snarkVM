@@ -19,7 +19,12 @@ use crate::msm::VariableBaseMSM;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_r1cs::{
-    errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable,
+    errors::SynthesisError,
+    ConstraintSynthesizer,
+    ConstraintSystem,
+    Index,
+    LinearCombination,
+    Variable,
 };
 use snarkvm_utilities::rand::UniformRand;
 

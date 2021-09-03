@@ -19,7 +19,9 @@ use std::{borrow::Borrow, marker::PhantomData};
 use snarkvm_fields::{
     batch_inversion,
     fp6_3over2::{Fp6, Fp6Parameters},
-    Field, Fp2Parameters, PrimeField,
+    Field,
+    Fp2Parameters,
+    PrimeField,
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 

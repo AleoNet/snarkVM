@@ -35,7 +35,8 @@ use snarkvm_dpc::block::{
 };
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBls12Gadget,
+    algorithms::crh::PedersenCompressedCRHGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
 use snarkvm_marlin::snark::SRS;

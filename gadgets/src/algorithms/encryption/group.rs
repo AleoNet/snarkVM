@@ -152,10 +152,9 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_vec(
-                cs.ns(|| format!("Blinding Exponent Iteration {}", i)),
-                &to_bytes_le![value.borrow()]?,
-            )?;
+            let alloc = UInt8::alloc_vec(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes_le![
+                value.borrow()
+            ]?)?;
             blinding_exponents.push(alloc);
         }
 
@@ -174,10 +173,10 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_input_vec_le(
-                cs.ns(|| format!("Blinding Exponent Iteration {}", i)),
-                &to_bytes_le![value.borrow()]?,
-            )?;
+            let alloc =
+                UInt8::alloc_input_vec_le(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes_le![
+                    value.borrow()
+                ]?)?;
             blinding_exponents.push(alloc);
         }
 
@@ -485,12 +484,12 @@ pub struct GroupEncryptionGadget<G: Group + ProjectiveCurve, F: PrimeField, GG: 
 }
 
 impl<
-        G: Group + ProjectiveCurve,
-        SG: Group + CanonicalSerialize + CanonicalDeserialize,
-        D: Digest + Send + Sync,
-        F: PrimeField,
-        GG: CompressedGroupGadget<G, F>,
-    > EncryptionGadget<GroupEncryption<G, SG, D>, F> for GroupEncryptionGadget<G, F, GG>
+    G: Group + ProjectiveCurve,
+    SG: Group + CanonicalSerialize + CanonicalDeserialize,
+    D: Digest + Send + Sync,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+> EncryptionGadget<GroupEncryption<G, SG, D>, F> for GroupEncryptionGadget<G, F, GG>
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;

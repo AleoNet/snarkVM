@@ -18,10 +18,14 @@ use std::ops::Mul;
 
 use crate::{
     testnet1::{
-        encrypted::RecordEncryptionGadgetComponents, parameters::SystemParameters, record::Record, Testnet1Components,
+        encrypted::RecordEncryptionGadgetComponents,
+        parameters::SystemParameters,
+        record::Record,
+        Testnet1Components,
     },
     traits::RecordScheme,
-    AleoAmount, PrivateKey,
+    AleoAmount,
+    PrivateKey,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
@@ -1179,10 +1183,9 @@ where
             let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
                 &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
                 &from_bits_le_to_bytes_le(
-                    &[
-                        &ciphertext_selectors[..],
-                        &[fq_high_selectors[fq_high_selectors.len() - 1]],
-                    ]
+                    &[&ciphertext_selectors[..], &[
+                        fq_high_selectors[fq_high_selectors.len() - 1]
+                    ]]
                     .concat(),
                 ),
             )?;

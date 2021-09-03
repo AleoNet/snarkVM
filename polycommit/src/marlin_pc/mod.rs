@@ -15,9 +15,25 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    kzg10, BTreeMap, BTreeSet, BatchLCProof, Error, Evaluations, LabeledCommitment, LabeledPolynomial,
-    LinearCombination, PCCommitterKey, PCRandomness, PCUniversalParams, Polynomial, PolynomialCommitment, QuerySet,
-    String, ToOwned, ToString, Vec,
+    kzg10,
+    BTreeMap,
+    BTreeSet,
+    BatchLCProof,
+    Error,
+    Evaluations,
+    LabeledCommitment,
+    LabeledPolynomial,
+    LinearCombination,
+    PCCommitterKey,
+    PCRandomness,
+    PCUniversalParams,
+    Polynomial,
+    PolynomialCommitment,
+    QuerySet,
+    String,
+    ToOwned,
+    ToString,
+    Vec,
 };
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, Zero};

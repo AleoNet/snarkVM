@@ -17,8 +17,15 @@
 use crate::{
     bw6_761::{g1::BW6_761G1Parameters, g2::Bls12_377G2Parameters, Fq, Fq3Parameters, Fq6, Fq6Parameters},
     templates::bw6::{
-        BW6Parameters, G1Affine as BW6G1Affine, G1Prepared, G1Projective as BW6G1Projective, G2Affine as BW6G2Affine,
-        G2Prepared, G2Projective as BW6G2Projective, TwistType, BW6,
+        BW6Parameters,
+        G1Affine as BW6G1Affine,
+        G1Prepared,
+        G1Projective as BW6G1Projective,
+        G2Affine as BW6G2Affine,
+        G2Prepared,
+        G2Projective as BW6G2Projective,
+        TwistType,
+        BW6,
     },
     traits::{PairingCurve, PairingEngine},
 };

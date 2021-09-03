@@ -19,11 +19,17 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use serde::{
     de::{Error as DeserializeError, SeqAccess, Visitor},
     ser::SerializeTuple,
-    Deserialize, Deserializer, Serialize, Serializer,
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
 };
 use std::{
     fmt::{
-        Debug, Display, Formatter, {self},
+        Debug,
+        Display,
+        Formatter,
+        {self},
     },
     io::{Read, Result as IoResult, Write},
 };

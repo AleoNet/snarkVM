@@ -15,13 +15,23 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_add_sub_from_field_ref, impl_mul_div_from_field_ref, FftField, Field, FieldError, FieldParameters,
-    LegendreSymbol, One, PrimeField, SquareRootField, Zero,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
+    FftField,
+    Field,
+    FieldError,
+    FieldParameters,
+    LegendreSymbol,
+    One,
+    PrimeField,
+    SquareRootField,
+    Zero,
 };
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
     serialize::CanonicalDeserialize,
-    FromBytes, ToBytes,
+    FromBytes,
+    ToBytes,
 };
 
 use std::{
@@ -266,11 +276,7 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
                 }
             }
 
-            if u == one {
-                Some(b)
-            } else {
-                Some(c)
-            }
+            if u == one { Some(b) } else { Some(c) }
         }
     }
 
@@ -316,11 +322,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     #[inline]
     fn from_repr_unchecked(r: BigInteger) -> Self {
         let r = Fp256(r, PhantomData);
-        if r.is_valid() {
-            r
-        } else {
-            Self::zero()
-        }
+        if r.is_valid() { r } else { Self::zero() }
     }
 
     #[inline]

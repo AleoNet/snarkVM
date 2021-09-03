@@ -33,7 +33,8 @@ use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
-    to_bytes_le, ToBytes,
+    to_bytes_le,
+    ToBytes,
 };
 
 use crate::nonnative::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};

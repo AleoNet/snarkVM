@@ -18,7 +18,12 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_fields::{
     fp6_3over2::{Fp6, Fp6Parameters},
-    Field, Fp12, Fp12Parameters, Fp2Parameters, One, PrimeField,
+    Field,
+    Fp12,
+    Fp12Parameters,
+    Fp2Parameters,
+    One,
+    PrimeField,
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;

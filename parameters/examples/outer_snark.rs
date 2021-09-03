@@ -20,9 +20,15 @@ use snarkvm_algorithms::{
 };
 use snarkvm_dpc::{
     testnet1::{
-        instantiated::Components, InnerCircuit, NoopProgram, OuterCircuit, SystemParameters, Testnet1Components,
+        instantiated::Components,
+        InnerCircuit,
+        NoopProgram,
+        OuterCircuit,
+        SystemParameters,
+        Testnet1Components,
     },
-    DPCError, ProgramScheme,
+    DPCError,
+    ProgramScheme,
 };
 use snarkvm_parameters::{
     testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},

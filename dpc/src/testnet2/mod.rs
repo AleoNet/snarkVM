@@ -16,7 +16,11 @@
 
 use crate::{
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
-    Account, AleoAmount, DPCError, Network, ProgramScheme,
+    Account,
+    AleoAmount,
+    DPCError,
+    Network,
+    ProgramScheme,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,

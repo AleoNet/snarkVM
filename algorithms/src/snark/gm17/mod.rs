@@ -22,7 +22,10 @@ use snarkvm_r1cs::errors::SynthesisResult;
 use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use std::io::{
-    Read, Result as IoResult, Write, {self},
+    Read,
+    Result as IoResult,
+    Write,
+    {self},
 };
 
 /// GM17 zkSNARK construction.

@@ -16,7 +16,9 @@
 
 use crate::{
     traits::{BlockScheme, TransactionScheme},
-    BlockError, BlockHeader, Transactions,
+    BlockError,
+    BlockHeader,
+    Transactions,
 };
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
 

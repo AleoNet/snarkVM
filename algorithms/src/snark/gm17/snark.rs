@@ -15,8 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof,
-    ProvingKey, VerifyingKey,
+    create_random_proof,
+    generate_random_parameters,
+    prepare_verifying_key,
+    verify_proof,
+    PreparedVerifyingKey,
+    Proof,
+    ProvingKey,
+    VerifyingKey,
 };
 use crate::{errors::SNARKError, traits::SNARK};
 use snarkvm_curves::traits::PairingEngine;

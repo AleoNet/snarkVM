@@ -81,10 +81,6 @@ impl<F: PrimeField> ToConstraintField<F> for [u8; 32] {
 
 impl<F: Field> ToConstraintField<F> for bool {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        if *self {
-            Ok(vec![F::one()])
-        } else {
-            Ok(vec![F::zero()])
-        }
+        if *self { Ok(vec![F::one()]) } else { Ok(vec![F::zero()]) }
     }
 }

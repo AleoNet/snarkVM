@@ -262,7 +262,8 @@ mod test {
     use snarkvm_r1cs::{Fr, TestConstraintSystem};
     use snarkvm_utilities::{
         rand::{test_rng, UniformRand},
-        to_bytes_le, ToBytes,
+        to_bytes_le,
+        ToBytes,
     };
 
     use super::*;
@@ -273,11 +274,13 @@ mod test {
         field_elements: Vec<F>,
     ) -> Vec<Vec<UInt8>> {
         if field_elements.len() <= 1 {
-            vec![UInt8::alloc_input_vec_le(
-                cs.ns(|| format!("Allocate field elements")),
-                &to_bytes_le![field_elements].unwrap(),
-            )
-            .unwrap()]
+            vec![
+                UInt8::alloc_input_vec_le(
+                    cs.ns(|| format!("Allocate field elements")),
+                    &to_bytes_le![field_elements].unwrap(),
+                )
+                .unwrap(),
+            ]
         } else {
             let mut fe_bytes = Vec::with_capacity(field_elements.len());
             for (index, field_element) in field_elements.iter().enumerate() {

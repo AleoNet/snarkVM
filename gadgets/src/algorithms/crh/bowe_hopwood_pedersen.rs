@@ -90,12 +90,12 @@ pub struct BoweHopwoodPedersenCompressedCRHGadget<G: Group + ProjectiveCurve, F:
 }
 
 impl<
-        F: Field,
-        G: Group + ProjectiveCurve,
-        GG: CompressedGroupGadget<G, F>,
-        const NUM_WINDOWS: usize,
-        const WINDOW_SIZE: usize,
-    > CRHGadget<BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    F: Field,
+    G: Group + ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CRHGadget<BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCompressedCRHGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;

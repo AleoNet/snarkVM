@@ -16,7 +16,10 @@
 
 use crate::{
     testnet2::{Execution, LocalData, NoopCircuit, ProgramLocalData, ProgramSNARKUniversalSRS, Testnet2Components},
-    DPCComponents, ProgramError, ProgramScheme, RecordScheme,
+    DPCComponents,
+    ProgramError,
+    ProgramScheme,
+    RecordScheme,
 };
 use snarkvm_algorithms::prelude::*;
 use snarkvm_marlin::marlin::UniversalSRS;

@@ -19,7 +19,12 @@ use crate::{fft::EvaluationDomain, msm::FixedBaseMSM};
 use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{
-    errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable,
+    errors::SynthesisError,
+    ConstraintSynthesizer,
+    ConstraintSystem,
+    Index,
+    LinearCombination,
+    Variable,
 };
 use snarkvm_utilities::rand::UniformRand;
 

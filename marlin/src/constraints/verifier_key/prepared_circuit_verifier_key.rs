@@ -34,7 +34,9 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use crate::{
     constraints::{verifier::MarlinVerificationGadget, verifier_key::CircuitVerifyingKeyVar},
     marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey},
-    FiatShamirRng, FiatShamirRngVar, PolynomialCommitment,
+    FiatShamirRng,
+    FiatShamirRngVar,
+    PolynomialCommitment,
 };
 
 /// The prepared circuit verifying key gadget
@@ -65,13 +67,13 @@ pub struct PreparedCircuitVerifyingKeyVar<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        PCG: PCCheckVar<TargetField, PC, BaseField>,
-        PR: FiatShamirRng<TargetField, BaseField>,
-        R: FiatShamirRngVar<TargetField, BaseField, PR>,
-    > Clone for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+> Clone for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 {
     fn clone(&self) -> Self {
         PreparedCircuitVerifyingKeyVar {
@@ -520,7 +522,10 @@ mod test {
 
     use crate::{
         marlin::{tests::Circuit, MarlinSNARK, MarlinTestnet1Mode},
-        FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, PoseidonSponge, PoseidonSpongeVar,
+        FiatShamirAlgebraicSpongeRng,
+        FiatShamirAlgebraicSpongeRngVar,
+        PoseidonSponge,
+        PoseidonSpongeVar,
     };
 
     use super::*;

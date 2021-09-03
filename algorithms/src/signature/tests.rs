@@ -57,9 +57,11 @@ fn randomize_and_verify<S: SignatureScheme>(message: &[u8], randomness: &[u8]) {
 
     let randomized_public_key = schnorr_signature.randomize_public_key(&public_key, randomness).unwrap();
     let randomized_signature = schnorr_signature.randomize_signature(&signature, randomness).unwrap();
-    assert!(schnorr_signature
-        .verify(&randomized_public_key, &message, &randomized_signature)
-        .unwrap());
+    assert!(
+        schnorr_signature
+            .verify(&randomized_public_key, &message, &randomized_signature)
+            .unwrap()
+    );
 }
 
 fn signature_scheme_parameter_serialization<S: SignatureScheme>() {

@@ -16,7 +16,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt::{
-    Display, Formatter, {self},
+    Display,
+    Formatter,
+    {self},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

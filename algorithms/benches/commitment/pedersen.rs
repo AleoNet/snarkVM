@@ -23,7 +23,8 @@ use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::{
-    thread_rng, {self},
+    thread_rng,
+    {self},
 };
 
 const NUM_WINDOWS: usize = 8;

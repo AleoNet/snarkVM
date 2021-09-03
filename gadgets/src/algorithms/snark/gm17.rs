@@ -99,12 +99,12 @@ pub struct GM17VerifierGadget<Pairing: PairingEngine, F: Field, P: PairingGadget
 }
 
 impl<
-        Pairing: PairingEngine,
-        F: Field,
-        P: PairingGadget<Pairing, F>,
-        C: ConstraintSynthesizer<Pairing::Fr>,
-        V: ToConstraintField<Pairing::Fr>,
-    > SNARKVerifierGadget<GM17<Pairing, C, V>, F> for GM17VerifierGadget<Pairing, F, P>
+    Pairing: PairingEngine,
+    F: Field,
+    P: PairingGadget<Pairing, F>,
+    C: ConstraintSynthesizer<Pairing::Fr>,
+    V: ToConstraintField<Pairing::Fr>,
+> SNARKVerifierGadget<GM17<Pairing, C, V>, F> for GM17VerifierGadget<Pairing, F, P>
 {
     type Input = Vec<Boolean>;
     type ProofGadget = GM17ProofGadget<Pairing, F, P>;
@@ -168,11 +168,10 @@ impl<
             //&pvk.g_gamma_pc
             let proof_b = proof.b.negate(cs.ns(|| "Negate b"))?;
             let b_prep = P::prepare_g2(cs.ns(|| "Sixth prep"), proof_b)?;
-            P::miller_loop(
-                cs.ns(|| "Miller loop 4"),
-                &[a_prep, pvk.g_gamma_pc.clone()],
-                &[pvk.h_gamma_pc, b_prep],
-            )?
+            P::miller_loop(cs.ns(|| "Miller loop 4"), &[a_prep, pvk.g_gamma_pc.clone()], &[
+                pvk.h_gamma_pc,
+                b_prep,
+            ])?
         };
         let test2 = P::final_exponentiation(cs.ns(|| "Final Exp 2"), &test2_exp)?;
 
