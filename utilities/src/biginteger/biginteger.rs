@@ -103,6 +103,9 @@ pub trait BigInteger:
 
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;
+
+    /// Creates a BigInteger by copying `input`. Will truncate or expand as needed.
+    fn from_slice(input: &[u64]) -> Self;
 }
 
 pub mod arithmetic {

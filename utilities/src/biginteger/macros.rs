@@ -187,6 +187,13 @@ macro_rules! biginteger {
 
                 res
             }
+
+            fn from_slice(input: &[u64]) -> Self {
+                let mut out = [0u64; $num_limbs];
+                let len = input.len().min($num_limbs);
+                out[..len].copy_from_slice(&input[..len]);
+                Self(out)
+            }
         }
 
         impl ToBits for $name {
