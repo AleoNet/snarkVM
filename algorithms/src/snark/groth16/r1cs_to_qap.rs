@@ -20,8 +20,7 @@ use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Zero;
 use snarkvm_r1cs::{
     errors::{SynthesisError, SynthesisResult},
-    ConstraintSystem,
-    Index,
+    ConstraintSystem, Index,
 };
 
 #[cfg(feature = "parallel")]

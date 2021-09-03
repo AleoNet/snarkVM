@@ -26,8 +26,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 use crate::{
     kzg10::Proof,
     marlin_pc::{proof::ProofVar, MarlinKZG10},
-    BatchLCProof,
-    Vec,
+    BatchLCProof, Vec,
 };
 
 /// Gadget for a `BatchLCProof`.

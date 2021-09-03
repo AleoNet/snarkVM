@@ -15,9 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use rand::{
-    thread_rng,
-    SeedableRng,
-    {self},
+    thread_rng, SeedableRng, {self},
 };
 use rand_xorshift::XorShiftRng;
 

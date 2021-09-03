@@ -16,11 +16,8 @@
 
 use crate::{
     curves::templates::bls12::{
-        Bls12PairingGadget,
-        G1Gadget as Bls12G1Gadget,
-        G1PreparedGadget as Bls12G1PreparedGadget,
-        G2Gadget as Bls12G2Gadget,
-        G2PreparedGadget as Bls12G2PreparedGadget,
+        Bls12PairingGadget, G1Gadget as Bls12G1Gadget, G1PreparedGadget as Bls12G1PreparedGadget,
+        G2Gadget as Bls12G2Gadget, G2PreparedGadget as Bls12G2PreparedGadget,
     },
     fields::{Fp12Gadget, Fp2Gadget, Fp6Gadget, FpGadget},
 };
@@ -42,11 +39,7 @@ mod test {
     use crate::{
         bits::boolean::{AllocatedBit, Boolean},
         traits::{
-            alloc::AllocGadget,
-            curves::GroupGadget,
-            eq::EqGadget,
-            fields::FieldGadget,
-            select::CondSelectGadget,
+            alloc::AllocGadget, curves::GroupGadget, eq::EqGadget, fields::FieldGadget, select::CondSelectGadget,
         },
     };
     use snarkvm_curves::{
@@ -60,8 +53,7 @@ mod test {
 
     use core::ops::Mul;
     use rand::{
-        SeedableRng,
-        {self},
+        SeedableRng, {self},
     };
     use rand_xorshift::XorShiftRng;
 

@@ -83,8 +83,12 @@ impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: us
     }
 }
 
-impl<F: Field, G: Group + ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<
+        F: Field,
+        G: Group + ProjectiveCurve + ToConstraintField<F>,
+        const NUM_WINDOWS: usize,
+        const WINDOW_SIZE: usize,
+    > ToConstraintField<F> for BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

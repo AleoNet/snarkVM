@@ -109,8 +109,7 @@ mod serialization {
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{
         rand::{test_rng, UniformRand},
-        FromBytes,
-        ToBytes,
+        FromBytes, ToBytes,
     };
 
     #[test]

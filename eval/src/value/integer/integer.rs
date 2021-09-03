@@ -37,15 +37,8 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use std::{convert::TryInto, fmt};
 
 use crate::{
-    allocate_type,
-    errors::IntegerError,
-    match_integer,
-    match_integers,
-    match_integers_arithmetic,
-    match_signed_integer,
-    match_unsigned_integer,
-    ConstrainedValue,
-    GroupType,
+    allocate_type, errors::IntegerError, match_integer, match_integers, match_integers_arithmetic,
+    match_signed_integer, match_unsigned_integer, ConstrainedValue, GroupType,
 };
 
 /// An integer type enum wrapping the integer value.

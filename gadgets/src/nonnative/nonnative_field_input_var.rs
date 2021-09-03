@@ -20,8 +20,7 @@ use crate::{
     bits::boolean_input::BooleanInputGadget,
     fields::FpGadget,
     traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget},
-    Boolean,
-    FromFieldElementsGadget,
+    Boolean, FromFieldElementsGadget,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
@@ -30,8 +29,7 @@ use crate::{
     fields::AllocatedFp,
     nonnative::{
         params::{get_params, OptimizationType},
-        AllocatedNonNativeFieldVar,
-        NonNativeFieldVar,
+        AllocatedNonNativeFieldVar, NonNativeFieldVar,
     },
 };
 

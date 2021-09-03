@@ -16,14 +16,7 @@
 
 use crate::{AccountError, LedgerError, ProgramError, RecordError, TransactionError};
 use snarkvm_algorithms::{
-    CRHError,
-    CommitmentError,
-    EncodingError,
-    EncryptionError,
-    MerkleError,
-    PRFError,
-    SNARKError,
-    SignatureError,
+    CRHError, CommitmentError, EncodingError, EncryptionError, MerkleError, PRFError, SNARKError, SignatureError,
 };
 use snarkvm_parameters::ParameterError;
 

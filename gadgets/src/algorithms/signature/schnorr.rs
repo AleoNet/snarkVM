@@ -24,8 +24,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::Integer,
     },
-    FieldGadget,
-    PRFGadget,
+    FieldGadget, PRFGadget,
 };
 use snarkvm_algorithms::{
     prf::Blake2s,
@@ -36,9 +35,7 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes_le,
-    FromBytes,
-    ToBytes,
+    to_bytes_le, FromBytes, ToBytes,
 };
 
 use digest::Digest;
@@ -282,12 +279,12 @@ pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: PrimeField, GG: Grou
 }
 
 impl<
-    G: Group + CanonicalSerialize + CanonicalDeserialize,
-    GG: GroupGadget<G, F>,
-    FG: FieldGadget<F, F>,
-    D: Digest + Send + Sync,
-    F: PrimeField,
-> SignaturePublicKeyRandomizationGadget<Schnorr<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
+        G: Group + CanonicalSerialize + CanonicalDeserialize,
+        GG: GroupGadget<G, F>,
+        FG: FieldGadget<F, F>,
+        D: Digest + Send + Sync,
+        F: PrimeField,
+    > SignaturePublicKeyRandomizationGadget<Schnorr<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
 {
     type ParametersGadget = SchnorrParametersGadget<G, F, D>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;

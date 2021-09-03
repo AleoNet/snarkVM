@@ -48,11 +48,11 @@ pub struct CircuitVerifyingKeyVar<
 }
 
 impl<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
-    PCG: PCCheckVar<TargetField, PC, BaseField>,
-> Clone for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+        TargetField: PrimeField,
+        BaseField: PrimeField,
+        PC: PolynomialCommitment<TargetField>,
+        PCG: PCCheckVar<TargetField, PC, BaseField>,
+    > Clone for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     fn clone(&self) -> Self {
         Self {
@@ -68,11 +68,11 @@ impl<
 }
 
 impl<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
-    PCG: PCCheckVar<TargetField, PC, BaseField>,
-> CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+        TargetField: PrimeField,
+        BaseField: PrimeField,
+        PC: PolynomialCommitment<TargetField>,
+        PCG: PCCheckVar<TargetField, PC, BaseField>,
+    > CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     /// Returns an iterator of the circuit commitments.
     pub fn iter(&self) -> impl Iterator<Item = &PCG::CommitmentVar> {
@@ -81,11 +81,11 @@ impl<
 }
 
 impl<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
-    PCG: PCCheckVar<TargetField, PC, BaseField>,
-> AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
+        TargetField: PrimeField,
+        BaseField: PrimeField,
+        PC: PolynomialCommitment<TargetField>,
+        PCG: PCCheckVar<TargetField, PC, BaseField>,
+    > AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
     for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     #[inline]
@@ -216,11 +216,11 @@ impl<
 }
 
 impl<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
-    PCG: PCCheckVar<TargetField, PC, BaseField>,
-> ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+        TargetField: PrimeField,
+        BaseField: PrimeField,
+        PC: PolynomialCommitment<TargetField>,
+        PCG: PCCheckVar<TargetField, PC, BaseField>,
+    > ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();

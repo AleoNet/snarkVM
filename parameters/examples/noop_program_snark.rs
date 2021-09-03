@@ -16,8 +16,7 @@
 
 use snarkvm_dpc::{
     testnet1::{instantiated::Components, NoopProgram, SystemParameters, Testnet1Components},
-    DPCError,
-    ProgramScheme,
+    DPCError, ProgramScheme,
 };
 use snarkvm_utilities::ToBytes;
 

@@ -17,9 +17,7 @@
 use crate::{
     testnet1::{record::encrypted::*, Testnet1Components},
     traits::TransactionScheme,
-    AleoAmount,
-    Network,
-    TransactionError,
+    AleoAmount, Network, TransactionError,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -27,9 +25,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes_le,
-    FromBytes,
-    ToBytes,
+    to_bytes_le, FromBytes, ToBytes,
 };
 
 use blake2::{digest::Digest, Blake2s as b2s};

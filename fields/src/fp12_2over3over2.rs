@@ -16,12 +16,7 @@
 
 use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
 use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-    FromBytes,
-    ToBytes,
+    bititerator::BitIteratorBE, errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBytes,
 };
 
 use rand::{

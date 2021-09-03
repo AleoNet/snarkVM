@@ -16,12 +16,7 @@
 
 use crate::{Field, Fp3, Fp3Parameters, One, Zero};
 use snarkvm_utilities::{
-    biginteger::BigInteger,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-    FromBytes,
-    ToBytes,
+    biginteger::BigInteger, errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBytes,
 };
 
 use rand::{

@@ -26,9 +26,7 @@ use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromByt
 
 use derivative::Derivative;
 use std::io::{
-    Read,
-    Write,
-    {self},
+    Read, Write, {self},
 };
 
 /// Verification key for a specific index (i.e., R1CS matrices).

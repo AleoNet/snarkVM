@@ -21,8 +21,7 @@ use snarkvm_utilities::ToBytes;
 use rand::thread_rng;
 use std::{
     fs::{
-        File,
-        {self},
+        File, {self},
     },
     io::{Result as IoResult, Write},
     path::PathBuf,

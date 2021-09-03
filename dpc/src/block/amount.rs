@@ -47,11 +47,15 @@ impl Denomination {
 
 impl fmt::Display for Denomination {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            Denomination::BYTE => "AB",
-            Denomination::GATE => "AG",
-            Denomination::ALEO => "ALEO",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Denomination::BYTE => "AB",
+                Denomination::GATE => "AG",
+                Denomination::ALEO => "ALEO",
+            }
+        )
     }
 }
 

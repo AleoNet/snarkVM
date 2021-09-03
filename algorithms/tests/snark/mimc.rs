@@ -154,10 +154,7 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 fn test_mimc_groth_16() {
     // We're going to use the Groth16 proving system.
     use snarkvm_algorithms::snark::groth16::{
-        create_random_proof,
-        generate_random_parameters,
-        prepare_verifying_key,
-        verify_proof,
+        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
 
     // This may not be cryptographically safe, use
@@ -241,10 +238,7 @@ fn test_mimc_groth_16() {
 fn test_mimc_groth_maller_17() {
     // We're going to use the GM17 proving system.
     use snarkvm_algorithms::snark::gm17::{
-        create_random_proof,
-        generate_random_parameters,
-        prepare_verifying_key,
-        verify_proof,
+        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
 
     // This may not be cryptographically safe, use

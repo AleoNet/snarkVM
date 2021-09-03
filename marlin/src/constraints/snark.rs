@@ -42,13 +42,8 @@ use crate::{
     },
     fiat_shamir::FiatShamirRng,
     marlin::{
-        CircuitProvingKey,
-        CircuitVerifyingKey,
-        MarlinError,
-        MarlinMode,
-        MarlinSNARK as MarlinCore,
-        PreparedCircuitVerifyingKey,
-        Proof,
+        CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, MarlinSNARK as MarlinCore,
+        PreparedCircuitVerifyingKey, Proof,
     },
     FiatShamirRngVar,
 };
@@ -388,10 +383,7 @@ pub mod test {
     use crate::{
         constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
         fiat_shamir::{
-            FiatShamirAlgebraicSpongeRng,
-            FiatShamirAlgebraicSpongeRngVar,
-            PoseidonSponge,
-            PoseidonSpongeVar,
+            FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, PoseidonSponge, PoseidonSpongeVar,
         },
         marlin::MarlinRecursiveMode,
     };
@@ -640,10 +632,7 @@ pub mod multiple_input_tests {
     use crate::{
         constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
         fiat_shamir::{
-            FiatShamirAlgebraicSpongeRng,
-            FiatShamirAlgebraicSpongeRngVar,
-            PoseidonSponge,
-            PoseidonSpongeVar,
+            FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, PoseidonSponge, PoseidonSpongeVar,
         },
         marlin::MarlinRecursiveMode,
     };
@@ -731,14 +720,14 @@ pub mod multiple_input_tests {
     }
 
     impl<
-        F: PrimeField,
-        ConstraintF: PrimeField,
-        PC: PolynomialCommitment<F>,
-        FS: FiatShamirRng<F, ConstraintF>,
-        MM: MarlinMode,
-        PCG: PCCheckVar<F, PC, ConstraintF>,
-        FSG: FiatShamirRngVar<F, ConstraintF, FS>,
-    > ConstraintSynthesizer<ConstraintF> for VerifierCircuit<F, ConstraintF, PC, FS, MM, PCG, FSG>
+            F: PrimeField,
+            ConstraintF: PrimeField,
+            PC: PolynomialCommitment<F>,
+            FS: FiatShamirRng<F, ConstraintF>,
+            MM: MarlinMode,
+            PCG: PCCheckVar<F, PC, ConstraintF>,
+            FSG: FiatShamirRngVar<F, ConstraintF, FS>,
+        > ConstraintSynthesizer<ConstraintF> for VerifierCircuit<F, ConstraintF, PC, FS, MM, PCG, FSG>
     where
         PC::VerifierKey: ToConstraintField<ConstraintF>,
         PC::Commitment: ToConstraintField<ConstraintF>,

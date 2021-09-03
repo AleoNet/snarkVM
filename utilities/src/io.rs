@@ -74,7 +74,11 @@ impl Write for &mut [u8] {
         a.copy_from_slice(&data[..amt]);
         *self = b;
 
-        if amt == data.len() { Ok(()) } else { Err(Error) }
+        if amt == data.len() {
+            Ok(())
+        } else {
+            Err(Error)
+        }
     }
 }
 

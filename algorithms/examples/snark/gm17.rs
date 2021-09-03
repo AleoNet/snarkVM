@@ -41,10 +41,7 @@ use snarkvm_fields::One;
 
 // We're going to use the Groth-Maller 17 proving system.
 use snarkvm_algorithms::snark::gm17::{
-    create_random_proof,
-    generate_random_parameters,
-    prepare_verifying_key,
-    verify_proof,
+    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
 };
 
 use std::{env, fs::OpenOptions, path::PathBuf, process};

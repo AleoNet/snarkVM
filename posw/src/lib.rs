@@ -24,11 +24,7 @@ pub mod error;
 use snarkvm_algorithms::snark;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::block::{
-    merkle_root_with_subroots,
-    pedersen_merkle_root,
-    MerkleRootHash,
-    PedersenMerkleRootHash,
-    MASKED_TREE_DEPTH,
+    merkle_root_with_subroots, pedersen_merkle_root, MerkleRootHash, PedersenMerkleRootHash, MASKED_TREE_DEPTH,
 };
 
 /// GM17 type alias for the PoSW circuit

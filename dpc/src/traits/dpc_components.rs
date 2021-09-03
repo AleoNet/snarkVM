@@ -18,11 +18,7 @@ use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureSc
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::traits::algorithms::{
-    CRHGadget,
-    CommitmentGadget,
-    EncryptionGadget,
-    PRFGadget,
-    SignaturePublicKeyRandomizationGadget,
+    CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget,
 };
 
 pub trait DPCComponents: 'static + Sized {

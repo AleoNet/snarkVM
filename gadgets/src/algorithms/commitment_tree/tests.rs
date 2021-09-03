@@ -30,9 +30,7 @@ use snarkvm_utilities::rand::UniformRand;
 
 use crate::{
     algorithms::{
-        commitment::PedersenCompressedCommitmentGadget,
-        commitment_tree::*,
-        crh::BoweHopwoodPedersenCompressedCRHGadget,
+        commitment::PedersenCompressedCommitmentGadget, commitment_tree::*, crh::BoweHopwoodPedersenCompressedCRHGadget,
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::{

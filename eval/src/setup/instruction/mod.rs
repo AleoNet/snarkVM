@@ -20,33 +20,17 @@ use im::HashMap;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     integers::{UInt16, UInt32, UInt8},
-    Boolean,
-    CondSelectGadget,
-    EqGadget,
-    EvaluateEqGadget,
-    Integer as IntegerTrait,
+    Boolean, CondSelectGadget, EqGadget, EvaluateEqGadget, Integer as IntegerTrait,
 };
 use snarkvm_ir::{
-    ArrayInitRepeatData,
-    CallCoreData,
-    CallData,
-    Instruction,
-    Integer as IrInteger,
-    LogData,
-    LogLevel,
-    PredicateData,
-    QueryData,
-    Value,
-    VarData,
+    ArrayInitRepeatData, CallCoreData, CallData, Instruction, Integer as IrInteger, LogData, LogLevel, PredicateData,
+    QueryData, Value, VarData,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
     errors::{ArrayError, ValueError},
-    operations,
-    ConstrainedValue,
-    GroupType,
-    Integer,
+    operations, ConstrainedValue, GroupType, Integer,
 };
 
 use anyhow::*;

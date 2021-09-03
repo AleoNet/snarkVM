@@ -22,16 +22,8 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     prelude::*,
     testnet1::{
-        execute_inner_circuit,
-        execute_outer_circuit,
-        instantiated::*,
-        program::NoopProgram,
-        EncryptedRecord,
-        InnerCircuit,
-        Payload,
-        Record,
-        Testnet1Components,
-        TransactionKernel,
+        execute_inner_circuit, execute_outer_circuit, instantiated::*, program::NoopProgram, EncryptedRecord,
+        InnerCircuit, Payload, Record, Testnet1Components, TransactionKernel,
     },
 };
 use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet1::*};

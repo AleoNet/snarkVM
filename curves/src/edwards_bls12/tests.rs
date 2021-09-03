@@ -18,22 +18,13 @@ use crate::{
     edwards_bls12::*,
     templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test},
     traits::{
-        tests_curve::curve_tests,
-        tests_group::group_test,
-        AffineCurve,
-        Group,
-        MontgomeryParameters,
-        ProjectiveCurve,
+        tests_curve::curve_tests, tests_group::group_test, AffineCurve, Group, MontgomeryParameters, ProjectiveCurve,
         TwistedEdwardsParameters,
     },
 };
 use snarkvm_fields::{
     tests_field::{field_serialization_test, field_test, primefield_test},
-    Field,
-    LegendreSymbol,
-    One,
-    SquareRootField,
-    Zero,
+    Field, LegendreSymbol, One, SquareRootField, Zero,
 };
 use snarkvm_utilities::{rand::UniformRand, to_bytes_le, ToBytes};
 

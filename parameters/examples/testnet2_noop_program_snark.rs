@@ -16,8 +16,7 @@
 
 use snarkvm_dpc::{
     testnet2::{instantiated::Components, parameters::SystemParameters, NoopProgram, Testnet2Components},
-    DPCError,
-    ProgramScheme,
+    DPCError, ProgramScheme,
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;

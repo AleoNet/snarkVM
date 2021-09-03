@@ -20,14 +20,12 @@ use snarkvm_utilities::{
     io::Cursor,
     rand::UniformRand,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes_le,
-    ToBytes,
+    to_bytes_le, ToBytes,
 };
 
 use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    MontgomeryParameters,
-    TwistedEdwardsParameters,
+    MontgomeryParameters, TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 

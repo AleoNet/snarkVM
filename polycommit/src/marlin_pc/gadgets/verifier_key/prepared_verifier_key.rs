@@ -30,8 +30,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
     marlin_pc::{gadgets::verifier_key::VerifierKeyVar, PreparedVerifierKey},
-    PrepareGadget,
-    Vec,
+    PrepareGadget, Vec,
 };
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.

@@ -16,14 +16,10 @@
 
 use crate::{
     testnet1::{
-        encrypted::RecordEncryptionGadgetComponents,
-        inner_circuit_gadget::execute_inner_circuit,
-        parameters::SystemParameters,
-        record::Record,
-        Testnet1Components,
+        encrypted::RecordEncryptionGadgetComponents, inner_circuit_gadget::execute_inner_circuit,
+        parameters::SystemParameters, record::Record, Testnet1Components,
     },
-    AleoAmount,
-    PrivateKey,
+    AleoAmount, PrivateKey,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},

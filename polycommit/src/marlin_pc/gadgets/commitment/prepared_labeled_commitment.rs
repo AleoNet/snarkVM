@@ -20,8 +20,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 use crate::{
     marlin_pc::{LabeledCommitmentVar, PreparedCommitmentVar},
-    PrepareGadget,
-    String,
+    PrepareGadget, String,
 };
 
 /// Prepared gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
@@ -97,10 +96,7 @@ mod tests {
 
     use crate::{
         marlin_pc::{MarlinKZG10, PreparedCommitment},
-        LabeledPolynomial,
-        PCPreparedCommitment,
-        PolynomialCommitment,
-        ToString,
+        LabeledPolynomial, PCPreparedCommitment, PolynomialCommitment, ToString,
     };
 
     use super::*;

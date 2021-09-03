@@ -17,13 +17,9 @@
 use crate::SerializationError;
 pub use crate::{
     io::{
-        Read,
-        Write,
-        {self},
+        Read, Write, {self},
     },
-    FromBytes,
-    ToBytes,
-    Vec,
+    FromBytes, ToBytes, Vec,
 };
 
 /// Serialization flags.

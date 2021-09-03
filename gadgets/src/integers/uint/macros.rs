@@ -452,10 +452,10 @@ macro_rules! uint_impl {
                     .enumerate()
                     .map(|(i, bit)| {
                         let current_left_shift = left_shift.clone();
-                        left_shift = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                            left_shift.clone(),
-                            left_shift.clone(),
-                        ])
+                        left_shift = Self::addmany(
+                            &mut cs.ns(|| format!("shift_left_{}", i)),
+                            &[left_shift.clone(), left_shift.clone()],
+                        )
                         .unwrap();
 
                         Self::conditionally_select(

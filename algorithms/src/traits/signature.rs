@@ -17,8 +17,7 @@
 use crate::errors::SignatureError;
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    FromBytes,
-    ToBytes,
+    FromBytes, ToBytes,
 };
 
 use rand::Rng;

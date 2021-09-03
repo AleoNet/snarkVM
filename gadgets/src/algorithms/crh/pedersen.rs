@@ -178,12 +178,12 @@ pub struct PedersenCompressedCRHGadget<G: Group + ProjectiveCurve, F: Field, GG:
 }
 
 impl<
-    F: Field,
-    G: Group + ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG>
+        F: Field,
+        G: Group + ProjectiveCurve,
+        GG: CompressedGroupGadget<G, F>,
+        const NUM_WINDOWS: usize,
+        const WINDOW_SIZE: usize,
+    > CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;
     type ParametersGadget = PedersenCRHParametersGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>;
@@ -199,12 +199,12 @@ impl<
 }
 
 impl<
-    F: PrimeField,
-    G: Group + ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> MaskedCRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG>
+        F: PrimeField,
+        G: Group + ProjectiveCurve,
+        GG: CompressedGroupGadget<G, F>,
+        const NUM_WINDOWS: usize,
+        const WINDOW_SIZE: usize,
+    > MaskedCRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG>
 {
     fn check_evaluation_gadget_masked<CS: ConstraintSystem<F>>(
         cs: CS,

@@ -16,26 +16,15 @@
 
 use crate::{
     bw6_761::{
-        g1::BW6_761G1Parameters,
-        g2::Bls12_377G2Parameters,
-        Fq,
-        Fq3,
-        Fq6,
-        Fr,
-        G1Affine,
-        G1Projective,
-        G2Affine,
-        G2Projective,
-        BW6_761,
+        g1::BW6_761G1Parameters, g2::Bls12_377G2Parameters, Fq, Fq3, Fq6, Fr, G1Affine, G1Projective, G2Affine,
+        G2Projective, BW6_761,
     },
     templates::short_weierstrass_jacobian::tests::sw_tests,
     traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, PairingEngine},
 };
 use snarkvm_fields::{
     tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-    Field,
-    One,
-    PrimeField,
+    Field, One, PrimeField,
 };
 
 #[test]

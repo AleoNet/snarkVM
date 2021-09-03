@@ -23,8 +23,7 @@ use snarkvm_utilities::ToBytes;
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
-        ToBitsBEGadget,
-        ToBytesGadget,
+        ToBitsBEGadget, ToBytesGadget,
     },
     fields::FpGadget,
     traits::{

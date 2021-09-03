@@ -16,10 +16,7 @@
 
 use crate::{
     testnet1::{Execution, LocalData, NoopCircuit, ProgramLocalData, Testnet1Components},
-    DPCComponents,
-    ProgramError,
-    ProgramScheme,
-    RecordScheme,
+    DPCComponents, ProgramError, ProgramScheme, RecordScheme,
 };
 use snarkvm_algorithms::prelude::*;
 use snarkvm_parameters::{

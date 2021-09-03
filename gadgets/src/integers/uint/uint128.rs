@@ -33,8 +33,7 @@ use crate::{
         integers::{Integer, Pow},
         select::CondSelectGadget,
     },
-    uint_impl_common,
-    UnsignedIntegerError,
+    uint_impl_common, UnsignedIntegerError,
 };
 
 uint_impl_common!(UInt128, u128, 128);
@@ -240,10 +239,10 @@ impl UInt for UInt128 {
             .enumerate()
             .map(|(i, bit)| {
                 let current_left_shift = left_shift.clone();
-                left_shift = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                    left_shift.clone(),
-                    left_shift.clone(),
-                ])
+                left_shift = Self::addmany(
+                    &mut cs.ns(|| format!("shift_left_{}", i)),
+                    &[left_shift.clone(), left_shift.clone()],
+                )
                 .unwrap();
 
                 Self::conditionally_select(

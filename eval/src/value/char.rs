@@ -17,9 +17,11 @@
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     boolean::Boolean,
-    traits::bits::comparator::{ComparatorGadget, EvaluateLtGadget},
-    traits::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget, NEqGadget},
-    traits::select::CondSelectGadget,
+    traits::{
+        bits::comparator::{ComparatorGadget, EvaluateLtGadget},
+        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget, NEqGadget},
+        select::CondSelectGadget,
+    },
 };
 use snarkvm_ir::{Field, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

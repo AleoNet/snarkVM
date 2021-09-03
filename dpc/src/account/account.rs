@@ -17,8 +17,7 @@
 use crate::{
     errors::AccountError,
     traits::{AccountScheme, DPCComponents},
-    Address,
-    PrivateKey,
+    Address, PrivateKey,
 };
 
 use rand::{CryptoRng, Rng};

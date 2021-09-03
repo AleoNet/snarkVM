@@ -18,12 +18,7 @@ use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, trai
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{
-    errors::SerializationError,
-    from_bytes_le_to_bits_le,
-    rand::UniformRand,
-    serialize::*,
-    FromBytes,
-    ToBytes,
+    errors::SerializationError, from_bytes_le_to_bits_le, rand::UniformRand, serialize::*, FromBytes, ToBytes,
 };
 
 use digest::Digest;

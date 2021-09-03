@@ -17,9 +17,7 @@
 use crate::{
     testnet1::{payload::Payload, Testnet1Components},
     traits::RecordScheme,
-    Address,
-    PrivateKey,
-    RecordError,
+    Address, PrivateKey, RecordError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};

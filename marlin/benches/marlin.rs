@@ -28,10 +28,7 @@ use snarkvm_marlin::{
     constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
     marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore},
     snark::MarlinSystem,
-    FiatShamirAlgebraicSpongeRng,
-    FiatShamirAlgebraicSpongeRngVar,
-    PoseidonSponge,
-    PoseidonSpongeVar,
+    FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, PoseidonSponge, PoseidonSpongeVar,
 };
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};

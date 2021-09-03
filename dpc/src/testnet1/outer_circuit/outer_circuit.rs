@@ -16,9 +16,7 @@
 
 use crate::{
     testnet1::{
-        outer_circuit_gadget::execute_outer_circuit,
-        parameters::SystemParameters,
-        program::Execution,
+        outer_circuit_gadget::execute_outer_circuit, parameters::SystemParameters, program::Execution,
         Testnet1Components,
     },
     AleoAmount,

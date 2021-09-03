@@ -21,15 +21,7 @@ use crate::{
 };
 use snarkvm_curves::{
     templates::bls12::{
-        Bls12,
-        Bls12Parameters,
-        G1Affine,
-        G1Prepared,
-        G1Projective,
-        G2Affine,
-        G2Prepared,
-        G2Projective,
-        TwistType,
+        Bls12, Bls12Parameters, G1Affine, G1Prepared, G1Projective, G2Affine, G2Prepared, G2Projective, TwistType,
     },
     traits::{ModelParameters, PairingCurve},
 };

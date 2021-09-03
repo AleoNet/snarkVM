@@ -198,9 +198,10 @@ mod test {
         )
         .unwrap();
 
-        let inputs = [ToConstraintField::<Fr>::to_field_elements(&mask[..]).unwrap(), vec![
-            root,
-        ]]
+        let inputs = [
+            ToConstraintField::<Fr>::to_field_elements(&mask[..]).unwrap(),
+            vec![root],
+        ]
         .concat();
 
         assert!(verify_proof(&prepare_verifying_key(params.vk), &proof, &inputs,).unwrap());

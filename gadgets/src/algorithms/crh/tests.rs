@@ -29,9 +29,7 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use crate::{
     algorithms::crh::{
-        BoweHopwoodPedersenCRHGadget,
-        BoweHopwoodPedersenCompressedCRHGadget,
-        PedersenCRHGadget,
+        BoweHopwoodPedersenCRHGadget, BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget,
         PedersenCompressedCRHGadget,
     },
     curves::edwards_bls12::EdwardsBls12Gadget,

@@ -26,8 +26,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
     marlin_pc::{CommitmentVar, PreparedCommitment},
-    PrepareGadget,
-    Vec,
+    PrepareGadget, Vec,
 };
 
 /// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.

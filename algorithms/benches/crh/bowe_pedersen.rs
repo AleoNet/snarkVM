@@ -22,8 +22,7 @@ use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
 use rand::{
-    thread_rng,
-    {self},
+    thread_rng, {self},
 };
 
 const NUM_WINDOWS: usize = 8;

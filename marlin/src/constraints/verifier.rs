@@ -22,13 +22,8 @@ use crate::{
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
     },
     marlin::{MarlinError, MarlinMode},
-    FiatShamirAlgebraicSpongeRng,
-    FiatShamirAlgebraicSpongeRngVar,
-    FiatShamirRng,
-    FiatShamirRngVar,
-    PolynomialCommitment,
-    PoseidonSponge,
-    PoseidonSpongeVar,
+    FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, FiatShamirRng, FiatShamirRngVar,
+    PolynomialCommitment, PoseidonSponge, PoseidonSpongeVar,
 };
 use core::marker::PhantomData;
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -287,9 +282,7 @@ mod test {
         traits::{alloc::AllocGadget, eq::EqGadget},
     };
     use snarkvm_polycommit::marlin_pc::{
-        commitment::commitment::CommitmentVar,
-        marlin_kzg10::MarlinKZG10Gadget,
-        proof::batch_lc_proof::BatchLCProofVar,
+        commitment::commitment::CommitmentVar, marlin_kzg10::MarlinKZG10Gadget, proof::batch_lc_proof::BatchLCProofVar,
         MarlinKZG10,
     };
     use snarkvm_r1cs::TestConstraintSystem;
@@ -298,10 +291,7 @@ mod test {
     use crate::{
         constraints::{proof::ProverMessageVar, snark::test::Circuit},
         fiat_shamir::{
-            FiatShamirAlgebraicSpongeRng,
-            FiatShamirAlgebraicSpongeRngVar,
-            PoseidonSponge,
-            PoseidonSpongeVar,
+            FiatShamirAlgebraicSpongeRng, FiatShamirAlgebraicSpongeRngVar, PoseidonSponge, PoseidonSpongeVar,
         },
         marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
     };

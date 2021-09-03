@@ -18,8 +18,7 @@ use snarkvm_algorithms::crh::sha256::sha256;
 
 use std::{
     fs::{
-        File,
-        {self},
+        File, {self},
     },
     io::{BufWriter, Result as IoResult, Write},
     path::PathBuf,

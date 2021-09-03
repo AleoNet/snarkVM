@@ -18,8 +18,7 @@ use crate::{
     ahp::{
         indexer::CircuitInfo,
         verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
-        AHPError,
-        AHPForR1CS,
+        AHPError, AHPForR1CS,
     },
     traits::FiatShamirRng,
 };

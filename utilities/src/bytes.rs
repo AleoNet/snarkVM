@@ -273,10 +273,13 @@ mod test {
 
     #[test]
     fn test_from_bytes_le_to_bits_le() {
-        assert_eq!(from_bytes_le_to_bits_le(&[204, 76]).collect::<Vec<bool>>(), [
-            false, false, true, true, false, false, true, true, // 204
-            false, false, true, true, false, false, true, false, // 76
-        ]);
+        assert_eq!(
+            from_bytes_le_to_bits_le(&[204, 76]).collect::<Vec<bool>>(),
+            [
+                false, false, true, true, false, false, true, true, // 204
+                false, false, true, true, false, false, true, false, // 76
+            ]
+        );
     }
 
     #[test]

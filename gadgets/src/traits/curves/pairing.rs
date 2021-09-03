@@ -66,8 +66,8 @@ pub trait PairingGadget<Pairing: PairingEngine, F: Field> {
     }
 
     fn prepare_g1<CS: ConstraintSystem<F>>(cs: CS, q: Self::G1Gadget)
-    -> Result<Self::G1PreparedGadget, SynthesisError>;
+        -> Result<Self::G1PreparedGadget, SynthesisError>;
 
     fn prepare_g2<CS: ConstraintSystem<F>>(cs: CS, q: Self::G2Gadget)
-    -> Result<Self::G2PreparedGadget, SynthesisError>;
+        -> Result<Self::G2PreparedGadget, SynthesisError>;
 }
