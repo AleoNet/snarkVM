@@ -20,7 +20,7 @@ pub use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsParameters},
     templates::twisted_edwards_extended::affine::Affine,
-    AffineCurve, 
+    AffineCurve,
     TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Fp256, One, PrimeField, Zero};
