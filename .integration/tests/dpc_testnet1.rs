@@ -17,26 +17,17 @@
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
+use snarkvm_integration::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
-use rand::{CryptoRng, Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
-
-fn setup_or_load_dpc<R: Rng + CryptoRng>(verify_only: bool, rng: &mut R) -> Testnet1DPC {
-    match Testnet1DPC::load(verify_only) {
-        Ok(dpc) => dpc,
-        Err(err) => {
-            println!("error - {}, re-running parameter Setup", err);
-            Testnet1DPC::setup(rng).expect("DPC setup failed")
-        }
-    }
-}
 
 #[ignore]
 #[test]
@@ -72,7 +63,7 @@ fn dpc_testnet1_integration_test() {
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
     // Generate or load DPC.
-    let dpc = setup_or_load_dpc(false, &mut rng);
+    let dpc = setup_or_load_dpc::<Testnet1Parameters, _>(false, &mut rng).unwrap();
     let noop = Arc::new(dpc.noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();
@@ -149,7 +140,7 @@ fn test_testnet1_transaction_authorization_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate or load DPC.
-    let dpc = setup_or_load_dpc(false, &mut rng);
+    let dpc = setup_or_load_dpc::<Testnet1Parameters, _>(false, &mut rng).unwrap();
     let noop = Arc::new(dpc.noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();
