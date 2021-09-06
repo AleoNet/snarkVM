@@ -117,7 +117,20 @@ where
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey {
-        Self::PrivateKey::rand(rng)
+        // Keep trying until finding a key that is within the field's capacity bit limits.
+        loop {
+            let key = Self::PrivateKey::rand(rng);
+            let bits = key.to_bits_le();
+
+            let flag = bits
+                .iter()
+                .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
+                .any(|bit| *bit);
+
+            if !flag {
+                return key;
+            }
+        }
     }
 
     fn generate_public_key(
@@ -151,6 +164,16 @@ where
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
+
+        // Squeeze one element for the commitment randomness.
+        let commitment_randomness = sponge.squeeze_field_elements(1)[0];
+
+        // Add a commitment to the public key.
+        let public_key_commitment = {
+            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
+            sponge.absorb(&[commitment_randomness, public_key.0.x]);
+            sponge.squeeze_field_elements(1)[0]
+        };
 
         // Convert the message into bits.
         let mut bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
@@ -189,7 +212,12 @@ where
             .into_affine()
             .to_x_coordinate();
 
-        Ok([random_element.to_bytes_le()?, res.to_bytes_le()?].concat())
+        Ok([
+            random_element.to_bytes_le()?,
+            public_key_commitment.to_bytes_le()?,
+            res.to_bytes_le()?,
+        ]
+        .concat())
     }
 
     fn decrypt(
@@ -197,6 +225,18 @@ where
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
+        // Ensure that the private key follows the format requirement.
+        {
+            let bits = private_key.to_bits_le();
+            if bits
+                .iter()
+                .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
+                .any(|bit| *bit)
+            {
+                return Err(EncryptionError::InvalidPrivateKey);
+            }
+        }
+
         let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
         assert!(ciphertext.len() >= per_field_element_bytes);
 
@@ -227,8 +267,24 @@ where
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
+        // Squeeze one element for the commitment randomness.
+        let commitment_randomness = sponge.squeeze_field_elements(1)[0];
+
+        // Add a commitment to the public key.
+        let public_key_commitment = {
+            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
+            let public_key = self.generate_public_key(&private_key)?;
+            sponge.absorb(&[commitment_randomness, public_key.0.x]);
+            sponge.squeeze_field_elements(1)[0]
+        };
+        let given_public_key_commitment =
+            TE::BaseField::from_bytes_le(&ciphertext[per_field_element_bytes..2 * per_field_element_bytes])?;
+        if given_public_key_commitment != public_key_commitment {
+            return Err(EncryptionError::MismatchedPublicKey);
+        }
+
         // Compute the number of sponge elements needed.
-        let num_field_elements = (ciphertext.len() - per_field_element_bytes) / per_field_element_bytes;
+        let num_field_elements = (ciphertext.len() - 2 * per_field_element_bytes) / per_field_element_bytes;
 
         // Obtain random field elements from Poseidon.
         let sponge_field_elements = sponge.squeeze_field_elements(num_field_elements);
@@ -237,8 +293,8 @@ where
         let mut res_field_elements = Vec::with_capacity(num_field_elements);
         for i in 0..num_field_elements {
             res_field_elements.push(TE::BaseField::from_bytes_le(
-                &ciphertext[(per_field_element_bytes + i * per_field_element_bytes)
-                    ..(per_field_element_bytes + (i + 1) * per_field_element_bytes)],
+                &ciphertext[(2 * per_field_element_bytes + i * per_field_element_bytes)
+                    ..(2 * per_field_element_bytes + (i + 1) * per_field_element_bytes)],
             )?);
         }
         for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {

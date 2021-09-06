@@ -19,7 +19,7 @@ mod ecies {
     use snarkvm_curves::edwards_bls12::EdwardsParameters;
     use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
-    use rand::SeedableRng;
+    use rand::{Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
 
     type TestEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
@@ -57,5 +57,26 @@ mod ecies {
                 <TestEncryptionScheme as EncryptionScheme>::PublicKey::read_le(&public_key_bytes[..]).unwrap();
             assert_eq!(public_key, recovered_public_key);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ciphertext_random_manipulation() {
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+
+        let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
+
+        let private_key = encryption_scheme.generate_private_key(rng);
+        let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
+
+        let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
+        let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
+
+        let mut ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
+        let idx = rng.gen_range(0..ciphertext.len());
+        ciphertext[idx] = ciphertext[idx].wrapping_add(1u8);
+
+        // This should fail due to a MAC mismatch.
+        encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
     }
 }

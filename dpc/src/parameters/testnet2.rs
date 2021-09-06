@@ -31,7 +31,7 @@ use snarkvm_algorithms::{
     encryption::ECIESPoseidonEncryption,
     prelude::*,
     prf::Blake2s,
-    signature::Schnorr,
+    signature::SchnorrCompressed,
     snark::groth16::Groth16,
 };
 use snarkvm_curves::{
@@ -47,7 +47,7 @@ use snarkvm_gadgets::{
         crh::BHPCompressedCRHGadget,
         encryption::ECIESPoseidonEncryptionGadget,
         prf::Blake2sGadget,
-        signature::SchnorrGadget,
+        signature::SchnorrCompressedGadget,
         snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
@@ -142,13 +142,13 @@ impl Parameters for Testnet2Parameters {
     type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
 
-    type AccountSignatureScheme = Schnorr<EdwardsBls12>;
-    type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountSignatureScheme = SchnorrCompressed<EdwardsParameters>;
+    type AccountSignatureGadget = SchnorrCompressedGadget<EdwardsParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 72, 32>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 72, 32>;
+    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 80, 32>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 80, 32>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;

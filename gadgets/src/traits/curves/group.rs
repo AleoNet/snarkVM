@@ -256,6 +256,7 @@ pub trait CurveGadget<G: ProjectiveCurve, F: Field>: GroupGadget<G, F> + AllocGa
 
 pub trait CompressedGroupGadget<G: ProjectiveCurve, F: Field>: CurveGadget<G, F> {
     type BaseFieldGadget: ToBytesGadget<F>
+        + ToBitsBEGadget<F>
         + EqGadget<F>
         + CondSelectGadget<F>
         + AllocGadget<<G::Affine as AffineCurve>::BaseField, F>

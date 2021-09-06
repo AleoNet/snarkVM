@@ -31,6 +31,7 @@ use crate::{
         integers::integer::Integer,
         select::CondSelectGadget,
     },
+    ToBitsBEGadget,
 };
 
 // 2.1.  Parameters
@@ -456,6 +457,16 @@ impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sOutputGadget {
                 Err(_) => [0u8; 32],
             },
         )?))
+    }
+}
+
+impl<F: PrimeField> ToBitsBEGadget<F> for Blake2sOutputGadget {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_be(cs)
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_be_strict(cs)
     }
 }
 

@@ -55,6 +55,20 @@ impl<F: Field> ToBitsBEGadget<F> for Vec<Boolean> {
     }
 }
 
+impl<F: Field> ToBitsBEGadget<F> for [UInt8] {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut result = Vec::with_capacity(&self.len() * 8);
+        for byte in self {
+            result.extend_from_slice(&byte.to_bits_be());
+        }
+        Ok(result)
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_be(cs)
+    }
+}
+
 pub trait ToBitsLEGadget<F: Field> {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
 

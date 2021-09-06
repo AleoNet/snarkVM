@@ -28,6 +28,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
     },
+    ToBitsBEGadget,
 };
 
 pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + Clone + Sized {
@@ -35,6 +36,7 @@ pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + C
         + CondSelectGadget<F>
         + EqGadget<F>
         + ToBytesGadget<F>
+        + ToBitsBEGadget<F>
         + AllocGadget<C::Output, F>
         + Clone
         + Sized

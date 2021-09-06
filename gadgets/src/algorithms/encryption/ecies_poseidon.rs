@@ -25,6 +25,7 @@ use crate::{
     FpGadget,
     GroupGadget,
     Integer,
+    ToBitsLEGadget,
     ToBytesGadget,
     UInt8,
 };
@@ -81,27 +82,45 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE:
     }
 
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::ScalarField>, CS: ConstraintSystem<F>>(
-        cs: CS,
+        mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(
-            UInt8::alloc_vec(cs, &private_key)?,
-            PhantomData,
-            PhantomData,
-        ))
+
+        let bytes = UInt8::alloc_vec(cs.ns(|| "allocate the private key as bytes"), &private_key)?;
+
+        // Enforce that the key is within the capacity limit.
+        let bits = bytes.to_bits_le(cs.ns(|| "convert the private key to bits"))?;
+        let capacity = <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize;
+        for (i, bit) in bits.iter().skip(capacity).enumerate() {
+            bit.enforce_equal(
+                cs.ns(|| format!("enforce the {}-th MSB to be false", i)),
+                &Boolean::Constant(false),
+            )?;
+        }
+
+        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(bytes, PhantomData, PhantomData))
     }
 
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::ScalarField>, CS: ConstraintSystem<F>>(
-        cs: CS,
+        mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(
-            UInt8::alloc_input_vec_le(cs, &private_key)?,
-            PhantomData,
-            PhantomData,
-        ))
+
+        let bytes = UInt8::alloc_input_vec_le(cs.ns(|| "allocate the private key as bytes"), &private_key)?;
+
+        // Enforce that the key is within the capacity limit.
+        let bits = bytes.to_bits_le(cs.ns(|| "convert the private key to bits"))?;
+        let capacity = <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize;
+        for (i, bit) in bits.iter().skip(capacity).enumerate() {
+            bit.enforce_equal(
+                cs.ns(|| format!("enforce the {}-th MSB to be false", i)),
+                &Boolean::Constant(false),
+            )?;
+        }
+
+        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(bytes, PhantomData, PhantomData))
     }
 }
 
@@ -367,7 +386,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     ) -> Result<Vec<UInt8>, SynthesisError> {
         let affine_zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
-        let group_zero = FpGadget::<TE::BaseField>::zero(cs.ns(|| "field zero"))?;
 
         // Compute the ECDH value.
         let randomness_bits = randomness.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
@@ -384,8 +402,23 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
 
+        // Squeeze one element for the commitment randomness.
+        let commitment_randomness =
+            sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 1)?[0].clone();
+
+        // Add a commitment to the public key.
+        let public_key_commitment = {
+            let mut sponge =
+                PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge for public key commitment"), &params);
+            sponge.absorb(
+                cs.ns(|| "absorb for public key commitment"),
+                [commitment_randomness, public_key.0.x.clone()].iter(),
+            )?;
+            sponge.squeeze_field_elements(cs.ns(|| "squeeze for public key commitment"), 1)?[0].clone()
+        };
+
         // Convert the message into bits.
-        let mut bits = Vec::with_capacity(message.len() * 8 + 1);
+        let mut bits = Vec::with_capacity(message.len() * 8);
         for byte in message.iter() {
             bits.extend_from_slice(&byte.to_bits_le());
         }
@@ -397,22 +430,10 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
         let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
         for (i, chunk) in bits.chunks(capacity).enumerate() {
-            let mut sum = group_zero.clone();
-
-            let mut cur = TE::BaseField::one();
-            for (j, bit) in chunk.iter().enumerate() {
-                let add =
-                    FpGadget::from_boolean(cs.ns(|| format!("convert a bit to a field element {} {}", i, j)), *bit)?
-                        .mul_by_constant(cs.ns(|| format!("multiply by the shift {} {}", i, j)), &cur)?;
-                sum.add_in_place(
-                    cs.ns(|| format!("assemble the bit result into field elements {} {}", i, j)),
-                    &add,
-                )?;
-
-                cur.double_in_place();
-            }
-
-            res.push(sum);
+            res.push(Boolean::le_bits_to_fp_var(
+                cs.ns(|| format!("convert a bit to a field element {}", i)),
+                chunk,
+            )?);
         }
 
         // Obtain random field elements from Poseidon.
@@ -443,7 +464,9 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let random_elem_bytes = randomness_elem
             .x
             .to_bytes(cs.ns(|| "convert the randomness element to bytes"))?;
+        let public_key_commitment_bytes =
+            public_key_commitment.to_bytes(cs.ns(|| "convert the public key commitment to bytes"))?;
 
-        Ok([random_elem_bytes, res_bytes].concat())
+        Ok([random_elem_bytes, public_key_commitment_bytes, res_bytes].concat())
     }
 }
