@@ -17,17 +17,26 @@
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
-use snarkvm_integration::testnet1::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
-use rand::SeedableRng;
+use rand::{CryptoRng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+fn setup_or_load_dpc<R: Rng + CryptoRng>(verify_only: bool, rng: &mut R) -> Testnet1DPC {
+    match Testnet1DPC::load(verify_only) {
+        Ok(dpc) => dpc,
+        Err(err) => {
+            println!("error - {}, re-running parameter Setup", err);
+            Testnet1DPC::setup(rng).expect("DPC setup failed")
+        }
+    }
+}
 
 #[ignore]
 #[test]
