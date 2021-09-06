@@ -36,39 +36,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
-        let setup_time = start_timer!(|| "DPC::setup");
-
-        let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::setup(rng)?;
-        let noop_program_execution = noop_program.execute_blank_noop()?;
-        end_timer!(noop_program_timer);
-
-        let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::<C>::blank();
-        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, &mut SRS::CircuitSpecific(rng))?;
-        end_timer!(snark_setup_time);
-
-        let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
-        let inner_snark_vk = inner_snark_parameters.1.clone();
-        let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
-        let outer_snark_parameters = C::OuterSNARK::setup(
-            &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program_execution),
-            &mut SRS::CircuitSpecific(rng),
-        )?;
-        end_timer!(snark_setup_time);
-
-        end_timer!(setup_time);
-
-        Ok(Self {
-            noop_program,
-            inner_proving_key: Some(inner_snark_parameters.0),
-            inner_verifying_key: inner_snark_parameters.1,
-            outer_proving_key: Some(outer_snark_parameters.0),
-            outer_verifying_key: outer_snark_parameters.1,
-        })
-    }
-
     fn load(verify_only: bool) -> Result<Self> {
         let timer = start_timer!(|| "DPC::load");
         let noop_program = NoopProgram::load()?;

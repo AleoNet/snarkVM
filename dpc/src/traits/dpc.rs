@@ -29,9 +29,6 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type StateTransition;
     type Transaction: TransactionScheme;
 
-    /// Initializes a new instance of DPC.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self>;
-
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> Result<Self>;
 

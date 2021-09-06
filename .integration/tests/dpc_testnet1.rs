@@ -174,7 +174,7 @@ fn test_testnet1_dpc_execute_constraints() {
     // Use genesis block to initialize the ledger.
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
-    let dpc = Testnet1DPC::setup(&mut rng).unwrap();
+    let dpc = setup_dpc::<Testnet1Parameters, _>(&mut rng).unwrap();
     let noop = Arc::new(dpc.noop_program.clone());
 
     let alternate_noop_program = NoopProgram::<Testnet1Parameters>::setup(&mut rng).unwrap();
