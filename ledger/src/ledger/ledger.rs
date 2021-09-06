@@ -320,7 +320,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             return Err(StorageError::InvalidBlockHeader);
         }
 
-        let block_hash = block.header.get_hash();
+        let block_hash = block.header.to_hash()?;
 
         // Check that the block does not already exist.
         if self.contains_block_hash(&block_hash) {
@@ -352,7 +352,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         for (index, transaction) in block.transactions.0.iter().enumerate() {
             let transaction_location = TransactionLocation {
                 index: index as u32,
-                block_hash: block.header.get_hash().0,
+                block_hash: block.header.to_hash()?.0,
             };
             database_transaction.push(Op::Insert {
                 col: COL_TRANSACTION_LOCATION,
@@ -368,7 +368,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
-            key: block.header.get_hash().0.to_vec(),
+            key: block.header.to_hash()?.0.to_vec(),
             value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
@@ -386,7 +386,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
-            key: block.header.get_hash().0.to_vec(),
+            key: block.header.to_hash()?.0.to_vec(),
             value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
@@ -405,7 +405,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         }
 
         // Ensure the block is not already in the canon chain.
-        let block_header_hash = block.header.get_hash();
+        let block_header_hash = block.header.to_hash()?;
         if self.is_canon(&block_header_hash) {
             return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
         }
@@ -475,13 +475,13 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
-            key: block.header.get_hash().0.to_vec(),
+            key: block.header.to_hash()?.0.to_vec(),
             value: new_block_height.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
             key: new_block_height.to_le_bytes().to_vec(),
-            value: block.header.get_hash().0.to_vec(),
+            value: block.header.to_hash()?.0.to_vec(),
         });
 
         // If it's the genesis block, store its initial applicable digest.
@@ -519,7 +519,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
     /// Insert a block into the storage and commit as part of the longest chain.
     pub fn insert_and_commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
-        let block_hash = block.header.get_hash();
+        let block_hash = block.header.to_hash()?;
 
         // If the block does not exist in the storage
         if !self.contains_block_hash(&block_hash) {

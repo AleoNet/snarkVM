@@ -38,6 +38,7 @@ fn merkle_round(hashes: &[[u8; 32]]) -> Vec<[u8; 32]> {
 /// Calculates a Merkle root and also returns the subroots at a desired depth. If the tree is too
 /// shallow to have subroots at that depth, returns the root as a single subroot.
 pub fn merkle_root_with_subroots(hashes: &[[u8; 32]], subroots_depth: usize) -> ([u8; 32], Vec<[u8; 32]>) {
+    assert!(!hashes.is_empty(), "Attempting to compute a Merkle tree with no hashes");
     merkle_root_with_subroots_inner(hashes, &[], subroots_depth)
 }
 

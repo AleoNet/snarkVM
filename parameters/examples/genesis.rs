@@ -15,11 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
-use snarkvm_ledger::{
-    ledger::*,
-    posw::{txids_to_roots, PoswMarlin},
-    prelude::*,
-};
+use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -64,31 +60,8 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     let mut transactions = Transactions::new();
     transactions.push(transaction);
 
-    // Construct the root hashes from the txids.
-    let txids = transactions.to_transaction_ids()?;
-    let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
-
-    // Construct the initial block attributes.
-    let time = 0;
-    let initial_difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
-    let max_nonce = u32::MAX;
-
-    // Mine the block.
-    let posw = PoswMarlin::load().expect("could not instantiate the posw miner");
-    let (nonce, proof) = posw
-        .mine(&subroots, initial_difficulty_target, &mut thread_rng(), max_nonce)
-        .unwrap();
-
     // Create a genesis header.
-    let genesis_header = BlockHeader {
-        previous_block_hash: BlockHeaderHash([0u8; 32]),
-        merkle_root_hash,
-        pedersen_merkle_root_hash,
-        time,
-        difficulty_target: initial_difficulty_target,
-        nonce,
-        proof: proof.into(),
-    };
+    let genesis_header = BlockHeader::new_genesis(&transactions, &mut thread_rng())?;
     assert!(genesis_header.is_genesis());
     println!("block header size - {}\n", BlockHeader::size());
 
@@ -97,7 +70,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
         transaction_bytes.len() + BlockHeader::size() + 1 /* variable_length_integer for number of transaction */
     );
 
-    Ok((genesis_header.serialize().to_vec(), transaction_bytes))
+    Ok((genesis_header.to_bytes_le()?.to_vec(), transaction_bytes))
 }
 
 pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {

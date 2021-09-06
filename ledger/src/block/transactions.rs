@@ -53,14 +53,6 @@ impl<T: TransactionScheme> Transactions<T> {
         self.0.iter().map(|tx| tx.transaction_id()).collect()
     }
 
-    /// Serializes the transactions into byte vectors.
-    pub fn serialize(&self) -> Result<Vec<Vec<u8>>, TransactionError> {
-        self.0
-            .iter()
-            .map(|transaction| -> Result<Vec<u8>, TransactionError> { Ok(to_bytes_le![transaction]?) })
-            .collect::<Result<Vec<Vec<u8>>, TransactionError>>()
-    }
-
     /// Serializes the transactions into strings.
     pub fn serialize_as_str(&self) -> Result<Vec<String>, TransactionError> {
         self.0
