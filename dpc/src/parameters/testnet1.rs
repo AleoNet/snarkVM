@@ -18,6 +18,7 @@ use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
     InnerPublicVariables,
     Network,
+    NoopProgram,
     OuterPublicVariables,
     Parameters,
     PublicVariables,
@@ -200,6 +201,11 @@ impl Parameters for Testnet1Parameters {
     dpc_snark_setup_with_mode!{Testnet1Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
+    fn noop_program() -> &'static NoopProgram<Self> {
+        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1Parameters>> = OnceCell::new();
+        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet1Parameters>::load().expect("Failed to fetch the noop program"))
+    }
+    
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
         static NOOP_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Parameters>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))

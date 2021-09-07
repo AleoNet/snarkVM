@@ -20,7 +20,7 @@ mod coinbase {
 
     use rand::{thread_rng, Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::{ops::Deref, sync::Arc};
+    use std::sync::Arc;
 
     const ITERATIONS: usize = 100;
 
@@ -58,7 +58,7 @@ mod coinbase {
                 // Generate the expected coinbase record.
                 let coinbase_record = {
                     Record::new_output(
-                        noop_program.deref(),
+                        noop_program.program_id(),
                         coinbase_account.address,
                         false,
                         123456,

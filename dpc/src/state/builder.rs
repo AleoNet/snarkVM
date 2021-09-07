@@ -278,7 +278,7 @@ mod tests {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
-                let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
+                let input_record = Record::new_noop_input(noop_program.program_id(), account.address, rng).unwrap();
                 let (serial_number, signature_randomizer) =
                     input_record.to_serial_number(&account.compute_key()).unwrap();
 

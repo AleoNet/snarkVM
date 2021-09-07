@@ -43,7 +43,7 @@ impl<C: Parameters> Input<C> {
         let noop_address = Address::from_private_key(&noop_private_key)?;
 
         // Construct the noop input record.
-        let record = Record::new_noop_input(executable.program(), noop_address, rng)?;
+        let record = Record::new_noop_input(executable.program_id(), noop_address, rng)?;
 
         // Compute the serial number and signature randomizer.
         let (serial_number, signature_randomizer) = record.to_serial_number(noop_compute_key)?;
@@ -110,7 +110,7 @@ impl<C: Parameters> Input<C> {
 
         // Construct the input record.
         let record = Record::new_input(
-            executable.program(),
+            executable.program_id(),
             address,
             is_dummy,
             value.0 as u64,
@@ -164,7 +164,6 @@ mod tests {
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::ops::Deref;
 
     const ITERATIONS: usize = 100;
 
@@ -182,7 +181,7 @@ mod tests {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
-                let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
+                let input_record = Record::new_noop_input(noop_program.program_id(), account.address, rng).unwrap();
                 let (serial_number, signature_randomizer) =
                     input_record.to_serial_number(&account.compute_key()).unwrap();
                 (

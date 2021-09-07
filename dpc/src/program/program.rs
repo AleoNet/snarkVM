@@ -47,8 +47,8 @@ impl<C: Parameters> ProgramScheme<C> for Program<C> {
     }
 
     /// Returns a reference to the program ID.
-    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
-        self.circuits.to_program_id()
+    fn program_id(&self) -> MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+        *self.circuits.to_program_id()
     }
 
     /// Returns `true` if the given circuit ID exists in the program.
@@ -80,7 +80,7 @@ impl<C: Parameters> ProgramScheme<C> for Program<C> {
         debug_assert_eq!(circuit.circuit_id(), circuit_id);
 
         let program_path = self.circuits.get_program_path(circuit_id)?;
-        debug_assert!(program_path.verify(self.program_id(), circuit_id)?);
+        debug_assert!(program_path.verify(&self.program_id(), circuit_id)?);
 
         let proof = circuit.execute(public, private)?;
         let verifying_key = circuit.verifying_key().clone();
@@ -101,7 +101,7 @@ impl<C: Parameters> ProgramScheme<C> for Program<C> {
         debug_assert_eq!(circuit.circuit_id(), circuit_id);
 
         let program_path = self.circuits.get_program_path(circuit_id)?;
-        debug_assert!(program_path.verify(self.program_id(), circuit_id)?);
+        debug_assert!(program_path.verify(&self.program_id(), circuit_id)?);
 
         let proof = circuit.execute_blank()?;
         let verifying_key = circuit.verifying_key().clone();

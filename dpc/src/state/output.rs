@@ -73,7 +73,7 @@ impl<C: Parameters> Output<C> {
         let is_dummy = self.value == AleoAmount::from_bytes(0) && self.payload.is_empty() && self.executable.is_noop();
 
         Ok(Record::new_output(
-            self.executable.program(),
+            self.executable.program_id(),
             self.address,
             is_dummy,
             self.value.0 as u64,

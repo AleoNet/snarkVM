@@ -42,9 +42,9 @@ impl<C: Parameters> Executable<C> {
     }
 
     /// Returns a reference to the program ID of the executable.
-    pub fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+    pub fn program_id(&self) -> MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
         match self {
-            Self::Noop(program) => program.program_id(),
+            Self::Noop(_) => C::noop_program().deref().program_id(),
             Self::Circuit(program, _, _) => program.program_id(),
         }
     }
@@ -55,18 +55,10 @@ impl<C: Parameters> Executable<C> {
         let public_variables = PublicVariables::new(record_position, local_data.root());
         // Execute the program circuit with the declared variables.
         match self {
-            Self::Noop(program) => Ok(program.execute_noop(&public_variables)?),
+            Self::Noop(_) => Ok(C::noop_program().execute_noop(&public_variables)?),
             Self::Circuit(program, circuit_id, private_variables) => {
                 Ok(program.execute(circuit_id, &public_variables, private_variables.deref())?)
             }
-        }
-    }
-
-    /// Returns a reference to the executable program.
-    pub fn program(&self) -> &dyn ProgramScheme<C> {
-        match self {
-            Self::Noop(program) => program.deref().deref(),
-            Self::Circuit(program, _, _) => program.deref(),
         }
     }
 }

@@ -52,7 +52,7 @@ impl<C: Parameters> Record<C> {
     /// Returns a new noop input record.
     pub fn new_noop_input<R: Rng + CryptoRng>(
         // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-        noop_program: &dyn ProgramScheme<C>,
+        noop_program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
         owner: Address<C>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
@@ -60,7 +60,7 @@ impl<C: Parameters> Record<C> {
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::new_input(
-            noop_program,
+            noop_program_id,
             owner,
             true,
             0,
@@ -73,7 +73,7 @@ impl<C: Parameters> Record<C> {
     /// Returns a new input record.
     #[allow(clippy::too_many_arguments)]
     pub fn new_input(
-        program: &dyn ProgramScheme<C>,
+        program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -82,7 +82,7 @@ impl<C: Parameters> Record<C> {
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         Self::from(
-            program.program_id(),
+            program_id,
             owner,
             is_dummy,
             value,
@@ -102,7 +102,7 @@ impl<C: Parameters> Record<C> {
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
-            noop_program,
+            noop_program.program_id(),
             owner,
             true,
             0,
@@ -116,7 +116,7 @@ impl<C: Parameters> Record<C> {
     /// Returns a new output record.
     #[allow(clippy::too_many_arguments)]
     pub fn new_output<R: Rng + CryptoRng>(
-        program: &dyn ProgramScheme<C>,
+        program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -136,7 +136,7 @@ impl<C: Parameters> Record<C> {
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::from(
-            program.program_id(),
+            program_id,
             owner,
             is_dummy,
             value,
@@ -148,7 +148,7 @@ impl<C: Parameters> Record<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn from(
-        program_id: &MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
+        program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -170,7 +170,7 @@ impl<C: Parameters> Record<C> {
         let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Self {
-            program_id: program_id.clone(),
+            program_id,
             owner,
             is_dummy,
             value,
@@ -219,8 +219,8 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type SerialNumber = C::AccountSignaturePublicKey;
     type SerialNumberNonce = C::SerialNumberNonce;
 
-    fn program_id(&self) -> &Self::ProgramID {
-        &self.program_id
+    fn program_id(&self) -> Self::ProgramID {
+        self.program_id
     }
 
     fn owner(&self) -> Self::Owner {
