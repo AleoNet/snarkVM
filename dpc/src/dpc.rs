@@ -20,10 +20,9 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
+use std::marker::PhantomData;
 
-pub struct DPC<C: Parameters> {
-    pub noop_program: NoopProgram<C>,
-}
+pub struct DPC<C: Parameters>(PhantomData<C>);
 
 impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
@@ -32,15 +31,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
-    fn load() -> Result<Self> {
-        Ok(Self {
-            noop_program: NoopProgram::load()?,
-        })
+    fn load() -> Self {
+        Self(PhantomData)
     }
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
-        &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         state: &Self::StateTransition,
         rng: &mut R,
@@ -87,7 +83,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
-        &self,
         compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
         executables: &Vec<Executable<C>>,
@@ -229,7 +224,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
-        &self,
         transaction: &Self::Transaction,
         ledger: &L,
     ) -> bool {
@@ -367,12 +361,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
     fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
-        &self,
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {
         for transaction in transactions {
-            if !self.verify(transaction, ledger) {
+            if !Self::verify(transaction, ledger) {
                 return false;
             }
         }

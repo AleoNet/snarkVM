@@ -17,7 +17,6 @@
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet2::*};
-use snarkvm_integration::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
@@ -60,9 +59,6 @@ fn dpc_testnet2_integration_test() {
 
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
 
-    // Generate or load DPC.
-    let dpc = setup_or_load_dpc::<Testnet2Parameters, _>(&mut rng).unwrap();
-
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
     let state = StateTransition::builder()
@@ -70,13 +66,11 @@ fn dpc_testnet2_integration_test() {
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
-    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::authorize(&vec![], &state, &mut rng).unwrap();
 
     let new_records = authorization.output_records.clone();
 
-    let transaction = dpc
-        .execute(&vec![], authorization, state.executables(), &ledger, &mut rng)
-        .unwrap();
+    let transaction = DPC::execute(&vec![], authorization, state.executables(), &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
@@ -124,7 +118,7 @@ fn dpc_testnet2_integration_test() {
         proof: ProofOfSuccinctWork::default(),
     };
 
-    assert!(dpc.verify_transactions(&transactions.0, &ledger));
+    assert!(DPC::verify_transactions(&transactions.0, &ledger));
 
     let block = Block { header, transactions };
 
@@ -136,13 +130,10 @@ fn dpc_testnet2_integration_test() {
 fn test_testnet_2_transaction_authorization_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate or load DPC.
-    let dpc = setup_or_load_dpc::<Testnet2Parameters, _>(&mut rng).unwrap();
-
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
     let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
-    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
 
     // Serialize and recover the transaction authorization.
     let recovered_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
@@ -170,8 +161,6 @@ fn test_testnet2_dpc_execute_constraints() {
     // Use genesis block to initialize the ledger.
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
 
-    let dpc = setup_dpc::<Testnet2Parameters, _>(&mut rng).unwrap();
-
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
 
@@ -182,7 +171,7 @@ fn test_testnet2_dpc_execute_constraints() {
         .unwrap();
     let executables = state.executables();
 
-    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
 
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();

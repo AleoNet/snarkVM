@@ -25,7 +25,6 @@ use rand::thread_rng;
 use std::sync::Arc;
 
 fn coinbase_transaction<C: Parameters>(
-    dpc: &DPC<C>,
     ledger: &Ledger<C, MemDb>,
     recipient: Address<C>,
     value: u64,
@@ -34,8 +33,8 @@ fn coinbase_transaction<C: Parameters>(
 
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-    let authorization = dpc.authorize(&vec![], &state, rng)?;
-    let transaction = dpc.execute(&vec![], authorization, state.executables(), ledger, rng)?;
+    let authorization = DPC::<C>::authorize(&vec![], &state, rng)?;
+    let transaction = DPC::<C>::execute(&vec![], authorization, state.executables(), ledger, rng)?;
 
     Ok(transaction)
 }
@@ -56,13 +55,11 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
     })
     .unwrap();
 
-    let dpc = DPC::<Testnet1Parameters>::load().unwrap();
-
     let recipient_account = Account::new(&mut thread_rng()).unwrap();
 
     c.bench_function("testnet1_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = coinbase_transaction(&dpc, &ledger, recipient_account.address, 100).unwrap();
+            let _transaction = coinbase_transaction(&ledger, recipient_account.address, 100).unwrap();
         })
     });
 }
@@ -83,13 +80,11 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
     })
     .unwrap();
 
-    let dpc = DPC::<Testnet2Parameters>::load().unwrap();
-
     let recipient_account = Account::new(&mut thread_rng()).unwrap();
 
     c.bench_function("testnet2_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = coinbase_transaction(&dpc, &ledger, recipient_account.address, 100).unwrap();
+            let _transaction = coinbase_transaction(&ledger, recipient_account.address, 100).unwrap();
         })
     });
 }
