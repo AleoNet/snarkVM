@@ -1679,6 +1679,7 @@ dependencies = [
  "once_cell",
  "rand",
  "rand_chacha",
+ "rayon",
  "serde",
  "sha2",
  "snarkvm-algorithms",

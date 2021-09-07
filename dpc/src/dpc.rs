@@ -20,6 +20,7 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
+use rayon::prelude::*;
 
 pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
@@ -427,17 +428,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
         &self,
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {
-        for transaction in transactions {
-            if !self.verify(transaction, ledger) {
-                return false;
-            }
-        }
-
-        true
+        transactions
+            .as_parallel_slice()
+            .par_iter()
+            .all(|tx| self.verify(tx, ledger))
     }
 }

@@ -61,7 +61,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     ) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
         &self,
         block: &[Self::Transaction],
         ledger: &L,
