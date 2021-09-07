@@ -29,8 +29,8 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type StateTransition;
     type Transaction: TransactionScheme;
 
-    /// Loads the saved instance of DPC.
-    fn load(verify_only: bool) -> Result<Self>;
+    /// Initializes a saved instance of DPC.
+    fn load() -> Result<Self>;
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(

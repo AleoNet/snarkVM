@@ -64,7 +64,7 @@ fn dpc_testnet2_integration_test() {
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
 
     // Generate or load DPC.
-    let dpc = setup_or_load_dpc::<Testnet2Parameters, _>(false, &mut rng).unwrap();
+    let dpc = setup_or_load_dpc::<Testnet2Parameters, _>(&mut rng).unwrap();
     let noop = Arc::new(dpc.noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();
@@ -141,7 +141,7 @@ fn test_testnet_2_transaction_authorization_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate or load DPC.
-    let dpc = setup_or_load_dpc::<Testnet2Parameters, _>(false, &mut rng).unwrap();
+    let dpc = setup_or_load_dpc::<Testnet2Parameters, _>(&mut rng).unwrap();
     let noop = Arc::new(dpc.noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();

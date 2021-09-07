@@ -16,17 +16,13 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 
 pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
-    pub inner_proving_key: Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-    pub inner_verifying_key: <C::InnerSNARK as SNARK>::VerifyingKey,
-    pub outer_proving_key: Option<<C::OuterSNARK as SNARK>::ProvingKey>,
-    pub outer_verifying_key: <C::OuterSNARK as SNARK>::VerifyingKey,
 }
 
 impl<C: Parameters> DPCScheme<C> for DPC<C> {
@@ -36,21 +32,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
-    fn load(verify_only: bool) -> Result<Self> {
-        let timer = start_timer!(|| "DPC::load");
-        let noop_program = NoopProgram::load()?;
-        let inner_proving_key = C::inner_circuit_proving_key(!verify_only).clone();
-        let inner_verifying_key = C::inner_circuit_verifying_key().clone();
-        let outer_proving_key = C::outer_circuit_proving_key(!verify_only).clone();
-        let outer_verifying_key = C::outer_circuit_verifying_key().clone();
-        end_timer!(timer);
-
+    fn load() -> Result<Self> {
         Ok(Self {
-            noop_program,
-            inner_proving_key,
-            inner_verifying_key,
-            outer_proving_key,
-            outer_verifying_key,
+            noop_program: NoopProgram::load()?,
         })
     }
 
@@ -183,8 +167,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Compute the inner circuit proof.
         let inner_proof = {
-            let inner_proving_key = self
-                .inner_proving_key
+            let inner_proving_key = C::inner_circuit_proving_key(true)
                 .as_ref()
                 .ok_or(DPCError::MissingInnerProvingKey)?;
 
@@ -197,22 +180,16 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Verify that the inner circuit proof passes.
         assert!(C::InnerSNARK::verify(
-            &self.inner_verifying_key,
+            C::inner_circuit_verifying_key(),
             &inner_public_variables,
             &inner_proof
         )?);
 
         let transaction_proof = {
-            debug_assert_eq!(
-                C::inner_circuit_id(),
-                &C::inner_circuit_id_crh().hash_bits(&self.inner_verifying_key.to_minimal_bits())?,
-                "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
-            );
-
             // Construct the outer circuit public and private variables.
             let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, C::inner_circuit_id());
             let outer_private_variables = OuterPrivateVariables::new(
-                self.inner_verifying_key.clone(),
+                C::inner_circuit_verifying_key().clone(),
                 inner_proof,
                 executions.to_vec(),
                 program_commitment.clone(),
@@ -220,8 +197,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 local_data.root().clone(),
             );
 
-            let outer_proving_key = self
-                .outer_proving_key
+            let outer_proving_key = C::outer_circuit_proving_key(true)
                 .as_ref()
                 .ok_or(DPCError::MissingOuterProvingKey)?;
 
@@ -233,7 +209,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
             // Verify the outer circuit proof passes.
             assert!(C::OuterSNARK::verify(
-                &self.outer_verifying_key,
+                C::outer_circuit_verifying_key(),
                 &outer_public_variables,
                 &outer_proof
             )?);
@@ -356,14 +332,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             return false;
         }
 
-        debug_assert_eq!(
-            C::inner_circuit_id(),
-            &C::inner_circuit_id_crh()
-                .hash_bits(&self.inner_verifying_key.to_minimal_bits())
-                .unwrap(),
-            "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
-        );
-
         let outer_public_variables = match OuterPublicVariables::from(transaction) {
             Ok(outer_public_variables) => outer_public_variables,
             Err(error) => {
@@ -372,7 +340,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         };
 
-        match C::OuterSNARK::verify(&self.outer_verifying_key, &outer_public_variables, &transaction.proof) {
+        match C::OuterSNARK::verify(
+            C::outer_circuit_verifying_key(),
+            &outer_public_variables,
+            &transaction.proof,
+        ) {
             Ok(is_valid) => {
                 if !is_valid {
                     eprintln!("Transaction proof failed to verify.");

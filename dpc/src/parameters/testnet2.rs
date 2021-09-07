@@ -221,7 +221,7 @@ impl Parameters for Testnet2Parameters {
     dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
-        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
+        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
     
@@ -253,5 +253,32 @@ impl Parameters for Testnet2Parameters {
             &UniversalSRSParameters::load_bytes().expect("Failed to load universal SRS bytes"),
         ).unwrap());
         Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_inner_circuit_id_derivation() {
+        // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
+        assert_eq!(
+            Testnet2Parameters::inner_circuit_verifying_key(),
+            &Testnet2Parameters::inner_circuit_proving_key(true)
+                .as_ref()
+                .expect("Failed to load inner circuit proving key")
+                .vk,
+            "The inner circuit verifying key does not correspond to the inner circuit proving key"
+        );
+
+        // Verify the inner circuit ID matches the one derived from the inner circuit verifying key.
+        assert_eq!(
+            Testnet2Parameters::inner_circuit_id(),
+            &Testnet2Parameters::inner_circuit_id_crh()
+                .hash_bits(&Testnet2Parameters::inner_circuit_verifying_key().to_minimal_bits())
+                .expect("Failed to hash inner circuit ID"),
+            "The inner circuit ID does not correspond to the inner circuit verifying key"
+        );
     }
 }

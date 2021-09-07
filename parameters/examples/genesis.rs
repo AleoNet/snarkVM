@@ -45,7 +45,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     })
     .unwrap();
 
-    let dpc = DPC::<C>::load(false)?;
+    let dpc = DPC::<C>::load()?;
     let noop = Arc::new(dpc.noop_program.clone());
 
     let amount = AleoAmount::from_bytes(value as i64);
