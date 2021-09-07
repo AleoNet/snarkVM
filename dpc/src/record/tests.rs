@@ -33,50 +33,48 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::ops::Deref;
 
-pub(crate) const ITERATIONS: usize = 5;
+pub(crate) const ITERATIONS: usize = 25;
 
 #[test]
 fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
+    let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+        let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
 
-        for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        let sn_nonce_input: [u8; 32] = rng.gen();
+        let value = rng.gen();
+        let mut payload = [0u8; PAYLOAD_SIZE];
+        rng.fill(&mut payload);
 
-            let sn_nonce_input: [u8; 32] = rng.gen();
-            let value = rng.gen();
-            let mut payload = [0u8; PAYLOAD_SIZE];
-            rng.fill(&mut payload);
+        // Sample a new record commitment randomness.
+        let commitment_randomness =
+            <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(
+                &mut rng,
+            );
 
-            // Sample a new record commitment randomness.
-            let commitment_randomness =
-                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(
-                    &mut rng,
-                );
+        let given_record = Record::new_input(
+            noop_program.deref(),
+            dummy_account.address,
+            false,
+            value,
+            Payload::from_bytes_le(&payload).unwrap(),
+            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+                .hash(&sn_nonce_input)
+                .unwrap(),
+            commitment_randomness,
+        )
+        .unwrap();
 
-            let given_record = Record::new_input(
-                noop_program.deref(),
-                dummy_account.address,
-                false,
-                value,
-                Payload::from_bytes_le(&payload).unwrap(),
-                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                    .hash(&sn_nonce_input)
-                    .unwrap(),
-                commitment_randomness,
-            )
-            .unwrap();
+        // Encrypt the record
+        let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
+        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
 
-            // Encrypt the record
-            let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
+        // Decrypt the record
+        let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
 
-            // Decrypt the record
-            let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
-
-            assert_eq!(given_record, decrypted_record);
-        }
+        assert_eq!(given_record, decrypted_record);
     }
 }

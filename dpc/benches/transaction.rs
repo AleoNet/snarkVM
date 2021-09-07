@@ -57,7 +57,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
     })
     .unwrap();
 
-    let dpc = DPC::<Testnet1Parameters>::load(false).unwrap();
+    let dpc = DPC::<Testnet1Parameters>::load().unwrap();
 
     let recipient_account = Account::new(&mut thread_rng()).unwrap();
 
@@ -84,7 +84,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
     })
     .unwrap();
 
-    let dpc = DPC::<Testnet2Parameters>::load(false).unwrap();
+    let dpc = DPC::<Testnet2Parameters>::load().unwrap();
 
     let recipient_account = Account::new(&mut thread_rng()).unwrap();
 

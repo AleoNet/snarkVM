@@ -22,9 +22,9 @@ use rand::{CryptoRng, Rng};
 pub fn setup_dpc<C: Parameters, R: Rng + CryptoRng>(rng: &mut R) -> Result<DPC<C>, DPCError> {
     println!("Running DPC setup...");
 
-    let noop_program = NoopProgram::setup(rng)?;
-
-    Ok(DPC::<C> { noop_program })
+    Ok(DPC::<C> {
+        noop_program: NoopProgram::setup(rng)?,
+    })
 }
 
 pub fn setup_or_load_dpc<C: Parameters, R: Rng + CryptoRng>(rng: &mut R) -> Result<DPC<C>, DPCError> {
