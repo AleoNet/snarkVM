@@ -32,9 +32,8 @@ fn coinbase_transaction<C: Parameters>(
 ) -> Result<Transaction<C>, DPCError> {
     let rng = &mut thread_rng();
 
-    let noop = Arc::new(dpc.noop_program.clone());
     let amount = AleoAmount::from_bytes(value as i64);
-    let state = StateTransition::new_coinbase(recipient, amount, noop, rng)?;
+    let state = StateTransition::new_coinbase(recipient, amount, rng)?;
     let authorization = dpc.authorize(&vec![], &state, rng)?;
     let transaction = dpc.execute(&vec![], authorization, state.executables(), ledger, rng)?;
 

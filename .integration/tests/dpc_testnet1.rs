@@ -24,10 +24,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use std::{
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[ignore]
 #[test]
@@ -64,14 +61,13 @@ fn dpc_testnet1_integration_test() {
 
     // Generate or load DPC.
     let dpc = setup_or_load_dpc::<Testnet1Parameters, _>(&mut rng).unwrap();
-    let noop = Arc::new(dpc.noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
     let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
-        .build(noop, &mut rng)
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .build(&mut rng)
         .unwrap();
     let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
 
@@ -141,11 +137,10 @@ fn test_testnet1_transaction_authorization_serialization() {
 
     // Generate or load DPC.
     let dpc = setup_or_load_dpc::<Testnet1Parameters, _>(&mut rng).unwrap();
-    let noop = Arc::new(dpc.noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::new_coinbase(recipient.address, amount, noop, &mut rng).unwrap();
+    let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
     let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
 
     // Serialize and recover the transaction authorization.
@@ -175,18 +170,14 @@ fn test_testnet1_dpc_execute_constraints() {
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
     let dpc = setup_dpc::<Testnet1Parameters, _>(&mut rng).unwrap();
-    let noop = Arc::new(dpc.noop_program.clone());
-
-    let alternate_noop_program = NoopProgram::<Testnet1Parameters>::setup(&mut rng).unwrap();
-    let alternate_noop = Arc::new(alternate_noop_program.clone());
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
 
     let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, alternate_noop).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
-        .build(noop, &mut rng)
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .build(&mut rng)
         .unwrap();
     let executables = state.executables();
 

@@ -19,7 +19,6 @@ use snarkvm_algorithms::{CommitmentScheme, SignatureScheme};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -32,10 +31,9 @@ pub struct Input<C: Parameters> {
 }
 
 impl<C: Parameters> Input<C> {
-    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Construct the noop executable.
-        let executable = Executable::Noop(noop.clone());
+        let executable = Executable::Noop;
 
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
@@ -43,7 +41,7 @@ impl<C: Parameters> Input<C> {
         let noop_address = Address::from_private_key(&noop_private_key)?;
 
         // Construct the noop input record.
-        let record = Record::new_noop_input(executable.program_id(), noop_address, rng)?;
+        let record = Record::new_noop_input(noop_address, rng)?;
 
         // Compute the serial number and signature randomizer.
         let (serial_number, signature_randomizer) = record.to_serial_number(noop_compute_key)?;
@@ -57,14 +55,8 @@ impl<C: Parameters> Input<C> {
         })
     }
 
-    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Initializes a new instance of `Input`.
-    pub fn new(
-        compute_key: &ComputeKey<C>,
-        record: Record<C>,
-        executable: Option<Executable<C>>,
-        noop: Arc<NoopProgram<C>>,
-    ) -> Result<Self> {
+    pub fn new(compute_key: &ComputeKey<C>, record: Record<C>, executable: Option<Executable<C>>) -> Result<Self> {
         // Ensure the account address matches.
         if Address::from_compute_key(compute_key)? != record.owner() {
             return Err(anyhow!("Address from compute key does not match the record owner"));
@@ -73,7 +65,7 @@ impl<C: Parameters> Input<C> {
         // Retrieve the executable. If `None` is provided, construct the noop executable.
         let executable = match executable {
             Some(executable) => executable,
-            None => Executable::Noop(noop),
+            None => Executable::Noop,
         };
 
         // Ensure its program ID matches what is declared in the record.
@@ -169,9 +161,6 @@ mod tests {
 
     #[test]
     fn test_new_noop() {
-        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
-        let noop = Arc::new(noop_program.clone());
-
         for _ in 0..ITERATIONS {
             // Sample a random seed for the RNG.
             let seed: u64 = thread_rng().gen();
@@ -181,7 +170,7 @@ mod tests {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
-                let input_record = Record::new_noop_input(noop_program.program_id(), account.address, rng).unwrap();
+                let input_record = Record::new_noop_input(account.address, rng).unwrap();
                 let (serial_number, signature_randomizer) =
                     input_record.to_serial_number(&account.compute_key()).unwrap();
                 (
@@ -201,7 +190,7 @@ mod tests {
                 candidate_executable,
             ) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
-                let input = Input::new_noop(noop.clone(), rng).unwrap();
+                let input = Input::<Testnet2Parameters>::new_noop(rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),

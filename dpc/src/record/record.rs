@@ -50,17 +50,12 @@ pub struct Record<C: Parameters> {
 
 impl<C: Parameters> Record<C> {
     /// Returns a new noop input record.
-    pub fn new_noop_input<R: Rng + CryptoRng>(
-        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-        noop_program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters>,
-        owner: Address<C>,
-        rng: &mut R,
-    ) -> Result<Self, RecordError> {
+    pub fn new_noop_input<R: Rng + CryptoRng>(owner: Address<C>, rng: &mut R) -> Result<Self, RecordError> {
         // Sample a new record commitment randomness.
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::new_input(
-            noop_program_id,
+            C::noop_program().program_id(),
             owner,
             true,
             0,
@@ -94,15 +89,13 @@ impl<C: Parameters> Record<C> {
 
     /// Returns a new noop output record.
     pub fn new_noop_output<R: Rng + CryptoRng>(
-        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-        noop_program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         position: u8,
         joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
-            noop_program.program_id(),
+            C::noop_program().program_id(),
             owner,
             true,
             0,

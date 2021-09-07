@@ -19,7 +19,6 @@ use snarkvm_algorithms::SignatureScheme;
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
 #[derive(Derivative)]
 #[derivative(
@@ -40,20 +39,15 @@ pub struct StateTransition<C: Parameters> {
 
 impl<C: Parameters> StateTransition<C> {
     /// Returns a new state transition with no operations performed.
-    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
-        Ok(Self::builder().build(noop, rng)?)
+    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+        Ok(Self::builder().build(rng)?)
     }
 
     /// Returns a new state transition that mints the given amount to the recipient.
-    pub fn new_coinbase<R: Rng + CryptoRng>(
-        recipient: Address<C>,
-        amount: AleoAmount,
-        noop: Arc<NoopProgram<C>>,
-        rng: &mut R,
-    ) -> Result<Self> {
+    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<C>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         Ok(Self::builder()
-            .add_output(Output::new(recipient, amount, Payload::default(), None, noop.clone())?)
-            .build(noop, rng)?)
+            .add_output(Output::new(recipient, amount, Payload::default(), None)?)
+            .build(rng)?)
     }
 
     /// Returns a new state transition that transfers a given amount of Aleo credits from a sender to a recipient.
@@ -63,7 +57,6 @@ impl<C: Parameters> StateTransition<C> {
         recipient: Address<C>,
         amount: AleoAmount,
         fee: AleoAmount,
-        noop: Arc<NoopProgram<C>>,
         rng: &mut R,
     ) -> Result<Self> {
         assert!(records.len() <= C::NUM_INPUT_RECORDS);
@@ -73,7 +66,7 @@ impl<C: Parameters> StateTransition<C> {
         let mut inputs = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for record in records {
             balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
-            inputs.push(Input::new(sender.compute_key(), record.clone(), None, noop.clone())?);
+            inputs.push(Input::new(sender.compute_key(), record.clone(), None)?);
         }
 
         // Ensure the sender has sufficient balance.
@@ -83,7 +76,7 @@ impl<C: Parameters> StateTransition<C> {
         }
 
         // Construct the recipient output.
-        let recipient_output = Output::new(recipient, amount, Payload::default(), None, noop.clone())?;
+        let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
 
         // Construct the change output for the sender.
         let sender_output = Output::new(
@@ -91,14 +84,13 @@ impl<C: Parameters> StateTransition<C> {
             balance.sub(total_cost),
             Payload::default(),
             None,
-            noop.clone(),
         )?;
 
         Ok(Self::builder()
             .add_inputs(inputs)
             .add_output(recipient_output)
             .add_output(sender_output)
-            .build(noop, rng)?)
+            .build(rng)?)
     }
 
     /// Returns a new instance of `StateBuilder`.

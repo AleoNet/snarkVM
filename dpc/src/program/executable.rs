@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, LocalData, NoopProgram, Parameters, PrivateVariables, ProgramScheme, PublicVariables};
+use crate::{Execution, LocalData, Parameters, PrivateVariables, ProgramScheme, PublicVariables};
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 
 use anyhow::Result;
@@ -23,8 +23,7 @@ use std::{ops::Deref, sync::Arc};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub enum Executable<C: Parameters> {
-    /// TODO (howardwu): TEMPORARY - `Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-    Noop(Arc<NoopProgram<C>>),
+    Noop,
     Circuit(
         Arc<dyn ProgramScheme<C>>,
         C::ProgramCircuitID,
@@ -36,7 +35,7 @@ impl<C: Parameters> Executable<C> {
     /// Returns `true` if the executable is a noop.
     pub fn is_noop(&self) -> bool {
         match self {
-            Self::Noop(_) => true,
+            Self::Noop => true,
             _ => false,
         }
     }
@@ -44,7 +43,7 @@ impl<C: Parameters> Executable<C> {
     /// Returns a reference to the program ID of the executable.
     pub fn program_id(&self) -> MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
         match self {
-            Self::Noop(_) => C::noop_program().deref().program_id(),
+            Self::Noop => C::noop_program().program_id(),
             Self::Circuit(program, _, _) => program.program_id(),
         }
     }
@@ -55,7 +54,7 @@ impl<C: Parameters> Executable<C> {
         let public_variables = PublicVariables::new(record_position, local_data.root());
         // Execute the program circuit with the declared variables.
         match self {
-            Self::Noop(_) => Ok(C::noop_program().execute_noop(&public_variables)?),
+            Self::Noop => Ok(C::noop_program().execute_noop(&public_variables)?),
             Self::Circuit(program, circuit_id, private_variables) => {
                 Ok(program.execute(circuit_id, &public_variables, private_variables.deref())?)
             }

@@ -20,15 +20,11 @@ mod coinbase {
 
     use rand::{thread_rng, Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::sync::Arc;
 
     const ITERATIONS: usize = 100;
 
     #[test]
     fn test_new_coinbase() {
-        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
-        let noop = Arc::new(noop_program.clone());
-
         for _ in 0..ITERATIONS {
             // Sample a random seed for the RNG.
             let seed: u64 = thread_rng().gen();
@@ -38,13 +34,13 @@ mod coinbase {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 // Generate the expected coinbase account.
-                let coinbase_account = Account::new(rng).unwrap();
+                let coinbase_account = Account::<Testnet2Parameters>::new(rng).unwrap();
 
                 // Compute the padded inputs to keep the RNG in sync.
                 let mut inputs = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
                 let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
                 for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-                    let input = Input::new_noop(noop.clone(), rng).unwrap();
+                    let input = Input::<Testnet2Parameters>::new_noop(rng).unwrap();
                     joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
                     inputs.push(input);
                 }
@@ -52,13 +48,13 @@ mod coinbase {
                 // Compute the remaining padded outputs to keep the RNG in sync.
                 let mut outputs = Vec::with_capacity(Testnet2Parameters::NUM_OUTPUT_RECORDS);
                 for _ in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS - 1 {
-                    outputs.push(Output::new_noop(noop.clone(), rng).unwrap());
+                    outputs.push(Output::<Testnet2Parameters>::new_noop(rng).unwrap());
                 }
 
                 // Generate the expected coinbase record.
                 let coinbase_record = {
                     Record::new_output(
-                        noop_program.program_id(),
+                        Testnet2Parameters::noop_program().program_id(),
                         coinbase_account.address,
                         false,
                         123456,
@@ -79,8 +75,7 @@ mod coinbase {
 
                 let account = Account::new(rng).unwrap();
                 let state =
-                    StateTransition::new_coinbase(account.address, AleoAmount::from_bytes(123456), noop.clone(), rng)
-                        .unwrap();
+                    StateTransition::new_coinbase(account.address, AleoAmount::from_bytes(123456), rng).unwrap();
                 let joint_serial_numbers = state.kernel().to_joint_serial_numbers().unwrap();
 
                 (account, state, joint_serial_numbers)
