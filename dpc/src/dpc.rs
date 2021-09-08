@@ -32,10 +32,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
-    fn load() -> Self {
-        Self(PhantomData)
-    }
-
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,

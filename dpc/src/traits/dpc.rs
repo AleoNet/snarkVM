@@ -29,9 +29,6 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type StateTransition;
     type Transaction: TransactionScheme;
 
-    /// Initializes a saved instance of DPC.
-    fn load() -> Self;
-
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
