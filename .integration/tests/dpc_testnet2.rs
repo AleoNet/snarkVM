@@ -25,20 +25,6 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// TODO (howardwu): Update this to the correct inner circuit ID when the final parameters are set.
-#[ignore]
-#[test]
-fn test_testnet2_inner_circuit_sanity_check() {
-    let expected_testnet2_inner_circuit_id = vec![
-        70, 187, 221, 37, 4, 78, 200, 68, 34, 184, 229, 110, 24, 7, 142, 8, 62, 42, 234, 231, 96, 86, 201, 94, 143,
-        197, 248, 117, 32, 218, 44, 219, 109, 191, 72, 112, 157, 76, 212, 91, 7, 14, 32, 183, 79, 1, 194, 0,
-    ];
-    let candidate_testnet2_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
-        .to_bytes_le()
-        .unwrap();
-    assert_eq!(expected_testnet2_inner_circuit_id, candidate_testnet2_inner_circuit_id);
-}
-
 #[test]
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);

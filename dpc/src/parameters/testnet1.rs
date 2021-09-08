@@ -241,6 +241,19 @@ impl Parameters for Testnet1Parameters {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_utilities::ToBytes;
+
+    #[test]
+    fn test_inner_circuit_id_sanity_check() {
+        let expected_inner_circuit_id = vec![
+            46, 93, 35, 86, 155, 239, 73, 63, 89, 226, 158, 81, 157, 119, 19, 208, 12, 246, 11, 130, 212, 126, 21, 101,
+            177, 22, 211, 207, 182, 117, 158, 87, 167, 84, 42, 167, 175, 157, 85, 211, 98, 226, 1, 35, 47, 122, 168, 0,
+        ];
+        let candidate_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
+            .to_bytes_le()
+            .unwrap();
+        assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
+    }
 
     #[test]
     fn test_inner_circuit_id_derivation() {
