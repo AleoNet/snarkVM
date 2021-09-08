@@ -20,6 +20,7 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
+use rayon::prelude::*;
 use std::marker::PhantomData;
 
 pub struct DPC<C: Parameters>(PhantomData<C>);
@@ -360,16 +361,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {
-        for transaction in transactions {
-            if !Self::verify(transaction, ledger) {
-                return false;
-            }
-        }
-
-        true
+        transactions
+            .as_parallel_slice()
+            .par_iter()
+            .all(|tx| Self::verify(tx, ledger))
     }
 }

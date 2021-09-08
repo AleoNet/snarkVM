@@ -112,6 +112,9 @@ version = "1.8.0"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.rayon]
+version = "1"
+
 [dependencies.serde]
 version = "1.0"
 features = [ "derive" ]
@@ -127,7 +130,7 @@ path = "../ledger"
 default-features = false
 
 [dev-dependencies.criterion]
-version = "0.3.4"
+version = "0.3.5"
 
 [dev-dependencies.rand_chacha]
 version = "0.3"
