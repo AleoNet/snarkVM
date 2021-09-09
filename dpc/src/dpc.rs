@@ -367,3 +367,31 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             .all(|tx| Self::verify(tx, ledger))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::FromBytes;
+
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
+
+    fn transaction_authorization_serialization_test<C: Parameters>() {
+        let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+
+        let recipient = Account::new(&mut rng).unwrap();
+        let amount = AleoAmount::from_bytes(10);
+        let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
+        let authorization = DPC::<C>::authorize(&vec![], &state, &mut rng).unwrap();
+
+        // Serialize and deserialize the transaction authorization.
+        let deserialized_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
+        assert_eq!(authorization, deserialized_authorization);
+    }
+
+    #[test]
+    fn test_transaction_authorization_serialization() {
+        transaction_authorization_serialization_test::<crate::testnet1::Testnet1Parameters>();
+        transaction_authorization_serialization_test::<crate::testnet2::Testnet2Parameters>();
+    }
+}

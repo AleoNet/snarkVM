@@ -113,21 +113,6 @@ fn dpc_testnet2_integration_test() {
 }
 
 #[test]
-fn test_testnet_2_transaction_authorization_serialization() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-    let recipient = Account::new(&mut rng).unwrap();
-    let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
-    let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
-
-    // Serialize and recover the transaction authorization.
-    let recovered_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
-
-    assert_eq!(authorization, recovered_authorization);
-}
-
-#[test]
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
