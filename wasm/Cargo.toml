@@ -86,7 +86,7 @@ version = "0.2"
 features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.26"
+version = "0.3.27"
 
 [features]
 default = [ "full" ]
