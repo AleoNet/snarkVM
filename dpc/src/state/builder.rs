@@ -19,7 +19,6 @@ use snarkvm_utilities::ToBytes;
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct StateBuilder<C: Parameters> {
@@ -105,11 +104,10 @@ impl<C: Parameters> StateBuilder<C> {
         self
     }
 
-    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     ///
     /// Finalizes the builder and returns a new instance of `State`.
     ///
-    pub fn build<R: Rng + CryptoRng>(&mut self, noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<StateTransition<C>> {
+    pub fn build<R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<StateTransition<C>> {
         // Ensure there are no errors in the build process yet.
         if !self.errors.is_empty() {
             for error in &self.errors {
@@ -119,7 +117,7 @@ impl<C: Parameters> StateBuilder<C> {
         }
 
         // Prepare the inputs and outputs for constructing state.
-        let (inputs, outputs) = self.prepare_inputs_and_outputs(noop, rng)?;
+        let (inputs, outputs) = self.prepare_inputs_and_outputs(rng)?;
 
         // Compute the input records.
         let input_records: Vec<_> = inputs
@@ -212,18 +210,13 @@ impl<C: Parameters> StateBuilder<C> {
         })
     }
 
-    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     ///
     /// Prepares the inputs and outputs for the `Self::build()` phase.
     ///
     /// This method pads a copy of all inputs and outputs up to the requisite number
     /// of inputs and outputs for the transaction.
     ///
-    fn prepare_inputs_and_outputs<R: Rng + CryptoRng>(
-        &self,
-        noop: Arc<NoopProgram<C>>,
-        rng: &mut R,
-    ) -> Result<(Vec<Input<C>>, Vec<Output<C>>)> {
+    fn prepare_inputs_and_outputs<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<(Vec<Input<C>>, Vec<Output<C>>)> {
         // Ensure a valid number of inputs are provided.
         if self.inputs.len() > C::NUM_INPUT_RECORDS {
             return Err(anyhow!("Builder exceeded maximum number of inputs"));
@@ -238,7 +231,7 @@ impl<C: Parameters> StateBuilder<C> {
         // Pad the inputs with noop inputs if necessary.
         while inputs.len() < C::NUM_INPUT_RECORDS {
             // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
-            inputs.push(Input::new_noop(noop.clone(), rng)?);
+            inputs.push(Input::new_noop(rng)?);
         }
 
         // Construct the outputs.
@@ -246,7 +239,7 @@ impl<C: Parameters> StateBuilder<C> {
         // Pad the outputs with noop outputs if necessary.
         while outputs.len() < C::NUM_OUTPUT_RECORDS {
             // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
-            outputs.push(Output::new_noop(noop.clone(), rng)?);
+            outputs.push(Output::new_noop(rng)?);
         }
 
         Ok((inputs, outputs))
@@ -260,15 +253,11 @@ mod tests {
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::ops::Deref;
 
     const ITERATIONS: usize = 100;
 
     #[test]
     fn test_add_noop_input() {
-        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
-        let noop = Arc::new(noop_program.clone());
-
         for _ in 0..ITERATIONS {
             // Sample a random seed for the RNG.
             let seed: u64 = thread_rng().gen();
@@ -278,7 +267,7 @@ mod tests {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
-                let input_record = Record::new_noop_input(noop_program.deref(), account.address, rng).unwrap();
+                let input_record = Record::new_noop_input(account.address, rng).unwrap();
                 let (serial_number, signature_randomizer) =
                     input_record.to_serial_number(&account.compute_key()).unwrap();
 
@@ -289,9 +278,9 @@ mod tests {
             let (candidate_record, candidate_serial_number, candidate_signature_randomizer, candidate_executable) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
-                let mut builder = StateBuilder::new();
-                builder = builder.add_input(Input::new_noop(noop.clone(), rng).unwrap());
-                builder.build(noop.clone(), rng).unwrap();
+                let mut builder = StateBuilder::<Testnet2Parameters>::new();
+                builder = builder.add_input(Input::new_noop(rng).unwrap());
+                builder.build(rng).unwrap();
 
                 (
                     builder.inputs[0].record().clone(),
@@ -310,9 +299,6 @@ mod tests {
 
     #[test]
     fn test_add_noop_output() {
-        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
-        let noop = Arc::new(noop_program.clone());
-
         for _ in 0..ITERATIONS {
             // Sample a random seed for the RNG.
             let seed: u64 = thread_rng().gen();
@@ -323,7 +309,7 @@ mod tests {
                 let mut inputs = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
                 let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
                 for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-                    let input = Input::new_noop(noop.clone(), &mut given_rng).unwrap();
+                    let input = Input::<Testnet2Parameters>::new_noop(&mut given_rng).unwrap();
                     let serial_number = input.serial_number().to_bytes_le().unwrap();
 
                     inputs.push(input);
@@ -338,9 +324,8 @@ mod tests {
 
             // Generate the expected output state.
             let expected_record = {
-                let account = Account::new(&mut expected_rng).unwrap();
+                let account = Account::<Testnet2Parameters>::new(&mut expected_rng).unwrap();
                 Record::new_noop_output(
-                    noop_program.deref(),
                     account.address,
                     Testnet2Parameters::NUM_INPUT_RECORDS as u8,
                     &given_joint_serial_numbers,
@@ -352,8 +337,8 @@ mod tests {
             // Generate the candidate output state.
             let (candidate_address, candidate_value, candidate_payload, candidate_executable) = {
                 let mut builder = StateBuilder::new();
-                builder = builder.add_output(Output::new_noop(noop.clone(), &mut candidate_rng).unwrap());
-                builder.build(noop.clone(), &mut candidate_rng).unwrap();
+                builder = builder.add_output(Output::new_noop(&mut candidate_rng).unwrap());
+                builder.build(&mut candidate_rng).unwrap();
                 (
                     builder.outputs[0].address(),
                     builder.outputs[0].value(),

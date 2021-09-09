@@ -16,19 +16,14 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use rayon::prelude::*;
+use std::marker::PhantomData;
 
-pub struct DPC<C: Parameters> {
-    pub noop_program: NoopProgram<C>,
-    pub inner_proving_key: Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-    pub inner_verifying_key: <C::InnerSNARK as SNARK>::VerifyingKey,
-    pub outer_proving_key: Option<<C::OuterSNARK as SNARK>::ProvingKey>,
-    pub outer_verifying_key: <C::OuterSNARK as SNARK>::VerifyingKey,
-}
+pub struct DPC<C: Parameters>(PhantomData<C>);
 
 impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
@@ -37,60 +32,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type StateTransition = StateTransition<C>;
     type Transaction = Transaction<C>;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
-        let setup_time = start_timer!(|| "DPC::setup");
-
-        let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::setup(rng)?;
-        let noop_program_execution = noop_program.execute_blank_noop()?;
-        end_timer!(noop_program_timer);
-
-        let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::<C>::blank();
-        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, &mut SRS::CircuitSpecific(rng))?;
-        end_timer!(snark_setup_time);
-
-        let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
-        let inner_snark_vk = inner_snark_parameters.1.clone();
-        let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
-        let outer_snark_parameters = C::OuterSNARK::setup(
-            &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program_execution),
-            &mut SRS::CircuitSpecific(rng),
-        )?;
-        end_timer!(snark_setup_time);
-
-        end_timer!(setup_time);
-
-        Ok(Self {
-            noop_program,
-            inner_proving_key: Some(inner_snark_parameters.0),
-            inner_verifying_key: inner_snark_parameters.1,
-            outer_proving_key: Some(outer_snark_parameters.0),
-            outer_verifying_key: outer_snark_parameters.1,
-        })
-    }
-
-    fn load(verify_only: bool) -> Result<Self> {
-        let timer = start_timer!(|| "DPC::load");
-        let noop_program = NoopProgram::load()?;
-        let inner_proving_key = C::inner_circuit_proving_key(!verify_only).clone();
-        let inner_verifying_key = C::inner_circuit_verifying_key().clone();
-        let outer_proving_key = C::outer_circuit_proving_key(!verify_only).clone();
-        let outer_verifying_key = C::outer_circuit_verifying_key().clone();
-        end_timer!(timer);
-
-        Ok(Self {
-            noop_program,
-            inner_proving_key,
-            inner_verifying_key,
-            outer_proving_key,
-            outer_verifying_key,
-        })
-    }
-
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
-        &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         state: &Self::StateTransition,
         rng: &mut R,
@@ -137,7 +80,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
-        &self,
         compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
         executables: &Vec<Executable<C>>,
@@ -217,8 +159,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Compute the inner circuit proof.
         let inner_proof = {
-            let inner_proving_key = self
-                .inner_proving_key
+            let inner_proving_key = C::inner_circuit_proving_key(true)
                 .as_ref()
                 .ok_or(DPCError::MissingInnerProvingKey)?;
 
@@ -231,22 +172,16 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Verify that the inner circuit proof passes.
         assert!(C::InnerSNARK::verify(
-            &self.inner_verifying_key,
+            C::inner_circuit_verifying_key(),
             &inner_public_variables,
             &inner_proof
         )?);
 
         let transaction_proof = {
-            debug_assert_eq!(
-                C::inner_circuit_id(),
-                &C::inner_circuit_id_crh().hash_bits(&self.inner_verifying_key.to_minimal_bits())?,
-                "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
-            );
-
             // Construct the outer circuit public and private variables.
             let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, C::inner_circuit_id());
             let outer_private_variables = OuterPrivateVariables::new(
-                self.inner_verifying_key.clone(),
+                C::inner_circuit_verifying_key().clone(),
                 inner_proof,
                 executions.to_vec(),
                 program_commitment.clone(),
@@ -254,8 +189,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 local_data.root().clone(),
             );
 
-            let outer_proving_key = self
-                .outer_proving_key
+            let outer_proving_key = C::outer_circuit_proving_key(true)
                 .as_ref()
                 .ok_or(DPCError::MissingOuterProvingKey)?;
 
@@ -267,7 +201,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
             // Verify the outer circuit proof passes.
             assert!(C::OuterSNARK::verify(
-                &self.outer_verifying_key,
+                C::outer_circuit_verifying_key(),
                 &outer_public_variables,
                 &outer_proof
             )?);
@@ -287,7 +221,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
-        &self,
         transaction: &Self::Transaction,
         ledger: &L,
     ) -> bool {
@@ -390,14 +323,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             return false;
         }
 
-        debug_assert_eq!(
-            C::inner_circuit_id(),
-            &C::inner_circuit_id_crh()
-                .hash_bits(&self.inner_verifying_key.to_minimal_bits())
-                .unwrap(),
-            "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
-        );
-
         let outer_public_variables = match OuterPublicVariables::from(transaction) {
             Ok(outer_public_variables) => outer_public_variables,
             Err(error) => {
@@ -406,7 +331,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         };
 
-        match C::OuterSNARK::verify(&self.outer_verifying_key, &outer_public_variables, &transaction.proof) {
+        match C::OuterSNARK::verify(
+            C::outer_circuit_verifying_key(),
+            &outer_public_variables,
+            &transaction.proof,
+        ) {
             Ok(is_valid) => {
                 if !is_valid {
                     eprintln!("Transaction proof failed to verify.");
@@ -429,13 +358,40 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
     fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
-        &self,
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {
         transactions
             .as_parallel_slice()
             .par_iter()
-            .all(|tx| self.verify(tx, ledger))
+            .all(|tx| Self::verify(tx, ledger))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::FromBytes;
+
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
+
+    fn transaction_authorization_serialization_test<C: Parameters>() {
+        let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+
+        let recipient = Account::new(&mut rng).unwrap();
+        let amount = AleoAmount::from_bytes(10);
+        let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
+        let authorization = DPC::<C>::authorize(&vec![], &state, &mut rng).unwrap();
+
+        // Serialize and deserialize the transaction authorization.
+        let deserialized_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
+        assert_eq!(authorization, deserialized_authorization);
+    }
+
+    #[test]
+    fn test_transaction_authorization_serialization() {
+        transaction_authorization_serialization_test::<crate::testnet1::Testnet1Parameters>();
+        transaction_authorization_serialization_test::<crate::testnet2::Testnet2Parameters>();
     }
 }

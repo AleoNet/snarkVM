@@ -18,7 +18,7 @@ use crate::prelude::*;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use std::{convert::TryInto, sync::Arc};
+use std::convert::TryInto;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -30,28 +30,25 @@ pub struct Output<C: Parameters> {
 }
 
 impl<C: Parameters> Output<C> {
-    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-    pub fn new_noop<R: Rng + CryptoRng>(noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
-        Self::new(noop_address, AleoAmount::from_bytes(0), Payload::default(), None, noop)
+        Self::new(noop_address, AleoAmount::from_bytes(0), Payload::default(), None)
     }
 
-    /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Initializes a new instance of `Output`.
     pub fn new(
         address: Address<C>,
         value: AleoAmount,
         payload: Payload,
         executable: Option<Executable<C>>,
-        noop: Arc<NoopProgram<C>>,
     ) -> Result<Self> {
         // Retrieve the executable. If `None` is provided, construct the noop executable.
         let executable = match executable {
             Some(executable) => executable,
-            None => Executable::Noop(noop),
+            None => Executable::Noop,
         };
 
         Ok(Self {
@@ -73,7 +70,7 @@ impl<C: Parameters> Output<C> {
         let is_dummy = self.value == AleoAmount::from_bytes(0) && self.payload.is_empty() && self.executable.is_noop();
 
         Ok(Record::new_output(
-            self.executable.program(),
+            self.executable.program_id(),
             self.address,
             is_dummy,
             self.value.0 as u64,
@@ -113,15 +110,11 @@ mod tests {
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use std::ops::Deref;
 
     const ITERATIONS: usize = 100;
 
     #[test]
     fn test_new_noop_and_to_record() {
-        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
-        let noop = Arc::new(noop_program.clone());
-
         for _ in 0..ITERATIONS {
             // Sample a random seed for the RNG.
             let seed: u64 = thread_rng().gen();
@@ -131,7 +124,7 @@ mod tests {
             let given_joint_serial_numbers = {
                 let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
                 for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-                    let input = Input::new_noop(noop.clone(), &mut given_rng).unwrap();
+                    let input = Input::<Testnet2Parameters>::new_noop(&mut given_rng).unwrap();
                     joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
                 }
                 joint_serial_numbers
@@ -143,9 +136,8 @@ mod tests {
 
             // Generate the expected output state.
             let expected_record = {
-                let account = Account::new(&mut expected_rng).unwrap();
+                let account = Account::<Testnet2Parameters>::new(&mut expected_rng).unwrap();
                 Record::new_noop_output(
-                    noop_program.deref(),
                     account.address,
                     Testnet2Parameters::NUM_INPUT_RECORDS as u8,
                     &given_joint_serial_numbers,
@@ -156,7 +148,7 @@ mod tests {
 
             // Generate the candidate output state.
             let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_executable) = {
-                let output = Output::new_noop(noop.clone(), &mut candidate_rng).unwrap();
+                let output = Output::new_noop(&mut candidate_rng).unwrap();
                 let record = output
                     .to_record(
                         Testnet2Parameters::NUM_INPUT_RECORDS as u8,

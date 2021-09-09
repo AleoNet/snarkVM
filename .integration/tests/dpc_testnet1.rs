@@ -17,30 +17,13 @@
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
-use snarkvm_integration::testnet1::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use std::{
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
-
-#[ignore]
-#[test]
-fn test_testnet1_inner_circuit_sanity_check() {
-    let expected_testnet1_inner_circuit_id = vec![
-        132, 243, 19, 234, 73, 219, 14, 105, 124, 12, 23, 229, 144, 168, 24, 163, 93, 33, 139, 247, 16, 201, 132, 0,
-        141, 28, 29, 2, 131, 75, 18, 78, 248, 57, 118, 61, 81, 53, 11, 91, 196, 233, 80, 186, 167, 144, 163, 0,
-    ];
-    let candidate_testnet1_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
-        .to_bytes_le()
-        .unwrap();
-    assert_eq!(expected_testnet1_inner_circuit_id, candidate_testnet1_inner_circuit_id);
-}
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn dpc_testnet1_integration_test() {
@@ -62,24 +45,18 @@ fn dpc_testnet1_integration_test() {
 
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
-    // Generate or load DPC.
-    let dpc = setup_or_load_dpc(false, &mut rng);
-    let noop = Arc::new(dpc.noop_program.clone());
-
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
     let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
-        .build(noop, &mut rng)
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .build(&mut rng)
         .unwrap();
-    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::authorize(&vec![], &state, &mut rng).unwrap();
 
     let new_records = authorization.output_records.clone();
 
-    let transaction = dpc
-        .execute(&vec![], authorization, state.executables(), &ledger, &mut rng)
-        .unwrap();
+    let transaction = DPC::execute(&vec![], authorization, state.executables(), &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
@@ -127,31 +104,12 @@ fn dpc_testnet1_integration_test() {
         proof: ProofOfSuccinctWork::default(),
     };
 
-    assert!(Testnet1DPC::verify_transactions(&dpc, &transactions.0, &ledger));
+    assert!(DPC::verify_transactions(&transactions.0, &ledger));
 
     let block = Block { header, transactions };
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.block_height(), 1);
-}
-
-#[test]
-fn test_testnet1_transaction_authorization_serialization() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-    // Generate or load DPC.
-    let dpc = setup_or_load_dpc(false, &mut rng);
-    let noop = Arc::new(dpc.noop_program.clone());
-
-    let recipient = Account::new(&mut rng).unwrap();
-    let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::new_coinbase(recipient.address, amount, noop, &mut rng).unwrap();
-    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
-
-    // Serialize and recover the transaction authorization.
-    let recovered_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
-
-    assert_eq!(authorization, recovered_authorization);
 }
 
 #[test]
@@ -174,23 +132,17 @@ fn test_testnet1_dpc_execute_constraints() {
     // Use genesis block to initialize the ledger.
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
-    let dpc = Testnet1DPC::setup(&mut rng).unwrap();
-    let noop = Arc::new(dpc.noop_program.clone());
-
-    let alternate_noop_program = NoopProgram::<Testnet1Parameters>::setup(&mut rng).unwrap();
-    let alternate_noop = Arc::new(alternate_noop_program.clone());
-
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
 
     let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, alternate_noop).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None, noop.clone()).unwrap())
-        .build(noop, &mut rng)
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+        .build(&mut rng)
         .unwrap();
     let executables = state.executables();
 
-    let authorization = dpc.authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::<Testnet1Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
 
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();

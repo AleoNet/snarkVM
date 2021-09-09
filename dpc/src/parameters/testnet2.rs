@@ -18,6 +18,7 @@ use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
     InnerPublicVariables,
     Network,
+    NoopProgram,
     OuterPublicVariables,
     Parameters,
     PublicVariables,
@@ -219,9 +220,14 @@ impl Parameters for Testnet2Parameters {
 
     dpc_snark_setup_with_mode!{Testnet2Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+    
+    fn noop_program() -> &'static NoopProgram<Self> {
+        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet2Parameters>> = OnceCell::new();
+        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet2Parameters>::load().expect("Failed to fetch the noop program"))
+    }
 
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
-        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
+        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
     
@@ -253,5 +259,62 @@ impl Parameters for Testnet2Parameters {
             &UniversalSRSParameters::load_bytes().expect("Failed to load universal SRS bytes"),
         ).unwrap());
         Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::ToBytes;
+
+    #[test]
+    fn test_inner_circuit_id_sanity_check() {
+        let expected_inner_circuit_id = vec![
+            255, 169, 179, 40, 90, 40, 138, 230, 255, 166, 181, 112, 17, 46, 17, 230, 220, 36, 148, 167, 187, 43, 58,
+            120, 49, 128, 161, 176, 221, 199, 93, 61, 75, 35, 132, 105, 202, 169, 63, 228, 184, 36, 193, 185, 11, 145,
+            86, 1,
+        ];
+        let candidate_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
+            .to_bytes_le()
+            .unwrap();
+        assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
+    }
+
+    #[test]
+    fn test_inner_circuit_sanity_check() {
+        // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
+        assert_eq!(
+            Testnet2Parameters::inner_circuit_verifying_key(),
+            &Testnet2Parameters::inner_circuit_proving_key(true)
+                .as_ref()
+                .expect("Failed to load inner circuit proving key")
+                .vk,
+            "The inner circuit verifying key does not correspond to the inner circuit proving key"
+        );
+    }
+
+    #[test]
+    fn test_inner_circuit_id_derivation() {
+        // Verify the inner circuit ID matches the one derived from the inner circuit verifying key.
+        assert_eq!(
+            Testnet2Parameters::inner_circuit_id(),
+            &Testnet2Parameters::inner_circuit_id_crh()
+                .hash_bits(&Testnet2Parameters::inner_circuit_verifying_key().to_minimal_bits())
+                .expect("Failed to hash inner circuit ID"),
+            "The inner circuit ID does not correspond to the inner circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_outer_circuit_sanity_check() {
+        // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
+        assert_eq!(
+            Testnet2Parameters::outer_circuit_verifying_key(),
+            &Testnet2Parameters::outer_circuit_proving_key(true)
+                .as_ref()
+                .expect("Failed to load outer circuit proving key")
+                .vk,
+            "The outer circuit verifying key does not correspond to the outer circuit proving key"
+        );
     }
 }

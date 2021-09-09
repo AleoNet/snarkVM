@@ -28,7 +28,7 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
 
     /// Returns the program id of this record.
-    fn program_id(&self) -> &Self::ProgramID;
+    fn program_id(&self) -> Self::ProgramID;
 
     /// Returns the record owner.
     fn owner(&self) -> Self::Owner;

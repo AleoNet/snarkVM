@@ -132,7 +132,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let is_dummy = (value == 0) && (payload == Payload::default()) && (program_id == dummy_program);
 
         Ok(Record::from(
-            &program_id,
+            program_id,
             owner,
             is_dummy,
             value,

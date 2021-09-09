@@ -24,7 +24,6 @@ use std::{
     io::{Result as IoResult, Write},
     path::Path,
     str::FromStr,
-    sync::Arc,
 };
 
 pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
@@ -45,13 +44,10 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     })
     .unwrap();
 
-    let dpc = DPC::<C>::load(false)?;
-    let noop = Arc::new(dpc.noop_program.clone());
-
     let amount = AleoAmount::from_bytes(value as i64);
-    let state = StateTransition::new_coinbase(recipient, amount, noop, rng)?;
-    let authorization = dpc.authorize(&vec![], &state, rng)?;
-    let transaction = dpc.execute(&vec![], authorization, state.executables(), &temporary_ledger, rng)?;
+    let state = StateTransition::new_coinbase(recipient, amount, rng)?;
+    let authorization = DPC::<C>::authorize(&vec![], &state, rng)?;
+    let transaction = DPC::<C>::execute(&vec![], authorization, state.executables(), &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     println!("transaction size - {}\n", transaction_bytes.len());

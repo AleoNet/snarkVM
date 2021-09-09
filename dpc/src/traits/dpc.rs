@@ -29,15 +29,8 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type StateTransition;
     type Transaction: TransactionScheme;
 
-    /// Initializes a new instance of DPC.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self>;
-
-    /// Loads the saved instance of DPC.
-    fn load(verify_only: bool) -> Result<Self>;
-
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
-        &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         state: &Self::StateTransition,
         rng: &mut R,
@@ -45,7 +38,6 @@ pub trait DPCScheme<C: Parameters>: Sized {
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
-        &self,
         compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
         executables: &Vec<Executable<C>>,
@@ -55,14 +47,12 @@ pub trait DPCScheme<C: Parameters>: Sized {
 
     /// Returns true iff the transaction is valid according to the ledger.
     fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
-        &self,
         transaction: &Self::Transaction,
         ledger: &L,
     ) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
     fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
-        &self,
         block: &[Self::Transaction],
         ledger: &L,
     ) -> bool;
