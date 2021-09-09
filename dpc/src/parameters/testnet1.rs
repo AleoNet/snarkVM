@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inner_circuit_id_derivation() {
+    fn test_inner_circuit_sanity_check() {
         // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
         assert_eq!(
             Testnet1Parameters::inner_circuit_verifying_key(),
@@ -266,7 +266,10 @@ mod tests {
                 .vk,
             "The inner circuit verifying key does not correspond to the inner circuit proving key"
         );
+    }
 
+    #[test]
+    fn test_inner_circuit_id_derivation() {
         // Verify the inner circuit ID matches the one derived from the inner circuit verifying key.
         assert_eq!(
             Testnet1Parameters::inner_circuit_id(),
@@ -274,6 +277,19 @@ mod tests {
                 .hash_bits(&Testnet1Parameters::inner_circuit_verifying_key().to_minimal_bits())
                 .expect("Failed to hash inner circuit ID"),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_outer_circuit_sanity_check() {
+        // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
+        assert_eq!(
+            Testnet1Parameters::outer_circuit_verifying_key(),
+            &Testnet1Parameters::outer_circuit_proving_key(true)
+                .as_ref()
+                .expect("Failed to load outer circuit proving key")
+                .vk,
+            "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }
 }
