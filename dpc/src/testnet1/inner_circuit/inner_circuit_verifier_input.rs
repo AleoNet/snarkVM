@@ -30,7 +30,7 @@ use std::sync::Arc;
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
     // Commitment, CRH, and signature parameters
-    pub system_parameters: SystemParameters<C>,
+    pub system_parameters: Arc<SystemParameters<C>>,
 
     // Ledger parameters and digest
     pub ledger_parameters: Arc<C::MerkleParameters>,

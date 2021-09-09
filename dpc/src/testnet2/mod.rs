@@ -129,7 +129,7 @@ pub trait Testnet2Components: DPCComponents {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct DPC<C: Testnet2Components> {
-    pub system_parameters: SystemParameters<C>,
+    pub system_parameters: Arc<SystemParameters<C>>,
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
@@ -166,7 +166,7 @@ where
 
     fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = Self::SystemParameters::setup(rng)?;
+        let system_parameters = Arc::new(Self::SystemParameters::setup(rng)?);
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(
@@ -209,7 +209,7 @@ where
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
-        let system_parameters = Self::SystemParameters::load()?;
+        let system_parameters = Arc::new(Self::SystemParameters::load()?);
         let noop_program = NoopProgram::load(
             &system_parameters.local_data_commitment,
             &system_parameters.program_verification_key_crh,
