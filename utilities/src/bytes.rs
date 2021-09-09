@@ -172,7 +172,11 @@ to_bytes_for_integer!(u32);
 to_bytes_for_integer!(u64);
 to_bytes_for_integer!(u128);
 
+to_bytes_for_integer!(i8);
+to_bytes_for_integer!(i16);
+to_bytes_for_integer!(i32);
 to_bytes_for_integer!(i64);
+to_bytes_for_integer!(i128);
 
 impl ToBytes for () {
     #[inline]

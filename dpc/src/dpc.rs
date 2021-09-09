@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
+use snarkvm_utilities::has_duplicates;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -151,6 +151,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             input_records,
             input_witnesses,
             full_compute_keys,
+            signatures,
             output_records.clone(),
             encrypted_record_randomizers,
             program_randomness.clone(),
@@ -212,7 +213,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         Ok(Self::Transaction::from(
             kernel,
-            signatures,
             ledger_digest,
             C::inner_circuit_id().clone(),
             encrypted_records,
@@ -276,45 +276,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         end_timer!(ledger_time);
 
-        let signature_time = start_timer!(|| "Signature checks");
-
-        // Returns false if the number of signatures in the transaction is incorrect.
-        if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of signatures");
-            return false;
-        }
-
-        let signature_message = match to_bytes_le![
-            transaction.network_id(),
-            transaction.serial_numbers(),
-            transaction.commitments(),
-            transaction.value_balance(),
-            transaction.memo()
-        ] {
-            Ok(message) => message,
-            Err(error) => {
-                eprintln!("Unable to construct signature message - {}", error);
-                return false;
-            }
-        };
-
-        for (pk, sig) in transaction.serial_numbers().iter().zip(transaction.signatures()) {
-            match C::account_signature_scheme().verify(pk, &signature_message, sig) {
-                Ok(is_valid) => {
-                    if !is_valid {
-                        eprintln!("Signature is invalid");
-                        return false;
-                    }
-                }
-                Err(error) => {
-                    eprintln!("Unable to verify signature - {}", error);
-                    return false;
-                }
-            }
-        }
-
-        end_timer!(signature_time);
-
         // Construct the ciphertext hashes
 
         // Returns false if the number of encrypted records in the transaction is incorrect.
@@ -371,7 +332,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_utilities::FromBytes;
+    use snarkvm_utilities::{FromBytes, ToBytes};
 
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;

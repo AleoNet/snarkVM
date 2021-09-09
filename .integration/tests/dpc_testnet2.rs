@@ -164,7 +164,7 @@ fn test_testnet2_dpc_execute_constraints() {
         kernel,
         input_records: old_records,
         output_records: new_records,
-        signatures: _,
+        signatures,
         noop_compute_keys,
     } = authorization;
 
@@ -201,6 +201,7 @@ fn test_testnet2_dpc_execute_constraints() {
         old_records.clone(),
         old_witnesses,
         noop_compute_keys.iter().map(|key| key.clone().unwrap()).collect(), // This is safe only for this test case.
+        signatures,
         new_records.clone(),
         encrypted_record_randomizers,
         program_randomness.clone(),
@@ -231,7 +232,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(317979, num_constraints);
+    assert_eq!(332163, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
