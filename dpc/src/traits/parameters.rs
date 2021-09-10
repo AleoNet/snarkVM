@@ -16,7 +16,7 @@
 
 use crate::{InnerPublicVariables, NoopProgram, OuterPublicVariables, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
-use snarkvm_curves::PairingEngine;
+use snarkvm_curves::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
@@ -28,6 +28,7 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
     ToMinimalBits,
+    UniformRand,
 };
 
 use anyhow::Result;
@@ -42,11 +43,14 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     type InnerCurve: PairingEngine;
-    type OuterCurve: PairingEngine;
-
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
-    type OuterScalarField: PrimeField;
+
+    type OuterCurve: PairingEngine;
     type OuterBaseField: PrimeField;
+    type OuterScalarField: PrimeField;
+
+    type ProgramCurve: ProjectiveCurve;
+    type ProgramScalarField: PrimeField;
 
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<
@@ -74,7 +78,10 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
-    type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>;
+    type AccountCommitmentScheme: CommitmentScheme<
+        Output = Self::AccountCommitment,
+        // Randomness = <Self::AccountPRF as PRF>::Output,
+    >;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
     type AccountCommitment: ToConstraintField<Self::InnerScalarField>
         + Clone
@@ -91,12 +98,18 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type AccountEncryptionScheme: EncryptionScheme;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
+    /// PRF for deriving the account private key from a seed. Invoked only over `Self::InnerScalarField`.
+    type AccountPRF: PRF<Input = Self::InnerScalarField, Seed = Self::AccountSeed>;
+    type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
+
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<
+        PrivateKey = Self::AccountSignaturePrivateKey,
         PublicKey = Self::AccountSignaturePublicKey,
         Signature = Self::AccountSignature,
     >;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
+    type AccountSignaturePrivateKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + PartialEq + Eq;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug

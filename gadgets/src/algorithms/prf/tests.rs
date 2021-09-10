@@ -56,11 +56,11 @@ fn test_blake2s_prf() {
     let mut input = [0u8; 32];
     rng.fill(&mut input);
 
-    let seed_gadget = Blake2sGadget::new_seed(&mut cs.ns(|| "declare_seed"), &seed);
+    let seed_gadget = UInt8::alloc_vec(&mut cs.ns(|| "declare_seed"), &seed).unwrap();
     let input_gadget = UInt8::alloc_vec(&mut cs.ns(|| "declare_input"), &input).unwrap();
     let out = B2SPRF::evaluate(&seed, &input).unwrap();
     let actual_out_gadget =
-        <Blake2sGadget as PRFGadget<_, Fr>>::OutputGadget::alloc(&mut cs.ns(|| "declare_output"), || Ok(out)).unwrap();
+        <Blake2sGadget as PRFGadget<_, Fr>>::Output::alloc(&mut cs.ns(|| "declare_output"), || Ok(out)).unwrap();
 
     let output_gadget =
         Blake2sGadget::check_evaluation_gadget(&mut cs.ns(|| "eval_blake2s"), &seed_gadget, &input_gadget).unwrap();

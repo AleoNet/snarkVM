@@ -372,8 +372,6 @@ pub fn blake2s_gadget<F: PrimeField, CS: ConstraintSystem<F>>(
     Ok(h)
 }
 
-pub struct Blake2sGadget;
-
 #[derive(Clone, Debug)]
 pub struct Blake2sOutputGadget(pub Vec<UInt8>);
 
@@ -470,18 +468,18 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Blake2sOutputGadget {
     }
 }
 
-impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
-    type OutputGadget = Blake2sOutputGadget;
+pub struct Blake2sGadget;
 
-    fn new_seed<CS: ConstraintSystem<F>>(mut cs: CS, seed: &[u8; 32]) -> Vec<UInt8> {
-        UInt8::alloc_vec(&mut cs.ns(|| "alloc_seed"), seed).unwrap()
-    }
+impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
+    type Input = Vec<UInt8>;
+    type Output = Blake2sOutputGadget;
+    type Seed = Vec<UInt8>;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
-        seed: &[UInt8],
-        input: &[UInt8],
-    ) -> Result<Self::OutputGadget, SynthesisError> {
+        seed: &Self::Seed,
+        input: &Self::Input,
+    ) -> Result<Self::Output, SynthesisError> {
         assert_eq!(seed.len(), 32);
         // assert_eq!(input.len(), 32);
         let mut gadget_input = vec![];

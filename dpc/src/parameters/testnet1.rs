@@ -31,7 +31,7 @@ use snarkvm_algorithms::{
     define_merkle_tree_parameters,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
-    prf::Blake2s,
+    prf::PoseidonPRF,
     signature::SchnorrCompressed,
     snark::groth16::Groth16,
 };
@@ -40,14 +40,14 @@ use snarkvm_curves::{
     bw6_761::BW6_761,
     edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
     edwards_bw6::EdwardsProjective as EdwardsBW6,
-    PairingEngine,
+    traits::*,
 };
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         encryption::ECIESPoseidonEncryptionGadget,
-        prf::Blake2sGadget,
+        prf::PoseidonPRFGadget,
         signature::SchnorrCompressedGadget,
         snark::Groth16VerifierGadget,
     },
@@ -102,11 +102,14 @@ impl Parameters for Testnet1Parameters {
     const NUM_OUTPUT_RECORDS: usize = 2;
 
     type InnerCurve = Bls12_377;
-    type OuterCurve = BW6_761;
-
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
-    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    
+    type OuterCurve = BW6_761;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
+    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    
+    type ProgramCurve = EdwardsBls12;
+    type ProgramScalarField = <Self::ProgramCurve as Group>::ScalarField;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
@@ -123,8 +126,12 @@ impl Parameters for Testnet1Parameters {
     type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
 
+    type AccountPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
+    type AccountSeed = Self::InnerScalarField;
+
     type AccountSignatureScheme = SchnorrCompressed<EdwardsParameters>;
     type AccountSignatureGadget = SchnorrCompressedGadget<EdwardsParameters, Self::InnerScalarField>;
+    type AccountSignaturePrivateKey = <Self::AccountSignatureScheme as SignatureScheme>::PrivateKey;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
@@ -173,9 +180,9 @@ impl Parameters for Testnet1Parameters {
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
     type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
     
-    type SerialNumberPRF = Blake2s;
-    type SerialNumberPRFGadget = Blake2sGadget;
-    type SerialNumber = [u8; 32];
+    type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
+    type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type SerialNumber = Self::InnerScalarField;
     
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

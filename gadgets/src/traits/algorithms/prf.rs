@@ -22,18 +22,17 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
     bits::ToBytesGadget,
-    integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
 };
 
 pub trait PRFGadget<P: PRF, F: Field> {
-    type OutputGadget: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;
-
-    fn new_seed<CS: ConstraintSystem<F>>(cs: CS, output: &P::Seed) -> Vec<UInt8>;
+    type Input: EqGadget<F> + ToBytesGadget<F> + Clone + Debug;
+    type Seed: EqGadget<F> + ToBytesGadget<F> + Clone + Debug;
+    type Output: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
-        seed: &[UInt8],
-        input: &[UInt8],
-    ) -> Result<Self::OutputGadget, SynthesisError>;
+        seed: &Self::Seed,
+        input: &Self::Input,
+    ) -> Result<Self::Output, SynthesisError>;
 }
