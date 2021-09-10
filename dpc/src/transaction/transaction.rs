@@ -35,7 +35,7 @@ pub struct Transaction<C: Parameters> {
     /// The network this transaction for.
     pub network: Network,
     /// The serial numbers of the input records.
-    pub serial_numbers: Vec<C::AccountSignaturePublicKey>,
+    pub serial_numbers: Vec<C::SerialNumber>,
     /// The commitment of the output records.
     pub commitments: Vec<C::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
@@ -148,7 +148,7 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = C::InnerCircuitID;
     type Memo = [u8; 64];
-    type SerialNumber = C::AccountSignaturePublicKey;
+    type SerialNumber = C::SerialNumber;
     type Signature = C::AccountSignature;
     type ValueBalance = AleoAmount;
 

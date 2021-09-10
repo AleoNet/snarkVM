@@ -48,8 +48,8 @@ pub enum RecordError {
     #[error("{}", _0)]
     FromHexError(#[from] hex::FromHexError),
 
-    #[error("Given private key does not correspond to the record owner")]
-    IncorrectPrivateKey,
+    #[error("Given compute key does not correspond to the record owner")]
+    IncorrectComputeKey,
 
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,

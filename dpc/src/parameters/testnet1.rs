@@ -145,6 +145,7 @@ impl Parameters for Testnet1Parameters {
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
+    type SerialNumber = [u8; 32]; // PRF::Output
 
     type ProgramCommitmentScheme = Blake2sCommitment;
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;

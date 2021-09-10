@@ -166,7 +166,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
     let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
     let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
-    // let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
+    let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
     for (i, (((record, witness), compute_key), given_serial_number)) in private
         .input_records
@@ -277,7 +277,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         // pair.
         // ********************************************************************
 
-        let (sk_prf, pk_sig) = {
+        let sk_prf = {
             // Declare variables for account contents.
             let account_cs = &mut cs.ns(|| "Check account");
 
@@ -300,7 +300,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
                 (pk_sig, sk_prf, r_pk)
             };
-            // signature_public_keys.push(pk_sig.clone());
 
             // Construct the account view key.
             let candidate_account_view_key = {
@@ -364,7 +363,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 )?;
             }
 
-            (sk_prf, pk_sig)
+            // Save pk_sig for signature verification at the end.
+            signature_public_keys.push(pk_sig.clone());
+
+            sk_prf
         };
         // ********************************************************************
 
@@ -374,37 +376,29 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
-            let prf_seed = sk_prf;
-            let randomizer = <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
-                &mut sn_cs.ns(|| "Compute pk_sig randomizer"),
-                &prf_seed,
-                &given_serial_number_nonce_bytes,
-            )?;
-            let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
+            let candidate_serial_number_gadget =
+                <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
+                    &mut sn_cs.ns(|| "Compute serial number"),
+                    &sk_prf,
+                    &given_serial_number_nonce_bytes,
+                )?;
 
-            let candidate_serial_number_gadget = account_signature_parameters.randomize_public_key(
-                &mut sn_cs.ns(|| "Compute serial number"),
-                &pk_sig,
-                &randomizer_bytes,
-            )?;
-
-            let given_serial_number_gadget = <C::AccountSignatureGadget as SignatureGadget<
-                C::AccountSignatureScheme,
-                C::InnerScalarField,
-            >>::PublicKeyGadget::alloc_input(
-                &mut sn_cs.ns(|| "Declare given serial number"),
-                || Ok(given_serial_number),
-            )?;
+            let given_serial_number_gadget =
+                <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::OutputGadget::alloc_input(
+                    &mut sn_cs.ns(|| "Declare given serial number"),
+                    || Ok(given_serial_number),
+                )?;
 
             candidate_serial_number_gadget.enforce_equal(
                 &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),
                 &given_serial_number_gadget,
             )?;
 
-            // Convert input serial numbers to bytes
-            let bytes = candidate_serial_number_gadget
-                .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
-            old_serial_numbers_bytes_gadgets.extend_from_slice(&bytes);
+            // Convert input serial numbers to bytes.
+            old_serial_numbers_bytes_gadgets.extend_from_slice(
+                &candidate_serial_number_gadget
+                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?,
+            );
 
             old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
         };
@@ -914,8 +908,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         message.extend_from_slice(&memo);
 
         // Verify each signature is valid.
-        // for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {
-        for (i, (signature, public_key)) in private.signatures.iter().zip(old_serial_numbers_gadgets).enumerate() {
+        for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {
             let signature_gadget = <C::AccountSignatureGadget as SignatureGadget<
                 C::AccountSignatureScheme,
                 C::InnerScalarField,

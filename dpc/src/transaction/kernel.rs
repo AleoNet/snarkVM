@@ -34,7 +34,7 @@ pub struct TransactionKernel<C: Parameters> {
     /// The network ID.
     pub network_id: u8,
     /// The serial numbers of the input records.
-    pub serial_numbers: Vec<C::AccountSignaturePublicKey>,
+    pub serial_numbers: Vec<C::SerialNumber>,
     /// The commitments of the output records.
     pub commitments: Vec<C::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
@@ -47,7 +47,7 @@ impl<C: Parameters> TransactionKernel<C> {
     /// Initializes a new instance of a transaction kernel.
     #[inline]
     pub fn new(
-        serial_numbers: Vec<C::AccountSignaturePublicKey>,
+        serial_numbers: Vec<C::SerialNumber>,
         commitments: Vec<C::RecordCommitment>,
         value_balance: AleoAmount,
         memo: <Transaction<C> as TransactionScheme>::Memo,
@@ -80,7 +80,7 @@ impl<C: Parameters> TransactionKernel<C> {
 
     /// Returns a reference to the serial numbers.
     #[inline]
-    pub fn serial_numbers(&self) -> &Vec<C::AccountSignaturePublicKey> {
+    pub fn serial_numbers(&self) -> &Vec<C::SerialNumber> {
         &self.serial_numbers
     }
 
@@ -152,7 +152,7 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let network_id: u8 = FromBytes::read_le(&mut reader)?;
 
-        let mut serial_numbers = Vec::<C::AccountSignaturePublicKey>::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut serial_numbers = Vec::<C::SerialNumber>::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }

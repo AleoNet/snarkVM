@@ -46,12 +46,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for (signature_randomizer, noop_private_key) in state
-            .signature_randomizers()
-            .iter()
-            .zip(state.noop_private_keys().iter())
-            .take(C::NUM_INPUT_RECORDS)
-        {
+        for noop_private_key in state.noop_private_keys().iter().take(C::NUM_INPUT_RECORDS) {
             // Fetch the correct private key.
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
@@ -62,16 +57,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 }
             };
 
-            // Randomize the private key.
-            let randomized_private_key =
-                C::account_signature_scheme().randomize_private_key(private_key.sk_sig(), &signature_randomizer)?;
-
-            // Sign and randomize the signature.
-            signatures.push(C::account_signature_scheme().sign_randomized(
-                &randomized_private_key,
-                &signature_message,
-                rng,
-            )?);
+            // Sign the signature message.
+            signatures.push(C::account_signature_scheme().sign(&private_key.sk_sig(), &signature_message, rng)?);
         }
 
         // Return the transaction authorization.

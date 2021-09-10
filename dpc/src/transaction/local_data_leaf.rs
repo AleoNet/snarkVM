@@ -15,13 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{DPCError, Parameters, Transaction, TransactionScheme};
-use snarkvm_algorithms::prelude::*;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
 type LeafIndex = u8;
-type SerialNumber<C> = <<C as Parameters>::AccountSignatureScheme as SignatureScheme>::PublicKey;
+type SerialNumber<C> = <C as Parameters>::SerialNumber;
 type Commitment<C> = <C as Parameters>::RecordCommitment;
 type Memo<C> = <Transaction<C> as TransactionScheme>::Memo;
 type NetworkId = u8;
