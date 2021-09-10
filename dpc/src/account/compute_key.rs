@@ -32,7 +32,7 @@ use std::{
 )]
 pub struct ComputeKey<C: Parameters> {
     pk_sig: C::AccountSignaturePublicKey,
-    sk_prf: <C::PRF as PRF>::Seed,
+    sk_prf: <C::SerialNumberPRF as PRF>::Seed,
     pub(super) r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     commitment_input: Vec<u8>,
 }
@@ -44,7 +44,7 @@ impl<C: Parameters> ComputeKey<C> {
     /// The general convention for deriving a compute key should be from a private key.
     pub(crate) fn new(
         pk_sig: C::AccountSignaturePublicKey,
-        sk_prf: <C::PRF as PRF>::Seed,
+        sk_prf: <C::SerialNumberPRF as PRF>::Seed,
         r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, AccountError> {
         // Construct the commitment input for the account address.
@@ -76,7 +76,7 @@ impl<C: Parameters> ComputeKey<C> {
     }
 
     /// Returns a reference to the PRF secret key.
-    pub fn sk_prf(&self) -> &<C::PRF as PRF>::Seed {
+    pub fn sk_prf(&self) -> &<C::SerialNumberPRF as PRF>::Seed {
         &self.sk_prf
     }
 

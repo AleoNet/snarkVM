@@ -143,10 +143,6 @@ impl Parameters for Testnet1Parameters {
     type LocalDataCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
 
-    type PRF = Blake2s;
-    type PRFGadget = Blake2sGadget;
-    type SerialNumber = [u8; 32]; // PRF::Output
-
     type ProgramCommitmentScheme = Blake2sCommitment;
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
     type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
@@ -176,6 +172,10 @@ impl Parameters for Testnet1Parameters {
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
     type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
+    
+    type SerialNumberPRF = Blake2s;
+    type SerialNumberPRFGadget = Blake2sGadget;
+    type SerialNumber = [u8; 32];
     
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

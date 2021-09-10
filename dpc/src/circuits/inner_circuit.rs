@@ -290,7 +290,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 >>::PublicKeyGadget::alloc(
                     &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
-                let sk_prf = C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
+                let sk_prf =
+                    C::SerialNumberPRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
                 let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
                     C::AccountCommitmentScheme,
                     C::InnerScalarField,
@@ -376,18 +377,22 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
-            let candidate_serial_number_gadget =
-                <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
-                    &mut sn_cs.ns(|| "Compute serial number"),
-                    &sk_prf,
-                    &given_serial_number_nonce_bytes,
-                )?;
+            let candidate_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
+                C::SerialNumberPRF,
+                C::InnerScalarField,
+            >>::check_evaluation_gadget(
+                &mut sn_cs.ns(|| "Compute serial number"),
+                &sk_prf,
+                &given_serial_number_nonce_bytes,
+            )?;
 
-            let given_serial_number_gadget =
-                <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::OutputGadget::alloc_input(
-                    &mut sn_cs.ns(|| "Declare given serial number"),
-                    || Ok(given_serial_number),
-                )?;
+            let given_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
+                C::SerialNumberPRF,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc_input(
+                &mut sn_cs.ns(|| "Declare given serial number"),
+                || Ok(given_serial_number),
+            )?;
 
             candidate_serial_number_gadget.enforce_equal(
                 &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),

@@ -71,7 +71,7 @@ impl<C: Parameters> PrivateKey<C> {
         let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
 
         // Generate the PRF secret key.
-        let sk_prf: <C::PRF as PRF>::Seed =
+        let sk_prf: <C::SerialNumberPRF as PRF>::Seed =
             FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?.as_ref())?;
 
         // Initialize a candidate compute key.
@@ -108,7 +108,7 @@ impl<C: Parameters> PrivateKey<C> {
         let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
 
         // Generate the PRF secret key.
-        let sk_prf: <C::PRF as PRF>::Seed =
+        let sk_prf: <C::SerialNumberPRF as PRF>::Seed =
             FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?.as_ref())?;
 
         // Generate the randomness rpk for the commitment scheme.
