@@ -18,13 +18,11 @@ use std::fmt::Debug;
 
 use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
-use snarkvm_utilities::ToBytes;
 
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
         ToBitsBEGadget,
-        ToBytesGadget,
     },
     fields::FpGadget,
     traits::{
