@@ -14,22 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-
-pub mod arithmetic;
-pub use arithmetic::*;
-
-pub mod bytes;
-pub use bytes::*;
-
-pub mod int_impl;
-pub use int_impl::*;
-
-pub mod relational;
-pub use relational::*;
-
-pub mod utilities;
-pub use utilities::*;
-
-#[cfg(test)]
-mod tests;
+pub mod to_bytes;
+pub use to_bytes::*;
