@@ -26,6 +26,18 @@ use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
+fn test_testnet2_inner_circuit_id_sanity_check() {
+    let expected_inner_circuit_id = vec![
+        72, 92, 27, 87, 193, 87, 19, 136, 148, 232, 122, 240, 28, 149, 212, 183, 22, 165, 255, 86, 203, 252, 34, 227,
+        20, 172, 97, 3, 100, 101, 74, 49, 243, 211, 155, 116, 207, 34, 189, 146, 183, 165, 227, 82, 161, 177, 176, 0,
+    ];
+    let candidate_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
+        .to_bytes_le()
+        .unwrap();
+    assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
+}
+
+#[test]
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
