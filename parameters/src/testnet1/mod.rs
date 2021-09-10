@@ -51,14 +51,14 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "inner_snark_pk",
-    207293761
+    214938057
 );
 impl_params_local!(
     InnerSNARKVKParameters,
     inner_snark_vk_test,
     "./",
     "inner_snark_vk",
-    2232
+    2426
 );
 
 // Outer SNARK
@@ -68,12 +68,12 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "outer_snark_pk",
-    499466461
+    505522029
 );
 impl_params_local!(
     OuterSNARKVKParameters,
     outer_snark_vk_test,
     "./",
     "outer_snark_vk",
-    3478
+    3864
 );
