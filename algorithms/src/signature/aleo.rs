@@ -253,17 +253,14 @@ where
 
         // Compute H^sk_sig.
         let h_sk_sig = {
-            // Compute sk_prf := RO(G^sk_sig).
-            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x])?;
-
-            // Compute H^sk_prf.
-            let h_sk_prf = self.h_scalar_multiply(&sk_prf)?;
-
             // Compute public key := (H^sk_sig H^sk_prf).
             let public_key = Self::recover_from_x_coordinate(public_key)?;
 
+            // Compute sk_prf := RO(G^sk_sig).
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x])?;
+
             // Compute H^sk_sig := public key / H^sk_prf.
-            public_key - h_sk_prf
+            public_key - self.h_scalar_multiply(&sk_prf)?
         };
 
         // Compute G^sk_sig^d.
@@ -272,32 +269,11 @@ where
         // Compute H^sk_sig^d.
         let h_sk_sig_d = self.scalar_multiply(h_sk_sig.into_projective(), &verifier_challenge)?;
 
-        // Compute G^p.
-        let g_p = self.g_scalar_multiply(&prover_response)?;
-
-        // Compute H^p.
-        let h_p = self.h_scalar_multiply(&prover_response)?;
-
-        // Compute r := r1 + r2 = p + z.
-        let r = *prover_response + sigma_response;
-
-        // Compute G^r.
-        let g_r = self.g_scalar_multiply(&r)?;
-
-        // Compute H^r.
-        let h_r = self.h_scalar_multiply(&r)?;
-
         // Compute G^r1 := G^p G^sk_sig^d.
-        let g_r1 = g_p + g_sk_sig_d;
+        let g_r1 = self.g_scalar_multiply(&prover_response)? + g_sk_sig_d;
 
         // Compute H^r1 := H^p H^sk_sig^d.
-        let h_r1 = h_p + h_sk_sig_d;
-
-        // Compute G^r2 := G^r / G^r1.
-        let g_r2 = g_r - g_r1;
-
-        // Compute H^r2 := H^r / H^r1.
-        let h_r2 = h_r - h_r1;
+        let h_r1 = self.h_scalar_multiply(&prover_response)? + h_sk_sig_d;
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
@@ -319,6 +295,15 @@ where
 
         // Compute the sigma challenge on H as H^z.
         let sigma_challenge_h = self.h_scalar_multiply(&sigma_response)?;
+
+        // Compute r := r1 + r2 = p + z.
+        let r = *prover_response + sigma_response;
+
+        // Compute G^r2 := G^r / G^r1.
+        let g_r2 = self.g_scalar_multiply(&r)? - g_r1;
+
+        // Compute H^r2 := H^r / H^r1.
+        let h_r2 = self.h_scalar_multiply(&r)? - h_r1;
 
         // Compute the candidate sigma challenge for G as (G^r2 G^sk_sig^d).
         let candidate_sigma_challenge_g = g_r2 + g_sk_sig_d;
