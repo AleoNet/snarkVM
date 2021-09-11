@@ -150,10 +150,16 @@ where
         (self.g_bases.clone(), self.h_bases.clone())
     }
 
+    ///
+    /// Returns private key as sk_sig.
+    ///
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
         Ok(TE::ScalarField::rand(rng))
     }
 
+    ///
+    /// Returns public key as (H^sk_sig H^sk_prf).
+    ///
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
         // Compute G^sk_sig.
         let g_sk_sig = self.g_scalar_multiply(&private_key)?;
