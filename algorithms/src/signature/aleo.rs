@@ -173,6 +173,12 @@ where
         Ok(public_key.x)
     }
 
+    ///
+    /// Returns signature (p, d, G^sk_sig, z), where:
+    ///     p := r1 - d * sk_sig
+    ///     z := r2 + d * sk_sig
+    ///     d := Hash(G^sk_sig, G^r1, H^sk_sig, H^r1, message)
+    ///
     fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
@@ -228,6 +234,11 @@ where
         })
     }
 
+    ///
+    /// Verifies (d == d') && (G^z == G^r2 G^sk_sig^d) && (H^z == H^r2 H^sk_sig^d), where:
+    ///     z := r2 + d * sk_sig
+    ///     d := Hash(G^sk_sig, G^r1, H^sk_sig, H^r1, message)
+    ///
     fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
         // Extract the signature contents.
         let AleoSignature {
