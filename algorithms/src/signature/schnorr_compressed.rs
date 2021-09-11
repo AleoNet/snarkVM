@@ -146,8 +146,6 @@ where
     type Parameters = Vec<TEProjective<TE>>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = SchnorrCompressedPublicKey<TE>;
-    type RandomizedPrivateKey = TE::ScalarField;
-    type Randomizer = [u8; 32];
     type Signature = SchnorrCompressedSignature<TE>;
 
     fn setup(message: &str) -> Self {
@@ -196,29 +194,6 @@ where
         end_timer!(keygen_time);
 
         Ok(SchnorrCompressedPublicKey(public_key.into_affine()))
-    }
-
-    fn randomize_private_key(
-        &self,
-        private_key: &Self::PrivateKey,
-        randomizer: &Self::Randomizer,
-    ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
-        let timer = start_timer!(|| "SchnorrSignature::randomize_private_key");
-        let randomized_private_key = *private_key + TE::ScalarField::from_le_bytes_mod_order(randomizer);
-        end_timer!(timer);
-        Ok(randomized_private_key)
-    }
-
-    fn randomize_public_key(
-        &self,
-        public_key: &Self::PublicKey,
-        randomizer: &Self::Randomizer,
-    ) -> Result<Self::PublicKey, SignatureError> {
-        let timer = start_timer!(|| "SchnorrSignature::randomize_public_key");
-        let group_randomizer = self.generate_public_key(&TE::ScalarField::from_le_bytes_mod_order(randomizer))?;
-        let randomized_public_key = public_key.0 + group_randomizer.0;
-        end_timer!(timer);
-        Ok(SchnorrCompressedPublicKey::<TE>(randomized_public_key))
     }
 
     fn sign<R: Rng + CryptoRng>(
@@ -274,18 +249,6 @@ where
 
         end_timer!(sign_time);
         Ok(signature)
-    }
-
-    fn sign_randomized<R: Rng + CryptoRng>(
-        &self,
-        randomized_private_key: &Self::RandomizedPrivateKey,
-        message: &[u8],
-        rng: &mut R,
-    ) -> Result<Self::Signature, SignatureError> {
-        let timer = start_timer!(|| "SchnorrSignature::sign_randomized");
-        let randomized_signature = self.sign(randomized_private_key, message, rng)?;
-        end_timer!(timer);
-        Ok(randomized_signature)
     }
 
     fn verify(

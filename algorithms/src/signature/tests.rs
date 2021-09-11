@@ -15,55 +15,29 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::SignatureScheme;
+use snarkvm_utilities::FromBytes;
+
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use snarkvm_utilities::FromBytes;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let schnorr = S::setup("sign_and_verify");
+    let signature_scheme = S::setup("sign_and_verify");
 
-    let private_key = schnorr.generate_private_key(rng).unwrap();
-    let public_key = schnorr.generate_public_key(&private_key).unwrap();
-    let signature = schnorr.sign(&private_key, message, rng).unwrap();
-    assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
+    let private_key = signature_scheme.generate_private_key(rng).unwrap();
+    let public_key = signature_scheme.generate_public_key(&private_key).unwrap();
+    let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+    assert!(signature_scheme.verify(&public_key, &message, &signature).unwrap());
 }
 
 fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let schnorr = S::setup("failed_verification");
+    let signature_scheme = S::setup("failed_verification");
 
-    let private_key = schnorr.generate_private_key(rng).unwrap();
-    let public_key = schnorr.generate_public_key(&private_key).unwrap();
-    let signature = schnorr.sign(&private_key, message, rng).unwrap();
-    assert!(!schnorr.verify(&public_key, bad_message, &signature).unwrap());
-}
-
-fn randomize_and_verify<S: SignatureScheme<Randomizer = [u8; 32]>>(message: &[u8], randomizer: [u8; 32]) {
-    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let schnorr = S::setup("randomize_and_verify");
-
-    let private_key = schnorr.generate_private_key(rng).unwrap();
-    let public_key = schnorr.generate_public_key(&private_key).unwrap();
-    let signature = schnorr.sign(&private_key, message, rng).unwrap();
-    assert!(schnorr.verify(&public_key, message, &signature).unwrap());
-
-    let randomized_private_key = schnorr.randomize_private_key(&private_key, &randomizer).unwrap();
-    let randomized_public_key = schnorr.randomize_public_key(&public_key, &randomizer).unwrap();
-    assert_eq!(
-        randomized_public_key,
-        schnorr
-            .generate_public_key(&randomized_private_key.clone().into())
-            .unwrap()
-    );
-
-    let randomized_signature = schnorr.sign_randomized(&randomized_private_key, message, rng).unwrap();
-    assert!(signature != randomized_signature);
-    assert!(
-        schnorr
-            .verify(&randomized_public_key, &message, &randomized_signature)
-            .unwrap()
-    );
+    let private_key = signature_scheme.generate_private_key(rng).unwrap();
+    let public_key = signature_scheme.generate_public_key(&private_key).unwrap();
+    let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+    assert!(!signature_scheme.verify(&public_key, bad_message, &signature).unwrap());
 }
 
 fn signature_scheme_serialization<S: SignatureScheme>() {
@@ -73,12 +47,8 @@ fn signature_scheme_serialization<S: SignatureScheme>() {
 }
 
 mod schnorr {
-    use crate::signature::{
-        tests::{failed_verification, randomize_and_verify, sign_and_verify, signature_scheme_serialization},
-        Schnorr,
-    };
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
+    use super::*;
+    use crate::signature::Schnorr;
     use snarkvm_curves::{
         edwards_bls12::EdwardsProjective as EdwardsBls12,
         edwards_bw6::EdwardsProjective as EdwardsBW6,
@@ -91,10 +61,6 @@ mod schnorr {
         let message = "Hi, I am a Schnorr signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let randomizer: [u8; 32] = rng.gen();
-        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
     }
 
     #[test]
@@ -104,10 +70,6 @@ mod schnorr {
         let message = "Hi, I am a Schnorr signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let randomizer: [u8; 32] = rng.gen();
-        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
     }
 
     #[test]
@@ -118,12 +80,8 @@ mod schnorr {
 }
 
 mod schnorr_compressed {
-    use crate::signature::{
-        tests::{failed_verification, randomize_and_verify, sign_and_verify, signature_scheme_serialization},
-        SchnorrCompressed,
-    };
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
+    use super::*;
+    use crate::signature::SchnorrCompressed;
     use snarkvm_curves::{
         edwards_bls12::EdwardsParameters as EdwardsBls12,
         edwards_bw6::EdwardsParameters as EdwardsBW6,
@@ -136,10 +94,6 @@ mod schnorr_compressed {
         let message = "Hi, I am a Schnorr signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let randomizer: [u8; 32] = rng.gen();
-        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
     }
 
     #[test]
@@ -149,10 +103,6 @@ mod schnorr_compressed {
         let message = "Hi, I am a Schnorr signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let randomizer: [u8; 32] = rng.gen();
-        randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
     }
 
     #[test]
