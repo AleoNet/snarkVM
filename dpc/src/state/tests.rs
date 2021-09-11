@@ -93,3 +93,142 @@ mod coinbase {
         }
     }
 }
+
+mod transfer {
+    use crate::{prelude::*, testnet2::*};
+    use rand::{thread_rng, Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+    use snarkvm_algorithms::{CommitmentScheme, CRH};
+    use snarkvm_utilities::{ToBytes, UniformRand};
+
+    #[test]
+    fn test_new_transfer() {
+        // Sample random seed for the RNG.
+        let seed: u64 = thread_rng().gen();
+
+        // Generate the expected state transition.
+        let (
+            expected_sender,
+            expected_recipient,
+            expected_sender_record,
+            expected_recipient_record,
+            expected_joint_serial_numbers,
+        ) = {
+            let rng = &mut ChaChaRng::seed_from_u64(seed);
+            let sender = Account::<Testnet2Parameters>::new(rng).unwrap();
+            let recipient = Account::new(rng).unwrap();
+
+            let serial_number_nonce = <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+                .hash(&[1, 2, 3])
+                .unwrap();
+
+            let commitment_randomness =
+                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+
+            // Generate sender input
+            let sender_input = Input::new_full(
+                sender.compute_key(),
+                AleoAmount::from_bytes(123456),
+                Payload::default(),
+                Executable::Noop,
+                serial_number_nonce,
+                commitment_randomness,
+            )
+            .unwrap();
+
+            let mut inputs = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
+            let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
+
+            joint_serial_numbers.extend_from_slice(&sender_input.serial_number().to_bytes_le().unwrap());
+            inputs.push(sender_input);
+
+            // Compute the padded inputs to keep the RNG in sync.
+            for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS - 1 {
+                let input = Input::<Testnet2Parameters>::new_noop(rng).unwrap();
+                joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
+                inputs.push(input);
+            }
+
+            // Generate the expected recipient output record
+            let recipient_output_record = Record::new_output(
+                Testnet2Parameters::noop_program().program_id(),
+                recipient.address,
+                false,
+                123356,
+                Payload::default(),
+                Testnet2Parameters::NUM_OUTPUT_RECORDS as u8,
+                &joint_serial_numbers,
+                rng,
+            )
+            .unwrap();
+
+            // Generate the expected sender output record
+            let sender_output_record = Record::new_output(
+                Testnet2Parameters::noop_program().program_id(),
+                sender.address,
+                true,
+                0,
+                Payload::default(),
+                (Testnet2Parameters::NUM_OUTPUT_RECORDS + 1) as u8,
+                &joint_serial_numbers,
+                rng,
+            )
+            .unwrap();
+
+            (
+                sender,
+                recipient,
+                sender_output_record,
+                recipient_output_record,
+                joint_serial_numbers,
+            )
+        };
+
+        // Generate the candidate state transition.
+        let (candidate_sender, candidate_recipient, candidate_state, candidate_joint_serial_numbers) = {
+            let rng = &mut ChaChaRng::seed_from_u64(seed);
+            let sender = Account::<Testnet2Parameters>::new(rng).unwrap();
+            let recipient = Account::new(rng).unwrap();
+
+            let serial_number_nonce = <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+                .hash(&[1, 2, 3])
+                .unwrap();
+
+            let commitment_randomness =
+                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+
+            // Generate sender input
+            let input_record = Record::new_input(
+                Testnet2Parameters::noop_program().program_id(),
+                sender.address,
+                false,
+                123456,
+                Payload::default(),
+                serial_number_nonce,
+                commitment_randomness,
+            )
+            .unwrap();
+
+            let state = StateTransition::new_transfer(
+                sender.private_key(),
+                &vec![input_record],
+                recipient.address,
+                AleoAmount::from_bytes(123356),
+                AleoAmount::from_bytes(100),
+                rng,
+            )
+            .unwrap();
+
+            let joint_serial_numbers = state.kernel().to_joint_serial_numbers().unwrap();
+
+            (sender, recipient, state, joint_serial_numbers)
+        };
+
+        assert_eq!(expected_sender.address, candidate_sender.address);
+        assert_eq!(expected_recipient.address, candidate_recipient.address);
+
+        assert_eq!(expected_joint_serial_numbers, candidate_joint_serial_numbers);
+        assert_eq!(expected_recipient_record, candidate_state.output_records()[0].clone());
+        assert_eq!(expected_sender_record, candidate_state.output_records()[1].clone());
+    }
+}
