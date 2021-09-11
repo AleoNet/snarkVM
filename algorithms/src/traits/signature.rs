@@ -17,6 +17,7 @@
 use crate::errors::SignatureError;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
+use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
@@ -41,12 +42,7 @@ pub trait SignatureScheme:
         private_key: &Self::PrivateKey,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<Self::Signature, SignatureError>;
+    ) -> Result<Self::Signature>;
 
-    fn verify(
-        &self,
-        public_key: &Self::PublicKey,
-        message: &[u8],
-        signature: &Self::Signature,
-    ) -> Result<bool, SignatureError>;
+    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool>;
 }

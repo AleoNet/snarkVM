@@ -40,6 +40,7 @@ use snarkvm_utilities::{
     ToBits,
 };
 
+use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
@@ -201,7 +202,7 @@ where
         private_key: &Self::PrivateKey,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<Self::Signature, SignatureError> {
+    ) -> Result<Self::Signature> {
         let sign_time = start_timer!(|| "SchnorrSignature::sign");
         // (k, e);
 
@@ -251,12 +252,7 @@ where
         Ok(signature)
     }
 
-    fn verify(
-        &self,
-        public_key: &Self::PublicKey,
-        message: &[u8],
-        signature: &Self::Signature,
-    ) -> Result<bool, SignatureError> {
+    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
         let verify_time = start_timer!(|| "SchnorrSignature::verify");
 
         let SchnorrCompressedSignature {
