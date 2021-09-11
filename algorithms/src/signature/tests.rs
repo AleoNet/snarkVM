@@ -46,6 +46,39 @@ fn signature_scheme_serialization<S: SignatureScheme>() {
     assert_eq!(signature_scheme, recovered_signature_scheme);
 }
 
+mod aleo {
+    use super::*;
+    use crate::signature::AleoSignatureScheme;
+    use snarkvm_curves::{
+        edwards_bls12::EdwardsParameters as EdwardsBls12,
+        edwards_bw6::EdwardsParameters as EdwardsBW6,
+    };
+
+    #[test]
+    fn test_aleo_signature_on_edwards_bls12_377() {
+        type TestSignature = AleoSignatureScheme<EdwardsBls12>;
+
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+    }
+
+    #[test]
+    fn test_aleo_signature_on_edwards_bw6() {
+        type TestSignature = AleoSignatureScheme<EdwardsBW6>;
+
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+    }
+
+    #[test]
+    fn aleo_signature_scheme_serialization() {
+        signature_scheme_serialization::<AleoSignatureScheme<EdwardsBls12>>();
+        signature_scheme_serialization::<AleoSignatureScheme<EdwardsBW6>>();
+    }
+}
+
 mod schnorr {
     use super::*;
     use crate::signature::Schnorr;

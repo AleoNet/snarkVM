@@ -32,6 +32,7 @@ use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, T
 use snarkvm_utilities::{
     bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
+    ops::Mul,
     rand::UniformRand,
     serialize::*,
     FromBits,
@@ -247,15 +248,18 @@ where
             // Compute H^sk_prf.
             let h_sk_prf = self.h_scalar_multiply(&sk_prf)?;
 
-            // Compute H^sk_sig := (H^sk_sig H^sk_prf) / H^sk_prf.
-            Self::recover_from_x_coordinate(public_key)? - h_sk_prf
+            // Compute public key := (H^sk_sig H^sk_prf).
+            let public_key = Self::recover_from_x_coordinate(public_key)?;
+
+            // Compute H^sk_sig := public key / H^sk_prf.
+            public_key - h_sk_prf
         };
 
         // Compute G^sk_sig^d.
-        let g_sk_sig_d = g_sk_sig + self.g_scalar_multiply(&verifier_challenge)?;
+        let g_sk_sig_d = self.scalar_multiply(g_sk_sig.into_projective(), &verifier_challenge)?;
 
         // Compute H^sk_sig^d.
-        let h_sk_sig_d = h_sk_sig + self.h_scalar_multiply(&verifier_challenge)?;
+        let h_sk_sig_d = self.scalar_multiply(h_sk_sig.into_projective(), &verifier_challenge)?;
 
         // Compute G^p.
         let g_p = self.g_scalar_multiply(&prover_response)?;
@@ -321,6 +325,10 @@ impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
+    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
+        Ok(base.mul(*scalar).into_affine())
+    }
+
     fn g_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
         Ok(self
             .g_bases
