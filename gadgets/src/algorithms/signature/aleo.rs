@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    algorithms::crypto_hash::PoseidonCryptoHashGadget,
     bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
@@ -23,7 +24,6 @@ use crate::{
         curves::GroupGadget,
         eq::{ConditionalEqGadget, EqGadget},
         fields::field::FieldGadget,
-        integers::Integer,
         select::CondSelectGadget,
     },
     CryptoHashGadget,
@@ -35,12 +35,12 @@ use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     signature::{AleoSignature, AleoSignatureScheme},
 };
-use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
+use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use std::{borrow::Borrow, marker::PhantomData};
 
@@ -57,33 +57,49 @@ pub struct AleoSignaturePublicKeyGadget<TE: TwistedEdwardsParameters<BaseField =
     TEAffineGadget<TE, F>,
 );
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEAffine<TE>, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AleoSignaturePublicKeyGadget<TE, F> {
+    fn recover_from_x_coordinate(x_coordinate: TE::BaseField) -> Result<TEAffine<TE>> {
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(element);
+            }
+        }
+
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(element);
+            }
+        }
+
+        Err(anyhow!("Failed to read the signature public key"))
+    }
+}
+
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE::BaseField, F>
     for AleoSignaturePublicKeyGadget<TE, F>
 {
-    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(value_gen()?.borrow().clone()))?,
-        })
+        let public_key = Self::recover_from_x_coordinate(value_gen()?.borrow().clone())?;
+        Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(public_key))?))
     }
 
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(value_gen()?.borrow().clone()))?,
-        })
+        let public_key = Self::recover_from_x_coordinate(value_gen()?.borrow().clone())?;
+        Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(public_key))?))
     }
 
-    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let point = if let Ok(pk) = value_gen() {
-            pk.borrow().clone()
+            Self::recover_from_x_coordinate(pk.borrow().clone())?
         } else {
             TEAffine::<TE>::default()
         };
@@ -97,7 +113,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEA
             .x
             .enforce_equal(cs.ns(|| "check x consistency"), &x_coordinate_gadget)?;
 
-        Ok(Self { 0: allocated_gadget })
+        Ok(Self(allocated_gadget))
     }
 }
 
@@ -171,7 +187,9 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         let verifier_challenge =
             FpGadget::<F>::alloc(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
         let sigma_public_key =
-            TEAffineGadget::<TE, F>::alloc(cs.ns(|| "alloc_sigma_public_key"), || Ok(&signature.sigma_public_key()))?;
+            TEAffineGadget::<TE, F>::alloc_without_check(cs.ns(|| "alloc_sigma_public_key"), || {
+                Ok(signature.sigma_public_key()?)
+            })?;
         let sigma_response = FpGadget::<F>::alloc(cs.ns(|| "alloc_sigma_response"), || Ok(&sigma_response))?;
 
         Ok(Self {
@@ -199,13 +217,16 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         let sigma_response: F = FromBytes::read_le(&signature.sigma_response.to_bytes_le()?[..])?;
 
         let prover_response =
-            FpGadget::<F>::alloc_constant(cs.ns(|| "alloc_prover_response"), || Ok(&prover_response))?;
-        let verifier_challenge =
-            FpGadget::<F>::alloc_constant(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
-        let sigma_public_key = TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc_sigma_public_key"), || {
-            Ok(&signature.sigma_public_key())
+            FpGadget::<F>::alloc_constant(cs.ns(|| "alloc_constant_prover_response"), || Ok(&prover_response))?;
+        let verifier_challenge = FpGadget::<F>::alloc_constant(cs.ns(|| "alloc_constant_verifier_challenge"), || {
+            Ok(&verifier_challenge)
         })?;
-        let sigma_response = FpGadget::<F>::alloc_constant(cs.ns(|| "alloc_sigma_response"), || Ok(&sigma_response))?;
+        let sigma_public_key =
+            TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc_constant_sigma_public_key"), || {
+                Ok(signature.sigma_public_key()?)
+            })?;
+        let sigma_response =
+            FpGadget::<F>::alloc_constant(cs.ns(|| "alloc_constant_sigma_response"), || Ok(&sigma_response))?;
 
         Ok(Self {
             prover_response,
@@ -227,13 +248,15 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         let verifier_challenge: F = FromBytes::read_le(&signature.verifier_challenge.to_bytes_le()?[..])?;
         let sigma_response: F = FromBytes::read_le(&signature.sigma_response.to_bytes_le()?[..])?;
 
-        let prover_response = FpGadget::<F>::alloc_input(cs.ns(|| "alloc_prover_response"), || Ok(&prover_response))?;
+        let prover_response =
+            FpGadget::<F>::alloc_input(cs.ns(|| "alloc_input_prover_response"), || Ok(&prover_response))?;
         let verifier_challenge =
-            FpGadget::<F>::alloc_input(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
-        let sigma_public_key = TEAffineGadget::<TE, F>::alloc_input(cs.ns(|| "alloc_sigma_public_key"), || {
-            Ok(&signature.sigma_public_key())
+            FpGadget::<F>::alloc_input(cs.ns(|| "alloc_input_verifier_challenge"), || Ok(&verifier_challenge))?;
+        let sigma_public_key = TEAffineGadget::<TE, F>::alloc_input(cs.ns(|| "alloc_input_sigma_public_key"), || {
+            Ok(signature.sigma_public_key()?)
         })?;
-        let sigma_response = FpGadget::<F>::alloc_input(cs.ns(|| "alloc_sigma_response"), || Ok(&sigma_response))?;
+        let sigma_response =
+            FpGadget::<F>::alloc_input(cs.ns(|| "alloc_input_sigma_response"), || Ok(&sigma_response))?;
 
         Ok(Self {
             prover_response,
@@ -416,7 +439,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero"))?;
 
         // Compute G^sk_sig.
-        let g_sk_sig = signature.sigma_public_key;
+        let g_sk_sig = &signature.sigma_public_key;
 
         // Compute H^sk_sig.
         let h_sk_sig = {
@@ -425,7 +448,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
                 // Compute the hash of G^sk_sig on the base field.
                 let output = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
                     cs.ns(|| "Poseidon of G^sk_sig"),
-                    &[g_sk_sig.x],
+                    &[g_sk_sig.x.clone()],
                 )?;
 
                 // Truncate the output to fit the scalar field.
@@ -454,21 +477,22 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             };
 
             // Compute H^sk_sig := public key / H^sk_prf.
-            public_key.0.sub(cs.ns(|| "public key / H^sk_prf"), &h_sk_prf)?
+            <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(
+                &public_key.0,
+                cs.ns(|| "public key / H^sk_prf"),
+                &h_sk_prf,
+            )?
         };
 
         // Prepare p, by converting the prover response to bits.
-        let p = {
-            let prover_response_bytes = signature
-                .prover_response
-                .to_bytes(cs.ns(|| "prover_response_to_bytes"))?;
-            prover_response_bytes.iter().flat_map(|byte| byte.to_bits_le())
-        };
+        let p = signature
+            .prover_response
+            .to_bits_le(cs.ns(|| "prover_response to_bits_le"))?;
 
         // Compute G^p.
         let g_p = {
             let mut g_p = zero_affine.clone();
-            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(p).enumerate() {
+            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(p.clone()).enumerate() {
                 let added = g_p.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
 
                 g_p = TEAffineGadget::<TE, F>::conditionally_select(
@@ -507,7 +531,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             &g_sk_sig,
             cs.ns(|| "G^sk_sig^d"),
             &zero_affine,
-            d.into_iter(),
+            d.clone().into_iter(),
         )?;
 
         // Compute H^sk_sig^d.
@@ -569,15 +593,14 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         };
 
         // Prepare z, by converting the sigma response to bits.
-        let z = {
-            let sigma_response_bytes = signature.sigma_response.to_bytes(cs.ns(|| "sigma_response_to_bytes"))?;
-            sigma_response_bytes.iter().flat_map(|byte| byte.to_bits_le())
-        };
+        let z = signature
+            .sigma_response
+            .to_bits_le(cs.ns(|| "sigma_response to_bits_le"))?;
 
         // Compute the sigma challenge on G as G^z.
         let sigma_challenge_g = {
             let mut g_z = zero_affine.clone();
-            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(z).enumerate() {
+            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(z.clone()).enumerate() {
                 let added = g_z.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
 
                 g_z = TEAffineGadget::<TE, F>::conditionally_select(
@@ -617,7 +640,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Compute G^r.
         let g_r = {
             let mut g_z = zero_affine.clone();
-            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(r).enumerate() {
+            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(r.clone()).enumerate() {
                 let added = g_z.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
 
                 g_z = TEAffineGadget::<TE, F>::conditionally_select(
@@ -647,16 +670,24 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         };
 
         // Compute G^r2 := G^r / G^r1.
-        let g_r2 = g_r.sub(cs.ns(|| "G^r / G^r1"), &g_r1)?;
+        let g_r2 = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(&g_r, cs.ns(|| "G^r / G^r1"), &g_r1)?;
 
         // Compute H^r2 := H^r / H^r1.
-        let h_r2 = h_r.sub(cs.ns(|| "H^r / H^r1"), &h_r1)?;
+        let h_r2 = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(&h_r, cs.ns(|| "H^r / H^r1"), &h_r1)?;
 
         // Compute the candidate sigma challenge for G as (G^r2 G^sk_sig^d).
-        let candidate_sigma_challenge_g = g_r2.add(cs.ns(|| "G^r2 G^sk_sig^d"), &g_sk_sig_d)?;
+        let candidate_sigma_challenge_g = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::add(
+            &g_r2,
+            cs.ns(|| "G^r2 G^sk_sig^d"),
+            &g_sk_sig_d,
+        )?;
 
         // Compute the candidate sigma challenge for H as (H^r2 H^sk_sig^d).
-        let candidate_sigma_challenge_h = h_r2.add(cs.ns(|| "H^r2 H^sk_sig^d"), &h_sk_sig_d)?;
+        let candidate_sigma_challenge_h = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::add(
+            &h_r2,
+            cs.ns(|| "H^r2 H^sk_sig^d"),
+            &h_sk_sig_d,
+        )?;
 
         // Check the verifier challenge equals.
         let verifier_challenge_equals = signature
@@ -671,9 +702,12 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let sigma_challenge_h_equals =
             sigma_challenge_h.is_eq(cs.ns(|| "Check sigma challenge for H"), &candidate_sigma_challenge_h)?;
 
+        // Execute equality checks.
+        let first_equality_check =
+            Boolean::and(cs.ns(|| "a ^ b"), &verifier_challenge_equals, &sigma_challenge_g_equals)?;
         Ok(Boolean::and(
             cs.ns(|| "b ^ c"),
-            &Boolean::and(cs.ns(|| "a ^ b"), &verifier_challenge_equals, &sigma_challenge_g_equals)?,
+            &first_equality_check,
             &sigma_challenge_h_equals,
         )?)
     }
