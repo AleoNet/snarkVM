@@ -20,7 +20,6 @@ use crate::{
     CryptoHash,
     SignatureError,
     SignatureScheme,
-    PRF,
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
@@ -29,19 +28,17 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
-    ops::Mul,
     rand::UniformRand,
     serialize::*,
-    to_bytes_le,
     FromBits,
     ToBits,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
@@ -57,7 +54,7 @@ use rand::{CryptoRng, Rng};
 pub struct AleoSignature<TE: TwistedEdwardsParameters> {
     pub prover_response: TE::ScalarField,
     pub verifier_challenge: TE::ScalarField,
-    pub sigma_key: TE::BaseField,
+    pub sigma_public_key: TE::BaseField,
     pub sigma_response: TE::ScalarField,
 }
 
@@ -66,7 +63,7 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.prover_response.write_le(&mut writer)?;
         self.verifier_challenge.write_le(&mut writer)?;
-        self.sigma_key.write_le(&mut writer)?;
+        self.sigma_public_key.write_le(&mut writer)?;
         self.sigma_response.write_le(&mut writer)
     }
 }
@@ -76,66 +73,15 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let prover_response = TE::ScalarField::read_le(&mut reader)?;
         let verifier_challenge = TE::ScalarField::read_le(&mut reader)?;
-        let sigma_key = TE::BaseField::read_le(&mut reader)?;
+        let sigma_public_key = TE::BaseField::read_le(&mut reader)?;
         let sigma_response = TE::ScalarField::read_le(&mut reader)?;
 
         Ok(Self {
             prover_response,
             verifier_challenge,
-            sigma_key,
+            sigma_public_key,
             sigma_response,
         })
-    }
-}
-
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "TE: TwistedEdwardsParameters"),
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    Hash(bound = "TE: TwistedEdwardsParameters"),
-    Default(bound = "TE: TwistedEdwardsParameters")
-)]
-pub struct AleoSignaturePublicKey<TE: TwistedEdwardsParameters>(pub TEAffine<TE>);
-
-impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignaturePublicKey<TE> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        let x_coordinate = self.0.to_x_coordinate();
-        x_coordinate.write_le(&mut writer)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignaturePublicKey<TE> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = TE::BaseField::read_le(&mut reader)?;
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element));
-            }
-        }
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element));
-            }
-        }
-
-        Err(SignatureError::Message("Failed to read the signature public key".into()).into())
-    }
-}
-
-impl<F: Field, TE: TwistedEdwardsParameters> ToConstraintField<F> for AleoSignaturePublicKey<TE>
-where
-    TE::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        self.0.to_x_coordinate().to_field_elements()
     }
 }
 
@@ -155,9 +101,9 @@ impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    type Parameters = Vec<TEProjective<TE>>;
+    type Parameters = (Vec<TEProjective<TE>>, Vec<TEProjective<TE>>);
     type PrivateKey = TE::ScalarField;
-    type PublicKey = AleoSignaturePublicKey<TE>;
+    type PublicKey = TE::BaseField;
     type Signature = AleoSignature<TE>;
 
     fn setup(message: &str) -> Self {
@@ -199,8 +145,8 @@ where
         Self { g_bases, h_bases }
     }
 
-    fn parameters(&self) -> &Self::Parameters {
-        &self.g_bases
+    fn parameters(&self) -> Self::Parameters {
+        (self.g_bases.clone(), self.h_bases.clone())
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
@@ -209,19 +155,21 @@ where
 
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
         // Compute G^sk_sig.
-        let g_sk_sig = self.g_scalar_multiply(&private_key);
+        let g_sk_sig = self.g_scalar_multiply(&private_key)?;
 
         // Compute H^sk_sig.
-        let h_sk_sig = self.h_scalar_multiply(&private_key);
+        let h_sk_sig = self.h_scalar_multiply(&private_key)?;
 
         // Compute sk_prf := RO(G^sk_sig).
         let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x])?;
 
         // Compute H^sk_prf.
-        let h_sk_prf = self.h_scalar_multiply(&sk_prf);
+        let h_sk_prf = self.h_scalar_multiply(&sk_prf)?;
 
         // Compute H^sk_sig H^sk_prf.
-        Ok(AleoSignaturePublicKey(h_sk_sig + h_sk_prf))
+        let public_key = h_sk_sig + h_sk_prf;
+
+        Ok(public_key.x)
     }
 
     fn sign<R: Rng + CryptoRng>(
@@ -239,16 +187,16 @@ where
         }
 
         // Compute G^r1.
-        let g_r1 = self.g_scalar_multiply(&r1);
+        let g_r1 = self.g_scalar_multiply(&r1)?;
 
         // Compute H^r1.
-        let h_r1 = self.h_scalar_multiply(&r1);
+        let h_r1 = self.h_scalar_multiply(&r1)?;
 
         // Compute G^sk_sig.
-        let g_sk_sig = self.g_scalar_multiply(&private_key);
+        let g_sk_sig = self.g_scalar_multiply(&private_key)?;
 
         // Compute H^sk_sig.
-        let h_sk_sig = self.h_scalar_multiply(&private_key);
+        let h_sk_sig = self.h_scalar_multiply(&private_key)?;
 
         // Compute the verifier challenge.
         let verifier_challenge = {
@@ -274,7 +222,7 @@ where
         Ok(AleoSignature {
             prover_response,
             verifier_challenge,
-            sigma_key: g_sk_sig.x,
+            sigma_public_key: g_sk_sig.x,
             sigma_response,
         })
     }
@@ -284,59 +232,45 @@ where
         let AleoSignature {
             prover_response,
             verifier_challenge,
-            sigma_key,
+            sigma_public_key,
             sigma_response,
         } = signature;
 
         // Compute G^sk_sig.
-        let g_sk_sig = {
-            if let Some(element) = TEAffine::<TE>::from_x_coordinate(*sigma_key, true) {
-                if element.is_in_correct_subgroup_assuming_on_curve() {
-                    element
-                }
-            }
-
-            if let Some(element) = TEAffine::<TE>::from_x_coordinate(*sigma_key, false) {
-                if element.is_in_correct_subgroup_assuming_on_curve() {
-                    element
-                }
-            }
-
-            return Err(SignatureError::Message("Failed to read the signature public key".into()).into());
-        };
+        let g_sk_sig = Self::recover_from_x_coordinate(sigma_public_key)?;
 
         // Compute H^sk_sig.
         let h_sk_sig = {
             // Compute sk_prf := RO(G^sk_sig).
-            let sk_prf = self.hash_to_scalar_field(&g_sk_sig.x)?;
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x])?;
 
             // Compute H^sk_prf.
-            let h_sk_prf = self.h_scalar_multiply(&sk_prf);
+            let h_sk_prf = self.h_scalar_multiply(&sk_prf)?;
 
             // Compute H^sk_sig := (H^sk_sig H^sk_prf) / H^sk_prf.
-            public_key.0 - h_sk_prf
+            Self::recover_from_x_coordinate(public_key)? - h_sk_prf
         };
 
         // Compute G^sk_sig^d.
-        let g_sk_sig_d = g_sk_sig + self.g_scalar_multiply(&verifier_challenge);
+        let g_sk_sig_d = g_sk_sig + self.g_scalar_multiply(&verifier_challenge)?;
 
         // Compute H^sk_sig^d.
-        let h_sk_sig_d = h_sk_sig + self.h_scalar_multiply(&verifier_challenge);
+        let h_sk_sig_d = h_sk_sig + self.h_scalar_multiply(&verifier_challenge)?;
 
         // Compute G^p.
-        let g_p = self.g_scalar_multiply(&prover_response);
+        let g_p = self.g_scalar_multiply(&prover_response)?;
 
         // Compute H^p.
-        let h_p = self.h_scalar_multiply(&prover_response);
+        let h_p = self.h_scalar_multiply(&prover_response)?;
 
         // Compute r := r1 + r2 = p + z.
         let r = *prover_response + sigma_response;
 
         // Compute G^r.
-        let g_r = self.g_scalar_multiply(&r);
+        let g_r = self.g_scalar_multiply(&r)?;
 
         // Compute H^r.
-        let h_r = self.h_scalar_multiply(&r);
+        let h_r = self.h_scalar_multiply(&r)?;
 
         // Compute G^r1 := G^p G^sk_sig^d.
         let g_r1 = g_p + g_sk_sig_d;
@@ -366,10 +300,10 @@ where
         };
 
         // Compute the sigma challenge on G as G^z.
-        let sigma_challenge_g = self.g_scalar_multiply(&sigma_response);
+        let sigma_challenge_g = self.g_scalar_multiply(&sigma_response)?;
 
         // Compute the sigma challenge on H as H^z.
-        let sigma_challenge_h = self.h_scalar_multiply(&sigma_response);
+        let sigma_challenge_h = self.h_scalar_multiply(&sigma_response)?;
 
         // Compute the candidate sigma challenge for G as (G^r2 G^sk_sig^d).
         let candidate_sigma_challenge_g = g_r2 + g_sk_sig_d;
@@ -387,28 +321,30 @@ impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    fn g_scalar_multiply(&self, scalar: &TE::ScalarField) -> TEAffine<TE> {
-        self.g_bases
+    fn g_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
+        Ok(self
+            .g_bases
             .iter()
             .zip_eq(from_bytes_le_to_bits_le(&scalar.to_bytes_le()?))
             .filter_map(|(base, bit)| match bit {
                 true => Some(base),
                 false => None,
             })
-            .sum()
-            .into_affine()
+            .sum::<TEProjective<TE>>()
+            .into_affine())
     }
 
-    fn h_scalar_multiply(&self, scalar: &TE::ScalarField) -> TEAffine<TE> {
-        self.h_bases
+    fn h_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
+        Ok(self
+            .h_bases
             .iter()
             .zip_eq(from_bytes_le_to_bits_le(&scalar.to_bytes_le()?))
             .filter_map(|(base, bit)| match bit {
                 true => Some(base),
                 false => None,
             })
-            .sum()
-            .into_affine()
+            .sum::<TEProjective<TE>>()
+            .into_affine())
     }
 
     fn hash_to_scalar_field(&self, input: &[TE::BaseField]) -> Result<TE::ScalarField> {
@@ -418,17 +354,35 @@ where
         // Truncate the output to fit in the scalar field.
         let mut bits = output.to_repr().to_bits_le();
         bits.resize(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize, false);
+        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
 
         // Output the scalar field.
-        <TE::ScalarField as PrimeField>::from_repr(<TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits))?
+        match <TE::ScalarField as PrimeField>::from_repr(biginteger) {
+            Some(scalar) => Ok(scalar),
+            _ => Err(anyhow!("Failed to hash input into scalar field")),
+        }
+    }
+
+    fn recover_from_x_coordinate(x_coordinate: &TE::BaseField) -> Result<TEAffine<TE>> {
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(*x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(element);
+            }
+        }
+
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(*x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(element);
+            }
+        }
+
+        Err(SignatureError::Message("Failed to read the signature public key".into()).into())
     }
 }
 
-impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE> {
-    fn from(generator_powers: Vec<TEProjective<TE>>) -> Self {
-        Self {
-            g_bases: generator_powers,
-        }
+impl<TE: TwistedEdwardsParameters> From<(Vec<TEProjective<TE>>, Vec<TEProjective<TE>>)> for AleoSignatureScheme<TE> {
+    fn from((g_bases, h_bases): (Vec<TEProjective<TE>>, Vec<TEProjective<TE>>)) -> Self {
+        Self { g_bases, h_bases }
     }
 }
 
@@ -438,6 +392,12 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
         for g in &self.g_bases {
             g.into_affine().write_le(&mut writer)?;
         }
+
+        (self.h_bases.len() as u32).write_le(&mut writer)?;
+        for h in &self.h_bases {
+            h.into_affine().write_le(&mut writer)?;
+        }
+
         Ok(())
     }
 }
@@ -445,16 +405,21 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
 impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let generator_powers_length: u32 = FromBytes::read_le(&mut reader)?;
-        let mut generator_powers = Vec::with_capacity(generator_powers_length as usize);
-        for _ in 0..generator_powers_length {
+        let g_bases_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut g_bases = Vec::with_capacity(g_bases_length as usize);
+        for _ in 0..g_bases_length {
             let g: TEAffine<TE> = FromBytes::read_le(&mut reader)?;
-            generator_powers.push(g.into_projective());
+            g_bases.push(g.into_projective());
         }
 
-        Ok(Self {
-            g_bases: generator_powers,
-        })
+        let h_bases_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut h_bases = Vec::with_capacity(h_bases_length as usize);
+        for _ in 0..h_bases_length {
+            let h: TEAffine<TE> = FromBytes::read_le(&mut reader)?;
+            h_bases.push(h.into_projective());
+        }
+
+        Ok(Self { g_bases, h_bases })
     }
 }
 

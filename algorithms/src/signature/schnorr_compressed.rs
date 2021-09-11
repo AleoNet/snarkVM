@@ -172,8 +172,8 @@ where
         Self { generator_powers }
     }
 
-    fn parameters(&self) -> &Self::Parameters {
-        &self.generator_powers
+    fn parameters(&self) -> Self::Parameters {
+        self.generator_powers.clone()
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
