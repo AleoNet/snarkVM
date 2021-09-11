@@ -282,7 +282,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let account_cs = &mut cs.ns(|| "Check account");
 
             // Allocate the account private key.
-            let (pk_sig, sk_prf, r_pk) = {
+            let (pk_sig, sk_prf) = {
                 let pk_sig_native = compute_key.pk_sig();
                 let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
                     C::AccountSignatureScheme,
@@ -290,27 +290,25 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 >>::PublicKeyGadget::alloc(
                     &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
-                let sk_prf = UInt8::alloc_vec(&mut cs.ns(|| "Declare sk_prf as seed"), compute_key.sk_prf())?;
-                let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
+                // let sk_prf = UInt8::alloc_vec(&mut cs.ns(|| "Declare sk_prf as seed"), compute_key.sk_prf())?;
+                let sk_prf = <C::AccountCommitmentGadget as CommitmentGadget<
                     C::AccountCommitmentScheme,
                     C::InnerScalarField,
-                >>::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
-                    Ok(compute_key.r_pk())
-                })?;
+                >>::RandomnessGadget::alloc(
+                    &mut account_cs.ns(|| "Declare sk_prf"),
+                    || Ok(compute_key.sk_prf().to_bytes_le()?),
+                )?;
 
-                (pk_sig, sk_prf, r_pk)
+                (pk_sig, sk_prf)
             };
 
             // Construct the account view key.
             let candidate_account_view_key = {
-                let mut account_view_key_input = pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?;
-                account_view_key_input.extend_from_slice(&sk_prf);
-
                 // This is the record decryption key.
                 let candidate_account_commitment = account_commitment_parameters.check_commitment_gadget(
-                    &mut account_cs.ns(|| "Compute the account commitment."),
-                    &account_view_key_input,
-                    &r_pk,
+                    &mut account_cs.ns(|| "Compute the account commitment"),
+                    &pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?,
+                    &sk_prf,
                 )?;
 
                 // Enforce the account commitment bytes (padded) correspond to the
@@ -381,6 +379,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::check_evaluation_gadget(
                 &mut sn_cs.ns(|| "Compute serial number"),
+                // &sk_prf.to_bytes(sn_cs.ns(|| "sk_prf to bytes"))?,
                 &sk_prf,
                 &given_serial_number_nonce_bytes,
             )?;

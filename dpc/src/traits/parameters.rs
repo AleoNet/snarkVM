@@ -80,7 +80,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
     type AccountCommitmentScheme: CommitmentScheme<
         Output = Self::AccountCommitment,
-        // Randomness = <Self::AccountPRF as PRF>::Output,
+        // Randomness = <Self::SerialNumberPRF as PRF>::Seed,
     >;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
     type AccountCommitment: ToConstraintField<Self::InnerScalarField>
@@ -99,17 +99,16 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed. Invoked only over `Self::InnerScalarField`.
-    type AccountPRF: PRF<Input = Self::InnerScalarField, Seed = Self::AccountSeed>;
+    type AccountPRF: PRF<Input = Self::ProgramScalarField, Seed = Self::AccountSeed>;
     type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<
-        PrivateKey = Self::AccountSignaturePrivateKey,
+        PrivateKey = <Self::AccountPRF as PRF>::Output,
         PublicKey = Self::AccountSignaturePublicKey,
         Signature = Self::AccountSignature,
     >;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
-    type AccountSignaturePrivateKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + PartialEq + Eq;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
@@ -259,6 +258,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     /// Record serial number tree instantiation.
     type RecordSerialNumberTreeCRH: CRH<Output = Self::RecordSerialNumberTreeDigest>;
     type RecordSerialNumberTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Copy
         + Clone
         + Debug
         + Display
@@ -268,8 +268,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Hash
         + Default
         + Send
-        + Sync
-        + Copy;
+        + Sync;
     type RecordSerialNumberTreeParameters: LoadableMerkleParameters<H = Self::RecordSerialNumberTreeCRH>;
 
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
@@ -287,7 +286,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Send;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberPRF: PRF<Output = Self::SerialNumber>;
+    type SerialNumberPRF: PRF<Input = Self::SerialNumberNonce, Output = Self::SerialNumber>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
     type SerialNumber: ToConstraintField<Self::InnerScalarField>
         + Clone

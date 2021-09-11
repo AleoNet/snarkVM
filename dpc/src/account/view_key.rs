@@ -53,7 +53,7 @@ impl<C: Parameters> ViewKey<C> {
 
     /// Signs a message using the account view key.
     pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<C::AccountSignature, AccountError> {
-        let signature_private_key = FromBytes::from_bytes_le(&self.decryption_key.to_bytes_le()?)?;
+        let signature_private_key = self.decryption_key;
         Ok(C::account_signature_scheme().sign(&signature_private_key, message, rng)?)
     }
 }

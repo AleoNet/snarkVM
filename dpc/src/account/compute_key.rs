@@ -16,7 +16,7 @@
 
 use crate::{AccountError, Parameters, PrivateKey};
 use snarkvm_algorithms::{CommitmentScheme, EncryptionScheme, PRF};
-use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBits, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, FromBytes, ToBits, ToBytes};
 
 use rand::thread_rng;
 use std::{
@@ -33,8 +33,6 @@ use std::{
 pub struct ComputeKey<C: Parameters> {
     pk_sig: C::AccountSignaturePublicKey,
     sk_prf: <C::SerialNumberPRF as PRF>::Seed,
-    pub(super) r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
-    commitment_input: Vec<u8>,
 }
 
 impl<C: Parameters> ComputeKey<C> {
@@ -45,18 +43,9 @@ impl<C: Parameters> ComputeKey<C> {
     pub(crate) fn new(
         pk_sig: C::AccountSignaturePublicKey,
         sk_prf: <C::SerialNumberPRF as PRF>::Seed,
-        r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, AccountError> {
-        // Construct the commitment input for the account address.
-        let commitment_input = to_bytes_le![pk_sig, sk_prf]?;
-
-        // Initialize a candidate compute key.
-        let compute_key = Self {
-            pk_sig,
-            sk_prf,
-            r_pk,
-            commitment_input,
-        };
+        // Initialize the compute key.
+        let compute_key = Self { pk_sig, sk_prf };
 
         // Returns the compute key if it is valid.
         match compute_key.is_valid() {
@@ -80,17 +69,15 @@ impl<C: Parameters> ComputeKey<C> {
         &self.sk_prf
     }
 
-    /// Returns a reference to the commitment randomness for the decryption key.
-    pub fn r_pk(&self) -> &<C::AccountCommitmentScheme as CommitmentScheme>::Randomness {
-        &self.r_pk
-    }
-
     /// Returns the decryption key for the account view key.
     pub fn to_decryption_key(
         &self,
     ) -> Result<<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey, AccountError> {
+        let sk_prf: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness =
+            FromBytes::read_le(&self.sk_prf.to_bytes_le()?[..])?;
+
         // Compute the commitment, which is used as the decryption key.
-        let commitment = C::account_commitment_scheme().commit(&self.commitment_input, &self.r_pk)?;
+        let commitment = C::account_commitment_scheme().commit(&self.pk_sig.to_bytes_le()?, &sk_prf)?;
         let commitment_bytes = commitment.to_bytes_le()?;
 
         // Determine the number of MSB bits we must enforce are zero,
@@ -135,17 +122,14 @@ impl<C: Parameters> FromBytes for ComputeKey<C> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let pk_sig = FromBytes::read_le(&mut reader)?;
         let sk_prf = FromBytes::read_le(&mut reader)?;
-        let r_pk = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self::new(pk_sig, sk_prf, r_pk)?)
+        Ok(Self::new(pk_sig, sk_prf)?)
     }
 }
 
 impl<C: Parameters> ToBytes for ComputeKey<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.pk_sig.write_le(&mut writer)?;
-        self.sk_prf.write_le(&mut writer)?;
-        self.r_pk.write_le(&mut writer)
+        self.sk_prf.write_le(&mut writer)
     }
 }
 
@@ -153,8 +137,8 @@ impl<C: Parameters> fmt::Debug for ComputeKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "ComputeKey {{ pk_sig: {:?}, sk_prf: {:?}, r_pk: {:?} }}",
-            self.pk_sig, self.sk_prf, self.r_pk
+            "ComputeKey {{ pk_sig: {:?}, sk_prf: {:?} }}",
+            self.pk_sig, self.sk_prf
         )
     }
 }

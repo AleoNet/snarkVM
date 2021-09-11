@@ -21,7 +21,7 @@ use std::{fmt::Debug, hash::Hash};
 
 pub trait PRF {
     type Input: FromBytes + Default;
-    type Output: ToBytes + Eq + Clone + Default + Hash;
+    type Output: ToBytes + Eq + Clone + Default + Debug + Hash;
     type Seed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug;
 
     fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, PRFError>;
