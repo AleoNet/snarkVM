@@ -16,7 +16,7 @@
 
 mod schnorr {
     use crate::{
-        algorithms::signature::{SchnorrGadget, SchnorrPublicKeyGadget},
+        algorithms::signature::SchnorrGadget,
         curves::edwards_bls12::EdwardsBls12Gadget,
         integers::uint::UInt8,
         traits::{algorithms::SignatureGadget, alloc::AllocGadget, eq::EqGadget},
@@ -25,81 +25,13 @@ mod schnorr {
     use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::ToBytes;
 
-    use rand::{thread_rng, Rng, SeedableRng};
+    use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
 
     type SchnorrScheme = Schnorr<EdwardsProjective>;
     type TestSignature = Schnorr<EdwardsProjective>;
     type TestSignatureGadget = SchnorrGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
-
-    #[test]
-    fn test_schnorr_signature_randomize_public_key_gadget() {
-        // Setup environment
-        let mut cs = TestConstraintSystem::<Fr>::new();
-        let rng = &mut thread_rng();
-
-        // Native Schnorr message
-        let message: [u8; 32] = rng.gen();
-
-        // Native Schnorr signing
-        let schnorr = SchnorrScheme::setup("test_schnorr_signature_randomize_public_key_gadget");
-        let private_key = schnorr.generate_private_key(rng).unwrap();
-        let public_key = schnorr.generate_public_key(&private_key).unwrap();
-        let signature = schnorr.sign(&private_key, &message, rng).unwrap();
-        assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
-
-        // Native Schnorr randomization
-        let randomizer: [u8; 32] = rng.gen();
-        let randomized_private_key = schnorr.randomize_private_key(&private_key, &randomizer).unwrap();
-        let randomized_public_key = schnorr.randomize_public_key(&public_key, &randomizer).unwrap();
-        let randomized_signature = schnorr.sign_randomized(&randomized_private_key, &message, rng).unwrap();
-        assert!(signature != randomized_signature);
-        assert!(
-            schnorr
-                .verify(&randomized_public_key, &message, &randomized_signature)
-                .unwrap()
-        );
-
-        // Circuit Schnorr randomized public key (candidate)
-        let schnorr_gadget =
-            TestSignatureGadget::alloc_constant(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
-        let candidate_public_key = SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc(
-            &mut cs.ns(|| "candidate_public_key"),
-            || Ok(&public_key),
-        )
-        .unwrap();
-        let candidate_randomizer = UInt8::alloc_vec(
-            &mut cs.ns(|| "candidate_randomizer"),
-            &randomizer.to_bytes_le().unwrap(),
-        )
-        .unwrap();
-        let candidate_randomized_public_key = schnorr_gadget
-            .randomize_public_key(
-                &mut cs.ns(|| "candidate_randomized_public_key"),
-                &candidate_public_key,
-                &candidate_randomizer,
-            )
-            .unwrap();
-
-        // Circuit Schnorr randomized public key (given)
-        let given_randomized_public_key =
-            SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc_input(
-                &mut cs.ns(|| "given_randomized_public_key"),
-                || Ok(randomized_public_key),
-            )
-            .unwrap();
-
-        candidate_randomized_public_key
-            .enforce_equal(&mut cs.ns(|| "enforce_equal"), &given_randomized_public_key)
-            .unwrap();
-
-        if !cs.is_satisfied() {
-            println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
-        }
-        assert!(cs.is_satisfied());
-    }
 
     #[test]
     fn schnorr_signature_verification_test() {
@@ -215,7 +147,7 @@ mod schnorr {
 
 mod schnorr_compressed {
     use crate::{
-        algorithms::signature::{SchnorrCompressedGadget, SchnorrCompressedPublicKeyGadget},
+        algorithms::signature::SchnorrCompressedGadget,
         integers::uint::UInt8,
         traits::{algorithms::SignatureGadget, alloc::AllocGadget, eq::EqGadget},
         Boolean,
@@ -223,80 +155,13 @@ mod schnorr_compressed {
     use snarkvm_algorithms::{signature::SchnorrCompressed, traits::SignatureScheme};
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsParameters};
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::ToBytes;
 
-    use rand::{thread_rng, Rng, SeedableRng};
+    use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
 
     type SchnorrScheme = SchnorrCompressed<EdwardsParameters>;
     type TestSignature = SchnorrCompressed<EdwardsParameters>;
     type TestSignatureGadget = SchnorrCompressedGadget<EdwardsParameters, Fr>;
-
-    #[test]
-    fn test_schnorr_signature_randomize_public_key_gadget() {
-        // Setup environment
-        let mut cs = TestConstraintSystem::<Fr>::new();
-        let rng = &mut thread_rng();
-
-        // Native Schnorr message
-        let message: [u8; 32] = rng.gen();
-
-        // Native Schnorr signing
-        let schnorr = SchnorrScheme::setup("test_schnorr_signature_randomize_public_key_gadget");
-        let private_key = schnorr.generate_private_key(rng).unwrap();
-        let public_key = schnorr.generate_public_key(&private_key).unwrap();
-        let signature = schnorr.sign(&private_key, &message, rng).unwrap();
-        assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
-
-        // Native Schnorr randomization
-        let randomizer: [u8; 32] = rng.gen();
-        let randomized_private_key = schnorr.randomize_private_key(&private_key, &randomizer).unwrap();
-        let randomized_public_key = schnorr.randomize_public_key(&public_key, &randomizer).unwrap();
-        let randomized_signature = schnorr.sign_randomized(&randomized_private_key, &message, rng).unwrap();
-        assert!(signature != randomized_signature);
-        assert!(
-            schnorr
-                .verify(&randomized_public_key, &message, &randomized_signature)
-                .unwrap()
-        );
-
-        // Circuit Schnorr randomized public key (candidate)
-        let schnorr_gadget =
-            TestSignatureGadget::alloc_constant(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
-        let candidate_public_key = SchnorrCompressedPublicKeyGadget::<EdwardsParameters, Fr>::alloc(
-            &mut cs.ns(|| "candidate_public_key"),
-            || Ok(&public_key),
-        )
-        .unwrap();
-        let candidate_randomizer = UInt8::alloc_vec(
-            &mut cs.ns(|| "candidate_randomizer"),
-            &randomizer.to_bytes_le().unwrap(),
-        )
-        .unwrap();
-        let candidate_randomized_public_key = schnorr_gadget
-            .randomize_public_key(
-                &mut cs.ns(|| "candidate_randomized_public_key"),
-                &candidate_public_key,
-                &candidate_randomizer,
-            )
-            .unwrap();
-
-        // Circuit Schnorr randomized public key (given)
-        let given_randomized_public_key = SchnorrCompressedPublicKeyGadget::<EdwardsParameters, Fr>::alloc_input(
-            &mut cs.ns(|| "given_randomized_public_key"),
-            || Ok(randomized_public_key),
-        )
-        .unwrap();
-
-        candidate_randomized_public_key
-            .enforce_equal(&mut cs.ns(|| "enforce_equal"), &given_randomized_public_key)
-            .unwrap();
-
-        if !cs.is_satisfied() {
-            println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
-        }
-        assert!(cs.is_satisfied());
-    }
 
     #[test]
     fn schnorr_signature_verification_test() {

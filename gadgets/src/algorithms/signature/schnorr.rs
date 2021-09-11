@@ -317,28 +317,6 @@ where
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
     type SignatureGadget = SchnorrSignatureGadget<G, F>;
 
-    fn randomize_public_key<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        public_key: &Self::PublicKeyGadget,
-        randomizer: &[UInt8],
-    ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let randomness = randomizer.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
-
-        let mut randomized_public_key = GG::zero(cs.ns(|| "zero"))?;
-        randomized_public_key.scalar_multiplication(
-            cs.ns(|| "check_randomization_gadget"),
-            randomness.iter().zip_eq(&self.signature.generator_powers),
-        )?;
-        randomized_public_key = randomized_public_key.add(cs.ns(|| "pk + rG"), &public_key.public_key)?;
-
-        Ok(SchnorrPublicKeyGadget {
-            public_key: randomized_public_key,
-            _group: PhantomData,
-            _engine: PhantomData,
-        })
-    }
-
     fn verify<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,

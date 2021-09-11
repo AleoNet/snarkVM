@@ -55,8 +55,27 @@ use rand::{CryptoRng, Rng};
 pub struct AleoSignature<TE: TwistedEdwardsParameters> {
     pub prover_response: TE::ScalarField,
     pub verifier_challenge: TE::ScalarField,
-    pub sigma_public_key: TE::BaseField,
+    sigma_public_key: TE::BaseField,
     pub sigma_response: TE::ScalarField,
+}
+
+impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
+    #[inline]
+    pub fn sigma_public_key(&self) -> Result<TEAffine<TE>> {
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.sigma_public_key, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(element);
+            }
+        }
+
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.sigma_public_key, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(element);
+            }
+        }
+
+        Err(SignatureError::Message("Failed to read the signature public key".into()).into())
+    }
 }
 
 impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {

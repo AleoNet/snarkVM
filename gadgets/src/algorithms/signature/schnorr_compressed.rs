@@ -366,33 +366,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     type PublicKeyGadget = SchnorrCompressedPublicKeyGadget<TE, F>;
     type SignatureGadget = SchnorrCompressedSignatureGadget<TE, F>;
 
-    fn randomize_public_key<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        public_key: &Self::PublicKeyGadget,
-        randomizer: &[UInt8],
-    ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let affine_zero: TEAffineGadget<TE, F> =
-            <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
-
-        let randomness = randomizer.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
-
-        let mut randomized_public_key = affine_zero;
-        randomized_public_key.scalar_multiplication(
-            cs.ns(|| "check_randomization_gadget"),
-            randomness.iter().zip_eq(&self.signature.generator_powers),
-        )?;
-        randomized_public_key = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::add(
-            &randomized_public_key,
-            cs.ns(|| "pk + rG"),
-            &public_key.0,
-        )?;
-
-        Ok(SchnorrCompressedPublicKeyGadget {
-            0: randomized_public_key,
-        })
-    }
-
     fn verify<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
