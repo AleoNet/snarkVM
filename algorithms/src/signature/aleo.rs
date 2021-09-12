@@ -30,13 +30,14 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
-    bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
     ops::Mul,
     rand::UniformRand,
     serialize::*,
     FromBits,
+    FromBytes,
     ToBits,
+    ToBytes,
 };
 
 use anyhow::{anyhow, Result};
@@ -131,18 +132,13 @@ where
             <TE::ScalarField as PrimeField>::Parameters::CAPACITY < <TE::BaseField as PrimeField>::Parameters::CAPACITY
         );
 
-        // Round to the closest multiple of 64 to factor bit and byte encoding differences.
-        let private_key_size_in_bits = Self::PrivateKey::size_in_bits();
-        assert!(private_key_size_in_bits < usize::MAX - 63);
-        let num_powers = (private_key_size_in_bits + 63) & !63usize;
-
         // Compute the powers of G.
         let g_bases = {
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&format!("{} for G", message));
 
             let mut g = base.into_projective();
-            let mut g_bases = Vec::with_capacity(num_powers);
-            for _ in 0..num_powers {
+            let mut g_bases = Vec::with_capacity(Self::PrivateKey::size_in_bits());
+            for _ in 0..Self::PrivateKey::size_in_bits() {
                 g_bases.push(g);
                 g.double_in_place();
             }
@@ -154,8 +150,8 @@ where
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&format!("{} for H", message));
 
             let mut h = base.into_projective();
-            let mut h_bases = Vec::with_capacity(num_powers);
-            for _ in 0..num_powers {
+            let mut h_bases = Vec::with_capacity(Self::PrivateKey::size_in_bits());
+            for _ in 0..Self::PrivateKey::size_in_bits() {
                 h_bases.push(h);
                 h.double_in_place();
             }
@@ -354,7 +350,7 @@ where
         Ok(self
             .g_bases
             .iter()
-            .zip_eq(from_bytes_le_to_bits_le(&scalar.to_bytes_le()?))
+            .zip_eq(&scalar.to_bits_le())
             .filter_map(|(base, bit)| match bit {
                 true => Some(base),
                 false => None,
@@ -367,7 +363,7 @@ where
         Ok(self
             .h_bases
             .iter()
-            .zip_eq(from_bytes_le_to_bits_le(&scalar.to_bytes_le()?))
+            .zip_eq(&scalar.to_bits_le())
             .filter_map(|(base, bit)| match bit {
                 true => Some(base),
                 false => None,
@@ -380,12 +376,12 @@ where
         // Use Poseidon as a random oracle.
         let output = PoseidonCryptoHash::<TE::BaseField, 4, false>::evaluate(&input)?;
 
-        // Truncate the output to fit in the scalar field.
+        // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
         let mut bits = output.to_repr().to_bits_le();
         bits.resize(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize, false);
-        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
 
         // Output the scalar field.
+        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
         match <TE::ScalarField as PrimeField>::from_repr(biginteger) {
             Some(scalar) => Ok(scalar),
             _ => Err(anyhow!("Failed to hash input into scalar field")),

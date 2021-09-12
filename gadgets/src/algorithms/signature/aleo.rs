@@ -187,9 +187,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         let verifier_challenge =
             FpGadget::<F>::alloc(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
         let sigma_public_key =
-            TEAffineGadget::<TE, F>::alloc_without_check(cs.ns(|| "alloc_sigma_public_key"), || {
-                Ok(signature.sigma_public_key()?)
-            })?;
+            TEAffineGadget::<TE, F>::alloc(cs.ns(|| "alloc_sigma_public_key"), || Ok(signature.sigma_public_key()?))?;
         let sigma_response = FpGadget::<F>::alloc(cs.ns(|| "alloc_sigma_response"), || Ok(&sigma_response))?;
 
         Ok(Self {
@@ -457,6 +455,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
                     <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
                     Boolean::Constant(false),
                 );
+                sk_prf_bits.push(Boolean::Constant(false)); // Append one 0 bit to match MODULUS_BITS size.
                 sk_prf_bits
             };
 
@@ -479,7 +478,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             // Compute H^sk_sig := public key / H^sk_prf.
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(
                 &public_key.0,
-                cs.ns(|| "public key / H^sk_prf"),
+                cs.ns(|| "public key H^-sk_prf"),
                 &h_sk_prf,
             )?
         };
@@ -487,10 +486,11 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Prepare p, by converting the prover response to bits.
         let p = signature
             .prover_response
-            .to_bits_le(cs.ns(|| "prover_response to_bits_le"))?;
+            .to_bits_le_strict(cs.ns(|| "prover_response to_bits_le_strict"))?;
 
         // Compute G^p.
         let g_p = {
+            println!("{} {}", self.signature.g_bases.len(), p.len());
             let mut g_p = zero_affine.clone();
             for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(p.clone()).enumerate() {
                 let added = g_p.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
@@ -524,7 +524,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Prepare d, by converting the verifier challenge to bits.
         let d = signature
             .verifier_challenge
-            .to_bits_le(cs.ns(|| "verifier_challenge_to_bits"))?;
+            .to_bits_le_strict(cs.ns(|| "verifier_challenge to_bits_le_strict"))?;
 
         // Compute G^sk_sig^d.
         let g_sk_sig_d = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
@@ -595,7 +595,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Prepare z, by converting the sigma response to bits.
         let z = signature
             .sigma_response
-            .to_bits_le(cs.ns(|| "sigma_response to_bits_le"))?;
+            .to_bits_le_strict(cs.ns(|| "sigma_response to_bits_le_strict"))?;
 
         // Compute the sigma challenge on G as G^z.
         let sigma_challenge_g = {
@@ -634,7 +634,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             let r = signature
                 .prover_response
                 .add(cs.ns(|| "p + z"), &signature.sigma_response)?;
-            r.to_bits_le(cs.ns(|| "r_to_bits_le"))?
+            r.to_bits_le_strict(cs.ns(|| "r to_bits_le_strict"))?
         };
 
         // Compute G^r.
@@ -670,10 +670,10 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         };
 
         // Compute G^r2 := G^r / G^r1.
-        let g_r2 = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(&g_r, cs.ns(|| "G^r / G^r1"), &g_r1)?;
+        let g_r2 = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(&g_r, cs.ns(|| "G^r G^-r1"), &g_r1)?;
 
         // Compute H^r2 := H^r / H^r1.
-        let h_r2 = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(&h_r, cs.ns(|| "H^r / H^r1"), &h_r1)?;
+        let h_r2 = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::sub(&h_r, cs.ns(|| "H^r H^-r1"), &h_r1)?;
 
         // Compute the candidate sigma challenge for G as (G^r2 G^sk_sig^d).
         let candidate_sigma_challenge_g = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::add(
