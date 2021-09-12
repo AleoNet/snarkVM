@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{account_format, AccountError, ComputeKey, Parameters};
-use snarkvm_algorithms::traits::{SignatureScheme, PRF};
-use snarkvm_fields::{One, Zero};
+use snarkvm_algorithms::traits::{CryptoHash, SignatureScheme, PRF};
+use snarkvm_fields::Field;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
+use anyhow::{anyhow, Result};
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
 use std::{fmt, str::FromStr};
@@ -30,49 +31,19 @@ use std::{fmt, str::FromStr};
     Eq(bound = "C: Parameters")
 )]
 pub struct PrivateKey<C: Parameters> {
-    seed: C::AccountSeed,
-    // Derived private attributes from the seed.
     sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey,
-    compute_key: ComputeKey<C>,
 }
 
 impl<C: Parameters> PrivateKey<C> {
     /// Creates a new account private key.
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
-        // Sample randomly until a valid private key is found.
-        loop {
-            // Samples a random account seed, and returns the private key if it is valid.
-            if let Ok(private_key) = Self::from_seed(&C::AccountSeed::rand(rng)) {
-                return private_key;
-            }
-        }
+        // Sample a random signature private key.
+        Self::from(<C::AccountSignatureScheme as SignatureScheme>::PrivateKey::rand(rng))
     }
 
-    /// Derives the account private key from a given seed and verifies it is well-formed.
-    pub fn from_seed(seed: &C::AccountSeed) -> Result<Self, AccountError> {
-        // Generate the signature private key.
-        let sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey =
-            C::AccountPRF::evaluate(&seed, &C::ProgramScalarField::zero())?;
-
-        // Derive the signature public key.
-        let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
-
-        // Generate the PRF secret key.
-        let sk_prf: <C::SerialNumberPRF as PRF>::Seed = C::AccountPRF::evaluate(&seed, &C::ProgramScalarField::one())?;
-
-        // Initialize the compute key.
-        let compute_key = ComputeKey::new(pk_sig, sk_prf)?;
-
-        Ok(Self {
-            seed: *seed,
-            sk_sig,
-            compute_key,
-        })
-    }
-
-    /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
-    pub fn is_valid(&self) -> bool {
-        self.compute_key.is_valid()
+    /// Returns the account private key from a signature private key.
+    pub fn from(sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey) -> Self {
+        Self { sk_sig }
     }
 
     /// Returns a reference to the signature private key.
@@ -80,9 +51,21 @@ impl<C: Parameters> PrivateKey<C> {
         &self.sk_sig
     }
 
-    /// Returns a reference to the compute key.
-    pub fn compute_key(&self) -> &ComputeKey<C> {
-        &self.compute_key
+    /// Returns the compute key.
+    pub fn to_compute_key(&self) -> Result<ComputeKey<C>> {
+        // Derive the signature public key.
+        let pk_sig = C::account_signature_scheme().generate_public_key(&self.sk_sig)?;
+
+        // Generate the PRF secret key.
+        let sk_prf: <C::SerialNumberPRF as PRF>::Seed = {
+            let output_fq = C::AccountCryptoHash::evaluate(&[pk_sig])?;
+            match C::ProgramScalarField::from_random_bytes(&output_fq.to_bytes_le()?) {
+                Some(output_fr) => FromBytes::read_le(&output_fr.to_bytes_le()?[..])?,
+                _ => return Err(anyhow!("Failed to convert sk_prf from base field to scalar field")),
+            }
+        };
+
+        Ok(ComputeKey::new(pk_sig, sk_prf)?)
     }
 }
 
@@ -100,7 +83,7 @@ impl<C: Parameters> FromStr for PrivateKey<C> {
             return Err(AccountError::InvalidPrefixBytes(data[0..9].to_vec()));
         }
 
-        Self::from_seed(&FromBytes::read_le(&data[9..41])?)
+        Ok(Self::from(FromBytes::read_le(&data[9..41])?))
     }
 }
 
@@ -109,9 +92,9 @@ impl<C: Parameters> fmt::Display for PrivateKey<C> {
         let mut private_key = [0u8; 41];
         private_key[0..9].copy_from_slice(&account_format::PRIVATE_KEY_PREFIX);
 
-        self.seed
+        self.sk_sig
             .write_le(&mut private_key[9..41])
-            .expect("seed formatting failed");
+            .expect("sk_sig formatting failed");
 
         write!(f, "{}", private_key.to_base58())
     }
@@ -119,6 +102,6 @@ impl<C: Parameters> fmt::Display for PrivateKey<C> {
 
 impl<C: Parameters> fmt::Debug for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PrivateKey {{ seed: {:?} }}", self.seed)
+        write!(f, "PrivateKey {{ sk_sig: {:?} }}", self.sk_sig)
     }
 }

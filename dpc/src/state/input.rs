@@ -36,7 +36,7 @@ impl<C: Parameters> Input<C> {
 
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
-        let noop_compute_key = noop_private_key.compute_key();
+        let noop_compute_key = noop_private_key.to_compute_key();
         let noop_address = Address::from_private_key(&noop_private_key)?;
 
         // Construct the noop input record.

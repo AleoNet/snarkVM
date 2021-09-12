@@ -41,7 +41,7 @@ pub struct ViewKey<C: Parameters> {
 impl<C: Parameters> ViewKey<C> {
     /// Creates a new account view key from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
-        Self::from_compute_key(private_key.compute_key())
+        Self::from_compute_key(private_key.to_compute_key())
     }
 
     /// Creates a new account view key from an account compute key.

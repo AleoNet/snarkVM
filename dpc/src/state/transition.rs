@@ -64,7 +64,7 @@ impl<C: Parameters> StateTransition<C> {
         let mut inputs = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for record in records {
             balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
-            inputs.push(Input::new(sender.compute_key(), record.clone(), None)?);
+            inputs.push(Input::new(sender.to_compute_key(), record.clone(), None)?);
         }
 
         // Ensure the sender has sufficient balance.
@@ -126,7 +126,7 @@ impl<C: Parameters> StateTransition<C> {
         self.noop_private_keys
             .iter()
             .map(|key| match key {
-                Some(private_key) => Some(private_key.compute_key().clone()),
+                Some(private_key) => Some(private_key.to_compute_key().clone()),
                 None => None,
             })
             .collect::<Vec<_>>()

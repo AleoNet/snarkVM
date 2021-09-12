@@ -28,11 +28,12 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::BHPCompressedCRH,
+    crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
     prf::PoseidonPRF,
-    signature::SchnorrCompressed,
+    signature::AleoSignatureScheme,
     snark::groth16::Groth16,
 };
 use snarkvm_curves::{
@@ -48,7 +49,7 @@ use snarkvm_gadgets::{
         crh::BHPCompressedCRHGadget,
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
-        signature::SchnorrCompressedGadget,
+        signature::AleoSignatureSchemeGadget,
         snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
@@ -123,14 +124,13 @@ impl Parameters for Testnet1Parameters {
     type AccountCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramCurve, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
     type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
 
+    type AccountCryptoHash = PoseidonCryptoHash<Self::InnerScalarField, 4, false>;
+
     type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
 
-    type AccountPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
-    type AccountSeed = Self::ProgramScalarField;
-
-    type AccountSignatureScheme = SchnorrCompressed<EdwardsParameters>;
-    type AccountSignatureGadget = SchnorrCompressedGadget<EdwardsParameters, Self::InnerScalarField>;
+    type AccountSignatureScheme = AleoSignatureScheme<EdwardsParameters>;
+    type AccountSignatureGadget = AleoSignatureSchemeGadget<EdwardsParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 

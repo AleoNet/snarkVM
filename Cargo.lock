@@ -1714,6 +1714,7 @@ dependencies = [
 name = "snarkvm-gadgets"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "blake2",
  "criterion",
  "derivative",

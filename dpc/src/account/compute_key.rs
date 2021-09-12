@@ -145,6 +145,6 @@ impl<C: Parameters> fmt::Debug for ComputeKey<C> {
 
 impl<C: Parameters> Default for ComputeKey<C> {
     fn default() -> Self {
-        PrivateKey::new(&mut thread_rng()).compute_key().clone()
+        PrivateKey::new(&mut thread_rng()).to_compute_key().clone()
     }
 }

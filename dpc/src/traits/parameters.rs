@@ -28,7 +28,6 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
     ToMinimalBits,
-    UniformRand,
 };
 
 use anyhow::Result;
@@ -78,10 +77,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
-    type AccountCommitmentScheme: CommitmentScheme<
-        Output = Self::AccountCommitment,
-        // Randomness = <Self::SerialNumberPRF as PRF>::Seed,
-    >;
+    type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
     type AccountCommitment: ToConstraintField<Self::InnerScalarField>
         + Clone
@@ -94,17 +90,15 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Sync
         + Send;
 
+    /// Crypto hash for deriving `sk_prf` from `pk_sig`. Invoked only over `Self::InnerScalarField`.
+    type AccountCryptoHash: CryptoHash<Input = Self::AccountSignaturePublicKey>;
+
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
-    /// PRF for deriving the account private key from a seed. Invoked only over `Self::InnerScalarField`.
-    type AccountPRF: PRF<Input = Self::ProgramScalarField, Seed = Self::AccountSeed>;
-    type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
-
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<
-        PrivateKey = <Self::AccountPRF as PRF>::Output,
         PublicKey = Self::AccountSignaturePublicKey,
         Signature = Self::AccountSignature,
     >;

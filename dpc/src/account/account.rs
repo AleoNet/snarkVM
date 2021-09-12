@@ -48,7 +48,7 @@ impl<C: Parameters> AccountScheme for Account<C> {
 
     /// Returns a reference to the compute key.
     fn compute_key(&self) -> &Self::ComputeKey {
-        self.private_key.compute_key()
+        self.private_key.to_compute_key()
     }
 }
 

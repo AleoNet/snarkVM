@@ -74,7 +74,7 @@ mod testnet1 {
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
             let private_key = PrivateKey::<Testnet1Parameters>::new(&mut thread_rng());
-            let decryption_key = private_key.compute_key().to_decryption_key().unwrap();
+            let decryption_key = private_key.to_compute_key().to_decryption_key().unwrap();
             // Enforce the MSB of the scalar field element is 0 by convention.
             assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
         }
@@ -240,7 +240,7 @@ mod testnet2 {
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
             let private_key = PrivateKey::<Testnet2Parameters>::new(&mut thread_rng());
-            let decryption_key = private_key.compute_key().to_decryption_key().unwrap();
+            let decryption_key = private_key.to_compute_key().to_decryption_key().unwrap();
             // Enforce the MSB of the scalar field element is 0 by convention.
             assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
         }
