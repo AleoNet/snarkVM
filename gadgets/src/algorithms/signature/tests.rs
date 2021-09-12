@@ -83,7 +83,7 @@ mod aleo {
             )
             .unwrap();
 
-        assert_eq!(cs.num_constraints(), 6085);
+        assert_eq!(cs.num_constraints(), 20305);
 
         verification
             .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))

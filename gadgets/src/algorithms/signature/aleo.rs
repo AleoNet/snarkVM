@@ -398,33 +398,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     type PublicKeyGadget = AleoSignaturePublicKeyGadget<TE, F>;
     type SignatureGadget = AleoSignatureGadget<TE, F>;
 
-    // fn randomize_public_key<CS: ConstraintSystem<F>>(
-    //     &self,
-    //     mut cs: CS,
-    //     public_key: &Self::PublicKeyGadget,
-    //     randomizer: &[UInt8],
-    // ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-    //     let affine_zero: TEAffineGadget<TE, F> =
-    //         <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
-    //
-    //     let randomness = randomizer.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
-    //
-    //     let mut randomized_public_key = affine_zero;
-    //     randomized_public_key.scalar_multiplication(
-    //         cs.ns(|| "check_randomization_gadget"),
-    //         randomness.iter().zip_eq(&self.signature.generator_powers),
-    //     )?;
-    //     randomized_public_key = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::add(
-    //         &randomized_public_key,
-    //         cs.ns(|| "pk + rG"),
-    //         &public_key.0,
-    //     )?;
-    //
-    //     Ok(AleoSignaturePublicKeyGadget {
-    //         0: randomized_public_key,
-    //     })
-    // }
-
     fn verify<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -463,10 +436,10 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             let h_sk_prf = {
                 let mut h_sk_prf = zero_affine.clone();
                 for (i, (base, bit)) in self.signature.h_bases.iter().zip_eq(sk_prf).enumerate() {
-                    let added = h_sk_prf.add_constant(cs.ns(|| format!("add_h_base_{}", i)), base)?;
+                    let added = h_sk_prf.add_constant(cs.ns(|| format!("add_h_sk_prf_{}", i)), base)?;
 
                     h_sk_prf = TEAffineGadget::<TE, F>::conditionally_select(
-                        cs.ns(|| format!("cond_select_h_{}", i)),
+                        cs.ns(|| format!("cond_select_h_sk_prf_{}", i)),
                         &bit,
                         &added,
                         &h_sk_prf,
@@ -484,19 +457,27 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         };
 
         // Prepare p, by converting the prover response to bits.
-        let p = signature
-            .prover_response
-            .to_bits_le_strict(cs.ns(|| "prover_response to_bits_le_strict"))?;
+        let p = {
+            let mut p_bits = signature
+                .prover_response
+                .to_bits_le_strict(cs.ns(|| "prover_response to_bits_le_strict"))?;
+
+            // Truncate p to fit the scalar field.
+            p_bits.resize(
+                <TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize,
+                Boolean::Constant(false),
+            );
+            p_bits
+        };
 
         // Compute G^p.
         let g_p = {
-            println!("{} {}", self.signature.g_bases.len(), p.len());
             let mut g_p = zero_affine.clone();
             for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(p.clone()).enumerate() {
-                let added = g_p.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
+                let added = g_p.add_constant(cs.ns(|| format!("add_g_p_{}", i)), base)?;
 
                 g_p = TEAffineGadget::<TE, F>::conditionally_select(
-                    cs.ns(|| format!("cond_select_g_{}", i)),
+                    cs.ns(|| format!("cond_select_g_p_{}", i)),
                     &bit,
                     &added,
                     &g_p,
@@ -509,10 +490,10 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let h_p = {
             let mut h_p = zero_affine.clone();
             for (i, (base, bit)) in self.signature.h_bases.iter().zip_eq(p).enumerate() {
-                let added = h_p.add_constant(cs.ns(|| format!("add_h_base_{}", i)), base)?;
+                let added = h_p.add_constant(cs.ns(|| format!("add_h_p_{}", i)), base)?;
 
                 h_p = TEAffineGadget::<TE, F>::conditionally_select(
-                    cs.ns(|| format!("cond_select_h_{}", i)),
+                    cs.ns(|| format!("cond_select_h_p_{}", i)),
                     &bit,
                     &added,
                     &h_p,
@@ -522,9 +503,18 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         };
 
         // Prepare d, by converting the verifier challenge to bits.
-        let d = signature
-            .verifier_challenge
-            .to_bits_le_strict(cs.ns(|| "verifier_challenge to_bits_le_strict"))?;
+        let d = {
+            let mut d_bits = signature
+                .verifier_challenge
+                .to_bits_le_strict(cs.ns(|| "verifier_challenge to_bits_le_strict"))?;
+
+            // Truncate d to fit the scalar field.
+            d_bits.resize(
+                <TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize,
+                Boolean::Constant(false),
+            );
+            d_bits
+        };
 
         // Compute G^sk_sig^d.
         let g_sk_sig_d = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
@@ -593,18 +583,27 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         };
 
         // Prepare z, by converting the sigma response to bits.
-        let z = signature
-            .sigma_response
-            .to_bits_le_strict(cs.ns(|| "sigma_response to_bits_le_strict"))?;
+        let z = {
+            let mut z_bits = signature
+                .sigma_response
+                .to_bits_le_strict(cs.ns(|| "sigma_response to_bits_le_strict"))?;
+
+            // Truncate z to fit the scalar field.
+            z_bits.resize(
+                <TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize,
+                Boolean::Constant(false),
+            );
+            z_bits
+        };
 
         // Compute the sigma challenge on G as G^z.
         let sigma_challenge_g = {
             let mut g_z = zero_affine.clone();
             for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(z.clone()).enumerate() {
-                let added = g_z.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
+                let added = g_z.add_constant(cs.ns(|| format!("add_g_z_{}", i)), base)?;
 
                 g_z = TEAffineGadget::<TE, F>::conditionally_select(
-                    cs.ns(|| format!("cond_select_g_{}", i)),
+                    cs.ns(|| format!("cond_select_g_z_{}", i)),
                     &bit,
                     &added,
                     &g_z,
@@ -617,10 +616,10 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let sigma_challenge_h = {
             let mut h_z = zero_affine.clone();
             for (i, (base, bit)) in self.signature.h_bases.iter().zip_eq(z).enumerate() {
-                let added = h_z.add_constant(cs.ns(|| format!("add_h_base_{}", i)), base)?;
+                let added = h_z.add_constant(cs.ns(|| format!("add_h_z_{}", i)), base)?;
 
                 h_z = TEAffineGadget::<TE, F>::conditionally_select(
-                    cs.ns(|| format!("cond_select_h_{}", i)),
+                    cs.ns(|| format!("cond_select_h_z_{}", i)),
                     &bit,
                     &added,
                     &h_z,
@@ -634,17 +633,24 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             let r = signature
                 .prover_response
                 .add(cs.ns(|| "p + z"), &signature.sigma_response)?;
-            r.to_bits_le_strict(cs.ns(|| "r to_bits_le_strict"))?
+
+            // Truncate r to fit the scalar field.
+            let mut r_bits = r.to_bits_le_strict(cs.ns(|| "r to_bits_le_strict"))?;
+            r_bits.resize(
+                <TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize,
+                Boolean::Constant(false),
+            );
+            r_bits
         };
 
         // Compute G^r.
         let g_r = {
             let mut g_z = zero_affine.clone();
             for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(r.clone()).enumerate() {
-                let added = g_z.add_constant(cs.ns(|| format!("add_g_base_{}", i)), base)?;
+                let added = g_z.add_constant(cs.ns(|| format!("add_g_r_{}", i)), base)?;
 
                 g_z = TEAffineGadget::<TE, F>::conditionally_select(
-                    cs.ns(|| format!("cond_select_g_{}", i)),
+                    cs.ns(|| format!("cond_select_g_r_{}", i)),
                     &bit,
                     &added,
                     &g_z,
@@ -657,10 +663,10 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let h_r = {
             let mut h_z = zero_affine.clone();
             for (i, (base, bit)) in self.signature.h_bases.iter().zip_eq(r).enumerate() {
-                let added = h_z.add_constant(cs.ns(|| format!("add_h_base_{}", i)), base)?;
+                let added = h_z.add_constant(cs.ns(|| format!("add_h_r_{}", i)), base)?;
 
                 h_z = TEAffineGadget::<TE, F>::conditionally_select(
-                    cs.ns(|| format!("cond_select_h_{}", i)),
+                    cs.ns(|| format!("cond_select_h_r_{}", i)),
                     &bit,
                     &added,
                     &h_z,
