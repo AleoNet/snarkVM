@@ -58,7 +58,7 @@ mod aleo {
     fn test_aleo_signature_on_edwards_bls12_377() {
         type TestSignature = AleoSignatureScheme<EdwardsBls12>;
 
-        let message = "Hi, I am a Schnorr signature!";
+        let message = "Hi, I am an Aleo signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
     }
@@ -67,7 +67,7 @@ mod aleo {
     fn test_aleo_signature_on_edwards_bw6() {
         type TestSignature = AleoSignatureScheme<EdwardsBW6>;
 
-        let message = "Hi, I am a Schnorr signature!";
+        let message = "Hi, I am an Aleo signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
     }

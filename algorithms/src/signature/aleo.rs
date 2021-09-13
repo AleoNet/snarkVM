@@ -79,7 +79,7 @@ impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
     }
 
     #[inline]
-    pub fn randomizer(&self) -> Result<TEAffine<TE>> {
+    pub fn root_randomizer(&self) -> Result<TEAffine<TE>> {
         if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_randomizer, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(element);
