@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::PedersenCompressedCRH, traits::CRH};
+use snarkvm_algorithms::{crh::BHPCompressedCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_utilities::ToBytes;
 
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 
-pub type TransactionMerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, 2, 32>;
+pub type TransactionMerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 2, 32>;
 
 /// Lazily evaluated Transaction Id Merkle Tree CRH
 pub static TRANSACTION_MERKLE_TREE_CRH: Lazy<Arc<TransactionMerkleTreeCRH>> =
