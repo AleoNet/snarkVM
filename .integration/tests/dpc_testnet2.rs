@@ -33,7 +33,7 @@ fn dpc_testnet2_integration_test() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
+            transaction_root_hash: MerkleRootHash([0u8; 32]),
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
             proof: ProofOfSuccinctWork::default(),
             time: 0,
@@ -96,7 +96,7 @@ fn dpc_testnet2_integration_test() {
 
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
-        merkle_root_hash: MerkleRootHash(merkle_root_bytes),
+        transaction_root_hash: MerkleRootHash(merkle_root_bytes),
         time,
         difficulty_target: previous_block.header.difficulty_target,
         nonce: 0,
@@ -119,7 +119,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
+            transaction_root_hash: MerkleRootHash([0u8; 32]),
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,

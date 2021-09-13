@@ -22,7 +22,7 @@ fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
+            transaction_root_hash: MerkleRootHash([0u8; 32]),
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
             proof: ProofOfSuccinctWork::default(),
             time: 0,
