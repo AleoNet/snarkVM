@@ -56,43 +56,26 @@ use rand::{CryptoRng, Rng};
 pub struct AleoSignature<TE: TwistedEdwardsParameters> {
     pub prover_response: TE::ScalarField,
     pub verifier_challenge: TE::ScalarField,
-    root_public_key: TE::BaseField,
-    root_randomizer: TE::BaseField,
+    sigma_public_key: TE::BaseField,
+    pub sigma_response: TE::ScalarField,
 }
 
 impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
     #[inline]
-    pub fn root_public_key(&self) -> Result<TEAffine<TE>> {
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_public_key, true) {
+    pub fn sigma_public_key(&self) -> Result<TEAffine<TE>> {
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.sigma_public_key, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(element);
             }
         }
 
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_public_key, false) {
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.sigma_public_key, false) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(element);
             }
         }
 
-        Err(SignatureError::Message("Failed to read the signature root public key".into()).into())
-    }
-
-    #[inline]
-    pub fn randomizer(&self) -> Result<TEAffine<TE>> {
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_randomizer, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(element);
-            }
-        }
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_randomizer, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(element);
-            }
-        }
-
-        Err(SignatureError::Message("Failed to read the signature root randomizer".into()).into())
+        Err(SignatureError::Message("Failed to read the signature public key".into()).into())
     }
 }
 
@@ -101,8 +84,8 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.prover_response.write_le(&mut writer)?;
         self.verifier_challenge.write_le(&mut writer)?;
-        self.root_public_key.write_le(&mut writer)?;
-        self.root_randomizer.write_le(&mut writer)
+        self.sigma_public_key.write_le(&mut writer)?;
+        self.sigma_response.write_le(&mut writer)
     }
 }
 
@@ -111,14 +94,14 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let prover_response = TE::ScalarField::read_le(&mut reader)?;
         let verifier_challenge = TE::ScalarField::read_le(&mut reader)?;
-        let root_public_key = TE::BaseField::read_le(&mut reader)?;
-        let root_randomizer = TE::BaseField::read_le(&mut reader)?;
+        let sigma_public_key = TE::BaseField::read_le(&mut reader)?;
+        let sigma_response = TE::ScalarField::read_le(&mut reader)?;
 
         Ok(Self {
             prover_response,
             verifier_challenge,
-            root_public_key,
-            root_randomizer,
+            sigma_public_key,
+            sigma_response,
         })
     }
 }
@@ -132,14 +115,15 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
 )]
 pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters> {
     pub g_bases: Vec<TEProjective<TE>>,
+    pub h_bases: Vec<TEProjective<TE>>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    type Parameters = Vec<TEProjective<TE>>;
-    type PrivateKey = (TE::ScalarField, TE::ScalarField);
+    type Parameters = (Vec<TEProjective<TE>>, Vec<TEProjective<TE>>);
+    type PrivateKey = TE::ScalarField;
     type PublicKey = TE::BaseField;
     type Signature = AleoSignature<TE>;
 
@@ -153,57 +137,68 @@ where
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&format!("{} for G", message));
 
             let mut g = base.into_projective();
-            let mut g_bases = Vec::with_capacity(<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize);
-            for _ in 0..<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize {
+            let mut g_bases = Vec::with_capacity(Self::PrivateKey::size_in_bits());
+            for _ in 0..Self::PrivateKey::size_in_bits() {
                 g_bases.push(g);
                 g.double_in_place();
             }
             g_bases
         };
 
-        Self { g_bases }
+        // Compute the powers of H.
+        let h_bases = {
+            let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&format!("{} for H", message));
+
+            let mut h = base.into_projective();
+            let mut h_bases = Vec::with_capacity(Self::PrivateKey::size_in_bits());
+            for _ in 0..Self::PrivateKey::size_in_bits() {
+                h_bases.push(h);
+                h.double_in_place();
+            }
+            h_bases
+        };
+
+        Self { g_bases, h_bases }
     }
 
     fn parameters(&self) -> Self::Parameters {
-        self.g_bases.clone()
+        (self.g_bases.clone(), self.h_bases.clone())
     }
 
     ///
-    /// Returns private key as (sk_sig, r_sig).
+    /// Returns private key as sk_sig.
     ///
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
-        Ok((TE::ScalarField::rand(rng), TE::ScalarField::rand(rng)))
+        Ok(TE::ScalarField::rand(rng))
     }
 
     ///
-    /// Returns public key as (G^sk_sig G^r_sig G^sk_prf).
+    /// Returns public key as (H^sk_sig H^sk_prf).
     ///
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
-        // Extract (sk_sig, r_sig).
-        let (sk_sig, r_sig) = private_key;
-
         // Compute G^sk_sig.
-        let g_sk_sig = self.g_scalar_multiply(sk_sig)?;
+        let g_sk_sig = self.g_scalar_multiply(&private_key)?;
 
-        // Compute G^r_sig.
-        let g_r_sig = self.g_scalar_multiply(r_sig)?;
+        // Compute H^sk_sig.
+        let h_sk_sig = self.h_scalar_multiply(&private_key)?;
 
-        // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x])?;
+        // Compute sk_prf := RO(G^sk_sig).
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x])?;
 
-        // Compute G^sk_prf.
-        let g_sk_prf = self.g_scalar_multiply(&sk_prf)?;
+        // Compute H^sk_prf.
+        let h_sk_prf = self.h_scalar_multiply(&sk_prf)?;
 
-        // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = g_sk_sig + g_r_sig + g_sk_prf;
+        // Compute H^sk_sig H^sk_prf.
+        let public_key = h_sk_sig + h_sk_prf;
 
         Ok(public_key.x)
     }
 
     ///
-    /// Returns signature (c, s, G^sk_sig, G^r_sig), where:
-    ///     c := Hash(G^sk_sig G^r_sig G^sk_prf, G^r, message)
-    ///     s := r - c * sk_sig
+    /// Returns signature (p, d, G^sk_sig, z), where:
+    ///     p := r1 - d * sk_sig
+    ///     z := r2 + d * sk_sig
+    ///     d := Hash(G^sk_sig, G^r1, H^sk_sig, H^r1, message)
     ///
     fn sign<R: Rng + CryptoRng>(
         &self,
@@ -211,36 +206,34 @@ where
         message: &[u8],
         rng: &mut R,
     ) -> Result<Self::Signature> {
-        // Sample a random scalar field element.
-        let r = TE::ScalarField::rand(rng);
+        // Sample two distinct random scalar field elements.
+        let r1 = TE::ScalarField::rand(rng);
+        let mut r2 = TE::ScalarField::rand(rng);
+        while r1 == r2 {
+            // Ensure r1 and r2 are distinct
+            r2 = TE::ScalarField::rand(rng);
+        }
 
-        // Compute G^r.
-        let g_r = self.g_scalar_multiply(&r)?;
+        // Compute G^r1.
+        let g_r1 = self.g_scalar_multiply(&r1)?;
 
-        // Extract (sk_sig, r_sig).
-        let (sk_sig, r_sig) = private_key;
+        // Compute H^r1.
+        let h_r1 = self.h_scalar_multiply(&r1)?;
 
         // Compute G^sk_sig.
-        let g_sk_sig = self.g_scalar_multiply(sk_sig)?;
+        let g_sk_sig = self.g_scalar_multiply(&private_key)?;
 
-        // Compute G^r_sig.
-        let g_r_sig = self.g_scalar_multiply(r_sig)?;
-
-        // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x])?;
-
-        // Compute G^sk_prf.
-        let g_sk_prf = self.g_scalar_multiply(&sk_prf)?;
-
-        // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = g_sk_sig + g_r_sig + g_sk_prf;
+        // Compute H^sk_sig.
+        let h_sk_sig = self.h_scalar_multiply(&private_key)?;
 
         // Compute the verifier challenge.
         let verifier_challenge = {
-            // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
+            // Construct the hash input (G^sk_sig, G^r1, H^sk_sig, H^r1, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
-            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.extend_from_slice(&g_sk_sig.x.to_field_elements()?);
+            preimage.extend_from_slice(&g_r1.x.to_field_elements()?);
+            preimage.extend_from_slice(&h_sk_sig.x.to_field_elements()?);
+            preimage.extend_from_slice(&h_r1.x.to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
 
@@ -249,44 +242,68 @@ where
         };
 
         // Compute the prover response.
-        let prover_response = r - (verifier_challenge * sk_sig);
+        let prover_response = r1 - (verifier_challenge * private_key);
+
+        // Compute the sigma response.
+        let sigma_response = r2 + (verifier_challenge * private_key);
 
         Ok(AleoSignature {
             prover_response,
             verifier_challenge,
-            root_public_key: g_sk_sig.x,
-            root_randomizer: g_r_sig.x,
+            sigma_public_key: g_sk_sig.x,
+            sigma_response,
         })
     }
 
     ///
-    /// Verifies (c == c') && (public_key == G^sk_sig G^r_sig G^sk_prf) where:
-    ///     c' := Hash(G^sk_sig G^r_sig G^sk_prf, G^s G^sk_sig^c, message)
+    /// Verifies (d == d') && (G^z == G^r2 G^sk_sig^d) && (H^z == H^r2 H^sk_sig^d), where:
+    ///     z := r2 + d * sk_sig
+    ///     d := Hash(G^sk_sig, G^r1, H^sk_sig, H^r1, message)
     ///
     fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
         // Extract the signature contents.
         let AleoSignature {
             prover_response,
             verifier_challenge,
-            root_public_key,
-            root_randomizer,
+            sigma_public_key,
+            sigma_response,
         } = signature;
 
-        // Recover G^sk_sig.
-        let g_sk_sig = Self::recover_from_x_coordinate(root_public_key)?;
+        // Compute G^sk_sig.
+        let g_sk_sig = Self::recover_from_x_coordinate(sigma_public_key)?;
 
-        // Compute G^sk_sig^c.
-        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), &verifier_challenge)?;
+        // Compute H^sk_sig.
+        let h_sk_sig = {
+            // Compute public key := (H^sk_sig H^sk_prf).
+            let public_key = Self::recover_from_x_coordinate(public_key)?;
 
-        // Compute G^r := G^s G^sk_sig^c.
-        let g_r = self.g_scalar_multiply(&prover_response)? + g_sk_sig_c;
+            // Compute sk_prf := RO(G^sk_sig).
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x])?;
+
+            // Compute H^sk_sig := public key / H^sk_prf.
+            public_key - self.h_scalar_multiply(&sk_prf)?
+        };
+
+        // Compute G^sk_sig^d.
+        let g_sk_sig_d = self.scalar_multiply(g_sk_sig.into_projective(), &verifier_challenge)?;
+
+        // Compute H^sk_sig^d.
+        let h_sk_sig_d = self.scalar_multiply(h_sk_sig.into_projective(), &verifier_challenge)?;
+
+        // Compute G^r1 := G^p G^sk_sig^d.
+        let g_r1 = self.g_scalar_multiply(&prover_response)? + g_sk_sig_d;
+
+        // Compute H^r1 := H^p H^sk_sig^d.
+        let h_r1 = self.h_scalar_multiply(&prover_response)? + h_sk_sig_d;
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
-            // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
+            // Construct the hash input (G^sk_sig, G^r1, H^sk_sig, H^r1, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.to_field_elements()?);
-            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.extend_from_slice(&g_sk_sig.x.to_field_elements()?);
+            preimage.extend_from_slice(&g_r1.x.to_field_elements()?);
+            preimage.extend_from_slice(&h_sk_sig.x.to_field_elements()?);
+            preimage.extend_from_slice(&h_r1.x.to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
 
@@ -294,22 +311,30 @@ where
             self.hash_to_scalar_field(&preimage)?
         };
 
-        // Recover G^r_sig.
-        let g_r_sig = Self::recover_from_x_coordinate(root_randomizer)?;
+        // Compute the sigma challenge on G as G^z.
+        let sigma_challenge_g = self.g_scalar_multiply(&sigma_response)?;
 
-        // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
-        let candidate_public_key = {
-            // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x])?;
+        // Compute the sigma challenge on H as H^z.
+        let sigma_challenge_h = self.h_scalar_multiply(&sigma_response)?;
 
-            // Compute G^sk_prf.
-            let g_sk_prf = self.g_scalar_multiply(&sk_prf)?;
+        // Compute r := r1 + r2 = p + z.
+        let r = *prover_response + sigma_response;
 
-            // Compute G^sk_sig G^r_sig G^sk_prf.
-            g_sk_sig + g_r_sig + g_sk_prf
-        };
+        // Compute G^r2 := G^r / G^r1.
+        let g_r2 = self.g_scalar_multiply(&r)? - g_r1;
 
-        Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key.x)
+        // Compute H^r2 := H^r / H^r1.
+        let h_r2 = self.h_scalar_multiply(&r)? - h_r1;
+
+        // Compute the candidate sigma challenge for G as (G^r2 G^sk_sig^d).
+        let candidate_sigma_challenge_g = g_r2 + g_sk_sig_d;
+
+        // Compute the candidate sigma challenge for H as (H^r2 H^sk_sig^d).
+        let candidate_sigma_challenge_h = h_r2 + h_sk_sig_d;
+
+        Ok(*verifier_challenge == candidate_verifier_challenge
+            && sigma_challenge_g == candidate_sigma_challenge_g
+            && sigma_challenge_h == candidate_sigma_challenge_h)
     }
 }
 
@@ -324,6 +349,19 @@ where
     fn g_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
         Ok(self
             .g_bases
+            .iter()
+            .zip_eq(&scalar.to_bits_le())
+            .filter_map(|(base, bit)| match bit {
+                true => Some(base),
+                false => None,
+            })
+            .sum::<TEProjective<TE>>()
+            .into_affine())
+    }
+
+    fn h_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
+        Ok(self
+            .h_bases
             .iter()
             .zip_eq(&scalar.to_bits_le())
             .filter_map(|(base, bit)| match bit {
@@ -363,13 +401,13 @@ where
             }
         }
 
-        Err(SignatureError::Message("Failed to recover from x coordinate".into()).into())
+        Err(SignatureError::Message("Failed to read the signature public key".into()).into())
     }
 }
 
-impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE> {
-    fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
-        Self { g_bases }
+impl<TE: TwistedEdwardsParameters> From<(Vec<TEProjective<TE>>, Vec<TEProjective<TE>>)> for AleoSignatureScheme<TE> {
+    fn from((g_bases, h_bases): (Vec<TEProjective<TE>>, Vec<TEProjective<TE>>)) -> Self {
+        Self { g_bases, h_bases }
     }
 }
 
@@ -378,6 +416,11 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
         (self.g_bases.len() as u32).write_le(&mut writer)?;
         for g in &self.g_bases {
             g.into_affine().write_le(&mut writer)?;
+        }
+
+        (self.h_bases.len() as u32).write_le(&mut writer)?;
+        for h in &self.h_bases {
+            h.into_affine().write_le(&mut writer)?;
         }
 
         Ok(())
@@ -394,7 +437,14 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE> {
             g_bases.push(g.into_projective());
         }
 
-        Ok(Self { g_bases })
+        let h_bases_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut h_bases = Vec::with_capacity(h_bases_length as usize);
+        for _ in 0..h_bases_length {
+            let h: TEAffine<TE> = FromBytes::read_le(&mut reader)?;
+            h_bases.push(h.into_projective());
+        }
+
+        Ok(Self { g_bases, h_bases })
     }
 }
 

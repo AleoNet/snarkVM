@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SignatureError;
-use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -26,7 +26,7 @@ pub trait SignatureScheme:
 {
     type Parameters: Clone + Debug + Eq;
     type PublicKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
-    type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + UniformRand;
+    type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup(message: &str) -> Self;
