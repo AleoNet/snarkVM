@@ -30,10 +30,7 @@ use crate::{
     UInt8,
 };
 use itertools::Itertools;
-use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
-    encryption::{ECIESPoseidonEncryption, ECIESPoseidonPublicKey},
-};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, encryption::ECIESPoseidonEncryption};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
@@ -44,6 +41,8 @@ use snarkvm_curves::{
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{borrow::Borrow, to_bytes_le, ToBytes};
+
+use anyhow::Result;
 use std::marker::PhantomData;
 
 type TEAffineGadget<TE, F> = crate::curves::templates::twisted_edwards::AffineGadget<TE, F, FpGadget<F>>;
@@ -262,48 +261,47 @@ pub struct ECIESPoseidonEncryptionPublicKeyGadget<TE: TwistedEdwardsParameters<B
     TEAffineGadget<TE, F>,
 );
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECIESPoseidonPublicKey<TE>, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEAffine<TE>, F>
     for ECIESPoseidonEncryptionPublicKeyGadget<TE, F>
 where
     TEAffineGadget<TE, F>: GroupGadget<TEAffine<TE>, F>,
 {
-    fn alloc_constant<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<ECIESPoseidonPublicKey<TE>>,
-        CS: ConstraintSystem<TE::BaseField>,
-    >(
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(value_gen()?.borrow().0.clone()))?,
-        })
+        let public_key = value_gen()?.borrow().clone();
+        Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(public_key))?))
     }
 
-    fn alloc<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<ECIESPoseidonPublicKey<TE>>,
-        CS: ConstraintSystem<TE::BaseField>,
-    >(
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc(cs, || Ok(value_gen()?.borrow().0.clone()))?,
-        })
+        let public_key = value_gen()?.borrow().clone();
+        Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(public_key))?))
     }
 
-    fn alloc_input<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<ECIESPoseidonPublicKey<TE>>,
-        CS: ConstraintSystem<TE::BaseField>,
-    >(
-        cs: CS,
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
+        mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc_input(cs, || Ok(value_gen()?.borrow().0.clone()))?,
-        })
+        let point = if let Ok(pk) = value_gen() {
+            pk.borrow().clone()
+        } else {
+            TEAffine::<TE>::default()
+        };
+
+        let x_coordinate_gadget =
+            FpGadget::<TE::BaseField>::alloc_input(cs.ns(|| "input x coordinate"), || Ok(point.x))?;
+        let allocated_gadget =
+            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point.clone()))?;
+
+        allocated_gadget
+            .x
+            .enforce_equal(cs.ns(|| "check x consistency"), &x_coordinate_gadget)?;
+
+        Ok(Self(allocated_gadget))
     }
 }
 

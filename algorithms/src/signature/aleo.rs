@@ -140,7 +140,7 @@ where
 {
     type Parameters = Vec<TEProjective<TE>>;
     type PrivateKey = (TE::ScalarField, TE::ScalarField);
-    type PublicKey = TE::BaseField;
+    type PublicKey = TEAffine<TE>;
     type Signature = AleoSignature<TE>;
 
     fn setup(message: &str) -> Self {
@@ -197,7 +197,7 @@ where
         // Compute G^sk_sig G^r_sig G^sk_prf.
         let public_key = g_sk_sig + g_r_sig + g_sk_prf;
 
-        Ok(public_key.x)
+        Ok(public_key)
     }
 
     ///
@@ -285,7 +285,7 @@ where
         let candidate_verifier_challenge = {
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.to_field_elements()?);
+            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
             preimage.extend_from_slice(&g_r.x.to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
@@ -309,7 +309,7 @@ where
             g_sk_sig + g_r_sig + g_sk_prf
         };
 
-        Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key.x)
+        Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key)
     }
 }
 

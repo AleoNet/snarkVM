@@ -108,7 +108,7 @@ where
 {
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
-    type PublicKey = ECIESPoseidonPublicKey<TE>;
+    type PublicKey = TEAffine<TE>;
     type Randomness = TE::ScalarField;
 
     fn setup(message: &str) -> Self {
@@ -137,9 +137,7 @@ where
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
     ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError> {
-        Ok(ECIESPoseidonPublicKey::<TE> {
-            0: self.generator.into_projective().mul(*private_key).into_affine(),
-        })
+        Ok(self.generator.into_projective().mul(*private_key).into_affine())
     }
 
     fn generate_randomness<R: Rng + CryptoRng>(
@@ -157,7 +155,7 @@ where
         message: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
         // Compute the ECDH value.
-        let ecdh_value = public_key.0.into_projective().mul((*randomness).clone()).into_affine();
+        let ecdh_value = public_key.into_projective().mul((*randomness).clone()).into_affine();
 
         // Prepare the Poseidon sponge.
         let params =
@@ -171,7 +169,7 @@ where
         // Add a commitment to the public key.
         let public_key_commitment = {
             let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-            sponge.absorb(&[commitment_randomness, public_key.0.x]);
+            sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
 
@@ -274,7 +272,7 @@ where
         let public_key_commitment = {
             let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
             let public_key = self.generate_public_key(&private_key)?;
-            sponge.absorb(&[commitment_randomness, public_key.0.x]);
+            sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
         let given_public_key_commitment =

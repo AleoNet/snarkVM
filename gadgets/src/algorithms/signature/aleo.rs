@@ -34,12 +34,12 @@ use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     signature::{AleoSignature, AleoSignatureScheme},
 };
-use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, AffineCurve, TwistedEdwardsParameters};
+use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use itertools::Itertools;
 use std::{borrow::Borrow, marker::PhantomData};
 
@@ -56,49 +56,31 @@ pub struct AleoSignaturePublicKeyGadget<TE: TwistedEdwardsParameters<BaseField =
     TEAffineGadget<TE, F>,
 );
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AleoSignaturePublicKeyGadget<TE, F> {
-    fn recover_from_x_coordinate(x_coordinate: TE::BaseField) -> Result<TEAffine<TE>> {
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(element);
-            }
-        }
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(element);
-            }
-        }
-
-        Err(anyhow!("Failed to read the signature public key"))
-    }
-}
-
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE::BaseField, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEAffine<TE>, F>
     for AleoSignaturePublicKeyGadget<TE, F>
 {
-    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let public_key = Self::recover_from_x_coordinate(value_gen()?.borrow().clone())?;
+        let public_key = value_gen()?.borrow().clone();
         Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(public_key))?))
     }
 
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let public_key = Self::recover_from_x_coordinate(value_gen()?.borrow().clone())?;
+        let public_key = value_gen()?.borrow().clone();
         Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(public_key))?))
     }
 
-    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<TE>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let point = if let Ok(pk) = value_gen() {
-            Self::recover_from_x_coordinate(pk.borrow().clone())?
+            pk.borrow().clone()
         } else {
             TEAffine::<TE>::default()
         };
