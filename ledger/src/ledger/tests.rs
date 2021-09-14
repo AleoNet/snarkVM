@@ -32,8 +32,8 @@ fn test_new_ledger_with_genesis_block() {
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
     let expected_genesis_block_hash = BlockHeaderHash([
-        181, 154, 143, 117, 166, 9, 195, 238, 250, 143, 179, 197, 156, 162, 245, 242, 247, 127, 213, 209, 196, 45, 80,
-        225, 227, 100, 54, 108, 86, 6, 59, 93,
+        16, 242, 182, 233, 229, 45, 145, 38, 44, 7, 187, 225, 214, 253, 19, 247, 119, 6, 46, 45, 78, 251, 169, 140,
+        164, 186, 239, 114, 36, 2, 151, 10,
     ]);
 
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();

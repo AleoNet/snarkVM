@@ -213,7 +213,6 @@ mod tests {
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, PedersenMerkleRootHash([0u8; 32]));
-        assert_ne!(block_header.commitments_root, MerkleRootHash([0u8; 32]));
         assert_ne!(
             block_header.proof,
             ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
