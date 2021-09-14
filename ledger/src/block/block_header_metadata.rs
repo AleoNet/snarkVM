@@ -77,11 +77,8 @@ impl FromBytes for BlockHeaderMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_dpc::{testnet2::Testnet2Parameters, Transaction};
-    use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 
     use chrono::Utc;
-    use rand::thread_rng;
 
     #[test]
     fn test_block_header_metadata_serialization() {

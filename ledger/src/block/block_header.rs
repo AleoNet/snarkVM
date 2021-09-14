@@ -209,7 +209,7 @@ mod tests {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
             commitments_root: MerkleRootHash([0u8; 32]),
-            metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
+            metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };
 
@@ -226,7 +226,7 @@ mod tests {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
             commitments_root: MerkleRootHash([0u8; 32]),
-            metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
+            metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };
         assert_eq!(block_header.to_bytes_le().unwrap().len(), BlockHeader::size());
