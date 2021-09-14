@@ -23,7 +23,7 @@ use crate::{
     ProofOfSuccinctWork,
     Transactions,
 };
-use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
+use snarkvm_algorithms::{crh::{BHPCompressedCRH, sha256d_to_u64}, traits::CRH};
 use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -32,6 +32,14 @@ use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+
+pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 111, 64>;
+
+/// Size of a block header in bytes - 887 bytes.
 const HEADER_SIZE: usize = {
     BlockHeaderHash::size()
         + PedersenMerkleRootHash::size()
@@ -39,6 +47,9 @@ const HEADER_SIZE: usize = {
         + BlockHeaderMetadata::size()
         + ProofOfSuccinctWork::size()
 };
+
+/// Lazily evaluated BlockHeader CRH
+pub static BLOCK_HEADER_CRH: Lazy<Arc<BlockHeaderCRH>> = Lazy::new(|| Arc::new(BlockHeaderCRH::setup("BlockHeaderCRH")));
 
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -124,12 +135,15 @@ impl BlockHeader {
 
     pub fn to_hash(&self) -> Result<BlockHeaderHash> {
         let serialized = self.to_bytes_le()?;
+        let hash_bytes = BLOCK_HEADER_CRH.hash(&serialized)?.to_bytes_le()?;
+
         let mut hash = [0u8; 32];
-        hash.copy_from_slice(&double_sha256(&serialized));
+        hash.copy_from_slice(&hash_bytes);
 
         Ok(BlockHeaderHash(hash))
     }
 
+    // TODO (raychu86): Update this to use the `BLOCK_HEADER_CRH`.
     pub fn to_difficulty_target(&self) -> Result<u64> {
         Ok(sha256d_to_u64(&self.proof.0[..]))
     }
