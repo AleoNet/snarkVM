@@ -46,7 +46,7 @@ pub struct BlockHeader {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHeaderHash,
     /// Merkle root representing the transactions in the block - 32 bytes
-    pub transaction_root_hash: PedersenMerkleRootHash,
+    pub transactions_root: PedersenMerkleRootHash,
     /// The Merkle root representing the ledger commitments - 32 bytes
     pub commitments_root: MerkleRootHash,
     /// The block header metadata - 20 bytes
@@ -69,7 +69,7 @@ impl BlockHeader {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         let txids = transactions.to_transaction_ids()?;
-        let (_, transaction_root_hash, subroots) = txids_to_roots(&txids);
+        let (_, transactions_root, subroots) = txids_to_roots(&txids);
 
         // TODO (howardwu): Make this a static once_cell.
         // Mine the block.
@@ -80,7 +80,7 @@ impl BlockHeader {
 
         Ok(Self {
             previous_block_hash,
-            transaction_root_hash,
+            transactions_root,
             commitments_root,
             metadata,
             proof: proof.into(),
@@ -143,7 +143,7 @@ impl ToBytes for BlockHeader {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.0.write_le(&mut writer)?;
-        self.transaction_root_hash.0.write_le(&mut writer)?;
+        self.transactions_root.0.write_le(&mut writer)?;
         self.commitments_root.0.write_le(&mut writer)?;
         self.metadata.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
@@ -154,14 +154,14 @@ impl FromBytes for BlockHeader {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
-        let transaction_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let transactions_root = <[u8; 32]>::read_le(&mut reader)?;
         let commitments_root = <[u8; 32]>::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
-            transaction_root_hash: PedersenMerkleRootHash(transaction_root_hash),
+            transactions_root: PedersenMerkleRootHash(transactions_root),
             commitments_root: MerkleRootHash(commitments_root),
             metadata,
             proof,
@@ -195,7 +195,7 @@ mod tests {
         assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.transaction_root_hash, PedersenMerkleRootHash([0u8; 32]));
+        assert_ne!(block_header.transactions_root, PedersenMerkleRootHash([0u8; 32]));
         assert_ne!(block_header.commitments_root, MerkleRootHash([0u8; 32]));
         assert_ne!(
             block_header.proof,
@@ -207,7 +207,7 @@ mod tests {
     fn test_block_header_serialization() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
             commitments_root: MerkleRootHash([0u8; 32]),
             metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
@@ -224,7 +224,7 @@ mod tests {
     fn test_block_header_size() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
             commitments_root: MerkleRootHash([0u8; 32]),
             metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),

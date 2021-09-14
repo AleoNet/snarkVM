@@ -33,7 +33,7 @@ fn dpc_testnet1_integration_test() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },
@@ -90,7 +90,7 @@ fn dpc_testnet1_integration_test() {
 
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
-        transaction_root_hash: pedersen_merkle_root(&transaction_ids),
+        transactions_root: pedersen_merkle_root(&transaction_ids),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
         proof: ProofOfSuccinctWork::default(),
     };
@@ -110,7 +110,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },
