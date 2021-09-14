@@ -36,14 +36,14 @@ impl<C: Parameters> Input<C> {
 
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
-        let noop_compute_key = noop_private_key.to_compute_key();
+        let noop_compute_key = noop_private_key.to_compute_key()?;
         let noop_address = Address::from_private_key(&noop_private_key)?;
 
         // Construct the noop input record.
         let record = Record::new_noop_input(noop_address, rng)?;
 
         // Compute the serial number.
-        let serial_number = record.to_serial_number(noop_compute_key)?;
+        let serial_number = record.to_serial_number(&noop_compute_key)?;
 
         Ok(Self {
             record,
@@ -162,7 +162,9 @@ mod tests {
 
                 let account = Account::new(rng).unwrap();
                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
-                let serial_number = input_record.to_serial_number(&account.compute_key()).unwrap();
+                let serial_number = input_record
+                    .to_serial_number(account.private_key().to_compute_key().unwrap())
+                    .unwrap();
                 (input_record, serial_number, account.private_key().clone())
             };
 

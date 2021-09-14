@@ -68,7 +68,7 @@ fn dpc_testnet2_integration_test() {
 
     let new_records = authorization.output_records.clone();
 
-    let transaction = DPC::execute(&vec![], authorization, state.executables(), &ledger, &mut rng).unwrap();
+    let transaction = DPC::execute(authorization, state.executables(), &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
@@ -176,7 +176,6 @@ fn test_testnet2_dpc_execute_constraints() {
         input_records,
         output_records,
         signatures,
-        noop_compute_keys,
     } = authorization;
 
     let local_data_root = local_data.root();
@@ -211,7 +210,6 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_private_variables = InnerPrivateVariables::new(
         input_records.clone(),
         old_witnesses,
-        noop_compute_keys.iter().map(|key| key.clone().unwrap()).collect(), // This is safe only for this test case.
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,

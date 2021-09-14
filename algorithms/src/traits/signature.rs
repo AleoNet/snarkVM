@@ -46,3 +46,12 @@ pub trait SignatureScheme:
 
     fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool>;
 }
+
+pub trait SignatureSchemeOperations {
+    type AffineCurve: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
+    type BaseField: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
+    type ScalarField: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
+
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Result<Self::AffineCurve>;
+    fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Result<Self::ScalarField>;
+}

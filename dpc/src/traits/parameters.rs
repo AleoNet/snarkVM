@@ -16,7 +16,7 @@
 
 use crate::{InnerPublicVariables, NoopProgram, OuterPublicVariables, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
-use snarkvm_curves::{PairingEngine, ProjectiveCurve};
+use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
@@ -28,6 +28,7 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
     ToMinimalBits,
+    UniformRand,
 };
 
 use anyhow::Result;
@@ -48,7 +49,10 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type OuterBaseField: PrimeField;
     type OuterScalarField: PrimeField;
 
-    type ProgramCurve: ProjectiveCurve;
+    type ProgramAffineCurve: AffineCurve;
+    type ProgramProjectiveCurve: ProjectiveCurve;
+    type ProgramCurveParameters: TwistedEdwardsParameters;
+    type ProgramBaseField: PrimeField;
     type ProgramScalarField: PrimeField;
 
     /// SNARK for inner circuit proof generation.
@@ -91,17 +95,26 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Send;
 
     /// Crypto hash for deriving `sk_prf` from `pk_sig`. Invoked only over `Self::InnerScalarField`.
-    type AccountCryptoHash: CryptoHash<Input = Self::AccountSignaturePublicKey>;
+    // type AccountCryptoHash: CryptoHash<Input = Self::AccountSignaturePublicKey>;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme;
+    type AccountEncryptionScheme: EncryptionScheme<
+        PrivateKey = Self::ProgramScalarField,
+        PublicKey = Self::ProgramAffineCurve,
+    >;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
+    /// PRF for deriving the account private key from a seed.
+    type AccountPRF: PRF<Input = Self::ProgramScalarField, Seed = Self::AccountSeed>;
+    type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
+
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignatureScheme: SignatureScheme<
-        PublicKey = Self::AccountSignaturePublicKey,
-        Signature = Self::AccountSignature,
-    >;
+    type AccountSignatureScheme: SignatureScheme<PublicKey = Self::ProgramAffineCurve, Signature = Self::AccountSignature>
+        + SignatureSchemeOperations<
+            AffineCurve = Self::ProgramAffineCurve,
+            BaseField = Self::ProgramBaseField,
+            ScalarField = Self::ProgramScalarField,
+        >;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
         + Clone

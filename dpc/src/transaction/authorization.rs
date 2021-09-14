@@ -45,7 +45,6 @@ pub struct TransactionAuthorization<C: Parameters> {
     pub input_records: Vec<Record<C>>,
     pub output_records: Vec<Record<C>>,
     pub signatures: Vec<C::AccountSignature>,
-    pub noop_compute_keys: Vec<Option<ComputeKey<C>>>,
 }
 
 impl<C: Parameters> TransactionAuthorization<C> {
@@ -61,7 +60,6 @@ impl<C: Parameters> TransactionAuthorization<C> {
             input_records: state.input_records().clone(),
             output_records: state.output_records().clone(),
             signatures,
-            noop_compute_keys: state.to_noop_compute_keys().clone(),
         }
     }
 
@@ -129,18 +127,6 @@ impl<C: Parameters> ToBytes for TransactionAuthorization<C> {
         self.input_records.write_le(&mut writer)?;
         self.output_records.write_le(&mut writer)?;
         self.signatures.write_le(&mut writer)?;
-
-        // Serialize the noop compute keys with Option ordering in order to
-        // dedup with user-specified compute keys during execution.
-        for noop_compute_key in self.noop_compute_keys.iter().take(C::NUM_INPUT_RECORDS) {
-            match noop_compute_key {
-                Some(noop_compute_key) => {
-                    true.write_le(&mut writer)?;
-                    noop_compute_key.write_le(&mut writer)?;
-                }
-                None => false.write_le(&mut writer)?,
-            }
-        }
         Ok(())
     }
 }
@@ -165,21 +151,11 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
             signatures.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut noop_compute_keys = Vec::<Option<ComputeKey<C>>>::with_capacity(C::NUM_INPUT_RECORDS);
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let option_indicator: bool = FromBytes::read_le(&mut reader)?;
-            match option_indicator {
-                true => noop_compute_keys.push(Some(FromBytes::read_le(&mut reader)?)),
-                false => noop_compute_keys.push(None),
-            }
-        }
-
         Ok(Self {
             kernel,
             input_records,
             output_records,
             signatures,
-            noop_compute_keys,
         })
     }
 }

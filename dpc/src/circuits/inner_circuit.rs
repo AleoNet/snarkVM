@@ -168,11 +168,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
     let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
-    for (i, (((record, witness), compute_key), given_serial_number)) in private
+    for (i, (((record, witness), signature), given_serial_number)) in private
         .input_records
         .iter()
         .zip(&private.input_witnesses)
-        .zip(&private.compute_keys)
+        .zip(&private.signatures)
         .zip(&public.kernel.serial_numbers)
         .enumerate()
     {
@@ -207,8 +207,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::PublicKeyGadget::alloc(
                 &mut declare_cs.ns(|| "given_record_owner"),
-                || Ok(record.owner().to_encryption_key()),
+                || Ok(record.owner().encryption_key()),
             )?;
+
+            // Save the given_owner for signature verification at the end.
+            signature_public_keys.push(given_owner.clone());
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
@@ -272,100 +275,96 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         }
         // ********************************************************************
 
-        // ********************************************************************
-        // Check that the account address and private key form a valid key
-        // pair.
-        // ********************************************************************
-
-        let sk_prf = {
-            // Declare variables for account contents.
-            let account_cs = &mut cs.ns(|| "Check account");
-
-            // Allocate the account private key.
-            let (pk_sig, sk_prf) = {
-                let pk_sig_native = compute_key.pk_sig();
-                let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
-                    C::AccountSignatureScheme,
-                    C::InnerScalarField,
-                >>::PublicKeyGadget::alloc(
-                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
-                )?;
-                // let sk_prf = UInt8::alloc_vec(&mut cs.ns(|| "Declare sk_prf as seed"), compute_key.sk_prf())?;
-                let sk_prf = <C::AccountCommitmentGadget as CommitmentGadget<
-                    C::AccountCommitmentScheme,
-                    C::InnerScalarField,
-                >>::RandomnessGadget::alloc(
-                    &mut account_cs.ns(|| "Declare sk_prf"),
-                    || Ok(compute_key.sk_prf().to_bytes_le()?),
-                )?;
-
-                (pk_sig, sk_prf)
-            };
-
-            // Construct the account view key.
-            let candidate_account_view_key = {
-                // This is the record decryption key.
-                let candidate_account_commitment = account_commitment_parameters.check_commitment_gadget(
-                    &mut account_cs.ns(|| "Compute the account commitment"),
-                    &pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?,
-                    &sk_prf,
-                )?;
-
-                // Enforce the account commitment bytes (padded) correspond to the
-                // given account's view key bytes (padded). This is equivalent to
-                // verifying that the base field element from the computed account
-                // commitment contains the same bit-value as the scalar field element
-                // computed from the given account private key.
-                {
-                    // Derive the given account view key based on the given account private key.
-                    //
-                    // This allocation also enforces that the private key is well-formed in our definition,
-                    // i.e., the private key is within the limit of the capacity.
-                    let given_account_view_key = <C::AccountEncryptionGadget as EncryptionGadget<
-                        C::AccountEncryptionScheme,
-                        C::InnerScalarField,
-                    >>::PrivateKeyGadget::alloc(
-                        &mut account_cs.ns(|| "Allocate account view key"),
-                        || {
-                            Ok(compute_key
-                                .to_decryption_key()
-                                .map_err(|_| SynthesisError::AssignmentMissing)?)
-                        },
-                    )?;
-
-                    let given_account_view_key_bytes =
-                        given_account_view_key.to_bytes(&mut account_cs.ns(|| "given_account_view_key to_bytes"))?;
-
-                    let candidate_account_commitment_bytes = candidate_account_commitment
-                        .to_bytes(&mut account_cs.ns(|| "candidate_account_commitment to_bytes"))?;
-
-                    candidate_account_commitment_bytes.enforce_equal(
-                        &mut account_cs.ns(|| "Check that candidate and given account view keys are equal"),
-                        &given_account_view_key_bytes,
-                    )?;
-
-                    given_account_view_key
-                }
-            };
-
-            // Construct and verify the record owner - account address.
-            {
-                let candidate_record_owner = account_encryption_parameters.check_public_key_gadget(
-                    &mut account_cs.ns(|| "Compute the candidate record owner - account address"),
-                    &candidate_account_view_key,
-                )?;
-
-                candidate_record_owner.enforce_equal(
-                    &mut account_cs.ns(|| "Check that declared and computed addresses are equal"),
-                    &given_owner,
-                )?;
-            }
-
-            // Save pk_sig for signature verification at the end.
-            signature_public_keys.push(pk_sig.clone());
-
-            sk_prf
-        };
+        // // ********************************************************************
+        // // Check that the account address and private key form a valid key
+        // // pair.
+        // // ********************************************************************
+        //
+        // let sk_prf = {
+        //     // Declare variables for account contents.
+        //     let account_cs = &mut cs.ns(|| "Check account");
+        //
+        //     // Allocate the account private key.
+        //     let (pk_sig, sk_prf) = {
+        //         let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
+        //             C::AccountSignatureScheme,
+        //             C::InnerScalarField,
+        //         >>::PublicKeyGadget::alloc(
+        //             &mut account_cs.ns(|| "Declare pk_sig"), || Ok(compute_key.pk_sig())
+        //         )?;
+        //         // let sk_prf = UInt8::alloc_vec(&mut cs.ns(|| "Declare sk_prf as seed"), compute_key.sk_prf())?;
+        //         let sk_prf = <C::AccountCommitmentGadget as CommitmentGadget<
+        //             C::AccountCommitmentScheme,
+        //             C::InnerScalarField,
+        //         >>::RandomnessGadget::alloc(
+        //             &mut account_cs.ns(|| "Declare sk_prf"),
+        //             || Ok(compute_key.sk_prf().to_bytes_le()?),
+        //         )?;
+        //
+        //         (pk_sig, sk_prf)
+        //     };
+        //
+        //     // // Construct the account view key.
+        //     // let candidate_account_view_key = {
+        //     //     // This is the record decryption key.
+        //     //     let candidate_account_commitment = account_commitment_parameters.check_commitment_gadget(
+        //     //         &mut account_cs.ns(|| "Compute the account commitment"),
+        //     //         &pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?,
+        //     //         &sk_prf,
+        //     //     )?;
+        //     //
+        //     //     // Enforce the account commitment bytes (padded) correspond to the
+        //     //     // given account's view key bytes (padded). This is equivalent to
+        //     //     // verifying that the base field element from the computed account
+        //     //     // commitment contains the same bit-value as the scalar field element
+        //     //     // computed from the given account private key.
+        //     //     {
+        //     //         // Derive the given account view key based on the given account private key.
+        //     //         //
+        //     //         // This allocation also enforces that the private key is well-formed in our definition,
+        //     //         // i.e., the private key is within the limit of the capacity.
+        //     //         let given_account_view_key = <C::AccountEncryptionGadget as EncryptionGadget<
+        //     //             C::AccountEncryptionScheme,
+        //     //             C::InnerScalarField,
+        //     //         >>::PrivateKeyGadget::alloc(
+        //     //             &mut account_cs.ns(|| "Allocate account view key"),
+        //     //             || {
+        //     //                 Ok(compute_key
+        //     //                     .to_decryption_key()
+        //     //                     .map_err(|_| SynthesisError::AssignmentMissing)?)
+        //     //             },
+        //     //         )?;
+        //     //
+        //     //         let given_account_view_key_bytes =
+        //     //             given_account_view_key.to_bytes(&mut account_cs.ns(|| "given_account_view_key to_bytes"))?;
+        //     //
+        //     //         let candidate_account_commitment_bytes = candidate_account_commitment
+        //     //             .to_bytes(&mut account_cs.ns(|| "candidate_account_commitment to_bytes"))?;
+        //     //
+        //     //         candidate_account_commitment_bytes.enforce_equal(
+        //     //             &mut account_cs.ns(|| "Check that candidate and given account view keys are equal"),
+        //     //             &given_account_view_key_bytes,
+        //     //         )?;
+        //     //
+        //     //         given_account_view_key
+        //     //     }
+        //     // };
+        //
+        //     // // Construct and verify the record owner - account address.
+        //     // {
+        //     //     let candidate_record_owner = account_encryption_parameters.check_public_key_gadget(
+        //     //         &mut account_cs.ns(|| "Compute the candidate record owner - account address"),
+        //     //         &candidate_account_view_key,
+        //     //     )?;
+        //     //
+        //     //     candidate_record_owner.enforce_equal(
+        //     //         &mut account_cs.ns(|| "Check that declared and computed addresses are equal"),
+        //     //         &given_owner,
+        //     //     )?;
+        //     // }
+        //
+        //     sk_prf
+        // };
         // ********************************************************************
 
         // ********************************************************************
@@ -373,6 +372,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         // ********************************************************************
         {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
+
+            let sk_prf = C::PRFGadget::new_seed(&mut sn_cs.ns(|| "Declare sk_prf"), signature.sk_prf());
 
             let candidate_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
                 C::SerialNumberPRF,
@@ -495,7 +496,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::PublicKeyGadget::alloc(
                 &mut declare_cs.ns(|| "given_record_owner"),
-                || Ok(record.owner().to_encryption_key()),
+                || Ok(record.owner().encryption_key()),
             )?;
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
@@ -755,7 +756,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // ********************************************************************
 
     // ********************************************************************
-    // Check that the local data root is valid
+    // Check that the local data root is valid.
     // ********************************************************************
     let (network_id, memo) = {
         let mut cs = cs.ns(|| "Check that local data root is valid.");

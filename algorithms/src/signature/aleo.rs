@@ -20,6 +20,7 @@ use crate::{
     CryptoHash,
     SignatureError,
     SignatureScheme,
+    SignatureSchemeOperations,
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
@@ -313,13 +314,13 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
+impl<TE: TwistedEdwardsParameters> SignatureSchemeOperations for AleoSignatureScheme<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
-        Ok(base.mul(*scalar).into_affine())
-    }
+    type AffineCurve = TEAffine<TE>;
+    type BaseField = TE::BaseField;
+    type ScalarField = TE::ScalarField;
 
     fn g_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
         Ok(self
@@ -348,6 +349,15 @@ where
             Some(scalar) => Ok(scalar),
             _ => Err(anyhow!("Failed to hash input into scalar field")),
         }
+    }
+}
+
+impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
+    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
+        Ok(base.mul(*scalar).into_affine())
     }
 
     fn recover_from_x_coordinate(x_coordinate: &TE::BaseField) -> Result<TEAffine<TE>> {
