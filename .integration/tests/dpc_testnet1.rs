@@ -92,7 +92,7 @@ fn dpc_testnet1_integration_test() {
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
         transactions_root: pedersen_merkle_root(&transaction_ids),
-        commitments_root: MerkleRootHash::from_element(ledger.latest_digest()?),
+        commitments_root: MerkleRootHash::from_element(ledger.latest_digest().unwrap()),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
         proof: ProofOfSuccinctWork::default(),
     };
