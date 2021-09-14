@@ -17,7 +17,7 @@
 use crate::{
     posw::{txids_to_roots, PoswMarlin},
     BlockHeaderHash,
-    MerkleRootHash,
+    BlockHeaderMetadata,
     PedersenMerkleRootHash,
     ProofOfSuccinctWork,
     Transactions,
@@ -29,19 +29,10 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    mem::size_of,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 const HEADER_SIZE: usize = {
-    BlockHeaderHash::size()
-        + MerkleRootHash::size()
-        + PedersenMerkleRootHash::size()
-        + ProofOfSuccinctWork::size()
-        + size_of::<i64>()
-        + size_of::<u64>()
-        + size_of::<u32>()
+    BlockHeaderHash::size() + PedersenMerkleRootHash::size() + ProofOfSuccinctWork::size() + BlockHeaderMetadata::size()
 };
 
 /// Block header.
@@ -51,15 +42,10 @@ pub struct BlockHeader {
     pub previous_block_hash: BlockHeaderHash,
     /// Merkle root representing the transactions in the block - 32 bytes
     pub transaction_root_hash: PedersenMerkleRootHash,
+    /// The block header metadata - 20 bytes
+    pub metadata: BlockHeaderMetadata,
     /// Proof of Succinct Work
     pub proof: ProofOfSuccinctWork,
-    /// The block timestamp is a Unix epoch time (UTC) when the miner
-    /// started hashing the header (according to the miner). - 8 bytes
-    pub time: i64,
-    /// Proof of work algorithm difficulty target for this block - 8 bytes
-    pub difficulty_target: u64,
-    /// Nonce for solving the PoW puzzle - 4 bytes
-    pub nonce: u32,
 }
 
 impl BlockHeader {
@@ -82,12 +68,12 @@ impl BlockHeader {
         let posw = PoswMarlin::load()?;
         let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
 
+        let metadata = BlockHeaderMetadata::new(timestamp, difficulty_target, nonce);
+
         Ok(Self {
             previous_block_hash,
             transaction_root_hash,
-            time: timestamp,
-            difficulty_target,
-            nonce,
+            metadata,
             proof: proof.into(),
         })
     }
@@ -120,7 +106,7 @@ impl BlockHeader {
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
-        self.time == 0
+        self.metadata.timestamp == 0
             // Ensure the previous block hash in the genesis block is 0.
             || self.previous_block_hash == BlockHeaderHash([0u8; 32])
     }
@@ -147,10 +133,8 @@ impl ToBytes for BlockHeader {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.0.write_le(&mut writer)?;
         self.transaction_root_hash.0.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)?;
-        self.time.to_le_bytes().write_le(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.nonce.to_le_bytes().write_le(&mut writer)
+        self.metadata.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
     }
 }
 
@@ -159,17 +143,13 @@ impl FromBytes for BlockHeader {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
         let transaction_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
-        let time = <[u8; 8]>::read_le(&mut reader)?;
-        let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let nonce = <[u8; 4]>::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
             transaction_root_hash: PedersenMerkleRootHash(transaction_root_hash),
-            time: i64::from_le_bytes(time),
-            difficulty_target: u64::from_le_bytes(difficulty_target),
-            nonce: u32::from_le_bytes(nonce),
+            metadata,
             proof,
         })
     }
@@ -197,8 +177,8 @@ mod tests {
 
         // Ensure the genesis block contains the following.
         assert_eq!(block_header.previous_block_hash, BlockHeaderHash([0u8; 32]));
-        assert_eq!(block_header.time, 0);
-        assert_eq!(block_header.difficulty_target, u64::MAX);
+        assert_eq!(block_header.metadata.timestamp, 0);
+        assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transaction_root_hash, PedersenMerkleRootHash([0u8; 32]));
@@ -213,10 +193,8 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
-            time: Utc::now().timestamp(),
-            difficulty_target: 0u64,
-            nonce: 0u32,
         };
 
         let serialized = block_header.to_bytes_le().unwrap();
@@ -231,10 +209,8 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
-            time: Utc::now().timestamp(),
-            difficulty_target: 0u64,
-            nonce: 0u32,
         };
         assert_eq!(block_header.to_bytes_le().unwrap().len(), BlockHeader::size());
     }

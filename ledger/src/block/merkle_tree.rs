@@ -21,11 +21,10 @@ use snarkvm_utilities::ToBytes;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 
-pub type TransactionMerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 2, 32>;
+pub type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 2, 32>;
 
-/// Lazily evaluated Transaction Id Merkle Tree CRH
-pub static TRANSACTION_MERKLE_TREE_CRH: Lazy<Arc<TransactionMerkleTreeCRH>> =
-    Lazy::new(|| Arc::new(TransactionMerkleTreeCRH::setup("TransactionMerkleTreeParameters")));
+/// Lazily evaluated Merkle Tree CRH
+pub static MERKLE_TREE_CRH: Lazy<Arc<MerkleTreeCRH>> = Lazy::new(|| Arc::new(MerkleTreeCRH::setup("MerkleTreeCRH")));
 
 fn merkle_round(hashes: &[[u8; 32]]) -> Vec<[u8; 32]> {
     let mut ret_len = hashes.len() / 2;
@@ -94,9 +93,7 @@ pub fn merkle_hash(left: &[u8], right: &[u8]) -> [u8; 32] {
     result[0..32].copy_from_slice(&left);
     result[32..64].copy_from_slice(&right);
 
-    let hash = TRANSACTION_MERKLE_TREE_CRH
-        .hash(&result)
-        .expect("could not create hash");
+    let hash = MERKLE_TREE_CRH.hash(&result).expect("could not create hash");
     let hash_bytes = hash.to_bytes_le().expect("could not convert hash to bytes");
     assert_eq!(hash_bytes.len(), 32);
 
