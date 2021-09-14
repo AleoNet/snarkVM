@@ -23,7 +23,10 @@ use crate::{
     ProofOfSuccinctWork,
     Transactions,
 };
-use snarkvm_algorithms::{crh::{BHPCompressedCRH, sha256d_to_u64}, traits::CRH};
+use snarkvm_algorithms::{
+    crh::{sha256d_to_u64, BHPCompressedCRH},
+    traits::CRH,
+};
 use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -37,7 +40,7 @@ use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 
-pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 111, 64>;
+pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 113, 63>;
 
 /// Size of a block header in bytes - 887 bytes.
 const HEADER_SIZE: usize = {
@@ -49,7 +52,8 @@ const HEADER_SIZE: usize = {
 };
 
 /// Lazily evaluated BlockHeader CRH
-pub static BLOCK_HEADER_CRH: Lazy<Arc<BlockHeaderCRH>> = Lazy::new(|| Arc::new(BlockHeaderCRH::setup("BlockHeaderCRH")));
+pub static BLOCK_HEADER_CRH: Lazy<Arc<BlockHeaderCRH>> =
+    Lazy::new(|| Arc::new(BlockHeaderCRH::setup("BlockHeaderCRH")));
 
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

@@ -21,7 +21,7 @@ use snarkvm_utilities::ToBytes;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 
-pub type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 2, 32>;
+pub type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 16, 32>;
 
 /// Lazily evaluated Merkle Tree CRH
 pub static MERKLE_TREE_CRH: Lazy<Arc<MerkleTreeCRH>> = Lazy::new(|| Arc::new(MerkleTreeCRH::setup("MerkleTreeCRH")));
