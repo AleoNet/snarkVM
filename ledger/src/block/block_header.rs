@@ -23,10 +23,7 @@ use crate::{
     ProofOfSuccinctWork,
     Transactions,
 };
-use snarkvm_algorithms::{
-    crh::{sha256d_to_u64, BHPCompressedCRH},
-    traits::CRH,
-};
+use snarkvm_algorithms::{crh::BHPCompressedCRH, traits::CRH};
 use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -147,9 +144,11 @@ impl BlockHeader {
         Ok(BlockHeaderHash(hash))
     }
 
-    // TODO (raychu86): Update this to use the `BLOCK_HEADER_CRH`.
     pub fn to_difficulty_target(&self) -> Result<u64> {
-        Ok(sha256d_to_u64(&self.proof.0[..]))
+        let hash_slice = BLOCK_HEADER_CRH.hash(&self.proof.0[..])?.to_bytes_le()?;
+        let mut hash = [0u8; 8];
+        hash[..].copy_from_slice(&hash_slice[..8]);
+        Ok(u64::from_le_bytes(hash))
     }
 
     pub const fn size() -> usize {
