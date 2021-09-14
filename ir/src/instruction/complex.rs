@@ -21,7 +21,7 @@ use crate::{ir, Value};
 use anyhow::*;
 use num_enum::TryFromPrimitive;
 
-use super::decode_control_u32;
+use super::{decode_control_bool, decode_control_u32};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MaskData {
@@ -66,6 +66,7 @@ impl MaskData {
 pub struct RepeatData {
     pub instruction_count: u32,
     pub iter_variable: u32,
+    pub inclusive: bool,
     pub from: Value,
     pub to: Value,
 }
@@ -82,17 +83,19 @@ impl fmt::Display for RepeatData {
 
 impl RepeatData {
     pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.len() != 4 {
+        if operands.len() != 5 {
             return Err(anyhow!("illegal operand count for RepeatData: {}", operands.len()));
         }
         let mut operands = operands.into_iter();
         let instruction_count = decode_control_u32(operands.next().unwrap())?;
         let iter_variable = decode_control_u32(operands.next().unwrap())?;
+        let inclusive = decode_control_bool(operands.next().unwrap())?;
         let from = Value::decode(operands.next().unwrap())?;
         let to = Value::decode(operands.next().unwrap())?;
         Ok(Self {
             instruction_count,
             iter_variable,
+            inclusive,
             from,
             to,
         })

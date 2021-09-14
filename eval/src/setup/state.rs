@@ -353,6 +353,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             Instruction::Repeat(RepeatData {
                 instruction_count,
                 iter_variable,
+                inclusive,
                 from,
                 to,
             }) => {
@@ -377,9 +378,17 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     .to_usize()
                     .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
 
+                let iter: Box<dyn Iterator<Item = usize>> = match (from < to, inclusive) {
+                    (true, true) => Box::new(from..=to),
+                    (true, false) => Box::new(from..to),
+                    (false, true) => Box::new((to..=from).rev()),
+                    // add the range to the values to get correct bound
+                    (false, false) => Box::new(((to + 1)..(from + 1)).rev()),
+                };
+
                 *instruction_index += 1;
                 //todo: max loop count (DOS vector)
-                for i in from..to {
+                for i in iter {
                     self.variables.insert(
                         *iter_variable,
                         ConstrainedValue::Integer(match from_int.get_type() {
