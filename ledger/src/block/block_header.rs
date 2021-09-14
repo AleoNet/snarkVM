@@ -18,6 +18,7 @@ use crate::{
     posw::{txids_to_roots, PoswMarlin},
     BlockHeaderHash,
     BlockHeaderMetadata,
+    MerkleRootHash,
     PedersenMerkleRootHash,
     ProofOfSuccinctWork,
     Transactions,
@@ -32,7 +33,11 @@ use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
 const HEADER_SIZE: usize = {
-    BlockHeaderHash::size() + PedersenMerkleRootHash::size() + ProofOfSuccinctWork::size() + BlockHeaderMetadata::size()
+    BlockHeaderHash::size()
+        + PedersenMerkleRootHash::size()
+        + MerkleRootHash::size()
+        + BlockHeaderMetadata::size()
+        + ProofOfSuccinctWork::size()
 };
 
 /// Block header.
@@ -42,6 +47,8 @@ pub struct BlockHeader {
     pub previous_block_hash: BlockHeaderHash,
     /// Merkle root representing the transactions in the block - 32 bytes
     pub transaction_root_hash: PedersenMerkleRootHash,
+    /// The Merkle root representing the ledger commitments - 32 bytes
+    pub commitments_root: MerkleRootHash,
     /// The block header metadata - 20 bytes
     pub metadata: BlockHeaderMetadata,
     /// Proof of Succinct Work
@@ -53,6 +60,7 @@ impl BlockHeader {
     pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
         previous_block_hash: BlockHeaderHash,
         transactions: &Transactions<T>,
+        commitments_root: MerkleRootHash,
         timestamp: i64,
         difficulty_target: u64,
         max_nonce: u32,
@@ -73,6 +81,7 @@ impl BlockHeader {
         Ok(Self {
             previous_block_hash,
             transaction_root_hash,
+            commitments_root,
             metadata,
             proof: proof.into(),
         })
@@ -84,6 +93,7 @@ impl BlockHeader {
         rng: &mut R,
     ) -> Result<Self> {
         let previous_block_hash = BlockHeaderHash([0u8; 32]);
+        let commitments_root = MerkleRootHash([0u8; 32]);
         let timestamp = 0i64;
         let difficulty_target = u64::MAX;
         let max_nonce = u32::MAX;
@@ -91,6 +101,7 @@ impl BlockHeader {
         let block_header = Self::new(
             previous_block_hash,
             transactions,
+            commitments_root,
             timestamp,
             difficulty_target,
             max_nonce,
@@ -133,6 +144,7 @@ impl ToBytes for BlockHeader {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.0.write_le(&mut writer)?;
         self.transaction_root_hash.0.write_le(&mut writer)?;
+        self.commitments_root.0.write_le(&mut writer)?;
         self.metadata.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
     }
@@ -143,12 +155,14 @@ impl FromBytes for BlockHeader {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
         let transaction_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let commitments_root = <[u8; 32]>::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
             transaction_root_hash: PedersenMerkleRootHash(transaction_root_hash),
+            commitments_root: MerkleRootHash(commitments_root),
             metadata,
             proof,
         })
@@ -182,6 +196,7 @@ mod tests {
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transaction_root_hash, PedersenMerkleRootHash([0u8; 32]));
+        assert_ne!(block_header.commitments_root, MerkleRootHash([0u8; 32]));
         assert_ne!(
             block_header.proof,
             ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
@@ -193,6 +208,7 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
             metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };
@@ -209,6 +225,7 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
             metadata: BlockheaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };
