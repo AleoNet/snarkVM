@@ -23,10 +23,8 @@ fn test_new_ledger_with_genesis_block() {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
         },
         transactions: Transactions::new(),
     };

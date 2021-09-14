@@ -34,10 +34,8 @@ fn dpc_testnet2_integration_test() {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
         },
         transactions: Transactions::new(),
     };
@@ -85,9 +83,6 @@ fn dpc_testnet2_integration_test() {
 
     let transaction_ids = transactions.to_transaction_ids().unwrap();
 
-    let mut merkle_root_bytes = [0u8; 32];
-    merkle_root_bytes[..].copy_from_slice(&merkle_root(&transaction_ids));
-
     let time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
@@ -95,10 +90,8 @@ fn dpc_testnet2_integration_test() {
 
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
-        transaction_root_hash: PedersenMerkleRootHash(merkle_root_bytes),
-        time,
-        difficulty_target: previous_block.header.difficulty_target,
-        nonce: 0,
+        transaction_root_hash: pedersen_merkle_root(&transaction_ids),
+        metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
         proof: ProofOfSuccinctWork::default(),
     };
 
@@ -118,9 +111,7 @@ fn test_testnet2_dpc_execute_constraints() {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),

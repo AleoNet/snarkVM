@@ -45,9 +45,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
@@ -69,9 +67,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
