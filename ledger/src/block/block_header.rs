@@ -50,9 +50,7 @@ pub struct BlockHeader {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHeaderHash,
     /// Merkle root representing the transactions in the block - 32 bytes
-    pub transaction_root_hash: MerkleRootHash,
-    /// Merkle root of the transactions in the block using a Pedersen hash - 32 bytes
-    pub pedersen_merkle_root_hash: PedersenMerkleRootHash,
+    pub transaction_root_hash: PedersenMerkleRootHash,
     /// Proof of Succinct Work
     pub proof: ProofOfSuccinctWork,
     /// The block timestamp is a Unix epoch time (UTC) when the miner
@@ -77,7 +75,7 @@ impl BlockHeader {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         let txids = transactions.to_transaction_ids()?;
-        let (transaction_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
+        let (_, transaction_root_hash, subroots) = txids_to_roots(&txids);
 
         // TODO (howardwu): Make this a static once_cell.
         // Mine the block.
@@ -87,7 +85,6 @@ impl BlockHeader {
         Ok(Self {
             previous_block_hash,
             transaction_root_hash,
-            pedersen_merkle_root_hash,
             time: timestamp,
             difficulty_target,
             nonce,
@@ -150,7 +147,6 @@ impl ToBytes for BlockHeader {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.0.write_le(&mut writer)?;
         self.transaction_root_hash.0.write_le(&mut writer)?;
-        self.pedersen_merkle_root_hash.0.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)?;
         self.time.to_le_bytes().write_le(&mut writer)?;
         self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
@@ -162,8 +158,7 @@ impl FromBytes for BlockHeader {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
-        let merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
-        let pedersen_merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let transaction_root_hash = <[u8; 32]>::read_le(&mut reader)?;
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
         let time = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
@@ -171,11 +166,10 @@ impl FromBytes for BlockHeader {
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
-            transaction_root_hash: MerkleRootHash(merkle_root_hash),
+            transaction_root_hash: PedersenMerkleRootHash(transaction_root_hash),
             time: i64::from_le_bytes(time),
             difficulty_target: u64::from_le_bytes(difficulty_target),
             nonce: u32::from_le_bytes(nonce),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash(pedersen_merkle_root_hash),
             proof,
         })
     }
@@ -207,11 +201,7 @@ mod tests {
         assert_eq!(block_header.difficulty_target, u64::MAX);
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.transaction_root_hash, MerkleRootHash([0u8; 32]));
-        assert_ne!(
-            block_header.pedersen_merkle_root_hash,
-            PedersenMerkleRootHash([0u8; 32])
-        );
+        assert_ne!(block_header.transaction_root_hash, PedersenMerkleRootHash([0u8; 32]));
         assert_ne!(
             block_header.proof,
             ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
@@ -222,8 +212,7 @@ mod tests {
     fn test_block_header_serialization() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
             time: Utc::now().timestamp(),
             difficulty_target: 0u64,
@@ -241,8 +230,7 @@ mod tests {
     fn test_block_header_size() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
             time: Utc::now().timestamp(),
             difficulty_target: 0u64,

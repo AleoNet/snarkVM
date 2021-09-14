@@ -44,8 +44,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
@@ -69,8 +68,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,

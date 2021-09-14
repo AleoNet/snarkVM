@@ -33,8 +33,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     let temporary_ledger = Ledger::<C, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transaction_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transaction_root_hash: PedersenMerkleRootHash([0u8; 32]),
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
