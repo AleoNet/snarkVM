@@ -89,7 +89,12 @@ fn dpc_testnet2_integration_test() {
         .expect("Time went backwards")
         .as_secs() as i64;
 
-    let transaction_commitments = transactions.0.iter().map(|t| t.commitments.clone()).flatten().collect();
+    let transaction_commitments = transactions
+        .0
+        .iter()
+        .map(|t| t.commitments().to_owned())
+        .flatten()
+        .collect();
     let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
 
     let header = BlockHeader {

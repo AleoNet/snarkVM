@@ -92,7 +92,7 @@ fn dpc_testnet1_integration_test() {
     let transaction_commitments = transactions
         .0
         .iter()
-        .map(|t| t.commitments().clone())
+        .map(|t| t.commitments().to_owned())
         .flatten()
         .collect();
     let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
