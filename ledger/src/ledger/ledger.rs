@@ -164,7 +164,7 @@ impl<C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<C, S> {
 
 impl<C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<C, S> {
     /// Returns true if the given serial number exists in the ledger.
-    fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool {
+    fn contains_serial_number(&self, serial_number: &C::SerialNumber) -> bool {
         self.storage
             .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
     }

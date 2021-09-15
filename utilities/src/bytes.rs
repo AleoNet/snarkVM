@@ -146,6 +146,15 @@ impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
     }
 }
 
+impl<L: FromBytes, R: FromBytes> FromBytes for (L, R) {
+    #[inline]
+    fn read_le<Reader: Read>(mut reader: Reader) -> IoResult<Self> {
+        let left: L = FromBytes::read_le(&mut reader)?;
+        let right: R = FromBytes::read_le(&mut reader)?;
+        Ok((left, right))
+    }
+}
+
 macro_rules! to_bytes_for_integer {
     ($int:ty) => {
         impl ToBytes for $int {
@@ -172,7 +181,11 @@ to_bytes_for_integer!(u32);
 to_bytes_for_integer!(u64);
 to_bytes_for_integer!(u128);
 
+to_bytes_for_integer!(i8);
+to_bytes_for_integer!(i16);
+to_bytes_for_integer!(i32);
 to_bytes_for_integer!(i64);
+to_bytes_for_integer!(i128);
 
 impl ToBytes for () {
     #[inline]

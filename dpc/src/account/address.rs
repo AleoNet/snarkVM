@@ -24,6 +24,7 @@ use std::{
     convert::TryFrom,
     fmt,
     io::{Read, Result as IoResult, Write},
+    ops::Deref,
     str::FromStr,
 };
 
@@ -35,60 +36,35 @@ use std::{
     PartialEq(bound = "C: Parameters"),
     Eq(bound = "C: Parameters")
 )]
-pub struct Address<C: Parameters> {
-    pub encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey,
-}
+pub struct Address<C: Parameters>(<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
 
 impl<C: Parameters> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
-        Self::from_compute_key(private_key.compute_key())
+        Self::from_compute_key(&private_key.to_compute_key()?)
     }
 
     /// Derives the account address from an account compute key.
     pub fn from_compute_key(compute_key: &ComputeKey<C>) -> Result<Self, AccountError> {
-        let decryption_key = compute_key.to_decryption_key()?;
-        let encryption_key = C::account_encryption_scheme().generate_public_key(&decryption_key)?;
-        Ok(Self { encryption_key })
+        Ok(Self(compute_key.to_encryption_key()?))
     }
 
     /// Derives the account address from an account view key.
     pub fn from_view_key(view_key: &ViewKey<C>) -> Result<Self, AccountError> {
-        let encryption_key = C::account_encryption_scheme().generate_public_key(&view_key.decryption_key)?;
-        Ok(Self { encryption_key })
+        // TODO (howardwu): This operation can be optimized by precomputing powers in ECIES native impl.
+        //  Optimizing this will also speed up encryption.
+        Ok(Self(C::account_encryption_scheme().generate_public_key(&*view_key)?))
     }
 
     /// Verifies a signature on a message signed by the account view key.
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
     pub fn verify_signature(&self, message: &[u8], signature: &C::AccountSignature) -> Result<bool, AccountError> {
-        let signature_public_key = self.to_signature_public_key()?;
-        Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
-    }
-
-    /// Returns the address as a signature public key.
-    pub fn to_signature_public_key(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
-        use snarkvm_curves::edwards_bls12::EdwardsAffine;
-
-        let x_coordinate = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
-
-        if let Some(element) = <EdwardsAffine as AffineCurve>::from_x_coordinate(x_coordinate, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(FromBytes::from_bytes_le(&element.to_bytes_le()?)?);
-            }
-        }
-
-        if let Some(element) = <EdwardsAffine as AffineCurve>::from_x_coordinate(x_coordinate, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(FromBytes::from_bytes_le(&element.to_bytes_le()?)?);
-            }
-        }
-
-        Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
+        Ok(C::account_signature_scheme().verify(&self.0, message, signature)?)
     }
 
     /// Returns the address as an encryption public key.
-    pub fn to_encryption_key(&self) -> <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
-        self.encryption_key
+    pub fn encryption_key(&self) -> <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
+        self.0
     }
 }
 
@@ -110,6 +86,24 @@ impl<C: Parameters> TryFrom<&PrivateKey<C>> for Address<C> {
     }
 }
 
+impl<C: Parameters> TryFrom<ComputeKey<C>> for Address<C> {
+    type Error = AccountError;
+
+    /// Derives the account address from an account compute key.
+    fn try_from(compute_key: ComputeKey<C>) -> Result<Self, Self::Error> {
+        Self::try_from(&compute_key)
+    }
+}
+
+impl<C: Parameters> TryFrom<&ComputeKey<C>> for Address<C> {
+    type Error = AccountError;
+
+    /// Derives the account address from an account compute key.
+    fn try_from(compute_key: &ComputeKey<C>) -> Result<Self, Self::Error> {
+        Self::from_compute_key(compute_key)
+    }
+}
+
 impl<C: Parameters> TryFrom<ViewKey<C>> for Address<C> {
     type Error = AccountError;
 
@@ -125,6 +119,34 @@ impl<C: Parameters> TryFrom<&ViewKey<C>> for Address<C> {
     /// Derives the account address from an account view key.
     fn try_from(view_key: &ViewKey<C>) -> Result<Self, Self::Error> {
         Self::from_view_key(view_key)
+    }
+}
+
+impl<C: Parameters> FromBytes for Address<C> {
+    /// Reads in an account address buffer.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x_coordinate = C::ProgramBaseField::read_le(&mut reader)?;
+
+        if let Some(element) = C::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self(element));
+            }
+        }
+
+        if let Some(element) = C::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self(element));
+            }
+        }
+
+        Err(AccountError::Message("Failed to read encryption public key address".into()).into())
+    }
+}
+
+impl<C: Parameters> ToBytes for Address<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.to_x_coordinate().write_le(&mut writer)
     }
 }
 
@@ -152,43 +174,33 @@ impl<C: Parameters> FromStr for Address<C> {
     }
 }
 
-impl<C: Parameters> FromBytes for Address<C> {
-    /// Reads in an account address buffer.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey =
-            FromBytes::read_le(&mut reader)?;
-
-        Ok(Self { encryption_key })
-    }
-}
-
-impl<C: Parameters> ToBytes for Address<C> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.encryption_key.write_le(&mut writer)
-    }
-}
-
 impl<C: Parameters> fmt::Display for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
-        let mut address = [0u8; 32];
-        self.encryption_key
-            .write_le(&mut address[0..32])
-            .expect("address formatting failed");
+        let mut encryption_key = [0u8; 32];
+        self.write_le(&mut encryption_key[0..32])
+            .expect("Failed to write encryption key as bytes");
 
         bech32::encode(
             &account_format::ADDRESS_PREFIX.to_string(),
-            address.to_base32(),
+            encryption_key.to_base32(),
             bech32::Variant::Bech32,
         )
-        .unwrap()
+        .expect("Failed to encode in bech32")
         .fmt(f)
     }
 }
 
 impl<C: Parameters> fmt::Debug for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Address {{ encryption_key: {:?} }}", self.encryption_key)
+        write!(f, "Address {{ encryption_key: {:?} }}", self.0)
+    }
+}
+
+impl<C: Parameters> Deref for Address<C> {
+    type Target = <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

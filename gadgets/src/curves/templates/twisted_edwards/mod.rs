@@ -214,9 +214,9 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Af
         }
     }
 
-    pub fn alloc_without_check<FN, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: FG) -> Result<Self, SynthesisError>
+    pub fn alloc_without_check<Fn, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
-        FG: FnOnce() -> Result<TEAffine<P>, SynthesisError>,
+        Fn: FnOnce() -> Result<TEAffine<P>, SynthesisError>,
     {
         let (x, y) = match value_gen() {
             Ok(fe) => (Ok(fe.x), Ok(fe.y)),

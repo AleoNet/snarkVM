@@ -92,7 +92,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         );
 
         // Encrypt the record plaintext.
-        let encryption_key = record.owner().to_encryption_key();
+        let encryption_key = record.owner().encryption_key();
         let encryption_randomness = C::account_encryption_scheme().generate_randomness(&encryption_key, rng)?;
         let encrypted_record =
             C::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &bytes)?;
@@ -104,7 +104,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     /// Decrypt and reconstruct the encrypted record.
     pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
-        let plaintext = C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.ciphertext)?;
+        let plaintext = C::account_encryption_scheme().decrypt(&*account_view_key, &self.ciphertext)?;
 
         let mut cursor = Cursor::new(plaintext);
 

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
+    account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     InnerPublicVariables,
     Network,
     NoopProgram,
@@ -31,24 +31,28 @@ use snarkvm_algorithms::{
     define_merkle_tree_parameters,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
-    prf::Blake2s,
-    signature::SchnorrCompressed,
+    prf::PoseidonPRF,
+    signature::AleoSignatureScheme,
     snark::groth16::Groth16,
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
-    edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
+    edwards_bls12::{
+        EdwardsAffine as EdwardsBls12Affine,
+        EdwardsParameters,
+        EdwardsProjective as EdwardsBls12Projective,
+    },
     edwards_bw6::EdwardsProjective as EdwardsBW6,
-    PairingEngine,
+    traits::*,
 };
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         encryption::ECIESPoseidonEncryptionGadget,
-        prf::Blake2sGadget,
-        signature::SchnorrCompressedGadget,
+        prf::PoseidonPRFGadget,
+        signature::AleoSignatureSchemeGadget,
         snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
@@ -97,16 +101,22 @@ pub struct Testnet1Parameters;
 #[rustfmt::skip]
 impl Parameters for Testnet1Parameters {
     const NETWORK_ID: u8 = Network::Testnet1.id();
-
+    
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
     type InnerCurve = Bls12_377;
-    type OuterCurve = BW6_761;
-
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
-    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    
+    type OuterCurve = BW6_761;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
+    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+
+    type ProgramAffineCurve = EdwardsBls12Affine;
+    type ProgramProjectiveCurve = EdwardsBls12Projective;
+    type ProgramCurveParameters = EdwardsParameters;
+    type ProgramBaseField = <Self::ProgramCurveParameters as ModelParameters>::BaseField;
+    type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
@@ -116,35 +126,31 @@ impl Parameters for Testnet1Parameters {
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
-    type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
-    type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
-    type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
+    type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
+    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
 
-    type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
-    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
-
-    type AccountSignatureScheme = SchnorrCompressed<EdwardsParameters>;
-    type AccountSignatureGadget = SchnorrCompressedGadget<EdwardsParameters, Self::InnerScalarField>;
+    type AccountPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
+    type AccountSeed = <Self::AccountPRF as PRF>::Seed;
+    
+    type AccountSignatureScheme = AleoSignatureScheme<Self::ProgramCurveParameters>;
+    type AccountSignatureGadget = AleoSignatureSchemeGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 80, 32>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 80, 32>;
+    type EncryptedRecordCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 80, 32>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 80, 32>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;
     type InnerCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
-    type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
-    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
+    type LocalDataCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 24, 62>;
+    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
 
-    type LocalDataCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
-    type LocalDataCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+    type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
-
-    type PRF = Blake2s;
-    type PRFGadget = Blake2sGadget;
 
     type ProgramCommitmentScheme = Blake2sCommitment;
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
@@ -159,36 +165,39 @@ impl Parameters for Testnet1Parameters {
     type ProgramCircuitIDTreeDigest = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
     type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
     
-    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
-    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
+    type RecordCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
+    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
-    type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
-    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+    type RecordCommitmentTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
     type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
-    type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
+    type RecordSerialNumberTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
 
-    type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
-    type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
+    type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
+    type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
     type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
     
-    dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
+    type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
+    type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
+    
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{local_data_commitment_scheme, LOCAL_DATA_COMMITMENT_SCHEME, LocalDataCommitmentScheme, "AleoLocalDataCommitment0"} // TODO (howardwu): Rename to "AleoLocalDataCommitmentScheme0".
+    dpc_setup!{local_data_commitment_scheme, LOCAL_DATA_COMMITMENT_SCHEME, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramIDCommitment0"} // TODO (howardwu): Rename to "AleoProgramCommitmentScheme0".
-    dpc_setup!{program_circuit_id_crh, PROGRAM_CIRCUIT_ID_CRH, ProgramCircuitIDCRH, "AleoProgramIDCRH0"} // TODO (howardwu): Rename to "AleoProgramCircuitIDCRH0".
-    dpc_setup!{program_circuit_id_tree_crh, PROGRAM_CIRCUIT_ID_TREE_CRH, ProgramCircuitIDTreeCRH, "AleoProgramIDTreeCRH0"} // TODO (howardwu): Rename to "AleoProgramCircuitIDTreeCRH0".
-    dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
-    dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
-    dpc_setup!{record_serial_number_tree_crh, RECORD_SERIAL_NUMBER_TREE_CRH, RecordSerialNumberTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
+    dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
+    dpc_setup!{program_circuit_id_crh, PROGRAM_CIRCUIT_ID_CRH, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
+    dpc_setup!{program_circuit_id_tree_crh, PROGRAM_CIRCUIT_ID_TREE_CRH, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
+    dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerCommitmentTreeCRH0"}
+    dpc_setup!{record_serial_number_tree_crh, RECORD_SERIAL_NUMBER_TREE_CRH, RecordSerialNumberTreeCRH, "AleoLedgerSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
@@ -241,19 +250,6 @@ impl Parameters for Testnet1Parameters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_utilities::ToBytes;
-
-    #[test]
-    fn test_inner_circuit_id_sanity_check() {
-        let expected_inner_circuit_id = vec![
-            46, 93, 35, 86, 155, 239, 73, 63, 89, 226, 158, 81, 157, 119, 19, 208, 12, 246, 11, 130, 212, 126, 21, 101,
-            177, 22, 211, 207, 182, 117, 158, 87, 167, 84, 42, 167, 175, 157, 85, 211, 98, 226, 1, 35, 47, 122, 168, 0,
-        ];
-        let candidate_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
-            .to_bytes_le()
-            .unwrap();
-        assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
-    }
 
     #[test]
     fn test_inner_circuit_sanity_check() {

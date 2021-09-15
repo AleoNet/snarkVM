@@ -57,8 +57,7 @@ impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonPublicKey<TE> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        let x_coordinate = self.0.to_x_coordinate();
-        x_coordinate.write_le(&mut writer)
+        self.0.to_x_coordinate().write_le(&mut writer)
     }
 }
 
@@ -108,7 +107,7 @@ where
 {
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
-    type PublicKey = ECIESPoseidonPublicKey<TE>;
+    type PublicKey = TEAffine<TE>;
     type Randomness = TE::ScalarField;
 
     fn setup(message: &str) -> Self {
@@ -117,29 +116,14 @@ where
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey {
-        // Keep trying until finding a key that is within the field's capacity bit limits.
-        loop {
-            let key = Self::PrivateKey::rand(rng);
-            let bits = key.to_bits_le();
-
-            let flag = bits
-                .iter()
-                .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
-                .any(|bit| *bit);
-
-            if !flag {
-                return key;
-            }
-        }
+        Self::PrivateKey::rand(rng)
     }
 
     fn generate_public_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
     ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError> {
-        Ok(ECIESPoseidonPublicKey::<TE> {
-            0: self.generator.into_projective().mul(*private_key).into_affine(),
-        })
+        Ok(self.generator.into_projective().mul(*private_key).into_affine())
     }
 
     fn generate_randomness<R: Rng + CryptoRng>(
@@ -157,7 +141,7 @@ where
         message: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
         // Compute the ECDH value.
-        let ecdh_value = public_key.0.into_projective().mul((*randomness).clone()).into_affine();
+        let ecdh_value = public_key.into_projective().mul((*randomness).clone()).into_affine();
 
         // Prepare the Poseidon sponge.
         let params =
@@ -171,7 +155,7 @@ where
         // Add a commitment to the public key.
         let public_key_commitment = {
             let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-            sponge.absorb(&[commitment_randomness, public_key.0.x]);
+            sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
 
@@ -225,18 +209,6 @@ where
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
-        // Ensure that the private key follows the format requirement.
-        {
-            let bits = private_key.to_bits_le();
-            if bits
-                .iter()
-                .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
-                .any(|bit| *bit)
-            {
-                return Err(EncryptionError::InvalidPrivateKey);
-            }
-        }
-
         let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
         assert!(ciphertext.len() >= per_field_element_bytes);
 
@@ -274,7 +246,7 @@ where
         let public_key_commitment = {
             let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
             let public_key = self.generate_public_key(&private_key)?;
-            sponge.absorb(&[commitment_randomness, public_key.0.x]);
+            sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
         let given_public_key_commitment =

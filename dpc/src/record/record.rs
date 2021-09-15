@@ -17,7 +17,7 @@
 use crate::{Address, ComputeKey, Parameters, Payload, ProgramScheme, RecordError, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, CRH, PRF},
+    traits::{CommitmentScheme, CRH, PRF},
 };
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
@@ -174,32 +174,19 @@ impl<C: Parameters> Record<C> {
         })
     }
 
-    pub fn to_serial_number(
-        &self,
-        compute_key: &ComputeKey<C>,
-    ) -> Result<
-        (
-            C::AccountSignaturePublicKey,
-            <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
-        ),
-        RecordError,
-    > {
-        let timer = start_timer!(|| "Generate serial number");
+    pub fn to_serial_number(&self, compute_key: &ComputeKey<C>) -> Result<C::SerialNumber, RecordError> {
+        // Check that the compute key corresponds with the owner of the record.
+        if self.owner != Address::<C>::from_compute_key(compute_key)? {
+            return Err(RecordError::IncorrectComputeKey);
+        }
 
-        // TODO (howardwu) - Implement after removing parameters from the inputs.
-        // // Check that the private key corresponds with the owner of the record.
-        // if self.owner != &Address::<C>::from_private_key(private_key)? {
-        //     return Err(RecordError::IncorrectPrivateKey);
-        // }
-
+        // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes_le!(&compute_key.sk_prf())?.as_slice())?;
-        let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
-        let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature_scheme().randomize_public_key(compute_key.pk_sig(), &randomizer)?;
+        let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
+        let input = &vec![self.serial_number_nonce.clone()];
+        let serial_number = C::SerialNumberPRF::evaluate(&seed, input)?;
 
-        end_timer!(timer);
-        Ok((serial_number, randomizer))
+        Ok(serial_number)
     }
 }
 
@@ -209,7 +196,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type Owner = Address<C>;
     type Payload = Payload;
     type ProgramID = MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
-    type SerialNumber = C::AccountSignaturePublicKey;
+    type SerialNumber = C::SerialNumber;
     type SerialNumberNonce = C::SerialNumberNonce;
 
     fn program_id(&self) -> Self::ProgramID {

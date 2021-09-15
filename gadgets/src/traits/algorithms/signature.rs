@@ -29,13 +29,6 @@ pub trait SignatureGadget<S: SignatureScheme, F: Field>: AllocGadget<S, F> {
     type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
     type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
-    fn randomize_public_key<CS: ConstraintSystem<F>>(
-        &self,
-        cs: CS,
-        public_key: &Self::PublicKeyGadget,
-        randomizer: &[UInt8],
-    ) -> Result<Self::PublicKeyGadget, SynthesisError>;
-
     fn verify<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,

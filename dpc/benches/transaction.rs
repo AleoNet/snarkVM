@@ -34,7 +34,7 @@ fn coinbase_transaction<C: Parameters>(
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, rng)?;
     let authorization = DPC::<C>::authorize(&vec![], &state, rng)?;
-    let transaction = DPC::<C>::execute(&vec![], authorization, state.executables(), ledger, rng)?;
+    let transaction = DPC::<C>::execute(authorization, state.executables(), ledger, rng)?;
 
     Ok(transaction)
 }

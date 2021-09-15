@@ -43,7 +43,7 @@ impl<C: Parameters> InnerPublicVariables<C> {
         Self {
             kernel: TransactionKernel {
                 network_id: C::NETWORK_ID,
-                serial_numbers: vec![C::AccountSignaturePublicKey::default(); C::NUM_INPUT_RECORDS],
+                serial_numbers: vec![C::SerialNumber::default(); C::NUM_INPUT_RECORDS],
                 commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
                 value_balance: AleoAmount::ZERO,
                 memo: [0u8; 64],
@@ -84,7 +84,9 @@ where
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
         for serial_number in self.kernel.serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
-            v.extend_from_slice(&serial_number.to_field_elements()?);
+            v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
+                serial_number,
+            )?);
         }
 
         for (cm, encrypted_record_hash) in self

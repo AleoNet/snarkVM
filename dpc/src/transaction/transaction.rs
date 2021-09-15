@@ -48,7 +48,7 @@ pub struct Transaction<C: Parameters> {
     /// The network this transaction for.
     pub network: Network,
     /// The serial numbers of the input records.
-    pub serial_numbers: Vec<C::AccountSignaturePublicKey>,
+    pub serial_numbers: Vec<C::SerialNumber>,
     /// The commitment of the output records.
     pub commitments: Vec<C::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
@@ -58,8 +58,6 @@ pub struct Transaction<C: Parameters> {
     /// Publicly-visible data associated with the transaction.
     #[derivative(Default(value = "[0u8; 64]"))]
     pub memo: [u8; 64],
-    /// The signatures that authorized the transaction kernel.
-    pub signatures: Vec<C::AccountSignature>,
     /// The root of the ledger commitment tree.
     pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
@@ -80,7 +78,6 @@ impl<C: Parameters> Transaction<C> {
         commitments: Vec<<Self as TransactionScheme>::Commitment>,
         value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memo,
-        signatures: Vec<C::AccountSignature>,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
@@ -88,7 +85,6 @@ impl<C: Parameters> Transaction<C> {
     ) -> Self {
         assert_eq!(C::NUM_INPUT_RECORDS, serial_numbers.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, commitments.len());
-        assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
 
         Self {
@@ -97,7 +93,6 @@ impl<C: Parameters> Transaction<C> {
             commitments,
             value_balance,
             memo,
-            signatures,
             ledger_digest,
             inner_circuit_id,
             encrypted_records,
@@ -108,7 +103,6 @@ impl<C: Parameters> Transaction<C> {
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<C>,
-        signatures: Vec<C::AccountSignature>,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
@@ -128,7 +122,6 @@ impl<C: Parameters> Transaction<C> {
             commitments,
             value_balance,
             memo,
-            signatures,
             ledger_digest,
             inner_circuit_id,
             encrypted_records,
@@ -168,7 +161,7 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = C::InnerCircuitID;
     type Memo = [u8; 64];
-    type SerialNumber = C::AccountSignaturePublicKey;
+    type SerialNumber = C::SerialNumber;
     type Signature = C::AccountSignature;
     type ValueBalance = AleoAmount;
 
@@ -205,10 +198,6 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
         &self.memo
     }
 
-    fn signatures(&self) -> &[Self::Signature] {
-        &self.signatures
-    }
-
     fn ledger_digest(&self) -> &Self::Digest {
         &self.ledger_digest
     }
@@ -227,10 +216,6 @@ impl<C: Parameters> ToBytes for Transaction<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.to_kernel().write_le(&mut writer)?;
 
-        for signature in &self.signatures {
-            signature.write_le(&mut writer)?;
-        }
-
         self.ledger_digest.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
 
@@ -248,12 +233,6 @@ impl<C: Parameters> FromBytes for Transaction<C> {
         // Read the transaction kernel.
         let kernel: TransactionKernel<C> = FromBytes::read_le(&mut reader)?;
 
-        // Read the signatures
-        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            signatures.push(FromBytes::read_le(&mut reader)?);
-        }
-
         let ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters> = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id: C::InnerCircuitID = FromBytes::read_le(&mut reader)?;
 
@@ -267,7 +246,6 @@ impl<C: Parameters> FromBytes for Transaction<C> {
 
         Ok(Self::from(
             kernel,
-            signatures,
             ledger_digest,
             inner_circuit_id,
             encrypted_records,
@@ -281,13 +259,12 @@ impl<C: Parameters> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, signatures: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
             self.network,
             self.serial_numbers,
             self.commitments,
             self.value_balance,
             self.memo,
-            self.signatures,
             self.ledger_digest,
             self.inner_circuit_id,
             self.proof,
