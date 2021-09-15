@@ -163,7 +163,7 @@ mod tests {
                 let account = Account::new(rng).unwrap();
                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
                 let serial_number = input_record
-                    .to_serial_number(account.private_key().to_compute_key().unwrap())
+                    .to_serial_number(&account.private_key().to_compute_key().unwrap())
                     .unwrap();
                 (input_record, serial_number, account.private_key().clone())
             };

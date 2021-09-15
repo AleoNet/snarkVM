@@ -44,7 +44,6 @@ fn test_record_encryption() {
     for _ in 0..ITERATIONS {
         let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
 
-        let sn_nonce_input: [u8; 32] = rng.gen();
         let value = rng.gen();
         let mut payload = [0u8; PAYLOAD_SIZE];
         rng.fill(&mut payload);
@@ -62,7 +61,7 @@ fn test_record_encryption() {
             value,
             Payload::from_bytes_le(&payload).unwrap(),
             <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                .hash(&sn_nonce_input)
+                .hash(&rng.gen::<[u8; 32]>())
                 .unwrap(),
             commitment_randomness,
         )

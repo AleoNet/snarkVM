@@ -88,24 +88,24 @@ impl<C: Parameters> FromStr for PrivateKey<C> {
     /// Reads in an account private key string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data = s.from_base58()?;
-        if data.len() != 41 {
+        if data.len() != 43 {
             return Err(AccountError::InvalidByteLength(data.len()));
         }
 
-        if data[0..9] != account_format::PRIVATE_KEY_PREFIX {
-            return Err(AccountError::InvalidPrefixBytes(data[0..9].to_vec()));
+        if data[0..11] != account_format::PRIVATE_KEY_PREFIX {
+            return Err(AccountError::InvalidPrefixBytes(data[0..11].to_vec()));
         }
 
-        Ok(Self::from(&FromBytes::read_le(&data[9..41])?))
+        Ok(Self::from(&FromBytes::read_le(&data[11..43])?))
     }
 }
 
 impl<C: Parameters> fmt::Display for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut private_key = [0u8; 41];
-        private_key[0..9].copy_from_slice(&account_format::PRIVATE_KEY_PREFIX);
+        let mut private_key = [0u8; 43];
+        private_key[0..11].copy_from_slice(&account_format::PRIVATE_KEY_PREFIX);
         self.seed
-            .write_le(&mut private_key[9..41])
+            .write_le(&mut private_key[11..43])
             .expect("seed formatting failed");
 
         write!(f, "{}", private_key.to_base58())

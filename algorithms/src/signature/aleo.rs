@@ -151,7 +151,7 @@ where
 
         // Compute the powers of G.
         let g_bases = {
-            let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&format!("{} for G", message));
+            let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&message);
 
             let mut g = base.into_projective();
             let mut g_bases = Vec::with_capacity(<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize);

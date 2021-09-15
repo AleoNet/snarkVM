@@ -80,9 +80,6 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     /// Program SNARK verifier gadget for Aleo applications.
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
-    /// Crypto hash for deriving `sk_prf` from `pk_sig`. Invoked only over `Self::InnerScalarField`.
-    // type AccountCryptoHash: CryptoHash<Input = Self::AccountSignaturePublicKey>;
-
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme<
         PrivateKey = Self::ProgramScalarField,
