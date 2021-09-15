@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
+    account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     InnerPublicVariables,
     Network,
     NoopProgram,
@@ -101,7 +101,7 @@ pub struct Testnet1Parameters;
 #[rustfmt::skip]
 impl Parameters for Testnet1Parameters {
     const NETWORK_ID: u8 = Network::Testnet1.id();
-
+    
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
@@ -126,17 +126,13 @@ impl Parameters for Testnet1Parameters {
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
-    type AccountCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 33, 48>;
-    type AccountCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
-    type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
-
     // type AccountCryptoHash = PoseidonCryptoHash<Self::InnerScalarField, 4, false>;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
 
     type AccountPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
-    type AccountSeed = Self::ProgramScalarField;
+    type AccountSeed = <Self::AccountPRF as PRF>::Seed;
     
     type AccountSignatureScheme = AleoSignatureScheme<Self::ProgramCurveParameters>;
     type AccountSignatureGadget = AleoSignatureSchemeGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
@@ -190,9 +186,8 @@ impl Parameters for Testnet1Parameters {
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
-    type SerialNumber = Self::InnerScalarField;
+    type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
     
-    dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}

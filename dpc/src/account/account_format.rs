@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub static ACCOUNT_COMMITMENT_INPUT: &str = "AleoAccountCommitment0";
 pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
 
 pub static PRIVATE_KEY_PREFIX: [u8; 9] = [127, 134, 189, 116, 210, 221, 210, 137, 144]; // APrivateKey1

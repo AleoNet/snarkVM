@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AccountError, Parameters, PrivateKey};
-use snarkvm_algorithms::{SignatureSchemeOperations, PRF};
+use snarkvm_algorithms::SignatureSchemeOperations;
 use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -37,7 +37,7 @@ pub struct ComputeKey<C: Parameters> {
     /// pr_sig := G^r_sig.
     pr_sig: C::ProgramAffineCurve,
     /// sk_prf := RO(G^sk_sig || G^r_sig).
-    sk_prf: <C::SerialNumberPRF as PRF>::Seed,
+    sk_prf: C::ProgramScalarField,
 }
 
 impl<C: Parameters> ComputeKey<C> {
@@ -90,14 +90,14 @@ impl<C: Parameters> ComputeKey<C> {
     }
 
     /// Returns a reference to the PRF secret key.
-    pub fn sk_prf(&self) -> &<C::SerialNumberPRF as PRF>::Seed {
+    pub fn sk_prf(&self) -> &C::ProgramScalarField {
         &self.sk_prf
     }
 
     /// Returns the encryption key.
     pub fn to_encryption_key(&self) -> Result<C::ProgramAffineCurve, AccountError> {
         // Compute G^sk_prf.
-        let pk_prf = C::account_signature_scheme().g_scalar_multiply(self.sk_prf)?;
+        let pk_prf = C::account_signature_scheme().g_scalar_multiply(&self.sk_prf)?;
 
         Ok(self.pk_sig + self.pr_sig + pk_prf)
     }

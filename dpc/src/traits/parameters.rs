@@ -49,8 +49,8 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type OuterBaseField: PrimeField;
     type OuterScalarField: PrimeField;
 
-    type ProgramAffineCurve: AffineCurve;
-    type ProgramProjectiveCurve: ProjectiveCurve;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::ProgramBaseField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
     type ProgramBaseField: PrimeField;
     type ProgramScalarField: PrimeField;
@@ -80,20 +80,6 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     /// Program SNARK verifier gadget for Aleo applications.
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
-    /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
-    type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>;
-    type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
-    type AccountCommitment: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + Eq
-        + Hash
-        + ToBytes
-        + FromBytes
-        + Sync
-        + Send;
-
     /// Crypto hash for deriving `sk_prf` from `pk_sig`. Invoked only over `Self::InnerScalarField`.
     // type AccountCryptoHash: CryptoHash<Input = Self::AccountSignaturePublicKey>;
 
@@ -105,12 +91,15 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
-    type AccountPRF: PRF<Input = Self::ProgramScalarField, Seed = Self::AccountSeed>;
+    type AccountPRF: PRF<Input = Self::ProgramScalarField, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
     type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignatureScheme: SignatureScheme<PublicKey = Self::ProgramAffineCurve, Signature = Self::AccountSignature>
-        + SignatureSchemeOperations<
+    type AccountSignatureScheme: SignatureScheme<
+            PrivateKey = (Self::ProgramScalarField, Self::ProgramScalarField),
+            PublicKey = Self::ProgramAffineCurve,
+            Signature = Self::AccountSignature,
+        > + SignatureSchemeOperations<
             AffineCurve = Self::ProgramAffineCurve,
             BaseField = Self::ProgramBaseField,
             ScalarField = Self::ProgramScalarField,
@@ -293,7 +282,11 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Send;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberPRF: PRF<Input = Self::SerialNumberNonce, Output = Self::SerialNumber>;
+    type SerialNumberPRF: PRF<
+        Input = Self::SerialNumberNonce,
+        Seed = Self::InnerScalarField,
+        Output = Self::SerialNumber,
+    >;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
     type SerialNumber: ToConstraintField<Self::InnerScalarField>
         + Clone
@@ -306,7 +299,6 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Sync
         + Send;
 
-    fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
 

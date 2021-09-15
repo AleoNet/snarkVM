@@ -14,12 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
-
-use snarkvm_algorithms::prf::Blake2s;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-
 use crate::{
     bits::{Boolean, ToBytesGadget},
     integers::uint::{UInt, UInt32, UInt8},
@@ -33,6 +27,12 @@ use crate::{
     },
     ToBitsBEGadget,
 };
+use snarkvm_algorithms::prf::Blake2s;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
+use itertools::Itertools;
+use std::borrow::Borrow;
 
 // 2.1.  Parameters
 // The following table summarizes various parameters and their ranges:
@@ -373,6 +373,148 @@ pub fn blake2s_gadget<F: PrimeField, CS: ConstraintSystem<F>>(
 }
 
 #[derive(Clone, Debug)]
+pub struct Blake2sInputGadget(pub Vec<UInt8>);
+
+impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sInputGadget {
+    #[inline]
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[u8; 32]>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Blake2sInputGadget(<UInt8>::alloc_vec(cs, &match value_gen() {
+            Ok(val) => *(val.borrow()),
+            Err(_) => [0u8; 32],
+        })?))
+    }
+
+    #[inline]
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[u8; 32]>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Blake2sInputGadget(<UInt8>::alloc_input_vec_le(
+            cs,
+            &match value_gen() {
+                Ok(val) => *(val.borrow()),
+                Err(_) => [0u8; 32],
+            },
+        )?))
+    }
+}
+
+impl<F: PrimeField> ToBytesGadget<F> for Blake2sInputGadget {
+    #[inline]
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        Ok(self.0.clone())
+    }
+
+    #[inline]
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
+    }
+}
+
+impl PartialEq for Blake2sInputGadget {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for Blake2sInputGadget {}
+
+impl<F: PrimeField> EqGadget<F> for Blake2sInputGadget {}
+
+impl<F: PrimeField> ConditionalEqGadget<F> for Blake2sInputGadget {
+    #[inline]
+    fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        for (i, (a, b)) in self.0.iter().zip_eq(other.0.iter()).enumerate() {
+            a.conditional_enforce_equal(&mut cs.ns(|| format!("blake2s_equal_{}", i)), b, condition)?;
+        }
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        32 * <UInt8 as ConditionalEqGadget<F>>::cost()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Blake2sSeedGadget(pub Vec<UInt8>);
+
+impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sSeedGadget {
+    #[inline]
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[u8; 32]>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Blake2sSeedGadget(<UInt8>::alloc_vec(cs, &match value_gen() {
+            Ok(val) => *(val.borrow()),
+            Err(_) => [0u8; 32],
+        })?))
+    }
+
+    #[inline]
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[u8; 32]>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Blake2sSeedGadget(<UInt8>::alloc_input_vec_le(
+            cs,
+            &match value_gen() {
+                Ok(val) => *(val.borrow()),
+                Err(_) => [0u8; 32],
+            },
+        )?))
+    }
+}
+
+impl<F: PrimeField> ToBytesGadget<F> for Blake2sSeedGadget {
+    #[inline]
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        Ok(self.0.clone())
+    }
+
+    #[inline]
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
+    }
+}
+
+impl PartialEq for Blake2sSeedGadget {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for Blake2sSeedGadget {}
+
+impl<F: PrimeField> EqGadget<F> for Blake2sSeedGadget {}
+
+impl<F: PrimeField> ConditionalEqGadget<F> for Blake2sSeedGadget {
+    #[inline]
+    fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        for (i, (a, b)) in self.0.iter().zip_eq(other.0.iter()).enumerate() {
+            a.conditional_enforce_equal(&mut cs.ns(|| format!("blake2s_equal_{}", i)), b, condition)?;
+        }
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        32 * <UInt8 as ConditionalEqGadget<F>>::cost()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Blake2sOutputGadget(pub Vec<UInt8>);
 
 impl PartialEq for Blake2sOutputGadget {
@@ -393,7 +535,7 @@ impl<F: PrimeField> ConditionalEqGadget<F> for Blake2sOutputGadget {
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        for (i, (a, b)) in self.0.iter().zip(other.0.iter()).enumerate() {
+        for (i, (a, b)) in self.0.iter().zip_eq(other.0.iter()).enumerate() {
             a.conditional_enforce_equal(&mut cs.ns(|| format!("blake2s_equal_{}", i)), b, condition)?;
         }
         Ok(())
@@ -471,19 +613,19 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Blake2sOutputGadget {
 pub struct Blake2sGadget;
 
 impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
-    type Input = Vec<UInt8>;
+    type Input = Blake2sInputGadget;
     type Output = Blake2sOutputGadget;
-    type Seed = Vec<UInt8>;
+    type Seed = Blake2sSeedGadget;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
         seed: &Self::Seed,
         input: &Self::Input,
     ) -> Result<Self::Output, SynthesisError> {
-        assert_eq!(seed.len(), 32);
+        assert_eq!(seed.0.len(), 32);
         // assert_eq!(input.len(), 32);
         let mut gadget_input = vec![];
-        for byte in seed.iter().chain(input) {
+        for byte in seed.0.iter().chain(input.0.iter()) {
             gadget_input.extend_from_slice(&byte.to_bits_le());
         }
         let mut result = vec![];

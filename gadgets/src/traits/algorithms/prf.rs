@@ -26,8 +26,8 @@ use crate::{
 };
 
 pub trait PRFGadget<P: PRF, F: Field> {
-    type Input: EqGadget<F> + ToBytesGadget<F> + Clone + Debug;
-    type Seed: EqGadget<F> + ToBytesGadget<F> + Clone + Debug;
+    type Input: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Input, F> + Clone + Debug;
+    type Seed: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Seed, F> + Clone + Debug;
     type Output: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
