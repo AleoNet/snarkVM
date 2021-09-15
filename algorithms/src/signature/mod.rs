@@ -17,11 +17,5 @@
 pub mod aleo;
 pub use aleo::*;
 
-pub mod schnorr;
-pub use schnorr::*;
-
-pub mod schnorr_compressed;
-pub use schnorr_compressed::*;
-
 #[cfg(test)]
 mod tests;
