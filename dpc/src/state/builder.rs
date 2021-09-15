@@ -133,13 +133,6 @@ impl<C: Parameters> StateBuilder<C> {
             .map(|input| input.serial_number().clone())
             .collect();
 
-        // Compute the signature randomizers.
-        let signature_randomizers: Vec<_> = inputs
-            .iter()
-            .take(C::NUM_INPUT_RECORDS)
-            .map(|input| input.signature_randomizer().clone())
-            .collect();
-
         // Compute the noop private keys.
         let noop_private_keys: Vec<_> = inputs
             .iter()
@@ -204,7 +197,6 @@ impl<C: Parameters> StateBuilder<C> {
             kernel,
             input_records,
             output_records,
-            signature_randomizers,
             noop_private_keys,
             executables,
         })
@@ -263,19 +255,20 @@ mod tests {
             let seed: u64 = thread_rng().gen();
 
             // Generate the expected input state.
-            let (expected_record, expected_serial_number, expected_signature_randomizer) = {
+            let (expected_record, expected_serial_number) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
-                let (serial_number, signature_randomizer) =
-                    input_record.to_serial_number(&account.compute_key()).unwrap();
+                let serial_number = input_record
+                    .to_serial_number(&account.private_key().to_compute_key().unwrap())
+                    .unwrap();
 
-                (input_record, serial_number, signature_randomizer)
+                (input_record, serial_number)
             };
 
             // Generate the candidate input state.
-            let (candidate_record, candidate_serial_number, candidate_signature_randomizer, candidate_executable) = {
+            let (candidate_record, candidate_serial_number, candidate_executable) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let mut builder = StateBuilder::<Testnet2Parameters>::new();
@@ -285,14 +278,12 @@ mod tests {
                 (
                     builder.inputs[0].record().clone(),
                     builder.inputs[0].serial_number().clone(),
-                    builder.inputs[0].signature_randomizer().clone(),
                     builder.inputs[0].executable().clone(),
                 )
             };
 
             assert_eq!(expected_record, candidate_record);
             assert_eq!(expected_serial_number, candidate_serial_number);
-            assert_eq!(expected_signature_randomizer, candidate_signature_randomizer);
             assert!(candidate_executable.is_noop());
         }
     }

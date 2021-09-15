@@ -53,8 +53,8 @@ path = "benches/prf/blake2s.rs"
 harness = false
 
 [[bench]]
-name = "signature-schnorr"
-path = "benches/signature/schnorr.rs"
+name = "signature-aleo"
+path = "benches/signature/aleo.rs"
 harness = false
 
 [[bench]]

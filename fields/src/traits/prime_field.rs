@@ -57,7 +57,7 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
 
     /// Reads bytes in big-endian, and converts them to a field element.
     /// If the bytes are larger than the modulus, it will reduce them.
-    fn from_be_bytes_mod_order(bytes: &[u8]) -> Self {
+    fn from_bytes_be_mod_order(bytes: &[u8]) -> Self {
         let num_modulus_bytes = ((Self::Parameters::MODULUS_BITS + 7) / 8) as usize;
         let num_bytes_to_directly_convert = min(num_modulus_bytes - 1, bytes.len());
         // Copy the leading big-endian bytes directly into a field element.
@@ -81,9 +81,9 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
 
     /// Reads bytes in little-endian, and converts them to a field element.
     /// If the bytes are larger than the modulus, it will reduce them.
-    fn from_le_bytes_mod_order(bytes: &[u8]) -> Self {
+    fn from_bytes_le_mod_order(bytes: &[u8]) -> Self {
         let mut bytes_copy = bytes.to_vec();
         bytes_copy.reverse();
-        Self::from_be_bytes_mod_order(&bytes_copy)
+        Self::from_bytes_be_mod_order(&bytes_copy)
     }
 }

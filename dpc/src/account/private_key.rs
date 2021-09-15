@@ -14,12 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountError, ComputeKey, Parameters};
-use snarkvm_algorithms::{
-    prf::Blake2s,
-    traits::{CommitmentScheme, SignatureScheme, PRF},
+use crate::{
+    account_format,
+    AccountError,
+    ComputeKey,
+    Parameters,
+    ACCOUNT_SEED_R_SIG_DOMAIN,
+    ACCOUNT_SEED_SK_SIG_DOMAIN,
 };
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_algorithms::traits::{SignatureScheme, PRF};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
@@ -32,131 +37,63 @@ use std::{fmt, str::FromStr};
     Eq(bound = "C: Parameters")
 )]
 pub struct PrivateKey<C: Parameters> {
-    pub seed: [u8; 32],
-    pub r_pk_counter: u16,
-    // Derived private attributes from the seed.
-    sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey,
-    compute_key: ComputeKey<C>,
+    seed: C::AccountSeed,
+    pub(super) sk_sig: C::ProgramScalarField,
+    pub(super) r_sig: C::ProgramScalarField,
 }
 
 impl<C: Parameters> PrivateKey<C> {
-    const INITIAL_R_PK_COUNTER: u16 = 2;
-    const INPUT_SK_PRF: [u8; 32] = [
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    ];
-    const INPUT_SK_SIG: [u8; 32] = [0u8; 32];
-
     /// Creates a new account private key.
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
-        // Sample randomly until a valid private key is found.
-        loop {
-            // Samples a random account private key seed.
-            let seed: [u8; 32] = rng.gen();
-
-            // Returns the private key if it is valid.
-            if let Ok(private_key) = Self::from_seed(&seed) {
-                return private_key;
-            }
-        }
-    }
-
-    /// Derives the account private key from a given seed and verifies it is well-formed.
-    pub fn from_seed(seed: &[u8; 32]) -> Result<Self, AccountError> {
-        // Generate the signature private key.
-        let sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey =
-            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?.as_ref())?;
-
-        // Derive the signature public key.
-        let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
-
-        // Generate the PRF secret key.
-        let sk_prf: <C::PRF as PRF>::Seed =
-            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?.as_ref())?;
-
-        // Initialize a candidate compute key.
-        let mut compute_key = ComputeKey::new(pk_sig, sk_prf, Default::default())?;
-
-        // Derive the private key by iterating on the r_pk counter, until a valid r_pk is found.
-        for r_pk_counter in Self::INITIAL_R_PK_COUNTER..u16::MAX {
-            if let Ok(r_pk) = Self::derive_r_pk(seed, r_pk_counter) {
-                // Update the candidate compute key with the derived value.
-                compute_key.r_pk = r_pk;
-
-                // Returns the private key if its compute key is valid.
-                if compute_key.is_valid() {
-                    return Ok(Self {
-                        seed: *seed,
-                        r_pk_counter,
-                        sk_sig,
-                        compute_key,
-                    });
-                }
-            }
-        }
-
-        Err(AccountError::InvalidPrivateKeySeed)
-    }
-
-    /// Derives the account private key from a given seed and counter without verifying if it is well-formed.
-    fn from_seed_and_counter(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
-        // Generate the signature private key.
-        let sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey =
-            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?.as_ref())?;
-
-        // Derive the signature public key.
-        let pk_sig = C::account_signature_scheme().generate_public_key(&sk_sig)?;
-
-        // Generate the PRF secret key.
-        let sk_prf: <C::PRF as PRF>::Seed =
-            FromBytes::read_le(Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?.as_ref())?;
-
-        // Generate the randomness rpk for the commitment scheme.
-        let r_pk = Self::derive_r_pk(seed, r_pk_counter)?;
-
-        // Initialize a candidate compute key.
-        let compute_key = ComputeKey::new(pk_sig, sk_prf, r_pk)?;
-
-        // Construct the candidate private key.
-        let private_key = Self {
-            seed: *seed,
-            r_pk_counter,
-            sk_sig,
-            compute_key,
-        };
-
-        // Returns the private key if it is valid.
-        match private_key.is_valid() {
-            true => Ok(private_key),
-            false => Err(AccountError::InvalidPrivateKey),
-        }
+        // Sample a random account seed.
+        Self::from(&C::AccountSeed::rand(rng))
     }
 
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(&self) -> bool {
-        self.r_pk_counter >= Self::INITIAL_R_PK_COUNTER && self.compute_key.is_valid()
+        match self.to_compute_key() {
+            Ok(compute_key) => compute_key.is_valid(),
+            Err(error) => {
+                eprintln!("Failed to validate private key: {}", error);
+                false
+            }
+        }
     }
 
-    /// Returns a reference to the signature private key.
-    pub fn sk_sig(&self) -> &<C::AccountSignatureScheme as SignatureScheme>::PrivateKey {
-        &self.sk_sig
+    /// Signs a message using the account private key.
+    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<C::AccountSignature, AccountError> {
+        Ok(C::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?)
     }
 
-    /// Returns a reference to the compute key.
-    pub fn compute_key(&self) -> &ComputeKey<C> {
-        &self.compute_key
+    /// Returns a reference to the account compute key.
+    pub fn to_compute_key(&self) -> Result<ComputeKey<C>, AccountError> {
+        Ok(ComputeKey::from_private_key(self)?)
     }
 
-    /// Generate the randomness r_pk for the commitment scheme from a given seed and counter.
-    fn derive_r_pk(
-        seed: &[u8; 32],
-        counter: u16,
-    ) -> Result<<C::AccountCommitmentScheme as CommitmentScheme>::Randomness, AccountError> {
-        let mut r_pk_input = [0u8; 32];
-        r_pk_input[0..2].copy_from_slice(&counter.to_le_bytes());
+    /// Returns the decryption key.
+    pub fn to_decryption_key(&self) -> Result<C::ProgramScalarField, AccountError> {
+        Ok(self.sk_sig + self.r_sig + self.to_compute_key()?.sk_prf())
+    }
+}
 
-        // Generate the randomness r_pk for the commitment scheme.
-        Ok(FromBytes::read_le(Blake2s::evaluate(seed, &r_pk_input)?.as_ref())?)
+impl<C: Parameters> From<&C::AccountSeed> for PrivateKey<C> {
+    /// Returns the account private key from an account seed.
+    fn from(seed: &C::AccountSeed) -> Self {
+        // Construct the sk_sig domain separator.
+        let sk_sig_input = ACCOUNT_SEED_SK_SIG_DOMAIN;
+        let sk_sig_domain = C::ProgramScalarField::from_bytes_le_mod_order(&sk_sig_input.as_bytes());
+
+        // Construct the r_sig domain separator.
+        let r_sig_input = format!("{}_{}", ACCOUNT_SEED_R_SIG_DOMAIN, 0);
+        let r_sig_domain = C::ProgramScalarField::from_bytes_le_mod_order(r_sig_input.as_bytes());
+
+        Self {
+            seed: seed.clone(),
+            sk_sig: C::AccountPRF::evaluate(seed, &vec![sk_sig_domain])
+                .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
+            r_sig: C::AccountPRF::evaluate(seed, &vec![r_sig_domain])
+                .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
+        }
     }
 }
 
@@ -170,26 +107,18 @@ impl<C: Parameters> FromStr for PrivateKey<C> {
             return Err(AccountError::InvalidByteLength(data.len()));
         }
 
-        if data[0..9] != account_format::PRIVATE_KEY_PREFIX {
-            return Err(AccountError::InvalidPrefixBytes(data[0..9].to_vec()));
+        if data[0..11] != account_format::PRIVATE_KEY_PREFIX {
+            return Err(AccountError::InvalidPrefixBytes(data[0..11].to_vec()));
         }
 
-        let mut reader = &data[9..];
-        let counter_bytes: [u8; 2] = FromBytes::read_le(&mut reader)?;
-        let seed: [u8; 32] = FromBytes::read_le(&mut reader)?;
-
-        Self::from_seed_and_counter(&seed, u16::from_le_bytes(counter_bytes))
+        Ok(Self::from(&FromBytes::read_le(&data[11..43])?))
     }
 }
 
 impl<C: Parameters> fmt::Display for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut private_key = [0u8; 43];
-        let prefix = account_format::PRIVATE_KEY_PREFIX;
-
-        private_key[0..9].copy_from_slice(&prefix);
-        private_key[9..11].copy_from_slice(&self.r_pk_counter.to_le_bytes());
-
+        private_key[0..11].copy_from_slice(&account_format::PRIVATE_KEY_PREFIX);
         self.seed
             .write_le(&mut private_key[11..43])
             .expect("seed formatting failed");
@@ -200,10 +129,6 @@ impl<C: Parameters> fmt::Display for PrivateKey<C> {
 
 impl<C: Parameters> fmt::Debug for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "PrivateKey {{ seed: {:?}, r_pk_counter: {:?} }}",
-            self.seed, self.r_pk_counter
-        )
+        write!(f, "PrivateKey {{ seed: {:?} }}", self.seed)
     }
 }

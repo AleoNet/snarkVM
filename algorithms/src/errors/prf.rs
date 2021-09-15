@@ -22,6 +22,9 @@ pub enum PRFError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
+    #[error("{}", _0)]
+    CryptoHashError(#[from] crate::CryptoHashError),
+
     #[error("incorrect input length: {}", _0)]
     IncorrectInputLength(usize),
 

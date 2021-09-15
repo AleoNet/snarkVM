@@ -26,6 +26,18 @@ use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
+fn test_testnet2_inner_circuit_id_sanity_check() {
+    let expected_inner_circuit_id = vec![
+        207, 249, 81, 218, 7, 40, 196, 252, 216, 43, 76, 140, 255, 180, 215, 169, 183, 186, 20, 134, 150, 161, 32, 234,
+        238, 85, 157, 181, 217, 10, 96, 147, 32, 185, 138, 155, 143, 3, 103, 135, 26, 170, 84, 60, 182, 46, 223, 0,
+    ];
+    let candidate_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
+        .to_bytes_le()
+        .unwrap();
+    assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
+}
+
+#[test]
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
@@ -56,7 +68,7 @@ fn dpc_testnet2_integration_test() {
 
     let new_records = authorization.output_records.clone();
 
-    let transaction = DPC::execute(&vec![], authorization, state.executables(), &ledger, &mut rng).unwrap();
+    let transaction = DPC::execute(authorization, state.executables(), &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
@@ -113,21 +125,6 @@ fn dpc_testnet2_integration_test() {
 }
 
 #[test]
-fn test_testnet_2_transaction_authorization_serialization() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-    let recipient = Account::new(&mut rng).unwrap();
-    let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
-    let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
-
-    // Serialize and recover the transaction authorization.
-    let recovered_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
-
-    assert_eq!(authorization, recovered_authorization);
-}
-
-#[test]
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
@@ -155,7 +152,6 @@ fn test_testnet2_dpc_execute_constraints() {
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
-    let executables = state.executables();
 
     let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
 
@@ -164,7 +160,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     // Execute the programs.
     let mut executions = Vec::with_capacity(Testnet2Parameters::NUM_TOTAL_RECORDS);
-    for (i, executable) in executables.iter().enumerate() {
+    for (i, executable) in state.executables().iter().enumerate() {
         executions.push(executable.execute(i as u8, &local_data).unwrap());
     }
 
@@ -177,10 +173,9 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let TransactionAuthorization {
         kernel,
-        input_records: old_records,
-        output_records: new_records,
-        signatures: _,
-        noop_compute_keys,
+        input_records,
+        output_records,
+        signatures,
     } = authorization;
 
     let local_data_root = local_data.root();
@@ -191,8 +186,8 @@ fn test_testnet2_dpc_execute_constraints() {
     // Generate the ledger membership witnesses
     let mut old_witnesses = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
 
-    // Compute the ledger membership witness and serial number from the old records.
-    for record in old_records.iter() {
+    // Compute the ledger membership witness and serial number from the input records.
+    for record in input_records.iter() {
         if record.is_dummy() {
             old_witnesses.push(MerklePath::default());
         } else {
@@ -213,10 +208,10 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
-        old_records.clone(),
+        input_records.clone(),
         old_witnesses,
-        noop_compute_keys.iter().map(|key| key.clone().unwrap()).collect(), // This is safe only for this test case.
-        new_records.clone(),
+        signatures,
+        output_records.clone(),
         encrypted_record_randomizers,
         program_randomness.clone(),
         local_data.leaf_randomizers().clone(),
@@ -246,7 +241,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(317979, num_constraints);
+    assert_eq!(283473, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
