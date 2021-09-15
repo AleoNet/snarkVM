@@ -73,7 +73,7 @@ impl<C: Parameters> From<&C::AccountSeed> for PrivateKey<C> {
     /// Returns the account private key from an account seed.
     fn from(seed: &C::AccountSeed) -> Self {
         Self {
-            seed: *seed,
+            seed: seed.clone(),
             sk_sig: C::AccountPRF::evaluate(seed, &C::ProgramScalarField::zero())
                 .expect("Failed to derive private key component for PRF(seed, 0)"),
             r_sig: C::AccountPRF::evaluate(seed, &C::ProgramScalarField::one())

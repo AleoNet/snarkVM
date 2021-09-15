@@ -103,6 +103,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
             AffineCurve = Self::ProgramAffineCurve,
             BaseField = Self::ProgramBaseField,
             ScalarField = Self::ProgramScalarField,
+            Signature = Self::AccountSignature,
         >;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>

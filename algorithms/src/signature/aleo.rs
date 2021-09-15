@@ -321,8 +321,17 @@ where
     type AffineCurve = TEAffine<TE>;
     type BaseField = TE::BaseField;
     type ScalarField = TE::ScalarField;
+    type Signature = AleoSignature<TE>;
 
-    fn g_scalar_multiply(&self, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
+    fn pk_sig(signature: &Self::Signature) -> Result<Self::AffineCurve> {
+        Self::recover_from_x_coordinate(&signature.root_public_key)
+    }
+
+    fn pr_sig(signature: &Self::Signature) -> Result<Self::AffineCurve> {
+        Self::recover_from_x_coordinate(&signature.root_randomizer)
+    }
+
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Result<Self::AffineCurve> {
         Ok(self
             .g_bases
             .iter()
@@ -335,7 +344,7 @@ where
             .into_affine())
     }
 
-    fn hash_to_scalar_field(&self, input: &[TE::BaseField]) -> Result<TE::ScalarField> {
+    fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Result<Self::ScalarField> {
         // Use Poseidon as a random oracle.
         let output = PoseidonCryptoHash::<TE::BaseField, 4, false>::evaluate(&input)?;
 

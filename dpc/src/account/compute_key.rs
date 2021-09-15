@@ -65,6 +65,16 @@ impl<C: Parameters> ComputeKey<C> {
         Self::new(pk_sig, pr_sig)
     }
 
+    pub fn from_signature(signature: &C::AccountSignature) -> Result<Self, AccountError> {
+        // Extract G^sk_sig.
+        let pk_sig = C::AccountSignatureScheme::pk_sig(signature)?;
+
+        // Extract G^r_sig.
+        let pr_sig = C::AccountSignatureScheme::pr_sig(signature)?;
+
+        Self::new(pk_sig, pr_sig)
+    }
+
     /// Returns `true` if the compute key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(&self) -> bool {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
+use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -207,12 +207,12 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // Save the given_owner for signature verification at the end.
             {
                 let owner = record.owner().encryption_key();
+                let public_key = FromBytes::read_le(&owner.to_bytes_le()?[..])?;
                 let public_key_gadget = <C::AccountSignatureGadget as SignatureGadget<
                     C::AccountSignatureScheme,
                     C::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
-                    declare_cs.ns(|| format!("alloc_signature_{}", i)),
-                    || Ok(FromBytes::read_le(&owner.to_bytes_le()?[..])?),
+                    declare_cs.ns(|| format!("alloc_public_key{}", i)), || Ok(&public_key)
                 )?;
                 signature_public_keys.push(public_key_gadget);
             }
@@ -286,9 +286,17 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
+            // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
+            // Allocate sk_prf.
+            let sk_prf = {
+                let compute_key = ComputeKey::<C>::from_signature(&signature)
+                    .expect("Failed to derive the compute key from signature");
+                FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?
+            };
+
             let sk_prf = <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Seed::alloc(
                 &mut sn_cs.ns(|| "Declare sk_prf"),
-                || Ok(signature.sk_prf()),
+                || Ok(&sk_prf),
             )?;
 
             let candidate_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
