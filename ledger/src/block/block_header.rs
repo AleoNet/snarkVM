@@ -23,8 +23,8 @@ use crate::{
     ProofOfSuccinctWork,
     Transactions,
 };
-use snarkvm_algorithms::{crh::BHPCompressedCRH, traits::CRH};
-use snarkvm_dpc::TransactionScheme;
+use snarkvm_algorithms::{crh::BHPCompressedCRH, merkle_tree::MerkleTree, traits::CRH};
+use snarkvm_dpc::{Parameters, TransactionScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -100,12 +100,21 @@ impl BlockHeader {
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis<T: TransactionScheme, R: Rng + CryptoRng>(
+    pub fn new_genesis<T: TransactionScheme, C: Parameters, R: Rng + CryptoRng>(
         transactions: &Transactions<T>,
         rng: &mut R,
     ) -> Result<Self> {
         let previous_block_hash = BlockHeaderHash([0u8; 32]);
-        let commitments_root = MerkleRootHash([0u8; 32]);
+
+        // Craft the commitments root from the transactions
+        let transaction_commitments: Vec<&<T as TransactionScheme>::Commitment> =
+            transactions.0.iter().map(|t| t.commitments()).flatten().collect();
+        let record_commitment_tree = MerkleTree::new(
+            Arc::new(C::record_commitment_tree_parameters().clone()),
+            &transaction_commitments,
+        )?;
+        let commitments_root = MerkleRootHash::from_element(record_commitment_tree.root());
+
         let timestamp = 0i64;
         let difficulty_target = u64::MAX;
         let max_nonce = u32::MAX;
@@ -197,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_block_header_genesis() {
-        let block_header = BlockHeader::new_genesis(
+        let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(
             &Transactions::from(&[
                 Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap(),
             ]),
@@ -213,6 +222,7 @@ mod tests {
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, PedersenMerkleRootHash([0u8; 32]));
+        assert_ne!(block_header.commitments_root, MerkleRootHash([0u8; 32]));
         assert_ne!(
             block_header.proof,
             ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])

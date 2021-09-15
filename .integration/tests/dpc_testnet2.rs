@@ -89,10 +89,13 @@ fn dpc_testnet2_integration_test() {
         .expect("Time went backwards")
         .as_secs() as i64;
 
+    let transaction_commitments = transactions.0.iter().map(|t| t.commitments.clone()).flatten().collect();
+    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
+
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
         transactions_root: pedersen_merkle_root(&transaction_ids),
-        commitments_root: MerkleRootHash::from_element(ledger.latest_digest().unwrap()),
+        commitments_root: MerkleRootHash::from_element(new_commitments_tree.root()),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
         proof: ProofOfSuccinctWork::default(),
     };

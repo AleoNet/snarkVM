@@ -250,20 +250,28 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     ) -> Result<(), StorageError> {
         let mut new_cm_and_indices = additional_cms;
 
-        let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
-
         new_cm_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
 
         let new_commitments: Vec<_> = new_cm_and_indices.into_iter().map(|(cm, _)| cm).collect();
 
-        let new_tree = {
-            self.record_commitment_tree
-                .read()
-                .rebuild(current_len, &new_commitments)?
-        };
-        *self.record_commitment_tree.write() = new_tree;
+        *self.record_commitment_tree.write() = self.build_new_commitment_tree(new_commitments)?;
 
         Ok(())
+    }
+
+    /// Build a new commitment merkle tree
+    pub fn build_new_commitment_tree(
+        &self,
+        additional_cms: Vec<<Transaction<C> as TransactionScheme>::Commitment>,
+    ) -> Result<MerkleTree<C::RecordCommitmentTreeParameters>, StorageError> {
+        let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
+
+        let new_tree = self
+            .record_commitment_tree
+            .read()
+            .rebuild(current_len, &additional_cms)?;
+
+        Ok(new_tree)
     }
 
     /// Commit a transaction to the canon chain
