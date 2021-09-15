@@ -40,9 +40,16 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, PRFError> {
         let timer = start_timer!(|| "PoseidonPRF::evaluate");
 
+        // Construct the input length as a field element.
+        let input_length = {
+            let mut buffer = input.len().to_le_bytes().to_vec();
+            buffer.resize(F::size_in_bits() + 7 / 8, 0u8);
+            F::from_bytes_le(&buffer)?
+        };
+
         // Construct the preimage.
         let mut preimage = vec![*seed];
-        preimage.push(F::from_bytes_le(&input.len().to_le_bytes())?);
+        preimage.push(input_length);
         preimage.extend_from_slice(input);
 
         // Evaluate the preimage.
