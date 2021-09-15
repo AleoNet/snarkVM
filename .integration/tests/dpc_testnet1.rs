@@ -28,8 +28,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        122, 227, 255, 58, 159, 143, 236, 171, 212, 170, 204, 210, 9, 4, 229, 9, 109, 60, 29, 52, 58, 240, 226, 75, 46,
-        231, 171, 40, 120, 22, 109, 179, 15, 58, 252, 30, 194, 162, 233, 124, 112, 212, 142, 255, 93, 219, 21, 0,
+        0, 110, 6, 217, 20, 222, 155, 140, 24, 18, 228, 15, 228, 154, 103, 160, 80, 46, 145, 142, 207, 138, 59, 24,
+        218, 50, 32, 219, 51, 153, 55, 79, 110, 215, 76, 75, 109, 249, 144, 5, 154, 42, 59, 77, 247, 14, 58, 1,
     ];
     let candidate_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
         .to_bytes_le()
@@ -68,7 +68,7 @@ fn dpc_testnet1_integration_test() {
 
     let new_records = authorization.output_records.clone();
 
-    let transaction = DPC::execute(&vec![], authorization, state.executables(), &ledger, &mut rng).unwrap();
+    let transaction = DPC::execute(authorization, state.executables(), &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
@@ -176,7 +176,6 @@ fn test_testnet1_dpc_execute_constraints() {
         input_records,
         output_records,
         signatures,
-        noop_compute_keys,
     } = authorization;
 
     let local_data_root = local_data.root();
@@ -211,7 +210,6 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_private_variables = InnerPrivateVariables::new(
         input_records.clone(),
         old_witnesses,
-        noop_compute_keys.iter().map(|key| key.clone().unwrap()).collect(), // This is safe only for this test case.
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,
@@ -239,7 +237,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(330571, num_constraints);
+    assert_eq!(283473, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -300,7 +298,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(523836, num_constraints);
+    assert_eq!(515990, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

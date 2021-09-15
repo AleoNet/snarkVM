@@ -20,7 +20,6 @@ use rand::{CryptoRng, Rng};
 
 pub trait AccountScheme: Sized {
     type Address: Default;
-    type ComputeKey;
     type PrivateKey;
     type ViewKey;
 
@@ -29,7 +28,4 @@ pub trait AccountScheme: Sized {
 
     /// Returns a reference to the private key.
     fn private_key(&self) -> &Self::PrivateKey;
-
-    /// Returns a reference to the compute key.
-    fn compute_key(&self) -> &Self::ComputeKey;
 }

@@ -15,8 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AccountError, Parameters, PrivateKey};
-use snarkvm_algorithms::{CommitmentScheme, EncryptionScheme, PRF};
-use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBits, ToBytes};
+use snarkvm_algorithms::SignatureSchemeOperations;
+use snarkvm_curves::AffineCurve;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
 use std::{
@@ -31,10 +32,12 @@ use std::{
     Eq(bound = "C: Parameters")
 )]
 pub struct ComputeKey<C: Parameters> {
-    pk_sig: C::AccountSignaturePublicKey,
-    sk_prf: <C::SerialNumberPRF as PRF>::Seed,
-    pub(super) r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
-    commitment_input: Vec<u8>,
+    /// pk_sig := G^sk_sig.
+    pk_sig: C::ProgramAffineCurve,
+    /// pr_sig := G^r_sig.
+    pr_sig: C::ProgramAffineCurve,
+    /// sk_prf := RO(G^sk_sig || G^r_sig).
+    sk_prf: C::ProgramScalarField,
 }
 
 impl<C: Parameters> ComputeKey<C> {
@@ -42,90 +45,71 @@ impl<C: Parameters> ComputeKey<C> {
     ///
     /// This constructor is currently limited for internal use.
     /// The general convention for deriving a compute key should be from a private key.
-    pub(crate) fn new(
-        pk_sig: C::AccountSignaturePublicKey,
-        sk_prf: <C::SerialNumberPRF as PRF>::Seed,
-        r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
-    ) -> Result<Self, AccountError> {
-        // Construct the commitment input for the account address.
-        let commitment_input = to_bytes_le![pk_sig, sk_prf]?;
+    pub(crate) fn new(pk_sig: C::ProgramAffineCurve, pr_sig: C::ProgramAffineCurve) -> Result<Self, AccountError> {
+        // Compute sk_prf := RO(G^sk_sig || G^r_sig).
+        let sk_prf = C::account_signature_scheme()
+            .hash_to_scalar_field(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()])?;
 
-        // Initialize a candidate compute key.
-        let compute_key = Self {
-            pk_sig,
-            sk_prf,
-            r_pk,
-            commitment_input,
-        };
+        // Initialize the compute key.
+        Ok(Self { pk_sig, pr_sig, sk_prf })
+    }
 
-        // Returns the compute key if it is valid.
-        match compute_key.is_valid() {
-            true => Ok(compute_key),
-            false => Err(AccountError::InvalidComputeKey),
+    /// Derives the account compute key from an account private key.
+    pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
+        // Compute G^sk_sig.
+        let pk_sig = C::account_signature_scheme().g_scalar_multiply(&private_key.sk_sig)?;
+
+        // Compute G^r_sig.
+        let pr_sig = C::account_signature_scheme().g_scalar_multiply(&private_key.r_sig)?;
+
+        Self::new(pk_sig, pr_sig)
+    }
+
+    pub fn from_signature(signature: &C::AccountSignature) -> Result<Self, AccountError> {
+        // Extract G^sk_sig.
+        let pk_sig = C::AccountSignatureScheme::pk_sig(signature)?;
+
+        // Extract G^r_sig.
+        let pr_sig = C::AccountSignatureScheme::pr_sig(signature)?;
+
+        Self::new(pk_sig, pr_sig)
+    }
+
+    /// Returns `true` if the compute key is well-formed. Otherwise, returns `false`.
+    pub fn is_valid(&self) -> bool {
+        // Compute sk_prf := RO(G^sk_sig || G^r_sig).
+        match C::account_signature_scheme()
+            .hash_to_scalar_field(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()])
+        {
+            Ok(candidate_sk_prf) => self.sk_prf == candidate_sk_prf,
+            Err(error) => {
+                eprintln!("Failed to validate compute key: {}", error);
+                false
+            }
         }
     }
 
-    /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
-    pub fn is_valid(&self) -> bool {
-        self.to_decryption_key().is_ok()
-    }
-
-    /// Returns a reference to the signature public key.
-    pub fn pk_sig(&self) -> &C::AccountSignaturePublicKey {
+    /// Returns a reference to the signature root public key.
+    pub fn pk_sig(&self) -> &C::ProgramAffineCurve {
         &self.pk_sig
     }
 
+    /// Returns a reference to the signature root randomizer.
+    pub fn pr_sig(&self) -> &C::ProgramAffineCurve {
+        &self.pr_sig
+    }
+
     /// Returns a reference to the PRF secret key.
-    pub fn sk_prf(&self) -> &<C::SerialNumberPRF as PRF>::Seed {
+    pub fn sk_prf(&self) -> &C::ProgramScalarField {
         &self.sk_prf
     }
 
-    /// Returns a reference to the commitment randomness for the decryption key.
-    pub fn r_pk(&self) -> &<C::AccountCommitmentScheme as CommitmentScheme>::Randomness {
-        &self.r_pk
-    }
+    /// Returns the encryption key.
+    pub fn to_encryption_key(&self) -> Result<C::ProgramAffineCurve, AccountError> {
+        // Compute G^sk_prf.
+        let pk_prf = C::account_signature_scheme().g_scalar_multiply(&self.sk_prf)?;
 
-    /// Returns the decryption key for the account view key.
-    pub fn to_decryption_key(
-        &self,
-    ) -> Result<<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey, AccountError> {
-        // Compute the commitment, which is used as the decryption key.
-        let commitment = C::account_commitment_scheme().commit(&self.commitment_input, &self.r_pk)?;
-        let commitment_bytes = commitment.to_bytes_le()?;
-
-        // Determine the number of MSB bits we must enforce are zero,
-        // for the isomorphism from the base field to the scalar field.
-        let enforce_zero_on_num_bits = {
-            debug_assert!(C::AccountEncryptionScheme::private_key_size_in_bits() > 0);
-            // We must enforce that the MSB bit of the scalar field is also set to 0.
-            let capacity = C::AccountEncryptionScheme::private_key_size_in_bits() - 1;
-            let commitment_num_bits = commitment_bytes.len() * 8;
-            assert!(capacity < commitment_num_bits);
-
-            commitment_num_bits - capacity
-        };
-
-        // This operation explicitly enforces that the unused MSB bits
-        // for the scalar field representation are correctly set to 0.
-        for msb_bit in from_bytes_le_to_bits_le(&commitment_bytes[..])
-            .rev()
-            .take(enforce_zero_on_num_bits)
-        {
-            // Pop the next MSB bit, and enforce it is zero.
-            if msb_bit {
-                return Err(AccountError::InvalidAccountCommitment);
-            }
-        }
-
-        // This operation enforces that the base field element fits within the scalar field.
-        // However, this operation does not enforce that the MSB of the scalar field element is 0.
-        let decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey =
-            FromBytes::read_le(&commitment_bytes[..])?;
-
-        // Enforce the MSB of the scalar field element is 0 by convention.
-        debug_assert_eq!(Some(&false), decryption_key.to_bits_be().iter().next());
-
-        Ok(decryption_key)
+        Ok(self.pk_sig + self.pr_sig + pk_prf)
     }
 }
 
@@ -134,18 +118,15 @@ impl<C: Parameters> FromBytes for ComputeKey<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let pk_sig = FromBytes::read_le(&mut reader)?;
-        let sk_prf = FromBytes::read_le(&mut reader)?;
-        let r_pk = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self::new(pk_sig, sk_prf, r_pk)?)
+        let pr_sig = FromBytes::read_le(&mut reader)?;
+        Ok(Self::new(pk_sig, pr_sig)?)
     }
 }
 
 impl<C: Parameters> ToBytes for ComputeKey<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.pk_sig.write_le(&mut writer)?;
-        self.sk_prf.write_le(&mut writer)?;
-        self.r_pk.write_le(&mut writer)
+        self.pr_sig.write_le(&mut writer)
     }
 }
 
@@ -153,14 +134,16 @@ impl<C: Parameters> fmt::Debug for ComputeKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "ComputeKey {{ pk_sig: {:?}, sk_prf: {:?}, r_pk: {:?} }}",
-            self.pk_sig, self.sk_prf, self.r_pk
+            "ComputeKey {{ pk_sig: {:?}, pr_sig: {:?} }}",
+            self.pk_sig, self.pr_sig
         )
     }
 }
 
 impl<C: Parameters> Default for ComputeKey<C> {
     fn default() -> Self {
-        PrivateKey::new(&mut thread_rng()).compute_key().clone()
+        PrivateKey::new(&mut thread_rng())
+            .to_compute_key()
+            .expect("Failed to generate a random compute key")
     }
 }

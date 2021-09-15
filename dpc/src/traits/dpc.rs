@@ -38,7 +38,6 @@ pub trait DPCScheme<C: Parameters>: Sized {
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
-        compute_keys: &Vec<<Self::Account as AccountScheme>::ComputeKey>,
         authorization: Self::Authorization,
         executables: &Vec<Executable<C>>,
         ledger: &L,

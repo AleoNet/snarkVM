@@ -180,10 +180,11 @@ impl<C: Parameters> Record<C> {
             return Err(RecordError::IncorrectComputeKey);
         }
 
+        // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes_le!(&compute_key.sk_prf())?.as_slice())?;
-        let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
-        let serial_number = FromBytes::from_bytes_le(&C::SerialNumberPRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
+        let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
+        let input = &self.serial_number_nonce;
+        let serial_number = C::SerialNumberPRF::evaluate(&seed, input)?;
 
         Ok(serial_number)
     }

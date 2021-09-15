@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
+use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -70,7 +70,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     debug_assert!(public.local_data_root.is_some());
 
     let (
-        account_commitment_parameters,
         account_encryption_parameters,
         account_signature_parameters,
         record_commitment_parameters,
@@ -82,11 +81,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         record_commitment_tree_parameters,
     ) = {
         let cs = &mut cs.ns(|| "Declare parameters");
-
-        let account_commitment_parameters =
-            C::AccountCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare account commitment parameters"), || {
-                Ok(C::account_commitment_scheme().clone())
-            })?;
 
         let account_encryption_parameters =
             C::AccountEncryptionGadget::alloc_constant(&mut cs.ns(|| "Declare account encryption parameters"), || {
@@ -134,7 +128,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             })?;
 
         (
-            account_commitment_parameters,
             account_encryption_parameters,
             account_signature_parameters,
             record_commitment_parameters,
@@ -168,11 +161,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
     let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
-    for (i, (((record, witness), compute_key), given_serial_number)) in private
+    for (i, (((record, witness), signature), given_serial_number)) in private
         .input_records
         .iter()
         .zip(&private.input_witnesses)
-        .zip(&private.compute_keys)
+        .zip(&private.signatures)
         .zip(&public.kernel.serial_numbers)
         .enumerate()
     {
@@ -185,7 +178,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             given_is_dummy,
             given_value,
             given_payload,
-            given_serial_number_nonce_bytes,
+            given_serial_number_nonce,
             given_commitment,
             given_commitment_randomness,
         ) = {
@@ -207,8 +200,22 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::PublicKeyGadget::alloc(
                 &mut declare_cs.ns(|| "given_record_owner"),
-                || Ok(record.owner().to_encryption_key()),
+                || Ok(record.owner().encryption_key()),
             )?;
+
+            // TODO (howardwu): TEMPORARY - Unify this with `given_owner` above!
+            // Save the given_owner for signature verification at the end.
+            {
+                let owner = record.owner().encryption_key();
+                let public_key = FromBytes::read_le(&owner.to_bytes_le()?[..])?;
+                let public_key_gadget = <C::AccountSignatureGadget as SignatureGadget<
+                    C::AccountSignatureScheme,
+                    C::InnerScalarField,
+                >>::PublicKeyGadget::alloc(
+                    declare_cs.ns(|| format!("alloc_public_key{}", i)), || Ok(&public_key)
+                )?;
+                signature_public_keys.push(public_key_gadget);
+            }
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
@@ -217,10 +224,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let given_payload =
                 UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
-            let given_serial_number_nonce_bytes = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_serial_number_nonce_bytes"),
-                &record.serial_number_nonce().to_bytes_le()?,
-            )?;
+            let given_serial_number_nonce =
+                <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Input::alloc(
+                    &mut declare_cs.ns(|| "given_serial_number_nonce"),
+                    || Ok(record.serial_number_nonce()),
+                )?;
 
             let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
@@ -244,7 +252,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_serial_number_nonce_bytes,
+                given_serial_number_nonce,
                 given_commitment,
                 given_commitment_randomness,
             )
@@ -273,109 +281,23 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         // ********************************************************************
 
         // ********************************************************************
-        // Check that the account address and private key form a valid key
-        // pair.
-        // ********************************************************************
-
-        let sk_prf = {
-            // Declare variables for account contents.
-            let account_cs = &mut cs.ns(|| "Check account");
-
-            // Allocate the account private key.
-            let (pk_sig, sk_prf, r_pk) = {
-                let pk_sig_native = compute_key.pk_sig();
-                let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
-                    C::AccountSignatureScheme,
-                    C::InnerScalarField,
-                >>::PublicKeyGadget::alloc(
-                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
-                )?;
-                let sk_prf =
-                    C::SerialNumberPRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
-                let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
-                    C::AccountCommitmentScheme,
-                    C::InnerScalarField,
-                >>::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
-                    Ok(compute_key.r_pk())
-                })?;
-
-                (pk_sig, sk_prf, r_pk)
-            };
-
-            // Construct the account view key.
-            let candidate_account_view_key = {
-                let mut account_view_key_input = pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?;
-                account_view_key_input.extend_from_slice(&sk_prf);
-
-                // This is the record decryption key.
-                let candidate_account_commitment = account_commitment_parameters.check_commitment_gadget(
-                    &mut account_cs.ns(|| "Compute the account commitment."),
-                    &account_view_key_input,
-                    &r_pk,
-                )?;
-
-                // Enforce the account commitment bytes (padded) correspond to the
-                // given account's view key bytes (padded). This is equivalent to
-                // verifying that the base field element from the computed account
-                // commitment contains the same bit-value as the scalar field element
-                // computed from the given account private key.
-                {
-                    // Derive the given account view key based on the given account private key.
-                    //
-                    // This allocation also enforces that the private key is well-formed in our definition,
-                    // i.e., the private key is within the limit of the capacity.
-                    let given_account_view_key = <C::AccountEncryptionGadget as EncryptionGadget<
-                        C::AccountEncryptionScheme,
-                        C::InnerScalarField,
-                    >>::PrivateKeyGadget::alloc(
-                        &mut account_cs.ns(|| "Allocate account view key"),
-                        || {
-                            Ok(compute_key
-                                .to_decryption_key()
-                                .map_err(|_| SynthesisError::AssignmentMissing)?)
-                        },
-                    )?;
-
-                    let given_account_view_key_bytes =
-                        given_account_view_key.to_bytes(&mut account_cs.ns(|| "given_account_view_key to_bytes"))?;
-
-                    let candidate_account_commitment_bytes = candidate_account_commitment
-                        .to_bytes(&mut account_cs.ns(|| "candidate_account_commitment to_bytes"))?;
-
-                    candidate_account_commitment_bytes.enforce_equal(
-                        &mut account_cs.ns(|| "Check that candidate and given account view keys are equal"),
-                        &given_account_view_key_bytes,
-                    )?;
-
-                    given_account_view_key
-                }
-            };
-
-            // Construct and verify the record owner - account address.
-            {
-                let candidate_record_owner = account_encryption_parameters.check_public_key_gadget(
-                    &mut account_cs.ns(|| "Compute the candidate record owner - account address"),
-                    &candidate_account_view_key,
-                )?;
-
-                candidate_record_owner.enforce_equal(
-                    &mut account_cs.ns(|| "Check that declared and computed addresses are equal"),
-                    &given_owner,
-                )?;
-            }
-
-            // Save pk_sig for signature verification at the end.
-            signature_public_keys.push(pk_sig.clone());
-
-            sk_prf
-        };
-        // ********************************************************************
-
-        // ********************************************************************
         // Check that the serial number is derived correctly.
         // ********************************************************************
         {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
+
+            // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
+            // Allocate sk_prf.
+            let sk_prf = {
+                let compute_key = ComputeKey::<C>::from_signature(&signature)
+                    .expect("Failed to derive the compute key from signature");
+                FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?
+            };
+
+            let sk_prf = <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Seed::alloc(
+                &mut sn_cs.ns(|| "Declare sk_prf"),
+                || Ok(&sk_prf),
+            )?;
 
             let candidate_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
                 C::SerialNumberPRF,
@@ -383,16 +305,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             >>::check_evaluation_gadget(
                 &mut sn_cs.ns(|| "Compute serial number"),
                 &sk_prf,
-                &given_serial_number_nonce_bytes,
+                &given_serial_number_nonce,
             )?;
 
-            let given_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
-                C::SerialNumberPRF,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc_input(
-                &mut sn_cs.ns(|| "Declare given serial number"),
-                || Ok(given_serial_number),
-            )?;
+            let given_serial_number_gadget =
+                <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Output::alloc_input(
+                    &mut sn_cs.ns(|| "Declare given serial number"),
+                    || Ok(given_serial_number),
+                )?;
 
             candidate_serial_number_gadget.enforce_equal(
                 &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),
@@ -439,6 +359,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // Compute the record commitment and check that it matches the declared commitment.
             let record_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
             let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
+            let serial_number_nonce_bytes = given_serial_number_nonce
+                .to_bytes(&mut commitment_cs.ns(|| "Convert given_serial_number_nonce to bytes"))?;
 
             let mut commitment_input = Vec::new();
             commitment_input.extend_from_slice(&given_program_id);
@@ -446,7 +368,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             commitment_input.extend_from_slice(&is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
+            commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
                 &mut commitment_cs.ns(|| "Compute commitment"),
@@ -499,7 +421,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::PublicKeyGadget::alloc(
                 &mut declare_cs.ns(|| "given_record_owner"),
-                || Ok(record.owner().to_encryption_key()),
+                || Ok(record.owner().encryption_key()),
             )?;
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
@@ -759,7 +681,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // ********************************************************************
 
     // ********************************************************************
-    // Check that the local data root is valid
+    // Check that the local data root is valid.
     // ********************************************************************
     let (network_id, memo) = {
         let mut cs = cs.ns(|| "Check that local data root is valid.");
