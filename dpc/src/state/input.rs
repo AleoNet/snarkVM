@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{CommitmentScheme, SignatureScheme};
+use snarkvm_algorithms::CommitmentScheme;
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -24,8 +24,7 @@ use rand::{CryptoRng, Rng};
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Input<C: Parameters> {
     record: Record<C>,
-    serial_number: C::AccountSignaturePublicKey,
-    signature_randomizer: <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
+    serial_number: C::SerialNumber,
     noop_private_key: Option<PrivateKey<C>>,
     executable: Executable<C>,
 }
@@ -43,13 +42,12 @@ impl<C: Parameters> Input<C> {
         // Construct the noop input record.
         let record = Record::new_noop_input(noop_address, rng)?;
 
-        // Compute the serial number and signature randomizer.
-        let (serial_number, signature_randomizer) = record.to_serial_number(noop_compute_key)?;
+        // Compute the serial number.
+        let serial_number = record.to_serial_number(noop_compute_key)?;
 
         Ok(Self {
             record,
             serial_number,
-            signature_randomizer,
             noop_private_key: Some(noop_private_key),
             executable,
         })
@@ -73,13 +71,12 @@ impl<C: Parameters> Input<C> {
             return Err(anyhow!("Executable program ID does not match record program ID"));
         }
 
-        // Compute the serial number and signature randomizer.
-        let (serial_number, signature_randomizer) = record.to_serial_number(&compute_key)?;
+        // Compute the serial number.
+        let serial_number = record.to_serial_number(&compute_key)?;
 
         Ok(Self {
             record,
             serial_number,
-            signature_randomizer,
             noop_private_key: None,
             executable,
         })
@@ -112,12 +109,11 @@ impl<C: Parameters> Input<C> {
         )?;
 
         // Compute the serial number.
-        let (serial_number, signature_randomizer) = record.to_serial_number(&compute_key)?;
+        let serial_number = record.to_serial_number(&compute_key)?;
 
         Ok(Self {
             record,
             serial_number,
-            signature_randomizer,
             noop_private_key: None,
             executable,
         })
@@ -129,13 +125,8 @@ impl<C: Parameters> Input<C> {
     }
 
     /// Returns a reference to the input serial number.
-    pub fn serial_number(&self) -> &C::AccountSignaturePublicKey {
+    pub fn serial_number(&self) -> &C::SerialNumber {
         &self.serial_number
-    }
-
-    /// Returns a reference to the input signature randomizer.
-    pub fn signature_randomizer(&self) -> &<C::AccountSignatureScheme as SignatureScheme>::Randomizer {
-        &self.signature_randomizer
     }
 
     /// Returns a reference to the noop private key, if it exists.
@@ -166,35 +157,22 @@ mod tests {
             let seed: u64 = thread_rng().gen();
 
             // Generate the expected input state.
-            let (expected_record, expected_serial_number, expected_signature_randomizer, expected_noop_private_key) = {
+            let (expected_record, expected_serial_number, expected_noop_private_key) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
-                let (serial_number, signature_randomizer) =
-                    input_record.to_serial_number(&account.compute_key()).unwrap();
-                (
-                    input_record,
-                    serial_number,
-                    signature_randomizer,
-                    account.private_key().clone(),
-                )
+                let serial_number = input_record.to_serial_number(&account.compute_key()).unwrap();
+                (input_record, serial_number, account.private_key().clone())
             };
 
             // Generate the candidate input state.
-            let (
-                candidate_record,
-                candidate_serial_number,
-                candidate_signature_randomizer,
-                candidate_noop_private_key,
-                candidate_executable,
-            ) = {
+            let (candidate_record, candidate_serial_number, candidate_noop_private_key, candidate_executable) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
                 let input = Input::<Testnet2Parameters>::new_noop(rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),
-                    input.signature_randomizer().clone(),
                     input.noop_private_key().clone(),
                     input.executable().clone(),
                 )
@@ -202,7 +180,6 @@ mod tests {
 
             assert_eq!(expected_record, candidate_record);
             assert_eq!(expected_serial_number, candidate_serial_number);
-            assert_eq!(expected_signature_randomizer, candidate_signature_randomizer);
             assert_eq!(Some(expected_noop_private_key), candidate_noop_private_key);
             assert!(candidate_executable.is_noop());
         }

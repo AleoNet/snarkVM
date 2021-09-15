@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::SignatureScheme;
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -31,7 +30,6 @@ pub struct StateTransition<C: Parameters> {
     pub(super) kernel: TransactionKernel<C>,
     pub(super) input_records: Vec<Record<C>>,
     pub(super) output_records: Vec<Record<C>>,
-    pub(super) signature_randomizers: Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer>,
     pub(super) noop_private_keys: Vec<Option<PrivateKey<C>>>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub(super) executables: Vec<Executable<C>>,
@@ -111,11 +109,6 @@ impl<C: Parameters> StateTransition<C> {
     /// Returns a reference to the output records.
     pub fn output_records(&self) -> &Vec<Record<C>> {
         &self.output_records
-    }
-
-    /// Returns a reference to the signature randomizers.
-    pub fn signature_randomizers(&self) -> &Vec<<C::AccountSignatureScheme as SignatureScheme>::Randomizer> {
-        &self.signature_randomizers
     }
 
     /// Returns a reference to the noop private keys.

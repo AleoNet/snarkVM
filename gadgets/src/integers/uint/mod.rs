@@ -23,6 +23,9 @@ pub use arithmetic::*;
 pub mod bits;
 pub use bits::*;
 
+pub mod bytes;
+pub use bytes::*;
+
 pub mod relational;
 pub use relational::*;
 

@@ -47,9 +47,6 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     /// Returns the memorandum.
     fn memo(&self) -> &Self::Memo;
 
-    /// Returns the signatures.
-    fn signatures(&self) -> &[Self::Signature];
-
     /// Returns the ledger digest.
     fn ledger_digest(&self) -> &Self::Digest;
 

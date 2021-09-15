@@ -212,10 +212,6 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Copy;
     type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDTreeCRH>;
 
-    /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type PRF: PRF;
-    type PRFGadget: PRFGadget<Self::PRF, Self::InnerScalarField>;
-
     /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
     type RecordCommitmentScheme: CommitmentScheme<Output = Self::RecordCommitment>;
     type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitmentScheme, Self::InnerScalarField>;
@@ -274,6 +270,20 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Hash
         + ToBytes
         + FromBytes
+        + Sync
+        + Send;
+
+    /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
+    type SerialNumberPRF: PRF<Output = Self::SerialNumber>;
+    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
+    type SerialNumber: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
         + Sync
         + Send;
 

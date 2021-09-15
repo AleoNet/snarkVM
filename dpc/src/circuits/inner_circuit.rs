@@ -166,6 +166,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
     let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
     let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
+    let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
     for (i, (((record, witness), compute_key), given_serial_number)) in private
         .input_records
@@ -276,7 +277,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         // pair.
         // ********************************************************************
 
-        let (sk_prf, pk_sig) = {
+        let sk_prf = {
             // Declare variables for account contents.
             let account_cs = &mut cs.ns(|| "Check account");
 
@@ -289,7 +290,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 >>::PublicKeyGadget::alloc(
                     &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
                 )?;
-                let sk_prf = C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
+                let sk_prf =
+                    C::SerialNumberPRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), compute_key.sk_prf());
                 let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
                     C::AccountCommitmentScheme,
                     C::InnerScalarField,
@@ -362,7 +364,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 )?;
             }
 
-            (sk_prf, pk_sig)
+            // Save pk_sig for signature verification at the end.
+            signature_public_keys.push(pk_sig.clone());
+
+            sk_prf
         };
         // ********************************************************************
 
@@ -372,24 +377,19 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
-            let prf_seed = sk_prf;
-            let randomizer = <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
-                &mut sn_cs.ns(|| "Compute pk_sig randomizer"),
-                &prf_seed,
+            let candidate_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
+                C::SerialNumberPRF,
+                C::InnerScalarField,
+            >>::check_evaluation_gadget(
+                &mut sn_cs.ns(|| "Compute serial number"),
+                &sk_prf,
                 &given_serial_number_nonce_bytes,
             )?;
-            let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
 
-            let candidate_serial_number_gadget = account_signature_parameters.randomize_public_key(
-                &mut sn_cs.ns(|| "Compute serial number"),
-                &pk_sig,
-                &randomizer_bytes,
-            )?;
-
-            let given_serial_number_gadget = <C::AccountSignatureGadget as SignatureGadget<
-                C::AccountSignatureScheme,
+            let given_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
+                C::SerialNumberPRF,
                 C::InnerScalarField,
-            >>::PublicKeyGadget::alloc_input(
+            >>::OutputGadget::alloc_input(
                 &mut sn_cs.ns(|| "Declare given serial number"),
                 || Ok(given_serial_number),
             )?;
@@ -399,10 +399,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 &given_serial_number_gadget,
             )?;
 
-            // Convert input serial numbers to bytes
-            let bytes = candidate_serial_number_gadget
-                .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
-            old_serial_numbers_bytes_gadgets.extend_from_slice(&bytes);
+            // Convert input serial numbers to bytes.
+            old_serial_numbers_bytes_gadgets.extend_from_slice(
+                &candidate_serial_number_gadget
+                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?,
+            );
 
             old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
         };
@@ -460,7 +461,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         }
     }
 
-    let mut new_record_commitments_gadgets = Vec::with_capacity(private.output_records.len());
+    let mut output_commitments = Vec::with_capacity(private.output_records.len());
+    let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
     let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
 
     for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
@@ -540,7 +542,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
                 record_commitment
             };
-            new_record_commitments_gadgets.push(given_commitment.clone());
+            output_commitments.push(given_commitment.clone());
+            output_commitments_bytes
+                .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 
             let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
@@ -757,13 +761,13 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // ********************************************************************
     // Check that the local data root is valid
     // ********************************************************************
-    {
+    let (network_id, memo) = {
         let mut cs = cs.ns(|| "Check that local data root is valid.");
 
         let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &public.kernel.memo)?;
         let network_id = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &[public.kernel.network_id])?;
 
-        let mut old_record_commitment_bytes = vec![];
+        let mut local_data_input_commitment_bytes = vec![];
         for i in 0..C::NUM_INPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
 
@@ -788,18 +792,17 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 &commitment_randomness,
             )?;
 
-            old_record_commitment_bytes
+            local_data_input_commitment_bytes
                 .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "old_record_local_data"))?);
         }
 
-        let mut new_record_commitment_bytes = Vec::new();
+        let mut local_data_output_commitment_bytes = Vec::new();
         for j in 0..C::NUM_OUTPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
 
             let mut input_bytes = vec![];
             input_bytes.extend_from_slice(&[UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8)]);
-            input_bytes
-                .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes(&mut cs.ns(|| "record_commitment"))?);
+            input_bytes.extend_from_slice(&output_commitments[j].to_bytes(&mut cs.ns(|| "commitment"))?);
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
 
@@ -817,18 +820,18 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 &commitment_randomness,
             )?;
 
-            new_record_commitment_bytes
+            local_data_output_commitment_bytes
                 .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "new_record_local_data"))?);
         }
 
         let inner1_commitment_hash = local_data_crh.check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment inner1 hash"),
-            old_record_commitment_bytes,
+            local_data_input_commitment_bytes,
         )?;
 
         let inner2_commitment_hash = local_data_crh.check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment inner2 hash"),
-            new_record_commitment_bytes,
+            local_data_output_commitment_bytes,
         )?;
 
         let mut inner_commitment_hash_bytes = Vec::new();
@@ -852,13 +855,15 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             &mut cs.ns(|| "Check that local data root is valid"),
             &given_local_data_root,
         )?;
-    }
+
+        (network_id, memo)
+    };
     // *******************************************************************
 
     // *******************************************************************
-    // Check that the value balance is valid
+    // Check that the value balance is valid.
     // *******************************************************************
-    {
+    let value_balance = {
         let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
         let given_value_balance =
@@ -889,6 +894,45 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             cs.ns(|| "given_value_balance == candidate_value_balance"),
             &candidate_value_balance,
         )?;
+
+        given_value_balance
+    };
+
+    // *******************************************************************
+    // Check that the signatures are valid.
+    // *******************************************************************
+    {
+        let signature_cs = &mut cs.ns(|| "Check that signature is valid");
+
+        // Encode the transaction kernel as the signature message.
+        let mut message = Vec::new();
+        message.extend_from_slice(&network_id);
+        message.extend_from_slice(&old_serial_numbers_bytes_gadgets);
+        message.extend_from_slice(&output_commitments_bytes);
+        message.extend_from_slice(&value_balance.to_bytes(&mut signature_cs.ns(|| "value_balance_bytes"))?);
+        message.extend_from_slice(&memo);
+
+        // Verify each signature is valid.
+        for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {
+            let signature_gadget = <C::AccountSignatureGadget as SignatureGadget<
+                C::AccountSignatureScheme,
+                C::InnerScalarField,
+            >>::SignatureGadget::alloc(
+                signature_cs.ns(|| format!("alloc_signature_{}", i)), || Ok(signature)
+            )?;
+
+            let verification = account_signature_parameters.verify(
+                signature_cs.ns(|| format!("verify_{}", i)),
+                &public_key,
+                &message,
+                &signature_gadget,
+            )?;
+
+            verification.enforce_equal(
+                signature_cs.ns(|| format!("check_verification_{}", i)),
+                &Boolean::constant(true),
+            )?;
+        }
     }
 
     Ok(())

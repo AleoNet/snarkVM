@@ -26,6 +26,18 @@ use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
+fn test_testnet2_inner_circuit_id_sanity_check() {
+    let expected_inner_circuit_id = vec![
+        72, 92, 27, 87, 193, 87, 19, 136, 148, 232, 122, 240, 28, 149, 212, 183, 22, 165, 255, 86, 203, 252, 34, 227,
+        20, 172, 97, 3, 100, 101, 74, 49, 243, 211, 155, 116, 207, 34, 189, 146, 183, 165, 227, 82, 161, 177, 176, 0,
+    ];
+    let candidate_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
+        .to_bytes_le()
+        .unwrap();
+    assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
+}
+
+#[test]
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
@@ -140,7 +152,6 @@ fn test_testnet2_dpc_execute_constraints() {
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
-    let executables = state.executables();
 
     let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
 
@@ -149,7 +160,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     // Execute the programs.
     let mut executions = Vec::with_capacity(Testnet2Parameters::NUM_TOTAL_RECORDS);
-    for (i, executable) in executables.iter().enumerate() {
+    for (i, executable) in state.executables().iter().enumerate() {
         executions.push(executable.execute(i as u8, &local_data).unwrap());
     }
 
@@ -162,9 +173,9 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let TransactionAuthorization {
         kernel,
-        input_records: old_records,
-        output_records: new_records,
-        signatures: _,
+        input_records,
+        output_records,
+        signatures,
         noop_compute_keys,
     } = authorization;
 
@@ -176,8 +187,8 @@ fn test_testnet2_dpc_execute_constraints() {
     // Generate the ledger membership witnesses
     let mut old_witnesses = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
 
-    // Compute the ledger membership witness and serial number from the old records.
-    for record in old_records.iter() {
+    // Compute the ledger membership witness and serial number from the input records.
+    for record in input_records.iter() {
         if record.is_dummy() {
             old_witnesses.push(MerklePath::default());
         } else {
@@ -198,10 +209,11 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
-        old_records.clone(),
+        input_records.clone(),
         old_witnesses,
         noop_compute_keys.iter().map(|key| key.clone().unwrap()).collect(), // This is safe only for this test case.
-        new_records.clone(),
+        signatures,
+        output_records.clone(),
         encrypted_record_randomizers,
         program_randomness.clone(),
         local_data.leaf_randomizers().clone(),
@@ -231,7 +243,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(317979, num_constraints);
+    assert_eq!(330571, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -292,7 +304,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(877318, num_constraints);
+    assert_eq!(885164, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

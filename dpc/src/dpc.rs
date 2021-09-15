@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
+use snarkvm_utilities::has_duplicates;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -46,12 +46,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for (signature_randomizer, noop_private_key) in state
-            .signature_randomizers()
-            .iter()
-            .zip(state.noop_private_keys().iter())
-            .take(C::NUM_INPUT_RECORDS)
-        {
+        for noop_private_key in state.noop_private_keys().iter().take(C::NUM_INPUT_RECORDS) {
             // Fetch the correct private key.
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
@@ -62,16 +57,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 }
             };
 
-            // Randomize the private key.
-            let randomized_private_key =
-                C::account_signature_scheme().randomize_private_key(private_key.sk_sig(), &signature_randomizer)?;
-
-            // Sign and randomize the signature.
-            signatures.push(C::account_signature_scheme().sign_randomized(
-                &randomized_private_key,
-                &signature_message,
-                rng,
-            )?);
+            // Sign the signature message.
+            signatures.push(C::account_signature_scheme().sign(&private_key.sk_sig(), &signature_message, rng)?);
         }
 
         // Return the transaction authorization.
@@ -151,6 +138,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             input_records,
             input_witnesses,
             full_compute_keys,
+            signatures,
             output_records.clone(),
             encrypted_record_randomizers,
             program_randomness.clone(),
@@ -212,7 +200,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         Ok(Self::Transaction::from(
             kernel,
-            signatures,
             ledger_digest,
             C::inner_circuit_id().clone(),
             encrypted_records,
@@ -276,45 +263,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         end_timer!(ledger_time);
 
-        let signature_time = start_timer!(|| "Signature checks");
-
-        // Returns false if the number of signatures in the transaction is incorrect.
-        if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of signatures");
-            return false;
-        }
-
-        let signature_message = match to_bytes_le![
-            transaction.network_id(),
-            transaction.serial_numbers(),
-            transaction.commitments(),
-            transaction.value_balance(),
-            transaction.memo()
-        ] {
-            Ok(message) => message,
-            Err(error) => {
-                eprintln!("Unable to construct signature message - {}", error);
-                return false;
-            }
-        };
-
-        for (pk, sig) in transaction.serial_numbers().iter().zip(transaction.signatures()) {
-            match C::account_signature_scheme().verify(pk, &signature_message, sig) {
-                Ok(is_valid) => {
-                    if !is_valid {
-                        eprintln!("Signature is invalid");
-                        return false;
-                    }
-                }
-                Err(error) => {
-                    eprintln!("Unable to verify signature - {}", error);
-                    return false;
-                }
-            }
-        }
-
-        end_timer!(signature_time);
-
         // Construct the ciphertext hashes
 
         // Returns false if the number of encrypted records in the transaction is incorrect.
@@ -371,7 +319,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_utilities::FromBytes;
+    use snarkvm_utilities::{FromBytes, ToBytes};
 
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
