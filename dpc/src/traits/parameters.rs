@@ -42,13 +42,16 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     const NUM_OUTPUT_RECORDS: usize;
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
+    /// Inner curve type declarations.
     type InnerCurve: PairingEngine;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
 
+    /// Outer curve type declarations.
     type OuterCurve: PairingEngine;
     type OuterBaseField: PrimeField;
     type OuterScalarField: PrimeField;
 
+    /// Program curve type declarations.
     type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::ProgramBaseField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;

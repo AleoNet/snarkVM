@@ -28,8 +28,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        72, 92, 27, 87, 193, 87, 19, 136, 148, 232, 122, 240, 28, 149, 212, 183, 22, 165, 255, 86, 203, 252, 34, 227,
-        20, 172, 97, 3, 100, 101, 74, 49, 243, 211, 155, 116, 207, 34, 189, 146, 183, 165, 227, 82, 161, 177, 176, 0,
+        219, 92, 234, 169, 159, 243, 240, 13, 82, 239, 183, 239, 109, 142, 14, 43, 185, 48, 222, 80, 71, 109, 118, 209,
+        238, 22, 151, 182, 1, 107, 43, 188, 24, 81, 100, 147, 110, 124, 81, 51, 174, 205, 79, 53, 128, 31, 85, 1,
     ];
     let candidate_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
         .to_bytes_le()
@@ -241,7 +241,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(330571, num_constraints);
+    assert_eq!(283473, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -302,7 +302,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(885164, num_constraints);
+    assert_eq!(877318, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());
