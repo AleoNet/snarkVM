@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ledger::*, prelude::*};
-use snarkvm_dpc::parameters::testnet2::Testnet2Parameters;
+use snarkvm_dpc::{parameters::testnet2::Testnet2Parameters, Transaction};
+use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
+
+use rand::thread_rng;
 
 #[test]
 fn test_new_ledger_with_genesis_block() {
@@ -46,4 +49,19 @@ fn test_new_ledger_with_genesis_block() {
     assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
 
     assert!(ledger.get_block(&BlockHeaderHash([0u8; 32])).is_err());
+}
+
+#[test]
+fn test_ledger_duplicate_transactions() {
+    let transaction = Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
+    let transactions = Transactions::from(&[transaction.clone(), transaction]);
+
+    let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(&transactions, &mut thread_rng()).unwrap();
+
+    let genesis_block = Block {
+        header: block_header,
+        transactions,
+    };
+
+    assert!(Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).is_err());
 }
