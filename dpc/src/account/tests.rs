@@ -18,6 +18,7 @@
 mod testnet1 {
     use crate::{testnet1::Testnet1Parameters, Account, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
+    use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::ToBytes;
 
     use rand::{thread_rng, Rng, SeedableRng};
@@ -27,9 +28,9 @@ mod testnet1 {
         str::FromStr,
     };
 
-    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1y9jeNQybT9Mxk1AssbFmSXcFu9dG7sWkfYEsBUZrMin816z";
-    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1hNsfjkmrfiYWqMKtpKUW9LfGw93Pzz82UmmMn7pHHqZc";
-    const ALEO_TESTNET1_ADDRESS: &str = "aleo10kkut299n0fsmwu9z20hjmcdym4nv5s8adgtqaev3n3yqjlasqyqq6rk4d";
+    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
+    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1mdu8XYL4v8qRkGV2zJAfC4o5mg3qFm71QLPKUqmAnthn";
+    const ALEO_TESTNET1_ADDRESS: &str = "aleo13vl8qpz93jal77p7vc0ku87a44x3kul7vffrplgkn2rvtx7kts8sykhp79";
 
     const ITERATIONS: usize = 1000;
 
@@ -173,7 +174,7 @@ mod testnet1 {
 
     #[test]
     fn test_account_signature_compatibility() {
-        for i in 0..ITERATIONS {
+        for i in 0..25 {
             // Sample an Aleo account.
             let private_key = PrivateKey::<Testnet1Parameters>::new(&mut thread_rng());
             let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
@@ -187,7 +188,7 @@ mod testnet1 {
             // Ensure the Aleo address matches the signature public key.
             assert_eq!(
                 *address.to_bytes_le().unwrap(),
-                signature_public_key.to_bytes_le().unwrap()
+                signature_public_key.to_x_coordinate().to_bytes_le().unwrap()
             );
 
             // Prepare for signing.
@@ -222,6 +223,7 @@ mod testnet1 {
 mod testnet2 {
     use crate::{testnet2::Testnet2Parameters, Account, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
+    use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::ToBytes;
 
     use rand::{thread_rng, Rng, SeedableRng};
@@ -231,9 +233,9 @@ mod testnet2 {
         str::FromStr,
     };
 
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1y9jeNQybT9Mxk1AssbFmSXcFu9dG7sWkfYEsBUZrMin816z";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1hNsfjkmrfiYWqMKtpKUW9LfGw93Pzz82UmmMn7pHHqZc";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo10kkut299n0fsmwu9z20hjmcdym4nv5s8adgtqaev3n3yqjlasqyqq6rk4d";
+    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1mdu8XYL4v8qRkGV2zJAfC4o5mg3qFm71QLPKUqmAnthn";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo13vl8qpz93jal77p7vc0ku87a44x3kul7vffrplgkn2rvtx7kts8sykhp79";
 
     const ITERATIONS: usize = 1000;
 
@@ -378,7 +380,7 @@ mod testnet2 {
 
     #[test]
     fn test_account_signature_compatibility() {
-        for i in 0..ITERATIONS {
+        for i in 0..25 {
             // Sample an Aleo account.
             let private_key = PrivateKey::<Testnet2Parameters>::new(&mut thread_rng());
             let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
@@ -392,7 +394,7 @@ mod testnet2 {
             // Ensure the Aleo address matches the signature public key.
             assert_eq!(
                 *address.to_bytes_le().unwrap(),
-                signature_public_key.to_bytes_le().unwrap()
+                signature_public_key.to_x_coordinate().to_bytes_le().unwrap()
             );
 
             // Prepare for signing.

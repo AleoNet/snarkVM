@@ -16,6 +16,7 @@
 
 use crate::{account_format, AccountError, ComputeKey, Parameters, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
+use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
@@ -121,6 +122,34 @@ impl<C: Parameters> TryFrom<&ViewKey<C>> for Address<C> {
     }
 }
 
+impl<C: Parameters> FromBytes for Address<C> {
+    /// Reads in an account address buffer.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x_coordinate = C::ProgramBaseField::read_le(&mut reader)?;
+
+        if let Some(element) = C::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self(element));
+            }
+        }
+
+        if let Some(element) = C::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self(element));
+            }
+        }
+
+        Err(AccountError::Message("Failed to read encryption public key address".into()).into())
+    }
+}
+
+impl<C: Parameters> ToBytes for Address<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.to_x_coordinate().write_le(&mut writer)
+    }
+}
+
 impl<C: Parameters> FromStr for Address<C> {
     type Err = AccountError;
 
@@ -145,26 +174,11 @@ impl<C: Parameters> FromStr for Address<C> {
     }
 }
 
-impl<C: Parameters> FromBytes for Address<C> {
-    /// Reads in an account address buffer.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(FromBytes::read_le(&mut reader)?))
-    }
-}
-
-impl<C: Parameters> ToBytes for Address<C> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write_le(&mut writer)
-    }
-}
-
 impl<C: Parameters> fmt::Display for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
         let mut encryption_key = [0u8; 32];
-        self.0
-            .write_le(&mut encryption_key[0..32])
+        self.write_le(&mut encryption_key[0..32])
             .expect("Failed to write encryption key as bytes");
 
         bech32::encode(

@@ -57,8 +57,7 @@ impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonPublicKey<TE> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        let x_coordinate = self.0.to_x_coordinate();
-        x_coordinate.write_le(&mut writer)
+        self.0.to_x_coordinate().write_le(&mut writer)
     }
 }
 
