@@ -55,7 +55,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     transactions.push(transaction);
 
     // Create a genesis header.
-    let genesis_header = BlockHeader::new_genesis(&transactions, &mut thread_rng())?;
+    let genesis_header = BlockHeader::new_genesis::<_, C, _>(&transactions, &mut thread_rng())?;
     assert!(genesis_header.is_genesis());
     println!("block header size - {}\n", BlockHeader::size());
 
