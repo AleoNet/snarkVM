@@ -89,9 +89,9 @@ impl<C: Parameters> From<&C::AccountSeed> for PrivateKey<C> {
 
         Self {
             seed: seed.clone(),
-            sk_sig: C::AccountPRF::evaluate(seed, &sk_sig_domain)
+            sk_sig: C::AccountPRF::evaluate(seed, &vec![sk_sig_domain])
                 .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
-            r_sig: C::AccountPRF::evaluate(seed, &r_sig_domain)
+            r_sig: C::AccountPRF::evaluate(seed, &vec![r_sig_domain])
                 .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
         }
     }
