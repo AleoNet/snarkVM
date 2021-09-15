@@ -15,15 +15,28 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{record::*, AleoAmount, Network, Parameters, TransactionKernel, TransactionScheme};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use snarkvm_algorithms::{
+    crh::BHPCompressedCRH,
+    merkle_tree::MerkleTreeDigest,
+    traits::{CRH, SNARK},
+};
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
-use blake2::{digest::Digest, Blake2s as b2s};
+use once_cell::sync::Lazy;
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
+
+// TODO (raychu86): Derive EdwardsBls from <C: Parameters>
+pub type TransactionIdCRH = BHPCompressedCRH<EdwardsBls, 26, 62>;
+
+/// Lazily evaluated TransactionId CRH
+pub static TRANSACTION_ID_CRH: Lazy<Arc<TransactionIdCRH>> =
+    Lazy::new(|| Arc::new(TransactionIdCRH::setup("TransactionIdCRH")));
 
 #[derive(Derivative)]
 #[derivative(
@@ -161,11 +174,13 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
     fn transaction_id(&self) -> Result<[u8; 32]> {
-        let mut blake2s = b2s::new();
-        blake2s.update(&self.to_kernel().to_bytes_le()?);
+        let serialized = &self.to_kernel().to_bytes_le()?;
+        let hash_bytes = TRANSACTION_ID_CRH.hash(&serialized)?.to_bytes_le()?;
+
+        assert_eq!(hash_bytes.len(), 32);
 
         let mut transaction_id = [0u8; 32];
-        transaction_id.copy_from_slice(&blake2s.finalize());
+        transaction_id.copy_from_slice(&hash_bytes);
 
         Ok(transaction_id)
     }
