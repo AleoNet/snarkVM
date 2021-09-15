@@ -153,13 +153,6 @@ impl BlockHeader {
         Ok(BlockHeaderHash(hash))
     }
 
-    pub fn to_difficulty_target(&self) -> Result<u64> {
-        let hash_slice = BLOCK_HEADER_CRH.hash(&self.proof.0[..])?.to_bytes_le()?;
-        let mut hash = [0u8; 8];
-        hash[..].copy_from_slice(&hash_slice[..8]);
-        Ok(u64::from_le_bytes(hash))
-    }
-
     pub const fn size() -> usize {
         HEADER_SIZE
     }
