@@ -14,9 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountError, ComputeKey, Parameters};
+use crate::{
+    account_format,
+    AccountError,
+    ComputeKey,
+    Parameters,
+    ACCOUNT_SEED_R_SIG_DOMAIN,
+    ACCOUNT_SEED_SK_SIG_DOMAIN,
+};
 use snarkvm_algorithms::traits::{SignatureScheme, PRF};
-use snarkvm_fields::{One, Zero};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use base58::{FromBase58, ToBase58};
@@ -72,12 +79,20 @@ impl<C: Parameters> PrivateKey<C> {
 impl<C: Parameters> From<&C::AccountSeed> for PrivateKey<C> {
     /// Returns the account private key from an account seed.
     fn from(seed: &C::AccountSeed) -> Self {
+        // Construct the sk_sig domain separator.
+        let sk_sig_input = ACCOUNT_SEED_SK_SIG_DOMAIN;
+        let sk_sig_domain = C::ProgramScalarField::from_bytes_le_mod_order(&sk_sig_input.as_bytes());
+
+        // Construct the r_sig domain separator.
+        let r_sig_input = format!("{}_{}", ACCOUNT_SEED_R_SIG_DOMAIN, 0);
+        let r_sig_domain = C::ProgramScalarField::from_bytes_le_mod_order(r_sig_input.as_bytes());
+
         Self {
             seed: seed.clone(),
-            sk_sig: C::AccountPRF::evaluate(seed, &C::ProgramScalarField::zero())
-                .expect("Failed to derive private key component for PRF(seed, 0)"),
-            r_sig: C::AccountPRF::evaluate(seed, &C::ProgramScalarField::one())
-                .expect("Failed to derive private key component for PRF(seed, 1)"),
+            sk_sig: C::AccountPRF::evaluate(seed, &vec![sk_sig_domain])
+                .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
+            r_sig: C::AccountPRF::evaluate(seed, &vec![r_sig_domain])
+                .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
         }
     }
 }

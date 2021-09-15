@@ -14,7 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::crypto_hash::PoseidonCryptoHashGadget, CryptoHashGadget, FpGadget, PRFGadget};
+use crate::{
+    algorithms::crypto_hash::PoseidonCryptoHashGadget,
+    traits::alloc::AllocGadget,
+    CryptoHashGadget,
+    FpGadget,
+    PRFGadget,
+};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prf::PoseidonPRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -30,7 +36,7 @@ pub struct PoseidonPRFGadget<
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     PRFGadget<PoseidonPRF<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F> for PoseidonPRFGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
-    type Input = FpGadget<F>;
+    type Input = Vec<FpGadget<F>>;
     type Output = FpGadget<F>;
     type Seed = FpGadget<F>;
 
@@ -39,9 +45,25 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         seed: &Self::Seed,
         input: &Self::Input,
     ) -> Result<Self::Output, SynthesisError> {
+        // Construct the input length as a field element.
+        let input_length = {
+            let mut buffer = input.len().to_le_bytes().to_vec();
+            buffer.resize(F::size_in_bits() + 7 / 8, 0u8);
+            F::from_bytes_le(&buffer)?
+        };
+
+        // Allocate the input length as a field element.
+        let input_length_gadget = FpGadget::<F>::alloc(cs.ns(|| "Allocate input length"), || Ok(&input_length))?;
+
+        // Construct the preimage.
+        let mut preimage = vec![seed.clone()];
+        preimage.push(input_length_gadget);
+        preimage.extend_from_slice(input.as_slice());
+
+        // Evaluate the preimage.
         PoseidonCryptoHashGadget::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::check_evaluation_gadget(
             cs.ns(|| "Check Poseidon PRF evaluation"),
-            &[seed.clone(), input.clone()],
+            &preimage,
         )
     }
 }

@@ -165,7 +165,7 @@ impl PoseidonGrainLFSR {
                 })
                 .collect::<Vec<u8>>();
 
-            res.push(F::from_le_bytes_mod_order(&bytes));
+            res.push(F::from_bytes_le_mod_order(&bytes));
         }
 
         res

@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
+pub static ACCOUNT_SEED_SK_SIG_DOMAIN: &str = "AleoAccountSeedSignatureSecretKey0";
+pub static ACCOUNT_SEED_R_SIG_DOMAIN: &str = "AleoAccountSeedSignatureRandomizer0";
 
 pub static PRIVATE_KEY_PREFIX: [u8; 11] = [127, 134, 189, 116, 210, 221, 210, 137, 145, 18, 253]; // APrivateKey1
 pub static _COMPUTE_KEY_PREFIX: [u8; 10] = [109, 249, 98, 224, 36, 15, 213, 187, 79, 190]; // AComputeKey1

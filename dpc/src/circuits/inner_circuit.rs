@@ -227,7 +227,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let given_serial_number_nonce =
                 <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Input::alloc(
                     &mut declare_cs.ns(|| "given_serial_number_nonce"),
-                    || Ok(record.serial_number_nonce()),
+                    || Ok(vec![record.serial_number_nonce().clone()]),
                 )?;
 
             let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<

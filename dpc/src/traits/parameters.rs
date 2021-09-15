@@ -91,7 +91,11 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
-    type AccountPRF: PRF<Input = Self::ProgramScalarField, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
+    type AccountPRF: PRF<
+        Input = Vec<Self::ProgramScalarField>,
+        Seed = Self::AccountSeed,
+        Output = Self::ProgramScalarField,
+    >;
     type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
@@ -284,7 +288,8 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<
-        Input = Self::SerialNumberNonce,
+        // TODO (howardwu): TEMPORARY - Revisit this after upgrading serial number construction.
+        Input = Vec<Self::SerialNumberNonce>,
         Seed = Self::InnerScalarField,
         Output = Self::SerialNumber,
     >;

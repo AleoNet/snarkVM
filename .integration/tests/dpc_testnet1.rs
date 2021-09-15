@@ -28,8 +28,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        0, 110, 6, 217, 20, 222, 155, 140, 24, 18, 228, 15, 228, 154, 103, 160, 80, 46, 145, 142, 207, 138, 59, 24,
-        218, 50, 32, 219, 51, 153, 55, 79, 110, 215, 76, 75, 109, 249, 144, 5, 154, 42, 59, 77, 247, 14, 58, 1,
+        248, 38, 233, 209, 152, 143, 211, 182, 12, 9, 67, 81, 141, 63, 83, 73, 202, 36, 42, 241, 145, 34, 232, 155, 99,
+        85, 212, 0, 242, 37, 246, 65, 110, 96, 43, 131, 129, 55, 252, 114, 227, 62, 168, 22, 183, 193, 178, 0,
     ];
     let candidate_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
         .to_bytes_le()

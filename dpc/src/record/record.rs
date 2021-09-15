@@ -183,7 +183,7 @@ impl<C: Parameters> Record<C> {
         // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
         let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
-        let input = &self.serial_number_nonce;
+        let input = &vec![self.serial_number_nonce.clone()];
         let serial_number = C::SerialNumberPRF::evaluate(&seed, input)?;
 
         Ok(serial_number)
