@@ -17,7 +17,7 @@
 use crate::{ledger::*, *};
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_dpc::prelude::*;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use parking_lot::RwLock;
@@ -335,27 +335,12 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             return Err(BlockError::BlockExists(block_hash.to_string()).into());
         }
 
+        // Ensure there is no conflicting serial number or commitment in the block transactions.
+        if block.transactions.conflict_exists() {
+            return Err(StorageError::ConflictingTransactions);
+        }
+
         let mut database_transaction = DatabaseTransaction::new();
-
-        let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
-        let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
-
-        for transaction in &block.transactions.0 {
-            transaction_serial_numbers.push(transaction.transaction_id()?);
-            transaction_commitments.push(transaction.commitments());
-        }
-
-        // Sanitize the block inputs
-
-        // Check if the transactions in the block have duplicate serial numbers
-        if has_duplicates(transaction_serial_numbers) {
-            return Err(StorageError::DuplicateSn);
-        }
-
-        // Check if the transactions in the block have duplicate commitments
-        if has_duplicates(transaction_commitments) {
-            return Err(StorageError::DuplicateCm);
-        }
 
         for (index, transaction) in block.transactions.0.iter().enumerate() {
             let transaction_location = TransactionLocation {
@@ -418,27 +403,12 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
         }
 
+        // Ensure there is no conflicting serial number or commitment in the block transactions.
+        if block.transactions.conflict_exists() {
+            return Err(StorageError::ConflictingTransactions);
+        }
+
         let mut database_transaction = DatabaseTransaction::new();
-
-        let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
-        let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
-
-        for transaction in &block.transactions.0 {
-            transaction_serial_numbers.push(transaction.transaction_id()?);
-            transaction_commitments.push(transaction.commitments());
-        }
-
-        // Sanitize the block inputs
-
-        // Check if the transactions in the block have duplicate serial numbers
-        if has_duplicates(transaction_serial_numbers) {
-            return Err(StorageError::DuplicateSn);
-        }
-
-        // Check if the transactions in the block have duplicate commitments
-        if has_duplicates(transaction_commitments) {
-            return Err(StorageError::DuplicateCm);
-        }
 
         let mut sn_index = self.current_sn_index()?;
         let mut cm_index = self.current_cm_index()?;
