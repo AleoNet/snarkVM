@@ -25,7 +25,6 @@ use crate::{
     FpGadget,
     GroupGadget,
     Integer,
-    ToBitsLEGadget,
     ToBytesGadget,
     UInt8,
 };
@@ -85,19 +84,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE:
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
-
         let bytes = UInt8::alloc_vec(cs.ns(|| "allocate the private key as bytes"), &private_key)?;
-
-        // Enforce that the key is within the capacity limit.
-        let bits = bytes.to_bits_le(cs.ns(|| "convert the private key to bits"))?;
-        let capacity = <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize;
-        for (i, bit) in bits.iter().skip(capacity).enumerate() {
-            bit.enforce_equal(
-                cs.ns(|| format!("enforce the {}-th MSB to be false", i)),
-                &Boolean::Constant(false),
-            )?;
-        }
-
         Ok(ECIESPoseidonEncryptionPrivateKeyGadget(bytes, PhantomData, PhantomData))
     }
 
@@ -106,19 +93,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE:
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
-
         let bytes = UInt8::alloc_input_vec_le(cs.ns(|| "allocate the private key as bytes"), &private_key)?;
-
-        // Enforce that the key is within the capacity limit.
-        let bits = bytes.to_bits_le(cs.ns(|| "convert the private key to bits"))?;
-        let capacity = <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize;
-        for (i, bit) in bits.iter().skip(capacity).enumerate() {
-            bit.enforce_equal(
-                cs.ns(|| format!("enforce the {}-th MSB to be false", i)),
-                &Boolean::Constant(false),
-            )?;
-        }
-
         Ok(ECIESPoseidonEncryptionPrivateKeyGadget(bytes, PhantomData, PhantomData))
     }
 }

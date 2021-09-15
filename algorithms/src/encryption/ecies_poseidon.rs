@@ -116,20 +116,7 @@ where
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey {
-        // Keep trying until finding a key that is within the field's capacity bit limits.
-        loop {
-            let key = Self::PrivateKey::rand(rng);
-            let bits = key.to_bits_le();
-
-            let flag = bits
-                .iter()
-                .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
-                .any(|bit| *bit);
-
-            if !flag {
-                return key;
-            }
-        }
+        Self::PrivateKey::rand(rng)
     }
 
     fn generate_public_key(
@@ -222,18 +209,6 @@ where
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
-        // Ensure that the private key follows the format requirement.
-        {
-            let bits = private_key.to_bits_le();
-            if bits
-                .iter()
-                .skip(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize)
-                .any(|bit| *bit)
-            {
-                return Err(EncryptionError::InvalidPrivateKey);
-            }
-        }
-
         let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
         assert!(ciphertext.len() >= per_field_element_bytes);
 
