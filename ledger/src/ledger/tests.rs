@@ -27,6 +27,7 @@ fn test_new_ledger_with_genesis_block() {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
             commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },
@@ -35,8 +36,8 @@ fn test_new_ledger_with_genesis_block() {
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
     let expected_genesis_block_hash = BlockHeaderHash([
-        16, 242, 182, 233, 229, 45, 145, 38, 44, 7, 187, 225, 214, 253, 19, 247, 119, 6, 46, 45, 78, 251, 169, 140,
-        164, 186, 239, 114, 36, 2, 151, 10,
+        63, 138, 252, 86, 177, 15, 96, 131, 45, 199, 133, 61, 241, 76, 206, 159, 100, 110, 164, 142, 79, 11, 11, 157,
+        173, 145, 155, 126, 14, 240, 235, 13,
     ]);
 
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();

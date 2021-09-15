@@ -244,7 +244,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Build a new commitment merkle tree from the stored commitments
-    pub fn rebuild_merkle_tree(
+    pub fn rebuild_commitment_merkle_tree(
         &self,
         additional_cms: Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>,
     ) -> Result<(), StorageError> {
@@ -274,6 +274,37 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         Ok(new_tree)
     }
 
+    /// Build a new serial number merkle tree from the stored serial numbers
+    pub fn rebuild_serial_number_merkle_tree(
+        &self,
+        additional_sns: Vec<(<Transaction<C> as TransactionScheme>::SerialNumber, usize)>,
+    ) -> Result<(), StorageError> {
+        let mut new_sn_and_indices = additional_sns;
+
+        new_sn_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
+
+        let new_serial_numbers: Vec<_> = new_sn_and_indices.into_iter().map(|(sn, _)| sn).collect();
+
+        *self.record_serial_number_tree.write() = self.build_new_serial_number_tree(new_serial_numbers)?;
+
+        Ok(())
+    }
+
+    /// Build a new serial number merkle tree
+    pub fn build_new_serial_number_tree(
+        &self,
+        additional_sns: Vec<<Transaction<C> as TransactionScheme>::SerialNumber>,
+    ) -> Result<MerkleTree<C::RecordSerialNumberTreeParameters>, StorageError> {
+        let current_len = self.storage.get_keys(COL_SERIAL_NUMBER)?.len();
+
+        let new_tree = self
+            .record_serial_number_tree
+            .read()
+            .rebuild(current_len, &additional_sns)?;
+
+        Ok(new_tree)
+    }
+
     /// Commit a transaction to the canon chain
     #[allow(clippy::type_complexity)]
     pub(crate) fn commit_transaction(
@@ -281,12 +312,20 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         sn_index: &mut usize,
         cm_index: &mut usize,
         transaction: &Transaction<C>,
-    ) -> Result<(Vec<Op>, Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>), StorageError> {
+    ) -> Result<
+        (
+            Vec<Op>,
+            Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>,
+            Vec<(<Transaction<C> as TransactionScheme>::SerialNumber, usize)>,
+        ),
+        StorageError,
+    > {
         let old_serial_numbers = transaction.serial_numbers();
         let new_commitments = transaction.commitments();
 
         let mut ops = Vec::with_capacity(old_serial_numbers.len() + new_commitments.len());
         let mut cms = Vec::with_capacity(new_commitments.len());
+        let mut sns = Vec::with_capacity(old_serial_numbers.len());
 
         for sn in old_serial_numbers {
             let sn_bytes = to_bytes_le![sn]?;
@@ -299,6 +338,8 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
                 key: sn_bytes,
                 value: (*sn_index as u32).to_le_bytes().to_vec(),
             });
+            sns.push((sn.clone(), *sn_index));
+
             *sn_index += 1;
         }
 
@@ -318,7 +359,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             *cm_index += 1;
         }
 
-        Ok((ops, cms))
+        Ok((ops, cms, sns))
     }
 
     /// Insert a block into storage without canonizing/committing it.
@@ -416,11 +457,13 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         // Process the individual transactions
 
         let mut transaction_cms = vec![];
+        let mut transaction_sns = vec![];
 
         for transaction in block.transactions.0.iter() {
-            let (tx_ops, cms) = self.commit_transaction(&mut sn_index, &mut cm_index, transaction)?;
+            let (tx_ops, cms, sns) = self.commit_transaction(&mut sn_index, &mut cm_index, transaction)?;
             database_transaction.push_vec(tx_ops);
             transaction_cms.extend(cms);
+            transaction_sns.extend(sns);
         }
 
         // Update the database state for current indexes
@@ -472,8 +515,11 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         }
 
         // Rebuild the new commitment merkle tree
-        self.rebuild_merkle_tree(transaction_cms)?;
+        self.rebuild_commitment_merkle_tree(transaction_cms)?;
         let new_digest = self.record_commitment_tree.read().root().clone();
+
+        // Rebuild the new serial number merkle tree
+        self.rebuild_serial_number_merkle_tree(transaction_sns)?;
 
         database_transaction.push(Op::Insert {
             col: COL_DIGEST,

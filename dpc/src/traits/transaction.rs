@@ -24,7 +24,7 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type InnerCircuitID: Clone + Eq + FromBytes + ToBytes;
     type Memo: Clone + Eq + Hash + FromBytes + ToBytes;
-    type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
+    type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
     type ValueBalance: Clone + Eq + FromBytes + ToBytes;
     type Signature: Clone + Eq + FromBytes + ToBytes;
