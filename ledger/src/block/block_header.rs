@@ -18,9 +18,9 @@ use crate::{
     posw::{txids_to_roots, PoswMarlin},
     BlockHeaderHash,
     BlockHeaderMetadata,
+    MaskedMerkleRoot,
     MerkleRoot,
     Network,
-    PedersenMerkleRoot,
     ProofOfSuccinctWork,
     Transactions,
 };
@@ -41,8 +41,8 @@ use std::{
 pub struct BlockHeader<N: Network> {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHeaderHash,
-    /// Merkle root representing the transactions in the block - 32 bytes
-    pub transactions_root: PedersenMerkleRoot,
+    /// The masked Merkle root representing the transactions in the block - 32 bytes
+    pub transactions_root: MaskedMerkleRoot,
     /// The Merkle root representing the ledger commitments - 32 bytes
     pub commitments_root: MerkleRoot,
     /// The Merkle root representing the ledger serial numbers - 32 bytes
@@ -152,7 +152,7 @@ impl<N: Network> BlockHeader<N> {
     /// Returns the block header size in bytes - 919 bytes.
     pub fn size() -> usize {
         BlockHeaderHash::size()
-            + PedersenMerkleRoot::size()
+            + MaskedMerkleRoot::size()
             + MerkleRoot::size()
             + MerkleRoot::size()
             + BlockHeaderMetadata::size()
@@ -172,7 +172,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
-            transactions_root: PedersenMerkleRoot(transactions_root),
+            transactions_root: MaskedMerkleRoot(transactions_root),
             commitments_root: MerkleRoot(commitments_root),
             serial_numbers_root: MerkleRoot(serial_numbers_root),
             metadata,
@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(block_header.metadata.difficulty_target(), u64::MAX);
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.transactions_root, PedersenMerkleRoot([0u8; 32]));
+        assert_ne!(block_header.transactions_root, MaskedMerkleRoot([0u8; 32]));
         assert_ne!(block_header.commitments_root, MerkleRoot([0u8; 32]));
         assert_ne!(block_header.serial_numbers_root, MerkleRoot([0u8; 32]));
         assert_ne!(
@@ -233,7 +233,7 @@ mod tests {
     fn test_block_header_serialization() {
         let block_header = BlockHeader::<Testnet2> {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRoot([0u8; 32]),
+            transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
@@ -251,7 +251,7 @@ mod tests {
     fn test_block_header_size() {
         let block_header = BlockHeader::<Testnet2> {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRoot([0u8; 32]),
+            transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),

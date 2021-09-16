@@ -43,12 +43,12 @@ pub type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
 pub static PARAMS: Lazy<Arc<MaskedMerkleTreeParameters>> =
     Lazy::new(|| Arc::new(MaskedMerkleTreeParameters::setup("MerkleTreeParameters")));
 
-/// A Pedersen Merkle Root
+/// A Masked Merkle Root.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PedersenMerkleRoot(pub [u8; 32]);
+pub struct MaskedMerkleRoot(pub [u8; 32]);
 
-impl PedersenMerkleRoot {
-    /// Returns the Merkle root for the given leaves using a Pedersen hash.
+impl MaskedMerkleRoot {
+    /// Returns the masked Merkle root for the given leaves.
     pub fn from_leaves(leaves: &[[u8; 32]]) -> Self {
         let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), leaves).expect("could not create merkle tree");
         tree.root().clone().into()
@@ -59,18 +59,18 @@ impl PedersenMerkleRoot {
     }
 }
 
-impl From<Fr> for PedersenMerkleRoot {
-    fn from(root: Fr) -> PedersenMerkleRoot {
+impl From<Fr> for MaskedMerkleRoot {
+    fn from(root: Fr) -> MaskedMerkleRoot {
         let root_bytes = root.to_bytes_le().expect("Failed to convert root to bytes");
         assert_eq!(root_bytes.len(), 32);
 
         let mut buffer = [0u8; 32];
         buffer[..].copy_from_slice(&root_bytes);
-        PedersenMerkleRoot(buffer)
+        MaskedMerkleRoot(buffer)
     }
 }
 
-impl Display for PedersenMerkleRoot {
+impl Display for MaskedMerkleRoot {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }

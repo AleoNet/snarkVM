@@ -45,7 +45,7 @@ fn dpc_testnet1_integration_test() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRoot([0u8; 32]),
+            transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
@@ -122,7 +122,7 @@ fn dpc_testnet1_integration_test() {
 
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
-        transactions_root: PedersenMerkleRoot::from_leaves(&transaction_ids),
+        transactions_root: MaskedMerkleRoot::from_leaves(&transaction_ids),
         commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
         serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target(), 0),
@@ -144,7 +144,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRoot([0u8; 32]),
+            transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),

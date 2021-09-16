@@ -19,7 +19,7 @@ pub mod circuit;
 mod posw;
 use posw::{Posw, HG, M};
 
-use crate::{merkle_root_with_subroots, MerkleRoot, Network, PedersenMerkleRoot, MASKED_TREE_DEPTH};
+use crate::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network, MASKED_TREE_DEPTH};
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
@@ -41,7 +41,7 @@ pub type Marlin<E> = MarlinSNARK<
 >;
 
 /// Subtree calculation
-pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, PedersenMerkleRoot, Vec<[u8; 32]>) {
+pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, MaskedMerkleRoot, Vec<[u8; 32]>) {
     assert!(
         !transaction_ids.is_empty(),
         "Cannot compute a Merkle tree with no transaction IDs"
@@ -53,7 +53,7 @@ pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, 
 
     (
         MerkleRoot(merkle_root_bytes),
-        PedersenMerkleRoot::from_leaves(&subroots),
+        MaskedMerkleRoot::from_leaves(&subroots),
         subroots,
     )
 }
