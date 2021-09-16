@@ -30,11 +30,17 @@ pub struct Testnet2;
 impl Network for Testnet2 {
     type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
     type DPC = Testnet2Parameters;
+    type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 16, 32>;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {
         static BLOCK_HEADER_CRH: OnceCell<<Testnet2 as Network>::BlockHeaderCRH> = OnceCell::new();
         BLOCK_HEADER_CRH.get_or_init(|| Self::BlockHeaderCRH::setup("BlockHeaderCRH"))
+    }
+
+    fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH {
+        static MERKLE_TREE_CRH: OnceCell<<Testnet2 as Network>::MerkleTreeCRH> = OnceCell::new();
+        MERKLE_TREE_CRH.get_or_init(|| Self::MerkleTreeCRH::setup("MerkleTreeCRH"))
     }
 }

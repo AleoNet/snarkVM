@@ -19,17 +19,19 @@ pub mod circuit;
 mod posw;
 use posw::{Posw, HG, M};
 
-use crate::block::{
+use crate::{
     merkle_root_with_subroots,
     pedersen_merkle_root,
     MerkleRoot,
+    Network,
     PedersenMerkleRoot,
     MASKED_TREE_DEPTH,
 };
-use blake2::Blake2s;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
+
+use blake2::Blake2s;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 /// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
@@ -46,13 +48,13 @@ pub type Marlin<E> = MarlinSNARK<
 >;
 
 /// Subtree calculation
-pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, PedersenMerkleRoot, Vec<[u8; 32]>) {
+pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, PedersenMerkleRoot, Vec<[u8; 32]>) {
     assert!(
         !transaction_ids.is_empty(),
         "Cannot compute a Merkle tree with no transaction IDs"
     );
 
-    let (root, subroots) = merkle_root_with_subroots(transaction_ids, MASKED_TREE_DEPTH);
+    let (root, subroots) = merkle_root_with_subroots::<N>(transaction_ids, MASKED_TREE_DEPTH);
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
@@ -62,6 +64,7 @@ pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, PedersenMerk
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testnet2::Testnet2;
     use snarkvm_algorithms::SNARK;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_utilities::FromBytes;
@@ -106,7 +109,7 @@ mod tests {
             vec
         };
 
-        let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
+        let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids);
 
         // generate the proof
         let (nonce, proof) = posw
@@ -151,7 +154,7 @@ mod tests {
         let subsequent_root_hashes = growing_tx_ids
             .into_iter()
             .map(|tx_ids| {
-                let (root, pedersen_root, _subroots) = txids_to_roots(&tx_ids);
+                let (root, pedersen_root, _subroots) = txids_to_roots::<Testnet2>(&tx_ids);
                 (root, pedersen_root)
             })
             .collect::<Vec<_>>();

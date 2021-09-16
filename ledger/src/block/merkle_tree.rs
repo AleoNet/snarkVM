@@ -14,45 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::BHPCompressedCRH, traits::CRH};
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+use crate::Network;
+use snarkvm_algorithms::CRH;
 use snarkvm_utilities::ToBytes;
-
-use once_cell::sync::Lazy;
-use std::sync::Arc;
-
-pub type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 16, 32>;
-
-/// Lazily evaluated Merkle Tree CRH
-pub static MERKLE_TREE_CRH: Lazy<Arc<MerkleTreeCRH>> = Lazy::new(|| Arc::new(MerkleTreeCRH::setup("MerkleTreeCRH")));
-
-fn merkle_round(hashes: &[[u8; 32]]) -> Vec<[u8; 32]> {
-    let mut ret_len = hashes.len() / 2;
-    if hashes.len() % 2 == 1 {
-        ret_len += 1;
-    };
-    let mut ret = Vec::with_capacity(ret_len);
-
-    // Duplicates the last element if there are an odd number of leaves
-    for arr in hashes.chunks(2) {
-        match arr {
-            [h1, h2] => ret.push(merkle_hash(&h1[..], &h2[..])),
-            [h] => ret.push(merkle_hash(&h[..], &h[..])),
-            _ => unreachable!(),
-        }
-    }
-
-    ret
-}
 
 /// Calculates a Merkle root and also returns the subroots at a desired depth. If the tree is too
 /// shallow to have subroots at that depth, returns the root as a single subroot.
-pub fn merkle_root_with_subroots(hashes: &[[u8; 32]], subroots_depth: usize) -> ([u8; 32], Vec<[u8; 32]>) {
+pub fn merkle_root_with_subroots<N: Network>(hashes: &[[u8; 32]], subroots_depth: usize) -> ([u8; 32], Vec<[u8; 32]>) {
     assert!(!hashes.is_empty(), "Attempting to compute a Merkle tree with no hashes");
-    merkle_root_with_subroots_inner(hashes, &[], subroots_depth)
+    merkle_root_with_subroots_inner::<N>(hashes, &[], subroots_depth)
 }
 
-fn merkle_root_with_subroots_inner(
+fn merkle_root_with_subroots_inner<N: Network>(
     hashes: &[[u8; 32]],
     subroots: &[[u8; 32]],
     subroots_depth: usize,
@@ -68,32 +41,51 @@ fn merkle_root_with_subroots_inner(
         return (root, subroots);
     }
 
-    let result = merkle_round(hashes);
+    let result = merkle_round::<N>(hashes);
     if result.len() == 1 << subroots_depth {
-        merkle_root_with_subroots_inner(&result, &result, subroots_depth)
+        merkle_root_with_subroots_inner::<N>(&result, &result, subroots_depth)
     } else {
-        merkle_root_with_subroots_inner(&result, subroots, subroots_depth)
+        merkle_root_with_subroots_inner::<N>(&result, subroots, subroots_depth)
     }
 }
 
 /// Calculates the root of the Merkle tree
-pub fn merkle_root(hashes: &[[u8; 32]]) -> [u8; 32] {
+fn merkle_root<N: Network>(hashes: &[[u8; 32]]) -> [u8; 32] {
     if hashes.len() == 1 {
         return hashes[0];
     }
 
-    let result = merkle_round(hashes);
+    let result = merkle_round::<N>(hashes);
 
-    merkle_root(&result)
+    merkle_root::<N>(&result)
+}
+
+fn merkle_round<N: Network>(hashes: &[[u8; 32]]) -> Vec<[u8; 32]> {
+    let mut ret_len = hashes.len() / 2;
+    if hashes.len() % 2 == 1 {
+        ret_len += 1;
+    };
+    let mut ret = Vec::with_capacity(ret_len);
+
+    // Duplicates the last element if there are an odd number of leaves
+    for arr in hashes.chunks(2) {
+        match arr {
+            [h1, h2] => ret.push(merkle_hash::<N>(&h1[..], &h2[..])),
+            [h] => ret.push(merkle_hash::<N>(&h[..], &h[..])),
+            _ => unreachable!(),
+        }
+    }
+
+    ret
 }
 
 /// Calculate the Merkle tree hash by concatenating the left and right children nodes.
-pub fn merkle_hash(left: &[u8], right: &[u8]) -> [u8; 32] {
+fn merkle_hash<N: Network>(left: &[u8], right: &[u8]) -> [u8; 32] {
     let mut result = [0u8; 64];
     result[0..32].copy_from_slice(&left);
     result[32..64].copy_from_slice(&right);
 
-    let hash = MERKLE_TREE_CRH.hash(&result).expect("could not create hash");
+    let hash = N::merkle_tree_crh().hash(&result).expect("could not create hash");
     let hash_bytes = hash.to_bytes_le().expect("could not convert hash to bytes");
     assert_eq!(hash_bytes.len(), 32);
 
@@ -106,6 +98,7 @@ pub fn merkle_hash(left: &[u8], right: &[u8]) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use super::merkle_root;
+    use crate::testnet2::Testnet2;
     use std::convert::TryInto;
 
     #[test]
@@ -116,7 +109,7 @@ mod tests {
         tx1.reverse();
         tx2.reverse();
 
-        let result = merkle_root(&[tx1.as_slice().try_into().unwrap(), tx2.as_slice().try_into().unwrap()]);
+        let result = merkle_root::<Testnet2>(&[tx1.as_slice().try_into().unwrap(), tx2.as_slice().try_into().unwrap()]);
         let mut expected = hex::decode("082aaea00e9a50597332ebca7fbc514bc03aed5123023e37bb8d2ef25c27c59b").unwrap();
         expected.reverse();
 
@@ -139,7 +132,7 @@ mod tests {
             })
             .collect();
 
-        let result = merkle_root(&vec);
+        let result = merkle_root::<Testnet2>(&vec);
         let mut expected = hex::decode("094398abf972355f25b5fc321c79e10086603b4c77714e55235bbd57a43ae192").unwrap();
         expected.reverse();
 

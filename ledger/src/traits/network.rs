@@ -25,5 +25,8 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
 
     type BlockHeaderCRH: CRH;
 
+    type MerkleTreeCRH: CRH;
+
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
+    fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
 }

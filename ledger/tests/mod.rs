@@ -19,6 +19,7 @@ use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_ledger::{
     block::PedersenMerkleRoot,
     posw::{txids_to_roots, Marlin, PoswMarlin},
+    testnet2::Testnet2,
 };
 use snarkvm_utilities::FromBytes;
 
@@ -51,7 +52,7 @@ fn test_posw_load_and_mine() {
     };
 
     // Create the Pedersen Merkle tree.
-    let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
+    let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids);
 
     // Generate the proof.
     let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();

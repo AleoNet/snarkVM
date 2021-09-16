@@ -68,7 +68,7 @@ impl<N: Network> BlockHeader<N> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         let txids = transactions.to_transaction_ids()?;
-        let (_, transactions_root, subroots) = txids_to_roots(&txids);
+        let (_, transactions_root, subroots) = txids_to_roots::<N>(&txids);
 
         // TODO (howardwu): TEMPORARY - Make this a static once_cell.
         // Mine the block.
