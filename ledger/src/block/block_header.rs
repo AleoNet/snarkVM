@@ -75,15 +75,13 @@ impl<N: Network> BlockHeader<N> {
         let posw = PoswMarlin::load()?;
         let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
 
-        let metadata = BlockHeaderMetadata::new(timestamp, difficulty_target, nonce);
-
         Ok(Self {
             previous_block_hash,
             transactions_root,
             commitments_root,
             serial_numbers_root,
-            metadata,
-            proof: proof.into(),
+            metadata: BlockHeaderMetadata::new(timestamp, difficulty_target, nonce),
+            proof: FromBytes::read_le(&proof[..])?,
         })
     }
 

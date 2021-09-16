@@ -68,20 +68,6 @@ impl<N: Network> ToBytes for ProofOfSuccinctWork<N> {
     }
 }
 
-impl<N: Network> From<&[u8]> for ProofOfSuccinctWork<N> {
-    fn from(proof: &[u8]) -> Self {
-        let mut bytes = vec![0; Self::size()];
-        bytes.copy_from_slice(&proof);
-        Self::new(&bytes)
-    }
-}
-
-impl<N: Network> From<Vec<u8>> for ProofOfSuccinctWork<N> {
-    fn from(proof: Vec<u8>) -> Self {
-        Self::from(proof.as_ref())
-    }
-}
-
 impl<'de, N: Network> Deserialize<'de> for ProofOfSuccinctWork<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct ArrayVisitor<N: Network>(PhantomData<N>);
