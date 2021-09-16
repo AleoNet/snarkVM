@@ -28,7 +28,6 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{CryptoRng, Rng};
-use std::marker::PhantomData;
 
 /// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
 /// Commits to the nonce and pedersen merkle root.
@@ -48,7 +47,6 @@ pub struct Posw<N: Network, const MASK_NUM_BYTES: usize> {
     pub pk: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
     /// The (prepared) verifying key.
     pub vk: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
-    _circuit: PhantomData<POSWCircuit<N, MASK_NUM_BYTES>>,
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
@@ -60,7 +58,6 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         Ok(Self {
             pk: None,
             vk: vk.into(),
-            _circuit: PhantomData,
         })
     }
 
@@ -73,7 +70,6 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         Ok(Self {
             pk: Some(pk),
             vk: vk.into(),
-            _circuit: PhantomData,
         })
     }
 
@@ -105,7 +101,6 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         Ok(Self {
             pk: Some(params.0),
             vk: params.1,
-            _circuit: PhantomData,
         })
     }
 
@@ -126,7 +121,6 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         Ok(Self {
             pk: Some(params.0),
             vk: params.1,
-            _circuit: PhantomData,
         })
     }
 

@@ -50,6 +50,7 @@ impl Network for Testnet2 {
 
     type CommitmentsTreeCRH = <Self::DPC as Parameters>::LedgerCommitmentsTreeCRH;
     type CommitmentsTreeParameters = <Self::DPC as Parameters>::LedgerCommitmentsTreeParameters;
+    // type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
 
     type SerialNumbersTreeCRH = <Self::DPC as Parameters>::LedgerSerialNumbersTreeCRH;
     type SerialNumbersTreeParameters = <Self::DPC as Parameters>::LedgerSerialNumbersTreeParameters;
