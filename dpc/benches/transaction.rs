@@ -44,11 +44,10 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
@@ -69,11 +68,10 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),

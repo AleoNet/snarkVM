@@ -61,42 +61,24 @@ impl<T: TransactionScheme> Transactions<T> {
             .collect::<Result<Vec<String>, TransactionError>>()
     }
 
-    pub fn conflicts(&self, transaction: &T) -> bool {
-        let mut holding_serial_numbers = vec![];
-        let mut holding_commitments = vec![];
+    /// Returns `true` if there is a conflicting serial number or commitment in the transactions.
+    pub fn conflict_exists(&self) -> bool {
+        let mut serial_numbers = vec![];
+        let mut commitments = vec![];
 
         for tx in &self.0 {
-            if tx.network_id() != transaction.network_id() {
-                return true;
-            };
-
-            holding_serial_numbers.extend(tx.serial_numbers());
-            holding_commitments.extend(tx.commitments());
+            serial_numbers.extend(tx.serial_numbers());
+            commitments.extend(tx.commitments());
         }
 
-        let transaction_serial_numbers = transaction.serial_numbers();
-        let transaction_commitments = transaction.commitments();
-
         // Check if the transactions in the block have duplicate serial numbers
-        if has_duplicates(transaction_serial_numbers) {
+        if has_duplicates(serial_numbers) {
             return true;
         }
 
         // Check if the transactions in the block have duplicate commitments
-        if has_duplicates(transaction_commitments) {
+        if has_duplicates(commitments) {
             return true;
-        }
-
-        for sn in transaction_serial_numbers {
-            if holding_serial_numbers.contains(&sn) {
-                return true;
-            }
-        }
-
-        for cm in transaction_commitments {
-            if holding_commitments.contains(&cm) {
-                return true;
-            }
         }
 
         false

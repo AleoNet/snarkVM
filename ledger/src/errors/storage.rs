@@ -31,11 +31,8 @@ pub enum StorageError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
-    #[error("duplicate commitment")]
-    DuplicateCm,
-
-    #[error("duplicate serial number")]
-    DuplicateSn,
+    #[error("duplicate serial number or commitment in the transactions")]
+    ConflictingTransactions,
 
     #[error("Block has already been committed: {:?}", _0)]
     ExistingCanonBlock(String),

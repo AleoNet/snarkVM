@@ -15,27 +15,29 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ledger::*, prelude::*};
-use snarkvm_dpc::parameters::testnet2::Testnet2Parameters;
+use snarkvm_dpc::{parameters::testnet2::Testnet2Parameters, Transaction};
+use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
+
+use rand::thread_rng;
 
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
         },
         transactions: Transactions::new(),
     };
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
     let expected_genesis_block_hash = BlockHeaderHash([
-        181, 154, 143, 117, 166, 9, 195, 238, 250, 143, 179, 197, 156, 162, 245, 242, 247, 127, 213, 209, 196, 45, 80,
-        225, 227, 100, 54, 108, 86, 6, 59, 93,
+        63, 138, 252, 86, 177, 15, 96, 131, 45, 199, 133, 61, 241, 76, 206, 159, 100, 110, 164, 142, 79, 11, 11, 157,
+        173, 145, 155, 126, 14, 240, 235, 13,
     ]);
 
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();
@@ -48,4 +50,19 @@ fn test_new_ledger_with_genesis_block() {
     assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
 
     assert!(ledger.get_block(&BlockHeaderHash([0u8; 32])).is_err());
+}
+
+#[test]
+fn test_ledger_duplicate_transactions() {
+    let transaction = Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
+    let transactions = Transactions::from(&[transaction.clone(), transaction]);
+
+    let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(&transactions, &mut thread_rng()).unwrap();
+
+    let genesis_block = Block {
+        header: block_header,
+        transactions,
+    };
+
+    assert!(Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).is_err());
 }

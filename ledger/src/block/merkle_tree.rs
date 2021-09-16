@@ -14,7 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::double_sha256;
+use snarkvm_algorithms::{crh::BHPCompressedCRH, traits::CRH};
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+use snarkvm_utilities::ToBytes;
+
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+
+pub type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 16, 32>;
+
+/// Lazily evaluated Merkle Tree CRH
+pub static MERKLE_TREE_CRH: Lazy<Arc<MerkleTreeCRH>> = Lazy::new(|| Arc::new(MerkleTreeCRH::setup("MerkleTreeCRH")));
 
 fn merkle_round(hashes: &[[u8; 32]]) -> Vec<[u8; 32]> {
     let mut ret_len = hashes.len() / 2;
@@ -82,7 +92,15 @@ pub fn merkle_hash(left: &[u8], right: &[u8]) -> [u8; 32] {
     let mut result = [0u8; 64];
     result[0..32].copy_from_slice(&left);
     result[32..64].copy_from_slice(&right);
-    double_sha256(&result)
+
+    let hash = MERKLE_TREE_CRH.hash(&result).expect("could not create hash");
+    let hash_bytes = hash.to_bytes_le().expect("could not convert hash to bytes");
+    assert_eq!(hash_bytes.len(), 32);
+
+    let mut hash_result = [0u8; 32];
+    hash_result.copy_from_slice(&&hash_bytes);
+
+    hash_result
 }
 
 #[cfg(test)]
@@ -90,8 +108,6 @@ mod tests {
     use super::merkle_root;
     use std::convert::TryInto;
 
-    // block 80_000
-    // https://blockchain.info/block/000000000043a8c0fd1d6f726790caa2a406010d19efd2780db27bdbbd93baf6
     #[test]
     fn test_merkle_root_2_hashes() {
         let mut tx1 = hex::decode("c06fbab289f723c6261d3030ddb6be121f7d2508d77862bb1e484f5cd7f92b25").unwrap();
@@ -101,8 +117,7 @@ mod tests {
         tx2.reverse();
 
         let result = merkle_root(&[tx1.as_slice().try_into().unwrap(), tx2.as_slice().try_into().unwrap()]);
-
-        let mut expected = hex::decode("8fb300e3fdb6f30a4c67233b997f99fdd518b968b9a3fd65857bfe78b2600719").unwrap();
+        let mut expected = hex::decode("082aaea00e9a50597332ebca7fbc514bc03aed5123023e37bb8d2ef25c27c59b").unwrap();
         expected.reverse();
 
         assert_eq!(&result[..], &expected[..]);
@@ -125,8 +140,7 @@ mod tests {
             .collect();
 
         let result = merkle_root(&vec);
-
-        let mut expected = hex::decode("3a432cd416ea05b1be4ec1e72d7952d08670eaa5505b6794a186ddb253aa62e6").unwrap();
+        let mut expected = hex::decode("094398abf972355f25b5fc321c79e10086603b4c77714e55235bbd57a43ae192").unwrap();
         expected.reverse();
 
         assert_eq!(&result[..], &expected[..]);

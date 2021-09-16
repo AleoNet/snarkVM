@@ -33,11 +33,10 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     let temporary_ledger = Ledger::<C, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
@@ -57,7 +56,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     transactions.push(transaction);
 
     // Create a genesis header.
-    let genesis_header = BlockHeader::new_genesis(&transactions, &mut thread_rng())?;
+    let genesis_header = BlockHeader::new_genesis::<_, C, _>(&transactions, &mut thread_rng())?;
     assert!(genesis_header.is_genesis());
     println!("block header size - {}\n", BlockHeader::size());
 

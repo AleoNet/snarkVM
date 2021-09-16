@@ -17,32 +17,41 @@
 use crate::{
     posw::{txids_to_roots, PoswMarlin},
     BlockHeaderHash,
+    BlockHeaderMetadata,
     MerkleRootHash,
     PedersenMerkleRootHash,
     ProofOfSuccinctWork,
     Transactions,
 };
-use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
-use snarkvm_dpc::TransactionScheme;
+use snarkvm_algorithms::{crh::BHPCompressedCRH, merkle_tree::MerkleTree, traits::CRH};
+use snarkvm_dpc::{Parameters, TransactionScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    mem::size_of,
-};
+use std::io::{Read, Result as IoResult, Write};
 
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+
+pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
+
+/// Size of a block header in bytes - 919 bytes.
 const HEADER_SIZE: usize = {
     BlockHeaderHash::size()
-        + MerkleRootHash::size()
         + PedersenMerkleRootHash::size()
+        + MerkleRootHash::size()
+        + MerkleRootHash::size()
+        + BlockHeaderMetadata::size()
         + ProofOfSuccinctWork::size()
-        + size_of::<i64>()
-        + size_of::<u64>()
-        + size_of::<u32>()
 };
+
+/// Lazily evaluated BlockHeader CRH
+pub static BLOCK_HEADER_CRH: Lazy<Arc<BlockHeaderCRH>> =
+    Lazy::new(|| Arc::new(BlockHeaderCRH::setup("BlockHeaderCRH")));
 
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -50,18 +59,15 @@ pub struct BlockHeader {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHeaderHash,
     /// Merkle root representing the transactions in the block - 32 bytes
-    pub merkle_root_hash: MerkleRootHash,
-    /// Merkle root of the transactions in the block using a Pedersen hash - 32 bytes
-    pub pedersen_merkle_root_hash: PedersenMerkleRootHash,
+    pub transactions_root: PedersenMerkleRootHash,
+    /// The Merkle root representing the ledger commitments - 32 bytes
+    pub commitments_root: MerkleRootHash,
+    /// The Merkle root representing the ledger serial numbers - 32 bytes
+    pub serial_numbers_root: MerkleRootHash,
+    /// The block header metadata - 20 bytes
+    pub metadata: BlockHeaderMetadata,
     /// Proof of Succinct Work
     pub proof: ProofOfSuccinctWork,
-    /// The block timestamp is a Unix epoch time (UTC) when the miner
-    /// started hashing the header (according to the miner). - 8 bytes
-    pub time: i64,
-    /// Proof of work algorithm difficulty target for this block - 8 bytes
-    pub difficulty_target: u64,
-    /// Nonce for solving the PoW puzzle - 4 bytes
-    pub nonce: u32,
 }
 
 impl BlockHeader {
@@ -69,6 +75,8 @@ impl BlockHeader {
     pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
         previous_block_hash: BlockHeaderHash,
         transactions: &Transactions<T>,
+        commitments_root: MerkleRootHash,
+        serial_numbers_root: MerkleRootHash,
         timestamp: i64,
         difficulty_target: u64,
         max_nonce: u32,
@@ -77,30 +85,50 @@ impl BlockHeader {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         let txids = transactions.to_transaction_ids()?;
-        let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
+        let (_, transactions_root, subroots) = txids_to_roots(&txids);
 
         // TODO (howardwu): Make this a static once_cell.
         // Mine the block.
         let posw = PoswMarlin::load()?;
         let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
 
+        let metadata = BlockHeaderMetadata::new(timestamp, difficulty_target, nonce);
+
         Ok(Self {
             previous_block_hash,
-            merkle_root_hash,
-            pedersen_merkle_root_hash,
-            time: timestamp,
-            difficulty_target,
-            nonce,
+            transactions_root,
+            commitments_root,
+            serial_numbers_root,
+            metadata,
             proof: proof.into(),
         })
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis<T: TransactionScheme, R: Rng + CryptoRng>(
+    pub fn new_genesis<T: TransactionScheme, C: Parameters, R: Rng + CryptoRng>(
         transactions: &Transactions<T>,
         rng: &mut R,
     ) -> Result<Self> {
         let previous_block_hash = BlockHeaderHash([0u8; 32]);
+
+        // Craft the commitments root from the transactions
+        let transaction_commitments: Vec<&<T as TransactionScheme>::Commitment> =
+            transactions.0.iter().map(|t| t.commitments()).flatten().collect();
+        let record_commitment_tree = MerkleTree::new(
+            Arc::new(C::record_commitment_tree_parameters().clone()),
+            &transaction_commitments,
+        )?;
+        let commitments_root = MerkleRootHash::from_element(record_commitment_tree.root());
+
+        // Craft the serial numbers root from the transactions
+        let transaction_serial_numbers: Vec<&<T as TransactionScheme>::SerialNumber> =
+            transactions.0.iter().map(|t| t.serial_numbers()).flatten().collect();
+        let record_serial_numbers_tree = MerkleTree::new(
+            Arc::new(C::record_commitment_tree_parameters().clone()),
+            &transaction_serial_numbers,
+        )?;
+        let serial_numbers_root = MerkleRootHash::from_element(record_serial_numbers_tree.root());
+
         let timestamp = 0i64;
         let difficulty_target = u64::MAX;
         let max_nonce = u32::MAX;
@@ -108,6 +136,8 @@ impl BlockHeader {
         let block_header = Self::new(
             previous_block_hash,
             transactions,
+            commitments_root,
+            serial_numbers_root,
             timestamp,
             difficulty_target,
             max_nonce,
@@ -123,21 +153,19 @@ impl BlockHeader {
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
-        self.time == 0
+        self.metadata.timestamp == 0
             // Ensure the previous block hash in the genesis block is 0.
             || self.previous_block_hash == BlockHeaderHash([0u8; 32])
     }
 
     pub fn to_hash(&self) -> Result<BlockHeaderHash> {
         let serialized = self.to_bytes_le()?;
+        let hash_bytes = BLOCK_HEADER_CRH.hash(&serialized)?.to_bytes_le()?;
+
         let mut hash = [0u8; 32];
-        hash.copy_from_slice(&double_sha256(&serialized));
+        hash.copy_from_slice(&hash_bytes);
 
         Ok(BlockHeaderHash(hash))
-    }
-
-    pub fn to_difficulty_target(&self) -> Result<u64> {
-        Ok(sha256d_to_u64(&self.proof.0[..]))
     }
 
     pub const fn size() -> usize {
@@ -149,12 +177,11 @@ impl ToBytes for BlockHeader {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.0.write_le(&mut writer)?;
-        self.merkle_root_hash.0.write_le(&mut writer)?;
-        self.pedersen_merkle_root_hash.0.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)?;
-        self.time.to_le_bytes().write_le(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.nonce.to_le_bytes().write_le(&mut writer)
+        self.transactions_root.0.write_le(&mut writer)?;
+        self.commitments_root.0.write_le(&mut writer)?;
+        self.serial_numbers_root.0.write_le(&mut writer)?;
+        self.metadata.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
     }
 }
 
@@ -162,20 +189,18 @@ impl FromBytes for BlockHeader {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
-        let merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
-        let pedersen_merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let transactions_root = <[u8; 32]>::read_le(&mut reader)?;
+        let commitments_root = <[u8; 32]>::read_le(&mut reader)?;
+        let serial_numbers_root = <[u8; 32]>::read_le(&mut reader)?;
+        let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
-        let time = <[u8; 8]>::read_le(&mut reader)?;
-        let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let nonce = <[u8; 4]>::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
-            merkle_root_hash: MerkleRootHash(merkle_root_hash),
-            time: i64::from_le_bytes(time),
-            difficulty_target: u64::from_le_bytes(difficulty_target),
-            nonce: u32::from_le_bytes(nonce),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash(pedersen_merkle_root_hash),
+            transactions_root: PedersenMerkleRootHash(transactions_root),
+            commitments_root: MerkleRootHash(commitments_root),
+            serial_numbers_root: MerkleRootHash(serial_numbers_root),
+            metadata,
             proof,
         })
     }
@@ -192,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_block_header_genesis() {
-        let block_header = BlockHeader::new_genesis(
+        let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(
             &Transactions::from(&[
                 Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap(),
             ]),
@@ -203,15 +228,13 @@ mod tests {
 
         // Ensure the genesis block contains the following.
         assert_eq!(block_header.previous_block_hash, BlockHeaderHash([0u8; 32]));
-        assert_eq!(block_header.time, 0);
-        assert_eq!(block_header.difficulty_target, u64::MAX);
+        assert_eq!(block_header.metadata.timestamp, 0);
+        assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.merkle_root_hash, MerkleRootHash([0u8; 32]));
-        assert_ne!(
-            block_header.pedersen_merkle_root_hash,
-            PedersenMerkleRootHash([0u8; 32])
-        );
+        assert_ne!(block_header.transactions_root, PedersenMerkleRootHash([0u8; 32]));
+        assert_ne!(block_header.commitments_root, MerkleRootHash([0u8; 32]));
+        assert_ne!(block_header.serial_numbers_root, MerkleRootHash([0u8; 32]));
         assert_ne!(
             block_header.proof,
             ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
@@ -222,12 +245,11 @@ mod tests {
     fn test_block_header_serialization() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
-            time: Utc::now().timestamp(),
-            difficulty_target: 0u64,
-            nonce: 0u32,
         };
 
         let serialized = block_header.to_bytes_le().unwrap();
@@ -241,12 +263,11 @@ mod tests {
     fn test_block_header_size() {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
-            time: Utc::now().timestamp(),
-            difficulty_target: 0u64,
-            nonce: 0u32,
         };
         assert_eq!(block_header.to_bytes_le().unwrap().len(), BlockHeader::size());
     }

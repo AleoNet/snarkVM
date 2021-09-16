@@ -45,12 +45,11 @@ fn dpc_testnet2_integration_test() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
         },
         transactions: Transactions::new(),
     };
@@ -98,21 +97,35 @@ fn dpc_testnet2_integration_test() {
 
     let transaction_ids = transactions.to_transaction_ids().unwrap();
 
-    let mut merkle_root_bytes = [0u8; 32];
-    merkle_root_bytes[..].copy_from_slice(&merkle_root(&transaction_ids));
-
     let time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs() as i64;
 
+    // Construct new_commitments_tree
+    let transaction_commitments = transactions
+        .0
+        .iter()
+        .map(|t| t.commitments().to_owned())
+        .flatten()
+        .collect();
+    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
+
+    // Construct new_serial_numbers_tree
+    let transaction_serial_numbers = transactions
+        .0
+        .iter()
+        .map(|t| t.serial_numbers().to_owned())
+        .flatten()
+        .collect();
+    let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
+
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
-        merkle_root_hash: MerkleRootHash(merkle_root_bytes),
-        time,
-        difficulty_target: previous_block.header.difficulty_target,
-        nonce: 0,
-        pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+        transactions_root: pedersen_merkle_root(&transaction_ids),
+        commitments_root: MerkleRootHash::from_element(new_commitments_tree.root()),
+        serial_numbers_root: MerkleRootHash::from_element(new_serial_numbers_tree.root()),
+        metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
         proof: ProofOfSuccinctWork::default(),
     };
 
@@ -131,11 +144,10 @@ fn test_testnet2_dpc_execute_constraints() {
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
-            merkle_root_hash: MerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            transactions_root: PedersenMerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRootHash([0u8; 32]),
+            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),
