@@ -19,14 +19,7 @@ pub mod circuit;
 mod posw;
 use posw::{Posw, HG, M};
 
-use crate::{
-    merkle_root_with_subroots,
-    pedersen_merkle_root,
-    MerkleRoot,
-    Network,
-    PedersenMerkleRoot,
-    MASKED_TREE_DEPTH,
-};
+use crate::{merkle_root_with_subroots, MerkleRoot, Network, PedersenMerkleRoot, MASKED_TREE_DEPTH};
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
@@ -58,7 +51,11 @@ pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, 
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
-    (MerkleRoot(merkle_root_bytes), pedersen_merkle_root(&subroots), subroots)
+    (
+        MerkleRoot(merkle_root_bytes),
+        PedersenMerkleRoot::from_leaves(&subroots),
+        subroots,
+    )
 }
 
 #[cfg(test)]

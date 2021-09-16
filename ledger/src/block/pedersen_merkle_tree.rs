@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{crh::PedersenCompressedCRH, define_masked_merkle_tree_parameters};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -48,17 +48,25 @@ pub static PARAMS: Lazy<Arc<MaskedMerkleTreeParameters>> =
 pub struct PedersenMerkleRoot(pub [u8; 32]);
 
 impl PedersenMerkleRoot {
+    /// Returns the Merkle root for the given leaves using a Pedersen hash.
+    pub fn from_leaves(leaves: &[[u8; 32]]) -> Self {
+        let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), leaves).expect("could not create merkle tree");
+        tree.root().clone().into()
+    }
+
     pub const fn size() -> usize {
         32
     }
 }
 
 impl From<Fr> for PedersenMerkleRoot {
-    fn from(src: Fr) -> PedersenMerkleRoot {
-        let root_bytes = to_bytes_le![src].expect("could not convert merkle root to bytes");
-        let mut pedersen_merkle_root_bytes = [0u8; 32];
-        pedersen_merkle_root_bytes[..].copy_from_slice(&root_bytes);
-        PedersenMerkleRoot(pedersen_merkle_root_bytes)
+    fn from(root: Fr) -> PedersenMerkleRoot {
+        let root_bytes = root.to_bytes_le().expect("Failed to convert root to bytes");
+        assert_eq!(root_bytes.len(), 32);
+
+        let mut buffer = [0u8; 32];
+        buffer[..].copy_from_slice(&root_bytes);
+        PedersenMerkleRoot(buffer)
     }
 }
 
@@ -66,13 +74,6 @@ impl Display for PedersenMerkleRoot {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
-}
-
-/// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG
-/// and returns it serialized
-pub fn pedersen_merkle_root(hashes: &[[u8; 32]]) -> PedersenMerkleRoot {
-    let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
-    tree.root().clone().into()
 }
 
 /// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG and the
