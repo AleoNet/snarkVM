@@ -39,16 +39,6 @@ use std::{
 
 pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
 
-/// Size of a block header in bytes - 919 bytes.
-const HEADER_SIZE: usize = {
-    BlockHeaderHash::size()
-        + PedersenMerkleRoot::size()
-        + MerkleRoot::size()
-        + MerkleRoot::size()
-        + BlockHeaderMetadata::size()
-        + ProofOfSuccinctWork::size()
-};
-
 /// Lazily evaluated BlockHeader CRH
 pub static BLOCK_HEADER_CRH: Lazy<Arc<BlockHeaderCRH>> =
     Lazy::new(|| Arc::new(BlockHeaderCRH::setup("BlockHeaderCRH")));
@@ -168,8 +158,14 @@ impl BlockHeader {
         Ok(BlockHeaderHash(hash))
     }
 
+    /// Returns the block header size in bytes - 919 bytes.
     pub const fn size() -> usize {
-        HEADER_SIZE
+        BlockHeaderHash::size()
+            + PedersenMerkleRoot::size()
+            + MerkleRoot::size()
+            + MerkleRoot::size()
+            + BlockHeaderMetadata::size()
+            + ProofOfSuccinctWork::size()
     }
 }
 
