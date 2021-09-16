@@ -14,9 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::prelude::*;
 use snarkvm_dpc::Parameters;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 
-pub trait Environment: Send + Sync {
+pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
+    const POSW_PROOF_SIZE_IN_BYTES: usize;
+
     type DPC: Parameters;
+
+    type BlockHeaderCRH: CRH;
+
+    fn block_header_crh() -> &'static Self::BlockHeaderCRH;
 }

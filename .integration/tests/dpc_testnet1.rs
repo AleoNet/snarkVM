@@ -49,7 +49,7 @@ fn dpc_testnet1_integration_test() {
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork::default(),
+            proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::size()]),
         },
         transactions: Transactions::new(),
     };
@@ -126,7 +126,7 @@ fn dpc_testnet1_integration_test() {
         commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
         serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target(), 0),
-        proof: ProofOfSuccinctWork::default(),
+        proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::size()]),
     };
 
     assert!(DPC::verify_transactions(&transactions.0, &ledger));
@@ -148,7 +148,7 @@ fn test_testnet1_dpc_execute_constraints() {
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork::default(),
+            proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::size()]),
         },
         transactions: Transactions::new(),
     };

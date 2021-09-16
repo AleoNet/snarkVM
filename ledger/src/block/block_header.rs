@@ -19,17 +19,16 @@ use crate::{
     BlockHeaderHash,
     BlockHeaderMetadata,
     MerkleRoot,
+    Network,
     PedersenMerkleRoot,
     ProofOfSuccinctWork,
     Transactions,
 };
-use snarkvm_algorithms::{crh::BHPCompressedCRH, merkle_tree::MerkleTree, traits::CRH};
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_dpc::{Parameters, TransactionScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
-use once_cell::sync::Lazy;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -37,15 +36,9 @@ use std::{
     sync::Arc,
 };
 
-pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
-
-/// Lazily evaluated BlockHeader CRH
-pub static BLOCK_HEADER_CRH: Lazy<Arc<BlockHeaderCRH>> =
-    Lazy::new(|| Arc::new(BlockHeaderCRH::setup("BlockHeaderCRH")));
-
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeader {
+pub struct BlockHeader<N: Network> {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHeaderHash,
     /// Merkle root representing the transactions in the block - 32 bytes
@@ -57,10 +50,10 @@ pub struct BlockHeader {
     /// The block header metadata - 20 bytes
     pub metadata: BlockHeaderMetadata,
     /// Proof of Succinct Work
-    pub proof: ProofOfSuccinctWork,
+    pub proof: ProofOfSuccinctWork<N>,
 }
 
-impl BlockHeader {
+impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
     pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
         previous_block_hash: BlockHeaderHash,
@@ -77,7 +70,7 @@ impl BlockHeader {
         let txids = transactions.to_transaction_ids()?;
         let (_, transactions_root, subroots) = txids_to_roots(&txids);
 
-        // TODO (howardwu): Make this a static once_cell.
+        // TODO (howardwu): TEMPORARY - Make this a static once_cell.
         // Mine the block.
         let posw = PoswMarlin::load()?;
         let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
@@ -150,7 +143,7 @@ impl BlockHeader {
 
     pub fn to_hash(&self) -> Result<BlockHeaderHash> {
         let serialized = self.to_bytes_le()?;
-        let hash_bytes = BLOCK_HEADER_CRH.hash(&serialized)?.to_bytes_le()?;
+        let hash_bytes = N::block_header_crh().hash(&serialized)?.to_bytes_le()?;
 
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&hash_bytes);
@@ -159,29 +152,17 @@ impl BlockHeader {
     }
 
     /// Returns the block header size in bytes - 919 bytes.
-    pub const fn size() -> usize {
+    pub fn size() -> usize {
         BlockHeaderHash::size()
             + PedersenMerkleRoot::size()
             + MerkleRoot::size()
             + MerkleRoot::size()
             + BlockHeaderMetadata::size()
-            + ProofOfSuccinctWork::size()
+            + ProofOfSuccinctWork::<N>::size()
     }
 }
 
-impl ToBytes for BlockHeader {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.previous_block_hash.0.write_le(&mut writer)?;
-        self.transactions_root.0.write_le(&mut writer)?;
-        self.commitments_root.0.write_le(&mut writer)?;
-        self.serial_numbers_root.0.write_le(&mut writer)?;
-        self.metadata.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
-    }
-}
-
-impl FromBytes for BlockHeader {
+impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
@@ -202,9 +183,22 @@ impl FromBytes for BlockHeader {
     }
 }
 
+impl<N: Network> ToBytes for BlockHeader<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.previous_block_hash.0.write_le(&mut writer)?;
+        self.transactions_root.0.write_le(&mut writer)?;
+        self.commitments_root.0.write_le(&mut writer)?;
+        self.serial_numbers_root.0.write_le(&mut writer)?;
+        self.metadata.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testnet2::Testnet2;
     use snarkvm_dpc::{testnet2::Testnet2Parameters, Transaction};
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 
@@ -213,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_block_header_genesis() {
-        let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(
+        let block_header = BlockHeader::<Testnet2>::new_genesis::<_, Testnet2Parameters, _>(
             &Transactions::from(&[
                 Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap(),
             ]),
@@ -233,19 +227,19 @@ mod tests {
         assert_ne!(block_header.serial_numbers_root, MerkleRoot([0u8; 32]));
         assert_ne!(
             block_header.proof,
-            ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
+            ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         );
     }
 
     #[test]
     fn test_block_header_serialization() {
-        let block_header = BlockHeader {
+        let block_header = BlockHeader::<Testnet2> {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
-            proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
+            proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         };
 
         let serialized = block_header.to_bytes_le().unwrap();
@@ -257,14 +251,17 @@ mod tests {
 
     #[test]
     fn test_block_header_size() {
-        let block_header = BlockHeader {
+        let block_header = BlockHeader::<Testnet2> {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
-            proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
+            proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         };
-        assert_eq!(block_header.to_bytes_le().unwrap().len(), BlockHeader::size());
+        assert_eq!(
+            block_header.to_bytes_le().unwrap().len(),
+            BlockHeader::<Testnet2>::size()
+        );
     }
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ledger::*, prelude::*};
+use crate::{ledger::*, prelude::*, testnet2::Testnet2};
 use snarkvm_dpc::{parameters::testnet2::Testnet2Parameters, Transaction};
 use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 
@@ -40,7 +40,7 @@ fn test_new_ledger_with_genesis_block() {
         173, 145, 155, 126, 14, 240, 235, 13,
     ]);
 
-    let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();
+    let ledger = Ledger::<Testnet2, Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();
 
     assert_eq!(ledger.block_height(), 0);
     assert_eq!(ledger.latest_block().unwrap(), genesis_block.clone());
@@ -64,5 +64,5 @@ fn test_ledger_duplicate_transactions() {
         transactions,
     };
 
-    assert!(Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).is_err());
+    assert!(Ledger::<Testnet2, Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).is_err());
 }

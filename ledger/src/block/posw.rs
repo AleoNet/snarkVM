@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Network;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use serde::{
@@ -32,83 +33,84 @@ use std::{
         {self},
     },
     io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
 };
 
-// Marlin PoSW proof size
-const PROOF_SIZE: usize = 771;
+/// A Proof of Succinct Work is a SNARK proof.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ProofOfSuccinctWork<N: Network>(Vec<u8>, PhantomData<N>);
 
-#[derive(Clone)]
-/// A Proof of Succinct Work is a SNARK proof which
-pub struct ProofOfSuccinctWork(pub [u8; PROOF_SIZE]);
+impl<N: Network> ProofOfSuccinctWork<N> {
+    pub fn new(proof: &[u8]) -> Self {
+        assert_eq!(proof.len(), Self::size());
+        Self(proof.to_vec(), PhantomData)
+    }
 
-impl ProofOfSuccinctWork {
-    /// Returns the proof's size
-    pub const fn size() -> usize {
-        PROOF_SIZE
+    /// Returns the proof size in bytes.
+    pub fn size() -> usize {
+        N::POSW_PROOF_SIZE_IN_BYTES
     }
 }
 
-impl Default for ProofOfSuccinctWork {
-    fn default() -> Self {
-        Self([0u8; PROOF_SIZE])
+impl<N: Network> FromBytes for ProofOfSuccinctWork<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut proof = vec![0; Self::size()];
+        reader.read_exact(&mut proof)?;
+        Ok(Self::new(&proof))
     }
 }
 
-impl Display for ProofOfSuccinctWork {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.0[..]))
+impl<N: Network> ToBytes for ProofOfSuccinctWork<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (&self.0[..]).write_le(&mut writer)
     }
 }
 
-impl Debug for ProofOfSuccinctWork {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "ProofOfSuccinctWork({})", hex::encode(&self.0[..]))
+impl<N: Network> From<&[u8]> for ProofOfSuccinctWork<N> {
+    fn from(proof: &[u8]) -> Self {
+        let mut bytes = vec![0; Self::size()];
+        bytes.copy_from_slice(&proof);
+        Self::new(&bytes)
     }
 }
 
-impl PartialEq for ProofOfSuccinctWork {
-    fn eq(&self, other: &ProofOfSuccinctWork) -> bool {
-        self.0[..] == other.0[..]
+impl<N: Network> From<Vec<u8>> for ProofOfSuccinctWork<N> {
+    fn from(proof: Vec<u8>) -> Self {
+        Self::from(proof.as_ref())
     }
 }
 
-impl Eq for ProofOfSuccinctWork {}
+impl<'de, N: Network> Deserialize<'de> for ProofOfSuccinctWork<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ArrayVisitor<N: Network>(PhantomData<N>);
 
-impl<'de> Deserialize<'de> for ProofOfSuccinctWork {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ArrayVisitor;
-
-        impl<'de> Visitor<'de> for ArrayVisitor {
-            type Value = ProofOfSuccinctWork;
+        impl<'de, N: Network> Visitor<'de> for ArrayVisitor<N> {
+            type Value = ProofOfSuccinctWork<N>;
 
             fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
                 formatter.write_str("a valid proof")
             }
 
-            fn visit_seq<S>(self, mut seq: S) -> Result<ProofOfSuccinctWork, S::Error>
-            where
-                S: SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; PROOF_SIZE];
+            fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<ProofOfSuccinctWork<N>, S::Error> {
+                let mut bytes = vec![0; ProofOfSuccinctWork::<N>::size()];
                 for b in &mut bytes[..] {
                     *b = seq
                         .next_element()?
                         .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
                 }
-                Ok(ProofOfSuccinctWork(bytes))
+                Ok(ProofOfSuccinctWork::new(&bytes))
             }
         }
 
-        deserializer.deserialize_tuple(PROOF_SIZE, ArrayVisitor)
+        deserializer.deserialize_tuple(Self::size(), ArrayVisitor::<N>(PhantomData))
     }
 }
 
-impl Serialize for ProofOfSuccinctWork {
+impl<N: Network> Serialize for ProofOfSuccinctWork<N> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let mut tup = s.serialize_tuple(PROOF_SIZE)?;
+        let mut tup = s.serialize_tuple(Self::size())?;
         for byte in &self.0[..] {
             tup.serialize_element(byte)?;
         }
@@ -116,32 +118,20 @@ impl Serialize for ProofOfSuccinctWork {
     }
 }
 
-impl ToBytes for ProofOfSuccinctWork {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (&self.0[..]).write_le(&mut writer)
+impl<N: Network> Default for ProofOfSuccinctWork<N> {
+    fn default() -> Self {
+        Self::new(&vec![0u8; Self::size()])
     }
 }
 
-impl FromBytes for ProofOfSuccinctWork {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut proof = [0; PROOF_SIZE];
-        reader.read_exact(&mut proof)?;
-        Ok(ProofOfSuccinctWork(proof))
+impl<N: Network> Display for ProofOfSuccinctWork<N> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", hex::encode(&self.0[..]))
     }
 }
 
-impl From<&[u8]> for ProofOfSuccinctWork {
-    fn from(proof: &[u8]) -> Self {
-        let mut bytes = [0; ProofOfSuccinctWork::size()];
-        bytes.copy_from_slice(&proof);
-        Self(bytes)
-    }
-}
-
-impl From<Vec<u8>> for ProofOfSuccinctWork {
-    fn from(proof: Vec<u8>) -> Self {
-        Self::from(proof.as_ref())
+impl<N: Network> Debug for ProofOfSuccinctWork<N> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "ProofOfSuccinctWork({})", hex::encode(&self.0[..]))
     }
 }

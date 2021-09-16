@@ -55,14 +55,13 @@ use snarkvm_gadgets::{
         signature::AleoSignatureSchemeGadget,
         snark::Groth16VerifierGadget,
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
+    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
 use snarkvm_parameters::{testnet1::*, Parameter};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
-use snarkvm_gadgets::curves::edwards_bw6::EdwardsBW6Gadget;
 use std::{cell::RefCell, rc::Rc};
 
 macro_rules! dpc_setup {

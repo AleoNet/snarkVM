@@ -17,8 +17,8 @@
 pub mod block;
 pub use block::*;
 
-pub mod environment;
-pub use environment::*;
+pub mod network;
+pub use network::*;
 
 pub mod ledger;
 pub use ledger::*;

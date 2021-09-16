@@ -16,13 +16,14 @@
 
 use crate::{ledger::*, *};
 use snarkvm_algorithms::merkle_tree::*;
-use snarkvm_dpc::prelude::*;
+use snarkvm_dpc::{Parameters, RecordCommitmentTree, RecordSerialNumberTree, Transaction, TransactionScheme};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use parking_lot::RwLock;
 use std::{
     fs,
+    marker::PhantomData,
     path::Path,
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -40,15 +41,16 @@ pub fn bytes_to_u32(bytes: &[u8]) -> u32 {
 
 pub type BlockHeight = u32;
 
-pub struct Ledger<C: Parameters, S: Storage> {
+pub struct Ledger<N: Network, C: Parameters, S: Storage> {
     pub current_block_height: AtomicU32,
     pub record_commitment_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
     pub record_serial_number_tree: RwLock<MerkleTree<C::RecordSerialNumberTreeParameters>>,
     pub storage: S,
+    _phantom: PhantomData<N>,
 }
 
-impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
-    type Block = Block<Transaction<C>>;
+impl<N: Network, C: Parameters, S: Storage> LedgerScheme<C> for Ledger<N, C, S> {
+    type Block = Block<N, Transaction<C>>;
 
     /// Instantiates a new ledger with a genesis block.
     fn new(path: Option<&Path>, genesis_block: Self::Block) -> Result<Self> {
@@ -81,6 +83,7 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
             record_commitment_tree: RwLock::new(record_commitment_tree),
             record_serial_number_tree: RwLock::new(record_serial_number_tree),
             storage,
+            _phantom: PhantomData,
         };
 
         debug_assert_eq!(ledger.block_height(), 0, "Uninitialized ledger block height must be 0");
@@ -130,7 +133,7 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
     }
 }
 
-impl<C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<C, S> {
+impl<N: Network, C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<N, C, S> {
     /// Return the latest state root of the record commitment tree.
     fn latest_digest(&self) -> Result<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
@@ -162,7 +165,7 @@ impl<C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<C, S> {
     }
 }
 
-impl<C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<C, S> {
+impl<N: Network, C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<N, C, S> {
     /// Returns true if the given serial number exists in the ledger.
     fn contains_serial_number(&self, serial_number: &C::SerialNumber) -> bool {
         self.storage
@@ -170,7 +173,7 @@ impl<C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<C, S> {
     }
 }
 
-impl<C: Parameters, S: Storage> Ledger<C, S> {
+impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     /// Find the potential child block hashes given a parent block header.
     pub fn get_child_block_hashes(
         &self,
@@ -183,7 +186,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get a block header given the block hash.
-    pub fn get_block_header(&self, block_hash: &BlockHeaderHash) -> Result<BlockHeader, StorageError> {
+    pub fn get_block_header(&self, block_hash: &BlockHeaderHash) -> Result<BlockHeader<N>, StorageError> {
         match self.storage.get(COL_BLOCK_HEADER, &block_hash.0)? {
             Some(block_header_bytes) => Ok(BlockHeader::read_le(&block_header_bytes[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
@@ -363,7 +366,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Insert a block into storage without canonizing/committing it.
-    pub fn insert_only(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
+    pub fn insert_only(&self, block: &Block<N, Transaction<C>>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
         if self.block_height() != 0 && block.header().is_genesis() {
             return Err(StorageError::InvalidBlockHeader);
@@ -430,7 +433,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Commit/canonize a particular block.
-    pub fn commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
+    pub fn commit(&self, block: &Block<N, Transaction<C>>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
         let block_height = self.block_height();
         let is_genesis = block.header().is_genesis();
@@ -542,7 +545,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Insert a block into the storage and commit as part of the longest chain.
-    pub fn insert_and_commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
+    pub fn insert_and_commit(&self, block: &Block<N, Transaction<C>>) -> Result<(), StorageError> {
         let block_hash = block.header.to_hash()?;
 
         // If the block does not exist in the storage

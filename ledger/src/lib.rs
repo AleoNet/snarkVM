@@ -60,8 +60,8 @@ extern crate thiserror;
 pub mod block;
 pub use block::*;
 
-pub mod environment;
-pub use environment::*;
+pub mod network;
+pub use network::*;
 
 pub mod errors;
 pub use errors::*;
@@ -74,5 +74,5 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{block::*, environment::*, errors::*, traits::*};
+    pub use crate::{block::*, errors::*, network::*, traits::*};
 }
