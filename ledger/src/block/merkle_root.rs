@@ -29,7 +29,7 @@ pub struct MerkleRoot(pub [u8; 32]);
 impl MerkleRoot {
     pub fn from_element<B: ToBytes>(digest: B) -> MerkleRoot {
         let digest_bytes = digest.to_bytes_le().expect("could not convert digest to bytes");
-        assert!(digest_bytes.len() <= 32);
+        assert_eq!(digest_bytes.len(), 32);
 
         let mut buffer = [0u8; 32];
         buffer[..].copy_from_slice(&digest_bytes);

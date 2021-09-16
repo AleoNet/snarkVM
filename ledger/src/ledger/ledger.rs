@@ -111,7 +111,7 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
     /// Returns the block hash given a block number.
     fn get_block_hash(&self, block_number: BlockHeight) -> Result<BlockHeaderHash> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
-            Some(block_header_hash) => Ok(BlockHeaderHash::new(block_header_hash)),
+            Some(block_header_hash) => Ok(BlockHeaderHash::new(&block_header_hash)),
             None => Err(StorageError::MissingBlockHash(block_number).into()),
         }
     }

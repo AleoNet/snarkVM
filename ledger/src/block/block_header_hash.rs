@@ -25,7 +25,9 @@ use std::fmt::{
 pub struct BlockHeaderHash(pub [u8; 32]);
 
 impl BlockHeaderHash {
-    pub fn new(hash: Vec<u8>) -> Self {
+    pub fn new(hash: &[u8]) -> Self {
+        assert_eq!(hash.len(), 32);
+
         let mut block_hash = [0u8; 32];
         block_hash.copy_from_slice(&hash);
 
