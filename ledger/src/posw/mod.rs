@@ -17,7 +17,7 @@
 pub mod circuit;
 
 mod posw;
-use posw::{HG, M};
+use posw::{Posw, HG, M};
 
 use crate::block::{
     merkle_root_with_subroots,
@@ -32,11 +32,8 @@ use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
-pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
-
-/// A generic PoSW.
 /// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
-pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, 32>;
+pub type PoswMarlin = Posw<Marlin<Bls12_377>, <Bls12_377 as PairingEngine>::Fr, M, HG, 32>;
 
 /// Marlin proof system on PoSW
 pub type Marlin<E> = MarlinSNARK<

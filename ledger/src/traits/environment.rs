@@ -14,14 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod block;
-pub use block::*;
+use snarkvm_dpc::Parameters;
+// use snarkvm_utilities::{FromBytes, ToBytes};
 
-pub mod environment;
-pub use environment::*;
-
-pub mod ledger;
-pub use ledger::*;
-
-pub mod storage;
-pub use storage::*;
+pub trait Environment: Send + Sync {
+    type DPC: Parameters;
+}

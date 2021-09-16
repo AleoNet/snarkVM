@@ -24,18 +24,18 @@ use crate::{
     Transactions,
 };
 use snarkvm_algorithms::{crh::BHPCompressedCRH, merkle_tree::MerkleTree, traits::CRH};
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_dpc::{Parameters, TransactionScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
+use once_cell::sync::Lazy;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Result as IoResult, Write};
-
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-
-use once_cell::sync::Lazy;
-use std::sync::Arc;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
 
