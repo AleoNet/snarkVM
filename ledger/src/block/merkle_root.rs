@@ -24,14 +24,16 @@ use std::fmt::{
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct MerkleRootHash(pub [u8; 32]);
+pub struct MerkleRoot(pub [u8; 32]);
 
-impl MerkleRootHash {
-    pub fn from_element<B: ToBytes>(src: B) -> MerkleRootHash {
+impl MerkleRoot {
+    pub fn from_element<B: ToBytes>(src: B) -> MerkleRoot {
         let root_bytes = to_bytes_le![src].expect("could not convert element to bytes");
+        assert_eq!(root_bytes.len() <= 32);
+
         let mut merkle_root_bytes = [0u8; 32];
         merkle_root_bytes[..].copy_from_slice(&root_bytes);
-        MerkleRootHash(merkle_root_bytes)
+        MerkleRoot(merkle_root_bytes)
     }
 
     pub const fn size() -> usize {
@@ -39,7 +41,7 @@ impl MerkleRootHash {
     }
 }
 
-impl Display for MerkleRootHash {
+impl Display for MerkleRoot {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }

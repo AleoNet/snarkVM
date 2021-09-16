@@ -46,8 +46,8 @@ fn dpc_testnet2_integration_test() {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },
@@ -123,8 +123,8 @@ fn dpc_testnet2_integration_test() {
     let header = BlockHeader {
         previous_block_hash: previous_block.header.to_hash().unwrap(),
         transactions_root: pedersen_merkle_root(&transaction_ids),
-        commitments_root: MerkleRootHash::from_element(new_commitments_tree.root()),
-        serial_numbers_root: MerkleRootHash::from_element(new_serial_numbers_tree.root()),
+        commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
+        serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
         proof: ProofOfSuccinctWork::default(),
     };
@@ -145,8 +145,8 @@ fn test_testnet2_dpc_execute_constraints() {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
             proof: ProofOfSuccinctWork::default(),
         },

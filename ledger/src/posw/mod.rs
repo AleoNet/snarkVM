@@ -22,7 +22,7 @@ use posw::{HG, M};
 use crate::block::{
     merkle_root_with_subroots,
     pedersen_merkle_root,
-    MerkleRootHash,
+    MerkleRoot,
     PedersenMerkleRootHash,
     MASKED_TREE_DEPTH,
 };
@@ -49,7 +49,7 @@ pub type Marlin<E> = MarlinSNARK<
 >;
 
 /// Subtree calculation
-pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, PedersenMerkleRootHash, Vec<[u8; 32]>) {
+pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, PedersenMerkleRootHash, Vec<[u8; 32]>) {
     assert!(
         !transaction_ids.is_empty(),
         "Cannot compute a Merkle tree with no transaction IDs"
@@ -59,11 +59,7 @@ pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, Pedersen
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
-    (
-        MerkleRootHash(merkle_root_bytes),
-        pedersen_merkle_root(&subroots),
-        subroots,
-    )
+    (MerkleRoot(merkle_root_bytes), pedersen_merkle_root(&subroots), subroots)
 }
 
 #[cfg(test)]

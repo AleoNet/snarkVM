@@ -18,7 +18,7 @@ use crate::{
     posw::{txids_to_roots, PoswMarlin},
     BlockHeaderHash,
     BlockHeaderMetadata,
-    MerkleRootHash,
+    MerkleRoot,
     PedersenMerkleRootHash,
     ProofOfSuccinctWork,
     Transactions,
@@ -43,8 +43,8 @@ pub type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
 const HEADER_SIZE: usize = {
     BlockHeaderHash::size()
         + PedersenMerkleRootHash::size()
-        + MerkleRootHash::size()
-        + MerkleRootHash::size()
+        + MerkleRoot::size()
+        + MerkleRoot::size()
         + BlockHeaderMetadata::size()
         + ProofOfSuccinctWork::size()
 };
@@ -61,9 +61,9 @@ pub struct BlockHeader {
     /// Merkle root representing the transactions in the block - 32 bytes
     pub transactions_root: PedersenMerkleRootHash,
     /// The Merkle root representing the ledger commitments - 32 bytes
-    pub commitments_root: MerkleRootHash,
+    pub commitments_root: MerkleRoot,
     /// The Merkle root representing the ledger serial numbers - 32 bytes
-    pub serial_numbers_root: MerkleRootHash,
+    pub serial_numbers_root: MerkleRoot,
     /// The block header metadata - 20 bytes
     pub metadata: BlockHeaderMetadata,
     /// Proof of Succinct Work
@@ -75,8 +75,8 @@ impl BlockHeader {
     pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
         previous_block_hash: BlockHeaderHash,
         transactions: &Transactions<T>,
-        commitments_root: MerkleRootHash,
-        serial_numbers_root: MerkleRootHash,
+        commitments_root: MerkleRoot,
+        serial_numbers_root: MerkleRoot,
         timestamp: i64,
         difficulty_target: u64,
         max_nonce: u32,
@@ -118,7 +118,7 @@ impl BlockHeader {
             Arc::new(C::record_commitment_tree_parameters().clone()),
             &transaction_commitments,
         )?;
-        let commitments_root = MerkleRootHash::from_element(record_commitment_tree.root());
+        let commitments_root = MerkleRoot::from_element(record_commitment_tree.root());
 
         // Craft the serial numbers root from the transactions
         let transaction_serial_numbers: Vec<&<T as TransactionScheme>::SerialNumber> =
@@ -127,7 +127,7 @@ impl BlockHeader {
             Arc::new(C::record_commitment_tree_parameters().clone()),
             &transaction_serial_numbers,
         )?;
-        let serial_numbers_root = MerkleRootHash::from_element(record_serial_numbers_tree.root());
+        let serial_numbers_root = MerkleRoot::from_element(record_serial_numbers_tree.root());
 
         let timestamp = 0i64;
         let difficulty_target = u64::MAX;
@@ -198,8 +198,8 @@ impl FromBytes for BlockHeader {
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
             transactions_root: PedersenMerkleRootHash(transactions_root),
-            commitments_root: MerkleRootHash(commitments_root),
-            serial_numbers_root: MerkleRootHash(serial_numbers_root),
+            commitments_root: MerkleRoot(commitments_root),
+            serial_numbers_root: MerkleRoot(serial_numbers_root),
             metadata,
             proof,
         })
@@ -233,8 +233,8 @@ mod tests {
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, PedersenMerkleRootHash([0u8; 32]));
-        assert_ne!(block_header.commitments_root, MerkleRootHash([0u8; 32]));
-        assert_ne!(block_header.serial_numbers_root, MerkleRootHash([0u8; 32]));
+        assert_ne!(block_header.commitments_root, MerkleRoot([0u8; 32]));
+        assert_ne!(block_header.serial_numbers_root, MerkleRoot([0u8; 32]));
         assert_ne!(
             block_header.proof,
             ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()])
@@ -246,8 +246,8 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };
@@ -264,8 +264,8 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
+            commitments_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(Utc::now().timestamp(), 0u64, 0u32),
             proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };

@@ -26,8 +26,8 @@ pub use block_header_metadata::*;
 pub mod block_header_hash;
 pub use block_header_hash::*;
 
-pub mod merkle_root_hash;
-pub use merkle_root_hash::*;
+pub mod merkle_root;
+pub use merkle_root::*;
 
 pub mod merkle_tree;
 pub use merkle_tree::*;
