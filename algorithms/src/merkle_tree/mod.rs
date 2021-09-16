@@ -59,12 +59,7 @@ macro_rules! define_merkle_tree_parameters {
 #[macro_export]
 macro_rules! define_masked_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
-#[rustfmt::skip]
-        #[allow(unused_imports)]
-        use $crate::{
-            merkle_tree::MerkleTree, MerkleError,
-            CRH, MaskedMerkleParameters, MerkleParameters,
-        };
+        use $crate::{merkle_tree::MerkleTree, MaskedMerkleParameters, MerkleError, MerkleParameters, CRH};
 
         #[derive(Clone, PartialEq, Eq, Debug)]
         pub struct $struct_name($hash, $hash);

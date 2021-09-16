@@ -18,7 +18,7 @@
 
 use crate::{
     block::{
-        masked_merkle_tree::{pedersen_merkle_root_hash_with_leaves, MaskedMerkleRoot, PARAMS},
+        masked_merkle_root::{pedersen_merkle_root_hash_with_leaves, MaskedMerkleRoot},
         MaskedMerkleTreeParameters,
     },
     posw::circuit::POSWCircuit,
@@ -40,24 +40,25 @@ use snarkvm_gadgets::{
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
+use snarkvm_marlin::constraints::UniversalSRS;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
 };
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{CryptoRng, Rng};
-use snarkvm_marlin::constraints::UniversalSRS;
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use std::marker::PhantomData;
 
 pub(crate) type MarlinSRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, SonicKZG10<E>>;
 
 /// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
 /// Commits to the nonce and pedersen merkle root.
-fn commit(nonce: u32, root: &MaskedMerkleRoot) -> Vec<u8> {
+#[deprecated]
+pub(super) fn commit(nonce: u32, root: &MaskedMerkleRoot) -> Vec<u8> {
     let mut h = Blake2s::new();
     h.update(&nonce.to_le_bytes());
     h.update(root.0.as_ref());
@@ -115,26 +116,6 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
         })
     }
 
-    /// Creates a POSW circuit from the provided transaction ids and nonce.
-    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<Fr, M, HG, MASK_NUM_BYTES> {
-        let (root, leaves) = pedersen_merkle_root_hash_with_leaves(leaves);
-
-        // Generate the mask by committing to the nonce and the root
-        let mask = commit(nonce, &root.into());
-
-        // Convert the leaves to Options for the SNARK
-        let leaves = leaves.into_iter().map(Some).collect();
-
-        POSWCircuit {
-            leaves,
-            merkle_parameters: PARAMS.clone(),
-            mask: Some(mask),
-            root: Some(root),
-            field_type: PhantomData,
-            crh_gadget_type: PhantomData,
-        }
-    }
-
     /// Hashes the proof and checks it against the difficulty
     fn check_difficulty(&self, proof: &[u8], difficulty_target: u64) -> bool {
         let hash_result = sha256d_to_u64(proof);
@@ -156,7 +137,6 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
             &POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
-                merkle_parameters: PARAMS.clone(),
                 mask: None,
                 root: None,
                 field_type: PhantomData,
@@ -182,7 +162,6 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
             &POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
-                merkle_parameters: PARAMS.clone(),
                 mask: None,
                 root: None,
                 field_type: PhantomData,
@@ -234,7 +213,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
         rng: &mut R,
     ) -> Result<S::Proof, PoswError> {
         // instantiate the circuit with the nonce
-        let circuit = Self::circuit_from(nonce, subroots);
+        let circuit = POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES>::new(nonce, subroots);
 
         // generate the proof
         let proof_timer = start_timer!(|| "POSW proof");

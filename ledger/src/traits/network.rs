@@ -19,6 +19,8 @@ use snarkvm_dpc::Parameters;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 
 pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
+    const MASKED_TREE_DEPTH: usize;
+
     const POSW_PROOF_SIZE_IN_BYTES: usize;
 
     type DPC: Parameters;
@@ -27,6 +29,10 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
 
     type MerkleTreeCRH: CRH;
 
+    type MaskedMerkleTreeCRH: CRH;
+    type EdwardsMaskedMerkleTree;
+
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
+    fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters;
 }

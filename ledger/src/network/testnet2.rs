@@ -15,7 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
-use snarkvm_algorithms::{crh::BHPCompressedCRH, prelude::*};
+use snarkvm_algorithms::{
+    crh::{BHPCompressedCRH, PedersenCompressedCRH},
+    define_masked_merkle_tree_parameters,
+    prelude::*,
+};
 use snarkvm_dpc::testnet2::Testnet2Parameters;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -24,14 +28,25 @@ use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
+define_masked_merkle_tree_parameters!(
+    MaskedMerkleTreeParameters,
+    <Testnet2 as Network>::MaskedMerkleTreeCRH,
+    <Testnet2 as Network>::MASKED_TREE_DEPTH
+);
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
 
 impl Network for Testnet2 {
     type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
     type DPC = Testnet2Parameters;
+    /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
+    type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
+    type MaskedMerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, 4, 128>;
     type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 16, 32>;
 
+    /// A masked Merkle tree with depth = 2. This may change in the future.
+    const MASKED_TREE_DEPTH: usize = 2;
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {
@@ -42,5 +57,10 @@ impl Network for Testnet2 {
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH {
         static MERKLE_TREE_CRH: OnceCell<<Testnet2 as Network>::MerkleTreeCRH> = OnceCell::new();
         MERKLE_TREE_CRH.get_or_init(|| Self::MerkleTreeCRH::setup("MerkleTreeCRH"))
+    }
+
+    fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters {
+        static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<MaskedMerkleTreeParameters> = OnceCell::new();
+        MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| MaskedMerkleTreeParameters::setup("MerkleTreeParameters"))
     }
 }

@@ -19,7 +19,7 @@ pub mod circuit;
 mod posw;
 use posw::{Posw, HG, M};
 
-use crate::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network, MASKED_TREE_DEPTH};
+use crate::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network};
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
@@ -47,13 +47,13 @@ pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, 
         "Cannot compute a Merkle tree with no transaction IDs"
     );
 
-    let (root, subroots) = merkle_root_with_subroots::<N>(transaction_ids, MASKED_TREE_DEPTH);
+    let (root, subroots) = merkle_root_with_subroots::<N>(transaction_ids, N::MASKED_TREE_DEPTH);
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
     (
         MerkleRoot(merkle_root_bytes),
-        MaskedMerkleRoot::from_leaves(&subroots),
+        MaskedMerkleRoot::from_leaves::<N>(&subroots),
         subroots,
     )
 }

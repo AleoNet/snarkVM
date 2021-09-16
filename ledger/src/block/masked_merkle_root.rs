@@ -14,34 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::PedersenCompressedCRH, define_masked_merkle_tree_parameters};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
+use crate::Network;
+use snarkvm_curves::bls12_377::Fr;
 use snarkvm_utilities::ToBytes;
 
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{
-        Display,
-        Formatter,
-        {self},
-    },
-    sync::Arc,
+use std::fmt::{
+    Display,
+    Formatter,
+    {self},
 };
-
-pub type MerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, 4, 128>;
-
-// We instantiate the tree here with depth = 2. This may change in the future.
-pub const MASKED_TREE_DEPTH: usize = 2;
-
-define_masked_merkle_tree_parameters!(MaskedMerkleTreeParameters, MerkleTreeCRH, MASKED_TREE_DEPTH);
-
-/// A Merkle Tree instantiated with the Masked Pedersen hasher over BLS12-377
-pub type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
-
-/// Lazily evaluated parameters for the Masked Merkle tree
-pub static PARAMS: Lazy<Arc<MaskedMerkleTreeParameters>> =
-    Lazy::new(|| Arc::new(MaskedMerkleTreeParameters::setup("MerkleTreeParameters")));
 
 /// A Masked Merkle Root.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -49,8 +31,9 @@ pub struct MaskedMerkleRoot(pub [u8; 32]);
 
 impl MaskedMerkleRoot {
     /// Returns the masked Merkle root for the given leaves.
-    pub fn from_leaves(leaves: &[[u8; 32]]) -> Self {
-        let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), leaves).expect("could not create merkle tree");
+    pub fn from_leaves<N: Network>(leaves: &[[u8; 32]]) -> Self {
+        let tree = N::EdwardsMaskedMerkleTree::new(N::masked_merkle_tree_parameters().clone(), leaves)
+            .expect("could not create merkle tree");
         tree.root().clone().into()
     }
 
@@ -76,9 +59,10 @@ impl Display for MaskedMerkleRoot {
     }
 }
 
-/// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG and the
+/// Calculates the root of the Merkle tree using a Pedersen hash and the
 /// base layer hashes leaved
-pub fn pedersen_merkle_root_hash_with_leaves(hashes: &[[u8; 32]]) -> (Fr, Vec<Fr>) {
-    let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
+pub fn pedersen_merkle_root_hash_with_leaves<N: Network>(leaves: &[[u8; 32]]) -> (Fr, Vec<Fr>) {
+    let tree = N::EdwardsMaskedMerkleTree::new(N::masked_merkle_tree_parameters().clone(), leaves)
+        .expect("could not create merkle tree");
     (tree.root().clone(), tree.hashed_leaves().to_vec())
 }
