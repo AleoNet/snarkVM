@@ -20,7 +20,7 @@ mod posw;
 use posw::Posw;
 
 use crate::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network};
-use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
+use snarkvm_dpc::Parameters;
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
@@ -29,16 +29,20 @@ use blake2::Blake2s;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 /// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
-pub type PoswMarlin<N> = Posw<N, Marlin<Bls12_377>, 32>;
+pub type PoswMarlin<N> = Posw<N, Marlin<N>, 32>;
 
 /// Marlin proof system on PoSW
-pub type Marlin<E> = MarlinSNARK<
-    <E as PairingEngine>::Fr,
-    <E as PairingEngine>::Fq,
-    SonicKZG10<E>,
-    FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, Blake2s>,
+pub type Marlin<N> = MarlinSNARK<
+    <<N as Network>::DPC as Parameters>::InnerScalarField,
+    <<N as Network>::DPC as Parameters>::OuterScalarField,
+    SonicKZG10<<<N as Network>::DPC as Parameters>::InnerCurve>,
+    FiatShamirChaChaRng<
+        <<N as Network>::DPC as Parameters>::InnerScalarField,
+        <<N as Network>::DPC as Parameters>::OuterScalarField,
+        Blake2s,
+    >,
     MarlinTestnet1Mode,
-    Vec<<E as PairingEngine>::Fr>,
+    Vec<<<N as Network>::DPC as Parameters>::InnerScalarField>,
 >;
 
 /// Subtree calculation
@@ -87,7 +91,7 @@ mod tests {
 
         // run the trusted setup
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, &mut rng).unwrap();
+        let universal_srs = Marlin::<Testnet2>::universal_setup(&max_degree, &mut rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::<Testnet2>::index::<_, ThreadRng>(&universal_srs).unwrap();
@@ -118,7 +122,7 @@ mod tests {
 
         assert_eq!(proof.len(), 771); // NOTE: Marlin proofs use compressed serialization
 
-        let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
+        let proof = <Marlin<Testnet2> as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
     }
 

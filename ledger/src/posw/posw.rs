@@ -18,7 +18,7 @@
 
 use crate::{block::masked_merkle_root::MaskedMerkleRoot, posw::circuit::POSWCircuit, Network, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_curves::{bls12_377::Fr, traits::PairingEngine};
+use snarkvm_curves::traits::PairingEngine;
 use snarkvm_dpc::Parameters;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::constraints::UniversalSRS;
@@ -34,7 +34,11 @@ use blake2::{digest::Digest, Blake2s};
 use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
-pub(crate) type MarlinSRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, SonicKZG10<E>>;
+pub(crate) type MarlinSRS<N> = UniversalSRS<
+    <<N as Network>::DPC as Parameters>::InnerScalarField,
+    <<N as Network>::DPC as Parameters>::OuterScalarField,
+    SonicKZG10<<<N as Network>::DPC as Parameters>::InnerCurve>,
+>;
 
 /// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
 /// Commits to the nonce and pedersen merkle root.
@@ -59,6 +63,7 @@ pub struct Posw<N: Network, S: SNARK, const MASK_NUM_BYTES: usize> {
 
 impl<
     N: Network,
+    // S: SNARK,
     S: SNARK<
         ScalarField = <N::DPC as Parameters>::InnerScalarField,
         VerifierInput = Vec<<N::DPC as Parameters>::InnerScalarField>,
@@ -104,10 +109,7 @@ impl<
     //  (2) Update `Posw::setup` to take in an `OptionalRng` and account for the universal setup.
     // #[cfg(any(test, feature = "test-helpers"))]
     #[deprecated]
-    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, PoswError>
-    where
-        S: SNARK,
-    {
+    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, PoswError> {
         let params = S::setup(
             &POSWCircuit::<N, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
@@ -126,9 +128,9 @@ impl<
     }
 
     /// Performs a deterministic setup for systems with universal setups
-    pub fn index<E: PairingEngine, R: Rng + CryptoRng>(srs: &MarlinSRS<E>) -> Result<Self, PoswError>
+    pub fn index<E: PairingEngine, R: Rng + CryptoRng>(srs: &MarlinSRS<N>) -> Result<Self, PoswError>
     where
-        S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
+        S: SNARK<UniversalSetupParameters = MarlinSRS<N>>,
     {
         let params = S::setup::<_, R>(
             &POSWCircuit::<N, MASK_NUM_BYTES> {
@@ -201,7 +203,7 @@ impl<
         let mask = commit(nonce, masked_merkle_root);
 
         // get the mask and the root in public inputs format
-        let merkle_root = Fr::read_le(&masked_merkle_root.0[..])?;
+        let merkle_root = <N::DPC as Parameters>::InnerScalarField::read_le(&masked_merkle_root.0[..])?;
         let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
 
         let res = S::verify(&self.vk, &inputs, &proof)?;

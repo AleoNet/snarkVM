@@ -25,6 +25,7 @@ use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_root,
     integers::uint::UInt8,
     traits::{AllocGadget, CRHGadget, MaskedCRHGadget},
+    EqGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::ToBytes;

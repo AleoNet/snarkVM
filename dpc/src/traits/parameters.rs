@@ -44,7 +44,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     /// Inner curve type declarations.
-    type InnerCurve: PairingEngine;
+    type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
 
     /// Outer curve type declarations.
