@@ -96,10 +96,11 @@ mod coinbase {
 
 mod transfer {
     use crate::{prelude::*, testnet2::*};
-    use rand::{thread_rng, Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
     use snarkvm_algorithms::{CommitmentScheme, CRH};
     use snarkvm_utilities::{ToBytes, UniformRand};
+
+    use rand::{thread_rng, Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
 
     #[test]
     fn test_new_transfer() {
@@ -127,7 +128,7 @@ mod transfer {
 
             // Generate sender input
             let sender_input = Input::new_full(
-                sender.compute_key(),
+                &sender.private_key().to_compute_key().unwrap(),
                 AleoAmount::from_bytes(123456),
                 Payload::default(),
                 Executable::Noop,
