@@ -125,7 +125,7 @@ fn dpc_testnet1_integration_test() {
         transactions_root: pedersen_merkle_root(&transaction_ids),
         commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
         serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
-        metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
+        metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target(), 0),
         proof: ProofOfSuccinctWork::default(),
     };
 
