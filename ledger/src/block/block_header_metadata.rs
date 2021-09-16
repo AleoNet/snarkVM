@@ -65,15 +65,6 @@ impl BlockHeaderMetadata {
     }
 }
 
-impl ToBytes for BlockHeaderMetadata {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.timestamp.to_le_bytes().write_le(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.nonce.to_le_bytes().write_le(&mut writer)
-    }
-}
-
 impl FromBytes for BlockHeaderMetadata {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -86,6 +77,15 @@ impl FromBytes for BlockHeaderMetadata {
             difficulty_target: u64::from_le_bytes(difficulty_target),
             nonce: u32::from_le_bytes(nonce),
         })
+    }
+}
+
+impl ToBytes for BlockHeaderMetadata {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.timestamp.to_le_bytes().write_le(&mut writer)?;
+        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.nonce.to_le_bytes().write_le(&mut writer)
     }
 }
 
