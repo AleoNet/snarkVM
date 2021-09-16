@@ -27,21 +27,36 @@ use std::{
 pub struct BlockHeaderMetadata {
     /// The block timestamp is a Unix epoch time (UTC) when the miner
     /// started hashing the header (according to the miner). - 8 bytes
-    pub timestamp: i64,
+    timestamp: i64,
     /// Proof of work algorithm difficulty target for this block - 8 bytes
-    pub difficulty_target: u64,
+    difficulty_target: u64,
     /// Nonce for solving the PoW puzzle - 4 bytes
-    pub nonce: u32,
+    nonce: u32,
 }
 
 impl BlockHeaderMetadata {
-    /// Initializes a new instance of a block header's metadata.
+    /// Initializes a new instance of a block header metadata.
     pub fn new(timestamp: i64, difficulty_target: u64, nonce: u32) -> Self {
         Self {
             timestamp,
             difficulty_target,
             nonce,
         }
+    }
+
+    /// Returns the block timestamp.
+    pub const fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    /// Returns the block difficulty target.
+    pub const fn difficulty_target(&self) -> u64 {
+        self.difficulty_target
+    }
+
+    /// Returns the block nonce.
+    pub const fn nonce(&self) -> u32 {
+        self.nonce
     }
 
     /// Returns the size (in bytes) of a block header's metadata.

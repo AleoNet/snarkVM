@@ -153,7 +153,7 @@ impl BlockHeader {
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
-        self.metadata.timestamp == 0
+        self.metadata.timestamp() == 0
             // Ensure the previous block hash in the genesis block is 0.
             || self.previous_block_hash == BlockHeaderHash([0u8; 32])
     }
@@ -228,8 +228,8 @@ mod tests {
 
         // Ensure the genesis block contains the following.
         assert_eq!(block_header.previous_block_hash, BlockHeaderHash([0u8; 32]));
-        assert_eq!(block_header.metadata.timestamp, 0);
-        assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
+        assert_eq!(block_header.metadata.timestamp(), 0);
+        assert_eq!(block_header.metadata.difficulty_target(), u64::MAX);
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, PedersenMerkleRootHash([0u8; 32]));

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use serde::{Deserialize, Serialize};
 use std::fmt::{
@@ -27,13 +27,13 @@ use std::fmt::{
 pub struct MerkleRoot(pub [u8; 32]);
 
 impl MerkleRoot {
-    pub fn from_element<B: ToBytes>(src: B) -> MerkleRoot {
-        let root_bytes = to_bytes_le![src].expect("could not convert element to bytes");
-        assert_eq!(root_bytes.len() <= 32);
+    pub fn from_element<B: ToBytes>(digest: B) -> MerkleRoot {
+        let digest_bytes = digest.to_bytes_le().expect("could not convert digest to bytes");
+        assert!(digest_bytes.len() <= 32);
 
-        let mut merkle_root_bytes = [0u8; 32];
-        merkle_root_bytes[..].copy_from_slice(&root_bytes);
-        MerkleRoot(merkle_root_bytes)
+        let mut buffer = [0u8; 32];
+        buffer[..].copy_from_slice(&digest_bytes);
+        MerkleRoot(buffer)
     }
 
     pub const fn size() -> usize {
