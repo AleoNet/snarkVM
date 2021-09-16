@@ -169,7 +169,7 @@ mod test {
 
         let params = generate_random_parameters::<Bls12_377, _, _>(
             &POSWCircuit::<Testnet2, 32> {
-                hashed_leaves: vec![None; 7],
+                hashed_leaves: vec![None; 4],
                 mask: None,
                 root: None,
             },
@@ -178,7 +178,7 @@ mod test {
         .unwrap();
 
         let nonce = [1; 32];
-        let leaves = vec![vec![3u8; 32]; 7];
+        let leaves = vec![vec![3u8; 32]; 4];
         let tree = MerkleTree::new(Arc::new(Testnet2::masked_merkle_tree_parameters().clone()), &leaves[..]).unwrap();
         let root = tree.root();
         let mut root_bytes = [0; 32];

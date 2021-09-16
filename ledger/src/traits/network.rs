@@ -39,6 +39,12 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     // + CRHGadget<Self::MaskedMerkleTreeCRH, <Self::DPC as Parameters>::InnerScalarField>;
     type MaskedMerkleTreeParameters: MaskedMerkleParameters;
 
+    /// SNARK proof system for PoSW.
+    type PoswSNARK: SNARK<
+        ScalarField = <Self::DPC as Parameters>::InnerScalarField,
+        VerifierInput = Vec<<Self::DPC as Parameters>::InnerScalarField>,
+    >;
+
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters;

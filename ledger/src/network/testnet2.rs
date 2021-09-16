@@ -22,7 +22,10 @@ use snarkvm_algorithms::{
 use snarkvm_dpc::{testnet2::Testnet2Parameters, Parameters};
 use snarkvm_gadgets::algorithms::crh::PedersenCompressedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
+use blake2::Blake2s;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +61,20 @@ impl Network for Testnet2 {
         128
     >;
     type MaskedMerkleTreeParameters = MaskedMerkleTreeParameters;
+
+    /// SNARK proof system for PoSW.
+    type PoswSNARK = MarlinSNARK<
+        <<Self as Network>::DPC as Parameters>::InnerScalarField,
+        <<Self as Network>::DPC as Parameters>::OuterScalarField,
+        SonicKZG10<<<Self as Network>::DPC as Parameters>::InnerCurve>,
+        FiatShamirChaChaRng<
+            <<Self as Network>::DPC as Parameters>::InnerScalarField,
+            <<Self as Network>::DPC as Parameters>::OuterScalarField,
+            Blake2s,
+        >,
+        MarlinTestnet1Mode,
+        Vec<<<Self as Network>::DPC as Parameters>::InnerScalarField>,
+    >;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {
         static BLOCK_HEADER_CRH: OnceCell<<Testnet2 as Network>::BlockHeaderCRH> = OnceCell::new();

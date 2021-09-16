@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+use snarkvm_algorithms::{SNARK, SRS};
+use snarkvm_curves::bls12_377::Fr;
 use snarkvm_ledger::{
     block::MaskedMerkleRoot,
-    posw::{txids_to_roots, Marlin, PoswMarlin},
+    posw::{txids_to_roots, PoswMarlin},
+    testnet1::Testnet1,
     testnet2::Testnet2,
+    Network,
 };
 use snarkvm_utilities::FromBytes;
 
@@ -32,7 +34,7 @@ fn test_posw_load_and_mine() {
     let rng = &mut thread_rng();
 
     // Load the PoSW Marlin parameters.
-    let posw = PoswMarlin::load().unwrap();
+    let posw = PoswMarlin::<Testnet1>::load().unwrap();
 
     // Use the minimum difficulty to find a solution immediately.
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
@@ -52,7 +54,7 @@ fn test_posw_load_and_mine() {
     };
 
     // Create the Pedersen Merkle tree.
-    let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids);
+    let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids).unwrap();
 
     // Generate the proof.
     let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
@@ -60,7 +62,7 @@ fn test_posw_load_and_mine() {
     assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
 
     // Verify the proof is valid.
-    let posw_proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
+    let posw_proof = <<Testnet1 as Network>::PoswSNARK as SNARK>::Proof::read_le(&proof[..]).unwrap();
     assert!(posw.verify(nonce, &posw_proof, &pedersen_merkle_root).is_ok());
 
     println!("Nonce - {}", nonce);
@@ -91,25 +93,25 @@ fn test_posw_verify_testnet1() {
     let proof = {
         let bytes = hex::decode(POSW_PROOF).unwrap();
         assert_eq!(bytes.len(), 972); // NOTE: Marlin proofs use compressed serialization
-        <Marlin<Bls12_377> as SNARK>::Proof::read_le(&bytes[..]).unwrap()
+        <<Testnet1 as Network>::PoswSNARK as SNARK>::Proof::read_le(&bytes[..]).unwrap()
     };
 
-    let posw = PoswMarlin::load().unwrap();
+    let posw = PoswMarlin::<Testnet1>::load().unwrap();
     assert!(posw.verify(nonce, &proof, &pedersen_merkle_root).is_ok());
 }
 
 #[test]
 fn test_posw_setup_vs_load_weak_sanity_check() {
-    let generated_posw = {
+    let generated_posw: PoswMarlin<Testnet2> = {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = <Testnet2 as Network>::PoswSNARK::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
-        PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap()
+        PoswMarlin::index::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
     };
-    let loaded_posw = PoswMarlin::load().unwrap();
+    let loaded_posw: PoswMarlin<Testnet2> = PoswMarlin::load().unwrap();
 
     let generated_proving_key = generated_posw.pk.unwrap();
     let loaded_proving_key = loaded_posw.pk.unwrap();
