@@ -95,7 +95,8 @@ impl<N: Network> BlockHeader<N> {
         // Compute the commitments root from the transactions.
         let commitments: Vec<&<T as TransactionScheme>::Commitment> =
             transactions.0.iter().map(|t| t.commitments()).flatten().collect();
-        let commitments_tree = MerkleTree::new(Arc::new(C::record_commitment_tree_parameters().clone()), &commitments)?;
+        let commitments_tree =
+            MerkleTree::new(Arc::new(C::ledger_commitments_tree_parameters().clone()), &commitments)?;
         let commitments_root = MerkleRoot::from_element(commitments_tree.root());
 
         // Compute the serial numbers root from the transactions.
@@ -103,7 +104,7 @@ impl<N: Network> BlockHeader<N> {
             transactions.0.iter().map(|t| t.serial_numbers()).flatten().collect();
         // TODO (howardwu): CRITICAL - Fix this.
         let serial_numbers_tree = MerkleTree::new(
-            Arc::new(C::record_commitment_tree_parameters().clone()),
+            Arc::new(C::ledger_commitments_tree_parameters().clone()),
             &serial_numbers,
         )?;
         let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());

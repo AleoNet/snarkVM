@@ -78,7 +78,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         local_data_crh,
         local_data_commitment_parameters,
         serial_number_nonce_crh,
-        record_commitment_tree_parameters,
+        ledger_commitments_tree_parameters,
     ) = {
         let cs = &mut cs.ns(|| "Declare parameters");
 
@@ -122,9 +122,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             || Ok(C::serial_number_nonce_crh().clone()),
         )?;
 
-        let record_commitment_tree_parameters =
-            C::RecordCommitmentTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
-                Ok(C::record_commitment_tree_parameters().crh())
+        let ledger_commitments_tree_parameters =
+            C::LedgerCommitmentsTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
+                Ok(C::ledger_commitments_tree_parameters().crh())
             })?;
 
         (
@@ -136,7 +136,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             local_data_crh_parameters,
             local_data_commitment_parameters,
             serial_number_nonce_crh_parameters,
-            record_commitment_tree_parameters,
+            ledger_commitments_tree_parameters,
         )
     };
 
@@ -150,7 +150,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let empty_payload_field_elements =
         empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
 
-    let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+    let digest_gadget = <C::LedgerCommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
         || Ok(public.ledger_digest),
     )?;
@@ -265,14 +265,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
 
-            let witness_gadget = MerklePathGadget::<_, C::RecordCommitmentTreeCRHGadget, _>::alloc(
+            let witness_gadget = MerklePathGadget::<_, C::LedgerCommitmentsTreeCRHGadget, _>::alloc(
                 &mut witness_cs.ns(|| "Declare membership witness"),
                 || Ok(witness),
             )?;
 
             witness_gadget.conditionally_check_membership(
                 &mut witness_cs.ns(|| "Perform ledger membership witness check"),
-                &record_commitment_tree_parameters,
+                &ledger_commitments_tree_parameters,
                 &digest_gadget,
                 &given_commitment,
                 &given_is_dummy.not(),

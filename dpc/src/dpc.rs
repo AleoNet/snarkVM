@@ -66,7 +66,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
+    fn execute<L: LedgerCommitmentsTree<C>, R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executables: &Vec<Executable<C>>,
         ledger: &L,
@@ -191,7 +191,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         ))
     }
 
-    fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+    fn verify<L: LedgerCommitmentsTree<C> + LedgerSerialNumbersTree<C>>(
         transaction: &Self::Transaction,
         ledger: &L,
     ) -> bool {
@@ -289,7 +289,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
+    fn verify_transactions<L: LedgerCommitmentsTree<C> + LedgerSerialNumbersTree<C> + Sync>(
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {

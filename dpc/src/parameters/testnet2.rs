@@ -92,13 +92,13 @@ define_merkle_tree_parameters!(
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <Testnet2Parameters as Parameters>::RecordCommitmentTreeCRH,
+    <Testnet2Parameters as Parameters>::LedgerCommitmentsTreeCRH,
     32
 );
 
 define_merkle_tree_parameters!(
     SerialNumberMerkleTreeParameters,
-    <Testnet2Parameters as Parameters>::RecordSerialNumberTreeCRH,
+    <Testnet2Parameters as Parameters>::LedgerSerialNumbersTreeCRH,
     32
 );
 
@@ -189,14 +189,14 @@ impl Parameters for Testnet2Parameters {
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
-    type RecordCommitmentTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
-    type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
+    type LedgerCommitmentsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type LedgerCommitmentsTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
+    type LedgerCommitmentsTreeDigest = <Self::LedgerCommitmentsTreeCRH as CRH>::Output;
+    type LedgerCommitmentsTreeParameters = CommitmentMerkleTreeParameters;
 
-    type RecordSerialNumberTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
-    type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
+    type LedgerSerialNumbersTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type LedgerSerialNumbersTreeDigest = <Self::LedgerSerialNumbersTreeCRH as CRH>::Output;
+    type LedgerSerialNumbersTreeParameters = SerialNumberMerkleTreeParameters;
 
     type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 32, 63>;
@@ -216,8 +216,6 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{program_circuit_id_crh, PROGRAM_CIRCUIT_ID_CRH, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{program_circuit_id_tree_crh, PROGRAM_CIRCUIT_ID_TREE_CRH, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
-    dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerCommitmentTreeCRH0"}
-    dpc_setup!{record_serial_number_tree_crh, RECORD_SERIAL_NUMBER_TREE_CRH, RecordSerialNumberTreeCRH, "AleoLedgerSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
@@ -251,14 +249,16 @@ impl Parameters for Testnet2Parameters {
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
 
-    fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
-        static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
-        RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
+    dpc_setup!{ledger_commitments_tree_crh, LEDGER_COMMITMENTS_TREE_CRH, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
+    fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters {
+        static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::LedgerCommitmentsTreeParameters> = OnceCell::new();
+        LEDGER_COMMITMENTS_TREE_PARAMETERS.get_or_init(|| Self::LedgerCommitmentsTreeParameters::from(Self::ledger_commitments_tree_crh().clone()))
     }
 
-    fn record_serial_number_tree_parameters() -> &'static Self::RecordSerialNumberTreeParameters {
-        static RECORD_SERIAL_NUMBER_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordSerialNumberTreeParameters> = OnceCell::new();
-        RECORD_SERIAL_NUMBER_TREE_PARAMETERS.get_or_init(|| Self::RecordSerialNumberTreeParameters::from(Self::record_serial_number_tree_crh().clone()))
+    dpc_setup!{ledger_serial_numbers_tree_crh, LEDGER_SERIAL_NUMBERS_TREE_CRH, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
+    fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters {
+        static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
+        LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS.get_or_init(|| Self::LedgerSerialNumbersTreeParameters::from(Self::ledger_serial_numbers_tree_crh().clone()))
     }
 
     /// Returns the program SRS for Aleo applications.

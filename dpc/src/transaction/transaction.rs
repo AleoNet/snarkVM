@@ -59,7 +59,7 @@ pub struct Transaction<C: Parameters> {
     #[derivative(Default(value = "[0u8; 64]"))]
     pub memo: [u8; 64],
     /// The root of the ledger commitment tree.
-    pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+    pub ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
     pub inner_circuit_id: C::InnerCircuitID,
     /// The encrypted output records.
@@ -78,7 +78,7 @@ impl<C: Parameters> Transaction<C> {
         commitments: Vec<<Self as TransactionScheme>::Commitment>,
         value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memo,
-        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
         proof: <C::OuterSNARK as SNARK>::Proof,
@@ -103,7 +103,7 @@ impl<C: Parameters> Transaction<C> {
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<C>,
-        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
         proof: <C::OuterSNARK as SNARK>::Proof,
@@ -157,7 +157,7 @@ impl<C: Parameters> Transaction<C> {
 
 impl<C: Parameters> TransactionScheme for Transaction<C> {
     type Commitment = C::RecordCommitment;
-    type Digest = MerkleTreeDigest<C::RecordCommitmentTreeParameters>;
+    type Digest = MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = C::InnerCircuitID;
     type Memo = [u8; 64];
@@ -233,7 +233,7 @@ impl<C: Parameters> FromBytes for Transaction<C> {
         // Read the transaction kernel.
         let kernel: TransactionKernel<C> = FromBytes::read_le(&mut reader)?;
 
-        let ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters> = FromBytes::read_le(&mut reader)?;
+        let ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters> = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id: C::InnerCircuitID = FromBytes::read_le(&mut reader)?;
 
         // Read the encrypted records.

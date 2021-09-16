@@ -20,7 +20,6 @@
 
 use crate::{posw::posw::commit, MaskedMerkleRoot, Network};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, MaskedMerkleParameters, MerkleParameters, CRH};
-use snarkvm_dpc::Parameters;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_root,
     integers::uint::UInt8,
@@ -63,10 +62,10 @@ impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
     }
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<<N::DPC as Parameters>::InnerScalarField>
+impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScalarField>
     for POSWCircuit<N, MASK_NUM_BYTES>
 {
-    fn generate_constraints<CS: ConstraintSystem<<N::DPC as Parameters>::InnerScalarField>>(
+    fn generate_constraints<CS: ConstraintSystem<N::InnerScalarField>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
@@ -85,7 +84,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<<N::DPC as P
         let mask_crh_parameters =
             <N::MaskedMerkleTreeCRHGadget as MaskedCRHGadget<
                 <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
-                <N::DPC as Parameters>::InnerScalarField,
+                N::InnerScalarField,
             >>::MaskParametersGadget::alloc_constant(&mut cs.ns(|| "new_mask_parameters"), || {
                 let crh_parameters = N::masked_merkle_tree_parameters().mask_parameters();
                 Ok(crh_parameters)
@@ -101,7 +100,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<<N::DPC as P
             .map(|(i, l)| {
                 <N::MaskedMerkleTreeCRHGadget as CRHGadget<
                     <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
-                    <N::DPC as Parameters>::InnerScalarField,
+                    N::InnerScalarField,
                 >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || l.as_ref().get())
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -112,7 +111,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<<N::DPC as P
         for i in leaf_gadgets.len()..leaves_number {
             leaf_gadgets.push(<N::MaskedMerkleTreeCRHGadget as CRHGadget<
                 <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
-                <N::DPC as Parameters>::InnerScalarField,
+                N::InnerScalarField,
             >>::OutputGadget::alloc(
                 cs.ns(|| format!("leaf {}", i)), || Ok(empty_hash.clone())
             )?);
@@ -137,7 +136,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<<N::DPC as P
         let public_computed_root =
             <N::MaskedMerkleTreeCRHGadget as CRHGadget<
                 <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
-                <N::DPC as Parameters>::InnerScalarField,
+                N::InnerScalarField,
             >>::OutputGadget::alloc_input(cs.ns(|| "public computed root"), || self.root.as_ref().get())?;
         computed_root.enforce_equal(cs.ns(|| "inputize computed root"), &public_computed_root)?;
 
@@ -202,10 +201,7 @@ mod test {
         .unwrap();
 
         let inputs = [
-            ToConstraintField::<<<Testnet2 as Network>::DPC as Parameters>::InnerScalarField>::to_field_elements(
-                &mask[..],
-            )
-            .unwrap(),
+            ToConstraintField::<<Testnet2 as Network>::InnerScalarField>::to_field_elements(&mask[..]).unwrap(),
             vec![root.clone()],
         ]
         .concat();

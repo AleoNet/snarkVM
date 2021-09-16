@@ -46,7 +46,14 @@ impl Network for Testnet2 {
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     
     type DPC = Testnet2Parameters;
+    type InnerScalarField = <Self::DPC as Parameters>::InnerScalarField;
 
+    type CommitmentsTreeCRH = <Self::DPC as Parameters>::LedgerCommitmentsTreeCRH;
+    type CommitmentsTreeParameters = <Self::DPC as Parameters>::LedgerCommitmentsTreeParameters;
+
+    type SerialNumbersTreeCRH = <Self::DPC as Parameters>::LedgerSerialNumbersTreeCRH;
+    type SerialNumbersTreeParameters = <Self::DPC as Parameters>::LedgerSerialNumbersTreeParameters;
+    
     type BlockHeaderCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 117, 63>;
     
     type MerkleTreeCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 16, 32>;
@@ -55,7 +62,7 @@ impl Network for Testnet2 {
     type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet2 as Network>::DPC as Parameters>::ProgramProjectiveCurve, 4, 128>;
     type MaskedMerkleTreeCRHGadget = PedersenCompressedCRHGadget<
         <Self::DPC as Parameters>::ProgramProjectiveCurve,
-        <Self::DPC as Parameters>::InnerScalarField,
+        Self::InnerScalarField,
         <Self::DPC as Parameters>::ProgramAffineCurveGadget,
         4,
         128
@@ -64,16 +71,16 @@ impl Network for Testnet2 {
 
     /// SNARK proof system for PoSW.
     type PoswSNARK = MarlinSNARK<
-        <<Self as Network>::DPC as Parameters>::InnerScalarField,
+        Self::InnerScalarField,
         <<Self as Network>::DPC as Parameters>::OuterScalarField,
         SonicKZG10<<<Self as Network>::DPC as Parameters>::InnerCurve>,
         FiatShamirChaChaRng<
-            <<Self as Network>::DPC as Parameters>::InnerScalarField,
+            Self::InnerScalarField,
             <<Self as Network>::DPC as Parameters>::OuterScalarField,
             Blake2s,
         >,
         MarlinTestnet1Mode,
-        Vec<<<Self as Network>::DPC as Parameters>::InnerScalarField>,
+        Vec<Self::InnerScalarField>,
     >;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {

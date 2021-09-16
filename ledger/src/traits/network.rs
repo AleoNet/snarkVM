@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::prelude::*;
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_dpc::Parameters;
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::MaskedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -25,6 +26,13 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     const POSW_PROOF_SIZE_IN_BYTES: usize;
 
     type DPC: Parameters;
+    type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
+
+    type CommitmentsTreeCRH: CRH;
+    type CommitmentsTreeParameters: LoadableMerkleParameters<H = Self::CommitmentsTreeCRH>;
+
+    type SerialNumbersTreeCRH: CRH;
+    type SerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::SerialNumbersTreeCRH>;
 
     type BlockHeaderCRH: CRH;
 
@@ -34,16 +42,13 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     type MaskedMerkleTreeCRH: CRH;
     type MaskedMerkleTreeCRHGadget: MaskedCRHGadget<
         <Self::MaskedMerkleTreeParameters as MerkleParameters>::H,
-        <Self::DPC as Parameters>::InnerScalarField,
+        Self::InnerScalarField,
     >;
     // + CRHGadget<Self::MaskedMerkleTreeCRH, <Self::DPC as Parameters>::InnerScalarField>;
     type MaskedMerkleTreeParameters: MaskedMerkleParameters;
 
     /// SNARK proof system for PoSW.
-    type PoswSNARK: SNARK<
-        ScalarField = <Self::DPC as Parameters>::InnerScalarField,
-        VerifierInput = Vec<<Self::DPC as Parameters>::InnerScalarField>,
-    >;
+    type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, VerifierInput = Vec<Self::InnerScalarField>>;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;

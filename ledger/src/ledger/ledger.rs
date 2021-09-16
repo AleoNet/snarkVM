@@ -16,7 +16,7 @@
 
 use crate::{ledger::*, *};
 use snarkvm_algorithms::merkle_tree::*;
-use snarkvm_dpc::{Parameters, RecordCommitmentTree, RecordSerialNumberTree, Transaction, TransactionScheme};
+use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Parameters, Transaction, TransactionScheme};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -43,8 +43,8 @@ pub type BlockHeight = u32;
 
 pub struct Ledger<N: Network, C: Parameters, S: Storage> {
     pub current_block_height: AtomicU32,
-    pub record_commitment_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
-    pub record_serial_number_tree: RwLock<MerkleTree<C::RecordSerialNumberTreeParameters>>,
+    pub commitments_tree: RwLock<MerkleTree<C::LedgerCommitmentsTreeParameters>>,
+    pub serial_numbers_tree: RwLock<MerkleTree<C::LedgerSerialNumbersTreeParameters>>,
     pub storage: S,
     _phantom: PhantomData<N>,
 }
@@ -74,14 +74,14 @@ impl<N: Network, C: Parameters, S: Storage> LedgerScheme<C> for Ledger<N, C, S> 
         }
 
         let leaves: &[[u8; 32]] = &[];
-        let record_commitment_tree = MerkleTree::new(Arc::new(C::record_commitment_tree_parameters().clone()), leaves)?;
-        let record_serial_number_tree =
-            MerkleTree::new(Arc::new(C::record_serial_number_tree_parameters().clone()), leaves)?;
+        let commitments_tree = MerkleTree::new(Arc::new(C::ledger_commitments_tree_parameters().clone()), leaves)?;
+        let serial_numbers_tree =
+            MerkleTree::new(Arc::new(C::ledger_serial_numbers_tree_parameters().clone()), leaves)?;
 
         let ledger = Self {
             current_block_height: Default::default(),
-            record_commitment_tree: RwLock::new(record_commitment_tree),
-            record_serial_number_tree: RwLock::new(record_serial_number_tree),
+            commitments_tree: RwLock::new(commitments_tree),
+            serial_numbers_tree: RwLock::new(serial_numbers_tree),
             storage,
             _phantom: PhantomData,
         };
@@ -133,18 +133,18 @@ impl<N: Network, C: Parameters, S: Storage> LedgerScheme<C> for Ledger<N, C, S> 
     }
 }
 
-impl<N: Network, C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<N, C, S> {
-    /// Return the latest state root of the record commitment tree.
-    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
+impl<N: Network, C: Parameters, S: Storage> LedgerCommitmentsTree<C> for Ledger<N, C, S> {
+    /// Return the latest state root of the ledger commitments tree.
+    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
             Some(current_digest) => current_digest,
-            None => to_bytes_le![self.record_commitment_tree.read().root()]?,
+            None => to_bytes_le![self.commitments_tree.read().root()]?,
         };
         Ok(FromBytes::read_le(digest.as_slice())?)
     }
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
-    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool {
+    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>) -> bool {
         self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
     }
 
@@ -155,17 +155,17 @@ impl<N: Network, C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<N
 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::RecordCommitmentTreeParameters>> {
+    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::LedgerCommitmentsTreeParameters>> {
         let cm_index = self
             .get_cm_index(&cm.to_bytes_le()?)?
             .ok_or(LedgerError::InvalidCmIndex)?;
-        let result = self.record_commitment_tree.read().generate_proof(cm_index, cm)?;
+        let result = self.commitments_tree.read().generate_proof(cm_index, cm)?;
 
         Ok(result)
     }
 }
 
-impl<N: Network, C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<N, C, S> {
+impl<N: Network, C: Parameters, S: Storage> LedgerSerialNumbersTree<C> for Ledger<N, C, S> {
     /// Returns true if the given serial number exists in the ledger.
     fn contains_serial_number(&self, serial_number: &C::SerialNumber) -> bool {
         self.storage
@@ -257,7 +257,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
 
         let new_commitments: Vec<_> = new_cm_and_indices.into_iter().map(|(cm, _)| cm).collect();
 
-        *self.record_commitment_tree.write() = self.build_new_commitment_tree(new_commitments)?;
+        *self.commitments_tree.write() = self.build_new_commitment_tree(new_commitments)?;
 
         Ok(())
     }
@@ -266,13 +266,10 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     pub fn build_new_commitment_tree(
         &self,
         additional_cms: Vec<<Transaction<C> as TransactionScheme>::Commitment>,
-    ) -> Result<MerkleTree<C::RecordCommitmentTreeParameters>, StorageError> {
+    ) -> Result<MerkleTree<C::LedgerCommitmentsTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
 
-        let new_tree = self
-            .record_commitment_tree
-            .read()
-            .rebuild(current_len, &additional_cms)?;
+        let new_tree = self.commitments_tree.read().rebuild(current_len, &additional_cms)?;
 
         Ok(new_tree)
     }
@@ -288,7 +285,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
 
         let new_serial_numbers: Vec<_> = new_sn_and_indices.into_iter().map(|(sn, _)| sn).collect();
 
-        *self.record_serial_number_tree.write() = self.build_new_serial_number_tree(new_serial_numbers)?;
+        *self.serial_numbers_tree.write() = self.build_new_serial_number_tree(new_serial_numbers)?;
 
         Ok(())
     }
@@ -297,13 +294,10 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     pub fn build_new_serial_number_tree(
         &self,
         additional_sns: Vec<<Transaction<C> as TransactionScheme>::SerialNumber>,
-    ) -> Result<MerkleTree<C::RecordSerialNumberTreeParameters>, StorageError> {
+    ) -> Result<MerkleTree<C::LedgerSerialNumbersTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_SERIAL_NUMBER)?.len();
 
-        let new_tree = self
-            .record_serial_number_tree
-            .read()
-            .rebuild(current_len, &additional_sns)?;
+        let new_tree = self.serial_numbers_tree.read().rebuild(current_len, &additional_sns)?;
 
         Ok(new_tree)
     }
@@ -519,7 +513,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
 
         // Rebuild the new commitment merkle tree
         self.rebuild_commitment_merkle_tree(transaction_cms)?;
-        let new_digest = self.record_commitment_tree.read().root().clone();
+        let new_digest = self.commitments_tree.read().root().clone();
 
         // Rebuild the new serial number merkle tree
         self.rebuild_serial_number_merkle_tree(transaction_sns)?;

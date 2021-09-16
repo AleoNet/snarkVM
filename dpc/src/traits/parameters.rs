@@ -158,6 +158,39 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Sync
         + Copy;
 
+    /// Ledger commitments tree instantiation.
+    type LedgerCommitmentsTreeCRH: CRH<Output = Self::LedgerCommitmentsTreeDigest>;
+    type LedgerCommitmentsTreeCRHGadget: CRHGadget<Self::LedgerCommitmentsTreeCRH, Self::InnerScalarField>;
+    type LedgerCommitmentsTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type LedgerCommitmentsTreeParameters: LoadableMerkleParameters<H = Self::LedgerCommitmentsTreeCRH>;
+
+    /// Ledger serial numbers tree instantiation.
+    type LedgerSerialNumbersTreeCRH: CRH<Output = Self::LedgerSerialNumbersTreeDigest>;
+    type LedgerSerialNumbersTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Copy
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync;
+    type LedgerSerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::LedgerSerialNumbersTreeCRH>;
+
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
     type LocalDataCommitmentScheme: CommitmentScheme;
@@ -241,39 +274,6 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Sync
         + Send;
 
-    /// Record commitment tree instantiation.
-    type RecordCommitmentTreeCRH: CRH<Output = Self::RecordCommitmentTreeDigest>;
-    type RecordCommitmentTreeCRHGadget: CRHGadget<Self::RecordCommitmentTreeCRH, Self::InnerScalarField>;
-    type RecordCommitmentTreeDigest: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
-    type RecordCommitmentTreeParameters: LoadableMerkleParameters<H = Self::RecordCommitmentTreeCRH>;
-
-    /// Record serial number tree instantiation.
-    type RecordSerialNumberTreeCRH: CRH<Output = Self::RecordSerialNumberTreeDigest>;
-    type RecordSerialNumberTreeDigest: ToConstraintField<Self::InnerScalarField>
-        + Copy
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync;
-    type RecordSerialNumberTreeParameters: LoadableMerkleParameters<H = Self::RecordSerialNumberTreeCRH>;
-
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH<Output = Self::SerialNumberNonce>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
@@ -322,11 +322,11 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
-    fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
-    fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
+    fn ledger_commitments_tree_crh() -> &'static Self::LedgerCommitmentsTreeCRH;
+    fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters;
 
-    fn record_serial_number_tree_crh() -> &'static Self::RecordSerialNumberTreeCRH;
-    fn record_serial_number_tree_parameters() -> &'static Self::RecordSerialNumberTreeParameters;
+    fn ledger_serial_numbers_tree_crh() -> &'static Self::LedgerSerialNumbersTreeCRH;
+    fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 

@@ -19,24 +19,24 @@ use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
 
 use anyhow::Result;
 
-/// The record commitment tree is a core state tree of the ledger.
-pub trait RecordCommitmentTree<C: Parameters>: Sized {
-    /// Return the latest state root of the record commitment tree.
-    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::RecordCommitmentTreeParameters>>;
+/// The ledger commitments tree is a core state tree of the ledger.
+pub trait LedgerCommitmentsTree<C: Parameters>: Sized {
+    /// Return the latest state root of the ledger commitments tree.
+    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>>;
 
-    /// Check that st_{ts} is a valid state root for some (past) record commitment tree.
-    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool;
+    /// Check that st_{ts} is a valid state root for some (past) ledger commitments tree.
+    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>) -> bool;
 
-    /// Returns true if the given commitment exists in the record commitment tree.
+    /// Returns true if the given commitment exists in the ledger commitments tree.
     fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool;
 
     /// Returns the Merkle path to the latest state root for a given record commitment,
-    /// if it exists in the record commitment tree.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::RecordCommitmentTreeParameters>>;
+    /// if it exists in the ledger commitments tree.
+    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::LedgerCommitmentsTreeParameters>>;
 }
 
-/// The record serial number tree is a core state tree of the ledger.
-pub trait RecordSerialNumberTree<C: Parameters>: Sized {
-    /// Returns true if the given serial number exists in the record serial number tree.
+/// The ledger serial numbers tree is a core state tree of the ledger.
+pub trait LedgerSerialNumbersTree<C: Parameters>: Sized {
+    /// Returns true if the given serial number exists in the ledger serial numbers tree.
     fn contains_serial_number(&self, serial_number: &C::SerialNumber) -> bool;
 }

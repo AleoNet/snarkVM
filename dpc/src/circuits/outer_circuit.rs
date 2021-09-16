@@ -59,7 +59,7 @@ impl<C: Parameters> OuterCircuit<C> {
 
 impl<C: Parameters> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
-    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn generate_constraints<CS: ConstraintSystem<C::OuterScalarField>>(
         &self,

@@ -37,7 +37,7 @@ pub enum StorageError {
     #[error("Block has already been committed: {:?}", _0)]
     ExistingCanonBlock(String),
 
-    #[error("existing record commitment {:?}", _0)]
+    #[error("existing commitment {:?}", _0)]
     ExistingCm(Vec<u8>),
 
     #[error("existing serial number {:?}", _0)]

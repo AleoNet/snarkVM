@@ -26,7 +26,7 @@ pub struct InnerPublicVariables<C: Parameters> {
     /// Transaction kernel
     pub(super) kernel: TransactionKernel<C>,
     /// Ledger digest
-    pub(super) ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+    pub(super) ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
     /// Output encrypted record hashes
     pub(super) encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
@@ -48,7 +48,7 @@ impl<C: Parameters> InnerPublicVariables<C> {
                 value_balance: AleoAmount::ZERO,
                 memo: [0u8; 64],
             },
-            ledger_digest: MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default(),
+            ledger_digest: MerkleTreeDigest::<C::LedgerCommitmentsTreeParameters>::default(),
             encrypted_record_hashes: vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS],
             program_commitment: Some(C::ProgramCommitment::default()),
             local_data_root: Some(C::LocalDataRoot::default()),
@@ -57,7 +57,7 @@ impl<C: Parameters> InnerPublicVariables<C> {
 
     pub fn new(
         kernel: &TransactionKernel<C>,
-        ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        ledger_digest: &MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
         encrypted_record_hashes: &Vec<C::EncryptedRecordDigest>,
         program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
         local_data_root: Option<C::LocalDataRoot>,
@@ -77,7 +77,7 @@ impl<C: Parameters> InnerPublicVariables<C> {
 
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerPublicVariables<C>
 where
-    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();

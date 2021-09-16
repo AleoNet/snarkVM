@@ -25,7 +25,7 @@ use snarkvm_algorithms::{
 pub struct InnerPrivateVariables<C: Parameters> {
     // Inputs records.
     pub(super) input_records: Vec<Record<C>>,
-    pub(super) input_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
+    pub(super) input_witnesses: Vec<MerklePath<C::LedgerCommitmentsTreeParameters>>,
     pub(super) signatures: Vec<C::AccountSignature>,
     // Output records.
     pub(super) output_records: Vec<Record<C>>,
@@ -57,7 +57,7 @@ impl<C: Parameters> InnerPrivateVariables<C> {
 
     pub fn new(
         input_records: Vec<Record<C>>,
-        input_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
+        input_witnesses: Vec<MerklePath<C::LedgerCommitmentsTreeParameters>>,
         signatures: Vec<C::AccountSignature>,
         output_records: Vec<Record<C>>,
         encrypted_record_randomizers: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,

@@ -18,7 +18,6 @@
 
 use crate::{block::masked_merkle_root::MaskedMerkleRoot, posw::circuit::POSWCircuit, Network, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_dpc::Parameters;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
@@ -190,7 +189,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         let mask = commit(nonce, masked_merkle_root);
 
         // get the mask and the root in public inputs format
-        let merkle_root = <N::DPC as Parameters>::InnerScalarField::read_le(&masked_merkle_root.0[..])?;
+        let merkle_root = N::InnerScalarField::read_le(&masked_merkle_root.0[..])?;
         let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
 
         let res = <<N as Network>::PoswSNARK as SNARK>::verify(&self.vk, &inputs, &proof)?;
