@@ -16,6 +16,7 @@
 
 use sha2::{Digest, Sha256};
 
+#[deprecated]
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     let digest = Sha256::digest(&data);
     let mut ret = [0u8; 32];
@@ -23,6 +24,7 @@ pub fn sha256(data: &[u8]) -> [u8; 32] {
     ret
 }
 
+#[deprecated]
 pub fn double_sha256(data: &[u8]) -> [u8; 32] {
     let digest = Sha256::digest(&Sha256::digest(&data));
     let mut ret = [0u8; 32];
@@ -30,6 +32,7 @@ pub fn double_sha256(data: &[u8]) -> [u8; 32] {
     ret
 }
 
+#[deprecated]
 pub fn sha256d_to_u64(data: &[u8]) -> u64 {
     let hash_slice = double_sha256(data);
     let mut hash = [0u8; 8];

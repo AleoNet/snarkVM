@@ -20,12 +20,10 @@ use crate::{block::masked_merkle_root::MaskedMerkleRoot, posw::circuit::POSWCirc
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_dpc::Parameters;
 use snarkvm_fields::ToConstraintField;
-use snarkvm_marlin::constraints::UniversalSRS;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
 };
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
