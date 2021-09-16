@@ -18,7 +18,7 @@
 
 use crate::{
     block::{
-        pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
+        pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRoot, PARAMS},
         MaskedMerkleTreeParameters,
     },
     posw::circuit::POSWCircuit,
@@ -57,7 +57,7 @@ pub(crate) type MarlinSRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as Pair
 
 /// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
 /// Commits to the nonce and pedersen merkle root.
-fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
+fn commit(nonce: u32, root: &PedersenMerkleRoot) -> Vec<u8> {
     let mut h = Blake2s::new();
     h.update(&nonce.to_le_bytes());
     h.update(root.0.as_ref());
@@ -251,7 +251,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
         &self,
         nonce: u32,
         proof: &S::Proof,
-        pedersen_merkle_root: &PedersenMerkleRootHash,
+        pedersen_merkle_root: &PedersenMerkleRoot,
     ) -> Result<(), PoswError> {
         // commit to it and the nonce
         let mask = commit(nonce, pedersen_merkle_root);

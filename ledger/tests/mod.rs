@@ -17,7 +17,7 @@
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_ledger::{
-    block::PedersenMerkleRootHash,
+    block::PedersenMerkleRoot,
     posw::{txids_to_roots, Marlin, PoswMarlin},
 };
 use snarkvm_utilities::FromBytes;
@@ -85,7 +85,7 @@ fn test_posw_verify_testnet1() {
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes[..]);
 
-        PedersenMerkleRootHash(hash)
+        PedersenMerkleRoot(hash)
     };
     let proof = {
         let bytes = hex::decode(POSW_PROOF).unwrap();

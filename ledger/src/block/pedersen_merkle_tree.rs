@@ -43,26 +43,26 @@ pub type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
 pub static PARAMS: Lazy<Arc<MaskedMerkleTreeParameters>> =
     Lazy::new(|| Arc::new(MaskedMerkleTreeParameters::setup("MerkleTreeParameters")));
 
-/// A Pedersen Merkle Root Hash
+/// A Pedersen Merkle Root
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PedersenMerkleRootHash(pub [u8; 32]);
+pub struct PedersenMerkleRoot(pub [u8; 32]);
 
-impl PedersenMerkleRootHash {
+impl PedersenMerkleRoot {
     pub const fn size() -> usize {
         32
     }
 }
 
-impl From<Fr> for PedersenMerkleRootHash {
-    fn from(src: Fr) -> PedersenMerkleRootHash {
+impl From<Fr> for PedersenMerkleRoot {
+    fn from(src: Fr) -> PedersenMerkleRoot {
         let root_bytes = to_bytes_le![src].expect("could not convert merkle root to bytes");
         let mut pedersen_merkle_root_bytes = [0u8; 32];
         pedersen_merkle_root_bytes[..].copy_from_slice(&root_bytes);
-        PedersenMerkleRootHash(pedersen_merkle_root_bytes)
+        PedersenMerkleRoot(pedersen_merkle_root_bytes)
     }
 }
 
-impl Display for PedersenMerkleRootHash {
+impl Display for PedersenMerkleRoot {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
@@ -70,7 +70,7 @@ impl Display for PedersenMerkleRootHash {
 
 /// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG
 /// and returns it serialized
-pub fn pedersen_merkle_root(hashes: &[[u8; 32]]) -> PedersenMerkleRootHash {
+pub fn pedersen_merkle_root(hashes: &[[u8; 32]]) -> PedersenMerkleRoot {
     let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
     tree.root().clone().into()
 }
