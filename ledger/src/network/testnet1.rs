@@ -18,12 +18,10 @@ use crate::Network;
 use snarkvm_algorithms::{
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     define_masked_merkle_tree_parameters,
-    prelude::*,
 };
-use snarkvm_dpc::testnet1::Testnet1Parameters;
+use snarkvm_dpc::{testnet1::Testnet1Parameters, Parameters};
+use snarkvm_gadgets::algorithms::crh::PedersenCompressedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
-
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -37,17 +35,29 @@ define_masked_merkle_tree_parameters!(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet1;
 
+#[rustfmt::skip]
 impl Network for Testnet1 {
-    type BlockHeaderCRH = BHPCompressedCRH<EdwardsBls, 117, 63>;
-    type DPC = Testnet1Parameters;
-    /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
-    type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
-    type MaskedMerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, 4, 128>;
-    type MerkleTreeCRH = BHPCompressedCRH<EdwardsBls, 16, 32>;
-
     /// A masked Merkle tree with depth = 2. This may change in the future.
     const MASKED_TREE_DEPTH: usize = 2;
+    
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
+    
+    type DPC = Testnet1Parameters;
+
+    type BlockHeaderCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 117, 63>;
+    
+    type MerkleTreeCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 16, 32>;
+
+    /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
+    type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet1 as Network>::DPC as Parameters>::ProgramProjectiveCurve, 4, 128>;
+    type MaskedMerkleTreeCRHGadget = PedersenCompressedCRHGadget<
+        <Self::DPC as Parameters>::ProgramProjectiveCurve,
+        <Self::DPC as Parameters>::InnerScalarField,
+        <Self::DPC as Parameters>::ProgramAffineCurveGadget,
+        4,
+        128
+    >;
+    type MaskedMerkleTreeParameters = MaskedMerkleTreeParameters;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {
         static BLOCK_HEADER_CRH: OnceCell<<Testnet1 as Network>::BlockHeaderCRH> = OnceCell::new();

@@ -68,11 +68,11 @@ impl<N: Network> BlockHeader<N> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         let txids = transactions.to_transaction_ids()?;
-        let (_, transactions_root, subroots) = txids_to_roots::<N>(&txids);
+        let (_, transactions_root, subroots) = txids_to_roots::<N>(&txids)?;
 
         // TODO (howardwu): TEMPORARY - Make this a static once_cell.
         // Mine the block.
-        let posw = PoswMarlin::load()?;
+        let posw = PoswMarlin::<N>::load()?;
         let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
 
         Ok(Self {
@@ -92,23 +92,21 @@ impl<N: Network> BlockHeader<N> {
     ) -> Result<Self> {
         let previous_block_hash = BlockHeaderHash([0u8; 32]);
 
-        // Craft the commitments root from the transactions
-        let transaction_commitments: Vec<&<T as TransactionScheme>::Commitment> =
+        // Compute the commitments root from the transactions.
+        let commitments: Vec<&<T as TransactionScheme>::Commitment> =
             transactions.0.iter().map(|t| t.commitments()).flatten().collect();
-        let record_commitment_tree = MerkleTree::new(
-            Arc::new(C::record_commitment_tree_parameters().clone()),
-            &transaction_commitments,
-        )?;
-        let commitments_root = MerkleRoot::from_element(record_commitment_tree.root());
+        let commitments_tree = MerkleTree::new(Arc::new(C::record_commitment_tree_parameters().clone()), &commitments)?;
+        let commitments_root = MerkleRoot::from_element(commitments_tree.root());
 
-        // Craft the serial numbers root from the transactions
-        let transaction_serial_numbers: Vec<&<T as TransactionScheme>::SerialNumber> =
+        // Compute the serial numbers root from the transactions.
+        let serial_numbers: Vec<&<T as TransactionScheme>::SerialNumber> =
             transactions.0.iter().map(|t| t.serial_numbers()).flatten().collect();
-        let record_serial_numbers_tree = MerkleTree::new(
+        // TODO (howardwu): CRITICAL - Fix this.
+        let serial_numbers_tree = MerkleTree::new(
             Arc::new(C::record_commitment_tree_parameters().clone()),
-            &transaction_serial_numbers,
+            &serial_numbers,
         )?;
-        let serial_numbers_root = MerkleRoot::from_element(record_serial_numbers_tree.root());
+        let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());
 
         let timestamp = 0i64;
         let difficulty_target = u64::MAX;
@@ -140,8 +138,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     pub fn to_hash(&self) -> Result<BlockHeaderHash> {
-        let serialized = self.to_bytes_le()?;
-        let hash_bytes = N::block_header_crh().hash(&serialized)?.to_bytes_le()?;
+        let hash_bytes = N::block_header_crh().hash(&self.to_bytes_le()?)?.to_bytes_le()?;
 
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&hash_bytes);

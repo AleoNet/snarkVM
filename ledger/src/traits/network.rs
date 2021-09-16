@@ -16,6 +16,7 @@
 
 use snarkvm_algorithms::prelude::*;
 use snarkvm_dpc::Parameters;
+use snarkvm_gadgets::MaskedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 
 pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
@@ -29,8 +30,14 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
 
     type MerkleTreeCRH: CRH;
 
+    /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type MaskedMerkleTreeCRH: CRH;
-    type EdwardsMaskedMerkleTree;
+    type MaskedMerkleTreeCRHGadget: MaskedCRHGadget<
+        <Self::MaskedMerkleTreeParameters as MerkleParameters>::H,
+        <Self::DPC as Parameters>::InnerScalarField,
+    >;
+    // + CRHGadget<Self::MaskedMerkleTreeCRH, <Self::DPC as Parameters>::InnerScalarField>;
+    type MaskedMerkleTreeParameters: MaskedMerkleParameters;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;

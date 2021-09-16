@@ -36,7 +36,7 @@ fn marlin_posw(c: &mut Criterion) {
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
     let transaction_ids = vec![[1u8; 32]; 8];
-    let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
+    let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids).unwrap();
 
     // Proof Generation Bench
     group.bench_function("mine", |b| {

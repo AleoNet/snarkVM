@@ -112,6 +112,7 @@ impl Parameters for Testnet1Parameters {
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
 
     type ProgramAffineCurve = EdwardsBls12Affine;
+    type ProgramAffineCurveGadget = EdwardsBls12Gadget;
     type ProgramProjectiveCurve = EdwardsBls12Projective;
     type ProgramCurveParameters = EdwardsParameters;
     type ProgramBaseField = <Self::ProgramCurveParameters as ModelParameters>::BaseField;
@@ -137,7 +138,7 @@ impl Parameters for Testnet1Parameters {
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
     type EncryptedRecordCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 80, 32>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 80, 32>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;
@@ -145,10 +146,10 @@ impl Parameters for Testnet1Parameters {
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 24, 62>;
-    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
+    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 24, 62>;
 
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+    type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
 
     type ProgramCommitmentScheme = Blake2sCommitment;
@@ -165,11 +166,11 @@ impl Parameters for Testnet1Parameters {
     type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
     
     type RecordCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
-    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
+    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
     type RecordCommitmentTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+    type RecordCommitmentTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
     type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
@@ -178,7 +179,7 @@ impl Parameters for Testnet1Parameters {
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
 
     type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
-    type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
+    type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 32, 63>;
     type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;

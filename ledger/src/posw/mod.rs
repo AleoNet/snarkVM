@@ -17,18 +17,19 @@
 pub mod circuit;
 
 mod posw;
-use posw::{Posw, HG, M};
+use posw::Posw;
 
 use crate::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network};
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
+use anyhow::Result;
 use blake2::Blake2s;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 /// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
-pub type PoswMarlin = Posw<Marlin<Bls12_377>, <Bls12_377 as PairingEngine>::Fr, M, HG, 32>;
+pub type PoswMarlin<N> = Posw<N, Marlin<Bls12_377>, 32>;
 
 /// Marlin proof system on PoSW
 pub type Marlin<E> = MarlinSNARK<
@@ -41,7 +42,9 @@ pub type Marlin<E> = MarlinSNARK<
 >;
 
 /// Subtree calculation
-pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, MaskedMerkleRoot, Vec<[u8; 32]>) {
+pub fn txids_to_roots<N: Network>(
+    transaction_ids: &[[u8; 32]],
+) -> Result<(MerkleRoot, MaskedMerkleRoot, Vec<[u8; 32]>)> {
     assert!(
         !transaction_ids.is_empty(),
         "Cannot compute a Merkle tree with no transaction IDs"
@@ -51,11 +54,11 @@ pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> (MerkleRoot, 
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
-    (
+    Ok((
         MerkleRoot(merkle_root_bytes),
-        MaskedMerkleRoot::from_leaves::<N>(&subroots),
+        MaskedMerkleRoot::from_leaves::<N>(&subroots)?,
         subroots,
-    )
+    ))
 }
 
 #[cfg(test)]
@@ -70,12 +73,12 @@ mod tests {
 
     #[test]
     fn test_load_verify_only() {
-        let _params = PoswMarlin::verify_only().unwrap();
+        let _params = PoswMarlin::<Testnet2>::verify_only().unwrap();
     }
 
     #[test]
     fn test_load() {
-        let _params = PoswMarlin::load().unwrap();
+        let _params = PoswMarlin::<Testnet2>::load().unwrap();
     }
 
     #[test]
@@ -87,7 +90,7 @@ mod tests {
         let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, &mut rng).unwrap();
 
         // run the deterministic setup
-        let posw = PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap();
+        let posw = PoswMarlin::<Testnet2>::index::<_, ThreadRng>(&universal_srs).unwrap();
 
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
@@ -106,7 +109,7 @@ mod tests {
             vec
         };
 
-        let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids);
+        let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids).unwrap();
 
         // generate the proof
         let (nonce, proof) = posw
@@ -151,7 +154,7 @@ mod tests {
         let subsequent_root_hashes = growing_tx_ids
             .into_iter()
             .map(|tx_ids| {
-                let (root, pedersen_root, _subroots) = txids_to_roots::<Testnet2>(&tx_ids);
+                let (root, pedersen_root, _subroots) = txids_to_roots::<Testnet2>(&tx_ids).unwrap();
                 (root, pedersen_root)
             })
             .collect::<Vec<_>>();

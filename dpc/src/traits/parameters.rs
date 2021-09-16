@@ -20,6 +20,7 @@ use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwards
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+    GroupGadget,
     SNARKVerifierGadget,
 };
 use snarkvm_utilities::{
@@ -53,6 +54,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     /// Program curve type declarations.
     type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::ProgramBaseField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
     type ProgramBaseField: PrimeField;

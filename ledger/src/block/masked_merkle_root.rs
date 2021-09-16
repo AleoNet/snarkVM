@@ -15,14 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
+use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_utilities::ToBytes;
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fmt::{
-    Display,
-    Formatter,
-    {self},
+use std::{
+    fmt::{
+        Display,
+        Formatter,
+        {self},
+    },
+    sync::Arc,
 };
 
 /// A Masked Merkle Root.
@@ -30,11 +35,24 @@ use std::fmt::{
 pub struct MaskedMerkleRoot(pub [u8; 32]);
 
 impl MaskedMerkleRoot {
+    pub fn new(root: &[u8]) -> Self {
+        assert_eq!(root.len(), 32);
+
+        let mut buffer = [0u8; 32];
+        buffer.copy_from_slice(&root);
+        Self(buffer)
+    }
+
     /// Returns the masked Merkle root for the given leaves.
-    pub fn from_leaves<N: Network>(leaves: &[[u8; 32]]) -> Self {
-        let tree = N::EdwardsMaskedMerkleTree::new(N::masked_merkle_tree_parameters().clone(), leaves)
-            .expect("could not create merkle tree");
-        tree.root().clone().into()
+    pub fn from_leaves<N: Network>(leaves: &[[u8; 32]]) -> Result<Self> {
+        let tree = MerkleTree::<N::MaskedMerkleTreeParameters>::new(
+            Arc::new(N::masked_merkle_tree_parameters().clone()),
+            leaves,
+        )?;
+
+        let mut buffer = [0u8; 32];
+        buffer[..].copy_from_slice(&tree.root().to_bytes_le()?[..]);
+        Ok(Self(buffer))
     }
 
     pub const fn size() -> usize {
@@ -57,12 +75,4 @@ impl Display for MaskedMerkleRoot {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
-}
-
-/// Calculates the root of the Merkle tree using a Pedersen hash and the
-/// base layer hashes leaved
-pub fn pedersen_merkle_root_hash_with_leaves<N: Network>(leaves: &[[u8; 32]]) -> (Fr, Vec<Fr>) {
-    let tree = N::EdwardsMaskedMerkleTree::new(N::masked_merkle_tree_parameters().clone(), leaves)
-        .expect("could not create merkle tree");
-    (tree.root().clone(), tree.hashed_leaves().to_vec())
 }

@@ -30,7 +30,6 @@ impl BlockHeaderHash {
 
         let mut block_hash = [0u8; 32];
         block_hash.copy_from_slice(&hash);
-
         Self(block_hash)
     }
 
