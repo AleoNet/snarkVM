@@ -180,17 +180,9 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
     }
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
-    fn to_transaction_id(&self) -> Result<[u8; 32]> {
-        // Convert the transaction kernel to bytes.
-        let serialized = &self.to_kernel().to_bytes_le()?;
-
+    fn to_transaction_id(&self) -> Result<C::TransactionID> {
         // Compute the hash of the serialized kernel.
-        let hash_bytes = C::transaction_id_crh().hash(&serialized)?.to_bytes_le()?;
-        assert_eq!(hash_bytes.len(), 32);
-
-        let mut transaction_id = [0u8; 32];
-        transaction_id.copy_from_slice(&hash_bytes);
-        Ok(transaction_id)
+        Ok(C::transaction_id_crh().hash(&self.to_kernel().to_bytes_le()?)?)
     }
 }
 

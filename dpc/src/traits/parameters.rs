@@ -151,7 +151,8 @@ pub trait Parameters: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + 
     type SerialNumber: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
     /// CRH for computing the transaction ID.
-    type TransactionIDCRH: CRH;
+    type TransactionIDCRH: CRH<Output = Self::TransactionID>;
+    type TransactionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;

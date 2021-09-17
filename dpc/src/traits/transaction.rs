@@ -49,5 +49,5 @@ pub trait TransactionScheme<C: Parameters>: Clone + Eq + FromBytes + ToBytes + S
     fn encrypted_records(&self) -> &[Self::EncryptedRecord];
 
     /// Returns the transaction ID.
-    fn to_transaction_id(&self) -> Result<[u8; 32]>;
+    fn to_transaction_id(&self) -> Result<C::TransactionID>;
 }

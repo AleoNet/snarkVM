@@ -67,6 +67,8 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
 
+    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
+
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters;

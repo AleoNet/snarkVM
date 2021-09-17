@@ -388,7 +388,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             };
             database_transaction.push(Op::Insert {
                 col: COL_TRANSACTION_LOCATION,
-                key: transaction.to_transaction_id()?.to_vec(),
+                key: transaction.to_transaction_id()?.to_bytes_le()?,
                 value: to_bytes_le![transaction_location]?.to_vec(),
             });
         }

@@ -189,6 +189,7 @@ impl Parameters for Testnet1Parameters {
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
 
     type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;
+    type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

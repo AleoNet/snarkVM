@@ -104,6 +104,11 @@ impl Network for Testnet1 {
         Self::DPC::ledger_serial_numbers_tree_parameters()
     }
 
+    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH {
+        static TRANSACTIONS_TREE_CRH: OnceCell<<Testnet1 as Network>::TransactionsTreeCRH> = OnceCell::new();
+        TRANSACTIONS_TREE_CRH.get_or_init(|| Self::TransactionsTreeCRH::setup("AleoTransactionsTreeCRH0"))
+    }
+
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {
         static BLOCK_HEADER_CRH: OnceCell<<Testnet1 as Network>::BlockHeaderCRH> = OnceCell::new();
         BLOCK_HEADER_CRH.get_or_init(|| Self::BlockHeaderCRH::setup("BlockHeaderCRH"))
