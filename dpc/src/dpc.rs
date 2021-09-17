@@ -22,14 +22,14 @@ use rand::{CryptoRng, Rng};
 use rayon::prelude::*;
 use std::marker::PhantomData;
 
-pub struct DPC<C: Parameters>(PhantomData<C>);
+pub struct DPC<N: Network>(PhantomData<N>);
 
-impl<C: Parameters> DPCScheme<C> for DPC<C> {
-    type Account = Account<C>;
-    type Authorization = TransactionAuthorization<C>;
-    type Execution = Execution<C>;
-    type StateTransition = StateTransition<C>;
-    type Transaction = Transaction<C>;
+impl<N: Network> DPCScheme<N> for DPC<N> {
+    type Account = Account<N>;
+    type Authorization = TransactionAuthorization<N>;
+    type Execution = Execution<N>;
+    type StateTransition = StateTransition<N>;
+    type Transaction = Transaction<N>;
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
@@ -44,8 +44,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
-        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for noop_private_key in state.noop_private_keys().iter().take(C::NUM_INPUT_RECORDS) {
+        let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for noop_private_key in state.noop_private_keys().iter().take(N::NUM_INPUT_RECORDS) {
             // Fetch the correct private key.
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
@@ -65,13 +65,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<L: LedgerCommitmentsTree<C>, R: Rng + CryptoRng>(
+    fn execute<L: LedgerCommitmentsTree<N>, R: Rng + CryptoRng>(
         authorization: Self::Authorization,
-        executables: &Vec<Executable<C>>,
+        executables: &Vec<Executable<N>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(C::NUM_TOTAL_RECORDS, executables.len());
+        assert_eq!(N::NUM_TOTAL_RECORDS, executables.len());
 
         let execution_timer = start_timer!(|| "DPC::execute");
 
@@ -79,7 +79,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let local_data = authorization.to_local_data(rng)?;
 
         // Execute the programs.
-        let mut executions = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
+        let mut executions = Vec::with_capacity(N::NUM_TOTAL_RECORDS);
         for (i, executable) in executables.iter().enumerate() {
             executions.push(executable.execute(i as u8, &local_data).unwrap());
         }
@@ -102,15 +102,15 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let ledger_digest = ledger.latest_digest()?;
 
         // Compute the ledger membership witnesses.
-        let mut input_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
+        let mut input_witnesses = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
             input_witnesses.push(match record.is_dummy() {
                 true => MerklePath::default(),
                 false => ledger.prove_cm(&record.commitment())?,
             });
         }
 
-        let metadata = TransactionMetadata::new(ledger_digest, C::inner_circuit_id().clone());
+        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
 
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
@@ -131,24 +131,24 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         );
 
         // Compute the inner circuit proof.
-        let inner_proof = C::InnerSNARK::prove(
-            C::inner_circuit_proving_key(),
-            &InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables),
+        let inner_proof = N::InnerSNARK::prove(
+            N::inner_circuit_proving_key(),
+            &InnerCircuit::<N>::new(inner_public_variables.clone(), inner_private_variables),
             rng,
         )?;
 
         // Verify that the inner circuit proof passes.
-        assert!(C::InnerSNARK::verify(
-            C::inner_circuit_verifying_key(),
+        assert!(N::InnerSNARK::verify(
+            N::inner_circuit_verifying_key(),
             &inner_public_variables,
             &inner_proof
         )?);
 
         let transaction_proof = {
             // Construct the outer circuit public and private variables.
-            let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, C::inner_circuit_id());
+            let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, N::inner_circuit_id());
             let outer_private_variables = OuterPrivateVariables::new(
-                C::inner_circuit_verifying_key().clone(),
+                N::inner_circuit_verifying_key().clone(),
                 inner_proof,
                 executions.to_vec(),
                 program_commitment.clone(),
@@ -156,15 +156,15 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 local_data.root().clone(),
             );
 
-            let outer_proof = C::OuterSNARK::prove(
-                C::outer_circuit_proving_key(),
-                &OuterCircuit::<C>::new(outer_public_variables.clone(), outer_private_variables),
+            let outer_proof = N::OuterSNARK::prove(
+                N::outer_circuit_proving_key(),
+                &OuterCircuit::<N>::new(outer_public_variables.clone(), outer_private_variables),
                 rng,
             )?;
 
             // Verify the outer circuit proof passes.
-            assert!(C::OuterSNARK::verify(
-                C::outer_circuit_verifying_key(),
+            assert!(N::OuterSNARK::verify(
+                N::outer_circuit_verifying_key(),
                 &outer_public_variables,
                 &outer_proof
             )?);
@@ -181,7 +181,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         ))
     }
 
-    fn verify<L: LedgerCommitmentsTree<C> + LedgerSerialNumbersTree<C>>(
+    fn verify<L: LedgerCommitmentsTree<N> + LedgerSerialNumbersTree<N>>(
         transaction: &Self::Transaction,
         ledger: &L,
     ) -> bool {
@@ -225,7 +225,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: LedgerCommitmentsTree<C> + LedgerSerialNumbersTree<C> + Sync>(
+    fn verify_transactions<L: LedgerCommitmentsTree<N> + LedgerSerialNumbersTree<N> + Sync>(
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {
@@ -244,13 +244,13 @@ mod tests {
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
 
-    fn transaction_authorization_serialization_test<C: Parameters>() {
+    fn transaction_authorization_serialization_test<N: Network>() {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
         let recipient = Account::new(&mut rng).unwrap();
         let amount = AleoAmount::from_bytes(10);
         let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
-        let authorization = DPC::<C>::authorize(&vec![], &state, &mut rng).unwrap();
+        let authorization = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
 
         // Serialize and deserialize the transaction authorization.
         let deserialized_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();

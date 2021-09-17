@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Parameters, PrivateVariables, ProgramCircuit, PublicVariables};
+use crate::{CircuitError, Network, PrivateVariables, ProgramCircuit, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -22,40 +22,40 @@ use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
-pub struct NoopPrivateVariables<C: Parameters>(PhantomData<C>);
+pub struct NoopPrivateVariables<N: Network>(PhantomData<N>);
 
-impl<C: Parameters> PrivateVariables<C> for NoopPrivateVariables<C> {
+impl<N: Network> PrivateVariables<N> for NoopPrivateVariables<N> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 }
 
-impl<C: Parameters> NoopPrivateVariables<C> {
+impl<N: Network> NoopPrivateVariables<N> {
     pub fn new() -> Self {
         Self(PhantomData)
     }
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
-pub struct NoopCircuit<C: Parameters> {
-    circuit_id: C::ProgramCircuitID,
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+pub struct NoopCircuit<N: Network> {
+    circuit_id: N::ProgramCircuitID,
     #[derivative(Debug = "ignore")]
-    proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <N::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
+impl<N: Network> ProgramCircuit<N> for NoopCircuit<N> {
     /// Initializes a new instance of the noop circuit.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, CircuitError> {
-        let (proving_key, verifying_key) = <C::ProgramSNARK as SNARK>::setup(
-            &NoopAllocatedCircuit::<C>::default(),
-            &mut *C::program_srs::<R>(rng).borrow_mut(),
+        let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
+            &NoopAllocatedCircuit::<N>::default(),
+            &mut *N::program_srs::<R>(rng).borrow_mut(),
         )?;
 
         Ok(Self {
-            circuit_id: <C as Parameters>::program_circuit_id(&verifying_key)?,
+            circuit_id: <N as Network>::program_circuit_id(&verifying_key)?,
             proving_key,
             verifying_key,
         })
@@ -64,77 +64,77 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     /// Loads an instance of the noop circuit.
     fn load() -> Result<Self, CircuitError> {
         Ok(Self {
-            circuit_id: C::noop_circuit_id().clone(),
-            proving_key: C::noop_circuit_proving_key().clone(),
-            verifying_key: C::noop_circuit_verifying_key().clone(),
+            circuit_id: N::noop_circuit_id().clone(),
+            proving_key: N::noop_circuit_proving_key().clone(),
+            verifying_key: N::noop_circuit_verifying_key().clone(),
         })
     }
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &C::ProgramCircuitID {
+    fn circuit_id(&self) -> &N::ProgramCircuitID {
         &self.circuit_id
     }
 
     /// Returns the circuit proving key.
-    fn proving_key(&self) -> &<C::ProgramSNARK as SNARK>::ProvingKey {
+    fn proving_key(&self) -> &<N::ProgramSNARK as SNARK>::ProvingKey {
         &self.proving_key
     }
 
     /// Returns the circuit verifying key.
-    fn verifying_key(&self) -> &<C::ProgramSNARK as SNARK>::VerifyingKey {
+    fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
     }
 
     /// Executes the circuit, returning an proof.
     fn execute(
         &self,
-        public: &PublicVariables<C>,
-        _private: &dyn PrivateVariables<C>,
-    ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
+        public: &PublicVariables<N>,
+        _private: &dyn PrivateVariables<N>,
+    ) -> Result<<N::ProgramSNARK as SNARK>::Proof, CircuitError> {
         // Compute the proof.
         let rng = &mut rand::thread_rng();
-        let allocated_circuit = NoopAllocatedCircuit::<C> { public: public.clone() };
-        let proof = <C::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
+        let allocated_circuit = NoopAllocatedCircuit::<N> { public: public.clone() };
+        let proof = <N::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
         assert!(self.verify(public, &proof));
         Ok(proof)
     }
 
     /// Executes the circuit, returning an proof.
-    fn execute_blank(&self) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
+    fn execute_blank(&self) -> Result<<N::ProgramSNARK as SNARK>::Proof, CircuitError> {
         // Compute the proof.
         let rng = &mut rand::thread_rng();
-        let allocated_circuit = NoopAllocatedCircuit::<C>::default();
-        let proof = <C::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
+        let allocated_circuit = NoopAllocatedCircuit::<N>::default();
+        let proof = <N::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
         Ok(proof)
     }
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: &PublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool {
-        <C::ProgramSNARK as SNARK>::verify(&self.verifying_key.clone().into(), public, proof)
+    fn verify(&self, public: &PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool {
+        <N::ProgramSNARK as SNARK>::verify(&self.verifying_key.clone().into(), public, proof)
             .expect("Failed to verify program execution proof")
     }
 }
 
 #[derive(Derivative)]
-#[derivative(Default(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
-struct NoopAllocatedCircuit<C: Parameters> {
-    public: PublicVariables<C>,
+#[derivative(Default(bound = "N: Network"), Debug(bound = "N: Network"))]
+struct NoopAllocatedCircuit<N: Network> {
+    public: PublicVariables<N>,
 }
 
-impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for NoopAllocatedCircuit<C> {
-    fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
+impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for NoopAllocatedCircuit<N> {
+    fn generate_constraints<CS: ConstraintSystem<N::InnerScalarField>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
         let _record_position =
             UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[self.public.record_position])?;
 
-        let _local_data_commitment_scheme = C::LocalDataCommitmentGadget::alloc_constant(
+        let _local_data_commitment_scheme = N::LocalDataCommitmentGadget::alloc_constant(
             &mut cs.ns(|| "Declare the local data commitment scheme"),
-            || Ok(C::local_data_commitment_scheme().clone()),
+            || Ok(N::local_data_commitment_scheme().clone()),
         )?;
 
-        let _local_data_root = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+        let _local_data_root = <N::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
             cs.ns(|| "Alloc local data root"),
             || Ok(self.public.local_data_root),
         )?;

@@ -14,62 +14,62 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Parameters, Record};
+use crate::{Network, Record};
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CommitmentScheme, EncryptionScheme},
 };
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct InnerPrivateVariables<C: Parameters> {
+#[derivative(Clone(bound = "N: Network"))]
+pub struct InnerPrivateVariables<N: Network> {
     // Inputs records.
-    pub(super) input_records: Vec<Record<C>>,
-    pub(super) input_witnesses: Vec<MerklePath<C::LedgerCommitmentsTreeParameters>>,
-    pub(super) signatures: Vec<C::AccountSignature>,
+    pub(super) input_records: Vec<Record<N>>,
+    pub(super) input_witnesses: Vec<MerklePath<N::LedgerCommitmentsTreeParameters>>,
+    pub(super) signatures: Vec<N::AccountSignature>,
     // Output records.
-    pub(super) output_records: Vec<Record<C>>,
+    pub(super) output_records: Vec<Record<N>>,
     // Encryption of output records.
-    pub(super) encrypted_record_randomizers: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+    pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Commitment to programs and local data.
-    pub(super) program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    pub(super) local_data_leaf_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+    pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    pub(super) local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 }
 
-impl<C: Parameters> InnerPrivateVariables<C> {
+impl<N: Network> InnerPrivateVariables<N> {
     pub fn blank() -> Self {
         Self {
-            input_records: vec![Record::default(); C::NUM_INPUT_RECORDS],
-            input_witnesses: vec![MerklePath::default(); C::NUM_INPUT_RECORDS],
-            signatures: vec![C::AccountSignature::default(); C::NUM_INPUT_RECORDS],
-            output_records: vec![Record::default(); C::NUM_OUTPUT_RECORDS],
+            input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
+            input_witnesses: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
+            signatures: vec![N::AccountSignature::default(); N::NUM_INPUT_RECORDS],
+            output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             encrypted_record_randomizers: vec![
-                <C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
-                C::NUM_OUTPUT_RECORDS
+                <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
+                N::NUM_OUTPUT_RECORDS
             ],
-            program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
+            program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_leaf_randomizers: vec![
-                <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
-                C::NUM_TOTAL_RECORDS
+                <N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
+                N::NUM_TOTAL_RECORDS
             ],
         }
     }
 
     pub fn new(
-        input_records: Vec<Record<C>>,
-        input_witnesses: Vec<MerklePath<C::LedgerCommitmentsTreeParameters>>,
-        signatures: Vec<C::AccountSignature>,
-        output_records: Vec<Record<C>>,
-        encrypted_record_randomizers: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-        program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-        local_data_leaf_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+        input_records: Vec<Record<N>>,
+        input_witnesses: Vec<MerklePath<N::LedgerCommitmentsTreeParameters>>,
+        signatures: Vec<N::AccountSignature>,
+        output_records: Vec<Record<N>>,
+        encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+        program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+        local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Self {
-        assert_eq!(C::NUM_INPUT_RECORDS, input_records.len());
-        assert_eq!(C::NUM_INPUT_RECORDS, input_witnesses.len());
-        assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, output_records.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
-        assert_eq!(C::NUM_TOTAL_RECORDS, local_data_leaf_randomizers.len());
+        assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
+        assert_eq!(N::NUM_INPUT_RECORDS, input_witnesses.len());
+        assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
+        assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
+        assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
+        assert_eq!(N::NUM_TOTAL_RECORDS, local_data_leaf_randomizers.len());
 
         Self {
             input_records,

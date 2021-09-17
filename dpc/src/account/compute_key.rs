@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, Parameters, PrivateKey};
+use crate::{AccountError, Network, PrivateKey};
 use snarkvm_algorithms::SignatureSchemeOperations;
 use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -27,27 +27,27 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct ComputeKey<C: Parameters> {
+pub struct ComputeKey<N: Network> {
     /// pk_sig := G^sk_sig.
-    pk_sig: C::ProgramAffineCurve,
+    pk_sig: N::ProgramAffineCurve,
     /// pr_sig := G^r_sig.
-    pr_sig: C::ProgramAffineCurve,
+    pr_sig: N::ProgramAffineCurve,
     /// sk_prf := RO(G^sk_sig || G^r_sig).
-    sk_prf: C::ProgramScalarField,
+    sk_prf: N::ProgramScalarField,
 }
 
-impl<C: Parameters> ComputeKey<C> {
+impl<N: Network> ComputeKey<N> {
     /// Creates a new account compute key.
     ///
     /// This constructor is currently limited for internal use.
     /// The general convention for deriving a compute key should be from a private key.
-    pub(crate) fn new(pk_sig: C::ProgramAffineCurve, pr_sig: C::ProgramAffineCurve) -> Result<Self, AccountError> {
+    pub(crate) fn new(pk_sig: N::ProgramAffineCurve, pr_sig: N::ProgramAffineCurve) -> Result<Self, AccountError> {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = C::account_signature_scheme()
+        let sk_prf = N::account_signature_scheme()
             .hash_to_scalar_field(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()])?;
 
         // Initialize the compute key.
@@ -55,22 +55,22 @@ impl<C: Parameters> ComputeKey<C> {
     }
 
     /// Derives the account compute key from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
+    pub fn from_private_key(private_key: &PrivateKey<N>) -> Result<Self, AccountError> {
         // Compute G^sk_sig.
-        let pk_sig = C::account_signature_scheme().g_scalar_multiply(&private_key.sk_sig)?;
+        let pk_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.sk_sig)?;
 
         // Compute G^r_sig.
-        let pr_sig = C::account_signature_scheme().g_scalar_multiply(&private_key.r_sig)?;
+        let pr_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.r_sig)?;
 
         Self::new(pk_sig, pr_sig)
     }
 
-    pub fn from_signature(signature: &C::AccountSignature) -> Result<Self, AccountError> {
+    pub fn from_signature(signature: &N::AccountSignature) -> Result<Self, AccountError> {
         // Extract G^sk_sig.
-        let pk_sig = C::AccountSignatureScheme::pk_sig(signature)?;
+        let pk_sig = N::AccountSignatureScheme::pk_sig(signature)?;
 
         // Extract G^r_sig.
-        let pr_sig = C::AccountSignatureScheme::pr_sig(signature)?;
+        let pr_sig = N::AccountSignatureScheme::pr_sig(signature)?;
 
         Self::new(pk_sig, pr_sig)
     }
@@ -78,7 +78,7 @@ impl<C: Parameters> ComputeKey<C> {
     /// Returns `true` if the compute key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(&self) -> bool {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        match C::account_signature_scheme()
+        match N::account_signature_scheme()
             .hash_to_scalar_field(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()])
         {
             Ok(candidate_sk_prf) => self.sk_prf == candidate_sk_prf,
@@ -90,30 +90,30 @@ impl<C: Parameters> ComputeKey<C> {
     }
 
     /// Returns a reference to the signature root public key.
-    pub fn pk_sig(&self) -> &C::ProgramAffineCurve {
+    pub fn pk_sig(&self) -> &N::ProgramAffineCurve {
         &self.pk_sig
     }
 
     /// Returns a reference to the signature root randomizer.
-    pub fn pr_sig(&self) -> &C::ProgramAffineCurve {
+    pub fn pr_sig(&self) -> &N::ProgramAffineCurve {
         &self.pr_sig
     }
 
     /// Returns a reference to the PRF secret key.
-    pub fn sk_prf(&self) -> &C::ProgramScalarField {
+    pub fn sk_prf(&self) -> &N::ProgramScalarField {
         &self.sk_prf
     }
 
     /// Returns the encryption key.
-    pub fn to_encryption_key(&self) -> Result<C::ProgramAffineCurve, AccountError> {
+    pub fn to_encryption_key(&self) -> Result<N::ProgramAffineCurve, AccountError> {
         // Compute G^sk_prf.
-        let pk_prf = C::account_signature_scheme().g_scalar_multiply(&self.sk_prf)?;
+        let pk_prf = N::account_signature_scheme().g_scalar_multiply(&self.sk_prf)?;
 
         Ok(self.pk_sig + self.pr_sig + pk_prf)
     }
 }
 
-impl<C: Parameters> FromBytes for ComputeKey<C> {
+impl<N: Network> FromBytes for ComputeKey<N> {
     /// Reads in an account compute key buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -123,14 +123,14 @@ impl<C: Parameters> FromBytes for ComputeKey<C> {
     }
 }
 
-impl<C: Parameters> ToBytes for ComputeKey<C> {
+impl<N: Network> ToBytes for ComputeKey<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.pk_sig.write_le(&mut writer)?;
         self.pr_sig.write_le(&mut writer)
     }
 }
 
-impl<C: Parameters> fmt::Debug for ComputeKey<C> {
+impl<N: Network> fmt::Debug for ComputeKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -140,7 +140,7 @@ impl<C: Parameters> fmt::Debug for ComputeKey<C> {
     }
 }
 
-impl<C: Parameters> Default for ComputeKey<C> {
+impl<N: Network> Default for ComputeKey<N> {
     fn default() -> Self {
         PrivateKey::new(&mut thread_rng())
             .to_compute_key()

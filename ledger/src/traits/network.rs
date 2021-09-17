@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
-use snarkvm_dpc::Parameters;
+use snarkvm_dpc::Network;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::MaskedCRHGadget;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -31,7 +31,7 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
 
     const POSW_PROOF_SIZE_IN_BYTES: usize;
 
-    type DPC: Parameters;
+    type DPC: Network;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
 
     type Commitment: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;

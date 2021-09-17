@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     define_masked_merkle_tree_parameters,
 };
-use snarkvm_dpc::{testnet1::Testnet1Parameters, Parameters};
+use snarkvm_dpc::{testnet1::Testnet1Parameters, Network};
 use snarkvm_gadgets::algorithms::crh::PedersenCompressedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
@@ -46,29 +46,29 @@ impl Network for Testnet1 {
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     
     type DPC = Testnet1Parameters;
-    type InnerScalarField = <Self::DPC as Parameters>::InnerScalarField;
+    type InnerScalarField = <Self::DPC as Network>::InnerScalarField;
     
-    type Commitment = <Self::DPC as Parameters>::RecordCommitment;
-    type CommitmentsRoot = <Self::DPC as Parameters>::LedgerCommitmentsTreeDigest;
-    type CommitmentsTreeCRH = <Self::DPC as Parameters>::LedgerCommitmentsTreeCRH;
-    type CommitmentsTreeParameters = <Self::DPC as Parameters>::LedgerCommitmentsTreeParameters;
+    type Commitment = <Self::DPC as Network>::RecordCommitment;
+    type CommitmentsRoot = <Self::DPC as Network>::LedgerCommitmentsTreeDigest;
+    type CommitmentsTreeCRH = <Self::DPC as Network>::LedgerCommitmentsTreeCRH;
+    type CommitmentsTreeParameters = <Self::DPC as Network>::LedgerCommitmentsTreeParameters;
 
-    type SerialNumbersRoot = <Self::DPC as Parameters>::LedgerSerialNumbersTreeDigest;
-    type SerialNumbersTreeCRH = <Self::DPC as Parameters>::LedgerSerialNumbersTreeCRH;
-    type SerialNumbersTreeParameters = <Self::DPC as Parameters>::LedgerSerialNumbersTreeParameters;
+    type SerialNumbersRoot = <Self::DPC as Network>::LedgerSerialNumbersTreeDigest;
+    type SerialNumbersTreeCRH = <Self::DPC as Network>::LedgerSerialNumbersTreeCRH;
+    type SerialNumbersTreeParameters = <Self::DPC as Network>::LedgerSerialNumbersTreeParameters;
 
-    type BlockHeaderCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 117, 63>;
+    type BlockHeaderCRH = BHPCompressedCRH<<Self::DPC as Network>::ProgramProjectiveCurve, 117, 63>;
     
-    type MerkleTreeCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 16, 32>;
+    type MerkleTreeCRH = BHPCompressedCRH<<Self::DPC as Network>::ProgramProjectiveCurve, 16, 32>;
 
-    type TransactionsTreeCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 16, 32>;
+    type TransactionsTreeCRH = BHPCompressedCRH<<Self::DPC as Network>::ProgramProjectiveCurve, 16, 32>;
     
     /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
-    type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet1 as Network>::DPC as Parameters>::ProgramProjectiveCurve, 4, 128>;
+    type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet1 as Network>::DPC as Network>::ProgramProjectiveCurve, 4, 128>;
     type MaskedMerkleTreeCRHGadget = PedersenCompressedCRHGadget<
-        <Self::DPC as Parameters>::ProgramProjectiveCurve,
+        <Self::DPC as Network>::ProgramProjectiveCurve,
         Self::InnerScalarField,
-        <Self::DPC as Parameters>::ProgramAffineCurveGadget,
+        <Self::DPC as Network>::ProgramAffineCurveGadget,
         4,
         128
     >;
@@ -77,11 +77,11 @@ impl Network for Testnet1 {
     /// SNARK proof system for PoSW.
     type PoswSNARK = MarlinSNARK<
         Self::InnerScalarField,
-        <<Self as Network>::DPC as Parameters>::OuterScalarField,
-        SonicKZG10<<<Self as Network>::DPC as Parameters>::InnerCurve>,
+        <<Self as Network>::DPC as Network>::OuterScalarField,
+        SonicKZG10<<<Self as Network>::DPC as Network>::InnerCurve>,
         FiatShamirChaChaRng<
             Self::InnerScalarField,
-            <<Self as Network>::DPC as Parameters>::OuterScalarField,
+            <<Self as Network>::DPC as Network>::OuterScalarField,
             Blake2s,
         >,
         MarlinTestnet1Mode,

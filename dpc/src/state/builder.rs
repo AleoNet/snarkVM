@@ -21,18 +21,18 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 
 #[derive(Clone)]
-pub struct StateBuilder<C: Parameters> {
+pub struct StateBuilder<N: Network> {
     /// A list of given inputs for a state transition.
-    inputs: Vec<Input<C>>,
+    inputs: Vec<Input<N>>,
     /// A list of expected outputs for a state transition.
-    outputs: Vec<Output<C>>,
+    outputs: Vec<Output<N>>,
     /// A publicly-visible field with data from the state transition.
     memo: Vec<u8>,
     /// A list of errors accumulated from calling the builder.
     errors: Vec<String>,
 }
 
-impl<C: Parameters> StateBuilder<C> {
+impl<N: Network> StateBuilder<N> {
     ///
     /// Initializes a new instance of `StateBuilder`.
     ///
@@ -48,13 +48,13 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     /// Adds the given input into the builder.
     ///
-    pub fn add_input(mut self, input: Input<C>) -> Self {
+    pub fn add_input(mut self, input: Input<N>) -> Self {
         // Ensure there are no outputs assigned yet, as the builder computes joint serial numbers.
         if !self.outputs.is_empty() {
             self.errors.push("Builder cannot add new inputs after outputs".into());
         }
 
-        match self.inputs.len() < C::NUM_INPUT_RECORDS {
+        match self.inputs.len() < N::NUM_INPUT_RECORDS {
             true => self.inputs.push(input),
             false => self.errors.push("Builder exceeded maximum inputs".into()),
         };
@@ -64,7 +64,7 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     /// Adds the given inputs into the builder.
     ///
-    pub fn add_inputs(mut self, inputs: Vec<Input<C>>) -> Self {
+    pub fn add_inputs(mut self, inputs: Vec<Input<N>>) -> Self {
         for input in inputs {
             self = self.add_input(input);
         }
@@ -74,8 +74,8 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     /// Adds the given output into the builder.
     ///
-    pub fn add_output(mut self, output: Output<C>) -> Self {
-        match self.outputs.len() < C::NUM_OUTPUT_RECORDS {
+    pub fn add_output(mut self, output: Output<N>) -> Self {
+        match self.outputs.len() < N::NUM_OUTPUT_RECORDS {
             true => self.outputs.push(output),
             false => self.errors.push("Builder exceeded maximum outputs".into()),
         };
@@ -85,7 +85,7 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     /// Adds the given outputs into the builder.
     ///
-    pub fn add_outputs(mut self, outputs: Vec<Output<C>>) -> Self {
+    pub fn add_outputs(mut self, outputs: Vec<Output<N>>) -> Self {
         for output in outputs {
             self = self.add_output(output);
         }
@@ -96,7 +96,7 @@ impl<C: Parameters> StateBuilder<C> {
     /// Appends the given data to the memo field in the builder.
     ///
     pub fn append_memo(mut self, data: &Vec<u8>) -> Self {
-        match self.memo.len() < C::MEMO_SIZE_IN_BYTES && (self.memo.len() + data.len()) <= C::MEMO_SIZE_IN_BYTES {
+        match self.memo.len() < N::MEMO_SIZE_IN_BYTES && (self.memo.len() + data.len()) <= N::MEMO_SIZE_IN_BYTES {
             true => self.memo.extend_from_slice(data),
             false => self.errors.push("Builder exceeded maximum memo size".into()),
         };
@@ -106,7 +106,7 @@ impl<C: Parameters> StateBuilder<C> {
     ///
     /// Finalizes the builder and returns a new instance of `State`.
     ///
-    pub fn build<R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<StateTransition<C>> {
+    pub fn build<R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<StateTransition<N>> {
         // Ensure there are no errors in the build process yet.
         if !self.errors.is_empty() {
             for error in &self.errors {
@@ -121,52 +121,52 @@ impl<C: Parameters> StateBuilder<C> {
         // Compute the input records.
         let input_records: Vec<_> = inputs
             .iter()
-            .take(C::NUM_INPUT_RECORDS)
+            .take(N::NUM_INPUT_RECORDS)
             .map(|input| input.record().clone())
             .collect();
 
         // Compute the serial numbers.
         let serial_numbers: Vec<_> = inputs
             .iter()
-            .take(C::NUM_INPUT_RECORDS)
+            .take(N::NUM_INPUT_RECORDS)
             .map(|input| input.serial_number().clone())
             .collect();
 
         // Compute the noop private keys.
         let noop_private_keys: Vec<_> = inputs
             .iter()
-            .take(C::NUM_INPUT_RECORDS)
+            .take(N::NUM_INPUT_RECORDS)
             .map(|input| input.noop_private_key().clone())
             .collect();
 
         // Compute an instance of the output records, commitments, and value balance.
         let (output_records, commitments, value_balance) = {
             // Compute the joint serial numbers.
-            let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-            for serial_number in serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
+            let mut joint_serial_numbers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+            for serial_number in serial_numbers.iter().take(N::NUM_INPUT_RECORDS) {
                 joint_serial_numbers.extend_from_slice(&serial_number.to_bytes_le()?);
             }
 
             // Compute the output records.
-            let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-            for (j, output) in outputs.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
-                let position = (C::NUM_INPUT_RECORDS + j) as u8;
+            let mut output_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+            for (j, output) in outputs.iter().enumerate().take(N::NUM_OUTPUT_RECORDS) {
+                let position = (N::NUM_INPUT_RECORDS + j) as u8;
                 output_records.push(output.to_record(position, &joint_serial_numbers, rng)?);
             }
 
             // Compute the commitments.
             let commitments = output_records
                 .iter()
-                .take(C::NUM_OUTPUT_RECORDS)
+                .take(N::NUM_OUTPUT_RECORDS)
                 .map(|output| output.commitment())
                 .collect();
 
             // Compute the value balance.
             let mut value_balance = AleoAmount::ZERO;
-            for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
+            for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
-            for record in output_records.iter().take(C::NUM_OUTPUT_RECORDS) {
+            for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
                 value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
             }
 
@@ -175,9 +175,9 @@ impl<C: Parameters> StateBuilder<C> {
 
         // Process the memo.
         let mut memo_bytes = self.memo.clone();
-        match memo_bytes.len() > C::MEMO_SIZE_IN_BYTES {
+        match memo_bytes.len() > N::MEMO_SIZE_IN_BYTES {
             true => return Err(anyhow!("Memo size of {} exceeds capacity", memo_bytes.len())),
-            false => memo_bytes.resize(C::MEMO_SIZE_IN_BYTES, 0u8),
+            false => memo_bytes.resize(N::MEMO_SIZE_IN_BYTES, 0u8),
         };
         let memo = Memo::new(&memo_bytes)?;
 
@@ -210,20 +210,20 @@ impl<C: Parameters> StateBuilder<C> {
     /// This method pads a copy of all inputs and outputs up to the requisite number
     /// of inputs and outputs for the transaction.
     ///
-    fn prepare_inputs_and_outputs<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<(Vec<Input<C>>, Vec<Output<C>>)> {
+    fn prepare_inputs_and_outputs<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<(Vec<Input<N>>, Vec<Output<N>>)> {
         // Ensure a valid number of inputs are provided.
-        if self.inputs.len() > C::NUM_INPUT_RECORDS {
+        if self.inputs.len() > N::NUM_INPUT_RECORDS {
             return Err(anyhow!("Builder exceeded maximum number of inputs"));
         }
         // Ensure a valid number of outputs are provided.
-        if self.outputs.len() > C::NUM_OUTPUT_RECORDS {
+        if self.outputs.len() > N::NUM_OUTPUT_RECORDS {
             return Err(anyhow!("Builder exceeded maximum number of outputs"));
         }
 
         // Construct the inputs.
         let mut inputs = self.inputs.clone();
         // Pad the inputs with noop inputs if necessary.
-        while inputs.len() < C::NUM_INPUT_RECORDS {
+        while inputs.len() < N::NUM_INPUT_RECORDS {
             // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
             inputs.push(Input::new_noop(rng)?);
         }
@@ -231,7 +231,7 @@ impl<C: Parameters> StateBuilder<C> {
         // Construct the outputs.
         let mut outputs = self.outputs.clone();
         // Pad the outputs with noop outputs if necessary.
-        while outputs.len() < C::NUM_OUTPUT_RECORDS {
+        while outputs.len() < N::NUM_OUTPUT_RECORDS {
             // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
             outputs.push(Output::new_noop(rng)?);
         }

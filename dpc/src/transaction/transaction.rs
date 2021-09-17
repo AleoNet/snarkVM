@@ -18,8 +18,8 @@ use crate::{
     record::*,
     AleoAmount,
     Memo,
+    Network,
     OuterPublicVariables,
-    Parameters,
     TransactionKernel,
     TransactionMetadata,
     TransactionScheme,
@@ -38,32 +38,32 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct Transaction<C: Parameters> {
+pub struct Transaction<N: Network> {
     /// The transaction kernel.
-    kernel: TransactionKernel<C>,
+    kernel: TransactionKernel<N>,
     /// The transaction metadata.
-    metadata: TransactionMetadata<C>,
+    metadata: TransactionMetadata<N>,
     /// The encrypted output records.
-    encrypted_records: Vec<EncryptedRecord<C>>,
+    encrypted_records: Vec<EncryptedRecord<N>>,
     #[derivative(PartialEq = "ignore")]
     /// Zero-knowledge proof attesting to the validity of the transaction.
-    proof: <C::OuterSNARK as SNARK>::Proof,
+    proof: <N::OuterSNARK as SNARK>::Proof,
 }
 
-impl<C: Parameters> Transaction<C> {
+impl<N: Network> Transaction<N> {
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
-        kernel: TransactionKernel<C>,
-        metadata: TransactionMetadata<C>,
-        encrypted_records: Vec<EncryptedRecord<C>>,
-        proof: <C::OuterSNARK as SNARK>::Proof,
+        kernel: TransactionKernel<N>,
+        metadata: TransactionMetadata<N>,
+        encrypted_records: Vec<EncryptedRecord<N>>,
+        proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Self {
         assert!(kernel.is_valid());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
+        assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_records.len());
 
         Self {
             kernel,
@@ -77,7 +77,7 @@ impl<C: Parameters> Transaction<C> {
     /// the correct network ID, unique serial numbers, unique commitments, and a valid proof.
     pub fn is_valid(&self) -> bool {
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().len() != C::NUM_INPUT_RECORDS {
+        if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -89,7 +89,7 @@ impl<C: Parameters> Transaction<C> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().len() != C::NUM_OUTPUT_RECORDS {
+        if self.commitments().len() != N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -101,14 +101,14 @@ impl<C: Parameters> Transaction<C> {
         }
 
         // Returns `false` if the number of encrypted records in the transaction is incorrect.
-        if self.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
+        if self.encrypted_records().len() != N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of encrypted records");
             return false;
         }
 
         // Returns `false` if the transaction proof is invalid.
-        match C::OuterSNARK::verify(
-            C::outer_circuit_verifying_key(),
+        match N::OuterSNARK::verify(
+            N::outer_circuit_verifying_key(),
             &match OuterPublicVariables::from(&self) {
                 Ok(outer_public_variables) => outer_public_variables,
                 Err(error) => {
@@ -133,44 +133,44 @@ impl<C: Parameters> Transaction<C> {
     }
 
     /// Returns a reference to the kernel of the transaction.
-    pub fn kernel(&self) -> &TransactionKernel<C> {
+    pub fn kernel(&self) -> &TransactionKernel<N> {
         &self.kernel
     }
 
     /// Returns a reference to the metadata of the transaction.
-    pub fn metadata(&self) -> &TransactionMetadata<C> {
+    pub fn metadata(&self) -> &TransactionMetadata<N> {
         &self.metadata
     }
 
     /// Returns a reference to the proof of the transaction.
-    pub fn proof(&self) -> &<C::OuterSNARK as SNARK>::Proof {
+    pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
         &self.proof
     }
 
     /// Returns the encrypted record hashes.
-    pub fn to_encrypted_record_hashes(&self) -> Result<Vec<C::EncryptedRecordDigest>> {
+    pub fn to_encrypted_record_hashes(&self) -> Result<Vec<N::EncryptedRecordDigest>> {
         Ok(self
             .encrypted_records
             .iter()
-            .take(C::NUM_OUTPUT_RECORDS)
+            .take(N::NUM_OUTPUT_RECORDS)
             .map(|e| Ok(e.to_hash()?))
             .collect::<Result<Vec<_>>>()?)
     }
 }
 
-impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
-    type Digest = MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>;
-    type EncryptedRecord = EncryptedRecord<C>;
+impl<N: Network> TransactionScheme<N> for Transaction<N> {
+    type Digest = MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>;
+    type EncryptedRecord = EncryptedRecord<N>;
 
     fn network_id(&self) -> u16 {
         self.kernel.network_id()
     }
 
-    fn serial_numbers(&self) -> &[C::SerialNumber] {
+    fn serial_numbers(&self) -> &[N::SerialNumber] {
         self.kernel.serial_numbers()
     }
 
-    fn commitments(&self) -> &[C::RecordCommitment] {
+    fn commitments(&self) -> &[N::RecordCommitment] {
         self.kernel.commitments()
     }
 
@@ -178,7 +178,7 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
         self.kernel.value_balance()
     }
 
-    fn memo(&self) -> &Memo<C> {
+    fn memo(&self) -> &Memo<N> {
         self.kernel.memo()
     }
 
@@ -186,7 +186,7 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
         self.metadata.ledger_digest()
     }
 
-    fn inner_circuit_id(&self) -> &C::InnerCircuitID {
+    fn inner_circuit_id(&self) -> &N::InnerCircuitID {
         self.metadata.inner_circuit_id()
     }
 
@@ -195,12 +195,12 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
     }
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
-    fn to_transaction_id(&self) -> Result<C::TransactionID> {
-        Ok(C::transaction_id_crh().hash(&self.kernel().to_bytes_le()?)?)
+    fn to_transaction_id(&self) -> Result<N::TransactionID> {
+        Ok(N::transaction_id_crh().hash(&self.kernel().to_bytes_le()?)?)
     }
 }
 
-impl<C: Parameters> ToBytes for Transaction<C> {
+impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.kernel().write_le(&mut writer)?;
@@ -212,7 +212,7 @@ impl<C: Parameters> ToBytes for Transaction<C> {
     }
 }
 
-impl<C: Parameters> FromBytes for Transaction<C> {
+impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the transaction kernel.
@@ -220,19 +220,19 @@ impl<C: Parameters> FromBytes for Transaction<C> {
         // Read the transaction metadata.
         let metadata = FromBytes::read_le(&mut reader)?;
         // Read the encrypted records.
-        let mut encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
+        let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
             encrypted_records.push(FromBytes::read_le(&mut reader)?);
         }
         // Read the transaction proof.
-        let proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
+        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from(kernel, metadata, encrypted_records, proof))
     }
 }
 
 // TODO add debug support for record ciphertexts
-impl<C: Parameters> fmt::Debug for Transaction<C> {
+impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

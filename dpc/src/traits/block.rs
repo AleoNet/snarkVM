@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::BlockHash;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -34,5 +33,5 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     fn transactions(&self) -> &Self::Transactions;
 
     /// Returns the hash of this block.
-    fn to_hash(&self) -> Result<BlockHash>;
+    fn to_hash(&self) -> Result<Self::BlockHash>;
 }

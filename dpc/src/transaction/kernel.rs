@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, Parameters};
+use crate::{prelude::*, Network};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -25,38 +25,38 @@ use std::io::{Read, Result as IoResult, Write};
 /// of the transaction, and implies these values are admissible by the ledger.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct TransactionKernel<C: Parameters> {
+pub struct TransactionKernel<N: Network> {
     /// The network ID.
     network_id: u16,
     /// The serial numbers of the input records.
-    serial_numbers: Vec<C::SerialNumber>,
+    serial_numbers: Vec<N::SerialNumber>,
     /// The commitments of the output records.
-    commitments: Vec<C::RecordCommitment>,
+    commitments: Vec<N::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
     /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
     /// may possess a negative value balance representing tokens being minted.
     value_balance: AleoAmount,
     /// Publicly-visible data associated with the transaction.
-    memo: Memo<C>,
+    memo: Memo<N>,
 }
 
-impl<C: Parameters> TransactionKernel<C> {
+impl<N: Network> TransactionKernel<N> {
     /// Initializes a new instance of a transaction kernel.
     #[inline]
     pub fn new(
-        serial_numbers: Vec<C::SerialNumber>,
-        commitments: Vec<C::RecordCommitment>,
+        serial_numbers: Vec<N::SerialNumber>,
+        commitments: Vec<N::RecordCommitment>,
         value_balance: AleoAmount,
-        memo: Memo<C>,
+        memo: Memo<N>,
     ) -> Result<Self> {
         // Construct the transaction kernel.
         let kernel = Self {
-            network_id: C::NETWORK_ID,
+            network_id: N::NETWORK_ID,
             serial_numbers,
             commitments,
             value_balance,
@@ -67,7 +67,7 @@ impl<C: Parameters> TransactionKernel<C> {
         match kernel.is_valid() {
             true => Ok(kernel),
             false => Err(
-                DPCError::InvalidKernel(C::NETWORK_ID, kernel.serial_numbers.len(), kernel.commitments.len()).into(),
+                DPCError::InvalidKernel(N::NETWORK_ID, kernel.serial_numbers.len(), kernel.commitments.len()).into(),
             ),
         }
     }
@@ -75,9 +75,9 @@ impl<C: Parameters> TransactionKernel<C> {
     /// Returns `true` if the transaction kernel is well-formed.
     #[inline]
     pub fn is_valid(&self) -> bool {
-        self.network_id == C::NETWORK_ID
-            && self.serial_numbers.len() == C::NUM_INPUT_RECORDS
-            && self.commitments.len() == C::NUM_OUTPUT_RECORDS
+        self.network_id == N::NETWORK_ID
+            && self.serial_numbers.len() == N::NUM_INPUT_RECORDS
+            && self.commitments.len() == N::NUM_OUTPUT_RECORDS
     }
 
     /// Returns the network ID.
@@ -88,13 +88,13 @@ impl<C: Parameters> TransactionKernel<C> {
 
     /// Returns a reference to the serial numbers.
     #[inline]
-    pub fn serial_numbers(&self) -> &Vec<C::SerialNumber> {
+    pub fn serial_numbers(&self) -> &Vec<N::SerialNumber> {
         &self.serial_numbers
     }
 
     /// Returns a reference to the commitments.
     #[inline]
-    pub fn commitments(&self) -> &Vec<C::RecordCommitment> {
+    pub fn commitments(&self) -> &Vec<N::RecordCommitment> {
         &self.commitments
     }
 
@@ -105,7 +105,7 @@ impl<C: Parameters> TransactionKernel<C> {
     }
 
     /// Returns a reference to the memo.
-    pub fn memo(&self) -> &Memo<C> {
+    pub fn memo(&self) -> &Memo<N> {
         &self.memo
     }
 
@@ -130,14 +130,14 @@ impl<C: Parameters> TransactionKernel<C> {
 
         // Compute the joint serial numbers.
         let mut joint_serial_numbers = vec![];
-        for serial_number in self.serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
+        for serial_number in self.serial_numbers.iter().take(N::NUM_INPUT_RECORDS) {
             joint_serial_numbers.extend_from_slice(&serial_number.to_bytes_le()?);
         }
         Ok(joint_serial_numbers)
     }
 }
 
-impl<C: Parameters> ToBytes for TransactionKernel<C> {
+impl<N: Network> ToBytes for TransactionKernel<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the correct number of serial numbers and commitments are provided.
@@ -155,28 +155,28 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
     }
 }
 
-impl<C: Parameters> FromBytes for TransactionKernel<C> {
+impl<N: Network> FromBytes for TransactionKernel<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let network_id: u16 = FromBytes::read_le(&mut reader)?;
 
         // Ensure the correct network ID is read in.
-        if network_id != C::NETWORK_ID {
-            return Err(DPCError::InvalidKernel(network_id, C::NUM_INPUT_RECORDS, C::NUM_OUTPUT_RECORDS).into());
+        if network_id != N::NETWORK_ID {
+            return Err(DPCError::InvalidKernel(network_id, N::NUM_INPUT_RECORDS, N::NUM_OUTPUT_RECORDS).into());
         }
 
-        let mut serial_numbers = Vec::<C::SerialNumber>::with_capacity(C::NUM_INPUT_RECORDS);
-        for _ in 0..C::NUM_INPUT_RECORDS {
+        let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut commitments = Vec::<C::RecordCommitment>::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
+        let mut commitments = Vec::<N::RecordCommitment>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
             commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memo: Memo<C> = FromBytes::read_le(&mut reader)?;
+        let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::new(serial_numbers, commitments, value_balance, memo)
             .expect("Failed to initialize a transaction kernel"))

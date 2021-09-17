@@ -21,28 +21,28 @@ use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct StateTransition<C: Parameters> {
-    pub(super) kernel: TransactionKernel<C>,
-    pub(super) input_records: Vec<Record<C>>,
-    pub(super) output_records: Vec<Record<C>>,
-    pub(super) noop_private_keys: Vec<Option<PrivateKey<C>>>,
+pub struct StateTransition<N: Network> {
+    pub(super) kernel: TransactionKernel<N>,
+    pub(super) input_records: Vec<Record<N>>,
+    pub(super) output_records: Vec<Record<N>>,
+    pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub(super) executables: Vec<Executable<C>>,
+    pub(super) executables: Vec<Executable<N>>,
 }
 
-impl<C: Parameters> StateTransition<C> {
+impl<N: Network> StateTransition<N> {
     /// Returns a new state transition with no operations performed.
     pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         Ok(Self::builder().build(rng)?)
     }
 
     /// Returns a new state transition that mints the given amount to the recipient.
-    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<C>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
+    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         Ok(Self::builder()
             .add_output(Output::new(recipient, amount, Payload::default(), None)?)
             .build(rng)?)
@@ -50,18 +50,18 @@ impl<C: Parameters> StateTransition<C> {
 
     /// Returns a new state transition that transfers a given amount of Aleo credits from a sender to a recipient.
     pub fn new_transfer<R: Rng + CryptoRng>(
-        sender: &PrivateKey<C>,
-        records: &Vec<Record<C>>,
-        recipient: Address<C>,
+        sender: &PrivateKey<N>,
+        records: &Vec<Record<N>>,
+        recipient: Address<N>,
         amount: AleoAmount,
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
-        assert!(records.len() <= C::NUM_INPUT_RECORDS);
+        assert!(records.len() <= N::NUM_INPUT_RECORDS);
 
         // Calculate the available balance of the sender.
         let mut balance = AleoAmount::ZERO;
-        let mut inputs = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut inputs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for record in records {
             balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
             inputs.push(Input::new(&sender.to_compute_key()?, record.clone(), None)?);
@@ -92,32 +92,32 @@ impl<C: Parameters> StateTransition<C> {
     }
 
     /// Returns a new instance of `StateBuilder`.
-    pub fn builder() -> StateBuilder<C> {
+    pub fn builder() -> StateBuilder<N> {
         StateBuilder::new()
     }
 
     /// Returns a reference to the transaction kernel.
-    pub fn kernel(&self) -> &TransactionKernel<C> {
+    pub fn kernel(&self) -> &TransactionKernel<N> {
         &self.kernel
     }
 
     /// Returns a reference to the input records.
-    pub fn input_records(&self) -> &Vec<Record<C>> {
+    pub fn input_records(&self) -> &Vec<Record<N>> {
         &self.input_records
     }
 
     /// Returns a reference to the output records.
-    pub fn output_records(&self) -> &Vec<Record<C>> {
+    pub fn output_records(&self) -> &Vec<Record<N>> {
         &self.output_records
     }
 
     /// Returns a reference to the noop private keys.
-    pub fn noop_private_keys(&self) -> &Vec<Option<PrivateKey<C>>> {
+    pub fn noop_private_keys(&self) -> &Vec<Option<PrivateKey<N>>> {
         &self.noop_private_keys
     }
 
     /// Returns a reference to the executables.
-    pub fn executables(&self) -> &Vec<Executable<C>> {
+    pub fn executables(&self) -> &Vec<Executable<N>> {
         &self.executables
     }
 }

@@ -31,7 +31,7 @@ fn test_testnet1_inner_circuit_id_sanity_check() {
         248, 38, 233, 209, 152, 143, 211, 182, 12, 9, 67, 81, 141, 63, 83, 73, 202, 36, 42, 241, 145, 34, 232, 155, 99,
         85, 212, 0, 242, 37, 246, 65, 110, 96, 43, 131, 129, 55, 252, 114, 227, 62, 168, 22, 183, 193, 178, 0,
     ];
-    let candidate_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
+    let candidate_inner_circuit_id = <Testnet1Parameters as Network>::inner_circuit_id()
         .to_bytes_le()
         .unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -256,7 +256,7 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet1Parameters as Parameters>::InnerSNARK::setup(
+    let inner_snark_parameters = <Testnet1Parameters as Network>::InnerSNARK::setup(
         &InnerCircuit::<Testnet1Parameters>::blank(),
         &mut SRS::CircuitSpecific(&mut rng),
     )
@@ -265,11 +265,11 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_vk = inner_snark_parameters.1.clone();
 
     // NOTE: Do not change this to `Testnet1Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
+    let inner_circuit_id = <Testnet1Parameters as Network>::inner_circuit_id_crh()
         .hash_bits(&inner_snark_vk.to_minimal_bits())
         .unwrap();
 
-    let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
+    let inner_snark_proof = <Testnet1Parameters as Network>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(inner_public_variables.clone(), inner_private_variables),
         &mut rng,

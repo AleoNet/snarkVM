@@ -125,9 +125,9 @@ version = "0.9"
 [dependencies.thiserror]
 version = "1.0"
 
-[dev-dependencies.snarkvm-ledger]
-path = "../ledger"
-default-features = false
+#[dev-dependencies.snarkvm-ledger]
+#path = "../ledger"
+#default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.5"

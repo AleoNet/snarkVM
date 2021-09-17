@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{BlockHash, BlockScheme};
-use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Parameters};
+use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Network};
 
 use anyhow::Result;
 use std::path::Path;
 
-pub trait LedgerScheme<C: Parameters>: LedgerCommitmentsTree<C> + LedgerSerialNumbersTree<C> + Sized {
+pub trait LedgerScheme<C: Network>: LedgerCommitmentsTree<C> + LedgerSerialNumbersTree<C> + Sized {
     type Block: BlockScheme;
 
     /// Instantiates a new ledger with a genesis block.

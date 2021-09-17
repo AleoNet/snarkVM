@@ -17,9 +17,9 @@
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     InnerPublicVariables,
+    Network,
     NoopProgram,
     OuterPublicVariables,
-    Parameters,
     PublicVariables,
 };
 use snarkvm_algorithms::{
@@ -63,19 +63,19 @@ use std::{cell::RefCell, rc::Rc};
 
 define_merkle_tree_parameters!(
     ProgramIDMerkleTreeParameters,
-    <Testnet1Parameters as Parameters>::ProgramCircuitIDTreeCRH,
+    <Testnet1Parameters as Network>::ProgramCircuitIDTreeCRH,
     8
 );
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <Testnet1Parameters as Parameters>::LedgerCommitmentsTreeCRH,
+    <Testnet1Parameters as Network>::LedgerCommitmentsTreeCRH,
     32
 );
 
 define_merkle_tree_parameters!(
     SerialNumberMerkleTreeParameters,
-    <Testnet1Parameters as Parameters>::LedgerSerialNumbersTreeCRH,
+    <Testnet1Parameters as Network>::LedgerSerialNumbersTreeCRH,
     32
 );
 
@@ -83,7 +83,7 @@ define_merkle_tree_parameters!(
 pub struct Testnet1Parameters;
 
 #[rustfmt::skip]
-impl Parameters for Testnet1Parameters {
+impl Network for Testnet1Parameters {
     const NETWORK_ID: u16 = 1u16;
     
     const NUM_INPUT_RECORDS: usize = 2;
@@ -198,7 +198,7 @@ impl Parameters for Testnet1Parameters {
     dpc_snark_setup!{Testnet1Parameters, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
-        static INNER_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
+        static INNER_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
             .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements"))
@@ -210,24 +210,24 @@ impl Parameters for Testnet1Parameters {
     }
     
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
-        static NOOP_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Parameters>::ProgramCircuitID> = OnceCell::new();
+        static NOOP_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Network>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
 
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
-        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::ProgramCircuitTreeParameters> = OnceCell::new();
+        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
 
     dpc_setup!{Testnet1Parameters, ledger_commitments_tree_crh, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
     fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters {
-        static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::LedgerCommitmentsTreeParameters> = OnceCell::new();
+        static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Network>::LedgerCommitmentsTreeParameters> = OnceCell::new();
         LEDGER_COMMITMENTS_TREE_PARAMETERS.get_or_init(|| Self::LedgerCommitmentsTreeParameters::from(Self::ledger_commitments_tree_crh().clone()))
     }
 
     dpc_setup!{Testnet1Parameters, ledger_serial_numbers_tree_crh, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
     fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters {
-        static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
+        static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Network>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
         LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS.get_or_init(|| Self::LedgerSerialNumbersTreeParameters::from(Self::ledger_serial_numbers_tree_crh().clone()))
     }
 

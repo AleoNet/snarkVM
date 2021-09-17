@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{DPCError, NoopCircuit, Parameters, ProgramCircuit};
+use snarkvm_dpc::{DPCError, Network, NoopCircuit, ProgramCircuit};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -23,7 +23,7 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     let noop_circuit = NoopCircuit::<C>::setup(rng)?;

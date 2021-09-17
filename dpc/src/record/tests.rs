@@ -19,8 +19,8 @@ use crate::{
     testnet2::*,
     Account,
     AccountScheme,
+    Network,
     NoopProgram,
-    Parameters,
     Payload,
     ProgramScheme,
     Record,
@@ -50,9 +50,7 @@ fn test_record_encryption() {
 
         // Sample a new record commitment randomness.
         let commitment_randomness =
-            <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(
-                &mut rng,
-            );
+            <<Testnet2Parameters as Network>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(&mut rng);
 
         let given_record = Record::new_input(
             noop_program.program_id(),
@@ -60,7 +58,7 @@ fn test_record_encryption() {
             false,
             value,
             Payload::from_bytes_le(&payload).unwrap(),
-            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+            <Testnet2Parameters as Network>::serial_number_nonce_crh()
                 .hash(&rng.gen::<[u8; 32]>())
                 .unwrap(),
             commitment_randomness,

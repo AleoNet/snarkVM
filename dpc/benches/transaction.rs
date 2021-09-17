@@ -24,17 +24,17 @@ use criterion::Criterion;
 use rand::thread_rng;
 use std::sync::Arc;
 
-fn coinbase_transaction<C: Parameters>(
-    ledger: &Ledger<C, MemDb>,
-    recipient: Address<C>,
+fn coinbase_transaction<N: Network>(
+    ledger: &Ledger<N, MemDb>,
+    recipient: Address<N>,
     value: u64,
-) -> Result<Transaction<C>, DPCError> {
+) -> Result<Transaction<N>, DPCError> {
     let rng = &mut thread_rng();
 
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-    let authorization = DPC::<C>::authorize(&vec![], &state, rng)?;
-    let transaction = DPC::<C>::execute(authorization, state.executables(), ledger, rng)?;
+    let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
+    let transaction = DPC::<N>::execute(authorization, state.executables(), ledger, rng)?;
 
     Ok(transaction)
 }

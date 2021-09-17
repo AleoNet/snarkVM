@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Memo, Parameters};
+use crate::{AleoAmount, Memo, Network};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::hash::Hash;
 
-pub trait TransactionScheme<C: Parameters>: Clone + Eq + FromBytes + ToBytes + Send + Sync {
+pub trait TransactionScheme<N: Network>: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
 
@@ -28,26 +28,26 @@ pub trait TransactionScheme<C: Parameters>: Clone + Eq + FromBytes + ToBytes + S
     fn network_id(&self) -> u16;
 
     /// Returns the old serial numbers.
-    fn serial_numbers(&self) -> &[C::SerialNumber];
+    fn serial_numbers(&self) -> &[N::SerialNumber];
 
     /// Returns the new commitments.
-    fn commitments(&self) -> &[C::RecordCommitment];
+    fn commitments(&self) -> &[N::RecordCommitment];
 
     /// Returns the value balance in the transaction.
     fn value_balance(&self) -> &AleoAmount;
 
     /// Returns the memorandum.
-    fn memo(&self) -> &Memo<C>;
+    fn memo(&self) -> &Memo<N>;
 
     /// Returns the ledger digest.
     fn ledger_digest(&self) -> &Self::Digest;
 
     /// Returns the inner circuit ID.
-    fn inner_circuit_id(&self) -> &C::InnerCircuitID;
+    fn inner_circuit_id(&self) -> &N::InnerCircuitID;
 
     /// Returns the encrypted records
     fn encrypted_records(&self) -> &[Self::EncryptedRecord];
 
     /// Returns the transaction ID.
-    fn to_transaction_id(&self) -> Result<C::TransactionID>;
+    fn to_transaction_id(&self) -> Result<N::TransactionID>;
 }

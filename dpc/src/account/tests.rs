@@ -16,7 +16,7 @@
 
 #[cfg(test)]
 mod testnet1 {
-    use crate::{testnet1::Testnet1Parameters, Account, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
+    use crate::{testnet1::Testnet1Parameters, Account, AccountScheme, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::ToBytes;
@@ -221,7 +221,7 @@ mod testnet1 {
 
 #[cfg(test)]
 mod testnet2 {
-    use crate::{testnet2::Testnet2Parameters, Account, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
+    use crate::{testnet2::Testnet2Parameters, Account, AccountScheme, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::ToBytes;

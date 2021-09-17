@@ -31,7 +31,7 @@ pub enum BlockError {
     Message(String),
 
     #[error("{}", _0)]
-    TransactionError(#[from] snarkvm_dpc::TransactionError),
+    TransactionError(#[from] crate::TransactionError),
 
     #[error("block number {} has not been mined yet", _0)]
     InvalidBlockNumber(u32),

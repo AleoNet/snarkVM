@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ledger::*, prelude::*, testnet2::Testnet2};
-use snarkvm_dpc::{parameters::testnet2::Testnet2Parameters, Transaction};
+use snarkvm_dpc::{Network::testnet2::Testnet2Parameters, Transaction};
 use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 
 use rand::thread_rng;

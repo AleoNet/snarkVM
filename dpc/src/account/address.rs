@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountError, ComputeKey, Parameters, PrivateKey, ViewKey};
+use crate::{account_format, AccountError, ComputeKey, Network, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -30,111 +30,111 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: Parameters"),
-    Copy(bound = "C: Parameters"),
-    Clone(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Default(bound = "N: Network"),
+    Copy(bound = "N: Network"),
+    Clone(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct Address<C: Parameters>(<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
+pub struct Address<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
 
-impl<C: Parameters> Address<C> {
+impl<N: Network> Address<N> {
     /// Derives the account address from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
+    pub fn from_private_key(private_key: &PrivateKey<N>) -> Result<Self, AccountError> {
         Self::from_compute_key(&private_key.to_compute_key()?)
     }
 
     /// Derives the account address from an account compute key.
-    pub fn from_compute_key(compute_key: &ComputeKey<C>) -> Result<Self, AccountError> {
+    pub fn from_compute_key(compute_key: &ComputeKey<N>) -> Result<Self, AccountError> {
         Ok(Self(compute_key.to_encryption_key()?))
     }
 
     /// Derives the account address from an account view key.
-    pub fn from_view_key(view_key: &ViewKey<C>) -> Result<Self, AccountError> {
+    pub fn from_view_key(view_key: &ViewKey<N>) -> Result<Self, AccountError> {
         // TODO (howardwu): This operation can be optimized by precomputing powers in ECIES native impl.
         //  Optimizing this will also speed up encryption.
-        Ok(Self(C::account_encryption_scheme().generate_public_key(&*view_key)?))
+        Ok(Self(N::account_encryption_scheme().generate_public_key(&*view_key)?))
     }
 
     /// Verifies a signature on a message signed by the account view key.
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
-    pub fn verify_signature(&self, message: &[u8], signature: &C::AccountSignature) -> Result<bool, AccountError> {
-        Ok(C::account_signature_scheme().verify(&self.0, message, signature)?)
+    pub fn verify_signature(&self, message: &[u8], signature: &N::AccountSignature) -> Result<bool, AccountError> {
+        Ok(N::account_signature_scheme().verify(&self.0, message, signature)?)
     }
 
     /// Returns the address as an encryption public key.
-    pub fn encryption_key(&self) -> <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
+    pub fn encryption_key(&self) -> <N::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         self.0
     }
 }
 
-impl<C: Parameters> TryFrom<PrivateKey<C>> for Address<C> {
+impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {
     type Error = AccountError;
 
     /// Derives the account address from an account private key.
-    fn try_from(private_key: PrivateKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
         Self::try_from(&private_key)
     }
 }
 
-impl<C: Parameters> TryFrom<&PrivateKey<C>> for Address<C> {
+impl<N: Network> TryFrom<&PrivateKey<N>> for Address<N> {
     type Error = AccountError;
 
     /// Derives the account address from an account private key.
-    fn try_from(private_key: &PrivateKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
         Self::from_private_key(private_key)
     }
 }
 
-impl<C: Parameters> TryFrom<ComputeKey<C>> for Address<C> {
+impl<N: Network> TryFrom<ComputeKey<N>> for Address<N> {
     type Error = AccountError;
 
     /// Derives the account address from an account compute key.
-    fn try_from(compute_key: ComputeKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(compute_key: ComputeKey<N>) -> Result<Self, Self::Error> {
         Self::try_from(&compute_key)
     }
 }
 
-impl<C: Parameters> TryFrom<&ComputeKey<C>> for Address<C> {
+impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
     type Error = AccountError;
 
     /// Derives the account address from an account compute key.
-    fn try_from(compute_key: &ComputeKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(compute_key: &ComputeKey<N>) -> Result<Self, Self::Error> {
         Self::from_compute_key(compute_key)
     }
 }
 
-impl<C: Parameters> TryFrom<ViewKey<C>> for Address<C> {
+impl<N: Network> TryFrom<ViewKey<N>> for Address<N> {
     type Error = AccountError;
 
     /// Derives the account address from an account view key.
-    fn try_from(view_key: ViewKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(view_key: ViewKey<N>) -> Result<Self, Self::Error> {
         Self::try_from(&view_key)
     }
 }
 
-impl<C: Parameters> TryFrom<&ViewKey<C>> for Address<C> {
+impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
     type Error = AccountError;
 
     /// Derives the account address from an account view key.
-    fn try_from(view_key: &ViewKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
         Self::from_view_key(view_key)
     }
 }
 
-impl<C: Parameters> FromBytes for Address<C> {
+impl<N: Network> FromBytes for Address<N> {
     /// Reads in an account address buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = C::ProgramBaseField::read_le(&mut reader)?;
+        let x_coordinate = N::ProgramBaseField::read_le(&mut reader)?;
 
-        if let Some(element) = C::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
+        if let Some(element) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(Self(element));
             }
         }
 
-        if let Some(element) = C::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
+        if let Some(element) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(Self(element));
             }
@@ -144,13 +144,13 @@ impl<C: Parameters> FromBytes for Address<C> {
     }
 }
 
-impl<C: Parameters> ToBytes for Address<C> {
+impl<N: Network> ToBytes for Address<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.0.to_x_coordinate().write_le(&mut writer)
     }
 }
 
-impl<C: Parameters> FromStr for Address<C> {
+impl<N: Network> FromStr for Address<N> {
     type Err = AccountError;
 
     /// Reads in an account address string.
@@ -174,7 +174,7 @@ impl<C: Parameters> FromStr for Address<C> {
     }
 }
 
-impl<C: Parameters> fmt::Display for Address<C> {
+impl<N: Network> fmt::Display for Address<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
         let mut encryption_key = [0u8; 32];
@@ -191,14 +191,14 @@ impl<C: Parameters> fmt::Display for Address<C> {
     }
 }
 
-impl<C: Parameters> fmt::Debug for Address<C> {
+impl<N: Network> fmt::Debug for Address<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Address {{ encryption_key: {:?} }}", self.0)
     }
 }
 
-impl<C: Parameters> Deref for Address<C> {
-    type Target = <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey;
+impl<N: Network> Deref for Address<N> {
+    type Target = <N::AccountEncryptionScheme as EncryptionScheme>::PublicKey;
 
     fn deref(&self) -> &Self::Target {
         &self.0

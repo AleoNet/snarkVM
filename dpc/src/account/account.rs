@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
+use crate::{AccountError, AccountScheme, Address, Network, PrivateKey, ViewKey};
 
 use rand::{CryptoRng, Rng};
 use std::{
@@ -23,17 +23,17 @@ use std::{
 };
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct Account<C: Parameters> {
-    private_key: PrivateKey<C>,
-    pub view_key: ViewKey<C>,
-    pub address: Address<C>,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct Account<N: Network> {
+    private_key: PrivateKey<N>,
+    pub view_key: ViewKey<N>,
+    pub address: Address<N>,
 }
 
-impl<C: Parameters> AccountScheme for Account<C> {
-    type Address = Address<C>;
-    type PrivateKey = PrivateKey<C>;
-    type ViewKey = ViewKey<C>;
+impl<N: Network> AccountScheme for Account<N> {
+    type Address = Address<N>;
+    type PrivateKey = PrivateKey<N>;
+    type ViewKey = ViewKey<N>;
 
     /// Creates a new account.
     fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError> {
@@ -46,11 +46,11 @@ impl<C: Parameters> AccountScheme for Account<C> {
     }
 }
 
-impl<C: Parameters> TryFrom<PrivateKey<C>> for Account<C> {
+impl<N: Network> TryFrom<PrivateKey<N>> for Account<N> {
     type Error = AccountError;
 
     /// Creates an account from a private key.
-    fn try_from(private_key: PrivateKey<C>) -> Result<Self, Self::Error> {
+    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
         let view_key = ViewKey::try_from(&private_key)?;
         let address = Address::try_from(&private_key)?;
 
@@ -62,7 +62,7 @@ impl<C: Parameters> TryFrom<PrivateKey<C>> for Account<C> {
     }
 }
 
-impl<C: Parameters> fmt::Display for Account<C> {
+impl<N: Network> fmt::Display for Account<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -72,7 +72,7 @@ impl<C: Parameters> fmt::Display for Account<C> {
     }
 }
 
-impl<C: Parameters> fmt::Debug for Account<C> {
+impl<N: Network> fmt::Debug for Account<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

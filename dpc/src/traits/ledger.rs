@@ -14,29 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
+use crate::Network;
 use snarkvm_algorithms::merkle_tree::MerklePath;
 
 use anyhow::Result;
 
 /// The ledger commitments tree is a core state tree of the ledger.
-pub trait LedgerCommitmentsTree<C: Parameters>: Sized {
+pub trait LedgerCommitmentsTree<N: Network>: Sized {
     /// Return the latest state root of the ledger commitments tree.
-    fn latest_digest(&self) -> Result<C::LedgerCommitmentsTreeDigest>;
+    fn latest_digest(&self) -> Result<N::LedgerCommitmentsTreeDigest>;
 
     /// Check that st_{ts} is a valid state root for some (past) ledger commitments tree.
-    fn is_valid_digest(&self, digest: &C::LedgerCommitmentsTreeDigest) -> bool;
+    fn is_valid_digest(&self, digest: &N::LedgerCommitmentsTreeDigest) -> bool;
 
     /// Returns true if the given commitment exists in the ledger commitments tree.
-    fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool;
+    fn contains_commitment(&self, commitment: &N::RecordCommitment) -> bool;
 
     /// Returns the Merkle path to the latest state root for a given record commitment,
     /// if it exists in the ledger commitments tree.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::LedgerCommitmentsTreeParameters>>;
+    fn prove_cm(&self, cm: &N::RecordCommitment) -> Result<MerklePath<N::LedgerCommitmentsTreeParameters>>;
 }
 
 /// The ledger serial numbers tree is a core state tree of the ledger.
-pub trait LedgerSerialNumbersTree<C: Parameters>: Sized {
+pub trait LedgerSerialNumbersTree<N: Network>: Sized {
     /// Returns true if the given serial number exists in the ledger serial numbers tree.
-    fn contains_serial_number(&self, serial_number: &C::SerialNumber) -> bool;
+    fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool;
 }

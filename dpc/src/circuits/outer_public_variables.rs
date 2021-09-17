@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPublicVariables, Parameters, Transaction, TransactionScheme};
+use crate::{InnerPublicVariables, Network, Transaction, TransactionScheme};
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
@@ -22,13 +22,13 @@ use snarkvm_utilities::ToBits;
 use anyhow::Result;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct OuterPublicVariables<C: Parameters> {
-    pub(super) inner_public_variables: InnerPublicVariables<C>,
-    pub(super) inner_circuit_id: C::InnerCircuitID,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct OuterPublicVariables<N: Network> {
+    pub(super) inner_public_variables: InnerPublicVariables<N>,
+    pub(super) inner_circuit_id: N::InnerCircuitID,
 }
 
-impl<C: Parameters> OuterPublicVariables<C> {
+impl<N: Network> OuterPublicVariables<N> {
     pub fn blank() -> Self {
         // These inner circuit public variables are allocated as private variables in the outer circuit,
         // as they are not included in the transaction broadcast to the ledger.
@@ -38,20 +38,20 @@ impl<C: Parameters> OuterPublicVariables<C> {
 
         Self {
             inner_public_variables,
-            inner_circuit_id: C::InnerCircuitID::default(),
+            inner_circuit_id: N::InnerCircuitID::default(),
         }
     }
 
-    pub fn new(inner_public_variables: &InnerPublicVariables<C>, inner_circuit_id: &C::InnerCircuitID) -> Self {
-        assert_eq!(C::NUM_OUTPUT_RECORDS, inner_public_variables.kernel.commitments().len());
+    pub fn new(inner_public_variables: &InnerPublicVariables<N>, inner_circuit_id: &N::InnerCircuitID) -> Self {
+        assert_eq!(N::NUM_OUTPUT_RECORDS, inner_public_variables.kernel.commitments().len());
         assert_eq!(
-            C::NUM_OUTPUT_RECORDS,
+            N::NUM_OUTPUT_RECORDS,
             inner_public_variables.encrypted_record_hashes.len()
         );
 
         // These inner circuit public variables are allocated as private variables in the outer circuit,
         // as they are not included in the transaction broadcast to the ledger.
-        let mut inner_public_variables: InnerPublicVariables<C> = inner_public_variables.clone();
+        let mut inner_public_variables: InnerPublicVariables<N> = inner_public_variables.clone();
         inner_public_variables.program_commitment = None;
         inner_public_variables.local_data_root = None;
 
@@ -61,7 +61,7 @@ impl<C: Parameters> OuterPublicVariables<C> {
         }
     }
 
-    pub fn from(transaction: &Transaction<C>) -> Result<Self> {
+    pub fn from(transaction: &Transaction<N>) -> Result<Self> {
         let encrypted_record_hashes = transaction.to_encrypted_record_hashes()?;
 
         Ok(Self {
@@ -79,11 +79,11 @@ impl<C: Parameters> OuterPublicVariables<C> {
     }
 }
 
-impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterPublicVariables<C>
+impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables<N>
 where
-    MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
 {
-    fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
+    fn to_field_elements(&self) -> Result<Vec<N::OuterScalarField>, ConstraintFieldError> {
         // In the outer circuit, these two variables must be allocated as witness,
         // as they are not included in the transaction.
         debug_assert!(self.inner_public_variables.program_commitment.is_none());
@@ -99,7 +99,7 @@ where
         //
         // Alloc the original inputs as bits, then pack them into the new field, in little-endian format.
         for inner_snark_fe in &self.inner_public_variables.to_field_elements()? {
-            v.extend_from_slice(&ToConstraintField::<C::OuterScalarField>::to_field_elements(
+            v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
                 inner_snark_fe.to_bits_le().as_slice(),
             )?);
         }

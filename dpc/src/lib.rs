@@ -75,8 +75,8 @@ pub use dpc::*;
 pub mod errors;
 pub use errors::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod network;
+pub use network::*;
 
 pub mod program;
 pub use program::*;

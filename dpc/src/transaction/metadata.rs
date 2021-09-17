@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
+use crate::Network;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -24,24 +24,24 @@ use std::io::{Read, Result as IoResult, Write};
 /// for verifying the validity of the transaction.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct TransactionMetadata<C: Parameters> {
+pub struct TransactionMetadata<N: Network> {
     /// The root of the ledger commitment tree.
-    ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
+    ledger_digest: MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
-    inner_circuit_id: C::InnerCircuitID,
+    inner_circuit_id: N::InnerCircuitID,
 }
 
-impl<C: Parameters> TransactionMetadata<C> {
+impl<N: Network> TransactionMetadata<N> {
     /// Initializes a new instance of transaction metadata.
     #[inline]
     pub fn new(
-        ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
-        inner_circuit_id: C::InnerCircuitID,
+        ledger_digest: MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>,
+        inner_circuit_id: N::InnerCircuitID,
     ) -> Self {
         Self {
             ledger_digest,
@@ -51,18 +51,18 @@ impl<C: Parameters> TransactionMetadata<C> {
 
     /// Returns a reference to the ledger digest.
     #[inline]
-    pub fn ledger_digest(&self) -> &MerkleTreeDigest<C::LedgerCommitmentsTreeParameters> {
+    pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::LedgerCommitmentsTreeParameters> {
         &self.ledger_digest
     }
 
     /// Returns a reference to the inner circuit ID.
     #[inline]
-    pub fn inner_circuit_id(&self) -> &C::InnerCircuitID {
+    pub fn inner_circuit_id(&self) -> &N::InnerCircuitID {
         &self.inner_circuit_id
     }
 }
 
-impl<C: Parameters> ToBytes for TransactionMetadata<C> {
+impl<N: Network> ToBytes for TransactionMetadata<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.ledger_digest.write_le(&mut writer)?;
@@ -70,7 +70,7 @@ impl<C: Parameters> ToBytes for TransactionMetadata<C> {
     }
 }
 
-impl<C: Parameters> FromBytes for TransactionMetadata<C> {
+impl<N: Network> FromBytes for TransactionMetadata<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let ledger_digest = FromBytes::read_le(&mut reader)?;

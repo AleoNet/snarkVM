@@ -16,7 +16,7 @@
 
 use crate::{ledger::*, *};
 use snarkvm_algorithms::merkle_tree::*;
-use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Parameters, Transaction, TransactionScheme};
+use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Network, Transaction, TransactionScheme};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -42,8 +42,8 @@ pub type BlockHeight = u32;
 
 pub struct Ledger<N: Network, S: Storage> {
     pub current_block_height: AtomicU32,
-    pub commitments_tree: RwLock<MerkleTree<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>>,
-    pub serial_numbers_tree: RwLock<MerkleTree<<N::DPC as Parameters>::LedgerSerialNumbersTreeParameters>>,
+    pub commitments_tree: RwLock<MerkleTree<<N::DPC as Network>::LedgerCommitmentsTreeParameters>>,
+    pub serial_numbers_tree: RwLock<MerkleTree<<N::DPC as Network>::LedgerSerialNumbersTreeParameters>>,
     pub storage: S,
 }
 
@@ -135,7 +135,7 @@ impl<N: Network, S: Storage> LedgerScheme<N::DPC> for Ledger<N, S> {
 
 impl<N: Network, S: Storage> LedgerCommitmentsTree<N::DPC> for Ledger<N, S> {
     /// Return the latest state root of the ledger commitments tree.
-    fn latest_digest(&self) -> Result<<N::DPC as Parameters>::LedgerCommitmentsTreeDigest> {
+    fn latest_digest(&self) -> Result<<N::DPC as Network>::LedgerCommitmentsTreeDigest> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
             Some(current_digest) => current_digest,
             None => to_bytes_le![self.commitments_tree.read().root()]?,
@@ -144,20 +144,20 @@ impl<N: Network, S: Storage> LedgerCommitmentsTree<N::DPC> for Ledger<N, S> {
     }
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
-    fn is_valid_digest(&self, digest: &<N::DPC as Parameters>::LedgerCommitmentsTreeDigest) -> bool {
+    fn is_valid_digest(&self, digest: &<N::DPC as Network>::LedgerCommitmentsTreeDigest) -> bool {
         self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
     }
 
     /// Returns true if the given commitment exists in the ledger.
-    fn contains_commitment(&self, commitment: &<N::DPC as Parameters>::RecordCommitment) -> bool {
+    fn contains_commitment(&self, commitment: &<N::DPC as Network>::RecordCommitment) -> bool {
         self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
     }
 
     /// Returns the Merkle path to the latest ledger digest for a given commitment, if it exists in the ledger.
     fn prove_cm(
         &self,
-        cm: &<N::DPC as Parameters>::RecordCommitment,
-    ) -> Result<MerklePath<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>> {
+        cm: &<N::DPC as Network>::RecordCommitment,
+    ) -> Result<MerklePath<<N::DPC as Network>::LedgerCommitmentsTreeParameters>> {
         let cm_index = self
             .get_cm_index(&cm.to_bytes_le()?)?
             .ok_or(LedgerError::InvalidCmIndex)?;
@@ -167,7 +167,7 @@ impl<N: Network, S: Storage> LedgerCommitmentsTree<N::DPC> for Ledger<N, S> {
 
 impl<N: Network, S: Storage> LedgerSerialNumbersTree<N::DPC> for Ledger<N, S> {
     /// Returns true if the given serial number exists in the ledger.
-    fn contains_serial_number(&self, serial_number: &<N::DPC as Parameters>::SerialNumber) -> bool {
+    fn contains_serial_number(&self, serial_number: &<N::DPC as Network>::SerialNumber) -> bool {
         self.storage
             .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
     }
@@ -251,7 +251,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new commitment merkle tree from the stored commitments
     pub fn rebuild_commitment_merkle_tree(
         &self,
-        additional_cms: Vec<(<N::DPC as Parameters>::RecordCommitment, usize)>,
+        additional_cms: Vec<(<N::DPC as Network>::RecordCommitment, usize)>,
     ) -> Result<(), StorageError> {
         let mut new_cm_and_indices = additional_cms;
 
@@ -267,8 +267,8 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new commitments tree.
     pub fn build_new_commitment_tree(
         &self,
-        additional_cms: Vec<<N::DPC as Parameters>::RecordCommitment>,
-    ) -> Result<MerkleTree<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>, StorageError> {
+        additional_cms: Vec<<N::DPC as Network>::RecordCommitment>,
+    ) -> Result<MerkleTree<<N::DPC as Network>::LedgerCommitmentsTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
 
         let new_tree = self.commitments_tree.read().rebuild(current_len, &additional_cms)?;
@@ -279,7 +279,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new serial numbers tree from the stored serial numbers.
     pub fn rebuild_serial_number_merkle_tree(
         &self,
-        additional_sns: Vec<(<N::DPC as Parameters>::SerialNumber, usize)>,
+        additional_sns: Vec<(<N::DPC as Network>::SerialNumber, usize)>,
     ) -> Result<(), StorageError> {
         let mut new_sn_and_indices = additional_sns;
 
@@ -295,8 +295,8 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new serial number merkle tree
     pub fn build_new_serial_number_tree(
         &self,
-        additional_sns: Vec<<N::DPC as Parameters>::SerialNumber>,
-    ) -> Result<MerkleTree<<N::DPC as Parameters>::LedgerSerialNumbersTreeParameters>, StorageError> {
+        additional_sns: Vec<<N::DPC as Network>::SerialNumber>,
+    ) -> Result<MerkleTree<<N::DPC as Network>::LedgerSerialNumbersTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_SERIAL_NUMBER)?.len();
 
         let new_tree = self.serial_numbers_tree.read().rebuild(current_len, &additional_sns)?;
@@ -314,8 +314,8 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     ) -> Result<
         (
             Vec<Op>,
-            Vec<(<N::DPC as Parameters>::RecordCommitment, usize)>,
-            Vec<(<N::DPC as Parameters>::SerialNumber, usize)>,
+            Vec<(<N::DPC as Network>::RecordCommitment, usize)>,
+            Vec<(<N::DPC as Network>::SerialNumber, usize)>,
         ),
         StorageError,
     > {

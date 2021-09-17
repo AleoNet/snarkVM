@@ -15,13 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{merkle_root, MerkleRoot, Network};
-use snarkvm_dpc::{Parameters, Transaction, TransactionError, TransactionScheme};
+use crate::{Parameters, Transaction, TransactionError, TransactionScheme};
 use snarkvm_utilities::{
-    has_duplicates,
-    to_bytes_le,
+    has_duplicates, to_bytes_le,
     variable_length_integer::{read_variable_length_integer, variable_length_integer},
-    FromBytes,
-    ToBytes,
+    FromBytes, ToBytes,
 };
 
 use anyhow::Result;
@@ -69,13 +67,13 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the commitments, by construction a flattened list of commitments from all transactions.
-    pub fn to_commitments(&self) -> Result<Vec<<N::DPC as Parameters>::RecordCommitment>> {
+    pub fn to_commitments(&self) -> Result<Vec<<N as Network>::RecordCommitment>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.commitments()).flatten().cloned().collect())
     }
 
     /// Returns the serial numbers, by construction a flattened list of serial numbers from all transactions.
-    pub fn to_serial_numbers(&self) -> Result<Vec<<N::DPC as Parameters>::SerialNumber>> {
+    pub fn to_serial_numbers(&self) -> Result<Vec<<N as Network>::SerialNumber>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.serial_numbers()).flatten().cloned().collect())
     }

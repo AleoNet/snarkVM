@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Parameters;
 use crate::{
-    posw::PoswMarlin,
-    BlockHeaderHash,
-    BlockHeaderMetadata,
-    MerkleRoot,
-    Network,
-    ProofOfSuccinctWork,
-    Transactions,
+    posw::PoswMarlin, BlockHeaderHash, BlockHeaderMetadata, MerkleRoot, Network, ProofOfSuccinctWork, Transactions,
 };
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
-use snarkvm_dpc::Parameters;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -86,17 +80,17 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis<C: Parameters, R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
+    pub fn new_genesis<N: Network, R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
         // Compute the commitments root from the transactions.
         let commitments = transactions.to_commitments()?;
         let commitments_tree =
-            MerkleTree::new(Arc::new(C::ledger_commitments_tree_parameters().clone()), &commitments)?;
+            MerkleTree::new(Arc::new(N::ledger_commitments_tree_parameters().clone()), &commitments)?;
         let commitments_root = MerkleRoot::from_element(commitments_tree.root());
 
         // Compute the serial numbers root from the transactions.
         let serial_numbers = transactions.to_serial_numbers()?;
         let serial_numbers_tree = MerkleTree::new(
-            Arc::new(C::ledger_serial_numbers_tree_parameters().clone()),
+            Arc::new(N::ledger_serial_numbers_tree_parameters().clone()),
             &serial_numbers,
         )?;
         let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());

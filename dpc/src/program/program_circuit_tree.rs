@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Parameters, ProgramCircuit};
+use crate::{Network, ProgramCircuit};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTree, MerkleTreeDigest},
     prelude::*,
@@ -25,21 +25,21 @@ use std::{collections::HashMap, sync::Arc};
 
 /// A program circuit tree defines all possible state transitions for a record.
 #[derive(Derivative)]
-#[derivative(Debug(bound = "C: Parameters"))]
-pub struct ProgramCircuitTree<C: Parameters> {
+#[derivative(Debug(bound = "N: Network"))]
+pub struct ProgramCircuitTree<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<C::ProgramCircuitTreeParameters>,
+    tree: MerkleTree<N::ProgramCircuitTreeParameters>,
     #[derivative(Debug = "ignore")]
-    circuits: HashMap<C::ProgramCircuitID, (u8, Box<dyn ProgramCircuit<C>>)>,
+    circuits: HashMap<N::ProgramCircuitID, (u8, Box<dyn ProgramCircuit<N>>)>,
     last_circuit_index: u8,
 }
 
-impl<C: Parameters> ProgramCircuitTree<C> {
+impl<N: Network> ProgramCircuitTree<N> {
     /// Initializes an empty circuit tree.
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tree: MerkleTree::<C::ProgramCircuitTreeParameters>::new::<C::ProgramCircuitID>(
-                Arc::new(C::program_circuit_tree_parameters().clone()),
+            tree: MerkleTree::<N::ProgramCircuitTreeParameters>::new::<N::ProgramCircuitID>(
+                Arc::new(N::program_circuit_tree_parameters().clone()),
                 &vec![],
             )?,
             circuits: Default::default(),
@@ -49,7 +49,7 @@ impl<C: Parameters> ProgramCircuitTree<C> {
 
     /// TODO (howardwu): Add safety checks for u8 (max 255 circuits).
     /// Adds the given circuit to the tree, returning its circuit index in the tree.
-    pub fn add(&mut self, circuit: Box<dyn ProgramCircuit<C>>) -> Result<u8> {
+    pub fn add(&mut self, circuit: Box<dyn ProgramCircuit<N>>) -> Result<u8> {
         // Ensure the circuit does not already exist in the tree.
         if self.contains_circuit(circuit.circuit_id()) {
             return Err(MerkleError::MissingLeaf(format!("{}", circuit.circuit_id())).into());
@@ -68,7 +68,7 @@ impl<C: Parameters> ProgramCircuitTree<C> {
 
     /// TODO (howardwu): Add safety checks for u8 (max 255 circuits).
     /// Adds all given circuits to the tree, returning the start and ending circuit index in the tree.
-    pub fn add_all(&mut self, circuits: Vec<Box<dyn ProgramCircuit<C>>>) -> Result<(u8, u8)> {
+    pub fn add_all(&mut self, circuits: Vec<Box<dyn ProgramCircuit<N>>>) -> Result<(u8, u8)> {
         // Ensure the list of circuits is non-empty.
         if circuits.is_empty() {
             return Err(anyhow!("The list of of circuits must be non-empty"));
@@ -102,22 +102,22 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     }
 
     /// Returns `true` if the given circuit ID exists.
-    pub fn contains_circuit(&self, circuit_id: &C::ProgramCircuitID) -> bool {
+    pub fn contains_circuit(&self, circuit_id: &N::ProgramCircuitID) -> bool {
         self.circuits.get(circuit_id).is_some()
     }
 
     /// Returns the circuit index given the circuit ID, if it exists.
-    pub fn get_circuit_index(&self, circuit_id: &C::ProgramCircuitID) -> Option<u8> {
+    pub fn get_circuit_index(&self, circuit_id: &N::ProgramCircuitID) -> Option<u8> {
         self.circuits.get(circuit_id).and_then(|(index, _)| Some(*index))
     }
 
     /// Returns the circuit given the circuit ID, if it exists.
-    pub fn get_circuit(&self, circuit_id: &C::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<C>>> {
+    pub fn get_circuit(&self, circuit_id: &N::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<N>>> {
         self.circuits.get(circuit_id).and_then(|(__, circuit)| Some(circuit))
     }
 
     /// Returns the circuit given the circuit index, if it exists.
-    pub fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<C>>> {
+    pub fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<N>>> {
         self.circuits
             .iter()
             .find_map(|(_, (index, circuit))| match *index == circuit_index {
@@ -129,8 +129,8 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     /// Returns the program path (the Merkle path for a given circuit ID).
     pub fn get_program_path(
         &self,
-        circuit_id: &C::ProgramCircuitID,
-    ) -> Result<MerklePath<C::ProgramCircuitTreeParameters>> {
+        circuit_id: &N::ProgramCircuitID,
+    ) -> Result<MerklePath<N::ProgramCircuitTreeParameters>> {
         match self.get_circuit_index(circuit_id) {
             Some(index) => Ok(self.tree.generate_proof(index as usize, circuit_id)?),
             _ => Err(MerkleError::MissingLeaf(format!("{}", circuit_id)).into()),
@@ -138,12 +138,12 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     }
 
     /// Returns the program ID.
-    pub fn to_program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+    pub fn to_program_id(&self) -> &MerkleTreeDigest<N::ProgramCircuitTreeParameters> {
         self.tree.root()
     }
 }
 
-impl<C: Parameters> Default for ProgramCircuitTree<C> {
+impl<N: Network> Default for ProgramCircuitTree<N> {
     fn default() -> Self {
         Self::new().unwrap()
     }

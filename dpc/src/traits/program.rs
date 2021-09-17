@@ -14,52 +14,52 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Execution, Parameters, ProgramError, PublicVariables};
+use crate::{CircuitError, Execution, Network, ProgramError, PublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, SNARK};
 
 use rand::{CryptoRng, Rng};
 
-pub trait ProgramScheme<C: Parameters>: Send + Sync {
+pub trait ProgramScheme<N: Network>: Send + Sync {
     /// Initializes an instance of the program with the given circuits.
-    fn new(circuits: Vec<Box<dyn ProgramCircuit<C>>>) -> Result<Self, ProgramError>
+    fn new(circuits: Vec<Box<dyn ProgramCircuit<N>>>) -> Result<Self, ProgramError>
     where
         Self: Sized;
 
     /// Returns a reference to the program ID.
-    fn program_id(&self) -> MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
+    fn program_id(&self) -> MerkleTreeDigest<N::ProgramCircuitTreeParameters>;
 
     /// Returns `true` if the given circuit ID exists in the program.
-    fn contains_circuit(&self, circuit_id: &C::ProgramCircuitID) -> bool;
+    fn contains_circuit(&self, circuit_id: &N::ProgramCircuitID) -> bool;
 
     /// Returns the circuit given the circuit ID, if it exists.
-    fn get_circuit(&self, circuit_id: &C::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<C>>>;
+    fn get_circuit(&self, circuit_id: &N::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<N>>>;
 
     /// Returns the circuit given the circuit index, if it exists.
-    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<C>>>;
+    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<N>>>;
 
     /// Returns the execution of the program.
     fn execute(
         &self,
-        circuit_id: &C::ProgramCircuitID,
-        public: &PublicVariables<C>,
-        private: &dyn PrivateVariables<C>,
-    ) -> Result<Execution<C>, ProgramError>;
+        circuit_id: &N::ProgramCircuitID,
+        public: &PublicVariables<N>,
+        private: &dyn PrivateVariables<N>,
+    ) -> Result<Execution<N>, ProgramError>;
 
     /// Returns the blank execution of the program, typically used for a SNARK setup.
-    fn execute_blank(&self, circuit_id: &C::ProgramCircuitID) -> Result<Execution<C>, ProgramError>;
+    fn execute_blank(&self, circuit_id: &N::ProgramCircuitID) -> Result<Execution<N>, ProgramError>;
 
     /// Returns the native evaluation of the program on given public and private variables.
     fn evaluate(
         &self,
-        _circuit_id: &C::ProgramCircuitID,
-        _public: &PublicVariables<C>,
-        _private: &dyn PrivateVariables<C>,
+        _circuit_id: &N::ProgramCircuitID,
+        _public: &PublicVariables<N>,
+        _private: &dyn PrivateVariables<N>,
     ) -> bool {
         unimplemented!("The native evaluation of this program is unimplemented")
     }
 }
 
-pub trait ProgramCircuit<C: Parameters>: Send + Sync {
+pub trait ProgramCircuit<N: Network>: Send + Sync {
     /// Initializes a new instance of a circuit.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, CircuitError>
     where
@@ -71,33 +71,33 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
         Self: Sized;
 
     /// Returns the program circuit ID.
-    fn circuit_id(&self) -> &C::ProgramCircuitID;
+    fn circuit_id(&self) -> &N::ProgramCircuitID;
 
     /// Returns the circuit proving key.
-    fn proving_key(&self) -> &<C::ProgramSNARK as SNARK>::ProvingKey;
+    fn proving_key(&self) -> &<N::ProgramSNARK as SNARK>::ProvingKey;
 
     /// Returns the circuit verifying key.
-    fn verifying_key(&self) -> &<C::ProgramSNARK as SNARK>::VerifyingKey;
+    fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey;
 
     /// Returns the execution of the circuit.
     fn execute(
         &self,
-        public: &PublicVariables<C>,
-        private: &dyn PrivateVariables<C>,
-    ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
+        public: &PublicVariables<N>,
+        private: &dyn PrivateVariables<N>,
+    ) -> Result<<N::ProgramSNARK as SNARK>::Proof, CircuitError>;
 
     /// Returns the blank execution of the circuit, typically used for a SNARK setup.
-    fn execute_blank(&self) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
+    fn execute_blank(&self) -> Result<<N::ProgramSNARK as SNARK>::Proof, CircuitError>;
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: &PublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
+    fn verify(&self, public: &PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool;
 
     /// Returns the native evaluation of the circuit on given public and private variables.
-    fn evaluate(&self, _public: &PublicVariables<C>, _private: &dyn PrivateVariables<C>) -> bool {
+    fn evaluate(&self, _public: &PublicVariables<N>, _private: &dyn PrivateVariables<N>) -> bool {
         unimplemented!("The native evaluation of this circuit is unimplemented")
     }
 }
 
-pub trait PrivateVariables<C: Parameters>: Send + Sync {
+pub trait PrivateVariables<N: Network>: Send + Sync {
     fn as_any(&self) -> &dyn std::any::Any;
 }

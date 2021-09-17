@@ -119,12 +119,12 @@ mod transfer {
             let sender = Account::<Testnet2Parameters>::new(rng).unwrap();
             let recipient = Account::new(rng).unwrap();
 
-            let serial_number_nonce = <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+            let serial_number_nonce = <Testnet2Parameters as Network>::serial_number_nonce_crh()
                 .hash(&[1, 2, 3])
                 .unwrap();
 
             let commitment_randomness =
-                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+                <<Testnet2Parameters as Network>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
             // Generate sender input
             let sender_input = Input::new_full(
@@ -191,12 +191,12 @@ mod transfer {
             let sender = Account::<Testnet2Parameters>::new(rng).unwrap();
             let recipient = Account::new(rng).unwrap();
 
-            let serial_number_nonce = <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+            let serial_number_nonce = <Testnet2Parameters as Network>::serial_number_nonce_crh()
                 .hash(&[1, 2, 3])
                 .unwrap();
 
             let commitment_randomness =
-                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+                <<Testnet2Parameters as Network>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
             // Generate sender input
             let input_record = Record::new_input(
