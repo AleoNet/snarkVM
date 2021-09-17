@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, AleoAmount, Memo, Parameters, TransactionKernel, TransactionScheme};
+use crate::{record::*, AleoAmount, Memo, Parameters, TransactionKernel, TransactionMetadata, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CRH, SNARK},
@@ -35,13 +35,11 @@ use std::{
 )]
 pub struct Transaction<C: Parameters> {
     /// The transaction kernel.
-    pub kernel: TransactionKernel<C>,
-    /// The root of the ledger commitment tree.
-    pub ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
-    /// The ID of the inner circuit used to execute this transaction.
-    pub inner_circuit_id: C::InnerCircuitID,
+    kernel: TransactionKernel<C>,
+    /// The transaction metadata.
+    metadata: TransactionMetadata<C>,
     /// The encrypted output records.
-    pub encrypted_records: Vec<EncryptedRecord<C>>,
+    encrypted_records: Vec<EncryptedRecord<C>>,
     #[derivative(PartialEq = "ignore")]
     /// Zero-knowledge proof attesting to the validity of the transaction.
     pub proof: <C::OuterSNARK as SNARK>::Proof,
@@ -51,8 +49,7 @@ impl<C: Parameters> Transaction<C> {
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<C>,
-        ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
-        inner_circuit_id: C::InnerCircuitID,
+        metadata: TransactionMetadata<C>,
         encrypted_records: Vec<EncryptedRecord<C>>,
         proof: <C::OuterSNARK as SNARK>::Proof,
     ) -> Self {
@@ -61,8 +58,7 @@ impl<C: Parameters> Transaction<C> {
 
         Self {
             kernel,
-            ledger_digest,
-            inner_circuit_id,
+            metadata,
             encrypted_records,
             proof,
         }
@@ -73,15 +69,17 @@ impl<C: Parameters> Transaction<C> {
         &self.kernel
     }
 
+    /// Returns a reference to the metadata of the transaction.
+    pub fn metadata(&self) -> &TransactionMetadata<C> {
+        &self.metadata
+    }
+
     /// Returns the encrypted record hashes.
     pub fn to_encrypted_record_hashes(&self) -> Result<Vec<C::EncryptedRecordDigest>> {
-        assert_eq!(C::NUM_OUTPUT_RECORDS, self.encrypted_records.len());
-
         let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in self.encrypted_records.iter().take(C::NUM_OUTPUT_RECORDS) {
             encrypted_record_hashes.push(encrypted_record.to_hash()?);
         }
-
         Ok(encrypted_record_hashes)
     }
 }
@@ -111,11 +109,11 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
     }
 
     fn ledger_digest(&self) -> &Self::Digest {
-        &self.ledger_digest
+        self.metadata.ledger_digest()
     }
 
     fn inner_circuit_id(&self) -> &C::InnerCircuitID {
-        &self.inner_circuit_id
+        self.metadata.inner_circuit_id()
     }
 
     fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
@@ -132,13 +130,10 @@ impl<C: Parameters> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.kernel().write_le(&mut writer)?;
-        self.ledger_digest.write_le(&mut writer)?;
-        self.inner_circuit_id.write_le(&mut writer)?;
-
+        self.metadata().write_le(&mut writer)?;
         for encrypted_record in &self.encrypted_records {
             encrypted_record.write_le(&mut writer)?;
         }
-
         self.proof.write_le(&mut writer)
     }
 }
@@ -147,26 +142,18 @@ impl<C: Parameters> FromBytes for Transaction<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the transaction kernel.
-        let kernel: TransactionKernel<C> = FromBytes::read_le(&mut reader)?;
-
-        let ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters> = FromBytes::read_le(&mut reader)?;
-        let inner_circuit_id: C::InnerCircuitID = FromBytes::read_le(&mut reader)?;
-
+        let kernel = FromBytes::read_le(&mut reader)?;
+        // Read the transaction metadata.
+        let metadata = FromBytes::read_le(&mut reader)?;
         // Read the encrypted records.
         let mut encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for _ in 0..C::NUM_OUTPUT_RECORDS {
             encrypted_records.push(FromBytes::read_le(&mut reader)?);
         }
-
+        // Read the transaction proof.
         let proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
-            kernel,
-            ledger_digest,
-            inner_circuit_id,
-            encrypted_records,
-            proof,
-        ))
+        Ok(Self::from(kernel, metadata, encrypted_records, proof))
     }
 }
 
@@ -176,13 +163,13 @@ impl<C: Parameters> fmt::Debug for Transaction<C> {
         write!(
             f,
             "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
-            self.kernel.network_id(),
-            self.kernel.serial_numbers(),
-            self.kernel.commitments(),
-            self.kernel.value_balance(),
-            self.kernel.memo(),
-            self.ledger_digest,
-            self.inner_circuit_id,
+            self.network_id(),
+            self.serial_numbers(),
+            self.commitments(),
+            self.value_balance(),
+            self.memo(),
+            self.ledger_digest(),
+            self.inner_circuit_id(),
             self.proof,
         )
     }

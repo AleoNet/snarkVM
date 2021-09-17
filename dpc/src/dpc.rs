@@ -111,6 +111,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             });
         }
 
+        let metadata = TransactionMetadata::new(ledger_digest, C::inner_circuit_id().clone());
+
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
             &kernel,
@@ -184,8 +186,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         Ok(Self::Transaction::from(
             kernel,
-            ledger_digest,
-            C::inner_circuit_id().clone(),
+            metadata,
             encrypted_records,
             transaction_proof,
         ))
@@ -240,7 +241,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Returns false if the ledger digest in the transaction is invalid.
-        if !ledger.is_valid_digest(&transaction.ledger_digest) {
+        if !ledger.is_valid_digest(&transaction.ledger_digest()) {
             eprintln!("Ledger digest is invalid.");
             return false;
         }

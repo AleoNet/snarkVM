@@ -160,6 +160,11 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let network_id: u16 = FromBytes::read_le(&mut reader)?;
 
+        // Ensure the correct network ID is read in.
+        if network_id != C::NETWORK_ID {
+            return Err(DPCError::InvalidKernel(network_id, C::NUM_INPUT_RECORDS, C::NUM_OUTPUT_RECORDS).into());
+        }
+
         let mut serial_numbers = Vec::<C::SerialNumber>::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
@@ -173,12 +178,7 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
         let memo: Memo<C> = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-        })
+        Ok(Self::new(serial_numbers, commitments, value_balance, memo)
+            .expect("Failed to initialize a transaction kernel"))
     }
 }
