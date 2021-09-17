@@ -25,7 +25,6 @@ fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
@@ -37,8 +36,8 @@ fn test_new_ledger_with_genesis_block() {
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
     let expected_genesis_block_hash = BlockHash([
-        213, 210, 115, 52, 99, 232, 227, 166, 73, 135, 203, 250, 110, 201, 227, 111, 172, 117, 198, 166, 214, 90, 21,
-        168, 168, 36, 68, 66, 138, 106, 183, 12,
+        197, 96, 131, 8, 176, 90, 158, 53, 59, 89, 40, 231, 1, 173, 161, 190, 41, 41, 127, 88, 136, 45, 109, 15, 192,
+        178, 217, 198, 27, 174, 226, 2,
     ]);
 
     let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).unwrap();

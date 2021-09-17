@@ -42,8 +42,8 @@ fn coinbase_transaction<C: Parameters>(
 fn testnet1_coinbase_transaction(c: &mut Criterion) {
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
     let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, Block {
+        previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
@@ -66,8 +66,8 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
 fn testnet2_coinbase_transaction(c: &mut Criterion) {
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, Block {
+        previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),

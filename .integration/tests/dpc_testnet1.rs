@@ -43,8 +43,8 @@ fn dpc_testnet1_integration_test() {
 
     // Create a genesis block.
     let genesis_block = Block {
+        previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
@@ -142,8 +142,8 @@ fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     let genesis_block = Block {
+        previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),

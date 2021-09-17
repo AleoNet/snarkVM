@@ -39,8 +39,6 @@ use std::{
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BlockHeader<N: Network> {
-    /// Hash of the previous block - 32 bytes
-    pub previous_block_hash: BlockHeaderHash,
     /// The masked Merkle root representing the transactions in the block - 32 bytes
     pub transactions_root: MaskedMerkleRoot,
     /// The Merkle root representing the ledger commitments - 32 bytes
@@ -56,7 +54,6 @@ pub struct BlockHeader<N: Network> {
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
     pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
-        previous_block_hash: BlockHeaderHash,
         transactions: &Transactions<T>,
         commitments_root: MerkleRoot,
         serial_numbers_root: MerkleRoot,
@@ -76,7 +73,6 @@ impl<N: Network> BlockHeader<N> {
         let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
 
         Ok(Self {
-            previous_block_hash,
             transactions_root,
             commitments_root,
             serial_numbers_root,
@@ -90,8 +86,6 @@ impl<N: Network> BlockHeader<N> {
         transactions: &Transactions<T>,
         rng: &mut R,
     ) -> Result<Self> {
-        let previous_block_hash = BlockHeaderHash([0u8; 32]);
-
         // Compute the commitments root from the transactions.
         let commitments: Vec<&<T as TransactionScheme>::Commitment> =
             transactions.0.iter().map(|t| t.commitments()).flatten().collect();
@@ -114,7 +108,6 @@ impl<N: Network> BlockHeader<N> {
         let max_nonce = u32::MAX;
 
         let block_header = Self::new(
-            previous_block_hash,
             transactions,
             commitments_root,
             serial_numbers_root,
@@ -134,8 +127,8 @@ impl<N: Network> BlockHeader<N> {
     pub fn is_genesis(&self) -> bool {
         // Ensure the timestamp in the genesis block is 0.
         self.metadata.timestamp() == 0
-            // Ensure the previous block hash in the genesis block is 0.
-            || self.previous_block_hash == BlockHeaderHash([0u8; 32])
+            // Ensure the difficulty target in the genesis block is u64::MAX.
+            || self.metadata.difficulty_target() == u64::MAX
     }
 
     pub fn to_hash(&self) -> Result<BlockHeaderHash> {
@@ -147,10 +140,9 @@ impl<N: Network> BlockHeader<N> {
         Ok(BlockHeaderHash(hash))
     }
 
-    /// Returns the block header size in bytes - 919 bytes.
+    /// Returns the block header size in bytes - 887 bytes.
     pub fn size() -> usize {
-        BlockHeaderHash::size()
-            + MaskedMerkleRoot::size()
+        MaskedMerkleRoot::size()
             + MerkleRoot::size()
             + MerkleRoot::size()
             + BlockHeaderMetadata::size()
@@ -161,7 +153,6 @@ impl<N: Network> BlockHeader<N> {
 impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
         let transactions_root = <[u8; 32]>::read_le(&mut reader)?;
         let commitments_root = <[u8; 32]>::read_le(&mut reader)?;
         let serial_numbers_root = <[u8; 32]>::read_le(&mut reader)?;
@@ -169,7 +160,6 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
 
         Ok(Self {
-            previous_block_hash: BlockHeaderHash(previous_block_hash),
             transactions_root: MaskedMerkleRoot(transactions_root),
             commitments_root: MerkleRoot(commitments_root),
             serial_numbers_root: MerkleRoot(serial_numbers_root),
@@ -182,7 +172,6 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 impl<N: Network> ToBytes for BlockHeader<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.previous_block_hash.0.write_le(&mut writer)?;
         self.transactions_root.0.write_le(&mut writer)?;
         self.commitments_root.0.write_le(&mut writer)?;
         self.serial_numbers_root.0.write_le(&mut writer)?;
@@ -213,7 +202,6 @@ mod tests {
         assert!(block_header.is_genesis());
 
         // Ensure the genesis block contains the following.
-        assert_eq!(block_header.previous_block_hash, BlockHeaderHash([0u8; 32]));
         assert_eq!(block_header.metadata.timestamp(), 0);
         assert_eq!(block_header.metadata.difficulty_target(), u64::MAX);
 
@@ -230,7 +218,6 @@ mod tests {
     #[test]
     fn test_block_header_serialization() {
         let block_header = BlockHeader::<Testnet2> {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
@@ -248,7 +235,6 @@ mod tests {
     #[test]
     fn test_block_header_size() {
         let block_header = BlockHeader::<Testnet2> {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
