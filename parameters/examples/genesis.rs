@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
-use snarkvm_ledger::{ledger::*, prelude::*};
+use snarkvm_dpc::prelude::*;
+use snarkvm_ledger::{ledger::*, prelude::*, testnet1::*, testnet2::*};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -26,18 +26,18 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn generate<N: Network>(recipient: Address<N::DPC>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
-    let temporary_ledger = Ledger::<C, MemDb>::new(None, Block {
+    let temporary_ledger = Ledger::<N, MemDb>::new(None, Block {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork([0u8; 771]),
+            proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),
     })
@@ -45,8 +45,8 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
 
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-    let authorization = DPC::<C>::authorize(&vec![], &state, rng)?;
-    let transaction = DPC::<C>::execute(authorization, state.executables(), &temporary_ledger, rng)?;
+    let authorization = DPC::<N::DPC>::authorize(&vec![], &state, rng)?;
+    let transaction = DPC::<N::DPC>::execute(authorization, state.executables(), &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     println!("transaction size - {}\n", transaction_bytes.len());
@@ -56,7 +56,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     transactions.push(transaction);
 
     // Create a genesis header.
-    let genesis_header = BlockHeader::new_genesis::<_, C, _>(&transactions, &mut thread_rng())?;
+    let genesis_header = BlockHeader::new_genesis::<N::DPC, _>(&transactions, &mut thread_rng())?;
     assert!(genesis_header.is_genesis());
     println!("block header size - {}\n", BlockHeader::size());
 
@@ -89,7 +89,7 @@ pub fn main() {
             let genesis_header_file = &args[4];
             let transaction_file = &args[5];
 
-            let (genesis_header, transaction) = generate::<Testnet1Parameters>(recipient, balance).unwrap();
+            let (genesis_header, transaction) = generate::<Testnet1>(recipient, balance).unwrap();
             store(genesis_header_file, &genesis_header).unwrap();
             store(transaction_file, &transaction).unwrap();
         }
@@ -99,7 +99,7 @@ pub fn main() {
             let genesis_header_file = &args[4];
             let transaction_file = &args[5];
 
-            let (genesis_header, transaction) = generate::<Testnet2Parameters>(recipient, balance).unwrap();
+            let (genesis_header, transaction) = generate::<Testnet2>(recipient, balance).unwrap();
             store(genesis_header_file, &genesis_header).unwrap();
             store(transaction_file, &transaction).unwrap();
         }

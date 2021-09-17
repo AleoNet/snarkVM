@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, AleoAmount, Memo, Network, Parameters, TransactionKernel, TransactionScheme};
+use crate::{record::*, AleoAmount, Memo, Parameters, TransactionKernel, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CRH, SNARK},
@@ -35,7 +35,7 @@ use std::{
 )]
 pub struct Transaction<C: Parameters> {
     /// The network this transaction for.
-    pub network: Network,
+    pub network_id: u16,
     /// The serial numbers of the input records.
     pub serial_numbers: Vec<C::SerialNumber>,
     /// The commitment of the output records.
@@ -61,7 +61,7 @@ impl<C: Parameters> Transaction<C> {
     /// Initializes a new instance of `Transaction` from the given inputs.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        network: Network,
+        network_id: u16,
         serial_numbers: Vec<C::SerialNumber>,
         commitments: Vec<C::RecordCommitment>,
         value_balance: AleoAmount,
@@ -76,7 +76,7 @@ impl<C: Parameters> Transaction<C> {
         assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
 
         Self {
-            network,
+            network_id,
             serial_numbers,
             commitments,
             value_balance,
@@ -105,7 +105,7 @@ impl<C: Parameters> Transaction<C> {
         } = kernel;
 
         Self::new(
-            Network::from_id(network_id),
+            network_id,
             serial_numbers,
             commitments,
             value_balance,
@@ -120,7 +120,7 @@ impl<C: Parameters> Transaction<C> {
     /// Returns the kernel of the transaction.
     pub fn to_kernel(&self) -> TransactionKernel<C> {
         let kernel = TransactionKernel {
-            network_id: self.network.id(),
+            network_id: self.network_id,
             serial_numbers: self.serial_numbers.clone(),
             commitments: self.commitments.clone(),
             value_balance: self.value_balance,
@@ -147,8 +147,8 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
     type Digest = MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
 
-    fn network_id(&self) -> u8 {
-        self.network.id()
+    fn network_id(&self) -> u16 {
+        self.network_id
     }
 
     fn serial_numbers(&self) -> &[C::SerialNumber] {
@@ -181,7 +181,6 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
     fn to_transaction_id(&self) -> Result<C::TransactionID> {
-        // Compute the hash of the serialized kernel.
         Ok(C::transaction_id_crh().hash(&self.to_kernel().to_bytes_le()?)?)
     }
 }
@@ -235,7 +234,7 @@ impl<C: Parameters> fmt::Debug for Transaction<C> {
         write!(
             f,
             "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
-            self.network,
+            self.network_id,
             self.serial_numbers,
             self.commitments,
             self.value_balance,

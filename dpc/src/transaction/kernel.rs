@@ -32,7 +32,7 @@ use std::io::{Read, Result as IoResult, Write};
 )]
 pub struct TransactionKernel<C: Parameters> {
     /// The network ID.
-    pub network_id: u8,
+    pub network_id: u16,
     /// The serial numbers of the input records.
     pub serial_numbers: Vec<C::SerialNumber>,
     /// The commitments of the output records.
@@ -152,7 +152,7 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
 impl<C: Parameters> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let network_id: u8 = FromBytes::read_le(&mut reader)?;
+        let network_id: u16 = FromBytes::read_le(&mut reader)?;
 
         let mut serial_numbers = Vec::<C::SerialNumber>::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {

@@ -22,7 +22,7 @@ use std::io::{Read, Result as IoResult, Write};
 type LeafIndex = u8;
 type SerialNumber<C> = <C as Parameters>::SerialNumber;
 type Commitment<C> = <C as Parameters>::RecordCommitment;
-type NetworkId = u8;
+type NetworkId = u16;
 
 #[derive(Derivative)]
 #[derivative(

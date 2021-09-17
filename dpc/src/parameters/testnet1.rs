@@ -17,7 +17,6 @@
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     InnerPublicVariables,
-    Network,
     NoopProgram,
     OuterPublicVariables,
     Parameters,
@@ -100,7 +99,7 @@ pub struct Testnet1Parameters;
 
 #[rustfmt::skip]
 impl Parameters for Testnet1Parameters {
-    const NETWORK_ID: u8 = Network::Testnet1.id();
+    const NETWORK_ID: u16 = 1u16;
     
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;

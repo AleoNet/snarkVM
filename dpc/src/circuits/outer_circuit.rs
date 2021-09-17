@@ -163,8 +163,11 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.kernel.memo, "memo")?;
 
-    let network_id_fe =
-        alloc_inner_snark_input_field_element::<C, _, _>(cs, &[inner_public.kernel.network_id], "network id")?;
+    let network_id_fe = alloc_inner_snark_input_field_element::<C, _, _>(
+        cs,
+        &inner_public.kernel.network_id.to_le_bytes(),
+        "network id",
+    )?;
 
     let value_balance_fe = alloc_inner_snark_input_field_element::<C, _, _>(
         cs,

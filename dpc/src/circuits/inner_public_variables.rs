@@ -105,9 +105,7 @@ where
         }
 
         v.extend_from_slice(&self.kernel.memo.to_field_elements()?);
-        v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
-            &[self.kernel.network_id][..],
-        )?);
+        v.extend_from_slice(&self.kernel.network_id.to_le_bytes().to_field_elements()?);
 
         if let Some(local_data_root) = &self.local_data_root {
             v.extend_from_slice(&local_data_root.to_field_elements()?);

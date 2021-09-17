@@ -17,7 +17,6 @@
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     InnerPublicVariables,
-    Network,
     NoopProgram,
     OuterPublicVariables,
     Parameters,
@@ -108,7 +107,7 @@ pub struct Testnet2Parameters;
 // TODO (raychu86): Optimize each of the window sizes in the type declarations below.
 #[rustfmt::skip]
 impl Parameters for Testnet2Parameters {
-    const NETWORK_ID: u8 = Network::Testnet2.id();
+    const NETWORK_ID: u16 = 2u16;
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;

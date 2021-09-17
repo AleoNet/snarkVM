@@ -24,8 +24,8 @@ pub trait TransactionScheme<C: Parameters>: Clone + Eq + FromBytes + ToBytes + S
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
 
-    /// Returns the network_id in the transaction.
-    fn network_id(&self) -> u8;
+    /// Returns the network ID in the transaction.
+    fn network_id(&self) -> u16;
 
     /// Returns the old serial numbers.
     fn serial_numbers(&self) -> &[C::SerialNumber];
