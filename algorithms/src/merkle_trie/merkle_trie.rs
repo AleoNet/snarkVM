@@ -16,6 +16,7 @@
 
 use crate::{errors::MerkleError, traits::CRH};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
+
 use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
 #[derive(Default)]
@@ -32,12 +33,18 @@ pub struct MerkleTrie<P: CRH, T: Debug> {
     children: BTreeMap<u8, MerkleTrie<P, T>>,
 }
 
-/// Number of elements the two keys have in common.
-pub fn get_match_length(key: &[u8], key_2: &[u8]) -> usize {
+/// Number of prefix elements the two keys have in common.
+pub fn get_matching_prefix_length(key: &[u8], key_2: &[u8]) -> usize {
     let mut count: usize = 0;
-    while count < key.len() && count < key_2.len() && key[count] == key_2[count] {
-        count += 1;
+    // Iterate over both keys. End on the first difference or if one of the keys is empty.
+    for (elem_1, elem_2) in key.iter().zip(key_2) {
+        if elem_1 == elem_2 {
+            count += 1;
+        } else {
+            break;
+        }
     }
+
     count
 }
 
@@ -57,12 +64,12 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
 
     /// Check if the Merkle trie is empty.
     pub fn is_empty(&self) -> bool {
-        self.value.is_none() && self.children.is_empty()
+        self.root == [0u8; 32] && self.value.is_none() && self.children.is_empty()
     }
 
     /// Insert a (key, value) pair into the Merkle trie.
     pub fn insert(&mut self, key: &[u8], value: Option<T>) -> Result<(), MerkleError> {
-        // If the tree is currently empty, set the new leaf to root.
+        // If the trie is currently empty, set the key value pair.
         if self.is_empty() {
             self.key = key.to_vec();
             self.value = value;
@@ -70,10 +77,13 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
             return Ok(());
         }
 
-        let match_length = get_match_length(&self.key, key);
+        // Get the length of the prefix match.
+        let prefix_length = get_matching_prefix_length(&self.key, key);
+        let prefix = key[0..prefix_length].to_vec();
+        let suffix = key[prefix_length..].to_vec();
 
-        // If the key exists within the bounds of the current trie.
-        if match_length >= self.key.len() {
+        // If the prefix exists outside the key of the current key.
+        if prefix_length >= self.key.len() {
             // If the match length is equal to the length of the root key, then attempt to insert.
             if match_length == key.len() {
                 if self.value.is_some() {
@@ -83,17 +93,10 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
                 self.value = value;
             } else {
                 // Insert a child trie based on the suffix.
-                let suffix = key[match_length..].to_vec();
                 self.insert_child(&suffix, value.unwrap())?;
             }
         } else {
-            // If the key exceeds the branches of the current trie, create a new sub-trie
-            let prefix = key[0..match_length].to_vec();
-            let suffix = key[match_length..].to_vec();
-
-            // Set the current node key to the prefix.
-            self.key = prefix;
-
+            // If the prefix exists within the key of the current trie.
             // Build the new subtrie.
             let mut new_node = MerkleTrie::<P, T> {
                 parameters: self.parameters.clone(),
@@ -108,11 +111,12 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
             // Update the `root` of the new node.
             new_node.update_root()?;
 
-            // Update the original trie.
-            self.children.clear();
+            // Update the original trie key, and children.
+            self.key = prefix;
+            self.children = BTreeMap::new();
             self.children.insert(new_node.key[0], new_node);
 
-            // Update the values.
+            // Update the values if we have found the correct node.
             if match_length == key.len() {
                 // Update the value in the current node if the key matches.
                 self.value = value;
@@ -132,19 +136,19 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
     fn insert_child(&mut self, suffix: &Vec<u8>, value: T) -> Result<(), MerkleError> {
         // Check the first element of the suffix.
         match self.children.get_mut(&suffix[0]) {
-            Some(child_trie) => {
-                // The child tree already exists.
-                child_trie.insert(&suffix, Some(value))?;
-            }
             None => {
                 // No child tree for this suffix exists yet.
-
                 // Crate a new subtree.
                 let mut new_child = MerkleTrie::new(self.parameters.clone())?;
                 new_child.insert(&suffix, Some(value))?;
 
-                // Insert the new subtree into the main tree.
+                // Insert the new subtree into the current tree.
                 self.children.insert(new_child.key[0], new_child);
+            }
+            Some(child_trie) => {
+                // The child tree already exists.
+                // Insert the (suffix, value) pair to the child tree.
+                child_trie.insert(&suffix, Some(value))?;
             }
         }
 
@@ -156,7 +160,7 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
         if self.is_empty() {
             self.root = [0; 32];
         } else {
-            // TODO (raychu86): Do hashing operations.
+            // TODO (raychu86): Determine if hasing the key is required.
 
             // Add the current node's key and value to the hash input.
             let mut input = self.key.to_vec();
