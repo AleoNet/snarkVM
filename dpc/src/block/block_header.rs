@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
-use crate::{
-    posw::PoswMarlin, BlockHeaderHash, BlockHeaderMetadata, MerkleRoot, Network, ProofOfSuccinctWork, Transactions,
-};
+use crate::{BlockHeaderHash, BlockHeaderMetadata, MerkleRoot, Network, ProofOfSuccinctWork, Transactions};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -66,9 +63,12 @@ impl<N: Network> BlockHeader<N> {
         posw_leaves.push([0u8; 32]);
 
         // TODO (howardwu): TEMPORARY - Make this a static once_cell.
+        // TODO (howardwu): CRITICAL - Reintroduce PoSW call here.
         // Mine the block.
-        let posw = PoswMarlin::<N>::load()?;
-        let (nonce, proof) = posw.mine(&posw_leaves, difficulty_target, rng, max_nonce)?;
+        // let posw = PoswMarlin::<N>::load()?;
+        // let (nonce, proof) = posw.mine(&posw_leaves, difficulty_target, rng, max_nonce)?;
+        let nonce = 0;
+        let proof = vec![0u8; N::POSW_PROOF_SIZE_IN_BYTES];
 
         Ok(Self {
             transactions_root,
@@ -80,7 +80,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis<N: Network, R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
+    pub fn new_genesis<R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
         // Compute the commitments root from the transactions.
         let commitments = transactions.to_commitments()?;
         let commitments_tree =
@@ -124,7 +124,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     pub fn to_hash(&self) -> Result<BlockHeaderHash> {
-        let hash_bytes = N::block_header_crh().hash(&self.to_bytes_le()?)?.to_bytes_le()?;
+        let hash_bytes = N::block_header_tree_crh().hash(&self.to_bytes_le()?)?.to_bytes_le()?;
 
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&hash_bytes);
@@ -175,8 +175,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testnet2::Testnet2;
-    use snarkvm_dpc::{testnet2::Testnet2Parameters, Transaction};
+    use crate::{testnet2::Testnet2, Transaction};
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 
     use chrono::Utc;
@@ -184,10 +183,8 @@ mod tests {
 
     #[test]
     fn test_block_header_genesis() {
-        let block_header = BlockHeader::<Testnet2>::new_genesis::<Testnet2Parameters, _>(
-            &Transactions::from(&[
-                Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap(),
-            ]),
+        let block_header = BlockHeader::<Testnet2>::new_genesis(
+            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
             &mut thread_rng(),
         )
         .unwrap();

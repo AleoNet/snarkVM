@@ -58,7 +58,7 @@ impl<N: Network> BlockScheme for Block<N> {
         preimage.extend_from_slice(&self.header.to_hash()?.0);
 
         let mut hash = [0u8; 32];
-        hash.copy_from_slice(&N::block_header_crh().hash(&preimage)?.to_bytes_le()?);
+        hash.copy_from_slice(&N::block_hash_crh().hash(&preimage)?.to_bytes_le()?);
 
         Ok(BlockHash(hash))
     }

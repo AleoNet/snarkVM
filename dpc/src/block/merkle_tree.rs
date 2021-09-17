@@ -101,19 +101,26 @@ fn merkle_hash<H: CRH>(crh: &H, left: &[u8], right: &[u8]) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Network};
+    use snarkvm_algorithms::crh::BHPCompressedCRH;
+    use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
+    use once_cell::sync::OnceCell;
     use std::convert::TryInto;
+
+    type MerkleTreeCRH = BHPCompressedCRH<EdwardsProjective, 16, 32>;
 
     #[test]
     fn test_merkle_root_2_hashes() {
+        static MERKLE_TREE_CRH: OnceCell<MerkleTreeCRH> = OnceCell::new();
+        let crh = MERKLE_TREE_CRH.get_or_init(|| MerkleTreeCRH::setup("MerkleTreeCRH"));
+
         let mut tx1 = hex::decode("c06fbab289f723c6261d3030ddb6be121f7d2508d77862bb1e484f5cd7f92b25").unwrap();
         let mut tx2 = hex::decode("5a4ebf66822b0b2d56bd9dc64ece0bc38ee7844a23ff1d7320a88c5fdb2ad3e2").unwrap();
 
         tx1.reverse();
         tx2.reverse();
 
-        let result = merkle_root(Testnet2::merkle_tree_crh(), &[
+        let result = merkle_root(crh, &[
             tx1.as_slice().try_into().unwrap(),
             tx2.as_slice().try_into().unwrap(),
         ]);
@@ -125,6 +132,9 @@ mod tests {
 
     #[test]
     fn test_merkle_root_5_hashes() {
+        static MERKLE_TREE_CRH: OnceCell<MerkleTreeCRH> = OnceCell::new();
+        let crh = MERKLE_TREE_CRH.get_or_init(|| MerkleTreeCRH::setup("MerkleTreeCRH"));
+
         let tx1 = hex::decode("1da63abbc8cc611334a753c4c31de14d19839c65b2b284202eaf3165861fb58d").unwrap();
         let tx2 = hex::decode("26c6a6f18d13d2f0787c1c0f3c5e23cf5bc8b3de685dd1923ae99f44c5341c0c").unwrap();
         let tx3 = hex::decode("513507fa209db823541caf7b9742bb9999b4a399cf604ba8da7037f3acced649").unwrap();
@@ -139,7 +149,7 @@ mod tests {
             })
             .collect();
 
-        let result = merkle_root(Testnet2::merkle_tree_crh(), &vec);
+        let result = merkle_root(crh, &vec);
         let mut expected = hex::decode("094398abf972355f25b5fc321c79e10086603b4c77714e55235bbd57a43ae192").unwrap();
         expected.reverse();
 

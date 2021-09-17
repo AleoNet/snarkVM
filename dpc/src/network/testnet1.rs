@@ -59,6 +59,7 @@ use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
 define_merkle_tree_parameters!(
@@ -79,7 +80,7 @@ define_merkle_tree_parameters!(
     32
 );
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet1;
 
 #[rustfmt::skip]
@@ -90,6 +91,8 @@ impl Network for Testnet1 {
     const NUM_OUTPUT_RECORDS: usize = 2;
 
     const MEMO_SIZE_IN_BYTES: usize = 64;
+
+    const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
@@ -123,6 +126,12 @@ impl Network for Testnet1 {
     type AccountSignatureGadget = AleoSignatureSchemeGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
+
+    type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
+    type BlockHash = <Self::BlockHashCRH as CRH>::Output;
+
+    type BlockHeaderTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
+    type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
     type EncryptedRecordCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 80, 32>;
     type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
@@ -175,8 +184,12 @@ impl Network for Testnet1 {
     type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
+    type TransactionsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
+    dpc_setup!{Testnet1, block_header_tree_crh, BlockHeaderTreeCRH, "AleoBlockHeaderTreeCRH0"}
     dpc_setup!{Testnet1, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet1, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
@@ -187,6 +200,7 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, record_commitment_scheme, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
     dpc_setup!{Testnet1, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
     dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
+    dpc_setup!{Testnet1, transactions_tree_crh, TransactionsTreeCRH, "AleoTransactionsTreeCRH0"}
 
     dpc_snark_setup!{Testnet1, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet1, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}

@@ -29,8 +29,6 @@ use std::{
 pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     const MASKED_TREE_DEPTH: usize;
 
-    const POSW_PROOF_SIZE_IN_BYTES: usize;
-
     type DPC: Network;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
 
@@ -43,11 +41,6 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     type SerialNumbersTreeCRH: CRH;
     type SerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::SerialNumbersTreeCRH>;
 
-    type BlockHeaderCRH: CRH;
-
-    type MerkleTreeCRH: CRH;
-    
-    type TransactionsTreeCRH: CRH;
 
     /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type MaskedMerkleTreeCRH: CRH;
@@ -67,9 +60,6 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
 
-    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
 
-    fn block_header_crh() -> &'static Self::BlockHeaderCRH;
-    fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters;
 }

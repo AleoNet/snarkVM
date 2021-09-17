@@ -66,6 +66,9 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
+pub mod block;
+pub use block::*;
+
 pub mod circuits;
 pub use circuits::*;
 
@@ -96,6 +99,7 @@ pub use transaction::*;
 pub mod prelude {
     pub use crate::{
         account::*,
+        block::*,
         circuits::*,
         dpc::*,
         errors::*,

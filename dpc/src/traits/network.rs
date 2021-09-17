@@ -34,10 +34,11 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
+use serde::Serialize;
 use std::{cell::RefCell, rc::Rc};
 
 #[rustfmt::skip]
-pub trait Network: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + Sync {
+pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send + Sync {
     const NETWORK_ID: u16;
 
     const NUM_INPUT_RECORDS: usize;
@@ -45,6 +46,8 @@ pub trait Network: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + Syn
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     const MEMO_SIZE_IN_BYTES: usize;
+    
+    const POSW_PROOF_SIZE_IN_BYTES: usize;
 
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
@@ -88,6 +91,14 @@ pub trait Network: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + Syn
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
+
+    /// CRH schemes for the block hash.
+    type BlockHashCRH: CRH<Output = Self::BlockHash>;
+    type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
+    /// CRH schemes for the block header root.
+    type BlockHeaderTreeCRH: CRH<Output = Self::BlockHeaderRoot>;
+    type BlockHeaderRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH for encrypted record identifiers. Invoked only over `Self::InnerScalarField`.
     type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordDigest>;
@@ -154,9 +165,15 @@ pub trait Network: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + Syn
     type TransactionIDCRH: CRH<Output = Self::TransactionID>;
     type TransactionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
+    /// CRH for computing the transactions root.
+    type TransactionsTreeCRH: CRH;
+    
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
-
+    
+    fn block_hash_crh() -> &'static Self::BlockHashCRH;
+    fn block_header_tree_crh() -> &'static Self::BlockHeaderTreeCRH;
+    
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
@@ -179,6 +196,8 @@ pub trait Network: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + Syn
     
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
 
+    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
+    
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;

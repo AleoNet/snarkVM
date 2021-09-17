@@ -43,8 +43,6 @@ impl Network for Testnet1 {
     /// A masked Merkle tree with depth = 2. This may change in the future.
     const MASKED_TREE_DEPTH: usize = 2;
     
-    const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    
     type DPC = Testnet1;
     type InnerScalarField = <Self::DPC as Network>::InnerScalarField;
     
@@ -57,12 +55,6 @@ impl Network for Testnet1 {
     type SerialNumbersTreeCRH = <Self::DPC as Network>::LedgerSerialNumbersTreeCRH;
     type SerialNumbersTreeParameters = <Self::DPC as Network>::LedgerSerialNumbersTreeParameters;
 
-    type BlockHeaderCRH = BHPCompressedCRH<<Self::DPC as Network>::ProgramProjectiveCurve, 117, 63>;
-    
-    type MerkleTreeCRH = BHPCompressedCRH<<Self::DPC as Network>::ProgramProjectiveCurve, 16, 32>;
-
-    type TransactionsTreeCRH = BHPCompressedCRH<<Self::DPC as Network>::ProgramProjectiveCurve, 16, 32>;
-    
     /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
     type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet1 as Network>::DPC as Network>::ProgramProjectiveCurve, 4, 128>;
     type MaskedMerkleTreeCRHGadget = PedersenCompressedCRHGadget<
@@ -102,21 +94,6 @@ impl Network for Testnet1 {
     
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters {
         Self::DPC::ledger_serial_numbers_tree_parameters()
-    }
-
-    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH {
-        static TRANSACTIONS_TREE_CRH: OnceCell<<Testnet1 as Network>::TransactionsTreeCRH> = OnceCell::new();
-        TRANSACTIONS_TREE_CRH.get_or_init(|| Self::TransactionsTreeCRH::setup("AleoTransactionsTreeCRH0"))
-    }
-
-    fn block_header_crh() -> &'static Self::BlockHeaderCRH {
-        static BLOCK_HEADER_CRH: OnceCell<<Testnet1 as Network>::BlockHeaderCRH> = OnceCell::new();
-        BLOCK_HEADER_CRH.get_or_init(|| Self::BlockHeaderCRH::setup("BlockHeaderCRH"))
-    }
-
-    fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH {
-        static MERKLE_TREE_CRH: OnceCell<<Testnet1 as Network>::MerkleTreeCRH> = OnceCell::new();
-        MERKLE_TREE_CRH.get_or_init(|| Self::MerkleTreeCRH::setup("MerkleTreeCRH"))
     }
 
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters {

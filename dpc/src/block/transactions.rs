@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{merkle_root, MerkleRoot, Network};
-use crate::{Parameters, Transaction, TransactionError, TransactionScheme};
+use crate::{merkle_root, MerkleRoot, Network, Transaction, TransactionError, TransactionScheme};
 use snarkvm_utilities::{
-    has_duplicates, to_bytes_le,
+    has_duplicates,
+    to_bytes_le,
     variable_length_integer::{read_variable_length_integer, variable_length_integer},
-    FromBytes, ToBytes,
+    FromBytes,
+    ToBytes,
 };
 
 use anyhow::Result;
@@ -29,7 +30,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Transactions<N: Network>(pub Vec<Transaction<N::DPC>>);
+pub struct Transactions<N: Network>(pub Vec<Transaction<N>>);
 
 impl<N: Network> Transactions<N> {
     /// Initializes an empty list of transactions.
@@ -38,12 +39,12 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Initializes from a given list of transactions.
-    pub fn from(transactions: &[Transaction<N::DPC>]) -> Self {
+    pub fn from(transactions: &[Transaction<N>]) -> Self {
         Self(transactions.to_vec())
     }
 
     /// Initializes an empty list of transactions.
-    pub fn push(&mut self, transaction: Transaction<N::DPC>) {
+    pub fn push(&mut self, transaction: Transaction<N>) {
         self.0.push(transaction);
     }
 
@@ -140,7 +141,7 @@ impl<N: Network> Default for Transactions<N> {
 }
 
 impl<N: Network> Deref for Transactions<N> {
-    type Target = Vec<Transaction<N::DPC>>;
+    type Target = Vec<Transaction<N>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -148,7 +149,7 @@ impl<N: Network> Deref for Transactions<N> {
 }
 
 impl<N: Network> DerefMut for Transactions<N> {
-    fn deref_mut(&mut self) -> &mut Vec<Transaction<N::DPC>> {
+    fn deref_mut(&mut self) -> &mut Vec<Transaction<N>> {
         &mut self.0
     }
 }
