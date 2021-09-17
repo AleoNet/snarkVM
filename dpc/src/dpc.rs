@@ -16,7 +16,6 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::has_duplicates;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -198,27 +197,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     ) -> bool {
         let verify_time = start_timer!(|| "DPC::verify");
 
-        // Returns false if the number of serial numbers in the transaction is incorrect.
-        if transaction.serial_numbers().len() != C::NUM_INPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of serial numbers");
-            return false;
-        }
-
-        // Returns false if there are duplicate serial numbers in the transaction.
-        if has_duplicates(transaction.serial_numbers().iter()) {
-            eprintln!("Transaction contains duplicate serial numbers");
-            return false;
-        }
-
-        // Returns false if the number of commitments in the transaction is incorrect.
-        if transaction.commitments().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
-            return false;
-        }
-
-        // Returns false if there are duplicate commitments numbers in the transaction.
-        if has_duplicates(transaction.commitments().iter()) {
-            eprintln!("Transaction contains duplicate commitments");
+        // Returns `false` if the transaction is invalid.
+        if !transaction.is_valid() {
+            eprintln!("Transaction is invalid.");
             return false;
         }
 
@@ -247,42 +228,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         end_timer!(ledger_time);
-
-        // Construct the ciphertext hashes
-
-        // Returns false if the number of encrypted records in the transaction is incorrect.
-        if transaction.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of encrypted records");
-            return false;
-        }
-
-        let outer_public_variables = match OuterPublicVariables::from(transaction) {
-            Ok(outer_public_variables) => outer_public_variables,
-            Err(error) => {
-                eprintln!("Unable to construct outer public variables - {}", error);
-                return false;
-            }
-        };
-
-        match C::OuterSNARK::verify(
-            C::outer_circuit_verifying_key(),
-            &outer_public_variables,
-            &transaction.proof(),
-        ) {
-            Ok(is_valid) => {
-                if !is_valid {
-                    eprintln!("Transaction proof failed to verify.");
-                    return false;
-                }
-            }
-            Err(error) => {
-                eprintln!(
-                    "Outer circuit verifier failed to validate transaction proof: {:?}",
-                    error
-                );
-                return false;
-            }
-        }
 
         end_timer!(verify_time);
 

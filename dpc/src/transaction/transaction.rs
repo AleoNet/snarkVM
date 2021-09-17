@@ -14,12 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, AleoAmount, Memo, Parameters, TransactionKernel, TransactionMetadata, TransactionScheme};
+use crate::{
+    record::*,
+    AleoAmount,
+    Memo,
+    OuterPublicVariables,
+    Parameters,
+    TransactionKernel,
+    TransactionMetadata,
+    TransactionScheme,
+};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CRH, SNARK},
 };
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::{
@@ -61,6 +70,65 @@ impl<C: Parameters> Transaction<C> {
             metadata,
             encrypted_records,
             proof,
+        }
+    }
+
+    /// Returns `true` if the transaction is well-formed, meaning it contains
+    /// the correct network ID, unique serial numbers, unique commitments, and a valid proof.
+    pub fn is_valid(&self) -> bool {
+        // Returns `false` if the number of serial numbers in the transaction is incorrect.
+        if self.serial_numbers().len() != C::NUM_INPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of serial numbers");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate serial numbers in the transaction.
+        if has_duplicates(self.serial_numbers().iter()) {
+            eprintln!("Transaction contains duplicate serial numbers");
+            return false;
+        }
+
+        // Returns `false` if the number of commitments in the transaction is incorrect.
+        if self.commitments().len() != C::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of commitments");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate commitments numbers in the transaction.
+        if has_duplicates(self.commitments().iter()) {
+            eprintln!("Transaction contains duplicate commitments");
+            return false;
+        }
+
+        // Returns `false` if the number of encrypted records in the transaction is incorrect.
+        if self.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of encrypted records");
+            return false;
+        }
+
+        // Returns `false` if the transaction proof is invalid.
+        match C::OuterSNARK::verify(
+            C::outer_circuit_verifying_key(),
+            &match OuterPublicVariables::from(&self) {
+                Ok(outer_public_variables) => outer_public_variables,
+                Err(error) => {
+                    eprintln!("Unable to construct outer public variables - {}", error);
+                    return false;
+                }
+            },
+            self.proof(),
+        ) {
+            Ok(is_valid) => match is_valid {
+                true => true,
+                false => {
+                    eprintln!("Transaction proof failed to verify");
+                    false
+                }
+            },
+            Err(error) => {
+                eprintln!("Failed to validate transaction proof: {:?}", error);
+                false
+            }
         }
     }
 
