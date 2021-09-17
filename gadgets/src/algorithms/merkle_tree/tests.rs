@@ -149,7 +149,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
 
     let mask_crh_parameters = <HG as MaskedCRHGadget<_, _>>::MaskParametersGadget::alloc_constant(
         &mut cs.ns(|| "new_mask_parameters"),
-        || Ok(parameters.mask_parameters().clone()),
+        || Ok(parameters.mask_crh().clone()),
     )
     .unwrap();
 

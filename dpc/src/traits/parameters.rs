@@ -37,7 +37,7 @@ use rand::{CryptoRng, Rng};
 use std::{cell::RefCell, rc::Rc};
 
 #[rustfmt::skip]
-pub trait Parameters: 'static + Sized + Send + Sync {
+pub trait Parameters: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + Sync {
     const NETWORK_ID: u8;
 
     const NUM_INPUT_RECORDS: usize;

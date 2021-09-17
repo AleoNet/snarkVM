@@ -31,18 +31,27 @@ pub type PoswMarlin<N> = Posw<N, 32>;
 pub fn txids_to_roots<N: Network>(
     transaction_ids: &[[u8; 32]],
 ) -> Result<(MerkleRoot, MaskedMerkleRoot, Vec<[u8; 32]>)> {
+    use snarkvm_utilities::ToBytes;
+
     assert!(
         !transaction_ids.is_empty(),
         "Cannot compute a Merkle tree with no transaction IDs"
     );
 
-    let (root, subroots) = merkle_root_with_subroots::<N>(transaction_ids, N::MASKED_TREE_DEPTH);
+    let (root, subroots) = merkle_root_with_subroots(N::merkle_tree_crh(), transaction_ids, N::MASKED_TREE_DEPTH);
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
+    let masked_merkle_root_bytes = snarkvm_algorithms::merkle_tree::MerkleTree::<N::MaskedMerkleTreeParameters>::new(
+        std::sync::Arc::new(N::masked_merkle_tree_parameters().clone()),
+        &subroots,
+    )?
+    .root()
+    .to_bytes_le()?;
+
     Ok((
-        MerkleRoot(merkle_root_bytes),
-        MaskedMerkleRoot::from_leaves::<N>(&subroots)?,
+        MerkleRoot(merkle_root_bytes.clone()),
+        MaskedMerkleRoot::new(&masked_merkle_root_bytes),
         subroots,
     ))
 }

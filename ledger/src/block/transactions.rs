@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{TransactionError, TransactionScheme};
+use crate::{MaskedMerkleRoot, Network};
+use snarkvm_algorithms::merkle_tree::MerkleTree;
+use snarkvm_dpc::{Parameters, Transaction, TransactionError, TransactionScheme};
 use snarkvm_utilities::{
     has_duplicates,
     to_bytes_le,
@@ -27,30 +29,54 @@ use anyhow::Result;
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Transactions<T: TransactionScheme>(pub Vec<T>);
+pub struct Transactions<N: Network>(pub Vec<Transaction<N::DPC>>);
 
-impl<T: TransactionScheme> Transactions<T> {
+impl<N: Network> Transactions<N> {
     /// Initializes an empty list of transactions.
     pub fn new() -> Self {
         Self(vec![])
     }
 
     /// Initializes from a given list of transactions.
-    pub fn from(transactions: &[T]) -> Self {
+    pub fn from(transactions: &[Transaction<N::DPC>]) -> Self {
         Self(transactions.to_vec())
     }
 
     /// Initializes an empty list of transactions.
-    pub fn push(&mut self, transaction: T) {
+    pub fn push(&mut self, transaction: Transaction<N::DPC>) {
         self.0.push(transaction);
     }
 
-    /// Returns the transaction ids.
-    pub fn to_transaction_ids(&self) -> Result<Vec<[u8; 32]>> {
-        self.0.iter().map(|tx| tx.transaction_id()).collect()
+    /// Returns the transactions root, by computing the root for a masked Merkle tree of the transactions.
+    pub fn to_transactions_root(&self) -> Result<MaskedMerkleRoot> {
+        assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
+        let transaction_ids = (*self)
+            .iter()
+            .map(|tx| tx.transaction_id())
+            .collect::<Result<Vec<[u8; 32]>>>()?;
+
+        let tree = MerkleTree::<N::MaskedMerkleTreeParameters>::new(
+            Arc::new(N::masked_merkle_tree_parameters().clone()),
+            &transaction_ids,
+        )?;
+
+        Ok(MaskedMerkleRoot::new(&tree.root().to_bytes_le()?))
+    }
+
+    /// Returns the commitments, by construction a flattened list of commitments from all transactions.
+    pub fn to_commitments(&self) -> Result<Vec<<N::DPC as Parameters>::RecordCommitment>> {
+        assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
+        Ok(self.0.iter().map(|tx| tx.commitments()).flatten().cloned().collect())
+    }
+
+    /// Returns the serial numbers, by construction a flattened list of serial numbers from all transactions.
+    pub fn to_serial_numbers(&self) -> Result<Vec<<N::DPC as Parameters>::SerialNumber>> {
+        assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
+        Ok(self.0.iter().map(|tx| tx.serial_numbers()).flatten().cloned().collect())
     }
 
     /// Serializes the transactions into strings.
@@ -85,20 +111,19 @@ impl<T: TransactionScheme> Transactions<T> {
     }
 }
 
-impl<T: TransactionScheme> FromBytes for Transactions<T> {
+impl<N: Network> FromBytes for Transactions<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_transactions = read_variable_length_integer(&mut reader)?;
         let mut transactions = Vec::with_capacity(num_transactions);
         for _ in 0..num_transactions {
-            let transaction: T = FromBytes::read_le(&mut reader)?;
-            transactions.push(transaction);
+            transactions.push(FromBytes::read_le(&mut reader)?);
         }
         Ok(Self(transactions))
     }
 }
 
-impl<T: TransactionScheme> ToBytes for Transactions<T> {
+impl<N: Network> ToBytes for Transactions<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         variable_length_integer(self.0.len() as u64).write_le(&mut writer)?;
@@ -109,22 +134,22 @@ impl<T: TransactionScheme> ToBytes for Transactions<T> {
     }
 }
 
-impl<T: TransactionScheme> Default for Transactions<T> {
+impl<N: Network> Default for Transactions<N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: TransactionScheme> Deref for Transactions<T> {
-    type Target = Vec<T>;
+impl<N: Network> Deref for Transactions<N> {
+    type Target = Vec<Transaction<N::DPC>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<T: TransactionScheme> DerefMut for Transactions<T> {
-    fn deref_mut(&mut self) -> &mut Vec<T> {
+impl<N: Network> DerefMut for Transactions<N> {
+    fn deref_mut(&mut self) -> &mut Vec<Transaction<N::DPC>> {
         &mut self.0
     }
 }

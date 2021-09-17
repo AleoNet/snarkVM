@@ -79,7 +79,7 @@ macro_rules! define_masked_merkle_tree_parameters {
         }
 
         impl MaskedMerkleParameters for $struct_name {
-            fn mask_parameters(&self) -> &Self::H {
+            fn mask_crh(&self) -> &Self::H {
                 &self.1
             }
         }

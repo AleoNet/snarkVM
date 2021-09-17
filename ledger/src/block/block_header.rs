@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    posw::{txids_to_roots, PoswMarlin},
+    posw::PoswMarlin,
     BlockHeaderHash,
     BlockHeaderMetadata,
     MaskedMerkleRoot,
@@ -25,7 +25,7 @@ use crate::{
     Transactions,
 };
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
-use snarkvm_dpc::{Parameters, TransactionScheme};
+use snarkvm_dpc::Parameters;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -53,8 +53,8 @@ pub struct BlockHeader<N: Network> {
 
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
-    pub fn new<T: TransactionScheme, R: Rng + CryptoRng>(
-        transactions: &Transactions<T>,
+    pub fn new<R: Rng + CryptoRng>(
+        transactions: &Transactions<N>,
         commitments_root: MerkleRoot,
         serial_numbers_root: MerkleRoot,
         timestamp: i64,
@@ -64,13 +64,18 @@ impl<N: Network> BlockHeader<N> {
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
-        let txids = transactions.to_transaction_ids()?;
-        let (_, transactions_root, subroots) = txids_to_roots::<N>(&txids)?;
+        let transactions_root = transactions.to_transactions_root()?;
+
+        let mut posw_leaves: Vec<[u8; 32]> = Vec::with_capacity(4);
+        posw_leaves.push(transactions_root.0);
+        posw_leaves.push(commitments_root.0);
+        posw_leaves.push(serial_numbers_root.0);
+        posw_leaves.push([0u8; 32]);
 
         // TODO (howardwu): TEMPORARY - Make this a static once_cell.
         // Mine the block.
         let posw = PoswMarlin::<N>::load()?;
-        let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, max_nonce)?;
+        let (nonce, proof) = posw.mine(&posw_leaves, difficulty_target, rng, max_nonce)?;
 
         Ok(Self {
             transactions_root,
@@ -82,23 +87,17 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis<T: TransactionScheme, C: Parameters, R: Rng + CryptoRng>(
-        transactions: &Transactions<T>,
-        rng: &mut R,
-    ) -> Result<Self> {
+    pub fn new_genesis<C: Parameters, R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
         // Compute the commitments root from the transactions.
-        let commitments: Vec<&<T as TransactionScheme>::Commitment> =
-            transactions.0.iter().map(|t| t.commitments()).flatten().collect();
+        let commitments = transactions.to_commitments()?;
         let commitments_tree =
             MerkleTree::new(Arc::new(C::ledger_commitments_tree_parameters().clone()), &commitments)?;
         let commitments_root = MerkleRoot::from_element(commitments_tree.root());
 
         // Compute the serial numbers root from the transactions.
-        let serial_numbers: Vec<&<T as TransactionScheme>::SerialNumber> =
-            transactions.0.iter().map(|t| t.serial_numbers()).flatten().collect();
-        // TODO (howardwu): CRITICAL - Fix this.
+        let serial_numbers = transactions.to_serial_numbers()?;
         let serial_numbers_tree = MerkleTree::new(
-            Arc::new(C::ledger_commitments_tree_parameters().clone()),
+            Arc::new(C::ledger_serial_numbers_tree_parameters().clone()),
             &serial_numbers,
         )?;
         let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());
@@ -192,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_block_header_genesis() {
-        let block_header = BlockHeader::<Testnet2>::new_genesis::<_, Testnet2Parameters, _>(
+        let block_header = BlockHeader::<Testnet2>::new_genesis::<Testnet2Parameters, _>(
             &Transactions::from(&[
                 Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap(),
             ]),

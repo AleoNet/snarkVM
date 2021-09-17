@@ -86,7 +86,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
                 <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
                 N::InnerScalarField,
             >>::MaskParametersGadget::alloc_constant(&mut cs.ns(|| "new_mask_parameters"), || {
-                let crh_parameters = N::masked_merkle_tree_parameters().mask_parameters();
+                let crh_parameters = N::masked_merkle_tree_parameters().mask_crh();
                 Ok(crh_parameters)
             })?;
         let leaves_number = 2u32.pow(<N::MaskedMerkleTreeParameters as MerkleParameters>::DEPTH as u32) as usize;

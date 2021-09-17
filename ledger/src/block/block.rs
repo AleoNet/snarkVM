@@ -16,26 +16,25 @@
 
 use crate::{BlockHash, BlockHeader, BlockScheme, Network, Transactions};
 use snarkvm_algorithms::CRH;
-use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Block<N: Network, T: TransactionScheme> {
+pub struct Block<N: Network> {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHash,
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     pub header: BlockHeader<N>,
     /// The block transactions.
-    pub transactions: Transactions<T>,
+    pub transactions: Transactions<N>,
 }
 
-impl<N: Network, T: TransactionScheme> BlockScheme for Block<N, T> {
+impl<N: Network> BlockScheme for Block<N> {
     type BlockHash = BlockHash;
     type BlockHeader = BlockHeader<N>;
-    type Transaction = T;
+    type Transactions = Transactions<N>;
 
     /// Returns the previous block hash.
     fn previous_block_hash(&self) -> &Self::BlockHash {
@@ -48,8 +47,8 @@ impl<N: Network, T: TransactionScheme> BlockScheme for Block<N, T> {
     }
 
     /// Returns the transactions.
-    fn transactions(&self) -> &[Self::Transaction] {
-        self.transactions.as_slice()
+    fn transactions(&self) -> &Self::Transactions {
+        &self.transactions
     }
 
     /// Returns the hash of this block.
@@ -65,12 +64,12 @@ impl<N: Network, T: TransactionScheme> BlockScheme for Block<N, T> {
     }
 }
 
-impl<N: Network, T: TransactionScheme> FromBytes for Block<N, T> {
+impl<N: Network> FromBytes for Block<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let previous_block_hash: BlockHash = FromBytes::read_le(&mut reader)?;
         let header: BlockHeader<N> = FromBytes::read_le(&mut reader)?;
-        let transactions: Transactions<T> = FromBytes::read_le(&mut reader)?;
+        let transactions: Transactions<N> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash,
@@ -80,7 +79,7 @@ impl<N: Network, T: TransactionScheme> FromBytes for Block<N, T> {
     }
 }
 
-impl<N: Network, T: TransactionScheme> ToBytes for Block<N, T> {
+impl<N: Network> ToBytes for Block<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.write_le(&mut writer)?;

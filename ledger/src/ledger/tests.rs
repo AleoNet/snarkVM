@@ -57,7 +57,7 @@ fn test_ledger_duplicate_transactions() {
     let transaction = Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
     let transactions = Transactions::from(&[transaction.clone(), transaction]);
 
-    let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(&transactions, &mut thread_rng()).unwrap();
+    let block_header = BlockHeader::new_genesis::<Testnet2Parameters, _>(&transactions, &mut thread_rng()).unwrap();
 
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),

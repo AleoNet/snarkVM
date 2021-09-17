@@ -48,7 +48,7 @@ pub struct Ledger<N: Network, S: Storage> {
 }
 
 impl<N: Network, S: Storage> LedgerScheme<N::DPC> for Ledger<N, S> {
-    type Block = Block<N, Transaction<N::DPC>>;
+    type Block = Block<N>;
 
     /// Instantiates a new ledger with a genesis block.
     fn new(path: Option<&Path>, genesis_block: Self::Block) -> Result<Self> {
@@ -199,10 +199,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Get the list of transaction ids given a block hash.
-    pub fn get_block_transactions(
-        &self,
-        block_hash: &BlockHash,
-    ) -> Result<Transactions<Transaction<N::DPC>>, StorageError> {
+    pub fn get_block_transactions(&self, block_hash: &BlockHash) -> Result<Transactions<N>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
             Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
@@ -365,7 +362,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Insert a block into storage without canonizing/committing it.
-    pub fn insert_only(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
+    pub fn insert_only(&self, block: &Block<N>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
         if self.block_height() != 0 && block.header().is_genesis() {
             return Err(StorageError::InvalidBlockHeader);
@@ -438,7 +435,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Commit/canonize a particular block.
-    pub fn commit(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
+    pub fn commit(&self, block: &Block<N>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
         let block_height = self.block_height();
         let is_genesis = block.header().is_genesis();
@@ -552,7 +549,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Insert a block into the storage and commit as part of the longest chain.
-    pub fn insert_and_commit(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
+    pub fn insert_and_commit(&self, block: &Block<N>) -> Result<(), StorageError> {
         let block_hash = block.to_hash()?;
 
         // If the block does not exist in the storage

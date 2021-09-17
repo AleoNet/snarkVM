@@ -102,6 +102,7 @@ define_merkle_tree_parameters!(
     32
 );
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Testnet2Parameters;
 
 // TODO (raychu86): Optimize each of the window sizes in the type declarations below.

@@ -95,8 +95,6 @@ fn dpc_testnet2_integration_test() {
     let mut transactions = Transactions::new();
     transactions.push(transaction);
 
-    let transaction_ids = transactions.to_transaction_ids().unwrap();
-
     let time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
@@ -121,8 +119,7 @@ fn dpc_testnet2_integration_test() {
     let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
 
     let header = BlockHeader {
-        previous_block_hash: previous_block.header.to_hash().unwrap(),
-        transactions_root: MaskedMerkleRoot::from_leaves(&transaction_ids).unwrap(),
+        transactions_root: transactions.to_transactions_root().unwrap(),
         commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
         serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
         metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target(), 0),
@@ -131,7 +128,11 @@ fn dpc_testnet2_integration_test() {
 
     assert!(DPC::verify_transactions(&transactions.0, &ledger));
 
-    let block = Block { header, transactions };
+    let block = Block {
+        previous_block_hash: previous_block.to_hash().unwrap(),
+        header,
+        transactions,
+    };
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.block_height(), 1);
