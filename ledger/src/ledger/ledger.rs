@@ -23,7 +23,6 @@ use anyhow::Result;
 use parking_lot::RwLock;
 use std::{
     fs,
-    marker::PhantomData,
     path::Path,
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -41,16 +40,15 @@ pub fn bytes_to_u32(bytes: &[u8]) -> u32 {
 
 pub type BlockHeight = u32;
 
-pub struct Ledger<N: Network, C: Parameters, S: Storage> {
+pub struct Ledger<N: Network, S: Storage> {
     pub current_block_height: AtomicU32,
-    pub commitments_tree: RwLock<MerkleTree<C::LedgerCommitmentsTreeParameters>>,
-    pub serial_numbers_tree: RwLock<MerkleTree<C::LedgerSerialNumbersTreeParameters>>,
+    pub commitments_tree: RwLock<MerkleTree<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>>,
+    pub serial_numbers_tree: RwLock<MerkleTree<<N::DPC as Parameters>::LedgerSerialNumbersTreeParameters>>,
     pub storage: S,
-    _phantom: PhantomData<N>,
 }
 
-impl<N: Network, C: Parameters, S: Storage> LedgerScheme<C> for Ledger<N, C, S> {
-    type Block = Block<N, Transaction<C>>;
+impl<N: Network, S: Storage> LedgerScheme<N::DPC> for Ledger<N, S> {
+    type Block = Block<N, Transaction<N::DPC>>;
 
     /// Instantiates a new ledger with a genesis block.
     fn new(path: Option<&Path>, genesis_block: Self::Block) -> Result<Self> {
@@ -74,16 +72,17 @@ impl<N: Network, C: Parameters, S: Storage> LedgerScheme<C> for Ledger<N, C, S> 
         }
 
         let leaves: &[[u8; 32]] = &[];
-        let commitments_tree = MerkleTree::new(Arc::new(C::ledger_commitments_tree_parameters().clone()), leaves)?;
-        let serial_numbers_tree =
-            MerkleTree::new(Arc::new(C::ledger_serial_numbers_tree_parameters().clone()), leaves)?;
+        let commitments_tree = MerkleTree::new(Arc::new(N::DPC::ledger_commitments_tree_parameters().clone()), leaves)?;
+        let serial_numbers_tree = MerkleTree::new(
+            Arc::new(N::DPC::ledger_serial_numbers_tree_parameters().clone()),
+            leaves,
+        )?;
 
         let ledger = Self {
             current_block_height: Default::default(),
             commitments_tree: RwLock::new(commitments_tree),
             serial_numbers_tree: RwLock::new(serial_numbers_tree),
             storage,
-            _phantom: PhantomData,
         };
 
         debug_assert_eq!(ledger.block_height(), 0, "Uninitialized ledger block height must be 0");
@@ -133,9 +132,9 @@ impl<N: Network, C: Parameters, S: Storage> LedgerScheme<C> for Ledger<N, C, S> 
     }
 }
 
-impl<N: Network, C: Parameters, S: Storage> LedgerCommitmentsTree<C> for Ledger<N, C, S> {
+impl<N: Network, S: Storage> LedgerCommitmentsTree<N::DPC> for Ledger<N, S> {
     /// Return the latest state root of the ledger commitments tree.
-    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>> {
+    fn latest_digest(&self) -> Result<<N::DPC as Parameters>::LedgerCommitmentsTreeDigest> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
             Some(current_digest) => current_digest,
             None => to_bytes_le![self.commitments_tree.read().root()]?,
@@ -144,36 +143,36 @@ impl<N: Network, C: Parameters, S: Storage> LedgerCommitmentsTree<C> for Ledger<
     }
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
-    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>) -> bool {
+    fn is_valid_digest(&self, digest: &<N::DPC as Parameters>::LedgerCommitmentsTreeDigest) -> bool {
         self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
     }
 
     /// Returns true if the given commitment exists in the ledger.
-    fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool {
+    fn contains_commitment(&self, commitment: &<N::DPC as Parameters>::RecordCommitment) -> bool {
         self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
     }
 
-    /// Returns the Merkle path to the latest ledger digest
-    /// for a given commitment, if it exists in the ledger.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::LedgerCommitmentsTreeParameters>> {
+    /// Returns the Merkle path to the latest ledger digest for a given commitment, if it exists in the ledger.
+    fn prove_cm(
+        &self,
+        cm: &<N::DPC as Parameters>::RecordCommitment,
+    ) -> Result<MerklePath<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>> {
         let cm_index = self
             .get_cm_index(&cm.to_bytes_le()?)?
             .ok_or(LedgerError::InvalidCmIndex)?;
-        let result = self.commitments_tree.read().generate_proof(cm_index, cm)?;
-
-        Ok(result)
+        Ok(self.commitments_tree.read().generate_proof(cm_index, cm)?)
     }
 }
 
-impl<N: Network, C: Parameters, S: Storage> LedgerSerialNumbersTree<C> for Ledger<N, C, S> {
+impl<N: Network, S: Storage> LedgerSerialNumbersTree<N::DPC> for Ledger<N, S> {
     /// Returns true if the given serial number exists in the ledger.
-    fn contains_serial_number(&self, serial_number: &C::SerialNumber) -> bool {
+    fn contains_serial_number(&self, serial_number: &<N::DPC as Parameters>::SerialNumber) -> bool {
         self.storage
             .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
     }
 }
 
-impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
+impl<N: Network, S: Storage> Ledger<N, S> {
     /// Find the potential child block hashes given a parent block header.
     pub fn get_child_block_hashes(
         &self,
@@ -197,7 +196,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     pub fn get_block_transactions(
         &self,
         block_hash: &BlockHeaderHash,
-    ) -> Result<Transactions<Transaction<C>>, StorageError> {
+    ) -> Result<Transactions<Transaction<N::DPC>>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
             Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
@@ -249,7 +248,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     /// Build a new commitment merkle tree from the stored commitments
     pub fn rebuild_commitment_merkle_tree(
         &self,
-        additional_cms: Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>,
+        additional_cms: Vec<(<Transaction<N::DPC> as TransactionScheme>::Commitment, usize)>,
     ) -> Result<(), StorageError> {
         let mut new_cm_and_indices = additional_cms;
 
@@ -262,11 +261,11 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
         Ok(())
     }
 
-    /// Build a new commitment merkle tree
+    /// Build a new commitments tree.
     pub fn build_new_commitment_tree(
         &self,
-        additional_cms: Vec<<Transaction<C> as TransactionScheme>::Commitment>,
-    ) -> Result<MerkleTree<C::LedgerCommitmentsTreeParameters>, StorageError> {
+        additional_cms: Vec<<Transaction<N::DPC> as TransactionScheme>::Commitment>,
+    ) -> Result<MerkleTree<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
 
         let new_tree = self.commitments_tree.read().rebuild(current_len, &additional_cms)?;
@@ -274,10 +273,10 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
         Ok(new_tree)
     }
 
-    /// Build a new serial number merkle tree from the stored serial numbers
+    /// Build a new serial numbers tree from the stored serial numbers.
     pub fn rebuild_serial_number_merkle_tree(
         &self,
-        additional_sns: Vec<(<Transaction<C> as TransactionScheme>::SerialNumber, usize)>,
+        additional_sns: Vec<(<Transaction<N::DPC> as TransactionScheme>::SerialNumber, usize)>,
     ) -> Result<(), StorageError> {
         let mut new_sn_and_indices = additional_sns;
 
@@ -293,8 +292,8 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     /// Build a new serial number merkle tree
     pub fn build_new_serial_number_tree(
         &self,
-        additional_sns: Vec<<Transaction<C> as TransactionScheme>::SerialNumber>,
-    ) -> Result<MerkleTree<C::LedgerSerialNumbersTreeParameters>, StorageError> {
+        additional_sns: Vec<<Transaction<N::DPC> as TransactionScheme>::SerialNumber>,
+    ) -> Result<MerkleTree<<N::DPC as Parameters>::LedgerSerialNumbersTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_SERIAL_NUMBER)?.len();
 
         let new_tree = self.serial_numbers_tree.read().rebuild(current_len, &additional_sns)?;
@@ -308,12 +307,12 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
         &self,
         sn_index: &mut usize,
         cm_index: &mut usize,
-        transaction: &Transaction<C>,
+        transaction: &Transaction<N::DPC>,
     ) -> Result<
         (
             Vec<Op>,
-            Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>,
-            Vec<(<Transaction<C> as TransactionScheme>::SerialNumber, usize)>,
+            Vec<(<Transaction<N::DPC> as TransactionScheme>::Commitment, usize)>,
+            Vec<(<Transaction<N::DPC> as TransactionScheme>::SerialNumber, usize)>,
         ),
         StorageError,
     > {
@@ -360,7 +359,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     }
 
     /// Insert a block into storage without canonizing/committing it.
-    pub fn insert_only(&self, block: &Block<N, Transaction<C>>) -> Result<(), StorageError> {
+    pub fn insert_only(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
         if self.block_height() != 0 && block.header().is_genesis() {
             return Err(StorageError::InvalidBlockHeader);
@@ -427,7 +426,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     }
 
     /// Commit/canonize a particular block.
-    pub fn commit(&self, block: &Block<N, Transaction<C>>) -> Result<(), StorageError> {
+    pub fn commit(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
         let block_height = self.block_height();
         let is_genesis = block.header().is_genesis();
@@ -539,7 +538,7 @@ impl<N: Network, C: Parameters, S: Storage> Ledger<N, C, S> {
     }
 
     /// Insert a block into the storage and commit as part of the longest chain.
-    pub fn insert_and_commit(&self, block: &Block<N, Transaction<C>>) -> Result<(), StorageError> {
+    pub fn insert_and_commit(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
         let block_hash = block.header.to_hash()?;
 
         // If the block does not exist in the storage

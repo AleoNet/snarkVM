@@ -15,17 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Parameters;
-use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
+use snarkvm_algorithms::merkle_tree::MerklePath;
 
 use anyhow::Result;
 
 /// The ledger commitments tree is a core state tree of the ledger.
 pub trait LedgerCommitmentsTree<C: Parameters>: Sized {
     /// Return the latest state root of the ledger commitments tree.
-    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>>;
+    fn latest_digest(&self) -> Result<C::LedgerCommitmentsTreeDigest>;
 
     /// Check that st_{ts} is a valid state root for some (past) ledger commitments tree.
-    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>) -> bool;
+    fn is_valid_digest(&self, digest: &C::LedgerCommitmentsTreeDigest) -> bool;
 
     /// Returns true if the given commitment exists in the ledger commitments tree.
     fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool;

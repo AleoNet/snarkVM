@@ -48,9 +48,12 @@ impl Network for Testnet1 {
     type DPC = Testnet1Parameters;
     type InnerScalarField = <Self::DPC as Parameters>::InnerScalarField;
     
+    type Commitment = <Self::DPC as Parameters>::RecordCommitment;
+    type CommitmentsRoot = <Self::DPC as Parameters>::LedgerCommitmentsTreeDigest;
     type CommitmentsTreeCRH = <Self::DPC as Parameters>::LedgerCommitmentsTreeCRH;
     type CommitmentsTreeParameters = <Self::DPC as Parameters>::LedgerCommitmentsTreeParameters;
 
+    type SerialNumbersRoot = <Self::DPC as Parameters>::LedgerSerialNumbersTreeDigest;
     type SerialNumbersTreeCRH = <Self::DPC as Parameters>::LedgerSerialNumbersTreeCRH;
     type SerialNumbersTreeParameters = <Self::DPC as Parameters>::LedgerSerialNumbersTreeParameters;
 
@@ -82,6 +85,22 @@ impl Network for Testnet1 {
         MarlinTestnet1Mode,
         Vec<Self::InnerScalarField>,
     >;
+
+    fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH {
+        Self::DPC::ledger_commitments_tree_crh()
+    }
+    
+    fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters {
+        Self::DPC::ledger_commitments_tree_parameters()
+    }
+
+    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH {
+        Self::DPC::ledger_serial_numbers_tree_crh()
+    }
+    
+    fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters {
+        Self::DPC::ledger_serial_numbers_tree_parameters()
+    }
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH {
         static BLOCK_HEADER_CRH: OnceCell<<Testnet1 as Network>::BlockHeaderCRH> = OnceCell::new();

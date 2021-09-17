@@ -36,6 +36,7 @@ use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{cell::RefCell, rc::Rc};
 
+#[rustfmt::skip]
 pub trait Parameters: 'static + Sized + Send + Sync {
     const NETWORK_ID: u8;
 
@@ -61,251 +62,91 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type ProgramScalarField: PrimeField;
 
     /// SNARK for inner circuit proof generation.
-    type InnerSNARK: SNARK<
-        ScalarField = Self::InnerScalarField,
-        BaseField = Self::OuterScalarField,
-        VerifierInput = InnerPublicVariables<Self>,
-    >;
-    /// SNARK Verifier gadget for the inner circuit.
+    type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = InnerPublicVariables<Self>>;
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
 
     /// SNARK for proof-verification checks.
-    type OuterSNARK: SNARK<
-        ScalarField = Self::OuterScalarField,
-        BaseField = Self::OuterBaseField,
-        VerifierInput = OuterPublicVariables<Self>,
-    >;
+    type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
 
     /// Program SNARK for Aleo applications.
-    type ProgramSNARK: SNARK<
-        ScalarField = Self::InnerScalarField,
-        BaseField = Self::OuterScalarField,
-        VerifierInput = PublicVariables<Self>,
-    >;
-    /// Program SNARK verifier gadget for Aleo applications.
+    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = PublicVariables<Self>>;
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<
-        PrivateKey = Self::ProgramScalarField,
-        PublicKey = Self::ProgramAffineCurve,
-    >;
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
-    type AccountPRF: PRF<
-        Input = Vec<Self::ProgramScalarField>,
-        Seed = Self::AccountSeed,
-        Output = Self::ProgramScalarField,
-    >;
+    type AccountPRF: PRF<Input = Vec<Self::ProgramScalarField>, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
     type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
 
-    /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignatureScheme: SignatureScheme<
-            PrivateKey = (Self::ProgramScalarField, Self::ProgramScalarField),
-            PublicKey = Self::ProgramAffineCurve,
-            Signature = Self::AccountSignature,
-        > + SignatureSchemeOperations<
-            AffineCurve = Self::ProgramAffineCurve,
-            BaseField = Self::ProgramBaseField,
-            ScalarField = Self::ProgramScalarField,
-            Signature = Self::AccountSignature,
-        >;
+    /// Signature scheme for transaction authorizations. Invoked only over `Self::InnerScalarField`.
+    type AccountSignatureScheme: SignatureScheme<PrivateKey = (Self::ProgramScalarField, Self::ProgramScalarField), PublicKey = Self::ProgramAffineCurve, Signature = Self::AccountSignature>
+        + SignatureSchemeOperations<AffineCurve = Self::ProgramAffineCurve, BaseField = Self::ProgramBaseField, ScalarField = Self::ProgramScalarField, Signature = Self::AccountSignature>;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
-    type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + ToBytes
-        + FromBytes
-        + Hash
-        + PartialEq
-        + Eq
-        + Send
-        + Sync;
+    type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
-    /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.
+    /// CRH for encrypted record identifiers. Invoked only over `Self::InnerScalarField`.
     type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordDigest>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
-    type EncryptedRecordDigest: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
+    type EncryptedRecordDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// CRH for hash of the `Self::InnerSNARK` verifying keys.
-    /// This is invoked only on the larger curve.
+    /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
-    type InnerCircuitID: ToConstraintField<Self::OuterScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
+    type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// Ledger commitments tree instantiation.
+    /// Ledger commitments tree instantiation. Invoked only over `Self::InnerScalarField`.
     type LedgerCommitmentsTreeCRH: CRH<Output = Self::LedgerCommitmentsTreeDigest>;
     type LedgerCommitmentsTreeCRHGadget: CRHGadget<Self::LedgerCommitmentsTreeCRH, Self::InnerScalarField>;
-    type LedgerCommitmentsTreeDigest: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
+    type LedgerCommitmentsTreeDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type LedgerCommitmentsTreeParameters: LoadableMerkleParameters<H = Self::LedgerCommitmentsTreeCRH>;
 
-    /// Ledger serial numbers tree instantiation.
+    /// Ledger serial numbers tree instantiation. Invoked only over `Self::InnerScalarField`.
     type LedgerSerialNumbersTreeCRH: CRH<Output = Self::LedgerSerialNumbersTreeDigest>;
-    type LedgerSerialNumbersTreeDigest: ToConstraintField<Self::InnerScalarField>
-        + Copy
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync;
+    type LedgerSerialNumbersTreeDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type LedgerSerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::LedgerSerialNumbersTreeCRH>;
 
-    /// CRH and commitment scheme for committing to program input. Invoked inside
-    /// `Self::InnerSNARK` and every program SNARK.
+    /// CRH and commitment scheme for committing to program input. Invoked inside `Self::InnerSNARK` and every program SNARK.
     type LocalDataCommitmentScheme: CommitmentScheme;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
-
     type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataRoot: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
+    type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// Commitment scheme for committing to hashes of birth and death verifying keys.
+    /// Commitment scheme for committing to program IDs over `Self::InnerScalarField` and to decommit program IDs over `Self::OuterScalarField`.
     type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>;
-    /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
-    /// of verification keys on the larger curve
     type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>
         + CommitmentGadget<Self::ProgramCommitmentScheme, Self::OuterScalarField>;
-    type ProgramCommitment: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + Eq
-        + Hash
-        + ToBytes
-        + FromBytes
-        + Sync
-        + Send;
+    type ProgramCommitment: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// CRH for program ID hashing. Invoked only over `Self::OuterScalarField`.
+    /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
     type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
-    type ProgramCircuitID: ToConstraintField<Self::OuterScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
+    type ProgramCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
+    /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramCircuitIDTreeCRH: CRH<Output = Self::ProgramCircuitIDTreeDigest>;
     type ProgramCircuitIDTreeCRHGadget: CRHGadget<Self::ProgramCircuitIDTreeCRH, Self::OuterScalarField>;
-    type ProgramCircuitIDTreeDigest: ToConstraintField<Self::OuterScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
+    type ProgramCircuitIDTreeDigest: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDTreeCRH>;
 
     /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
     type RecordCommitmentScheme: CommitmentScheme<Output = Self::RecordCommitment>;
     type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitmentScheme, Self::InnerScalarField>;
-    type RecordCommitment: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + Eq
-        + Hash
-        + ToBytes
-        + FromBytes
-        + Sync
-        + Send;
+    type RecordCommitment: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH<Output = Self::SerialNumberNonce>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
-    type SerialNumberNonce: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + Eq
-        + Hash
-        + ToBytes
-        + FromBytes
-        + Sync
-        + Send;
+    type SerialNumberNonce: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberPRF: PRF<
-        // TODO (howardwu): TEMPORARY - Revisit this after upgrading serial number construction.
-        Input = Vec<Self::SerialNumberNonce>,
-        Seed = Self::InnerScalarField,
-        Output = Self::SerialNumber,
-    >;
+    // TODO (howardwu): TEMPORARY - Revisit Vec<Self::SerialNumberNonce> after upgrading serial number construction.
+    type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumberNonce>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
-    type SerialNumber: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Sync
-        + Send;
+    type SerialNumber: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;

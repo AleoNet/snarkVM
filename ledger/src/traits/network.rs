@@ -16,10 +16,16 @@
 
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_dpc::Parameters;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::MaskedCRHGadget;
-// use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+};
+
+#[rustfmt::skip]
 pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     const MASKED_TREE_DEPTH: usize;
 
@@ -28,9 +34,12 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     type DPC: Parameters;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
 
-    type CommitmentsTreeCRH: CRH;
+    type Commitment: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    type CommitmentsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    type CommitmentsTreeCRH: CRH<Output = Self::CommitmentsRoot>;
     type CommitmentsTreeParameters: LoadableMerkleParameters<H = Self::CommitmentsTreeCRH>;
 
+    type SerialNumbersRoot: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type SerialNumbersTreeCRH: CRH;
     type SerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::SerialNumbersTreeCRH>;
 
@@ -49,6 +58,12 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
 
     /// SNARK proof system for PoSW.
     type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, VerifierInput = Vec<Self::InnerScalarField>>;
+
+    fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH;
+    fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
+
+    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
+    fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
 
     fn block_header_crh() -> &'static Self::BlockHeaderCRH;
     fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
