@@ -267,7 +267,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         match C::OuterSNARK::verify(
             C::outer_circuit_verifying_key(),
             &outer_public_variables,
-            &transaction.proof,
+            &transaction.proof(),
         ) {
             Ok(is_valid) => {
                 if !is_valid {

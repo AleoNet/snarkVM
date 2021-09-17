@@ -42,7 +42,7 @@ pub struct Transaction<C: Parameters> {
     encrypted_records: Vec<EncryptedRecord<C>>,
     #[derivative(PartialEq = "ignore")]
     /// Zero-knowledge proof attesting to the validity of the transaction.
-    pub proof: <C::OuterSNARK as SNARK>::Proof,
+    proof: <C::OuterSNARK as SNARK>::Proof,
 }
 
 impl<C: Parameters> Transaction<C> {
@@ -74,13 +74,19 @@ impl<C: Parameters> Transaction<C> {
         &self.metadata
     }
 
+    /// Returns a reference to the proof of the transaction.
+    pub fn proof(&self) -> &<C::OuterSNARK as SNARK>::Proof {
+        &self.proof
+    }
+
     /// Returns the encrypted record hashes.
     pub fn to_encrypted_record_hashes(&self) -> Result<Vec<C::EncryptedRecordDigest>> {
-        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for encrypted_record in self.encrypted_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            encrypted_record_hashes.push(encrypted_record.to_hash()?);
-        }
-        Ok(encrypted_record_hashes)
+        Ok(self
+            .encrypted_records
+            .iter()
+            .take(C::NUM_OUTPUT_RECORDS)
+            .map(|e| Ok(e.to_hash()?))
+            .collect::<Result<Vec<_>>>()?)
     }
 }
 
@@ -170,7 +176,7 @@ impl<C: Parameters> fmt::Debug for Transaction<C> {
             self.memo(),
             self.ledger_digest(),
             self.inner_circuit_id(),
-            self.proof,
+            self.proof(),
         )
     }
 }
