@@ -31,9 +31,7 @@ fn test_testnet1_inner_circuit_id_sanity_check() {
         248, 38, 233, 209, 152, 143, 211, 182, 12, 9, 67, 81, 141, 63, 83, 73, 202, 36, 42, 241, 145, 34, 232, 155, 99,
         85, 212, 0, 242, 37, 246, 65, 110, 96, 43, 131, 129, 55, 252, 114, 227, 62, 168, 22, 183, 193, 178, 0,
     ];
-    let candidate_inner_circuit_id = <Testnet1Parameters as Network>::inner_circuit_id()
-        .to_bytes_le()
-        .unwrap();
+    let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
 
@@ -54,7 +52,7 @@ fn dpc_testnet1_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
+    let ledger = Ledger::<Testnet1, MemDb>::new(None, genesis_block).unwrap();
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
@@ -71,13 +69,13 @@ fn dpc_testnet1_integration_test() {
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
-    let recovered_transaction = Transaction::<Testnet1Parameters>::read_le(&transaction_bytes[..]).unwrap();
+    let recovered_transaction = Transaction::<Testnet1>::read_le(&transaction_bytes[..]).unwrap();
     assert_eq!(transaction, recovered_transaction);
 
     // Check that new_records can be decrypted from the transaction.
     {
         let encrypted_records = transaction.encrypted_records();
-        let new_account_private_keys = vec![recipient.private_key(); Testnet1Parameters::NUM_OUTPUT_RECORDS];
+        let new_account_private_keys = vec![recipient.private_key(); Testnet1::NUM_OUTPUT_RECORDS];
 
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
@@ -155,7 +153,7 @@ fn test_testnet1_dpc_execute_constraints() {
     };
 
     // Use genesis block to initialize the ledger.
-    let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
+    let ledger = Ledger::<Testnet1, MemDb>::new(None, genesis_block).unwrap();
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
@@ -166,13 +164,13 @@ fn test_testnet1_dpc_execute_constraints() {
         .build(&mut rng)
         .unwrap();
 
-    let authorization = DPC::<Testnet1Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::<Testnet1>::authorize(&vec![], &state, &mut rng).unwrap();
 
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Execute the programs.
-    let mut executions = Vec::with_capacity(Testnet1Parameters::NUM_TOTAL_RECORDS);
+    let mut executions = Vec::with_capacity(Testnet1::NUM_TOTAL_RECORDS);
     for (i, executable) in state.executables().iter().enumerate() {
         executions.push(executable.execute(i as u8, &local_data).unwrap());
     }
@@ -197,7 +195,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let ledger_digest = ledger.latest_digest().expect("could not get digest");
 
     // Generate the ledger membership witnesses
-    let mut old_witnesses = Vec::with_capacity(Testnet1Parameters::NUM_INPUT_RECORDS);
+    let mut old_witnesses = Vec::with_capacity(Testnet1::NUM_INPUT_RECORDS);
 
     // Compute the ledger membership witness and serial number from the input records.
     for record in input_records.iter() {
@@ -256,8 +254,8 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet1Parameters as Network>::InnerSNARK::setup(
-        &InnerCircuit::<Testnet1Parameters>::blank(),
+    let inner_snark_parameters = <Testnet1 as Network>::InnerSNARK::setup(
+        &InnerCircuit::<Testnet1>::blank(),
         &mut SRS::CircuitSpecific(&mut rng),
     )
     .unwrap();
@@ -265,11 +263,11 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_vk = inner_snark_parameters.1.clone();
 
     // NOTE: Do not change this to `Testnet1Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    let inner_circuit_id = <Testnet1Parameters as Network>::inner_circuit_id_crh()
+    let inner_circuit_id = <Testnet1 as Network>::inner_circuit_id_crh()
         .hash_bits(&inner_snark_vk.to_minimal_bits())
         .unwrap();
 
-    let inner_snark_proof = <Testnet1Parameters as Network>::InnerSNARK::prove(
+    let inner_snark_proof = <Testnet1 as Network>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(inner_public_variables.clone(), inner_private_variables),
         &mut rng,
@@ -290,7 +288,7 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
-    execute_outer_circuit::<Testnet1Parameters, _>(
+    execute_outer_circuit::<Testnet1, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
         &outer_public_variables,
         &outer_private_variables,

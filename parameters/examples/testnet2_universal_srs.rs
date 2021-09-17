@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK};
-use snarkvm_dpc::{errors::DPCError, testnet2::Testnet2Parameters, Network};
+use snarkvm_dpc::{errors::DPCError, testnet2::Testnet2, Network};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -25,7 +25,7 @@ mod utils;
 use utils::store;
 
 pub fn setup() -> Result<Vec<u8>, DPCError> {
-    type C = Testnet2Parameters;
+    type C = Testnet2;
     let rng = &mut thread_rng();
 
     let max_degree =

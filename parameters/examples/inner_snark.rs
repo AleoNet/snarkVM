@@ -52,8 +52,8 @@ pub fn main() {
     }
 
     let (inner_snark_pk, inner_snark_vk) = match args[1].as_str() {
-        "testnet1" => setup::<snarkvm_dpc::testnet1::Testnet1Parameters>().unwrap(),
-        "testnet2" => setup::<snarkvm_dpc::testnet2::Testnet2Parameters>().unwrap(),
+        "testnet1" => setup::<snarkvm_dpc::testnet1::Testnet1>().unwrap(),
+        "testnet2" => setup::<snarkvm_dpc::testnet2::Testnet2>().unwrap(),
         _ => panic!("Invalid parameters"),
     };
 

@@ -122,9 +122,9 @@ mod tests {
             // Generate the given inputs.
             let mut given_rng = ChaChaRng::seed_from_u64(seed);
             let given_joint_serial_numbers = {
-                let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
-                for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-                    let input = Input::<Testnet2Parameters>::new_noop(&mut given_rng).unwrap();
+                let mut joint_serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+                for _ in 0..Testnet2::NUM_INPUT_RECORDS {
+                    let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
                     joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
                 }
                 joint_serial_numbers
@@ -136,10 +136,10 @@ mod tests {
 
             // Generate the expected output state.
             let expected_record = {
-                let account = Account::<Testnet2Parameters>::new(&mut expected_rng).unwrap();
+                let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
                 Record::new_noop_output(
                     account.address,
-                    Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                    Testnet2::NUM_INPUT_RECORDS as u8,
                     &given_joint_serial_numbers,
                     &mut expected_rng,
                 )
@@ -151,7 +151,7 @@ mod tests {
                 let output = Output::new_noop(&mut candidate_rng).unwrap();
                 let record = output
                     .to_record(
-                        Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                        Testnet2::NUM_INPUT_RECORDS as u8,
                         &given_joint_serial_numbers,
                         &mut candidate_rng,
                     )

@@ -171,7 +171,7 @@ mod tests {
             // Generate the candidate input state.
             let (candidate_record, candidate_serial_number, candidate_noop_private_key, candidate_executable) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
-                let input = Input::<Testnet2Parameters>::new_noop(rng).unwrap();
+                let input = Input::<Testnet2>::new_noop(rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),

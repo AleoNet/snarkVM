@@ -273,7 +273,7 @@ mod tests {
             let (candidate_record, candidate_serial_number, candidate_executable) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
-                let mut builder = StateBuilder::<Testnet2Parameters>::new();
+                let mut builder = StateBuilder::<Testnet2>::new();
                 builder = builder.add_input(Input::new_noop(rng).unwrap());
                 builder.build(rng).unwrap();
 
@@ -299,10 +299,10 @@ mod tests {
             // Generate the given inputs.
             let mut given_rng = ChaChaRng::seed_from_u64(seed);
             let (_given_inputs, given_joint_serial_numbers) = {
-                let mut inputs = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
-                let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
-                for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-                    let input = Input::<Testnet2Parameters>::new_noop(&mut given_rng).unwrap();
+                let mut inputs = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+                let mut joint_serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+                for _ in 0..Testnet2::NUM_INPUT_RECORDS {
+                    let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
                     let serial_number = input.serial_number().to_bytes_le().unwrap();
 
                     inputs.push(input);
@@ -317,10 +317,10 @@ mod tests {
 
             // Generate the expected output state.
             let expected_record = {
-                let account = Account::<Testnet2Parameters>::new(&mut expected_rng).unwrap();
+                let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
                 Record::new_noop_output(
                     account.address,
-                    Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                    Testnet2::NUM_INPUT_RECORDS as u8,
                     &given_joint_serial_numbers,
                     &mut expected_rng,
                 )

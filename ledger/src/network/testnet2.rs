@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     define_masked_merkle_tree_parameters,
 };
-use snarkvm_dpc::{testnet2::Testnet2Parameters, Network};
+use snarkvm_dpc::{testnet2::Testnet2, Network};
 use snarkvm_gadgets::algorithms::crh::PedersenCompressedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
@@ -45,7 +45,7 @@ impl Network for Testnet2 {
     
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     
-    type DPC = Testnet2Parameters;
+    type DPC = Testnet2;
     type InnerScalarField = <Self::DPC as Network>::InnerScalarField;
 
     type Commitment = <Self::DPC as Network>::RecordCommitment;

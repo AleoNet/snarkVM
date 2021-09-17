@@ -63,27 +63,27 @@ use std::{cell::RefCell, rc::Rc};
 
 define_merkle_tree_parameters!(
     ProgramIDMerkleTreeParameters,
-    <Testnet1Parameters as Network>::ProgramCircuitIDTreeCRH,
+    <Testnet1 as Network>::ProgramCircuitIDTreeCRH,
     8
 );
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <Testnet1Parameters as Network>::LedgerCommitmentsTreeCRH,
+    <Testnet1 as Network>::LedgerCommitmentsTreeCRH,
     32
 );
 
 define_merkle_tree_parameters!(
     SerialNumberMerkleTreeParameters,
-    <Testnet1Parameters as Network>::LedgerSerialNumbersTreeCRH,
+    <Testnet1 as Network>::LedgerSerialNumbersTreeCRH,
     32
 );
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Testnet1Parameters;
+pub struct Testnet1;
 
 #[rustfmt::skip]
-impl Network for Testnet1Parameters {
+impl Network for Testnet1 {
     const NETWORK_ID: u16 = 1u16;
     
     const NUM_INPUT_RECORDS: usize = 2;
@@ -105,10 +105,10 @@ impl Network for Testnet1Parameters {
     type ProgramBaseField = <Self::ProgramCurveParameters as ModelParameters>::BaseField;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1Parameters>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1Parameters>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1>>;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
@@ -175,59 +175,59 @@ impl Network for Testnet1Parameters {
     type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
-    dpc_setup!{Testnet1Parameters, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
-    dpc_setup!{Testnet1Parameters, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
-    dpc_setup!{Testnet1Parameters, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
-    dpc_setup!{Testnet1Parameters, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{Testnet1Parameters, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
-    dpc_setup!{Testnet1Parameters, local_data_crh, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{Testnet1Parameters, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
-    dpc_setup!{Testnet1Parameters, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
-    dpc_setup!{Testnet1Parameters, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_setup!{Testnet1Parameters, record_commitment_scheme, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
-    dpc_setup!{Testnet1Parameters, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
-    dpc_setup!{Testnet1Parameters, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
+    dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
+    dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
+    dpc_setup!{Testnet1, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
+    dpc_setup!{Testnet1, local_data_crh, LocalDataCRH, "AleoLocalDataCRH0"}
+    dpc_setup!{Testnet1, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
+    dpc_setup!{Testnet1, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
+    dpc_setup!{Testnet1, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_setup!{Testnet1, record_commitment_scheme, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
+    dpc_setup!{Testnet1, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+    dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
 
-    dpc_snark_setup!{Testnet1Parameters, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+    dpc_snark_setup!{Testnet1, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet1, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
-    dpc_snark_setup!{Testnet1Parameters, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+    dpc_snark_setup!{Testnet1, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet1, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
 
-    dpc_snark_setup!{Testnet1Parameters, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
+    dpc_snark_setup!{Testnet1, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
+    dpc_snark_setup!{Testnet1, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
-        static INNER_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Network>::InnerCircuitID> = OnceCell::new();
+        static INNER_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
             .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
     fn noop_program() -> &'static NoopProgram<Self> {
-        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1Parameters>> = OnceCell::new();
-        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet1Parameters>::load().expect("Failed to fetch the noop program"))
+        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1>> = OnceCell::new();
+        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet1>::load().expect("Failed to fetch the noop program"))
     }
     
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
-        static NOOP_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Network>::ProgramCircuitID> = OnceCell::new();
+        static NOOP_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
 
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
-        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
+        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
 
-    dpc_setup!{Testnet1Parameters, ledger_commitments_tree_crh, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
+    dpc_setup!{Testnet1, ledger_commitments_tree_crh, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
     fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters {
-        static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Network>::LedgerCommitmentsTreeParameters> = OnceCell::new();
+        static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::LedgerCommitmentsTreeParameters> = OnceCell::new();
         LEDGER_COMMITMENTS_TREE_PARAMETERS.get_or_init(|| Self::LedgerCommitmentsTreeParameters::from(Self::ledger_commitments_tree_crh().clone()))
     }
 
-    dpc_setup!{Testnet1Parameters, ledger_serial_numbers_tree_crh, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
+    dpc_setup!{Testnet1, ledger_serial_numbers_tree_crh, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
     fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters {
-        static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Network>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
+        static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
         LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS.get_or_init(|| Self::LedgerSerialNumbersTreeParameters::from(Self::ledger_serial_numbers_tree_crh().clone()))
     }
 
@@ -245,8 +245,8 @@ mod tests {
     fn test_inner_circuit_sanity_check() {
         // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
         assert_eq!(
-            Testnet1Parameters::inner_circuit_verifying_key(),
-            &Testnet1Parameters::inner_circuit_proving_key().vk,
+            Testnet1::inner_circuit_verifying_key(),
+            &Testnet1::inner_circuit_proving_key().vk,
             "The inner circuit verifying key does not correspond to the inner circuit proving key"
         );
     }
@@ -255,9 +255,9 @@ mod tests {
     fn test_inner_circuit_id_derivation() {
         // Verify the inner circuit ID matches the one derived from the inner circuit verifying key.
         assert_eq!(
-            Testnet1Parameters::inner_circuit_id(),
-            &Testnet1Parameters::inner_circuit_id_crh()
-                .hash_bits(&Testnet1Parameters::inner_circuit_verifying_key().to_minimal_bits())
+            Testnet1::inner_circuit_id(),
+            &Testnet1::inner_circuit_id_crh()
+                .hash_bits(&Testnet1::inner_circuit_verifying_key().to_minimal_bits())
                 .expect("Failed to hash inner circuit ID"),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
         );
@@ -267,8 +267,8 @@ mod tests {
     fn test_outer_circuit_sanity_check() {
         // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
         assert_eq!(
-            Testnet1Parameters::outer_circuit_verifying_key(),
-            &Testnet1Parameters::outer_circuit_proving_key().vk,
+            Testnet1::outer_circuit_verifying_key(),
+            &Testnet1::outer_circuit_proving_key().vk,
             "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }

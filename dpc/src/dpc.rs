@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_transaction_authorization_serialization() {
-        transaction_authorization_serialization_test::<crate::testnet1::Testnet1Parameters>();
-        transaction_authorization_serialization_test::<crate::testnet2::Testnet2Parameters>();
+        transaction_authorization_serialization_test::<crate::testnet1::Testnet1>();
+        transaction_authorization_serialization_test::<crate::testnet2::Testnet2>();
     }
 }
