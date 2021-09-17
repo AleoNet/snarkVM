@@ -21,8 +21,6 @@ use crate::{
     OuterPublicVariables,
     Parameters,
     PublicVariables,
-    Transaction,
-    DPC,
 };
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
@@ -62,19 +60,6 @@ use snarkvm_utilities::{FromBytes, ToMinimalBits};
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use std::{cell::RefCell, rc::Rc};
-
-macro_rules! dpc_setup {
-    ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
-        #[inline]
-        fn $fn_name() -> &'static Self::$type_name {
-            static $static_name: OnceCell<<Testnet1Parameters as Parameters>::$type_name> = OnceCell::new();
-            $static_name.get_or_init(|| Self::$type_name::setup($setup_msg))
-        }
-    };
-}
-
-pub type Testnet1DPC = DPC<Testnet1Parameters>;
-pub type Testnet1Transaction = Transaction<Testnet1Parameters>;
 
 define_merkle_tree_parameters!(
     ProgramIDMerkleTreeParameters,
@@ -190,18 +175,18 @@ impl Parameters for Testnet1Parameters {
     type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
-    dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
-    dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
-    dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
-    dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{local_data_commitment_scheme, LOCAL_DATA_COMMITMENT_SCHEME, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
-    dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
-    dpc_setup!{program_circuit_id_crh, PROGRAM_CIRCUIT_ID_CRH, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
-    dpc_setup!{program_circuit_id_tree_crh, PROGRAM_CIRCUIT_ID_TREE_CRH, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
-    dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
-    dpc_setup!{transaction_id_crh, TRANSACTION_ID_CRH, TransactionIDCRH, "AleoTransactionIDCRH0"}
+    dpc_setup!{Testnet1Parameters, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1Parameters, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1Parameters, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
+    dpc_setup!{Testnet1Parameters, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
+    dpc_setup!{Testnet1Parameters, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
+    dpc_setup!{Testnet1Parameters, local_data_crh, LocalDataCRH, "AleoLocalDataCRH0"}
+    dpc_setup!{Testnet1Parameters, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
+    dpc_setup!{Testnet1Parameters, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
+    dpc_setup!{Testnet1Parameters, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_setup!{Testnet1Parameters, record_commitment_scheme, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
+    dpc_setup!{Testnet1Parameters, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+    dpc_setup!{Testnet1Parameters, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
@@ -210,8 +195,8 @@ impl Parameters for Testnet1Parameters {
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
-    dpc_snark_setup_with_mode!{Testnet1Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+    dpc_snark_setup_with_mode!{Testnet1Parameters, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
     fn noop_program() -> &'static NoopProgram<Self> {
         static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1Parameters>> = OnceCell::new();
@@ -223,24 +208,24 @@ impl Parameters for Testnet1Parameters {
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
     
-    dpc_snark_setup!{Testnet1Parameters, noop_circuit_proving_key, NOOP_CIRCUIT_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, noop_circuit_verifying_key, NOOP_CIRCUIT_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
+    dpc_snark_setup!{Testnet1Parameters, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
 
-    dpc_snark_setup_with_mode!{Testnet1Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+    dpc_snark_setup_with_mode!{Testnet1Parameters, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
     
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
         static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
 
-    dpc_setup!{ledger_commitments_tree_crh, LEDGER_COMMITMENTS_TREE_CRH, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
+    dpc_setup!{Testnet1Parameters, ledger_commitments_tree_crh, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
     fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters {
         static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::LedgerCommitmentsTreeParameters> = OnceCell::new();
         LEDGER_COMMITMENTS_TREE_PARAMETERS.get_or_init(|| Self::LedgerCommitmentsTreeParameters::from(Self::ledger_commitments_tree_crh().clone()))
     }
 
-    dpc_setup!{ledger_serial_numbers_tree_crh, LEDGER_SERIAL_NUMBERS_TREE_CRH, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
+    dpc_setup!{Testnet1Parameters, ledger_serial_numbers_tree_crh, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
     fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters {
         static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
         LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS.get_or_init(|| Self::LedgerSerialNumbersTreeParameters::from(Self::ledger_serial_numbers_tree_crh().clone()))

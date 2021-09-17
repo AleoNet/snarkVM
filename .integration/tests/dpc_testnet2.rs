@@ -71,7 +71,7 @@ fn dpc_testnet2_integration_test() {
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes_le![transaction].unwrap();
-    let recovered_transaction = Testnet2Transaction::read_le(&transaction_bytes[..]).unwrap();
+    let recovered_transaction = Transaction::<Testnet2Parameters>::read_le(&transaction_bytes[..]).unwrap();
     assert_eq!(transaction, recovered_transaction);
 
     // Check that new_records can be decrypted from the transaction
