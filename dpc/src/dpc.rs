@@ -131,17 +131,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         );
 
         // Compute the inner circuit proof.
-        let inner_proof = {
-            let inner_proving_key = C::inner_circuit_proving_key(true)
-                .as_ref()
-                .ok_or(DPCError::MissingInnerProvingKey)?;
-
-            C::InnerSNARK::prove(
-                &inner_proving_key,
-                &InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables),
-                rng,
-            )?
-        };
+        let inner_proof = C::InnerSNARK::prove(
+            C::inner_circuit_proving_key(),
+            &InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables),
+            rng,
+        )?;
 
         // Verify that the inner circuit proof passes.
         assert!(C::InnerSNARK::verify(
@@ -162,12 +156,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 local_data.root().clone(),
             );
 
-            let outer_proving_key = C::outer_circuit_proving_key(true)
-                .as_ref()
-                .ok_or(DPCError::MissingOuterProvingKey)?;
-
             let outer_proof = C::OuterSNARK::prove(
-                &outer_proving_key,
+                C::outer_circuit_proving_key(),
                 &OuterCircuit::<C>::new(outer_public_variables.clone(), outer_private_variables),
                 rng,
             )?;

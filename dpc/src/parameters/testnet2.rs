@@ -215,7 +215,7 @@ impl Parameters for Testnet2Parameters {
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
-    dpc_snark_setup_with_mode!{Testnet2Parameters, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet2Parameters, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
     
     fn noop_program() -> &'static NoopProgram<Self> {
@@ -231,7 +231,7 @@ impl Parameters for Testnet2Parameters {
     dpc_snark_setup!{Testnet2Parameters, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
 
-    dpc_snark_setup_with_mode!{Testnet2Parameters, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet2Parameters, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
 
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
@@ -270,10 +270,7 @@ mod tests {
         // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
         assert_eq!(
             Testnet2Parameters::inner_circuit_verifying_key(),
-            &Testnet2Parameters::inner_circuit_proving_key(true)
-                .as_ref()
-                .expect("Failed to load inner circuit proving key")
-                .vk,
+            &Testnet2Parameters::inner_circuit_proving_key().vk,
             "The inner circuit verifying key does not correspond to the inner circuit proving key"
         );
     }
@@ -295,10 +292,7 @@ mod tests {
         // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
         assert_eq!(
             Testnet2Parameters::outer_circuit_verifying_key(),
-            &Testnet2Parameters::outer_circuit_proving_key(true)
-                .as_ref()
-                .expect("Failed to load outer circuit proving key")
-                .vk,
+            &Testnet2Parameters::outer_circuit_proving_key().vk,
             "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }

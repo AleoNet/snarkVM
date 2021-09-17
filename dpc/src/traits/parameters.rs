@@ -180,7 +180,7 @@ pub trait Parameters: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + 
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
-    fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
+    fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
     fn noop_program() -> &'static NoopProgram<Self>;
@@ -188,7 +188,7 @@ pub trait Parameters: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + 
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
 
-    fn outer_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::OuterSNARK as SNARK>::ProvingKey>;
+    fn outer_circuit_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
     fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
 
     /// Returns the program circuit ID given a program circuit verifying key.
