@@ -180,6 +180,7 @@ full = [
   "fft",
   "hash_to_curve",
   "merkle_tree",
+  "merkle_trie",
   "msm",
   "prf",
   "signature",
@@ -195,6 +196,7 @@ wasm = [
   "fft",
   "hash_to_curve",
   "merkle_tree",
+  "merkle_trie",
   "msm",
   "prf",
   "signature",
@@ -209,6 +211,7 @@ encryption = [ "signature" ]
 fft = [ ]
 hash_to_curve = [ ]
 merkle_tree = [ ]
+merkle_trie = [ ]
 msm = [ ]
 prf = [ "blake2" ]
 signature = [ "encryption", "crypto_hash" ]
