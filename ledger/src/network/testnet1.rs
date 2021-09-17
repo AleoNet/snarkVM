@@ -61,6 +61,8 @@ impl Network for Testnet1 {
     
     type MerkleTreeCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 16, 32>;
 
+    type TransactionsTreeCRH = BHPCompressedCRH<<Self::DPC as Parameters>::ProgramProjectiveCurve, 16, 32>;
+    
     /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
     type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet1 as Network>::DPC as Parameters>::ProgramProjectiveCurve, 4, 128>;
     type MaskedMerkleTreeCRHGadget = PedersenCompressedCRHGadget<

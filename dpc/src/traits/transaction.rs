@@ -14,45 +14,40 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{AleoAmount, Memo, Parameters};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::hash::Hash;
 
-pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
-    type Commitment: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
+pub trait TransactionScheme<C: Parameters>: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
-    type InnerCircuitID: Clone + Eq + FromBytes + ToBytes;
-    type Memo: Clone + Eq + Hash + FromBytes + ToBytes;
-    type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
-    type ValueBalance: Clone + Eq + FromBytes + ToBytes;
-    type Signature: Clone + Eq + FromBytes + ToBytes;
-
-    /// Returns the transaction identifier.
-    fn transaction_id(&self) -> Result<[u8; 32]>;
 
     /// Returns the network_id in the transaction.
     fn network_id(&self) -> u8;
 
     /// Returns the old serial numbers.
-    fn serial_numbers(&self) -> &[Self::SerialNumber];
+    fn serial_numbers(&self) -> &[C::SerialNumber];
 
     /// Returns the new commitments.
-    fn commitments(&self) -> &[Self::Commitment];
+    fn commitments(&self) -> &[C::RecordCommitment];
 
     /// Returns the value balance in the transaction.
-    fn value_balance(&self) -> Self::ValueBalance;
+    fn value_balance(&self) -> AleoAmount;
 
     /// Returns the memorandum.
-    fn memo(&self) -> &Self::Memo;
+    fn memo(&self) -> &Memo<C>;
 
     /// Returns the ledger digest.
     fn ledger_digest(&self) -> &Self::Digest;
 
     /// Returns the inner circuit ID.
-    fn inner_circuit_id(&self) -> &Self::InnerCircuitID;
+    fn inner_circuit_id(&self) -> &C::InnerCircuitID;
 
     /// Returns the encrypted records
     fn encrypted_records(&self) -> &[Self::EncryptedRecord];
+
+    /// Returns the transaction ID.
+    fn to_transaction_id(&self) -> Result<[u8; 32]>;
 }

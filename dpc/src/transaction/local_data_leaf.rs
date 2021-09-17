@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{DPCError, Parameters, Transaction, TransactionScheme};
+use crate::{DPCError, Memo, Parameters};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
@@ -22,7 +22,6 @@ use std::io::{Read, Result as IoResult, Write};
 type LeafIndex = u8;
 type SerialNumber<C> = <C as Parameters>::SerialNumber;
 type Commitment<C> = <C as Parameters>::RecordCommitment;
-type Memo<C> = <Transaction<C> as TransactionScheme>::Memo;
 type NetworkId = u8;
 
 #[derive(Derivative)]

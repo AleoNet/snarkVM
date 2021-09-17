@@ -46,6 +46,8 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     type BlockHeaderCRH: CRH;
 
     type MerkleTreeCRH: CRH;
+    
+    type TransactionsTreeCRH: CRH;
 
     /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type MaskedMerkleTreeCRH: CRH;

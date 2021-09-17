@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, Parameters, Transaction};
+use crate::{prelude::*, Parameters};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -22,7 +22,7 @@ use std::io::{Read, Result as IoResult, Write};
 
 /// The transaction kernel contains core (public) transaction components,
 /// A signed transaction kernel implies the caller has authorized the execution
-/// of the transaction, and implies these values are admissibleby the ledger.
+/// of the transaction, and implies these values are admissible by the ledger.
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
@@ -38,9 +38,11 @@ pub struct TransactionKernel<C: Parameters> {
     /// The commitments of the output records.
     pub commitments: Vec<C::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
+    /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
+    /// may possess a negative value balance representing tokens being minted.
     pub value_balance: AleoAmount,
     /// Publicly-visible data associated with the transaction.
-    pub memo: <Transaction<C> as TransactionScheme>::Memo,
+    pub memo: Memo<C>,
 }
 
 impl<C: Parameters> TransactionKernel<C> {
@@ -50,7 +52,7 @@ impl<C: Parameters> TransactionKernel<C> {
         serial_numbers: Vec<C::SerialNumber>,
         commitments: Vec<C::RecordCommitment>,
         value_balance: AleoAmount,
-        memo: <Transaction<C> as TransactionScheme>::Memo,
+        memo: Memo<C>,
     ) -> Result<Self> {
         // Construct the transaction kernel.
         let kernel = Self {
@@ -97,7 +99,7 @@ impl<C: Parameters> TransactionKernel<C> {
     }
 
     /// Returns a reference to the memo.
-    pub fn memo(&self) -> &<Transaction<C> as TransactionScheme>::Memo {
+    pub fn memo(&self) -> &Memo<C> {
         &self.memo
     }
 
@@ -163,7 +165,7 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memo: <Transaction<C> as TransactionScheme>::Memo = FromBytes::read_le(&mut reader)?;
+        let memo: Memo<C> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             network_id,

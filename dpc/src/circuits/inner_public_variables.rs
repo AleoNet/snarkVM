@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Parameters, TransactionKernel};
+use crate::{AleoAmount, Memo, Parameters, TransactionKernel};
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, CommitmentScheme};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -46,7 +46,7 @@ impl<C: Parameters> InnerPublicVariables<C> {
                 serial_numbers: vec![C::SerialNumber::default(); C::NUM_INPUT_RECORDS],
                 commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
                 value_balance: AleoAmount::ZERO,
-                memo: [0u8; 64],
+                memo: Memo::default(),
             },
             ledger_digest: MerkleTreeDigest::<C::LedgerCommitmentsTreeParameters>::default(),
             encrypted_record_hashes: vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS],
@@ -104,9 +104,7 @@ where
             v.extend_from_slice(&program_commitment.to_field_elements()?);
         }
 
-        v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
-            &self.kernel.memo,
-        )?);
+        v.extend_from_slice(&self.kernel.memo.to_field_elements()?);
         v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &[self.kernel.network_id][..],
         )?);

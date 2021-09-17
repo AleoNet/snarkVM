@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{MaskedMerkleRoot, Network};
+use crate::{MerkleRoot, Network};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_dpc::{Parameters, Transaction, TransactionError, TransactionScheme};
 use snarkvm_utilities::{
@@ -51,12 +51,12 @@ impl<N: Network> Transactions<N> {
         self.0.push(transaction);
     }
 
-    /// Returns the transactions root, by computing the root for a masked Merkle tree of the transactions.
-    pub fn to_transactions_root(&self) -> Result<MaskedMerkleRoot> {
+    /// Returns the transactions root, by computing the root for a Merkle tree of the transactions.
+    pub fn to_transactions_root(&self) -> Result<MerkleRoot> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         let transaction_ids = (*self)
             .iter()
-            .map(|tx| tx.transaction_id())
+            .map(|tx| tx.to_transaction_id())
             .collect::<Result<Vec<[u8; 32]>>>()?;
 
         let tree = MerkleTree::<N::MaskedMerkleTreeParameters>::new(
@@ -64,7 +64,7 @@ impl<N: Network> Transactions<N> {
             &transaction_ids,
         )?;
 
-        Ok(MaskedMerkleRoot::new(&tree.root().to_bytes_le()?))
+        Ok(MerkleRoot::new(&tree.root().to_bytes_le()?))
     }
 
     /// Returns the commitments, by construction a flattened list of commitments from all transactions.

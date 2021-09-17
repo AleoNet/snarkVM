@@ -27,6 +27,13 @@ use std::fmt::{
 pub struct MerkleRoot(pub [u8; 32]);
 
 impl MerkleRoot {
+    pub fn new(root: &[u8]) -> Self {
+        assert_eq!(root.len(), 32);
+        let mut buffer = [0u8; 32];
+        buffer.copy_from_slice(&root);
+        Self(buffer)
+    }
+
     pub fn from_element<B: ToBytes>(digest: B) -> MerkleRoot {
         let digest_bytes = digest.to_bytes_le().expect("could not convert digest to bytes");
         assert_eq!(digest_bytes.len(), 32);

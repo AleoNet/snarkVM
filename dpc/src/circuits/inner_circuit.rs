@@ -686,7 +686,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let (network_id, memo) = {
         let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &public.kernel.memo)?;
+        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &*public.kernel.memo)?;
         let network_id = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &[public.kernel.network_id])?;
 
         let mut local_data_input_commitment_bytes = vec![];

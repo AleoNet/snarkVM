@@ -96,8 +96,7 @@ impl<C: Parameters> StateBuilder<C> {
     /// Appends the given data to the memo field in the builder.
     ///
     pub fn append_memo(mut self, data: &Vec<u8>) -> Self {
-        // TODO (howardwu): Change this to not be hardcoded to 64.
-        match self.memo.len() < 64 && (self.memo.len() + data.len()) <= 64 {
+        match self.memo.len() < C::MEMO_SIZE_IN_BYTES && (self.memo.len() + data.len()) <= C::MEMO_SIZE_IN_BYTES {
             true => self.memo.extend_from_slice(data),
             false => self.errors.push("Builder exceeded maximum memo size".into()),
         };
@@ -174,10 +173,13 @@ impl<C: Parameters> StateBuilder<C> {
             (output_records, commitments, value_balance)
         };
 
-        // TODO (howardwu): Change this to not be hardcoded to 64.
         // Process the memo.
-        let mut memo = [0u8; 64];
-        self.memo.write_le(&mut memo[..])?;
+        let mut memo_bytes = self.memo.clone();
+        match memo_bytes.len() > C::MEMO_SIZE_IN_BYTES {
+            true => return Err(anyhow!("Memo size of {} exceeds capacity", memo_bytes.len())),
+            false => memo_bytes.resize(C::MEMO_SIZE_IN_BYTES, 0u8),
+        };
+        let memo = Memo::new(&memo_bytes)?;
 
         // Construct the transaction kernel.
         let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo)?;

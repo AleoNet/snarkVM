@@ -27,7 +27,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     type Authorization;
     type Execution;
     type StateTransition;
-    type Transaction: TransactionScheme;
+    type Transaction: TransactionScheme<C>;
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(

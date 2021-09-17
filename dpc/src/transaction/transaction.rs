@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, AleoAmount, Network, Parameters, TransactionKernel, TransactionScheme};
+use crate::{record::*, AleoAmount, Memo, Network, Parameters, TransactionKernel, TransactionScheme};
 use snarkvm_algorithms::{
     crh::BHPCompressedCRH,
     merkle_tree::MerkleTreeDigest,
@@ -56,8 +56,7 @@ pub struct Transaction<C: Parameters> {
     /// may possess a negative value balance representing tokens being minted.
     pub value_balance: AleoAmount,
     /// Publicly-visible data associated with the transaction.
-    #[derivative(Default(value = "[0u8; 64]"))]
-    pub memo: [u8; 64],
+    pub memo: Memo<C>,
     /// The root of the ledger commitment tree.
     pub ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
@@ -74,10 +73,10 @@ impl<C: Parameters> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         network: Network,
-        serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
-        commitments: Vec<<Self as TransactionScheme>::Commitment>,
+        serial_numbers: Vec<C::SerialNumber>,
+        commitments: Vec<C::RecordCommitment>,
         value_balance: AleoAmount,
-        memo: <Self as TransactionScheme>::Memo,
+        memo: Memo<C>,
         ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
@@ -136,7 +135,7 @@ impl<C: Parameters> Transaction<C> {
             serial_numbers: self.serial_numbers.clone(),
             commitments: self.commitments.clone(),
             value_balance: self.value_balance,
-            memo: self.memo,
+            memo: self.memo.clone(),
         };
         debug_assert!(kernel.is_valid());
         kernel
@@ -155,46 +154,27 @@ impl<C: Parameters> Transaction<C> {
     }
 }
 
-impl<C: Parameters> TransactionScheme for Transaction<C> {
-    type Commitment = C::RecordCommitment;
+impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
     type Digest = MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
-    type InnerCircuitID = C::InnerCircuitID;
-    type Memo = [u8; 64];
-    type SerialNumber = C::SerialNumber;
-    type Signature = C::AccountSignature;
-    type ValueBalance = AleoAmount;
-
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
-    fn transaction_id(&self) -> Result<[u8; 32]> {
-        let serialized = &self.to_kernel().to_bytes_le()?;
-        let hash_bytes = TRANSACTION_ID_CRH.hash(&serialized)?.to_bytes_le()?;
-
-        assert_eq!(hash_bytes.len(), 32);
-
-        let mut transaction_id = [0u8; 32];
-        transaction_id.copy_from_slice(&hash_bytes);
-
-        Ok(transaction_id)
-    }
 
     fn network_id(&self) -> u8 {
         self.network.id()
     }
 
-    fn serial_numbers(&self) -> &[Self::SerialNumber] {
+    fn serial_numbers(&self) -> &[C::SerialNumber] {
         self.serial_numbers.as_slice()
     }
 
-    fn commitments(&self) -> &[Self::Commitment] {
+    fn commitments(&self) -> &[C::RecordCommitment] {
         self.commitments.as_slice()
     }
 
-    fn value_balance(&self) -> Self::ValueBalance {
+    fn value_balance(&self) -> AleoAmount {
         self.value_balance
     }
 
-    fn memo(&self) -> &Self::Memo {
+    fn memo(&self) -> &Memo<C> {
         &self.memo
     }
 
@@ -202,12 +182,26 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
         &self.ledger_digest
     }
 
-    fn inner_circuit_id(&self) -> &Self::InnerCircuitID {
+    fn inner_circuit_id(&self) -> &C::InnerCircuitID {
         &self.inner_circuit_id
     }
 
     fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
         &self.encrypted_records
+    }
+
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    fn to_transaction_id(&self) -> Result<[u8; 32]> {
+        // Convert the transaction kernel to bytes.
+        let serialized = &self.to_kernel().to_bytes_le()?;
+
+        // Compute the hash of the serialized kernel.
+        let hash_bytes = TRANSACTION_ID_CRH.hash(&serialized)?.to_bytes_le()?;
+        assert_eq!(hash_bytes.len(), 32);
+
+        let mut transaction_id = [0u8; 32];
+        transaction_id.copy_from_slice(&hash_bytes);
+        Ok(transaction_id)
     }
 }
 

@@ -131,7 +131,7 @@ impl<C: Parameters> LocalData<C> {
                 i as u8,
                 kernel.serial_numbers[i].clone(),
                 record.commitment(),
-                kernel.memo,
+                kernel.memo.clone(),
                 C::NETWORK_ID,
             ));
         }
@@ -140,7 +140,7 @@ impl<C: Parameters> LocalData<C> {
             leaves.push(LocalDataLeaf::<C>::OutputRecord(
                 (C::NUM_INPUT_RECORDS + j) as u8,
                 record.commitment(),
-                kernel.memo,
+                kernel.memo.clone(),
                 C::NETWORK_ID,
             ));
         }

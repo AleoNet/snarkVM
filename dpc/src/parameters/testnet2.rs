@@ -113,6 +113,8 @@ impl Parameters for Testnet2Parameters {
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
+    const MEMO_SIZE_IN_BYTES: usize = 64;
+
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     

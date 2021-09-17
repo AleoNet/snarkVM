@@ -29,6 +29,9 @@ pub use local_data::*;
 pub mod local_data_leaf;
 pub use local_data_leaf::*;
 
+pub mod memo;
+pub use memo::*;
+
 pub mod network;
 pub use network::*;
 

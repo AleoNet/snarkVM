@@ -251,7 +251,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new commitment merkle tree from the stored commitments
     pub fn rebuild_commitment_merkle_tree(
         &self,
-        additional_cms: Vec<(<Transaction<N::DPC> as TransactionScheme>::Commitment, usize)>,
+        additional_cms: Vec<(<N::DPC as Parameters>::RecordCommitment, usize)>,
     ) -> Result<(), StorageError> {
         let mut new_cm_and_indices = additional_cms;
 
@@ -267,7 +267,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new commitments tree.
     pub fn build_new_commitment_tree(
         &self,
-        additional_cms: Vec<<Transaction<N::DPC> as TransactionScheme>::Commitment>,
+        additional_cms: Vec<<N::DPC as Parameters>::RecordCommitment>,
     ) -> Result<MerkleTree<<N::DPC as Parameters>::LedgerCommitmentsTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
 
@@ -279,7 +279,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new serial numbers tree from the stored serial numbers.
     pub fn rebuild_serial_number_merkle_tree(
         &self,
-        additional_sns: Vec<(<Transaction<N::DPC> as TransactionScheme>::SerialNumber, usize)>,
+        additional_sns: Vec<(<N::DPC as Parameters>::SerialNumber, usize)>,
     ) -> Result<(), StorageError> {
         let mut new_sn_and_indices = additional_sns;
 
@@ -295,7 +295,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Build a new serial number merkle tree
     pub fn build_new_serial_number_tree(
         &self,
-        additional_sns: Vec<<Transaction<N::DPC> as TransactionScheme>::SerialNumber>,
+        additional_sns: Vec<<N::DPC as Parameters>::SerialNumber>,
     ) -> Result<MerkleTree<<N::DPC as Parameters>::LedgerSerialNumbersTreeParameters>, StorageError> {
         let current_len = self.storage.get_keys(COL_SERIAL_NUMBER)?.len();
 
@@ -314,8 +314,8 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     ) -> Result<
         (
             Vec<Op>,
-            Vec<(<Transaction<N::DPC> as TransactionScheme>::Commitment, usize)>,
-            Vec<(<Transaction<N::DPC> as TransactionScheme>::SerialNumber, usize)>,
+            Vec<(<N::DPC as Parameters>::RecordCommitment, usize)>,
+            Vec<(<N::DPC as Parameters>::SerialNumber, usize)>,
         ),
         StorageError,
     > {
@@ -388,7 +388,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             };
             database_transaction.push(Op::Insert {
                 col: COL_TRANSACTION_LOCATION,
-                key: transaction.transaction_id()?.to_vec(),
+                key: transaction.to_transaction_id()?.to_vec(),
                 value: to_bytes_le![transaction_location]?.to_vec(),
             });
         }

@@ -45,7 +45,7 @@ fn dpc_testnet1_integration_test() {
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            transactions_root: MaskedMerkleRoot([0u8; 32]),
+            transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
@@ -145,7 +145,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
-            transactions_root: MaskedMerkleRoot([0u8; 32]),
+            transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
