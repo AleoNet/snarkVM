@@ -166,7 +166,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         .iter()
         .zip(&private.input_witnesses)
         .zip(&private.signatures)
-        .zip(&public.kernel.serial_numbers)
+        .zip(public.kernel.serial_numbers())
         .enumerate()
     {
         let cs = &mut cs.ns(|| format!("Process input record {}", i));
@@ -390,7 +390,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
         .output_records
         .iter()
-        .zip(&public.kernel.commitments)
+        .zip(public.kernel.commitments())
         .zip(&private.encrypted_record_randomizers)
         .zip(&public.encrypted_record_hashes)
         .enumerate()
@@ -686,9 +686,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let (network_id, memo) = {
         let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &*public.kernel.memo)?;
-        let network_id =
-            UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &public.kernel.network_id.to_le_bytes())?;
+        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &*public.kernel.memo())?;
+        let network_id = UInt8::alloc_input_vec_le(
+            cs.ns(|| "Allocate network id"),
+            &public.kernel.network_id().to_le_bytes(),
+        )?;
 
         let mut local_data_input_commitment_bytes = vec![];
         for i in 0..C::NUM_INPUT_RECORDS {
@@ -790,7 +792,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
         let given_value_balance =
-            Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance.0)?;
+            Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance().0)?;
 
         let mut candidate_value_balance = Int64::zero();
 

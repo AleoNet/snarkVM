@@ -129,9 +129,9 @@ impl<C: Parameters> LocalData<C> {
         for (i, record) in input_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
             leaves.push(LocalDataLeaf::<C>::InputRecord(
                 i as u8,
-                kernel.serial_numbers[i].clone(),
+                kernel.serial_numbers()[i].clone(),
                 record.commitment(),
-                kernel.memo.clone(),
+                kernel.memo().clone(),
                 C::NETWORK_ID,
             ));
         }
@@ -140,7 +140,7 @@ impl<C: Parameters> LocalData<C> {
             leaves.push(LocalDataLeaf::<C>::OutputRecord(
                 (C::NUM_INPUT_RECORDS + j) as u8,
                 record.commitment(),
-                kernel.memo.clone(),
+                kernel.memo().clone(),
                 C::NETWORK_ID,
             ));
         }

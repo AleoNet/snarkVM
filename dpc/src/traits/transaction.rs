@@ -34,7 +34,7 @@ pub trait TransactionScheme<C: Parameters>: Clone + Eq + FromBytes + ToBytes + S
     fn commitments(&self) -> &[C::RecordCommitment];
 
     /// Returns the value balance in the transaction.
-    fn value_balance(&self) -> AleoAmount;
+    fn value_balance(&self) -> &AleoAmount;
 
     /// Returns the memorandum.
     fn memo(&self) -> &Memo<C>;

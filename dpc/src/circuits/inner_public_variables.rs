@@ -41,13 +41,13 @@ pub struct InnerPublicVariables<C: Parameters> {
 impl<C: Parameters> InnerPublicVariables<C> {
     pub fn blank() -> Self {
         Self {
-            kernel: TransactionKernel {
-                network_id: C::NETWORK_ID,
-                serial_numbers: vec![C::SerialNumber::default(); C::NUM_INPUT_RECORDS],
-                commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
-                value_balance: AleoAmount::ZERO,
-                memo: Memo::default(),
-            },
+            kernel: TransactionKernel::new(
+                vec![C::SerialNumber::default(); C::NUM_INPUT_RECORDS],
+                vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
+                AleoAmount::ZERO,
+                Memo::default(),
+            )
+            .expect("Failed to instantiate a blank transaction kernel"),
             ledger_digest: MerkleTreeDigest::<C::LedgerCommitmentsTreeParameters>::default(),
             encrypted_record_hashes: vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS],
             program_commitment: Some(C::ProgramCommitment::default()),
@@ -83,7 +83,7 @@ where
         let mut v = Vec::new();
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
-        for serial_number in self.kernel.serial_numbers.iter().take(C::NUM_INPUT_RECORDS) {
+        for serial_number in self.kernel.serial_numbers().iter().take(C::NUM_INPUT_RECORDS) {
             v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
                 serial_number,
             )?);
@@ -91,7 +91,7 @@ where
 
         for (cm, encrypted_record_hash) in self
             .kernel
-            .commitments
+            .commitments()
             .iter()
             .zip(&self.encrypted_record_hashes)
             .take(C::NUM_OUTPUT_RECORDS)
@@ -104,15 +104,15 @@ where
             v.extend_from_slice(&program_commitment.to_field_elements()?);
         }
 
-        v.extend_from_slice(&self.kernel.memo.to_field_elements()?);
-        v.extend_from_slice(&self.kernel.network_id.to_le_bytes().to_field_elements()?);
+        v.extend_from_slice(&self.kernel.memo().to_field_elements()?);
+        v.extend_from_slice(&self.kernel.network_id().to_le_bytes().to_field_elements()?);
 
         if let Some(local_data_root) = &self.local_data_root {
             v.extend_from_slice(&local_data_root.to_field_elements()?);
         }
 
         v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
-            &self.kernel.value_balance.0.to_le_bytes()[..],
+            &self.kernel.value_balance().0.to_le_bytes()[..],
         )?);
         Ok(v)
     }

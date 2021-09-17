@@ -32,17 +32,17 @@ use std::io::{Read, Result as IoResult, Write};
 )]
 pub struct TransactionKernel<C: Parameters> {
     /// The network ID.
-    pub network_id: u16,
+    network_id: u16,
     /// The serial numbers of the input records.
-    pub serial_numbers: Vec<C::SerialNumber>,
+    serial_numbers: Vec<C::SerialNumber>,
     /// The commitments of the output records.
-    pub commitments: Vec<C::RecordCommitment>,
+    commitments: Vec<C::RecordCommitment>,
     /// A value balance is the difference between the input and output record values.
     /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
     /// may possess a negative value balance representing tokens being minted.
-    pub value_balance: AleoAmount,
+    value_balance: AleoAmount,
     /// Publicly-visible data associated with the transaction.
-    pub memo: Memo<C>,
+    memo: Memo<C>,
 }
 
 impl<C: Parameters> TransactionKernel<C> {
@@ -78,6 +78,12 @@ impl<C: Parameters> TransactionKernel<C> {
         self.network_id == C::NETWORK_ID
             && self.serial_numbers.len() == C::NUM_INPUT_RECORDS
             && self.commitments.len() == C::NUM_OUTPUT_RECORDS
+    }
+
+    /// Returns the network ID.
+    #[inline]
+    pub fn network_id(&self) -> u16 {
+        self.network_id
     }
 
     /// Returns a reference to the serial numbers.

@@ -34,18 +34,8 @@ use std::{
     Eq(bound = "C: Parameters")
 )]
 pub struct Transaction<C: Parameters> {
-    /// The network this transaction for.
-    pub network_id: u16,
-    /// The serial numbers of the input records.
-    pub serial_numbers: Vec<C::SerialNumber>,
-    /// The commitment of the output records.
-    pub commitments: Vec<C::RecordCommitment>,
-    /// A value balance is the difference between the input and output record values.
-    /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
-    /// may possess a negative value balance representing tokens being minted.
-    pub value_balance: AleoAmount,
-    /// Publicly-visible data associated with the transaction.
-    pub memo: Memo<C>,
+    /// The transaction kernel.
+    pub kernel: TransactionKernel<C>,
     /// The root of the ledger commitment tree.
     pub ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
@@ -58,36 +48,6 @@ pub struct Transaction<C: Parameters> {
 }
 
 impl<C: Parameters> Transaction<C> {
-    /// Initializes a new instance of `Transaction` from the given inputs.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        network_id: u16,
-        serial_numbers: Vec<C::SerialNumber>,
-        commitments: Vec<C::RecordCommitment>,
-        value_balance: AleoAmount,
-        memo: Memo<C>,
-        ledger_digest: MerkleTreeDigest<C::LedgerCommitmentsTreeParameters>,
-        inner_circuit_id: C::InnerCircuitID,
-        encrypted_records: Vec<EncryptedRecord<C>>,
-        proof: <C::OuterSNARK as SNARK>::Proof,
-    ) -> Self {
-        assert_eq!(C::NUM_INPUT_RECORDS, serial_numbers.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, commitments.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
-
-        Self {
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-            ledger_digest,
-            inner_circuit_id,
-            encrypted_records,
-            proof,
-        }
-    }
-
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<C>,
@@ -96,38 +56,21 @@ impl<C: Parameters> Transaction<C> {
         encrypted_records: Vec<EncryptedRecord<C>>,
         proof: <C::OuterSNARK as SNARK>::Proof,
     ) -> Self {
-        let TransactionKernel {
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-        } = kernel;
+        assert!(kernel.is_valid());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
 
-        Self::new(
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
+        Self {
+            kernel,
             ledger_digest,
             inner_circuit_id,
             encrypted_records,
             proof,
-        )
+        }
     }
 
-    /// Returns the kernel of the transaction.
-    pub fn to_kernel(&self) -> TransactionKernel<C> {
-        let kernel = TransactionKernel {
-            network_id: self.network_id,
-            serial_numbers: self.serial_numbers.clone(),
-            commitments: self.commitments.clone(),
-            value_balance: self.value_balance,
-            memo: self.memo.clone(),
-        };
-        debug_assert!(kernel.is_valid());
-        kernel
+    /// Returns a reference to the kernel of the transaction.
+    pub fn kernel(&self) -> &TransactionKernel<C> {
+        &self.kernel
     }
 
     /// Returns the encrypted record hashes.
@@ -148,23 +91,23 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
     type EncryptedRecord = EncryptedRecord<C>;
 
     fn network_id(&self) -> u16 {
-        self.network_id
+        self.kernel.network_id()
     }
 
     fn serial_numbers(&self) -> &[C::SerialNumber] {
-        self.serial_numbers.as_slice()
+        self.kernel.serial_numbers()
     }
 
     fn commitments(&self) -> &[C::RecordCommitment] {
-        self.commitments.as_slice()
+        self.kernel.commitments()
     }
 
-    fn value_balance(&self) -> AleoAmount {
-        self.value_balance
+    fn value_balance(&self) -> &AleoAmount {
+        self.kernel.value_balance()
     }
 
     fn memo(&self) -> &Memo<C> {
-        &self.memo
+        self.kernel.memo()
     }
 
     fn ledger_digest(&self) -> &Self::Digest {
@@ -181,15 +124,14 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
     fn to_transaction_id(&self) -> Result<C::TransactionID> {
-        Ok(C::transaction_id_crh().hash(&self.to_kernel().to_bytes_le()?)?)
+        Ok(C::transaction_id_crh().hash(&self.kernel().to_bytes_le()?)?)
     }
 }
 
 impl<C: Parameters> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.to_kernel().write_le(&mut writer)?;
-
+        self.kernel().write_le(&mut writer)?;
         self.ledger_digest.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
 
@@ -234,11 +176,11 @@ impl<C: Parameters> fmt::Debug for Transaction<C> {
         write!(
             f,
             "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
-            self.network_id,
-            self.serial_numbers,
-            self.commitments,
-            self.value_balance,
-            self.memo,
+            self.kernel.network_id(),
+            self.kernel.serial_numbers(),
+            self.kernel.commitments(),
+            self.kernel.value_balance(),
+            self.kernel.memo(),
             self.ledger_digest,
             self.inner_circuit_id,
             self.proof,

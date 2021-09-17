@@ -119,8 +119,8 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
 
     let serial_number_fe = {
-        let mut serial_number_fe_vec = Vec::with_capacity(inner_public.kernel.serial_numbers.len());
-        for (index, sn) in inner_public.kernel.serial_numbers.iter().enumerate() {
+        let mut serial_number_fe_vec = Vec::with_capacity(inner_public.kernel.serial_numbers().len());
+        for (index, sn) in inner_public.kernel.serial_numbers().iter().enumerate() {
             let this_serial_number_fe =
                 alloc_inner_snark_input_field_element::<C, _, _>(cs, sn, &format!("serial number {}", index))?;
 
@@ -135,10 +135,10 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     let commitment_and_encrypted_record_hash_fe = {
         let mut commitment_and_encrypted_record_hash_fe_vec =
-            Vec::with_capacity(inner_public.kernel.commitments.len() * C::NUM_OUTPUT_RECORDS);
+            Vec::with_capacity(inner_public.kernel.commitments().len() * C::NUM_OUTPUT_RECORDS);
         for (index, (cm, encrypted_record_hash)) in inner_public
             .kernel
-            .commitments
+            .commitments()
             .iter()
             .zip_eq(inner_public.encrypted_record_hashes.iter())
             .enumerate()
@@ -161,17 +161,17 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         )?
     };
 
-    let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.kernel.memo, "memo")?;
+    let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, inner_public.kernel.memo(), "memo")?;
 
     let network_id_fe = alloc_inner_snark_input_field_element::<C, _, _>(
         cs,
-        &inner_public.kernel.network_id.to_le_bytes(),
+        &inner_public.kernel.network_id().to_le_bytes(),
         "network id",
     )?;
 
     let value_balance_fe = alloc_inner_snark_input_field_element::<C, _, _>(
         cs,
-        &inner_public.kernel.value_balance.0.to_le_bytes(),
+        &inner_public.kernel.value_balance().0.to_le_bytes(),
         "value balance",
     )?;
 
