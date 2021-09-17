@@ -16,27 +16,16 @@
 
 use crate::{record::*, AleoAmount, Memo, Network, Parameters, TransactionKernel, TransactionScheme};
 use snarkvm_algorithms::{
-    crh::BHPCompressedCRH,
     merkle_tree::MerkleTreeDigest,
     traits::{CRH, SNARK},
 };
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
-use once_cell::sync::Lazy;
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
-    sync::Arc,
 };
-
-// TODO (raychu86): Derive EdwardsBls from <C: Parameters>
-pub type TransactionIdCRH = BHPCompressedCRH<EdwardsBls, 26, 62>;
-
-/// Lazily evaluated TransactionId CRH
-pub static TRANSACTION_ID_CRH: Lazy<Arc<TransactionIdCRH>> =
-    Lazy::new(|| Arc::new(TransactionIdCRH::setup("TransactionIdCRH")));
 
 #[derive(Derivative)]
 #[derivative(
@@ -196,7 +185,7 @@ impl<C: Parameters> TransactionScheme<C> for Transaction<C> {
         let serialized = &self.to_kernel().to_bytes_le()?;
 
         // Compute the hash of the serialized kernel.
-        let hash_bytes = TRANSACTION_ID_CRH.hash(&serialized)?.to_bytes_le()?;
+        let hash_bytes = C::transaction_id_crh().hash(&serialized)?.to_bytes_le()?;
         assert_eq!(hash_bytes.len(), 32);
 
         let mut transaction_id = [0u8; 32];

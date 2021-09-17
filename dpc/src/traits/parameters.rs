@@ -149,6 +149,9 @@ pub trait Parameters: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + 
     type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumberNonce>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
     type SerialNumber: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    
+    /// CRH for computing the transaction ID.
+    type TransactionIDCRH: CRH;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
@@ -172,6 +175,8 @@ pub trait Parameters: 'static + Sized + Clone + Debug + PartialEq + Eq + Send + 
     fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+    
+    fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
