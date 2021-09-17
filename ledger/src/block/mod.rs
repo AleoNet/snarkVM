@@ -17,14 +17,17 @@
 pub mod block;
 pub use block::*;
 
+pub mod block_hash;
+pub use block_hash::*;
+
 pub mod block_header;
 pub use block_header::*;
 
-pub mod block_header_metadata;
-pub use block_header_metadata::*;
-
 pub mod block_header_hash;
 pub use block_header_hash::*;
+
+pub mod block_header_metadata;
+pub use block_header_metadata::*;
 
 pub mod merkle_root;
 pub use merkle_root::*;

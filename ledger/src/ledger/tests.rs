@@ -23,6 +23,7 @@ use rand::thread_rng;
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
+        previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             transactions_root: MaskedMerkleRoot([0u8; 32]),
@@ -35,12 +36,12 @@ fn test_new_ledger_with_genesis_block() {
     };
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
-    let expected_genesis_block_hash = BlockHeaderHash([
-        63, 138, 252, 86, 177, 15, 96, 131, 45, 199, 133, 61, 241, 76, 206, 159, 100, 110, 164, 142, 79, 11, 11, 157,
-        173, 145, 155, 126, 14, 240, 235, 13,
+    let expected_genesis_block_hash = BlockHash([
+        213, 210, 115, 52, 99, 232, 227, 166, 73, 135, 203, 250, 110, 201, 227, 111, 172, 117, 198, 166, 214, 90, 21,
+        168, 168, 36, 68, 66, 138, 106, 183, 12,
     ]);
 
-    let ledger = Ledger::<Testnet2, Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();
+    let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).unwrap();
 
     assert_eq!(ledger.block_height(), 0);
     assert_eq!(ledger.latest_block().unwrap(), genesis_block.clone());
@@ -49,7 +50,7 @@ fn test_new_ledger_with_genesis_block() {
     assert_eq!(ledger.get_block_number(&expected_genesis_block_hash).unwrap(), 0);
     assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
 
-    assert!(ledger.get_block(&BlockHeaderHash([0u8; 32])).is_err());
+    assert!(ledger.get_block(&BlockHash([0u8; 32])).is_err());
 }
 
 #[test]
@@ -60,9 +61,10 @@ fn test_ledger_duplicate_transactions() {
     let block_header = BlockHeader::new_genesis::<_, Testnet2Parameters, _>(&transactions, &mut thread_rng()).unwrap();
 
     let genesis_block = Block {
+        previous_block_hash: BlockHash([0u8; 32]),
         header: block_header,
         transactions,
     };
 
-    assert!(Ledger::<Testnet2, Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).is_err());
+    assert!(Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).is_err());
 }

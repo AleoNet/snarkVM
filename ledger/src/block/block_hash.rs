@@ -27,9 +27,9 @@ use std::{
 };
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeaderHash(pub [u8; 32]);
+pub struct BlockHash(pub [u8; 32]);
 
-impl BlockHeaderHash {
+impl BlockHash {
     pub fn new(hash: &[u8]) -> Self {
         assert_eq!(hash.len(), 32);
 
@@ -43,21 +43,21 @@ impl BlockHeaderHash {
     }
 }
 
-impl FromBytes for BlockHeaderHash {
+impl FromBytes for BlockHash {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self(<[u8; 32]>::read_le(&mut reader)?))
     }
 }
 
-impl ToBytes for BlockHeaderHash {
+impl ToBytes for BlockHash {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.0.write_le(&mut writer)
     }
 }
 
-impl Display for BlockHeaderHash {
+impl Display for BlockHash {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }

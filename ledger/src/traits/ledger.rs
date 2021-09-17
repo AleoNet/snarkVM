@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeaderHash, BlockScheme};
+use crate::{BlockHash, BlockScheme};
 use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Parameters};
 
 use anyhow::Result;
@@ -35,14 +35,14 @@ pub trait LedgerScheme<C: Parameters>: LedgerCommitmentsTree<C> + LedgerSerialNu
     fn latest_block(&self) -> Result<Self::Block>;
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &BlockHeaderHash) -> Result<Self::Block>;
+    fn get_block(&self, block_hash: &BlockHash) -> Result<Self::Block>;
 
     /// Returns the block hash given a block number.
-    fn get_block_hash(&self, block_number: u32) -> Result<BlockHeaderHash>;
+    fn get_block_hash(&self, block_number: u32) -> Result<BlockHash>;
 
     /// Returns the block number given a block hash.
-    fn get_block_number(&self, block_hash: &BlockHeaderHash) -> Result<u32>;
+    fn get_block_number(&self, block_hash: &BlockHash) -> Result<u32>;
 
     /// Returns true if the given block hash exists in the ledger.
-    fn contains_block_hash(&self, block_hash: &BlockHeaderHash) -> bool;
+    fn contains_block_hash(&self, block_hash: &BlockHash) -> bool;
 }

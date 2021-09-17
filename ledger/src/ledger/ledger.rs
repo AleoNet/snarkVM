@@ -103,23 +103,24 @@ impl<N: Network, S: Storage> LedgerScheme<N::DPC> for Ledger<N, S> {
     }
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &BlockHeaderHash) -> Result<Self::Block> {
+    fn get_block(&self, block_hash: &BlockHash) -> Result<Self::Block> {
         Ok(Self::Block {
+            previous_block_hash: self.get_previous_block_hash(block_hash)?,
             header: self.get_block_header(block_hash)?,
             transactions: self.get_block_transactions(block_hash)?,
         })
     }
 
     /// Returns the block hash given a block number.
-    fn get_block_hash(&self, block_number: BlockHeight) -> Result<BlockHeaderHash> {
+    fn get_block_hash(&self, block_number: BlockHeight) -> Result<BlockHash> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
-            Some(block_header_hash) => Ok(BlockHeaderHash::new(&block_header_hash)),
+            Some(block_hash) => Ok(BlockHash::new(&block_hash)),
             None => Err(StorageError::MissingBlockHash(block_number).into()),
         }
     }
 
     /// Returns the block number given a block hash.
-    fn get_block_number(&self, block_hash: &BlockHeaderHash) -> Result<u32> {
+    fn get_block_number(&self, block_hash: &BlockHash) -> Result<u32> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_hash.0)? {
             Some(block_num_bytes) => Ok(bytes_to_u32(&block_num_bytes)),
             None => Err(StorageError::MissingBlockNumber(block_hash.to_string()).into()),
@@ -127,7 +128,7 @@ impl<N: Network, S: Storage> LedgerScheme<N::DPC> for Ledger<N, S> {
     }
 
     /// Returns true if the given block hash exists in the ledger.
-    fn contains_block_hash(&self, block_hash: &BlockHeaderHash) -> bool {
+    fn contains_block_hash(&self, block_hash: &BlockHash) -> bool {
         self.get_block_header(block_hash).is_ok()
     }
 }
@@ -174,18 +175,23 @@ impl<N: Network, S: Storage> LedgerSerialNumbersTree<N::DPC> for Ledger<N, S> {
 
 impl<N: Network, S: Storage> Ledger<N, S> {
     /// Find the potential child block hashes given a parent block header.
-    pub fn get_child_block_hashes(
-        &self,
-        parent_header: &BlockHeaderHash,
-    ) -> Result<Vec<BlockHeaderHash>, StorageError> {
-        match self.storage.get(COL_CHILD_HASHES, &parent_header.0)? {
+    pub fn get_child_block_hashes(&self, parent_hash: &BlockHash) -> Result<Vec<BlockHash>, StorageError> {
+        match self.storage.get(COL_CHILD_HASHES, &parent_hash.0)? {
             Some(encoded_child_block_hashes) => Ok(bincode::deserialize(&encoded_child_block_hashes[..])?),
             None => Ok(vec![]),
         }
     }
 
+    /// Get the previous block hash given the block hash.
+    pub fn get_previous_block_hash(&self, block_hash: &BlockHash) -> Result<BlockHash, StorageError> {
+        match self.storage.get(COL_BLOCK_PREVIOUS_BLOCK_HASH, &block_hash.0)? {
+            Some(previous_block_hash) => Ok(BlockHash::read_le(&previous_block_hash[..])?),
+            None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
+        }
+    }
+
     /// Get a block header given the block hash.
-    pub fn get_block_header(&self, block_hash: &BlockHeaderHash) -> Result<BlockHeader<N>, StorageError> {
+    pub fn get_block_header(&self, block_hash: &BlockHash) -> Result<BlockHeader<N>, StorageError> {
         match self.storage.get(COL_BLOCK_HEADER, &block_hash.0)? {
             Some(block_header_bytes) => Ok(BlockHeader::read_le(&block_header_bytes[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
@@ -195,7 +201,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Get the list of transaction ids given a block hash.
     pub fn get_block_transactions(
         &self,
-        block_hash: &BlockHeaderHash,
+        block_hash: &BlockHash,
     ) -> Result<Transactions<Transaction<N::DPC>>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
             Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
@@ -365,9 +371,8 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             return Err(StorageError::InvalidBlockHeader);
         }
 
-        let block_hash = block.header.to_hash()?;
-
         // Check that the block does not already exist.
+        let block_hash = block.to_hash()?;
         if self.contains_block_hash(&block_hash) {
             return Err(BlockError::BlockExists(block_hash.to_string()).into());
         }
@@ -391,32 +396,39 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             });
         }
 
+        let block_hash_bytes = block_hash.0.to_vec();
+
+        database_transaction.push(Op::Insert {
+            col: COL_BLOCK_PREVIOUS_BLOCK_HASH,
+            key: block_hash_bytes.clone(),
+            value: block.previous_block_hash.0.to_vec(),
+        });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_HEADER,
-            key: block_hash.0.to_vec(),
+            key: block_hash_bytes.clone(),
             value: to_bytes_le![block.header]?.to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
-            key: block.header.to_hash()?.0.to_vec(),
+            key: block_hash_bytes.clone(),
             value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
-        let mut child_hashes = self.get_child_block_hashes(&block.header.previous_block_hash)?;
+        let mut child_hashes = self.get_child_block_hashes(&block.previous_block_hash())?;
 
         if !child_hashes.contains(&block_hash) {
             child_hashes.push(block_hash);
 
             database_transaction.push(Op::Insert {
                 col: COL_CHILD_HASHES,
-                key: block.header.previous_block_hash.0.to_vec(),
+                key: block.previous_block_hash.0.to_vec(),
                 value: bincode::serialize(&child_hashes)?,
             });
         }
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
-            key: block.header.to_hash()?.0.to_vec(),
+            key: block_hash_bytes,
             value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
@@ -435,9 +447,9 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         }
 
         // Ensure the block is not already in the canon chain.
-        let block_header_hash = block.header.to_hash()?;
-        if self.is_canon(&block_header_hash) {
-            return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
+        let block_hash = block.to_hash()?;
+        if self.is_canon(&block_hash) {
+            return Err(StorageError::ExistingCanonBlock(block_hash.to_string()));
         }
 
         // Ensure there is no conflicting serial number or commitment in the block transactions.
@@ -490,15 +502,17 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
         // Update the block location
 
+        let block_hash_bytes = block_hash.0.to_vec();
+
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
-            key: block.header.to_hash()?.0.to_vec(),
+            key: block_hash_bytes.clone(),
             value: new_block_height.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
             key: new_block_height.to_le_bytes().to_vec(),
-            value: block.header.to_hash()?.0.to_vec(),
+            value: block_hash_bytes,
         });
 
         // If it's the genesis block, store its initial applicable digest.
@@ -539,7 +553,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
     /// Insert a block into the storage and commit as part of the longest chain.
     pub fn insert_and_commit(&self, block: &Block<N, Transaction<N::DPC>>) -> Result<(), StorageError> {
-        let block_hash = block.header.to_hash()?;
+        let block_hash = block.to_hash()?;
 
         // If the block does not exist in the storage
         if !self.contains_block_hash(&block_hash) {
@@ -551,7 +565,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Returns true if the block exists in the canon chain.
-    pub fn is_canon(&self, block_hash: &BlockHeaderHash) -> bool {
+    pub fn is_canon(&self, block_hash: &BlockHash) -> bool {
         self.contains_block_hash(block_hash) && self.get_block_number(block_hash).is_ok()
     }
 }
