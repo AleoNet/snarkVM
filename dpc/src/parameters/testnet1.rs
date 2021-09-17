@@ -188,15 +188,21 @@ impl Parameters for Testnet1Parameters {
     dpc_setup!{Testnet1Parameters, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
     dpc_setup!{Testnet1Parameters, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
 
+    dpc_snark_setup!{Testnet1Parameters, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+
+    dpc_snark_setup!{Testnet1Parameters, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+
+    dpc_snark_setup!{Testnet1Parameters, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
+
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
             .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements"))
     }
-
-    dpc_snark_setup!{Testnet1Parameters, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
     fn noop_program() -> &'static NoopProgram<Self> {
         static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1Parameters>> = OnceCell::new();
@@ -207,13 +213,7 @@ impl Parameters for Testnet1Parameters {
         static NOOP_CIRCUIT_ID: OnceCell<<Testnet1Parameters as Parameters>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
-    
-    dpc_snark_setup!{Testnet1Parameters, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
 
-    dpc_snark_setup!{Testnet1Parameters, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
-    
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
         static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
