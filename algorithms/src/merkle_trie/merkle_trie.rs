@@ -119,13 +119,26 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
     }
 
     /// Get a value given a key.
-    fn get(&self, _key: &[u8]) -> Option<&T> {
-        unimplemented!()
+    pub fn get(&self, key: &[u8]) -> Option<&T> {
+        // If the key is the root, return the value.
+        if self.key == key {
+            return self.value.as_ref();
+        } else if key.starts_with(&self.key) {
+            // If the given key starts with the root key.
+            let suffix = &key[self.key.len()..];
+
+            return match self.children.get(&suffix[0]) {
+                Some(child_trie) => child_trie.get(&suffix),
+                None => None,
+            };
+        }
+
+        None
     }
 
     /// Remove the value at a given key. Returns the value if it was removed successfully, and None
     /// if there was no value associated to the given key.
-    fn remove(&mut self, _key: &[u8]) -> Option<T> {
+    pub fn remove(&mut self, _key: &[u8]) -> Option<T> {
         unimplemented!()
     }
 
