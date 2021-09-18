@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::SNARK;
+use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_ledger::posw::{txids_to_roots, Marlin, PoswMarlin};
 use snarkvm_utilities::FromBytes;
@@ -31,7 +31,7 @@ fn marlin_posw(c: &mut Criterion) {
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
     let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
-    let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
+    let posw = PoswMarlin::index::<ChaChaRng>(&mut SRS::<ChaChaRng, _>::Universal(&universal_srs)).unwrap();
 
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 

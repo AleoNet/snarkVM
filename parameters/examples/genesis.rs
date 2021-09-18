@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::prelude::*;
-use snarkvm_ledger::{ledger::*, prelude::*, testnet1::*, testnet2::*};
+use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
+use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -26,7 +26,7 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<N: Network>(recipient: Address<N::DPC>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
@@ -45,8 +45,8 @@ pub fn generate<N: Network>(recipient: Address<N::DPC>, value: u64) -> Result<(V
 
     let amount = AleoAmount::from_bytes(value as i64);
     let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-    let authorization = DPC::<N::DPC>::authorize(&vec![], &state, rng)?;
-    let transaction = DPC::<N::DPC>::execute(authorization, state.executables(), &temporary_ledger, rng)?;
+    let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
+    let transaction = DPC::<N>::execute(authorization, state.executables(), &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     println!("transaction size - {}\n", transaction_bytes.len());
@@ -56,13 +56,13 @@ pub fn generate<N: Network>(recipient: Address<N::DPC>, value: u64) -> Result<(V
     transactions.push(transaction);
 
     // Create a genesis header.
-    let genesis_header = BlockHeader::new_genesis::<N::DPC, _>(&transactions, &mut thread_rng())?;
+    let genesis_header = BlockHeader::new_genesis(&transactions, &mut thread_rng())?;
     assert!(genesis_header.is_genesis());
-    println!("block header size - {}\n", BlockHeader::size());
+    println!("block header size - {}\n", BlockHeader::<N>::size());
 
     println!(
         "block size - {}\n",
-        transaction_bytes.len() + BlockHeader::size() + 1 /* variable_length_integer for number of transaction */
+        transaction_bytes.len() + BlockHeader::<N>::size() + 1 /* variable_length_integer for number of transaction */
     );
 
     Ok((genesis_header.to_bytes_le()?.to_vec(), transaction_bytes))
@@ -103,6 +103,6 @@ pub fn main() {
             store(genesis_header_file, &genesis_header).unwrap();
             store(transaction_file, &transaction).unwrap();
         }
-        _ => panic!("Invalid parameters"),
+        _ => panic!("Invalid network"),
     };
 }
