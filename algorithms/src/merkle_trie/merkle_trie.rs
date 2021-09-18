@@ -29,23 +29,8 @@ pub struct MerkleTrie<P: CRH, T: Debug> {
     key: Vec<u8>,
     /// The value existing at the current Merkle trie node.
     value: Option<T>,
-    /// Any child Merkle tries. Currently has u8::MAX potential branches.
+    /// Any child Merkle tries. Currently has u8::MAX potential branches. // TODO (raychu86): Allow for generic branch sizes.
     children: BTreeMap<u8, MerkleTrie<P, T>>, // TODO (raychu86): Remove the current duplication of parameters.
-}
-
-/// Number of prefix elements the two keys have in common.
-pub fn get_matching_prefix_length(key: &[u8], key_2: &[u8]) -> usize {
-    let mut count: usize = 0;
-    // Iterate over both keys. End on the first difference or if one of the keys is empty.
-    for (elem_1, elem_2) in key.iter().zip(key_2) {
-        if elem_1 == elem_2 {
-            count += 1;
-        } else {
-            break;
-        }
-    }
-
-    count
 }
 
 impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
@@ -133,7 +118,28 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
         Ok(())
     }
 
-    /// Helper function to insert a (key, value) pair into the current Merkle trie node.
+    /// Get a value given a key.
+    fn get(&self, _key: &[u8]) -> Option<&T> {
+        unimplemented!()
+    }
+
+    /// Remove the value at a given key. Returns the value if it was removed successfully, and None
+    /// if there was no value associated to the given key.
+    fn remove(&mut self, _key: &[u8]) -> Option<T> {
+        unimplemented!()
+    }
+
+    /// Returns the root hash of the Merkle trie.
+    #[inline]
+    pub fn root(&self) -> &[u8; 32] {
+        &self.root
+    }
+
+    // pub fn generate_proof(&self, _key: &[u8], _value: T) -> Result<MerkleTriePath<P, T>, MerkleError> {
+    //     unimplemented!()
+    // }
+
+    /// Insert a (key, value) pair into the current Merkle trie node.
     fn insert_child(&mut self, suffix: &Vec<u8>, value: T) -> Result<(), MerkleError> {
         // Check the first element of the suffix.
         match self.children.get_mut(&suffix[0]) {
@@ -156,7 +162,7 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
         Ok(())
     }
 
-    /// Update the root of the Merkle trie with it's current children.
+    /// Update the root of the Merkle trie using its current children.
     fn update_root(&mut self) -> Result<(), MerkleError> {
         if self.is_empty() {
             self.root = [0; 32];
@@ -187,23 +193,19 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
 
         Ok(())
     }
+}
 
-    // fn get(&self, key: &[u8]) -> Option<&T> {
-    //     unimplemented!()
-    // }
-    //
-    // fn remove(&mut self, key: &[u8]) -> Option<T> {
-    //     unimplemented!()
-    // }
-    //
-
-    #[inline]
-    pub fn root(&self) -> &[u8; 32] {
-        &self.root
+/// Number of prefix elements the two keys have in common.
+pub fn get_matching_prefix_length(key: &[u8], key_2: &[u8]) -> usize {
+    let mut count: usize = 0;
+    // Iterate over both keys. End on the first difference or if one of the keys is empty.
+    for (elem_1, elem_2) in key.iter().zip(key_2) {
+        if elem_1 == elem_2 {
+            count += 1;
+        } else {
+            break;
+        }
     }
 
-    //
-    // pub fn generate_proof<L: ToBytes>(&self, index: usize, leaf: &L) -> Result<MerklePath<P>, MerkleError> {
-    //     unimplemented!()
-    // }
+    count
 }
