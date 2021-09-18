@@ -57,6 +57,11 @@ use snarkvm_gadgets::{
 use snarkvm_parameters::{testnet1::*, Parameter};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
+// TODO (howardwu): TEMPORARY - Remove me.
+use blake2::Blake2s;
+use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
+
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
@@ -115,6 +120,15 @@ impl Network for Testnet1 {
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+
+    type PoswSNARK = MarlinSNARK<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        SonicKZG10<Self::InnerCurve>,
+        FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>,
+        MarlinTestnet1Mode,
+        Vec<Self::InnerScalarField>,
+    >;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;

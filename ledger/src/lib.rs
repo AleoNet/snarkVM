@@ -57,9 +57,6 @@
 #[macro_use]
 extern crate thiserror;
 
-pub mod network;
-pub use network::*;
-
 pub mod errors;
 pub use errors::*;
 
@@ -71,5 +68,5 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{errors::*, network::*, traits::*};
+    pub use crate::{errors::*, traits::*};
 }

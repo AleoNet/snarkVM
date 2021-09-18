@@ -16,8 +16,9 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{block::masked_merkle_root::MaskedMerkleRoot, posw::circuit::POSWCircuit, Network, PoswError};
+use crate::{posw::circuit::POSWCircuit, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
+use snarkvm_dpc::{MaskedMerkleRoot, Network};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},

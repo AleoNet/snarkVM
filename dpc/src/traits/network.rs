@@ -73,9 +73,12 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     /// SNARK for proof-verification checks.
     type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
 
-    /// Program SNARK for Aleo applications.
+    /// SNARK for Aleo programs.
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = PublicVariables<Self>>;
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
+    
+    /// SNARK for PoSW.
+    type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>>;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;

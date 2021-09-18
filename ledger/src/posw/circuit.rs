@@ -18,8 +18,9 @@
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 
-use crate::{posw::posw::commit, MaskedMerkleRoot, Network};
+use crate::posw::posw::commit;
 use snarkvm_algorithms::{merkle_tree::MerkleTree, MaskedMerkleParameters, MerkleParameters, CRH};
+use snarkvm_dpc::{MaskedMerkleRoot, Network};
 use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_root,
     integers::uint::UInt8,
@@ -147,7 +148,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testnet2::Testnet2;
+    use snarkvm_dpc::testnet2::Testnet2;
     // TODO (howardwu) - Switch this to Marlin.
     use snarkvm_algorithms::snark::gm17::{
         create_random_proof,

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHash, BlockScheme};
-use snarkvm_dpc::{LedgerCommitmentsTree, LedgerSerialNumbersTree, Network};
+use snarkvm_dpc::{BlockHash, BlockScheme, LedgerCommitmentsTree, LedgerSerialNumbersTree, Network};
 
 use anyhow::Result;
 use std::path::Path;

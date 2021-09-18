@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::BlockError;
 use snarkvm_algorithms::errors::MerkleError;
+use snarkvm_dpc::errors::BlockError;
 use snarkvm_parameters::errors::ParameterError;
 
 use std::fmt::Debug;

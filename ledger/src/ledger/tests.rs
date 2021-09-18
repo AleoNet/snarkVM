@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ledger::*, prelude::*, testnet2::Testnet2};
-use snarkvm_dpc::{Network::testnet2::Testnet2Parameters, Transaction};
+use crate::{ledger::*, prelude::*};
+use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 
 use rand::thread_rng;
@@ -54,10 +54,10 @@ fn test_new_ledger_with_genesis_block() {
 
 #[test]
 fn test_ledger_duplicate_transactions() {
-    let transaction = Transaction::<Testnet2Parameters>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
+    let transaction = Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
     let transactions = Transactions::from(&[transaction.clone(), transaction]);
 
-    let block_header = BlockHeader::new_genesis::<Testnet2Parameters, _>(&transactions, &mut thread_rng()).unwrap();
+    let block_header = BlockHeader::new_genesis(&transactions, &mut thread_rng()).unwrap();
 
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),

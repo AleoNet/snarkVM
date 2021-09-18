@@ -19,7 +19,7 @@ pub mod circuit;
 mod posw;
 use posw::Posw;
 
-use crate::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network};
+use snarkvm_dpc::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network};
 
 use anyhow::Result;
 
@@ -59,9 +59,9 @@ pub fn txids_to_roots<N: Network>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testnet2::Testnet2;
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_dpc::testnet2::Testnet2;
     use snarkvm_utilities::FromBytes;
 
     use rand::{rngs::ThreadRng, thread_rng, Rng};
