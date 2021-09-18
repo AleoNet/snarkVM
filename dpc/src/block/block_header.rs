@@ -171,7 +171,6 @@ mod tests {
     use crate::{testnet2::Testnet2, Transaction};
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 
-    use chrono::Utc;
     use rand::thread_rng;
 
     #[test]
