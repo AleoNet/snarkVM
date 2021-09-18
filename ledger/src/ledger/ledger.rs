@@ -376,12 +376,19 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             return Err(StorageError::ConflictingTransactions);
         }
 
+        let block_hash_bytes = {
+            assert_eq!(block_hash.0.len(), 32);
+            let mut slice = [0u8; 32];
+            slice.copy_from_slice(&block_hash.0[..]);
+            slice
+        };
+
         let mut database_transaction = DatabaseTransaction::new();
 
         for (index, transaction) in block.transactions.0.iter().enumerate() {
             let transaction_location = TransactionLocation {
                 index: index as u32,
-                block_hash: block.header.to_hash()?.0,
+                block_hash: block_hash_bytes,
             };
             database_transaction.push(Op::Insert {
                 col: COL_TRANSACTION_LOCATION,
@@ -390,21 +397,19 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             });
         }
 
-        let block_hash_bytes = block_hash.0.to_vec();
-
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_PREVIOUS_BLOCK_HASH,
-            key: block_hash_bytes.clone(),
+            key: block_hash_bytes.to_vec(),
             value: block.previous_block_hash.0.to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_HEADER,
-            key: block_hash_bytes.clone(),
+            key: block_hash_bytes.to_vec(),
             value: to_bytes_le![block.header]?.to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
-            key: block_hash_bytes.clone(),
+            key: block_hash_bytes.to_vec(),
             value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
@@ -422,7 +427,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
-            key: block_hash_bytes,
+            key: block_hash_bytes.to_vec(),
             value: to_bytes_le![block.transactions]?.to_vec(),
         });
 

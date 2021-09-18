@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeaderHash, BlockHeaderMetadata, MerkleRoot, Network, ProofOfSuccinctWork, Transactions};
+use crate::{BlockHeaderMetadata, MerkleRoot, Network, ProofOfSuccinctWork, Transactions};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -120,13 +120,9 @@ impl<N: Network> BlockHeader<N> {
         }
     }
 
-    pub fn to_hash(&self) -> Result<BlockHeaderHash> {
-        let hash_bytes = N::block_header_tree_crh().hash(&self.to_bytes_le()?)?.to_bytes_le()?;
-
-        let mut hash = [0u8; 32];
-        hash.copy_from_slice(&hash_bytes);
-
-        Ok(BlockHeaderHash(hash))
+    /// TODO (howardwu): CRITICAL - Implement a (masked) Merkle tree for the block header.
+    pub fn to_root(&self) -> Result<N::BlockHeaderRoot> {
+        Ok(N::block_header_tree_crh().hash(&self.to_bytes_le()?)?)
     }
 
     /// Returns the block header size in bytes - 891 bytes.
