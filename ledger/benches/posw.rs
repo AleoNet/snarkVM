@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_dpc::{testnet2::Testnet2, Network};
-use snarkvm_ledger::posw::{circuit::POSWCircuit, PoswMarlin};
+use snarkvm_ledger::posw::{POSWCircuit, PoswMarlin};
 use snarkvm_marlin::ahp::AHPForR1CS;
 
 use criterion::{criterion_group, criterion_main, Criterion};

@@ -120,7 +120,12 @@ fn dpc_testnet1_integration_test() {
         transactions_root: transactions.to_transactions_root().unwrap(),
         commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
         serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
-        metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target(), 0),
+        metadata: BlockHeaderMetadata::new(
+            previous_block.header.height() + 1,
+            time,
+            previous_block.header.difficulty_target(),
+            0,
+        ),
         proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet1>::size()]),
     };
 

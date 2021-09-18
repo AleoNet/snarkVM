@@ -51,6 +51,7 @@ impl<N: Network> BlockHeader<N> {
         rng: &mut R,
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
+        assert!(metadata.is_valid(), "Invalid block header metadata");
 
         let transactions_root = transactions.to_transactions_root()?;
 
@@ -118,6 +119,26 @@ impl<N: Network> BlockHeader<N> {
                 true
             }
         }
+    }
+
+    /// Returns the block height.
+    pub fn height(&self) -> u32 {
+        self.metadata.height()
+    }
+
+    /// Returns the block timestamp.
+    pub fn timestamp(&self) -> i64 {
+        self.metadata.timestamp()
+    }
+
+    /// Returns the block difficulty target.
+    pub fn difficulty_target(&self) -> u64 {
+        self.metadata.difficulty_target()
+    }
+
+    /// Returns the block nonce.
+    pub fn nonce(&self) -> u32 {
+        self.metadata.nonce()
     }
 
     /// TODO (howardwu): CRITICAL - Implement a (masked) Merkle tree for the block header.
