@@ -172,6 +172,7 @@ impl Network for Testnet2 {
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 24, 62>;
+    
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
@@ -186,9 +187,9 @@ impl Network for Testnet2 {
 
     type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
     type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
-    type ProgramID = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
     type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
-    
+    type ProgramID = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
+
     type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 32, 63>;
     type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
@@ -221,6 +222,7 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
     dpc_setup!{Testnet2, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet2, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_merkle!{Testnet2, program_circuit_tree_parameters, ProgramCircuitTreeParameters, program_circuit_id_tree_crh}
     dpc_setup!{Testnet2, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
     dpc_setup!{Testnet2, serial_numbers_tree_crh, SerialNumbersTreeCRH, "AleoSerialNumbersTreeCRH0"}
     dpc_merkle!{Testnet2, serial_numbers_tree_parameters, SerialNumbersTreeParameters, serial_numbers_tree_crh}
@@ -251,11 +253,6 @@ impl Network for Testnet2 {
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
         static NOOP_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
-    }
-    
-    fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
-        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2 as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
-        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
     
     /// Returns the program SRS for Aleo applications.

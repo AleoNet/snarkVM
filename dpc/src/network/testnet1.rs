@@ -152,6 +152,7 @@ impl Network for Testnet1 {
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 24, 62>;
+
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
@@ -201,6 +202,7 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
     dpc_setup!{Testnet1, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet1, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_merkle!{Testnet1, program_circuit_tree_parameters, ProgramCircuitTreeParameters, program_circuit_id_tree_crh}
     dpc_setup!{Testnet1, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
     dpc_setup!{Testnet1, serial_numbers_tree_crh, SerialNumbersTreeCRH, "AleoSerialNumbersTreeCRH0"}
     dpc_merkle!{Testnet1, serial_numbers_tree_parameters, SerialNumbersTreeParameters, serial_numbers_tree_crh}
@@ -231,11 +233,6 @@ impl Network for Testnet1 {
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
         static NOOP_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
-    }
-
-    fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
-        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
-        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
 
     /// Returns the program SRS for Aleo applications.

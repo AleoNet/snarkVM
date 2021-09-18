@@ -121,9 +121,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// CRH and commitment scheme for committing to program input. Invoked inside `Self::InnerSNARK` and every program SNARK.
+    /// Commitment scheme for local data leaves. Invoked inside `Self::InnerSNARK` and every program SNARK.
     type LocalDataCommitmentScheme: CommitmentScheme;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
+
+    /// CRH scheme for computing the local data root. Invoked inside `Self::InnerSNARK` and every program SNARK.
     type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
