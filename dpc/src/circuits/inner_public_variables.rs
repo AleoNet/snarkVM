@@ -28,7 +28,7 @@ pub struct InnerPublicVariables<N: Network> {
     /// Ledger digest
     pub(super) ledger_digest: MerkleTreeDigest<N::CommitmentsTreeParameters>,
     /// Output encrypted record hashes
-    pub(super) encrypted_record_hashes: Vec<N::EncryptedRecordDigest>,
+    pub(super) encrypted_record_hashes: Vec<N::EncryptedRecordID>,
 
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
@@ -49,7 +49,7 @@ impl<N: Network> InnerPublicVariables<N> {
             )
             .expect("Failed to instantiate a blank transaction kernel"),
             ledger_digest: MerkleTreeDigest::<N::CommitmentsTreeParameters>::default(),
-            encrypted_record_hashes: vec![N::EncryptedRecordDigest::default(); N::NUM_OUTPUT_RECORDS],
+            encrypted_record_hashes: vec![N::EncryptedRecordID::default(); N::NUM_OUTPUT_RECORDS],
             program_commitment: Some(N::ProgramCommitment::default()),
             local_data_root: Some(N::LocalDataRoot::default()),
         }
@@ -58,7 +58,7 @@ impl<N: Network> InnerPublicVariables<N> {
     pub fn new(
         kernel: &TransactionKernel<N>,
         ledger_digest: &MerkleTreeDigest<N::CommitmentsTreeParameters>,
-        encrypted_record_hashes: &Vec<N::EncryptedRecordDigest>,
+        encrypted_record_hashes: &Vec<N::EncryptedRecordID>,
         program_commitment: Option<<N::ProgramCommitmentScheme as CommitmentScheme>::Output>,
         local_data_root: Option<N::LocalDataRoot>,
     ) -> Result<Self> {
