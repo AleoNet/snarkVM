@@ -19,7 +19,7 @@ pub mod circuit;
 mod posw;
 use posw::Posw;
 
-use snarkvm_dpc::{merkle_root_with_subroots, MaskedMerkleRoot, MerkleRoot, Network};
+use snarkvm_dpc::{merkle_root_with_subroots, MerkleRoot, Network};
 
 use anyhow::Result;
 
@@ -28,11 +28,7 @@ use anyhow::Result;
 pub type PoswMarlin<N> = Posw<N, 32>;
 
 /// Subtree calculation
-pub fn txids_to_roots<N: Network>(
-    transaction_ids: &[[u8; 32]],
-) -> Result<(MerkleRoot, MaskedMerkleRoot, Vec<[u8; 32]>)> {
-    use snarkvm_utilities::ToBytes;
-
+pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> Result<(MerkleRoot, N::PoswRoot, Vec<[u8; 32]>)> {
     assert!(
         !transaction_ids.is_empty(),
         "Cannot compute a Merkle tree with no transaction IDs"
@@ -53,18 +49,14 @@ pub fn txids_to_roots<N: Network>(
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
-    let masked_merkle_root_bytes = snarkvm_algorithms::merkle_tree::MerkleTree::<N::PoswTreeParameters>::new(
+    let masked_root = snarkvm_algorithms::merkle_tree::MerkleTree::<N::PoswTreeParameters>::new(
         std::sync::Arc::new(N::posw_tree_parameters().clone()),
         &subroots,
     )?
     .root()
-    .to_bytes_le()?;
+    .clone();
 
-    Ok((
-        MerkleRoot(merkle_root_bytes.clone()),
-        MaskedMerkleRoot::new(&masked_merkle_root_bytes),
-        subroots,
-    ))
+    Ok((MerkleRoot(merkle_root_bytes.clone()), masked_root, subroots))
 }
 
 #[cfg(test)]
@@ -78,13 +70,8 @@ mod tests {
     use rand::{rngs::ThreadRng, thread_rng, Rng};
 
     #[test]
-    fn test_load_verify_only() {
-        let _params = PoswMarlin::<Testnet2>::verify_only().unwrap();
-    }
-
-    #[test]
     fn test_load() {
-        let _params = PoswMarlin::<Testnet2>::load().unwrap();
+        let _params = PoswMarlin::<Testnet2>::load(true).unwrap();
     }
 
     #[test]
@@ -97,7 +84,7 @@ mod tests {
 
         // run the deterministic setup
         let posw =
-            PoswMarlin::<Testnet2>::index::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap();
+            PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap();
 
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
@@ -116,7 +103,7 @@ mod tests {
             vec
         };
 
-        let (_, pedersen_merkle_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids).unwrap();
+        let (_, posw_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids).unwrap();
 
         // generate the proof
         let (nonce, proof) = posw
@@ -126,7 +113,7 @@ mod tests {
         assert_eq!(proof.len(), 771); // NOTE: Marlin proofs use compressed serialization
 
         let proof = <<Testnet2 as Network>::PoswSNARK as SNARK>::Proof::read_le(&proof[..]).unwrap();
-        posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
+        posw.verify(nonce, &proof, &posw_root).unwrap();
     }
 
     #[test]
@@ -161,8 +148,8 @@ mod tests {
         let subsequent_root_hashes = growing_tx_ids
             .into_iter()
             .map(|tx_ids| {
-                let (root, pedersen_root, _subroots) = txids_to_roots::<Testnet2>(&tx_ids).unwrap();
-                (root, pedersen_root)
+                let (root, posw_root, _subroots) = txids_to_roots::<Testnet2>(&tx_ids).unwrap();
+                (root, posw_root)
             })
             .collect::<Vec<_>>();
 

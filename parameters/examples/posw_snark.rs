@@ -50,7 +50,7 @@ pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
     let srs_bytes = srs.to_bytes_le()?;
-    let posw_snark = PoswMarlin::<N>::index::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
+    let posw_snark = PoswMarlin::<N>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
         &FromBytes::read_le(&srs_bytes[..]).unwrap(),
     ))
     .expect("could not setup params");

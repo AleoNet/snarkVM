@@ -31,7 +31,7 @@ fn marlin_posw(c: &mut Criterion) {
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
     let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
-    let posw = PoswMarlin::index::<ChaChaRng>(&mut SRS::<ChaChaRng, _>::Universal(&universal_srs)).unwrap();
+    let posw = PoswMarlin::setup::<ChaChaRng>(&mut SRS::<ChaChaRng, _>::Universal(&universal_srs)).unwrap();
 
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 

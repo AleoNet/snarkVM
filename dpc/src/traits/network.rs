@@ -136,10 +136,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
     /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
-    type PoswTreeCRH: CRH;
+    type PoswTreeCRH: CRH<Output = Self::PoswRoot>;
     type PoswTreeCRHGadget: MaskedCRHGadget<<Self::PoswTreeParameters as MerkleParameters>::H, Self::InnerScalarField>;
-    type PoswTreeParameters: MaskedMerkleParameters;
-    
+    type PoswTreeParameters: MaskedMerkleParameters<H = Self::PoswTreeCRH>;
+    type PoswRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
     /// Commitment scheme for committing to program IDs over `Self::InnerScalarField` and to decommit program IDs over `Self::OuterScalarField`.
     type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>;
     type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>

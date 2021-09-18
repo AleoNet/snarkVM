@@ -32,9 +32,6 @@ pub use merkle_root::*;
 pub mod merkle_tree;
 pub use merkle_tree::*;
 
-pub mod masked_merkle_root;
-pub use masked_merkle_root::*;
-
 pub mod posw;
 pub use posw::ProofOfSuccinctWork;
 

@@ -176,6 +176,7 @@ impl Network for Testnet2 {
     type PoswTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type PoswTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
     type PoswTreeParameters = MaskedMerkleTreeParameters<Self::PoswTreeCRH, 2>;
+    type PoswRoot = <Self::PoswTreeCRH as CRH>::Output;
 
     type ProgramCommitmentScheme = Blake2sCommitment;
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;

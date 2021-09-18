@@ -18,9 +18,8 @@
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 
-use crate::posw::posw::commit;
-use snarkvm_algorithms::{merkle_tree::MerkleTree, MaskedMerkleParameters, MerkleParameters, CRH};
-use snarkvm_dpc::{MaskedMerkleRoot, Network};
+use snarkvm_algorithms::{merkle_tree::MerkleTree, prelude::*};
+use snarkvm_dpc::Network;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_root,
     integers::uint::UInt8,
@@ -31,6 +30,7 @@ use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, Co
 use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
+use blake2::{digest::Digest, Blake2s};
 use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,7 +47,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
         let root = tree.root();
 
         // Generate the mask by committing to the nonce and root.
-        let mask = commit(nonce, &MaskedMerkleRoot::new(&root.to_bytes_le()?));
+        let mask = Self::commit(nonce, &root)?;
 
         // Convert the leaves to Options for the SNARK
         let hashed_leaves = tree.hashed_leaves().into_iter().cloned().map(Some).collect();
@@ -57,6 +57,14 @@ impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
             mask: Some(mask),
             root: Some(*root),
         })
+    }
+
+    /// Commits to the given nonce and root.
+    pub(super) fn commit(nonce: u32, root: &N::PoswRoot) -> Result<Vec<u8>> {
+        let mut h = Blake2s::new();
+        h.update(&nonce.to_le_bytes());
+        h.update(&root.to_bytes_le()?);
+        Ok(h.finalize().to_vec())
     }
 }
 
