@@ -35,18 +35,15 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct POSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
-    pub hashed_leaves: Vec<Option<<<N::MaskedMerkleTreeParameters as MerkleParameters>::H as CRH>::Output>>,
+    pub hashed_leaves: Vec<Option<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>>,
     pub mask: Option<Vec<u8>>,
-    pub root: Option<<<N::MaskedMerkleTreeParameters as MerkleParameters>::H as CRH>::Output>,
+    pub root: Option<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
     /// Creates a POSW circuit from the provided transaction ids and nonce.
     pub fn new(nonce: u32, leaves: &[[u8; 32]]) -> Result<Self> {
-        let tree = MerkleTree::<N::MaskedMerkleTreeParameters>::new(
-            Arc::new(N::masked_merkle_tree_parameters().clone()),
-            leaves,
-        )?;
+        let tree = MerkleTree::<N::PoswTreeParameters>::new(Arc::new(N::posw_tree_parameters().clone()), leaves)?;
         let root = tree.root();
 
         // Generate the mask by committing to the nonce and root.
@@ -79,18 +76,18 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
         }
         let mask_bytes = UInt8::alloc_input_vec_le(&mut cs.ns(|| "mask"), &mask)?;
 
-        let crh_parameters = N::MaskedMerkleTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
-            Ok(N::masked_merkle_tree_parameters().crh().clone())
+        let crh_parameters = N::PoswTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
+            Ok(N::posw_tree_parameters().crh().clone())
         })?;
         let mask_crh_parameters =
-            <N::MaskedMerkleTreeCRHGadget as MaskedCRHGadget<
-                <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
+            <N::PoswTreeCRHGadget as MaskedCRHGadget<
+                <N::PoswTreeParameters as MerkleParameters>::H,
                 N::InnerScalarField,
             >>::MaskParametersGadget::alloc_constant(&mut cs.ns(|| "new_mask_parameters"), || {
-                let crh_parameters = N::masked_merkle_tree_parameters().mask_crh();
+                let crh_parameters = N::posw_tree_parameters().mask_crh();
                 Ok(crh_parameters)
             })?;
-        let leaves_number = 2u32.pow(<N::MaskedMerkleTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
+        let leaves_number = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
         assert!(self.hashed_leaves.len() <= leaves_number);
 
         // Initialize the leaves.
@@ -99,19 +96,19 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
             .iter()
             .enumerate()
             .map(|(i, l)| {
-                <N::MaskedMerkleTreeCRHGadget as CRHGadget<
-                    <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
+                <N::PoswTreeCRHGadget as CRHGadget<
+                    <N::PoswTreeParameters as MerkleParameters>::H,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || l.as_ref().get())
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let empty_hash = N::masked_merkle_tree_parameters()
+        let empty_hash = N::posw_tree_parameters()
             .hash_empty()
             .map_err(|_| SynthesisError::Unsatisfiable)?;
         for i in leaf_gadgets.len()..leaves_number {
-            leaf_gadgets.push(<N::MaskedMerkleTreeCRHGadget as CRHGadget<
-                <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
+            leaf_gadgets.push(<N::PoswTreeCRHGadget as CRHGadget<
+                <N::PoswTreeParameters as MerkleParameters>::H,
                 N::InnerScalarField,
             >>::OutputGadget::alloc(
                 cs.ns(|| format!("leaf {}", i)), || Ok(empty_hash.clone())
@@ -119,26 +116,22 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
         }
 
         // Compute the root using the masked tree.
-        let computed_root = compute_root::<
-            <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
-            N::MaskedMerkleTreeCRHGadget,
-            _,
-            _,
-            _,
-        >(
-            cs.ns(|| "compute masked root"),
-            &crh_parameters,
-            &mask_crh_parameters,
-            &mask_bytes,
-            &leaf_gadgets,
-        )?;
+        let computed_root =
+            compute_root::<<N::PoswTreeParameters as MerkleParameters>::H, N::PoswTreeCRHGadget, _, _, _>(
+                cs.ns(|| "compute masked root"),
+                &crh_parameters,
+                &mask_crh_parameters,
+                &mask_bytes,
+                &leaf_gadgets,
+            )?;
 
         // Enforce the input root is the same as the computed root.
-        let public_computed_root =
-            <N::MaskedMerkleTreeCRHGadget as CRHGadget<
-                <N::MaskedMerkleTreeParameters as MerkleParameters>::H,
-                N::InnerScalarField,
-            >>::OutputGadget::alloc_input(cs.ns(|| "public computed root"), || self.root.as_ref().get())?;
+        let public_computed_root = <N::PoswTreeCRHGadget as CRHGadget<
+            <N::PoswTreeParameters as MerkleParameters>::H,
+            N::InnerScalarField,
+        >>::OutputGadget::alloc_input(cs.ns(|| "public computed root"), || {
+            self.root.as_ref().get()
+        })?;
         computed_root.enforce_equal(cs.ns(|| "inputize computed root"), &public_computed_root)?;
 
         Ok(())
@@ -179,7 +172,7 @@ mod test {
 
         let nonce = [1; 32];
         let leaves = vec![vec![3u8; 32]; 4];
-        let tree = MerkleTree::new(Arc::new(Testnet2::masked_merkle_tree_parameters().clone()), &leaves[..]).unwrap();
+        let tree = MerkleTree::new(Arc::new(Testnet2::posw_tree_parameters().clone()), &leaves[..]).unwrap();
         let root = tree.root();
         let mut root_bytes = [0; 32];
         root.write_le(&mut root_bytes[..]).unwrap();

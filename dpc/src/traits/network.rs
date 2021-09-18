@@ -21,6 +21,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     GroupGadget,
+    MaskedCRHGadget,
     SNARKVerifierGadget,
 };
 use snarkvm_utilities::{
@@ -48,6 +49,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     const MEMO_SIZE_IN_BYTES: usize;
     
     const POSW_PROOF_SIZE_IN_BYTES: usize;
+    const POSW_TREE_DEPTH: usize;
 
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
@@ -132,7 +134,12 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
+    
+    /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
+    type PoswTreeCRH: CRH;
+    type PoswTreeCRHGadget: MaskedCRHGadget<<Self::PoswTreeParameters as MerkleParameters>::H, Self::InnerScalarField>;
+    type PoswTreeParameters: MaskedMerkleParameters;
+    
     /// Commitment scheme for committing to program IDs over `Self::InnerScalarField` and to decommit program IDs over `Self::OuterScalarField`.
     type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>;
     type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>
@@ -185,6 +192,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
     fn local_data_crh() -> &'static Self::LocalDataCRH;
+    fn posw_tree_parameters() -> &'static Self::PoswTreeParameters;
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;

@@ -38,12 +38,23 @@ pub fn txids_to_roots<N: Network>(
         "Cannot compute a Merkle tree with no transaction IDs"
     );
 
-    let (root, subroots) = merkle_root_with_subroots(N::merkle_tree_crh(), transaction_ids, N::MASKED_TREE_DEPTH);
+    // START DELETE
+    type MerkleTreeCRH =
+        snarkvm_algorithms::crh::BHPCompressedCRH<snarkvm_curves::edwards_bls12::EdwardsProjective, 16, 32>;
+
+    use once_cell::sync::OnceCell;
+    use snarkvm_algorithms::CRH;
+
+    static MERKLE_TREE_CRH: OnceCell<MerkleTreeCRH> = OnceCell::new();
+    let crh = MERKLE_TREE_CRH.get_or_init(|| MerkleTreeCRH::setup("MerkleTreeCRH"));
+    // END DELETE
+
+    let (root, subroots) = merkle_root_with_subroots(crh, transaction_ids, N::POSW_TREE_DEPTH);
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&root);
 
-    let masked_merkle_root_bytes = snarkvm_algorithms::merkle_tree::MerkleTree::<N::MaskedMerkleTreeParameters>::new(
-        std::sync::Arc::new(N::masked_merkle_tree_parameters().clone()),
+    let masked_merkle_root_bytes = snarkvm_algorithms::merkle_tree::MerkleTree::<N::PoswTreeParameters>::new(
+        std::sync::Arc::new(N::posw_tree_parameters().clone()),
         &subroots,
     )?
     .root()

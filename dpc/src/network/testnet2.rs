@@ -24,9 +24,9 @@ use crate::{
 };
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
-    crh::BHPCompressedCRH,
+    crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::MerkleTreeParameters,
+    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -46,7 +46,7 @@ use snarkvm_curves::{
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
-        crh::BHPCompressedCRHGadget,
+        crh::{BHPCompressedCRHGadget, PedersenCompressedCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
@@ -87,7 +87,8 @@ impl Network for Testnet2 {
     const MEMO_SIZE_IN_BYTES: usize = 64;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    
+    const POSW_TREE_DEPTH: usize = 2;
+
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     
@@ -171,6 +172,10 @@ impl Network for Testnet2 {
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
+
+    type PoswTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
+    type PoswTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
+    type PoswTreeParameters = MaskedMerkleTreeParameters<Self::PoswTreeCRH, 2>;
 
     type ProgramCommitmentScheme = Blake2sCommitment;
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
@@ -257,6 +262,11 @@ impl Network for Testnet2 {
             &UniversalSRSParameters::load_bytes().expect("Failed to load universal SRS bytes"),
         ).unwrap());
         Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
+    }
+    
+    fn posw_tree_parameters() -> &'static Self::PoswTreeParameters {
+        static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<<Testnet2 as Network>::PoswTreeParameters> = OnceCell::new();
+        MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::PoswTreeParameters::setup("MerkleTreeParameters"))
     }
 }
 

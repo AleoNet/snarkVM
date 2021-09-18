@@ -16,13 +16,8 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_ledger::{
-    block::MaskedMerkleRoot,
-    posw::{txids_to_roots, PoswMarlin},
-    testnet1::Testnet1,
-    testnet2::Testnet2,
-    Network,
-};
+use snarkvm_dpc::{block::MaskedMerkleRoot, testnet1::Testnet1, testnet2::Testnet2, Network};
+use snarkvm_ledger::posw::{txids_to_roots, PoswMarlin};
 use snarkvm_utilities::FromBytes;
 
 use rand::{rngs::ThreadRng, thread_rng, Rng};
