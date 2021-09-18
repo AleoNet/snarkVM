@@ -16,7 +16,9 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_ledger::posw::{txids_to_roots, Marlin, PoswMarlin};
+use snarkvm_dpc::testnet2::Testnet2;
+use snarkvm_ledger::posw::{circuit::POSWCircuit, PoswMarlin};
+use snarkvm_marlin::ahp::AHPForR1CS;
 use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -26,31 +28,38 @@ use rand_chacha::ChaChaRng;
 fn marlin_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: Marlin");
     group.sample_size(10);
+
     let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
-    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-    let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
+    // Construct an instance of PoSW.
+    let posw = {
+        let max_degree = AHPForR1CS::<Testnet2::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+        let universal_srs = <Testnet2::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
+        PoswMarlin::setup::<ChaChaRng>(&mut SRS::<ChaChaRng, _>::Universal(&universal_srs)).unwrap()
+    };
 
-    let posw = PoswMarlin::setup::<ChaChaRng>(&mut SRS::<ChaChaRng, _>::Universal(&universal_srs)).unwrap();
+    // Construct an assigned circuit.
+    let nonce = 1u32;
+    let leaves = vec![[3u8; 32]; 4];
+    let assigned_circuit = POSWCircuit::<Testnet2, 32>::new(nonce, &leaves).unwrap();
 
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
-    let transaction_ids = vec![[1u8; 32]; 8];
-    let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids).unwrap();
-
-    // Proof Generation Bench
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, u32::MAX).unwrap();
+            let (_nonce, _proof) = posw
+                .mine(assigned_circuit.hashed_leaves(), difficulty_target, rng, u32::MAX)
+                .unwrap();
         });
     });
 
-    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, u32::MAX).unwrap();
-    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
+    let (nonce, proof) = posw
+        .mine(assigned_circuit.hashed_leaves(), difficulty_target, rng, u32::MAX)
+        .unwrap();
 
     group.bench_function("verify", |b| {
         b.iter(|| {
-            let _ = posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
+            let _ = posw.verify(nonce, &proof, assigned_circuit.root()).unwrap();
         });
     });
 }

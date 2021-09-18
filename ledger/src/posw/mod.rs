@@ -65,7 +65,7 @@ mod tests {
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_dpc::testnet2::Testnet2;
-    use snarkvm_utilities::FromBytes;
+    use snarkvm_utilities::ToBytes;
 
     use rand::{rngs::ThreadRng, thread_rng, Rng};
 
@@ -110,9 +110,8 @@ mod tests {
             .mine(&subroots, difficulty_target, &mut rng, std::u32::MAX)
             .unwrap();
 
-        assert_eq!(proof.len(), 771); // NOTE: Marlin proofs use compressed serialization
+        assert_eq!(proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
 
-        let proof = <<Testnet2 as Network>::PoswSNARK as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &posw_root).unwrap();
     }
 

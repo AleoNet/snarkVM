@@ -26,37 +26,70 @@ use snarkvm_gadgets::{
     traits::{AllocGadget, CRHGadget, MaskedCRHGadget},
     EqGadget,
 };
-use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use blake2::{digest::Digest, Blake2s};
 use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct POSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
-    pub hashed_leaves: Vec<Option<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>>,
-    pub mask: Option<Vec<u8>>,
-    pub root: Option<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
+    pub hashed_leaves: Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
+    pub mask: Vec<u8>,
+    pub root: N::PoswRoot,
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
-    /// Creates a POSW circuit from the provided transaction ids and nonce.
+    /// Creates a PoSW circuit from the provided transaction ids and nonce.
     pub fn new(nonce: u32, leaves: &[[u8; 32]]) -> Result<Self> {
+        // Ensure the number of leaves is correct.
+        let num_leaves = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
+        if leaves.len() != num_leaves {
+            return Err(anyhow!("PoSW number of leaves length is incorrect: {}", leaves.len()));
+        }
+
+        // Compute the Merkle root on hashed leaves.
         let tree = MerkleTree::<N::PoswTreeParameters>::new(Arc::new(N::posw_tree_parameters().clone()), leaves)?;
-        let root = tree.root();
+        let root = *tree.root();
 
         // Generate the mask by committing to the nonce and root.
         let mask = Self::commit(nonce, &root)?;
 
-        // Convert the leaves to Options for the SNARK
-        let hashed_leaves = tree.hashed_leaves().into_iter().cloned().map(Some).collect();
+        Ok(Self {
+            hashed_leaves: tree.hashed_leaves().to_vec(),
+            mask,
+            root,
+        })
+    }
+
+    /// Creates a blank PoSW circuit for setup.
+    pub fn blank() -> Result<Self> {
+        let num_leaves = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
+        let empty_hash = N::posw_tree_parameters()
+            .hash_empty()
+            .map_err(|_| SynthesisError::Unsatisfiable)?;
 
         Ok(Self {
-            hashed_leaves,
-            mask: Some(mask),
-            root: Some(*root),
+            hashed_leaves: vec![empty_hash; num_leaves],
+            mask: vec![0; MASK_NUM_BYTES],
+            root: Default::default(),
         })
+    }
+
+    /// Returns a reference to the PoSW hashed leaves.
+    pub fn hashed_leaves(&self) -> &Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output> {
+        &self.hashed_leaves
+    }
+
+    /// Returns a reference to the PoSW mask.
+    pub fn mask(&self) -> &Vec<u8> {
+        &self.mask
+    }
+
+    /// Returns a reference to the PoSW root.
+    pub fn root(&self) -> &N::PoswRoot {
+        &self.root
     }
 
     /// Commits to the given nonce and root.
@@ -64,7 +97,12 @@ impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
         let mut h = Blake2s::new();
         h.update(&nonce.to_le_bytes());
         h.update(&root.to_bytes_le()?);
-        Ok(h.finalize().to_vec())
+        let mask = h.finalize().to_vec();
+
+        match mask.len() == MASK_NUM_BYTES {
+            true => Ok(mask),
+            false => Err(anyhow!("PoSW mask length is incorrect: {}", mask.len())),
+        }
     }
 }
 
@@ -75,18 +113,14 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        let cs = &mut cs.ns(|| "PoSW circuit");
-
-        // Compute the mask if it exists.
-        let mask = self.mask.clone().unwrap_or_else(|| vec![0; MASK_NUM_BYTES]);
-        if mask.len() != MASK_NUM_BYTES {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-        let mask_bytes = UInt8::alloc_input_vec_le(&mut cs.ns(|| "mask"), &mask)?;
+        let num_leaves = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
+        assert_eq!(self.hashed_leaves.len(), num_leaves);
+        assert_eq!(self.mask.len(), MASK_NUM_BYTES);
 
         let crh_parameters = N::PoswTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
             Ok(N::posw_tree_parameters().crh().clone())
         })?;
+
         let mask_crh_parameters =
             <N::PoswTreeCRHGadget as MaskedCRHGadget<
                 <N::PoswTreeParameters as MerkleParameters>::H,
@@ -95,33 +129,21 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
                 let crh_parameters = N::posw_tree_parameters().mask_crh();
                 Ok(crh_parameters)
             })?;
-        let leaves_number = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
-        assert!(self.hashed_leaves.len() <= leaves_number);
 
-        // Initialize the leaves.
-        let mut leaf_gadgets = self
+        let mask_bytes = UInt8::alloc_input_vec_le(&mut cs.ns(|| "mask"), &self.mask)?;
+
+        // Allocate the hashed leaves.
+        let hashed_leaf_gadgets = self
             .hashed_leaves
             .iter()
             .enumerate()
-            .map(|(i, l)| {
+            .map(|(i, leaf)| {
                 <N::PoswTreeCRHGadget as CRHGadget<
                     <N::PoswTreeParameters as MerkleParameters>::H,
                     N::InnerScalarField,
-                >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || l.as_ref().get())
+                >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || Ok(leaf))
             })
             .collect::<Result<Vec<_>, _>>()?;
-
-        let empty_hash = N::posw_tree_parameters()
-            .hash_empty()
-            .map_err(|_| SynthesisError::Unsatisfiable)?;
-        for i in leaf_gadgets.len()..leaves_number {
-            leaf_gadgets.push(<N::PoswTreeCRHGadget as CRHGadget<
-                <N::PoswTreeParameters as MerkleParameters>::H,
-                N::InnerScalarField,
-            >>::OutputGadget::alloc(
-                cs.ns(|| format!("leaf {}", i)), || Ok(empty_hash.clone())
-            )?);
-        }
 
         // Compute the root using the masked tree.
         let computed_root =
@@ -130,7 +152,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
                 &crh_parameters,
                 &mask_crh_parameters,
                 &mask_bytes,
-                &leaf_gadgets,
+                &hashed_leaf_gadgets,
             )?;
 
         // Enforce the input root is the same as the computed root.
@@ -138,7 +160,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
             <N::PoswTreeParameters as MerkleParameters>::H,
             N::InnerScalarField,
         >>::OutputGadget::alloc_input(cs.ns(|| "public computed root"), || {
-            self.root.as_ref().get()
+            Ok(&self.root)
         })?;
         computed_root.enforce_equal(cs.ns(|| "inputize computed root"), &public_computed_root)?;
 
@@ -149,65 +171,120 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
 #[cfg(test)]
 mod test {
     use super::*;
-    use snarkvm_dpc::testnet2::Testnet2;
-    // TODO (howardwu) - Switch this to Marlin.
-    use snarkvm_algorithms::snark::gm17::{
-        create_random_proof,
-        generate_random_parameters,
-        prepare_verifying_key,
-        verify_proof,
-    };
-    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_dpc::{testnet1::Testnet1, testnet2::Testnet2};
     use snarkvm_fields::ToConstraintField;
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::FromBytes;
 
     use blake2::{digest::Digest, Blake2s};
-    use rand::thread_rng;
-    use std::sync::Arc;
+    use rand::{rngs::ThreadRng, thread_rng, CryptoRng, Rng};
+    use std::{sync::Arc, time::Instant};
 
-    #[test]
-    fn test_tree_proof() {
-        let mut rng = thread_rng();
+    fn posw_public_inputs_test<N: Network>() {
+        // Setup the given parameters.
+        let nonce = 1u32;
+        let leaves = vec![[3u8; 32]; 4];
 
-        let params = generate_random_parameters::<Bls12_377, _, _>(
-            &POSWCircuit::<Testnet2, 32> {
-                hashed_leaves: vec![None; 4],
-                mask: None,
-                root: None,
-            },
-            &mut rng,
-        )
-        .unwrap();
+        // Generate the expected inputs.
+        let (expected_hashed_leaves, expected_mask, expected_root) = {
+            let tree =
+                MerkleTree::<N::PoswTreeParameters>::new(Arc::new(N::posw_tree_parameters().clone()), &leaves[..])
+                    .unwrap();
+            let root = tree.root();
 
-        let nonce = [1; 32];
-        let leaves = vec![vec![3u8; 32]; 4];
-        let tree = MerkleTree::new(Arc::new(Testnet2::posw_tree_parameters().clone()), &leaves[..]).unwrap();
-        let root = tree.root();
-        let mut root_bytes = [0; 32];
-        root.write_le(&mut root_bytes[..]).unwrap();
+            let mut h = Blake2s::new();
+            h.update(&nonce.to_le_bytes());
+            h.update(root.to_bytes_le().unwrap());
+            let mask = h.finalize().to_vec();
 
-        let mut h = Blake2s::new();
-        h.update(nonce.as_ref());
-        h.update(root_bytes.as_ref());
-        let mask = h.finalize().to_vec();
+            let hashed_leaves = tree.hashed_leaves().to_vec();
 
-        let snark_leaves = tree.hashed_leaves().to_vec().into_iter().map(Some).collect();
-        let proof = create_random_proof(
-            &POSWCircuit::<Testnet2, 32> {
-                hashed_leaves: snark_leaves,
-                mask: Some(mask.clone()),
-                root: Some(root.clone()),
-            },
-            &params,
-            &mut rng,
-        )
-        .unwrap();
+            (hashed_leaves, mask, root.clone())
+        };
 
+        // Generate the candidate inputs.
+        let candidate_circuit = POSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+        assert_eq!(expected_hashed_leaves, candidate_circuit.hashed_leaves);
+        assert_eq!(expected_mask, candidate_circuit.mask);
+        assert_eq!(expected_root, candidate_circuit.root);
+    }
+
+    fn posw_constraints_test<N: Network>() {
+        // Construct an assigned circuit.
+        let nonce = 1u32;
+        let leaves = vec![[3u8; 32]; 4];
+        let assigned_circuit = POSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+
+        // Check that the constraint system was satisfied.
+        let mut cs = TestConstraintSystem::<N::InnerScalarField>::new();
+        assigned_circuit
+            .generate_constraints(&mut cs.ns(|| "PoSW circuit"))
+            .unwrap();
+
+        if !cs.is_satisfied() {
+            println!("Unsatisfied constraints:");
+            println!("{}", cs.which_is_unsatisfied().unwrap());
+        }
+
+        let num_constraints = cs.num_constraints();
+        println!("PoSW circuit num constraints: {:?}", num_constraints);
+        assert_eq!(26663, num_constraints);
+    }
+
+    fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
+        // Generate the proving and verifying key.
+        let (proving_key, verifying_key) = {
+            let max_degree =
+                snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+            let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
+
+            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(
+                &POSWCircuit::<N, 32>::blank().unwrap(),
+                &mut SRS::<R, _>::Universal(&universal_srs),
+            )
+            .unwrap()
+        };
+
+        // Construct an assigned circuit.
+        let nonce = 1u32;
+        let leaves = vec![[3u8; 32]; 4];
+        let assigned_circuit = POSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+
+        // Compute the proof.
+        let proof = {
+            let timer = Instant::now();
+            let proof = <<N as Network>::PoswSNARK as SNARK>::prove(&proving_key, &assigned_circuit, rng).unwrap();
+            println!("\nPosW elapsed time: {} ms\n", (Instant::now() - timer).as_millis());
+            proof
+        };
+        assert_eq!(proof.to_bytes_le().unwrap().len(), N::POSW_PROOF_SIZE_IN_BYTES);
+
+        // Verify the proof is valid on the public inputs.
         let inputs = [
-            ToConstraintField::<<Testnet2 as Network>::InnerScalarField>::to_field_elements(&mask[..]).unwrap(),
-            vec![root.clone()],
+            ToConstraintField::<<N as Network>::InnerScalarField>::to_field_elements(&assigned_circuit.mask[..])
+                .unwrap(),
+            vec![N::InnerScalarField::read_le(&assigned_circuit.root.to_bytes_le().unwrap()[..]).unwrap()],
         ]
         .concat();
+        assert_eq!(3, inputs.len());
+        assert!(<<N as Network>::PoswSNARK as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap());
+    }
 
-        assert!(verify_proof(&prepare_verifying_key(params.vk), &proof, &inputs,).unwrap());
+    #[test]
+    fn test_posw_public_inputs() {
+        posw_public_inputs_test::<Testnet1>();
+        posw_public_inputs_test::<Testnet2>();
+    }
+
+    #[test]
+    fn test_posw_constraints() {
+        posw_constraints_test::<Testnet1>();
+        posw_constraints_test::<Testnet2>();
+    }
+
+    #[test]
+    fn test_posw_proof() {
+        posw_proof_test::<Testnet1, ThreadRng>(&mut thread_rng());
+        posw_proof_test::<Testnet2, ThreadRng>(&mut thread_rng());
     }
 }

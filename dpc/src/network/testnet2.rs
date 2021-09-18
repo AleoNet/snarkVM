@@ -64,9 +64,8 @@ use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
-// TODO (howardwu): TEMPORARY - Remove me.
-use blake2::Blake2s;
-use snarkvm_marlin::{marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+// TODO (howardwu): TEMPORARY - Resolve me.
+use snarkvm_marlin::marlin::MarlinTestnet1Mode;
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
@@ -127,7 +126,7 @@ impl Network for Testnet2 {
         Self::InnerScalarField,
         Self::OuterScalarField,
         SonicKZG10<Self::InnerCurve>,
-        FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>,
+        FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet1Mode,
         Vec<Self::InnerScalarField>,
     >;

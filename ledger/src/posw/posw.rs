@@ -44,19 +44,12 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
     pub fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoswSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError> {
-        let params = <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(
-            &POSWCircuit::<N, MASK_NUM_BYTES> {
-                // the circuit will be padded internally
-                hashed_leaves: vec![None; 0],
-                mask: None,
-                root: None,
-            },
-            srs,
-        )?;
+        let (proving_key, verifying_key) =
+            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(&POSWCircuit::<N, MASK_NUM_BYTES>::blank()?, srs)?;
 
         Ok(Self {
-            pk: Some(params.0),
-            vk: params.1,
+            pk: Some(proving_key),
+            vk: verifying_key,
         })
     }
 
@@ -82,21 +75,19 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         difficulty_target: u64,
         rng: &mut R,
         max_nonce: u32,
-    ) -> Result<(u32, Vec<u8>), PoswError> {
+    ) -> Result<(u32, <<N as Network>::PoswSNARK as SNARK>::Proof), PoswError> {
         let mut nonce;
         let mut proof;
-        let mut serialized_proof;
         loop {
             nonce = rng.gen_range(0..max_nonce);
             proof = self.prove(nonce, subroots, rng)?;
 
-            serialized_proof = to_bytes_le!(proof)?;
-            if self.check_difficulty(&serialized_proof, difficulty_target) {
+            if self.check_difficulty(&to_bytes_le!(proof)?, difficulty_target) {
                 break;
             }
         }
 
-        Ok((nonce, serialized_proof))
+        Ok((nonce, proof))
     }
 
     /// Hashes the proof and checks it against the difficulty
