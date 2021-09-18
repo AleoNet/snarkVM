@@ -30,7 +30,7 @@ pub struct MerkleTrie<P: CRH, T: Debug> {
     /// The value existing at the current Merkle trie node.
     value: Option<T>,
     /// Any child Merkle tries. Currently has u8::MAX potential branches.
-    children: BTreeMap<u8, MerkleTrie<P, T>>,
+    children: BTreeMap<u8, MerkleTrie<P, T>>, // TODO (raychu86): Remove the current duplication of parameters.
 }
 
 /// Number of prefix elements the two keys have in common.
@@ -77,7 +77,7 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
             return Ok(());
         }
 
-        // Get the length of the prefix match.
+        // Get the length of the prefix match to derive the prefix and suffix/
         let prefix_length = get_matching_prefix_length(&self.key, key);
         let prefix = key[0..prefix_length].to_vec();
         let suffix = key[prefix_length..].to_vec();
@@ -85,8 +85,9 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
         // If the prefix exists outside the key of the current key.
         if prefix_length >= self.key.len() {
             // If the match length is equal to the length of the root key, then attempt to insert.
-            if match_length == key.len() {
+            if prefix_length == key.len() {
                 if self.value.is_some() {
+                    // TODO (raychu86): Update the Error type.
                     return Err(MerkleError::Message("Key already exists".to_string()));
                 }
 
@@ -113,16 +114,16 @@ impl<P: CRH, T: ToBytes + Debug> MerkleTrie<P, T> {
 
             // Update the original trie key, and children.
             self.key = prefix;
-            self.children = BTreeMap::new();
+            self.value = None;
+            self.children = BTreeMap::new(); // This line is not necessary because of the mem swap.
             self.children.insert(new_node.key[0], new_node);
 
             // Update the values if we have found the correct node.
-            if match_length == key.len() {
+            if prefix_length == key.len() {
                 // Update the value in the current node if the key matches.
                 self.value = value;
             } else {
                 // Update the value in a subtrie node.
-                self.value = None;
                 self.insert_child(&suffix, value.unwrap())?;
             }
         }
