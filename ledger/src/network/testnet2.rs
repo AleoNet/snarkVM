@@ -21,10 +21,7 @@ use snarkvm_algorithms::{
 use snarkvm_dpc::{testnet2::Testnet2, Network};
 use snarkvm_gadgets::algorithms::crh::PedersenCompressedCRHGadget;
 // use snarkvm_utilities::{FromBytes, ToBytes};
-use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
-use blake2::Blake2s;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
@@ -56,20 +53,6 @@ impl Network for Testnet2 {
     >;
     type MaskedMerkleTreeParameters = MaskedMerkleTreeParameters;
 
-    /// SNARK proof system for PoSW.
-    type PoswSNARK = MarlinSNARK<
-        Self::InnerScalarField,
-        <<Self as Network>::DPC as Network>::OuterScalarField,
-        SonicKZG10<<<Self as Network>::DPC as Network>::InnerCurve>,
-        FiatShamirChaChaRng<
-            Self::InnerScalarField,
-            <<Self as Network>::DPC as Network>::OuterScalarField,
-            Blake2s,
-        >,
-        MarlinTestnet1Mode,
-        Vec<Self::InnerScalarField>,
-    >;
-    
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters {
         static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<MaskedMerkleTreeParameters> = OnceCell::new();
         MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| MaskedMerkleTreeParameters::setup("MerkleTreeParameters"))
