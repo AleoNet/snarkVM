@@ -76,7 +76,7 @@ define_merkle_tree_parameters!(
 
 define_merkle_tree_parameters!(
     SerialNumberMerkleTreeParameters,
-    <Testnet1 as Network>::LedgerSerialNumbersTreeCRH,
+    <Testnet1 as Network>::SerialNumbersTreeCRH,
     32
 );
 
@@ -150,10 +150,6 @@ impl Network for Testnet1 {
     type InnerCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
-    type LedgerSerialNumbersTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type LedgerSerialNumbersTreeDigest = <Self::LedgerSerialNumbersTreeCRH as CRH>::Output;
-    type LedgerSerialNumbersTreeParameters = SerialNumberMerkleTreeParameters;
-
     type LocalDataCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 24, 62>;
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -181,6 +177,10 @@ impl Network for Testnet1 {
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
 
+    type SerialNumbersTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type SerialNumbersTreeParameters = SerialNumberMerkleTreeParameters;
+    type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
+
     type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
@@ -201,6 +201,8 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet1, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
     dpc_setup!{Testnet1, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+    dpc_setup!{Testnet1, serial_numbers_tree_crh, SerialNumbersTreeCRH, "AleoSerialNumbersTreeCRH0"}
+    dpc_merkle!{Testnet1, serial_numbers_tree_parameters, SerialNumbersTreeParameters, serial_numbers_tree_crh}
     dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet1, transactions_tree_crh, TransactionsTreeCRH, "AleoTransactionsTreeCRH0"}
 
@@ -233,12 +235,6 @@ impl Network for Testnet1 {
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
         static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
-    }
-
-    dpc_setup!{Testnet1, ledger_serial_numbers_tree_crh, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
-    fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters {
-        static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::LedgerSerialNumbersTreeParameters> = OnceCell::new();
-        LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS.get_or_init(|| Self::LedgerSerialNumbersTreeParameters::from(Self::ledger_serial_numbers_tree_crh().clone()))
     }
 
     /// Returns the program SRS for Aleo applications.

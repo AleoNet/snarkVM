@@ -73,10 +73,7 @@ impl<N: Network, S: Storage> LedgerScheme<N::DPC> for Ledger<N, S> {
 
         let leaves: &[[u8; 32]] = &[];
         let commitments_tree = MerkleTree::new(Arc::new(N::DPC::commitments_tree_parameters().clone()), leaves)?;
-        let serial_numbers_tree = MerkleTree::new(
-            Arc::new(N::DPC::ledger_serial_numbers_tree_parameters().clone()),
-            leaves,
-        )?;
+        let serial_numbers_tree = MerkleTree::new(Arc::new(N::DPC::serial_numbers_tree_parameters().clone()), leaves)?;
 
         let ledger = Self {
             current_block_height: Default::default(),

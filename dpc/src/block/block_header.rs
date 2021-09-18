@@ -88,10 +88,8 @@ impl<N: Network> BlockHeader<N> {
 
         // Compute the serial numbers root from the transactions.
         let serial_numbers = transactions.to_serial_numbers()?;
-        let serial_numbers_tree = MerkleTree::new(
-            Arc::new(N::ledger_serial_numbers_tree_parameters().clone()),
-            &serial_numbers,
-        )?;
+        let serial_numbers_tree =
+            MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
         let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());
 
         let timestamp = 0i64;

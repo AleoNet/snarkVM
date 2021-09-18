@@ -121,11 +121,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// Ledger serial numbers tree instantiation. Invoked only over `Self::InnerScalarField`.
-    type LedgerSerialNumbersTreeCRH: CRH<Output = Self::LedgerSerialNumbersTreeDigest>;
-    type LedgerSerialNumbersTreeDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-    type LedgerSerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::LedgerSerialNumbersTreeCRH>;
-
     /// CRH and commitment scheme for committing to program input. Invoked inside `Self::InnerSNARK` and every program SNARK.
     type LocalDataCommitmentScheme: CommitmentScheme;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
@@ -160,6 +155,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumberNonce>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
     type SerialNumber: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
+    /// Ledger serial numbers tree instantiation. Invoked only over `Self::InnerScalarField`.
+    type SerialNumbersTreeCRH: CRH<Output = Self::SerialNumbersRoot>;
+    type SerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::SerialNumbersTreeCRH>;
+    type SerialNumbersRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
     /// CRH for computing the transaction ID.
     type TransactionIDCRH: CRH<Output = Self::TransactionID>;
@@ -170,33 +170,23 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
-    
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_tree_crh() -> &'static Self::BlockHeaderTreeCRH;
-    
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
-
     fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH;
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
-    
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
     fn local_data_crh() -> &'static Self::LocalDataCRH;
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
-
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
-
-
-    fn ledger_serial_numbers_tree_crh() -> &'static Self::LedgerSerialNumbersTreeCRH;
-    fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters;
-
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
-    
+    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
+    fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
-
     fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
     
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;

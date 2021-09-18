@@ -46,10 +46,6 @@ impl Network for Testnet2 {
     type DPC = Testnet2;
     type InnerScalarField = <Self::DPC as Network>::InnerScalarField;
 
-    type SerialNumbersRoot = <Self::DPC as Network>::LedgerSerialNumbersTreeDigest;
-    type SerialNumbersTreeCRH = <Self::DPC as Network>::LedgerSerialNumbersTreeCRH;
-    type SerialNumbersTreeParameters = <Self::DPC as Network>::LedgerSerialNumbersTreeParameters;
-    
     /// A masked Merkle tree instantiated with the masked Pedersen hash over BLS12-377.
     type MaskedMerkleTreeCRH = PedersenCompressedCRH<<<Testnet2 as Network>::DPC as Network>::ProgramProjectiveCurve, 4, 128>;
     type MaskedMerkleTreeCRHGadget = PedersenCompressedCRHGadget<
@@ -75,14 +71,6 @@ impl Network for Testnet2 {
         Vec<Self::InnerScalarField>,
     >;
     
-    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH {
-        Self::DPC::ledger_serial_numbers_tree_crh()
-    }
-
-    fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters {
-        Self::DPC::ledger_serial_numbers_tree_parameters()
-    }
-
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters {
         static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<MaskedMerkleTreeParameters> = OnceCell::new();
         MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| MaskedMerkleTreeParameters::setup("MerkleTreeParameters"))

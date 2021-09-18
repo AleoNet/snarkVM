@@ -32,10 +32,6 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
     type DPC: Network;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
 
-    type SerialNumbersRoot: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-    type SerialNumbersTreeCRH: CRH;
-    type SerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::SerialNumbersTreeCRH>;
-    
     /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type MaskedMerkleTreeCRH: CRH;
     type MaskedMerkleTreeCRHGadget: MaskedCRHGadget<
@@ -47,10 +43,6 @@ pub trait Network: 'static + Clone + PartialEq + Eq + Send + Sync {
 
     /// SNARK proof system for PoSW.
     type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, VerifierInput = Vec<Self::InnerScalarField>>;
-
-    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
-    fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
-
 
     fn masked_merkle_tree_parameters() -> &'static Self::MaskedMerkleTreeParameters;
 }
