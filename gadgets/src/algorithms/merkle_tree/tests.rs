@@ -21,8 +21,7 @@ use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
     crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH},
-    define_masked_merkle_tree_parameters,
-    merkle_tree::MerkleTree,
+    merkle_tree::{MaskedMerkleTreeParameters, MerkleTree},
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
 };
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
@@ -241,10 +240,10 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
 mod merkle_tree_pedersen_crh_on_projective {
     use super::*;
 
-    define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
-
     type H = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type HG = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
     #[test]
     fn good_root_test() {
@@ -290,8 +289,6 @@ mod merkle_tree_pedersen_crh_on_projective {
 mod merkle_tree_compressed_pedersen_crh_on_projective {
     use super::*;
 
-    define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
-
     type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type HG = PedersenCompressedCRHGadget<
         EdwardsProjective,
@@ -300,6 +297,8 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
         PEDERSEN_NUM_WINDOWS,
         PEDERSEN_WINDOW_SIZE,
     >;
+
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
     #[test]
     fn good_root_test() {
@@ -372,10 +371,10 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
     use super::*;
 
-    define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
-
     type H = BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type HG = BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
     #[test]
     fn good_root_test() {
@@ -423,10 +422,10 @@ mod merkle_tree_poseidon {
     use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
     use snarkvm_algorithms::crypto_hash::PoseidonCryptoHash;
 
-    define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
-
     type H = PoseidonCryptoHash<Fr, 4, false>;
     type HG = PoseidonCryptoHashGadget<Fr, 4, false>;
+
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
     #[test]
     fn good_root_test() {

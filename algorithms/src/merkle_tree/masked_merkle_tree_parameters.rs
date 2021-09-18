@@ -14,17 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod masked_merkle_tree_parameters;
-pub use masked_merkle_tree_parameters::*;
+use crate::{MaskedMerkleParameters, MerkleParameters, CRH};
 
-pub mod merkle_path;
-pub use merkle_path::*;
+/// Defines a Merkle tree using the provided hash and depth.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct MaskedMerkleTreeParameters<H: CRH, const DEPTH: usize>(H, H);
 
-pub mod merkle_tree;
-pub use merkle_tree::*;
+impl<H: CRH, const DEPTH: usize> MerkleParameters for MaskedMerkleTreeParameters<H, DEPTH> {
+    type H = H;
 
-pub mod merkle_tree_parameters;
-pub use merkle_tree_parameters::*;
+    const DEPTH: usize = DEPTH;
 
-#[cfg(test)]
-pub mod tests;
+    fn setup(message: &str) -> Self {
+        Self(Self::H::setup(message), Self::H::setup(message))
+    }
+
+    fn crh(&self) -> &Self::H {
+        &self.0
+    }
+}
+
+impl<H: CRH, const DEPTH: usize> MaskedMerkleParameters for MaskedMerkleTreeParameters<H, DEPTH> {
+    fn mask_crh(&self) -> &Self::H {
+        &self.1
+    }
+}
