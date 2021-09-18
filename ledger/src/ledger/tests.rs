@@ -28,7 +28,7 @@ fn test_new_ledger_with_genesis_block() {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
-            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
+            metadata: BlockHeaderMetadata::new_genesis(),
             proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),

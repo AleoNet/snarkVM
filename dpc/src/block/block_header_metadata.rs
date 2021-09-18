@@ -25,6 +25,8 @@ use std::{
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BlockHeaderMetadata {
+    /// The height of this block - 4 bytes.
+    height: u32,
     /// The block timestamp is a Unix epoch time (UTC) when the miner
     /// started hashing the header (according to the miner). - 8 bytes
     timestamp: i64,
@@ -36,12 +38,51 @@ pub struct BlockHeaderMetadata {
 
 impl BlockHeaderMetadata {
     /// Initializes a new instance of a block header metadata.
-    pub fn new(timestamp: i64, difficulty_target: u64, nonce: u32) -> Self {
+    pub fn new(height: u32, timestamp: i64, difficulty_target: u64, nonce: u32) -> Self {
         Self {
+            height,
             timestamp,
             difficulty_target,
             nonce,
         }
+    }
+
+    /// Initializes a new instance of a genesis block header metadata.
+    pub fn new_genesis() -> Self {
+        let height = 0u32;
+        let timestamp = 0i64;
+        let difficulty_target = u64::MAX;
+        let nonce = u32::MAX;
+
+        Self::new(height, timestamp, difficulty_target, nonce)
+    }
+
+    /// Returns `true` if the block header metadata is for a genesis block header.
+    pub fn is_genesis(&self) -> bool {
+        // Ensure the height in the genesis block is 0.
+        self.height == 0u32
+            // Ensure the timestamp in the genesis block is 0.
+            && self.timestamp == 0i64
+            // Ensure the difficulty target in the genesis block is u64::MAX.
+            && self.difficulty_target == u64::MAX
+            // Ensure the nonce is u32::MAX.
+            && self.nonce == u32::MAX
+    }
+
+    /// Returns `true` if the block header metadata is well-formed.
+    pub fn is_valid(&self) -> bool {
+        match self.height == 0u32 {
+            true => self.is_genesis(),
+            false => {
+                // Ensure the timestamp in the block is not 0.
+                self.timestamp != 0i64
+            }
+        }
+    }
+
+    /// Returns the block height.
+    pub const fn height(&self) -> u32 {
+        self.height
     }
 
     /// Returns the block timestamp.
@@ -61,18 +102,20 @@ impl BlockHeaderMetadata {
 
     /// Returns the size (in bytes) of a block header's metadata.
     pub const fn size() -> usize {
-        size_of::<i64>() + size_of::<u64>() + size_of::<u32>()
+        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u32>()
     }
 }
 
 impl FromBytes for BlockHeaderMetadata {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
         let nonce = <[u8; 4]>::read_le(&mut reader)?;
 
         Ok(Self {
+            height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
             nonce: u32::from_le_bytes(nonce),
@@ -83,6 +126,7 @@ impl FromBytes for BlockHeaderMetadata {
 impl ToBytes for BlockHeaderMetadata {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.height.to_le_bytes().write_le(&mut writer)?;
         self.timestamp.to_le_bytes().write_le(&mut writer)?;
         self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
         self.nonce.to_le_bytes().write_le(&mut writer)
@@ -97,32 +141,18 @@ mod tests {
 
     #[test]
     fn test_block_header_metadata_serialization() {
-        let block_header_metadata = BlockHeaderMetadata {
-            timestamp: Utc::now().timestamp(),
-            difficulty_target: 0u64,
-            nonce: 0u32,
-        };
+        let metadata = BlockHeaderMetadata::new(1, Utc::now().timestamp(), 2, 3);
 
-        let serialized = block_header_metadata.to_bytes_le().unwrap();
-        assert_eq!(
-            &serialized[..],
-            &bincode::serialize(&block_header_metadata).unwrap()[..]
-        );
+        let serialized = metadata.to_bytes_le().unwrap();
+        assert_eq!(&serialized[..], &bincode::serialize(&metadata).unwrap()[..]);
 
         let deserialized = BlockHeaderMetadata::read_le(&serialized[..]).unwrap();
-        assert_eq!(deserialized, block_header_metadata);
+        assert_eq!(deserialized, metadata);
     }
 
     #[test]
     fn test_block_header_metadata_size() {
-        let block_header_metadata = BlockHeaderMetadata {
-            timestamp: Utc::now().timestamp(),
-            difficulty_target: 0u64,
-            nonce: 0u32,
-        };
-        assert_eq!(
-            block_header_metadata.to_bytes_le().unwrap().len(),
-            BlockHeaderMetadata::size()
-        );
+        let metadata = BlockHeaderMetadata::new(1, Utc::now().timestamp(), 2, 3);
+        assert_eq!(metadata.to_bytes_le().unwrap().len(), BlockHeaderMetadata::size());
     }
 }
