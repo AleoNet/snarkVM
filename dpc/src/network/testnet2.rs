@@ -25,8 +25,8 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::BHPCompressedCRH,
-    define_merkle_tree_parameters,
     encryption::ECIESPoseidonEncryption,
+    merkle_tree::MerkleTreeParameters,
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -72,24 +72,6 @@ use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
-
-define_merkle_tree_parameters!(
-    ProgramIDMerkleTreeParameters,
-    <Testnet2 as Network>::ProgramCircuitIDTreeCRH,
-    8
-);
-
-define_merkle_tree_parameters!(
-    CommitmentMerkleTreeParameters,
-    <Testnet2 as Network>::CommitmentsTreeCRH,
-    32
-);
-
-define_merkle_tree_parameters!(
-    SerialNumberMerkleTreeParameters,
-    <Testnet2 as Network>::SerialNumbersTreeCRH,
-    32
-);
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
@@ -172,7 +154,7 @@ impl Network for Testnet2 {
 
     type CommitmentsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type CommitmentsTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type CommitmentsTreeParameters = CommitmentMerkleTreeParameters;
+    type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 32>;
     type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
 
     type EncryptedRecordCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 80, 32>;
@@ -200,7 +182,7 @@ impl Network for Testnet2 {
 
     type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
     type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
-    type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
+    type ProgramCircuitTreeParameters = MerkleTreeParameters<Self::ProgramCircuitIDTreeCRH, 8>;
     type ProgramID = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
 
     type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
@@ -212,7 +194,7 @@ impl Network for Testnet2 {
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
 
     type SerialNumbersTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type SerialNumbersTreeParameters = SerialNumberMerkleTreeParameters;
+    type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 32>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
     type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;

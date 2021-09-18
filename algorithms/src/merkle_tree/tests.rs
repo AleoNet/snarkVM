@@ -16,8 +16,7 @@
 
 use crate::{
     crh::{PedersenCRH, PedersenCompressedCRH},
-    define_merkle_tree_parameters,
-    merkle_tree::MerkleTree,
+    merkle_tree::{MerkleTree, MerkleTreeParameters},
     traits::{LoadableMerkleParameters, MerkleParameters, CRH},
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -165,32 +164,32 @@ mod pedersen_crh_on_projective {
 
     #[test]
     fn empty_merkle_tree_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         run_bad_root_test::<MTParameters>();
     }
 
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2>;
         depth_2_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3>;
         padded_merkle_tree_test::<MTParameters>();
     }
 }
@@ -204,32 +203,32 @@ mod pedersen_compressed_crh_on_projective {
 
     #[test]
     fn empty_merkle_tree_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         run_bad_root_test::<MTParameters>();
     }
 
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2>;
         depth_2_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3>;
         padded_merkle_tree_test::<MTParameters>();
     }
 }
