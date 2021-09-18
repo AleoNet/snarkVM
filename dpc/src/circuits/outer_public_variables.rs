@@ -81,7 +81,7 @@ impl<N: Network> OuterPublicVariables<N> {
 
 impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables<N>
 where
-    MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
+    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<N::OuterScalarField>, ConstraintFieldError> {
         // In the outer circuit, these two variables must be allocated as witness,

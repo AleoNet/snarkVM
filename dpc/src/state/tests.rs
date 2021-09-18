@@ -124,7 +124,7 @@ mod transfer {
                 .unwrap();
 
             let commitment_randomness =
-                <<Testnet2 as Network>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+                <<Testnet2 as Network>::CommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
             // Generate sender input
             let sender_input = Input::new_full(
@@ -196,7 +196,7 @@ mod transfer {
                 .unwrap();
 
             let commitment_randomness =
-                <<Testnet2 as Network>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+                <<Testnet2 as Network>::CommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
             // Generate sender input
             let input_record = Record::new_input(

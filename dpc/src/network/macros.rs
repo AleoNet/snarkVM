@@ -38,3 +38,13 @@ macro_rules! dpc_snark_setup {
         }
     };
 }
+
+macro_rules! dpc_merkle {
+    ($network: ident, $fn_name: ident, $type_name: ident, $merkle_tree_crh: ident) => {
+        #[inline]
+        fn $fn_name() -> &'static Self::$type_name {
+            static PARAMETER: OnceCell<<$network as Network>::$type_name> = OnceCell::new();
+            PARAMETER.get_or_init(|| Self::$type_name::from(Self::$merkle_tree_crh().clone()))
+        }
+    };
+}

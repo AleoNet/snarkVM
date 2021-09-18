@@ -44,15 +44,15 @@ pub struct Record<N: Network> {
     pub(crate) value: u64,
     pub(crate) payload: Payload,
     pub(crate) serial_number_nonce: N::SerialNumberNonce,
-    pub(crate) commitment: N::RecordCommitment,
-    pub(crate) commitment_randomness: <N::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+    pub(crate) commitment: N::Commitment,
+    pub(crate) commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
 }
 
 impl<N: Network> Record<N> {
     /// Returns a new noop input record.
     pub fn new_noop_input<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
         // Sample a new record commitment randomness.
-        let commitment_randomness = <N::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+        let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::new_input(
             N::noop_program().program_id(),
@@ -74,7 +74,7 @@ impl<N: Network> Record<N> {
         value: u64,
         payload: Payload,
         serial_number_nonce: N::SerialNumberNonce,
-        commitment_randomness: <N::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         Self::from(
             program_id,
@@ -126,7 +126,7 @@ impl<N: Network> Record<N> {
         // Compute the serial number nonce.
         let serial_number_nonce = N::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
         // Sample a new record commitment randomness.
-        let commitment_randomness = <N::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+        let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         Self::from(
             program_id,
@@ -147,7 +147,7 @@ impl<N: Network> Record<N> {
         value: u64,
         payload: Payload,
         serial_number_nonce: N::SerialNumberNonce,
-        commitment_randomness: <N::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
         let commitment_input = to_bytes_le![
@@ -160,7 +160,7 @@ impl<N: Network> Record<N> {
         ]?;
 
         // Compute the record commitment.
-        let commitment = N::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = N::commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Self {
             program_id,
@@ -191,8 +191,8 @@ impl<N: Network> Record<N> {
 }
 
 impl<N: Network> RecordScheme for Record<N> {
-    type Commitment = N::RecordCommitment;
-    type CommitmentRandomness = <N::RecordCommitmentScheme as CommitmentScheme>::Randomness;
+    type Commitment = N::Commitment;
+    type CommitmentRandomness = <N::CommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<N>;
     type Payload = Payload;
     type ProgramID = MerkleTreeDigest<N::ProgramCircuitTreeParameters>;
@@ -255,8 +255,8 @@ impl<N: Network> FromBytes for Record<N> {
         let value: u64 = FromBytes::read_le(&mut reader)?;
         let payload: Payload = FromBytes::read_le(&mut reader)?;
         let serial_number_nonce: N::SerialNumberNonce = FromBytes::read_le(&mut reader)?;
-        let commitment: N::RecordCommitment = FromBytes::read_le(&mut reader)?;
-        let commitment_randomness: <N::RecordCommitmentScheme as CommitmentScheme>::Randomness =
+        let commitment: N::Commitment = FromBytes::read_le(&mut reader)?;
+        let commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
         Ok(Self {

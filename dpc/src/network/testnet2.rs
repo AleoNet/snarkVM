@@ -77,7 +77,7 @@ define_merkle_tree_parameters!(
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <Testnet2 as Network>::LedgerCommitmentsTreeCRH,
+    <Testnet2 as Network>::CommitmentsTreeCRH,
     32
 );
 
@@ -153,6 +153,15 @@ impl Network for Testnet2 {
     type BlockHeaderTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
+    type CommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
+    type CommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
+    type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
+
+    type CommitmentsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type CommitmentsTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
+    type CommitmentsTreeParameters = CommitmentMerkleTreeParameters;
+    type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
+
     type EncryptedRecordCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 80, 32>;
     type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
@@ -160,11 +169,6 @@ impl Network for Testnet2 {
     type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;
     type InnerCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
-
-    type LedgerCommitmentsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type LedgerCommitmentsTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type LedgerCommitmentsTreeDigest = <Self::LedgerCommitmentsTreeCRH as CRH>::Output;
-    type LedgerCommitmentsTreeParameters = CommitmentMerkleTreeParameters;
 
     type LedgerSerialNumbersTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LedgerSerialNumbersTreeDigest = <Self::LedgerSerialNumbersTreeCRH as CRH>::Output;
@@ -189,10 +193,6 @@ impl Network for Testnet2 {
     type ProgramCircuitIDTreeDigest = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
     type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
     
-    type RecordCommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
-    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
-    type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
-
     type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 32, 63>;
     type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
@@ -210,6 +210,9 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet2, block_header_tree_crh, BlockHeaderTreeCRH, "AleoBlockHeaderTreeCRH0"}
+    dpc_setup!{Testnet2, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
+    dpc_setup!{Testnet2, commitments_tree_crh, CommitmentsTreeCRH, "AleoCommitmentsTreeCRH0"}
+    dpc_merkle!{Testnet2, commitments_tree_parameters, CommitmentsTreeParameters, commitments_tree_crh}
     dpc_setup!{Testnet2, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{Testnet2, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet2, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
@@ -217,7 +220,6 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
     dpc_setup!{Testnet2, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet2, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_setup!{Testnet2, record_commitment_scheme, RecordCommitmentScheme, "AleoRecordCommitmentScheme0"}
     dpc_setup!{Testnet2, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
     dpc_setup!{Testnet2, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet2, transactions_tree_crh, TransactionsTreeCRH, "AleoTransactionsTreeCRH0"}
@@ -252,13 +254,7 @@ impl Network for Testnet2 {
         static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2 as Network>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_tree_crh().clone()))
     }
-
-    dpc_setup!{Testnet2, ledger_commitments_tree_crh, LedgerCommitmentsTreeCRH, "AleoLedgerCommitmentsTreeCRH0"}
-    fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters {
-        static LEDGER_COMMITMENTS_TREE_PARAMETERS: OnceCell<<Testnet2 as Network>::LedgerCommitmentsTreeParameters> = OnceCell::new();
-        LEDGER_COMMITMENTS_TREE_PARAMETERS.get_or_init(|| Self::LedgerCommitmentsTreeParameters::from(Self::ledger_commitments_tree_crh().clone()))
-    }
-
+    
     dpc_setup!{Testnet2, ledger_serial_numbers_tree_crh, LedgerSerialNumbersTreeCRH, "AleoLedgerSerialNumbersTreeCRH0"}
     fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters {
         static LEDGER_SERIAL_NUMBERS_TREE_PARAMETERS: OnceCell<<Testnet2 as Network>::LedgerSerialNumbersTreeParameters> = OnceCell::new();

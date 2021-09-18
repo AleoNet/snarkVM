@@ -31,7 +31,7 @@ pub trait TransactionScheme<N: Network>: Clone + Eq + FromBytes + ToBytes + Send
     fn serial_numbers(&self) -> &[N::SerialNumber];
 
     /// Returns the new commitments.
-    fn commitments(&self) -> &[N::RecordCommitment];
+    fn commitments(&self) -> &[N::Commitment];
 
     /// Returns the value balance in the transaction.
     fn value_balance(&self) -> &AleoAmount;

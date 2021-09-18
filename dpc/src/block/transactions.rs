@@ -68,7 +68,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the commitments, by construction a flattened list of commitments from all transactions.
-    pub fn to_commitments(&self) -> Result<Vec<<N as Network>::RecordCommitment>> {
+    pub fn to_commitments(&self) -> Result<Vec<<N as Network>::Commitment>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.commitments()).flatten().cloned().collect())
     }

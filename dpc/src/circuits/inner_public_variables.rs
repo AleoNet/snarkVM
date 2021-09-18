@@ -26,7 +26,7 @@ pub struct InnerPublicVariables<N: Network> {
     /// Transaction kernel
     pub(super) kernel: TransactionKernel<N>,
     /// Ledger digest
-    pub(super) ledger_digest: MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>,
+    pub(super) ledger_digest: MerkleTreeDigest<N::CommitmentsTreeParameters>,
     /// Output encrypted record hashes
     pub(super) encrypted_record_hashes: Vec<N::EncryptedRecordDigest>,
 
@@ -43,12 +43,12 @@ impl<N: Network> InnerPublicVariables<N> {
         Self {
             kernel: TransactionKernel::new(
                 vec![N::SerialNumber::default(); N::NUM_INPUT_RECORDS],
-                vec![N::RecordCommitment::default(); N::NUM_OUTPUT_RECORDS],
+                vec![N::Commitment::default(); N::NUM_OUTPUT_RECORDS],
                 AleoAmount::ZERO,
                 Memo::default(),
             )
             .expect("Failed to instantiate a blank transaction kernel"),
-            ledger_digest: MerkleTreeDigest::<N::LedgerCommitmentsTreeParameters>::default(),
+            ledger_digest: MerkleTreeDigest::<N::CommitmentsTreeParameters>::default(),
             encrypted_record_hashes: vec![N::EncryptedRecordDigest::default(); N::NUM_OUTPUT_RECORDS],
             program_commitment: Some(N::ProgramCommitment::default()),
             local_data_root: Some(N::LocalDataRoot::default()),
@@ -57,7 +57,7 @@ impl<N: Network> InnerPublicVariables<N> {
 
     pub fn new(
         kernel: &TransactionKernel<N>,
-        ledger_digest: &MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>,
+        ledger_digest: &MerkleTreeDigest<N::CommitmentsTreeParameters>,
         encrypted_record_hashes: &Vec<N::EncryptedRecordDigest>,
         program_commitment: Option<<N::ProgramCommitmentScheme as CommitmentScheme>::Output>,
         local_data_root: Option<N::LocalDataRoot>,
@@ -77,7 +77,7 @@ impl<N: Network> InnerPublicVariables<N> {
 
 impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N>
 where
-    MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
+    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();

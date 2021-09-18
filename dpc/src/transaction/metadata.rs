@@ -31,7 +31,7 @@ use std::io::{Read, Result as IoResult, Write};
 )]
 pub struct TransactionMetadata<N: Network> {
     /// The root of the ledger commitment tree.
-    ledger_digest: MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>,
+    ledger_digest: MerkleTreeDigest<N::CommitmentsTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
     inner_circuit_id: N::InnerCircuitID,
 }
@@ -40,7 +40,7 @@ impl<N: Network> TransactionMetadata<N> {
     /// Initializes a new instance of transaction metadata.
     #[inline]
     pub fn new(
-        ledger_digest: MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>,
+        ledger_digest: MerkleTreeDigest<N::CommitmentsTreeParameters>,
         inner_circuit_id: N::InnerCircuitID,
     ) -> Self {
         Self {
@@ -51,7 +51,7 @@ impl<N: Network> TransactionMetadata<N> {
 
     /// Returns a reference to the ledger digest.
     #[inline]
-    pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::LedgerCommitmentsTreeParameters> {
+    pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::CommitmentsTreeParameters> {
         &self.ledger_digest
     }
 

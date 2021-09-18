@@ -89,7 +89,7 @@ impl<N: Network> Input<N> {
         payload: Payload,
         executable: Executable<N>,
         serial_number_nonce: N::SerialNumberNonce,
-        commitment_randomness: <N::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
         let address = Address::from_compute_key(compute_key)?;

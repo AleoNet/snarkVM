@@ -100,6 +100,17 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type BlockHeaderTreeCRH: CRH<Output = Self::BlockHeaderRoot>;
     type BlockHeaderRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
+    /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
+    type CommitmentScheme: CommitmentScheme<Output = Self::Commitment>;
+    type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
+    type Commitment: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
+    /// CRH scheme for the commitments tree. Invoked only over `Self::InnerScalarField`.
+    type CommitmentsTreeCRH: CRH<Output = Self::CommitmentsRoot>;
+    type CommitmentsTreeCRHGadget: CRHGadget<Self::CommitmentsTreeCRH, Self::InnerScalarField>;
+    type CommitmentsTreeParameters: LoadableMerkleParameters<H = Self::CommitmentsTreeCRH>;
+    type CommitmentsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
     /// CRH for encrypted record identifiers. Invoked only over `Self::InnerScalarField`.
     type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordDigest>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
@@ -109,12 +120,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
-    /// Ledger commitments tree instantiation. Invoked only over `Self::InnerScalarField`.
-    type LedgerCommitmentsTreeCRH: CRH<Output = Self::LedgerCommitmentsTreeDigest>;
-    type LedgerCommitmentsTreeCRHGadget: CRHGadget<Self::LedgerCommitmentsTreeCRH, Self::InnerScalarField>;
-    type LedgerCommitmentsTreeDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-    type LedgerCommitmentsTreeParameters: LoadableMerkleParameters<H = Self::LedgerCommitmentsTreeCRH>;
 
     /// Ledger serial numbers tree instantiation. Invoked only over `Self::InnerScalarField`.
     type LedgerSerialNumbersTreeCRH: CRH<Output = Self::LedgerSerialNumbersTreeDigest>;
@@ -145,11 +150,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type ProgramCircuitIDTreeDigest: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDTreeCRH>;
 
-    /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
-    type RecordCommitmentScheme: CommitmentScheme<Output = Self::RecordCommitment>;
-    type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitmentScheme, Self::InnerScalarField>;
-    type RecordCommitment: ToConstraintField<Self::InnerScalarField> + Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH<Output = Self::SerialNumberNonce>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
@@ -174,6 +174,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_tree_crh() -> &'static Self::BlockHeaderTreeCRH;
     
+    fn commitment_scheme() -> &'static Self::CommitmentScheme;
+
+    fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH;
+    fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
+    
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
@@ -184,10 +189,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
 
-    fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
-
-    fn ledger_commitments_tree_crh() -> &'static Self::LedgerCommitmentsTreeCRH;
-    fn ledger_commitments_tree_parameters() -> &'static Self::LedgerCommitmentsTreeParameters;
 
     fn ledger_serial_numbers_tree_crh() -> &'static Self::LedgerSerialNumbersTreeCRH;
     fn ledger_serial_numbers_tree_parameters() -> &'static Self::LedgerSerialNumbersTreeParameters;

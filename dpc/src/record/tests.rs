@@ -50,7 +50,7 @@ fn test_record_encryption() {
 
         // Sample a new record commitment randomness.
         let commitment_randomness =
-            <<Testnet2 as Network>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(&mut rng);
+            <<Testnet2 as Network>::CommitmentScheme as CommitmentScheme>::Randomness::rand(&mut rng);
 
         let given_record = Record::new_input(
             noop_program.program_id(),

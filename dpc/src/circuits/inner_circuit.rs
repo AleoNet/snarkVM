@@ -78,7 +78,7 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
         local_data_crh,
         local_data_commitment_parameters,
         serial_number_nonce_crh,
-        ledger_commitments_tree_parameters,
+        commitments_tree_parameters,
     ) = {
         let cs = &mut cs.ns(|| "Declare parameters");
 
@@ -93,8 +93,8 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
             })?;
 
         let record_commitment_parameters =
-            N::RecordCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
-                Ok(N::record_commitment_scheme().clone())
+            N::CommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
+                Ok(N::commitment_scheme().clone())
             })?;
 
         let encrypted_record_crh_parameters = N::EncryptedRecordCRHGadget::alloc_constant(
@@ -122,9 +122,9 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
             || Ok(N::serial_number_nonce_crh().clone()),
         )?;
 
-        let ledger_commitments_tree_parameters =
-            N::LedgerCommitmentsTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
-                Ok(N::ledger_commitments_tree_parameters().crh())
+        let commitments_tree_parameters =
+            N::CommitmentsTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
+                Ok(N::commitments_tree_parameters().crh())
             })?;
 
         (
@@ -136,7 +136,7 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
             local_data_crh_parameters,
             local_data_commitment_parameters,
             serial_number_nonce_crh_parameters,
-            ledger_commitments_tree_parameters,
+            commitments_tree_parameters,
         )
     };
 
@@ -150,7 +150,7 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
     let empty_payload_field_elements =
         empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
 
-    let digest_gadget = <N::LedgerCommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+    let digest_gadget = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
         || Ok(public.ledger_digest),
     )?;
@@ -230,16 +230,16 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
                     || Ok(vec![record.serial_number_nonce().clone()]),
                 )?;
 
-            let given_commitment = <N::RecordCommitmentGadget as CommitmentGadget<
-                N::RecordCommitmentScheme,
+            let given_commitment = <N::CommitmentGadget as CommitmentGadget<
+                N::CommitmentScheme,
                 N::InnerScalarField,
             >>::OutputGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
             )?;
             old_record_commitments_gadgets.push(given_commitment.clone());
 
-            let given_commitment_randomness = <N::RecordCommitmentGadget as CommitmentGadget<
-                N::RecordCommitmentScheme,
+            let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
+                N::CommitmentScheme,
                 N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment_randomness"),
@@ -265,14 +265,14 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
         {
             let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
 
-            let witness_gadget = MerklePathGadget::<_, N::LedgerCommitmentsTreeCRHGadget, _>::alloc(
+            let witness_gadget = MerklePathGadget::<_, N::CommitmentsTreeCRHGadget, _>::alloc(
                 &mut witness_cs.ns(|| "Declare membership witness"),
                 || Ok(witness),
             )?;
 
             witness_gadget.conditionally_check_membership(
                 &mut witness_cs.ns(|| "Perform ledger membership witness check"),
-                &ledger_commitments_tree_parameters,
+                &commitments_tree_parameters,
                 &digest_gadget,
                 &given_commitment,
                 &given_is_dummy.not(),
@@ -443,15 +443,15 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
                 given_serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
 
             let given_commitment = {
-                let record_commitment = <N::RecordCommitmentGadget as CommitmentGadget<
-                    N::RecordCommitmentScheme,
+                let record_commitment = <N::CommitmentGadget as CommitmentGadget<
+                    N::CommitmentScheme,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc(
                     &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
                 )?;
 
-                let public_commitment = <N::RecordCommitmentGadget as CommitmentGadget<
-                    N::RecordCommitmentScheme,
+                let public_commitment = <N::CommitmentGadget as CommitmentGadget<
+                    N::CommitmentScheme,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
                     &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
@@ -468,8 +468,8 @@ pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarFiel
             output_commitments_bytes
                 .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 
-            let given_commitment_randomness = <N::RecordCommitmentGadget as CommitmentGadget<
-                N::RecordCommitmentScheme,
+            let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
+                N::CommitmentScheme,
                 N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment_randomness"),

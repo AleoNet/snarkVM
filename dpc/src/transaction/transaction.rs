@@ -159,7 +159,7 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> TransactionScheme<N> for Transaction<N> {
-    type Digest = MerkleTreeDigest<N::LedgerCommitmentsTreeParameters>;
+    type Digest = MerkleTreeDigest<N::CommitmentsTreeParameters>;
     type EncryptedRecord = EncryptedRecord<N>;
 
     fn network_id(&self) -> u16 {
@@ -170,7 +170,7 @@ impl<N: Network> TransactionScheme<N> for Transaction<N> {
         self.kernel.serial_numbers()
     }
 
-    fn commitments(&self) -> &[N::RecordCommitment] {
+    fn commitments(&self) -> &[N::Commitment] {
         self.kernel.commitments()
     }
 

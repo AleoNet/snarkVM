@@ -121,7 +121,7 @@ impl<N: Network> EncryptedRecord<N> {
         let serial_number_nonce = N::SerialNumberNonce::read_le(&mut cursor)?;
 
         // Commitment randomness
-        let commitment_randomness = <N::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
+        let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
         // Construct the record account address
         let owner = Address::from_view_key(&account_view_key)?;

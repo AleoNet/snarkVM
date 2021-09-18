@@ -36,7 +36,7 @@ pub struct TransactionKernel<N: Network> {
     /// The serial numbers of the input records.
     serial_numbers: Vec<N::SerialNumber>,
     /// The commitments of the output records.
-    commitments: Vec<N::RecordCommitment>,
+    commitments: Vec<N::Commitment>,
     /// A value balance is the difference between the input and output record values.
     /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
     /// may possess a negative value balance representing tokens being minted.
@@ -50,7 +50,7 @@ impl<N: Network> TransactionKernel<N> {
     #[inline]
     pub fn new(
         serial_numbers: Vec<N::SerialNumber>,
-        commitments: Vec<N::RecordCommitment>,
+        commitments: Vec<N::Commitment>,
         value_balance: AleoAmount,
         memo: Memo<N>,
     ) -> Result<Self> {
@@ -94,7 +94,7 @@ impl<N: Network> TransactionKernel<N> {
 
     /// Returns a reference to the commitments.
     #[inline]
-    pub fn commitments(&self) -> &Vec<N::RecordCommitment> {
+    pub fn commitments(&self) -> &Vec<N::Commitment> {
         &self.commitments
     }
 
@@ -170,7 +170,7 @@ impl<N: Network> FromBytes for TransactionKernel<N> {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut commitments = Vec::<N::RecordCommitment>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut commitments = Vec::<N::Commitment>::with_capacity(N::NUM_OUTPUT_RECORDS);
         for _ in 0..N::NUM_OUTPUT_RECORDS {
             commitments.push(FromBytes::read_le(&mut reader)?);
         }

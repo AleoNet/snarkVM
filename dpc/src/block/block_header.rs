@@ -83,8 +83,7 @@ impl<N: Network> BlockHeader<N> {
     pub fn new_genesis<R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
         // Compute the commitments root from the transactions.
         let commitments = transactions.to_commitments()?;
-        let commitments_tree =
-            MerkleTree::new(Arc::new(N::ledger_commitments_tree_parameters().clone()), &commitments)?;
+        let commitments_tree = MerkleTree::new(Arc::new(N::commitments_tree_parameters().clone()), &commitments)?;
         let commitments_root = MerkleRoot::from_element(commitments_tree.root());
 
         // Compute the serial numbers root from the transactions.

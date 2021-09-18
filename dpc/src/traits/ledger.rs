@@ -22,17 +22,17 @@ use anyhow::Result;
 /// The ledger commitments tree is a core state tree of the ledger.
 pub trait LedgerCommitmentsTree<N: Network>: Sized {
     /// Return the latest state root of the ledger commitments tree.
-    fn latest_digest(&self) -> Result<N::LedgerCommitmentsTreeDigest>;
+    fn latest_digest(&self) -> Result<N::CommitmentsRoot>;
 
     /// Check that st_{ts} is a valid state root for some (past) ledger commitments tree.
-    fn is_valid_digest(&self, digest: &N::LedgerCommitmentsTreeDigest) -> bool;
+    fn is_valid_digest(&self, digest: &N::CommitmentsRoot) -> bool;
 
     /// Returns true if the given commitment exists in the ledger commitments tree.
-    fn contains_commitment(&self, commitment: &N::RecordCommitment) -> bool;
+    fn contains_commitment(&self, commitment: &N::Commitment) -> bool;
 
     /// Returns the Merkle path to the latest state root for a given record commitment,
     /// if it exists in the ledger commitments tree.
-    fn prove_cm(&self, cm: &N::RecordCommitment) -> Result<MerklePath<N::LedgerCommitmentsTreeParameters>>;
+    fn prove_cm(&self, cm: &N::Commitment) -> Result<MerklePath<N::CommitmentsTreeParameters>>;
 }
 
 /// The ledger serial numbers tree is a core state tree of the ledger.
