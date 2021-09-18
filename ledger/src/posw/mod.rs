@@ -62,9 +62,10 @@ pub fn txids_to_roots<N: Network>(transaction_ids: &[[u8; 32]]) -> Result<(Merkl
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::posw::circuit::POSWCircuit;
     use snarkvm_algorithms::{SNARK, SRS};
-    use snarkvm_curves::bls12_377::Fr;
     use snarkvm_dpc::testnet2::Testnet2;
+    use snarkvm_marlin::ahp::AHPForR1CS;
     use snarkvm_utilities::ToBytes;
 
     use rand::{rngs::ThreadRng, thread_rng, Rng};
@@ -76,43 +77,28 @@ mod tests {
 
     #[test]
     fn test_posw_marlin() {
-        let mut rng = thread_rng();
+        let rng = &mut thread_rng();
 
-        // run the trusted setup
-        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = <Testnet2 as Network>::PoswSNARK::universal_setup(&max_degree, &mut rng).unwrap();
-
-        // run the deterministic setup
-        let posw =
-            PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap();
-
-        // super low difficulty so we find a solution immediately
-        let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
-
-        // The number of transactions for which to check subsequent merkle tree root values.
-        let num_txs: usize = rng.gen_range(1..256);
-
-        // Create a vector with transaction ids consisting of random values.
-        let transaction_ids = {
-            let mut vec = Vec::with_capacity(num_txs);
-            for _ in 0..num_txs {
-                let mut id = [0u8; 32];
-                rng.fill(&mut id);
-                vec.push(id);
-            }
-            vec
+        // Construct an instance of PoSW.
+        let posw = {
+            let max_degree =
+                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+            let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
+            PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
         };
 
-        let (_, posw_root, subroots) = txids_to_roots::<Testnet2>(&transaction_ids).unwrap();
+        // Construct an assigned circuit.
+        let nonce = 1u32;
+        let block_header_leaves = vec![[3u8; 32]; 4];
+        let assigned_circuit = POSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
+        let difficulty_target = u64::MAX;
 
-        // generate the proof
         let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rng, std::u32::MAX)
+            .mine(&block_header_leaves, difficulty_target, rng, u32::MAX)
             .unwrap();
-
         assert_eq!(proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
 
-        posw.verify(nonce, &proof, &posw_root).unwrap();
+        assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
     }
 
     #[test]

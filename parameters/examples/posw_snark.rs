@@ -56,10 +56,10 @@ pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     .expect("could not setup params");
 
     let posw_snark_pk = posw_snark
-        .pk
+        .proving_key
         .expect("posw_snark_pk should be populated")
         .to_bytes_le()?;
-    let posw_snark_vk = posw_snark.vk;
+    let posw_snark_vk = posw_snark.verifying_key;
     let posw_snark_vk = posw_snark_vk.to_bytes_le()?;
 
     println!("posw_snark_pk.params\n\tsize - {}", posw_snark_pk.len());

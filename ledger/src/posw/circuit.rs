@@ -146,7 +146,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
             .collect::<Result<Vec<_>, _>>()?;
 
         // Compute the root using the masked tree.
-        let computed_root =
+        let candidate_root =
             compute_root::<<N::PoswTreeParameters as MerkleParameters>::H, N::PoswTreeCRHGadget, _, _, _>(
                 cs.ns(|| "compute masked root"),
                 &crh_parameters,
@@ -156,13 +156,13 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
             )?;
 
         // Enforce the input root is the same as the computed root.
-        let public_computed_root = <N::PoswTreeCRHGadget as CRHGadget<
+        let expected_root = <N::PoswTreeCRHGadget as CRHGadget<
             <N::PoswTreeParameters as MerkleParameters>::H,
             N::InnerScalarField,
-        >>::OutputGadget::alloc_input(cs.ns(|| "public computed root"), || {
-            Ok(&self.root)
-        })?;
-        computed_root.enforce_equal(cs.ns(|| "inputize computed root"), &public_computed_root)?;
+        >>::OutputGadget::alloc_input(
+            cs.ns(|| "alloc input expected masked root"), || Ok(&self.root)
+        )?;
+        candidate_root.enforce_equal(cs.ns(|| "enforce equal"), &expected_root)?;
 
         Ok(())
     }
