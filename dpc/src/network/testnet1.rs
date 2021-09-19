@@ -127,8 +127,10 @@ impl Network for Testnet1 {
 
     type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
-
-    type BlockHeaderTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
+    
+    type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
+    type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
+    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 2>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
     type CommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
@@ -154,11 +156,6 @@ impl Network for Testnet1 {
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
-
-    type PoswTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
-    type PoswTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type PoswTreeParameters = MaskedMerkleTreeParameters<Self::PoswTreeCRH, 2>;
-    type PoswRoot = <Self::PoswTreeCRH as CRH>::Output;
     
     type ProgramCommitmentScheme = Blake2sCommitment;
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
@@ -243,9 +240,9 @@ impl Network for Testnet1 {
         Rc::new(RefCell::new(SRS::CircuitSpecific(rng)))
     }
 
-    fn posw_tree_parameters() -> &'static Self::PoswTreeParameters {
-        static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::PoswTreeParameters> = OnceCell::new();
-        MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::PoswTreeParameters::setup("MerkleTreeParameters"))
+    fn block_header_tree_parameters() -> &'static Self::BlockHeaderTreeParameters {
+        static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::BlockHeaderTreeParameters> = OnceCell::new();
+        MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::BlockHeaderTreeParameters::setup("MerkleTreeParameters"))
     }
 }
 
@@ -290,7 +287,7 @@ mod tests {
         // Verify the PoSW tree depth matches the declared depth.
         assert_eq!(
             Testnet1::POSW_TREE_DEPTH,
-            <<Testnet1 as Network>::PoswTreeParameters as MerkleParameters>::DEPTH
+            <<Testnet1 as Network>::BlockHeaderTreeParameters as MerkleParameters>::DEPTH
         );
 
         // Verify the number of leaves corresponds to the correct tree depth.

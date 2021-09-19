@@ -34,12 +34,12 @@ pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: MerkleRoot([0u8; 32]),
+            commitments_root: Default::default(),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new_genesis(),
-            proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),
+        proof: ProofOfSuccinctWork::default(),
     })
     .unwrap();
 
@@ -56,7 +56,7 @@ pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8
     transactions.push(transaction);
 
     // Create a genesis header.
-    let genesis_header = BlockHeader::new_genesis(&transactions, &mut thread_rng())?;
+    let genesis_header = BlockHeader::new_genesis(&transactions)?;
     assert!(genesis_header.is_genesis());
     println!("block header size - {}\n", BlockHeader::<N>::size());
 

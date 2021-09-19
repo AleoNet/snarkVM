@@ -102,8 +102,10 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type BlockHashCRH: CRH<Output = Self::BlockHash>;
     type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// CRH schemes for the block header root. Invoked only over `Self::InnerScalarField`.
+    /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderTreeCRH: CRH<Output = Self::BlockHeaderRoot>;
+    type BlockHeaderTreeCRHGadget: MaskedCRHGadget<<Self::BlockHeaderTreeParameters as MerkleParameters>::H, Self::InnerScalarField>;
+    type BlockHeaderTreeParameters: MaskedMerkleParameters<H = Self::BlockHeaderTreeCRH>;
     type BlockHeaderRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
@@ -136,12 +138,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
-    /// Masked Merkle tree for Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
-    type PoswTreeCRH: CRH<Output = Self::PoswRoot>;
-    type PoswTreeCRHGadget: MaskedCRHGadget<<Self::PoswTreeParameters as MerkleParameters>::H, Self::InnerScalarField>;
-    type PoswTreeParameters: MaskedMerkleParameters<H = Self::PoswTreeCRH>;
-    type PoswRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
     /// Commitment scheme for committing to program IDs over `Self::InnerScalarField` and to decommit program IDs over `Self::OuterScalarField`.
     type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>;
     type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>
@@ -187,6 +183,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_tree_crh() -> &'static Self::BlockHeaderTreeCRH;
+    fn block_header_tree_parameters() -> &'static Self::BlockHeaderTreeParameters;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
     fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH;
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
@@ -194,7 +191,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
     fn local_data_crh() -> &'static Self::LocalDataCRH;
-    fn posw_tree_parameters() -> &'static Self::PoswTreeParameters;
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;

@@ -44,12 +44,12 @@ fn dpc_testnet2_integration_test() {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: MerkleRoot([0u8; 32]),
+            commitments_root: Default::default(),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new_genesis(),
-            proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         },
         transactions: Transactions::new(),
+        proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
     };
 
     let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block).unwrap();
@@ -93,11 +93,6 @@ fn dpc_testnet2_integration_test() {
     let mut transactions = Transactions::new();
     transactions.push(transaction);
 
-    let time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
-
     // Construct new_commitments_tree
     let transaction_commitments = transactions
         .0
@@ -118,15 +113,12 @@ fn dpc_testnet2_integration_test() {
 
     let header = BlockHeader {
         transactions_root: transactions.to_transactions_root().unwrap(),
-        commitments_root: MerkleRoot::from_element(new_commitments_tree.root()),
+        commitments_root: new_commitments_tree.root().clone(),
         serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
         metadata: BlockHeaderMetadata::new(
             previous_block.header.height() + 1,
-            time,
             previous_block.header.difficulty_target(),
-            0,
         ),
-        proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
     };
 
     assert!(DPC::verify_transactions(&transactions.0, &ledger));
@@ -135,6 +127,7 @@ fn dpc_testnet2_integration_test() {
         previous_block_hash: previous_block.to_hash().unwrap(),
         header,
         transactions,
+        proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
     };
 
     ledger.insert_and_commit(&block).unwrap();
@@ -149,12 +142,12 @@ fn test_testnet2_dpc_execute_constraints() {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: MerkleRoot([0u8; 32]),
+            commitments_root: Default::default(),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new_genesis(),
-            proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         },
         transactions: Transactions::new(),
+        proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
     };
 
     // Use genesis block to initialize the ledger.

@@ -38,7 +38,8 @@ pub const COL_BLOCK_PREVIOUS_BLOCK_HASH: u32 = 7; // Block hash -> previous bloc
 pub const COL_DIGEST: u32 = 8; // Ledger digest -> index
 pub const COL_RECORDS: u32 = 9; // commitment -> record bytes
 pub const COL_CHILD_HASHES: u32 = 10; // block hash -> vector of potential child hashes
-pub const NUM_COLS: u32 = 11;
+pub const COL_BLOCK_POSW_PROOF: u32 = 11; // Block hash -> previous block hash // TODO (howardwu): Reorder this from 11 -> 3.
+pub const NUM_COLS: u32 = 12;
 
 pub const KEY_BEST_BLOCK_NUMBER: &str = "BEST_BLOCK_NUMBER";
 pub const KEY_CURR_CM_INDEX: &str = "CURRENT_CM_INDEX";

@@ -35,9 +35,9 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
-    hashed_leaves: Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
+    hashed_leaves: Vec<<<N::BlockHeaderTreeParameters as MerkleParameters>::H as CRH>::Output>,
     mask: Vec<u8>,
-    root: N::PoswRoot,
+    block_header_root: N::BlockHeaderRoot,
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
@@ -49,7 +49,10 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
         }
 
         // Compute the Merkle root on hashed leaves.
-        let tree = MerkleTree::<N::PoswTreeParameters>::new(Arc::new(N::posw_tree_parameters().clone()), leaves)?;
+        let tree = MerkleTree::<N::BlockHeaderTreeParameters>::new(
+            Arc::new(N::block_header_tree_parameters().clone()),
+            leaves,
+        )?;
         let root = *tree.root();
 
         // Generate the mask by committing to the nonce and root.
@@ -58,25 +61,25 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
         Ok(Self {
             hashed_leaves: tree.hashed_leaves().to_vec(),
             mask,
-            root,
+            block_header_root: root,
         })
     }
 
     /// Creates a blank PoSW circuit for setup.
     pub fn blank() -> Result<Self> {
-        let empty_hash = N::posw_tree_parameters()
+        let empty_hash = N::block_header_tree_parameters()
             .hash_empty()
             .map_err(|_| SynthesisError::Unsatisfiable)?;
 
         Ok(Self {
             hashed_leaves: vec![empty_hash; N::POSW_NUM_LEAVES],
             mask: vec![0; MASK_NUM_BYTES],
-            root: Default::default(),
+            block_header_root: Default::default(),
         })
     }
 
     /// Returns a reference to the PoSW hashed leaves.
-    pub fn hashed_leaves(&self) -> &Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output> {
+    pub fn hashed_leaves(&self) -> &Vec<<<N::BlockHeaderTreeParameters as MerkleParameters>::H as CRH>::Output> {
         &self.hashed_leaves
     }
 
@@ -85,13 +88,13 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
         &self.mask
     }
 
-    /// Returns a reference to the PoSW root.
-    pub fn root(&self) -> &N::PoswRoot {
-        &self.root
+    /// Returns a reference to the block header root.
+    pub fn block_header_root(&self) -> &N::BlockHeaderRoot {
+        &self.block_header_root
     }
 
     /// Commits to the given nonce and root.
-    pub(super) fn commit(nonce: u32, root: &N::PoswRoot) -> Result<Vec<u8>> {
+    pub(super) fn commit(nonce: u32, root: &N::BlockHeaderRoot) -> Result<Vec<u8>> {
         let mut h = Blake2s::new();
         h.update(&nonce.to_le_bytes());
         h.update(&root.to_bytes_le()?);
@@ -114,16 +117,16 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
         assert_eq!(self.hashed_leaves.len(), N::POSW_NUM_LEAVES);
         assert_eq!(self.mask.len(), MASK_NUM_BYTES);
 
-        let crh_parameters = N::PoswTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
-            Ok(N::posw_tree_parameters().crh().clone())
+        let crh_parameters = N::BlockHeaderTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
+            Ok(N::block_header_tree_parameters().crh().clone())
         })?;
 
         let mask_crh_parameters =
-            <N::PoswTreeCRHGadget as MaskedCRHGadget<
-                <N::PoswTreeParameters as MerkleParameters>::H,
+            <N::BlockHeaderTreeCRHGadget as MaskedCRHGadget<
+                <N::BlockHeaderTreeParameters as MerkleParameters>::H,
                 N::InnerScalarField,
             >>::MaskParametersGadget::alloc_constant(&mut cs.ns(|| "new_mask_parameters"), || {
-                let crh_parameters = N::posw_tree_parameters().mask_crh();
+                let crh_parameters = N::block_header_tree_parameters().mask_crh();
                 Ok(crh_parameters)
             })?;
 
@@ -135,29 +138,35 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
             .iter()
             .enumerate()
             .map(|(i, leaf)| {
-                <N::PoswTreeCRHGadget as CRHGadget<
-                    <N::PoswTreeParameters as MerkleParameters>::H,
+                <N::BlockHeaderTreeCRHGadget as CRHGadget<
+                    <N::BlockHeaderTreeParameters as MerkleParameters>::H,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || Ok(leaf))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
         // Compute the root using the masked tree.
-        let candidate_root =
-            compute_root::<<N::PoswTreeParameters as MerkleParameters>::H, N::PoswTreeCRHGadget, _, _, _>(
-                cs.ns(|| "compute masked root"),
-                &crh_parameters,
-                &mask_crh_parameters,
-                &mask_bytes,
-                &hashed_leaf_gadgets,
-            )?;
+        let candidate_root = compute_root::<
+            <N::BlockHeaderTreeParameters as MerkleParameters>::H,
+            N::BlockHeaderTreeCRHGadget,
+            _,
+            _,
+            _,
+        >(
+            cs.ns(|| "compute masked root"),
+            &crh_parameters,
+            &mask_crh_parameters,
+            &mask_bytes,
+            &hashed_leaf_gadgets,
+        )?;
 
         // Enforce the input root is the same as the computed root.
-        let expected_root = <N::PoswTreeCRHGadget as CRHGadget<
-            <N::PoswTreeParameters as MerkleParameters>::H,
+        let expected_root = <N::BlockHeaderTreeCRHGadget as CRHGadget<
+            <N::BlockHeaderTreeParameters as MerkleParameters>::H,
             N::InnerScalarField,
         >>::OutputGadget::alloc_input(
-            cs.ns(|| "alloc input expected masked root"), || Ok(&self.root)
+            cs.ns(|| "alloc input expected block header root"),
+            || Ok(&self.block_header_root),
         )?;
         candidate_root.enforce_equal(cs.ns(|| "enforce equal"), &expected_root)?;
 
@@ -184,9 +193,11 @@ mod test {
 
         // Generate the expected inputs.
         let (expected_hashed_leaves, expected_mask, expected_root) = {
-            let tree =
-                MerkleTree::<N::PoswTreeParameters>::new(Arc::new(N::posw_tree_parameters().clone()), &leaves[..])
-                    .unwrap();
+            let tree = MerkleTree::<N::BlockHeaderTreeParameters>::new(
+                Arc::new(N::block_header_tree_parameters().clone()),
+                &leaves[..],
+            )
+            .unwrap();
             let root = tree.root();
 
             let mut h = Blake2s::new();
@@ -203,7 +214,7 @@ mod test {
         let candidate_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
         assert_eq!(expected_hashed_leaves, candidate_circuit.hashed_leaves);
         assert_eq!(expected_mask, candidate_circuit.mask);
-        assert_eq!(expected_root, candidate_circuit.root);
+        assert_eq!(expected_root, candidate_circuit.block_header_root);
     }
 
     fn posw_constraints_test<N: Network>() {
@@ -260,7 +271,7 @@ mod test {
         let inputs = [
             ToConstraintField::<<N as Network>::InnerScalarField>::to_field_elements(&assigned_circuit.mask[..])
                 .unwrap(),
-            vec![N::InnerScalarField::read_le(&assigned_circuit.root.to_bytes_le().unwrap()[..]).unwrap()],
+            vec![N::InnerScalarField::read_le(&assigned_circuit.block_header_root.to_bytes_le().unwrap()[..]).unwrap()],
         ]
         .concat();
         assert_eq!(3, inputs.len());

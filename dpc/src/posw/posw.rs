@@ -16,7 +16,7 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::PoSWCircuit, Network, PoswError};
+use crate::{posw::PoSWCircuit, BlockHeader, Network, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
@@ -83,36 +83,50 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     /// such that they are under the difficulty target.
     pub fn mine<R: Rng + CryptoRng>(
         &self,
-        leaves: &[[u8; 32]],
-        difficulty_target: u64,
+        block_header: &mut BlockHeader<N>,
         rng: &mut R,
-        max_nonce: u32,
-    ) -> Result<(u32, <N::PoswSNARK as SNARK>::Proof), PoswError> {
-        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
+    ) -> Result<<N::PoswSNARK as SNARK>::Proof, PoswError> {
+        let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
-        let mut nonce;
         let mut proof;
         loop {
-            nonce = rng.gen_range(0..max_nonce);
-            proof = self.prove(nonce, leaves, rng)?;
+            // Instantiate the circuit with a nonce.
+            let nonce = rng.gen_range(0..u32::MAX);
+            let leaves = block_header.to_leaves()?;
+            let circuit = PoSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, &leaves)?;
 
-            if self.check_difficulty(&proof, difficulty_target) {
+            // Generate the proof.
+            let timer = start_timer!(|| "PoSW proof");
+            proof = <<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?;
+            end_timer!(timer);
+
+            if self.verify(block_header, &proof) {
+                block_header.set_nonce(Some(nonce));
                 break;
             }
         }
 
-        Ok((nonce, proof))
+        Ok(proof)
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
-    pub fn verify(
-        &self,
-        nonce: u32,
-        root: &N::PoswRoot,
-        difficulty_target: u64,
-        proof: &<N::PoswSNARK as SNARK>::Proof,
-    ) -> bool {
-        let inputs = |(nonce, root): (u32, &N::PoswRoot)| -> anyhow::Result<Vec<N::InnerScalarField>> {
+    pub fn verify(&self, block_header: &BlockHeader<N>, proof: &<N::PoswSNARK as SNARK>::Proof) -> bool {
+        // Ensure the difficulty target is met.
+        match proof.to_bytes_le() {
+            Ok(proof) => {
+                let hash_difficulty = sha256d_to_u64(&proof);
+                if hash_difficulty <= block_header.difficulty_target() {
+                    eprintln!("PoSW difficulty target is not met");
+                    return false;
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to convert PoSW proof to bytes: {}", error);
+                return false;
+            }
+        }
+
+        let inputs = |(nonce, root): (u32, &N::BlockHeaderRoot)| -> anyhow::Result<Vec<N::InnerScalarField>> {
             // Commit to the nonce and root.
             let mask = PoSWCircuit::<N, MASK_NUM_BYTES>::commit(nonce, root)?;
 
@@ -123,7 +137,8 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         };
 
         // Construct the inputs.
-        let inputs = match inputs((nonce, root)) {
+        let nonce = block_header.nonce().unwrap();
+        let inputs = match inputs((nonce, &block_header.to_root().unwrap())) {
             Ok(inputs) => inputs,
             Err(error) => {
                 eprintln!("{}", error);
@@ -137,64 +152,17 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
             return false;
         }
 
-        // Ensure the difficulty target is met.
-        if !self.check_difficulty(proof, difficulty_target) {
-            eprintln!("PoSW difficulty target is not met");
-            return false;
-        }
-
         true
-    }
-}
-
-impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
-    /// Hashes the proof and checks it against the difficulty.
-    pub fn check_difficulty(&self, proof: &<N::PoswSNARK as SNARK>::Proof, difficulty_target: u64) -> bool {
-        match proof.to_bytes_le() {
-            Ok(proof) => {
-                let hash_difficulty = sha256d_to_u64(&proof);
-                hash_difficulty <= difficulty_target
-            }
-            Err(error) => {
-                eprintln!("{}", error);
-                false
-            }
-        }
-    }
-
-    /// Runs the SNARK `prove` function on the PoSW circuit and returns the proof.
-    fn prove<R: Rng + CryptoRng>(
-        &self,
-        nonce: u32,
-        leaves: &[[u8; 32]],
-        rng: &mut R,
-    ) -> Result<<N::PoswSNARK as SNARK>::Proof, PoswError> {
-        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
-
-        let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
-
-        // Instantiate the circuit with the nonce.
-        let circuit = PoSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, leaves)?;
-
-        // Generate the proof.
-        let proof_timer = start_timer!(|| "PoSW proof");
-        let proof = <<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?;
-        end_timer!(proof_timer);
-
-        Ok(proof)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        posw::{PoSWCircuit, PoswMarlin},
-        testnet2::Testnet2,
-        Network,
-    };
+    use crate::{posw::PoswMarlin, testnet2::Testnet2, BlockHeader, Network, Transaction, Transactions};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
-    use snarkvm_utilities::ToBytes;
+    use snarkvm_parameters::{testnet2::Transaction1, Genesis};
+    use snarkvm_utilities::{FromBytes, ToBytes};
 
     use rand::{rngs::ThreadRng, thread_rng, Rng};
 
@@ -215,16 +183,16 @@ mod tests {
         };
 
         // Construct an assigned circuit.
-        let nonce = 1u32;
-        let block_header_leaves = vec![[3u8; 32]; Testnet2::POSW_NUM_LEAVES];
-        let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
-        let difficulty_target = u64::MAX;
-
-        let (nonce, proof) = posw
-            .mine(&block_header_leaves, difficulty_target, &mut thread_rng(), u32::MAX)
+        let mut block_header =
+            BlockHeader::<Testnet2>::new_genesis(&Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(
+                &Transaction1::load_bytes(),
+            )
+            .unwrap()]))
             .unwrap();
-        assert_eq!(proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
-        assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
+
+        let proof = posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+        assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::POSW_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
+        assert!(posw.verify(&block_header, &proof));
     }
 
     #[test]
@@ -239,23 +207,21 @@ mod tests {
         };
 
         // Construct an assigned circuit.
-        let nonce = 1u32;
-        let block_header_leaves = vec![[3u8; 32]; Testnet2::POSW_NUM_LEAVES];
-        let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
-
-        // Construct a PoSW proof.
-        let difficulty_target = u64::MAX;
-        let (nonce, proof) = posw
-            .mine(&block_header_leaves, difficulty_target, &mut thread_rng(), u32::MAX)
+        let mut block_header =
+            BlockHeader::<Testnet2>::new_genesis(&Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(
+                &Transaction1::load_bytes(),
+            )
+            .unwrap()]))
             .unwrap();
 
+        // Construct a PoSW proof.
+        let proof = posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+
         // Check that the difficulty target is satisfied.
-        assert!(posw.check_difficulty(&proof, difficulty_target));
-        assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
+        assert!(posw.verify(&block_header, &proof));
 
         // Check that the difficulty target is *not* satisfied.
-        assert!(!posw.check_difficulty(&proof, 0u64));
-        assert!(!posw.verify(nonce, assigned_circuit.root(), 0u64, &proof));
+        assert!(!posw.verify(&block_header, &proof));
     }
 
     /// TODO (howardwu): TEMPORARY - Move this up to the algorithms level of Merkle tree tests.
@@ -268,7 +234,7 @@ mod tests {
         /// Subtree calculation
         fn txids_to_roots<N: Network>(
             transaction_ids: &[[u8; 32]],
-        ) -> Result<(MerkleRoot, N::PoswRoot, Vec<[u8; 32]>)> {
+        ) -> Result<(MerkleRoot, N::BlockHeaderRoot, Vec<[u8; 32]>)> {
             assert!(
                 !transaction_ids.is_empty(),
                 "Cannot compute a Merkle tree with no transaction IDs"
@@ -289,8 +255,8 @@ mod tests {
             let mut merkle_root_bytes = [0u8; 32];
             merkle_root_bytes[..].copy_from_slice(&root);
 
-            let masked_root = snarkvm_algorithms::merkle_tree::MerkleTree::<N::PoswTreeParameters>::new(
-                std::sync::Arc::new(N::posw_tree_parameters().clone()),
+            let masked_root = snarkvm_algorithms::merkle_tree::MerkleTree::<N::BlockHeaderTreeParameters>::new(
+                std::sync::Arc::new(N::block_header_tree_parameters().clone()),
                 &subroots,
             )?
             .root()

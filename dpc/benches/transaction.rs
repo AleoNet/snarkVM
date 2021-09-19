@@ -45,12 +45,12 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: MerkleRoot([0u8; 32]),
+            commitments_root: Default::default(),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new_genesis(),
-            proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
+        proof: ProofOfSuccinctWork([0u8; 771]),
     })
     .unwrap();
 
@@ -69,12 +69,12 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: MerkleRoot([0u8; 32]),
+            commitments_root: Default::default(),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new_genesis(),
-            proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
+        proof: ProofOfSuccinctWork([0u8; 771]),
     })
     .unwrap();
 

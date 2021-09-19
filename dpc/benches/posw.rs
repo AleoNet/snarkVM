@@ -48,20 +48,16 @@ fn marlin_posw(c: &mut Criterion) {
 
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw
-                .mine(&block_header_leaves, difficulty_target, rng, u32::MAX)
-                .unwrap();
+            let (_nonce, _proof) = posw.mine(&block_header_leaves, difficulty_target, rng).unwrap();
         });
     });
 
-    let (nonce, proof) = posw
-        .mine(&block_header_leaves, difficulty_target, rng, u32::MAX)
-        .unwrap();
+    let (nonce, proof) = posw.mine(&block_header_leaves, difficulty_target, rng).unwrap();
 
     group.bench_function("verify", |b| {
         b.iter(|| {
             let _ = posw
-                .verify(nonce, assigned_circuit.root(), difficulty_target, &proof)
+                .verify(nonce, assigned_circuit.block_header_root(), difficulty_target, &proof)
                 .unwrap();
         });
     });

@@ -18,20 +18,18 @@ use crate::{ledger::*, prelude::*};
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 
-use rand::thread_rng;
-
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: MerkleRoot([0u8; 32]),
+            commitments_root: Default::default(),
             serial_numbers_root: MerkleRoot([0u8; 32]),
             metadata: BlockHeaderMetadata::new_genesis(),
-            proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),
+        proof: ProofOfSuccinctWork::default(),
     };
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
@@ -57,12 +55,11 @@ fn test_ledger_duplicate_transactions() {
     let transaction = Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
     let transactions = Transactions::from(&[transaction.clone(), transaction]);
 
-    let block_header = BlockHeader::new_genesis(&transactions, &mut thread_rng()).unwrap();
-
     let genesis_block = Block {
         previous_block_hash: BlockHash([0u8; 32]),
-        header: block_header,
+        header: BlockHeader::new_genesis(&transactions).unwrap(),
         transactions,
+        proof: ProofOfSuccinctWork::default(),
     };
 
     assert!(Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).is_err());

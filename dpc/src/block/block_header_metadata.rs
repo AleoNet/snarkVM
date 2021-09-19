@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::BlockError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use chrono::Utc;
@@ -28,36 +29,35 @@ use std::{
 pub struct BlockHeaderMetadata {
     /// The height of this block - 4 bytes.
     height: u32,
-    /// The block timestamp is a Unix epoch time (UTC) when the miner
-    /// started hashing the header (according to the miner). - 8 bytes
+    /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
     timestamp: i64,
     /// Proof of work algorithm difficulty target for this block - 8 bytes
     difficulty_target: u64,
     /// Nonce for solving the PoW puzzle - 4 bytes
-    nonce: u32,
+    nonce: Option<u32>,
 }
 
 impl BlockHeaderMetadata {
     /// Initializes a new instance of a block header metadata.
-    pub fn new(height: u32, difficulty_target: u64, nonce: u32) -> Self {
+    pub fn new(height: u32, difficulty_target: u64) -> Self {
         match height == 0 {
-            true => Self::new_genesis(nonce),
+            true => Self::new_genesis(),
             false => Self {
                 height,
                 timestamp: Utc::now().timestamp(),
                 difficulty_target,
-                nonce,
+                nonce: None,
             },
         }
     }
 
     /// Initializes a new instance of a genesis block header metadata.
-    pub fn new_genesis(nonce: u32) -> Self {
+    pub fn new_genesis() -> Self {
         Self {
             height: 0u32,
             timestamp: 0i64,
             difficulty_target: u64::MAX,
-            nonce,
+            nonce: Some(u32::MAX),
         }
     }
 
@@ -69,8 +69,8 @@ impl BlockHeaderMetadata {
             && self.timestamp == 0i64
             // Ensure the difficulty target in the genesis block is u64::MAX.
             && self.difficulty_target == u64::MAX
-            // Ensure the nonce is u32::MAX.
-            && self.nonce == u32::MAX
+            // Ensure the nonce is set to u32::MAX.
+            && self.nonce == Some(u32::MAX)
     }
 
     /// Returns `true` if the block header metadata is well-formed.
@@ -80,27 +80,55 @@ impl BlockHeaderMetadata {
             false => {
                 // Ensure the timestamp in the block is greater than 0.
                 self.timestamp > 0i64
+                    // Ensure the nonce is set to a value.
+                    && self.nonce.is_some()
             }
         }
     }
 
+    ///
+    /// Sets the block nonce to the given nonce.
+    /// This method is used by PoSW to iterate over candidate block headers.
+    ///
+    /// Call this method from `BlockHeader::set_nonce()`.
+    ///
+    pub(super) fn set_nonce(&mut self, nonce: Option<u32>) {
+        self.nonce = nonce;
+    }
+
+    ///
     /// Returns the block height.
-    pub const fn height(&self) -> u32 {
+    ///
+    /// Call this method from `BlockHeader::height()`.
+    ///
+    pub(super) const fn height(&self) -> u32 {
         self.height
     }
 
+    ///
     /// Returns the block timestamp.
-    pub const fn timestamp(&self) -> i64 {
+    ///
+    /// Call this method from `BlockHeader::timestamp()`.
+    ///
+    pub(super) const fn timestamp(&self) -> i64 {
         self.timestamp
     }
 
+    ///
     /// Returns the block difficulty target.
-    pub const fn difficulty_target(&self) -> u64 {
+    ///
+    /// Call this method from `BlockHeader::difficulty_target()`.
+    ///
+    pub(super) const fn difficulty_target(&self) -> u64 {
         self.difficulty_target
     }
 
-    /// Returns the block nonce.
-    pub const fn nonce(&self) -> u32 {
+    ///
+    /// Returns the block nonce, if it is set.
+    ///
+    /// Call this method from `BlockHeader::nonce()`.
+    ///
+    pub(super) const fn nonce(&self) -> Option<u32> {
         self.nonce
     }
 
@@ -117,7 +145,7 @@ impl From<(u32, i64, u64, u32)> for BlockHeaderMetadata {
             height: metadata.0,
             timestamp: metadata.1,
             difficulty_target: metadata.2,
-            nonce: metadata.3,
+            nonce: Some(metadata.3), // In this context, nonce must always be set.
         }
     }
 }
@@ -128,13 +156,13 @@ impl FromBytes for BlockHeaderMetadata {
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let nonce = <[u8; 4]>::read_le(&mut reader)?;
+        let nonce = <[u8; 4]>::read_le(&mut reader)?; // In this context, nonce must always be set.
 
         Ok(Self {
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
-            nonce: u32::from_le_bytes(nonce),
+            nonce: Some(u32::from_le_bytes(nonce)),
         })
     }
 }
@@ -142,10 +170,16 @@ impl FromBytes for BlockHeaderMetadata {
 impl ToBytes for BlockHeaderMetadata {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.height.to_le_bytes().write_le(&mut writer)?;
-        self.timestamp.to_le_bytes().write_le(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.nonce.to_le_bytes().write_le(&mut writer)
+        // In this context, nonce must always be set.
+        match self.nonce {
+            Some(nonce) => {
+                self.height.to_le_bytes().write_le(&mut writer)?;
+                self.timestamp.to_le_bytes().write_le(&mut writer)?;
+                self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+                nonce.to_le_bytes().write_le(&mut writer)
+            }
+            None => Err(BlockError::Message("Nonce must be set to serialize block header metadata".to_string()).into()),
+        }
     }
 }
 
@@ -155,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_block_header_metadata_serialization() {
-        let metadata = BlockHeaderMetadata::new(1, 2, 3);
+        let metadata = BlockHeaderMetadata::new(1, 2);
 
         let serialized = metadata.to_bytes_le().unwrap();
         assert_eq!(&serialized[..], &bincode::serialize(&metadata).unwrap()[..]);
@@ -166,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_block_header_metadata_size() {
-        let metadata = BlockHeaderMetadata::new(1, 2, 3);
+        let metadata = BlockHeaderMetadata::new(1, 2);
         assert_eq!(metadata.to_bytes_le().unwrap().len(), BlockHeaderMetadata::size());
     }
 }
