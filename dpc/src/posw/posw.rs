@@ -216,7 +216,7 @@ mod tests {
 
         // Construct an assigned circuit.
         let nonce = 1u32;
-        let block_header_leaves = vec![[3u8; 32]; 4];
+        let block_header_leaves = vec![[3u8; 32]; Testnet2::POSW_NUM_LEAVES];
         let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
         let difficulty_target = u64::MAX;
 
@@ -238,25 +238,24 @@ mod tests {
             PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
         };
 
-        let difficulty_target = u64::MAX;
-        let proof = {
-            // Construct an assigned circuit.
-            let nonce = 1u32;
-            let block_header_leaves = vec![[3u8; 32]; 4];
-            let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
+        // Construct an assigned circuit.
+        let nonce = 1u32;
+        let block_header_leaves = vec![[3u8; 32]; Testnet2::POSW_NUM_LEAVES];
+        let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
 
-            let (nonce, proof) = posw
-                .mine(&block_header_leaves, difficulty_target, &mut thread_rng(), u32::MAX)
-                .unwrap();
-            assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
-            proof
-        };
+        // Construct a PoSW proof.
+        let difficulty_target = u64::MAX;
+        let (nonce, proof) = posw
+            .mine(&block_header_leaves, difficulty_target, &mut thread_rng(), u32::MAX)
+            .unwrap();
 
         // Check that the difficulty target is satisfied.
         assert!(posw.check_difficulty(&proof, difficulty_target));
+        assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
 
         // Check that the difficulty target is *not* satisfied.
         assert!(!posw.check_difficulty(&proof, 0u64));
+        assert!(!posw.verify(nonce, assigned_circuit.root(), 0u64, &proof));
     }
 
     /// TODO (howardwu): TEMPORARY - Move this up to the algorithms level of Merkle tree tests.

@@ -80,6 +80,7 @@ impl Network for Testnet1 {
     const MEMO_SIZE_IN_BYTES: usize = 64;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
+    const POSW_NUM_LEAVES: usize = 4;
     const POSW_TREE_DEPTH: usize = 2;
 
     type InnerCurve = Bls12_377;

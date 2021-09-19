@@ -49,6 +49,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     const MEMO_SIZE_IN_BYTES: usize;
     
     const POSW_PROOF_SIZE_IN_BYTES: usize;
+    const POSW_NUM_LEAVES: usize;
     const POSW_TREE_DEPTH: usize;
 
     /// Inner curve type declarations.

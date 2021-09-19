@@ -183,7 +183,7 @@ mod test {
     fn posw_public_inputs_test<N: Network>() {
         // Setup the given parameters.
         let nonce = 1u32;
-        let leaves = vec![[3u8; 32]; 4];
+        let leaves = vec![[3u8; 32]; N::POSW_NUM_LEAVES];
 
         // Generate the expected inputs.
         let (expected_hashed_leaves, expected_mask, expected_root) = {
@@ -212,7 +212,7 @@ mod test {
     fn posw_constraints_test<N: Network>() {
         // Construct an assigned circuit.
         let nonce = 1u32;
-        let leaves = vec![[3u8; 32]; 4];
+        let leaves = vec![[3u8; 32]; N::POSW_NUM_LEAVES];
         let assigned_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
 
         // Check that the constraint system was satisfied.
@@ -247,7 +247,7 @@ mod test {
 
         // Construct an assigned circuit.
         let nonce = 1u32;
-        let leaves = vec![[3u8; 32]; 4];
+        let leaves = vec![[3u8; 32]; N::POSW_NUM_LEAVES];
         let assigned_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
 
         // Compute the proof.

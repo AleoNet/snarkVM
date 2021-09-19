@@ -38,7 +38,7 @@ fn test_posw_load_and_mine() {
 
     // Construct an assigned circuit.
     let nonce = 1u32;
-    let block_header_leaves = vec![[3u8; 32]; 4];
+    let block_header_leaves = vec![[3u8; 32]; Testnet2::POSW_NUM_LEAVES];
     let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
 
     // Generate the proof.
