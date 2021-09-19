@@ -44,7 +44,7 @@ fn dpc_testnet2_integration_test() {
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         },
         transactions: Transactions::new(),
@@ -112,8 +112,8 @@ fn dpc_testnet2_integration_test() {
 
     let header = BlockHeader {
         transactions_root: transactions.to_transactions_root().unwrap(),
-        commitments_root: new_commitments_tree.root().clone(),
-        serial_numbers_root: MerkleRoot::from_element(new_serial_numbers_tree.root()),
+        commitments_root: *new_commitments_tree.root(),
+        serial_numbers_root: *new_serial_numbers_tree.root(),
         metadata: BlockHeaderMetadata::new(
             previous_block.header.height() + 1,
             previous_block.header.difficulty_target(),
@@ -142,7 +142,7 @@ fn test_testnet2_dpc_execute_constraints() {
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         },
         transactions: Transactions::new(),

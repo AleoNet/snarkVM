@@ -35,7 +35,7 @@ pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         },
         transactions: Transactions::new(),

@@ -19,7 +19,6 @@ use crate::{
     BlockHeader,
     BlockHeaderMetadata,
     BlockScheme,
-    MerkleRoot,
     Network,
     ProofOfSuccinctWork,
     Transactions,
@@ -48,6 +47,7 @@ impl<N: Network> BlockScheme for Block<N> {
     type BlockHeader = BlockHeader<N>;
     type CommitmentsRoot = N::CommitmentsRoot;
     type Proof = ProofOfSuccinctWork<N>;
+    type SerialNumbersRoot = N::SerialNumbersRoot;
     type Transactions = Transactions<N>;
 
     /// Initializes a new instance of a block.
@@ -55,7 +55,7 @@ impl<N: Network> BlockScheme for Block<N> {
         previous_block_hash: Self::BlockHash,
         transactions: &Self::Transactions,
         commitments_root: Self::CommitmentsRoot,
-        serial_numbers_root: MerkleRoot,
+        serial_numbers_root: Self::SerialNumbersRoot,
         block_height: u32,
         difficulty_target: u64,
         rng: &mut R,

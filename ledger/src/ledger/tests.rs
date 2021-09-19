@@ -25,7 +25,7 @@ fn test_new_ledger_with_genesis_block() {
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         },
         transactions: Transactions::new(),

@@ -46,7 +46,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         },
         transactions: Transactions::new(),
@@ -70,7 +70,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         },
         transactions: Transactions::new(),

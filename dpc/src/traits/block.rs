@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::MerkleRoot;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -24,6 +23,7 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type BlockHash: Clone + Eq + FromBytes + ToBytes;
     type BlockHeader: Clone + Eq + FromBytes + ToBytes;
     type CommitmentsRoot: Clone + Eq + FromBytes + ToBytes;
+    type SerialNumbersRoot: Clone + Eq + FromBytes + ToBytes;
     type Transactions: Clone + Eq + FromBytes + ToBytes;
     type Proof: Clone + Eq + FromBytes + ToBytes;
 
@@ -32,7 +32,7 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
         previous_block_hash: Self::BlockHash,
         transactions: &Self::Transactions,
         commitments_root: Self::CommitmentsRoot,
-        serial_numbers_root: MerkleRoot,
+        serial_numbers_root: Self::SerialNumbersRoot,
         block_height: u32,
         difficulty_target: u64,
         rng: &mut R,

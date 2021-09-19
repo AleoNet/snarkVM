@@ -33,7 +33,7 @@ pub struct BlockHeader<N: Network> {
     /// The Merkle root representing the ledger commitments - 32 bytes
     pub commitments_root: N::CommitmentsRoot,
     /// The Merkle root representing the ledger serial numbers - 32 bytes
-    pub serial_numbers_root: MerkleRoot,
+    pub serial_numbers_root: N::SerialNumbersRoot,
     /// The block header metadata - 24 bytes
     pub metadata: BlockHeaderMetadata,
 }
@@ -43,7 +43,7 @@ impl<N: Network> BlockHeader<N> {
     pub fn new(
         transactions: &Transactions<N>,
         commitments_root: N::CommitmentsRoot,
-        serial_numbers_root: MerkleRoot,
+        serial_numbers_root: N::SerialNumbersRoot,
         metadata: BlockHeaderMetadata,
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
@@ -74,13 +74,12 @@ impl<N: Network> BlockHeader<N> {
         let serial_numbers = transactions.to_serial_numbers()?;
         let serial_numbers_tree =
             MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
-        let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());
 
         // Compute the genesis block header.
         Self::new(
             transactions,
-            commitments_tree.root().clone(),
-            serial_numbers_root,
+            *commitments_tree.root(),
+            *serial_numbers_tree.root(),
             BlockHeaderMetadata::new_genesis(),
         )
     }
@@ -115,11 +114,16 @@ impl<N: Network> BlockHeader<N> {
         let mut commitments_root = [0u8; 32];
         commitments_root.copy_from_slice(&commitments_root_bytes);
 
+        let serial_numbers_root_bytes = self.serial_numbers_root.to_bytes_le()?;
+        assert_eq!(serial_numbers_root_bytes.len(), 32);
+        let mut serial_numbers_root = [0u8; 32];
+        serial_numbers_root.copy_from_slice(&serial_numbers_root_bytes);
+
         // TODO (howardwu): CRITICAL - Implement a (masked) Merkle tree for the block header.
         let mut leaves: Vec<[u8; 32]> = Vec::with_capacity(N::POSW_NUM_LEAVES);
         leaves.push(self.transactions_root.0);
         leaves.push(commitments_root);
-        leaves.push(self.serial_numbers_root.0);
+        leaves.push(serial_numbers_root);
         leaves.push([0u8; 32]);
         assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
 
@@ -168,13 +172,13 @@ impl<N: Network> FromBytes for BlockHeader<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let transactions_root = <[u8; 32]>::read_le(&mut reader)?;
         let commitments_root = FromBytes::read_le(&mut reader)?;
-        let serial_numbers_root = <[u8; 32]>::read_le(&mut reader)?;
+        let serial_numbers_root = FromBytes::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
 
         let block_header = Self {
             transactions_root: MerkleRoot(transactions_root),
             commitments_root,
-            serial_numbers_root: MerkleRoot(serial_numbers_root),
+            serial_numbers_root,
             metadata,
         };
 
@@ -191,7 +195,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.transactions_root.0.write_le(&mut writer)?;
         self.commitments_root.write_le(&mut writer)?;
-        self.serial_numbers_root.0.write_le(&mut writer)?;
+        self.serial_numbers_root.write_le(&mut writer)?;
         self.metadata.write_le(&mut writer)
     }
 }
@@ -221,7 +225,7 @@ mod tests {
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, MerkleRoot([0u8; 32]));
         assert_ne!(block_header.commitments_root, Default::default());
-        assert_ne!(block_header.serial_numbers_root, MerkleRoot([0u8; 32]));
+        assert_ne!(block_header.serial_numbers_root, Default::default());
     }
 
     #[test]
@@ -229,7 +233,7 @@ mod tests {
         let block_header = BlockHeader::<Testnet2> {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         };
 
@@ -245,7 +249,7 @@ mod tests {
         let block_header = BlockHeader::<Testnet2> {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
-            serial_numbers_root: MerkleRoot([0u8; 32]),
+            serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::new_genesis(),
         };
         assert_eq!(
