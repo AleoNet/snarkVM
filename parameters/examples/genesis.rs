@@ -38,7 +38,7 @@ pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
         },
-        transactions: Transactions::new(),
+        transactions: BlockTransactions::new(),
         proof: ProofOfSuccinctWork::default(),
     })
     .unwrap();
@@ -52,7 +52,7 @@ pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8
     println!("transaction size - {}\n", transaction_bytes.len());
 
     // Add genesis transaction to block.
-    let mut transactions = Transactions::new();
+    let mut transactions = BlockTransactions::new();
     transactions.push(transaction);
 
     // Create a genesis header.

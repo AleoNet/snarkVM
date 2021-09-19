@@ -47,7 +47,7 @@ fn dpc_testnet1_integration_test() {
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
         },
-        transactions: Transactions::new(),
+        transactions: BlockTransactions::new(),
         proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet1>::size()]),
     };
 
@@ -89,7 +89,7 @@ fn dpc_testnet1_integration_test() {
 
     let previous_block = ledger.latest_block().unwrap();
 
-    let mut transactions = Transactions::new();
+    let mut transactions = BlockTransactions::new();
     transactions.push(transaction);
 
     // Construct new_commitments_tree
@@ -145,7 +145,7 @@ fn test_testnet1_dpc_execute_constraints() {
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
         },
-        transactions: Transactions::new(),
+        transactions: BlockTransactions::new(),
         proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet1>::size()]),
     };
 

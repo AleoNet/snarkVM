@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{posw::PoswMarlin, BlockError, MerkleRoot, Network, ProofOfSuccinctWork, Transactions};
+use crate::{posw::PoswMarlin, BlockError, BlockTransactions, MerkleRoot, Network, ProofOfSuccinctWork};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -76,7 +76,7 @@ pub struct BlockHeader<N: Network> {
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
     pub fn new<R: Rng + CryptoRng>(
-        transactions: &Transactions<N>,
+        transactions: &BlockTransactions<N>,
         commitments_root: N::CommitmentsRoot,
         serial_numbers_root: N::SerialNumbersRoot,
         block_height: u32,
@@ -120,7 +120,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis<R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
+    pub fn new_genesis<R: Rng + CryptoRng>(transactions: &BlockTransactions<N>, rng: &mut R) -> Result<Self> {
         // Compute the commitments root from the transactions.
         let commitments = transactions.to_commitments()?;
         let commitments_tree = MerkleTree::new(Arc::new(N::commitments_tree_parameters().clone()), &commitments)?;
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn test_block_header_genesis() {
         let block_header = BlockHeader::<Testnet2>::new_genesis(
-            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
             &mut thread_rng(),
         )
         .unwrap();
@@ -354,7 +354,7 @@ mod tests {
     #[test]
     fn test_block_header_serialization() {
         let block_header = BlockHeader::<Testnet2>::new_genesis(
-            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
             &mut thread_rng(),
         )
         .unwrap();
@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn test_block_header_size() {
         let block_header = BlockHeader::<Testnet2>::new_genesis(
-            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
             &mut thread_rng(),
         )
         .unwrap();

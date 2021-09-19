@@ -29,7 +29,7 @@ fn test_new_ledger_with_genesis_block() {
             metadata: BlockHeaderMetadata::genesis(),
             proof: ProofOfSuccinctWork::default(),
         },
-        transactions: Transactions::new(),
+        transactions: BlockTransactions::new(),
     };
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
@@ -56,7 +56,7 @@ fn test_new_ledger_with_genesis_block() {
 #[test]
 fn test_ledger_duplicate_transactions() {
     let transaction = Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap();
-    let transactions = Transactions::from(&[transaction.clone(), transaction]);
+    let transactions = BlockTransactions::from(&[transaction.clone(), transaction]);
 
     let genesis_block = Block {
         previous_block_hash: Default::default(),

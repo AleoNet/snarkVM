@@ -163,7 +163,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{posw::PoswMarlin, testnet2::Testnet2, BlockHeader, Network, Transaction, Transactions};
+    use crate::{posw::PoswMarlin, testnet2::Testnet2, BlockHeader, BlockTransactions, Network, Transaction};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
@@ -189,7 +189,7 @@ mod tests {
 
         // Construct an assigned circuit.
         let mut block_header = BlockHeader::<Testnet2>::new_genesis(
-            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
             &mut thread_rng(),
         )
         .unwrap();
@@ -216,7 +216,7 @@ mod tests {
 
         // Construct an assigned circuit.
         let mut block_header = BlockHeader::<Testnet2>::new_genesis(
-            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
             &mut thread_rng(),
         )
         .unwrap();

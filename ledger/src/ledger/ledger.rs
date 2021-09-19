@@ -191,9 +191,9 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Get the list of transaction ids given a block hash.
-    pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Transactions<N>, StorageError> {
+    pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<BlockTransactions<N>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.to_bytes_le()?)? {
-            Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
+            Some(encoded_block_transactions) => Ok(BlockTransactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
         }
     }

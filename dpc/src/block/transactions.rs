@@ -30,9 +30,9 @@ use std::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Transactions<N: Network>(pub Vec<Transaction<N>>);
+pub struct BlockTransactions<N: Network>(pub Vec<Transaction<N>>);
 
-impl<N: Network> Transactions<N> {
+impl<N: Network> BlockTransactions<N> {
     /// Initializes an empty list of transactions.
     pub fn new() -> Self {
         Self(vec![])
@@ -111,7 +111,7 @@ impl<N: Network> Transactions<N> {
     }
 }
 
-impl<N: Network> FromBytes for Transactions<N> {
+impl<N: Network> FromBytes for BlockTransactions<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_transactions = read_variable_length_integer(&mut reader)?;
@@ -123,7 +123,7 @@ impl<N: Network> FromBytes for Transactions<N> {
     }
 }
 
-impl<N: Network> ToBytes for Transactions<N> {
+impl<N: Network> ToBytes for BlockTransactions<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         variable_length_integer(self.0.len() as u64).write_le(&mut writer)?;
@@ -134,13 +134,13 @@ impl<N: Network> ToBytes for Transactions<N> {
     }
 }
 
-impl<N: Network> Default for Transactions<N> {
+impl<N: Network> Default for BlockTransactions<N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<N: Network> Deref for Transactions<N> {
+impl<N: Network> Deref for BlockTransactions<N> {
     type Target = Vec<Transaction<N>>;
 
     fn deref(&self) -> &Self::Target {
@@ -148,7 +148,7 @@ impl<N: Network> Deref for Transactions<N> {
     }
 }
 
-impl<N: Network> DerefMut for Transactions<N> {
+impl<N: Network> DerefMut for BlockTransactions<N> {
     fn deref_mut(&mut self) -> &mut Vec<Transaction<N>> {
         &mut self.0
     }

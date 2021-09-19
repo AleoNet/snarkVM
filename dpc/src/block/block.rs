@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeader, BlockScheme, Network, Transactions};
+use crate::{BlockHeader, BlockScheme, BlockTransactions, Network};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -28,13 +28,13 @@ pub struct Block<N: Network> {
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     pub header: BlockHeader<N>,
     /// The block transactions.
-    pub transactions: Transactions<N>,
+    pub transactions: BlockTransactions<N>,
 }
 
 impl<N: Network> BlockScheme for Block<N> {
     type BlockHash = N::BlockHash;
-    type BlockHeader = BlockHeader<N>;
-    type Transactions = Transactions<N>;
+    type Header = BlockHeader<N>;
+    type Transactions = BlockTransactions<N>;
 
     /// Returns the previous block hash.
     fn previous_block_hash(&self) -> &Self::BlockHash {
@@ -42,7 +42,7 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 
     /// Returns the header.
-    fn header(&self) -> &Self::BlockHeader {
+    fn header(&self) -> &Self::Header {
         &self.header
     }
 

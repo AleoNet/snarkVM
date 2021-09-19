@@ -21,9 +21,9 @@ use snarkvm_dpc::{
     testnet1::Testnet1,
     testnet2::Testnet2,
     BlockHeader,
+    BlockTransactions,
     Network,
     Transaction,
-    Transactions,
 };
 use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -39,7 +39,7 @@ fn test_posw_load_and_mine() {
 
     // Construct an assigned circuit.
     let mut block_header = BlockHeader::<Testnet2>::new_genesis(
-        &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+        &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
         &mut thread_rng(),
     )
     .unwrap();

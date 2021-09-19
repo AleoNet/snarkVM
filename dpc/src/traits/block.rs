@@ -20,14 +20,14 @@ use anyhow::Result;
 
 pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type BlockHash: Clone + Eq + FromBytes + ToBytes;
-    type BlockHeader: Clone + Eq + FromBytes + ToBytes;
+    type Header: Clone + Eq + FromBytes + ToBytes;
     type Transactions: Clone + Eq + FromBytes + ToBytes;
 
     /// Returns the previous block hash.
     fn previous_block_hash(&self) -> &Self::BlockHash;
 
     /// Returns the header.
-    fn header(&self) -> &Self::BlockHeader;
+    fn header(&self) -> &Self::Header;
 
     /// Returns the transactions.
     fn transactions(&self) -> &Self::Transactions;
