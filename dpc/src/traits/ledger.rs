@@ -20,7 +20,7 @@ use snarkvm_algorithms::merkle_tree::MerklePath;
 use anyhow::Result;
 
 /// The ledger commitments tree is a core state tree of the ledger.
-pub trait LedgerCommitmentsTree<N: Network>: Sized {
+pub trait CommitmentsTree<N: Network>: Sized {
     /// Return the latest state root of the ledger commitments tree.
     fn latest_digest(&self) -> Result<N::CommitmentsRoot>;
 
@@ -36,7 +36,7 @@ pub trait LedgerCommitmentsTree<N: Network>: Sized {
 }
 
 /// The ledger serial numbers tree is a core state tree of the ledger.
-pub trait LedgerSerialNumbersTree<N: Network>: Sized {
+pub trait SerialNumbersTree<N: Network>: Sized {
     /// Returns true if the given serial number exists in the ledger serial numbers tree.
     fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool;
 }

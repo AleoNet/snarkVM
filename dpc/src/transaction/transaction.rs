@@ -30,7 +30,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -61,15 +61,20 @@ impl<N: Network> Transaction<N> {
         metadata: TransactionMetadata<N>,
         encrypted_records: Vec<EncryptedRecord<N>>,
         proof: <N::OuterSNARK as SNARK>::Proof,
-    ) -> Self {
+    ) -> Result<Self> {
         assert!(kernel.is_valid());
         assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_records.len());
 
-        Self {
+        let transaction = Self {
             kernel,
             metadata,
             encrypted_records,
             proof,
+        };
+
+        match transaction.is_valid() {
+            true => Ok(transaction),
+            false => Err(anyhow!("Failed to initialize a transaction")),
         }
     }
 
@@ -227,7 +232,7 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the transaction proof.
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(kernel, metadata, encrypted_records, proof))
+        Ok(Self::from(kernel, metadata, encrypted_records, proof).expect("Failed to deserialize a transaction"))
     }
 }
 

@@ -65,7 +65,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     }
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<L: LedgerCommitmentsTree<N>, R: Rng + CryptoRng>(
+    fn execute<L: CommitmentsTree<N>, R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executables: &Vec<Executable<N>>,
         ledger: &L,
@@ -173,18 +173,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         };
         end_timer!(execution_timer);
 
-        Ok(Self::Transaction::from(
-            kernel,
-            metadata,
-            encrypted_records,
-            transaction_proof,
-        ))
+        Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
 
-    fn verify<L: LedgerCommitmentsTree<N> + LedgerSerialNumbersTree<N>>(
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> bool {
+    fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
         let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns `false` if the transaction is invalid.
@@ -225,7 +217,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: LedgerCommitmentsTree<N> + LedgerSerialNumbersTree<N> + Sync>(
+    fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> bool {

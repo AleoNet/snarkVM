@@ -130,7 +130,7 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
     }
 }
 
-impl<N: Network, S: Storage> LedgerCommitmentsTree<N> for Ledger<N, S> {
+impl<N: Network, S: Storage> CommitmentsTree<N> for Ledger<N, S> {
     /// Return the latest state root of the ledger commitments tree.
     fn latest_digest(&self) -> Result<<N as Network>::CommitmentsRoot> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
@@ -162,7 +162,7 @@ impl<N: Network, S: Storage> LedgerCommitmentsTree<N> for Ledger<N, S> {
     }
 }
 
-impl<N: Network, S: Storage> LedgerSerialNumbersTree<N> for Ledger<N, S> {
+impl<N: Network, S: Storage> SerialNumbersTree<N> for Ledger<N, S> {
     /// Returns true if the given serial number exists in the ledger.
     fn contains_serial_number(&self, serial_number: &<N as Network>::SerialNumber) -> bool {
         self.storage
