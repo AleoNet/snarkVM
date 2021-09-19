@@ -156,20 +156,11 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
                 local_data.root().clone(),
             );
 
-            let outer_proof = N::OuterSNARK::prove(
+            N::OuterSNARK::prove(
                 N::outer_circuit_proving_key(),
-                &OuterCircuit::<N>::new(outer_public_variables.clone(), outer_private_variables),
+                &OuterCircuit::<N>::new(outer_public_variables, outer_private_variables),
                 rng,
-            )?;
-
-            // Verify the outer circuit proof passes.
-            assert!(N::OuterSNARK::verify(
-                N::outer_circuit_verifying_key(),
-                &outer_public_variables,
-                &outer_proof
-            )?);
-
-            outer_proof
+            )?
         };
         end_timer!(execution_timer);
 
