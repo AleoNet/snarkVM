@@ -62,8 +62,6 @@ pub use errors::*;
 
 pub mod ledger;
 
-pub mod posw;
-
 pub mod traits;
 pub use traits::*;
 

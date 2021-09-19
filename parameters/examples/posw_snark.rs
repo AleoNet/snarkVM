@@ -19,8 +19,7 @@ use snarkvm_curves::{
     bls12_377::{Bls12_377, Fr},
     PairingEngine,
 };
-use snarkvm_dpc::{errors::DPCError, testnet1::Testnet1, testnet2::Testnet2, Network};
-use snarkvm_ledger::posw::PoswMarlin;
+use snarkvm_dpc::{errors::DPCError, posw::PoswMarlin, testnet1::Testnet1, testnet2::Testnet2, Network};
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{path::PathBuf, FromBytes, ToBytes};

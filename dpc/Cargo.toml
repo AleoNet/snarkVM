@@ -28,6 +28,11 @@ path = "benches/noop_program.rs"
 harness = false
 
 [[bench]]
+name = "posw"
+path = "benches/posw.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false

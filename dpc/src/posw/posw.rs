@@ -16,9 +16,8 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::POSWCircuit, PoswError};
+use crate::{posw::POSWCircuit, Network, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_dpc::Network;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
@@ -168,9 +167,12 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
 
 #[cfg(test)]
 mod tests {
-    use crate::posw::{POSWCircuit, PoswMarlin};
+    use crate::{
+        posw::{POSWCircuit, PoswMarlin},
+        testnet2::Testnet2,
+        Network,
+    };
     use snarkvm_algorithms::{SNARK, SRS};
-    use snarkvm_dpc::{testnet2::Testnet2, Network};
     use snarkvm_marlin::ahp::AHPForR1CS;
     use snarkvm_utilities::ToBytes;
 
@@ -210,7 +212,7 @@ mod tests {
     /// TODO (howardwu): TEMPORARY - Move this up to the algorithms level of Merkle tree tests.
     #[test]
     fn test_changing_tx_roots() {
-        use snarkvm_dpc::{merkle_root_with_subroots, MerkleRoot};
+        use crate::{merkle_root_with_subroots, MerkleRoot};
 
         use anyhow::Result;
 

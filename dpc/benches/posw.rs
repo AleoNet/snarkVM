@@ -15,8 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{SNARK, SRS};
-use snarkvm_dpc::{testnet2::Testnet2, Network};
-use snarkvm_ledger::posw::{POSWCircuit, PoswMarlin};
+use snarkvm_dpc::{
+    posw::{POSWCircuit, PoswMarlin},
+    testnet2::Testnet2,
+    Network,
+};
 use snarkvm_marlin::ahp::AHPForR1CS;
 
 use criterion::{criterion_group, criterion_main, Criterion};

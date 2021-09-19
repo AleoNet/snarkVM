@@ -81,6 +81,8 @@ pub use errors::*;
 pub mod network;
 pub use network::*;
 
+pub mod posw;
+
 pub mod program;
 pub use program::*;
 

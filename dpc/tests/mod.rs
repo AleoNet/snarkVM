@@ -16,8 +16,12 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet1::Testnet1, testnet2::Testnet2, Network};
-use snarkvm_ledger::posw::{POSWCircuit, PoswMarlin};
+use snarkvm_dpc::{
+    posw::{POSWCircuit, PoswMarlin},
+    testnet1::Testnet1,
+    testnet2::Testnet2,
+    Network,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{rngs::ThreadRng, thread_rng};

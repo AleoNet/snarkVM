@@ -17,11 +17,6 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
-[[bench]]
-name = "posw"
-path = "benches/posw.rs"
-harness = false
-
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.7.5"

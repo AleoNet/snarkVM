@@ -17,8 +17,5 @@
 pub mod ledger;
 pub use ledger::*;
 
-pub mod posw;
-pub use posw::*;
-
 pub mod storage;
 pub use storage::*;

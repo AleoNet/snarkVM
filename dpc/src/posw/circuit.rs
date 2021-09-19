@@ -18,8 +18,8 @@
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 
+use crate::Network;
 use snarkvm_algorithms::{merkle_tree::MerkleTree, prelude::*};
-use snarkvm_dpc::Network;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_root,
     integers::uint::UInt8,
@@ -171,7 +171,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
 #[cfg(test)]
 mod test {
     use super::*;
-    use snarkvm_dpc::{testnet1::Testnet1, testnet2::Testnet2};
+    use crate::{testnet1::Testnet1, testnet2::Testnet2};
     use snarkvm_fields::ToConstraintField;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::FromBytes;
