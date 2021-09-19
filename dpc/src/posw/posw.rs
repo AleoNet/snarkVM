@@ -35,7 +35,7 @@ pub struct Posw<N: Network, const MASK_NUM_BYTES: usize> {
     /// mode and the `mine` function will panic.
     proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
     /// The verifying key.
-    pub verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
+    verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
