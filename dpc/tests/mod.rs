@@ -17,7 +17,7 @@
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::{
-    posw::{POSWCircuit, PoswMarlin},
+    posw::{PoSWCircuit, PoswMarlin},
     testnet1::Testnet1,
     testnet2::Testnet2,
     Network,
@@ -39,7 +39,7 @@ fn test_posw_load_and_mine() {
     // Construct an assigned circuit.
     let nonce = 1u32;
     let block_header_leaves = vec![[3u8; 32]; 4];
-    let assigned_circuit = POSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
+    let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
 
     // Generate the proof.
     let (nonce, proof) = posw

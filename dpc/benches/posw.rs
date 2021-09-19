@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_dpc::{
-    posw::{POSWCircuit, PoswMarlin},
+    posw::{PoSWCircuit, PoswMarlin},
     testnet2::Testnet2,
     Network,
 };
@@ -43,7 +43,7 @@ fn marlin_posw(c: &mut Criterion) {
     // Construct an assigned circuit.
     let nonce = 1u32;
     let block_header_leaves = vec![[3u8; 32]; 4];
-    let assigned_circuit = POSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
+    let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
     let difficulty_target = u64::MAX;
 
     group.bench_function("mine", |b| {

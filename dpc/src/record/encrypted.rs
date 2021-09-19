@@ -38,15 +38,15 @@ use rand::{thread_rng, CryptoRng, Rng};
     Eq(bound = "N: Network")
 )]
 pub struct EncryptedRecord<N: Network> {
-    pub ciphertext: Vec<u8>,
-    c_phantom: PhantomData<N>,
+    ciphertext: Vec<u8>,
+    phantom: PhantomData<N>,
 }
 
 impl<N: Network> EncryptedRecord<N> {
     pub fn new(ciphertext: Vec<u8>) -> Self {
         Self {
             ciphertext,
-            c_phantom: PhantomData,
+            phantom: PhantomData,
         }
     }
 

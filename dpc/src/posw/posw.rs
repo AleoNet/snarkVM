@@ -16,7 +16,7 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::POSWCircuit, Network, PoswError};
+use crate::{posw::PoSWCircuit, Network, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
@@ -30,7 +30,7 @@ use rand::{CryptoRng, Rng};
 
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
-pub struct Posw<N: Network, const MASK_NUM_BYTES: usize> {
+pub struct PoSW<N: Network, const MASK_NUM_BYTES: usize> {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
     proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
@@ -38,13 +38,13 @@ pub struct Posw<N: Network, const MASK_NUM_BYTES: usize> {
     verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
+impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     /// Sets up an instance of PoSW using an SRS.
     pub fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoswSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError> {
         let (proving_key, verifying_key) =
-            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(&POSWCircuit::<N, MASK_NUM_BYTES>::blank()?, srs)?;
+            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N, MASK_NUM_BYTES>::blank()?, srs)?;
 
         Ok(Self {
             proving_key: Some(proving_key),
@@ -102,26 +102,6 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         Ok((nonce, proof))
     }
 
-    /// Runs the SNARK `prove` function on the PoSW circuit and returns the proof.
-    fn prove<R: Rng + CryptoRng>(
-        &self,
-        nonce: u32,
-        leaves: &[[u8; 32]],
-        rng: &mut R,
-    ) -> Result<<<N as Network>::PoswSNARK as SNARK>::Proof, PoswError> {
-        let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
-
-        // Instantiate the circuit with the nonce.
-        let circuit = POSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, leaves)?;
-
-        // Generate the proof.
-        let proof_timer = start_timer!(|| "PoSW proof");
-        let proof = <<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?;
-        end_timer!(proof_timer);
-
-        Ok(proof)
-    }
-
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
     pub fn verify(
         &self,
@@ -132,7 +112,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
     ) -> bool {
         let inputs = |(nonce, root): (u32, &N::PoswRoot)| -> anyhow::Result<Vec<N::InnerScalarField>> {
             // Commit to the nonce and root.
-            let mask = POSWCircuit::<N, MASK_NUM_BYTES>::commit(nonce, root)?;
+            let mask = PoSWCircuit::<N, MASK_NUM_BYTES>::commit(nonce, root)?;
 
             // get the mask and the root in public inputs format
             let merkle_root = N::InnerScalarField::read_le(&root.to_bytes_le()?[..])?;
@@ -163,22 +143,52 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
 
         true
     }
+}
 
+impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     /// Hashes the proof and checks it against the difficulty.
     pub fn check_difficulty(
         &self,
         proof: &<<N as Network>::PoswSNARK as SNARK>::Proof,
         difficulty_target: u64,
     ) -> bool {
-        let hash_result = sha256d_to_u64(&proof.to_bytes_le().unwrap());
-        hash_result <= difficulty_target
+        match proof.to_bytes_le() {
+            Ok(proof) => {
+                let hash_difficulty = sha256d_to_u64(&proof);
+                hash_difficulty <= difficulty_target
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+                false
+            }
+        }
+    }
+
+    /// Runs the SNARK `prove` function on the PoSW circuit and returns the proof.
+    fn prove<R: Rng + CryptoRng>(
+        &self,
+        nonce: u32,
+        leaves: &[[u8; 32]],
+        rng: &mut R,
+    ) -> Result<<<N as Network>::PoswSNARK as SNARK>::Proof, PoswError> {
+        let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
+
+        // Instantiate the circuit with the nonce.
+        let circuit = PoSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, leaves)?;
+
+        // Generate the proof.
+        let proof_timer = start_timer!(|| "PoSW proof");
+        let proof = <<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?;
+        end_timer!(proof_timer);
+
+        Ok(proof)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        posw::{POSWCircuit, PoswMarlin},
+        posw::{PoSWCircuit, PoswMarlin},
         testnet2::Testnet2,
         Network,
     };
@@ -195,28 +205,58 @@ mod tests {
 
     #[test]
     fn test_posw_marlin() {
-        let rng = &mut thread_rng();
-
         // Construct an instance of PoSW.
         let posw = {
             let max_degree =
                 AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
-            let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
+            let universal_srs =
+                <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
         };
 
         // Construct an assigned circuit.
         let nonce = 1u32;
         let block_header_leaves = vec![[3u8; 32]; 4];
-        let assigned_circuit = POSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
+        let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
         let difficulty_target = u64::MAX;
 
         let (nonce, proof) = posw
-            .mine(&block_header_leaves, difficulty_target, rng, u32::MAX)
+            .mine(&block_header_leaves, difficulty_target, &mut thread_rng(), u32::MAX)
             .unwrap();
         assert_eq!(proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
-
         assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
+    }
+
+    #[test]
+    fn test_posw_difficulty_target() {
+        // Construct an instance of PoSW.
+        let posw = {
+            let max_degree =
+                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+            let universal_srs =
+                <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
+            PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
+        };
+
+        let difficulty_target = u64::MAX;
+        let proof = {
+            // Construct an assigned circuit.
+            let nonce = 1u32;
+            let block_header_leaves = vec![[3u8; 32]; 4];
+            let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
+
+            let (nonce, proof) = posw
+                .mine(&block_header_leaves, difficulty_target, &mut thread_rng(), u32::MAX)
+                .unwrap();
+            assert!(posw.verify(nonce, assigned_circuit.root(), difficulty_target, &proof));
+            proof
+        };
+
+        // Check that the difficulty target is satisfied.
+        assert!(posw.check_difficulty(&proof, difficulty_target));
+
+        // Check that the difficulty target is *not* satisfied.
+        assert!(!posw.check_difficulty(&proof, 0u64));
     }
 
     /// TODO (howardwu): TEMPORARY - Move this up to the algorithms level of Merkle tree tests.

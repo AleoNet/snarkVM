@@ -34,13 +34,13 @@ use blake2::{digest::Digest, Blake2s};
 use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct POSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
+pub struct PoSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
     hashed_leaves: Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
     mask: Vec<u8>,
     root: N::PoswRoot,
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
+impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
     /// Creates a PoSW circuit from the provided transaction ids and nonce.
     pub fn new(nonce: u32, leaves: &[[u8; 32]]) -> Result<Self> {
         // Ensure the number of leaves is correct.
@@ -107,7 +107,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScalarField>
-    for POSWCircuit<N, MASK_NUM_BYTES>
+    for PoSWCircuit<N, MASK_NUM_BYTES>
 {
     fn generate_constraints<CS: ConstraintSystem<N::InnerScalarField>>(
         &self,
@@ -203,7 +203,7 @@ mod test {
         };
 
         // Generate the candidate inputs.
-        let candidate_circuit = POSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+        let candidate_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
         assert_eq!(expected_hashed_leaves, candidate_circuit.hashed_leaves);
         assert_eq!(expected_mask, candidate_circuit.mask);
         assert_eq!(expected_root, candidate_circuit.root);
@@ -213,7 +213,7 @@ mod test {
         // Construct an assigned circuit.
         let nonce = 1u32;
         let leaves = vec![[3u8; 32]; 4];
-        let assigned_circuit = POSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+        let assigned_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
 
         // Check that the constraint system was satisfied.
         let mut cs = TestConstraintSystem::<N::InnerScalarField>::new();
@@ -239,7 +239,7 @@ mod test {
             let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
             <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(
-                &POSWCircuit::<N, 32>::blank().unwrap(),
+                &PoSWCircuit::<N, 32>::blank().unwrap(),
                 &mut SRS::<R, _>::Universal(&universal_srs),
             )
             .unwrap()
@@ -248,7 +248,7 @@ mod test {
         // Construct an assigned circuit.
         let nonce = 1u32;
         let leaves = vec![[3u8; 32]; 4];
-        let assigned_circuit = POSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+        let assigned_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
 
         // Compute the proof.
         let proof = {
