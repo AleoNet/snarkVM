@@ -105,7 +105,6 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
             previous_block_hash: self.get_previous_block_hash(block_hash)?,
             header: self.get_block_header(block_hash)?,
             transactions: self.get_block_transactions(block_hash)?,
-            proof: self.get_block_proof(block_hash)?,
         })
     }
 
@@ -196,14 +195,6 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.to_bytes_le()?)? {
             Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
-        }
-    }
-
-    /// Get the PoSW proof given the block hash.
-    pub fn get_block_proof(&self, block_hash: &N::BlockHash) -> Result<ProofOfSuccinctWork<N>, StorageError> {
-        match self.storage.get(COL_BLOCK_POSW_PROOF, &block_hash.to_bytes_le()?)? {
-            Some(block_proof) => Ok(ProofOfSuccinctWork::read_le(&block_proof[..])?),
-            None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
         }
     }
 
@@ -417,11 +408,6 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             col: COL_BLOCK_TRANSACTIONS,
             key: block_hash_bytes.to_vec(),
             value: to_bytes_le![block.transactions]?.to_vec(),
-        });
-        database_transaction.push(Op::Insert {
-            col: COL_BLOCK_POSW_PROOF,
-            key: block_hash_bytes.to_vec(),
-            value: block.proof.to_bytes_le()?,
         });
 
         database_transaction.push(Op::Insert {

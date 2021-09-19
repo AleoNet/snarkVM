@@ -131,6 +131,7 @@ impl Network for Testnet2 {
         MarlinTestnet1Mode,
         Vec<Self::InnerScalarField>,
     >;
+    type PoSWProof = <Self::PoswSNARK as SNARK>::Proof;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;

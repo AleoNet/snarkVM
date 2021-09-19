@@ -14,19 +14,52 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, BlockHeaderMetadata, MerkleRoot, Network, Transactions};
+use crate::{posw::PoswMarlin, BlockError, MerkleRoot, Network, ProofOfSuccinctWork, Transactions};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
+use chrono::Utc;
+use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
+    mem::size_of,
     sync::Arc,
 };
 
-/// Block header.
+/// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct BlockHeaderMetadata {
+    /// The height of this block - 4 bytes.
+    height: u32,
+    /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
+    timestamp: i64,
+    /// Proof of work algorithm difficulty target for this block - 8 bytes
+    difficulty_target: u64,
+    /// Nonce for solving the PoW puzzle - 4 bytes
+    nonce: u32,
+}
+
+impl BlockHeaderMetadata {
+    /// Initializes a new instance of a genesis block header metadata.
+    pub fn genesis() -> Self {
+        Self {
+            height: 0u32,
+            timestamp: 0i64,
+            difficulty_target: u64::MAX,
+            nonce: u32::MAX,
+        }
+    }
+
+    /// Returns the size (in bytes) of a block header's metadata.
+    pub const fn size() -> usize {
+        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u32>()
+    }
+}
+
+/// Block header.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockHeader<N: Network> {
     /// The Merkle root representing the transactions in the block - 32 bytes
     pub transactions_root: MerkleRoot,
@@ -36,26 +69,48 @@ pub struct BlockHeader<N: Network> {
     pub serial_numbers_root: N::SerialNumbersRoot,
     /// The block header metadata - 24 bytes
     pub metadata: BlockHeaderMetadata,
+    /// Proof of Succinct Work - 771 bytes
+    pub proof: Option<ProofOfSuccinctWork<N>>,
 }
 
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
-    pub fn new(
+    pub fn new<R: Rng + CryptoRng>(
         transactions: &Transactions<N>,
         commitments_root: N::CommitmentsRoot,
         serial_numbers_root: N::SerialNumbersRoot,
-        metadata: BlockHeaderMetadata,
+        block_height: u32,
+        difficulty_target: u64,
+        rng: &mut R,
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
         let transactions_root = transactions.to_transactions_root()?;
 
-        // Construct the block header.
-        let block_header = Self {
+        // Construct the candidate block metadata.
+        let metadata = match block_height == 0 {
+            true => BlockHeaderMetadata::genesis(),
+            false => BlockHeaderMetadata {
+                height: block_height,
+                timestamp: Utc::now().timestamp(),
+                difficulty_target,
+                nonce: u32::MAX,
+            },
+        };
+
+        // Construct a candidate block header.
+        let mut block_header = Self {
             transactions_root,
             commitments_root,
             serial_numbers_root,
             metadata,
+            proof: None,
         };
+        debug_assert!(!block_header.is_valid(), "Block header with a missing proof is invalid");
+
+        // TODO (howardwu): TEMPORARY - Make this a static once_cell.
+        // Mine the block.
+        let posw = PoswMarlin::<N>::load(true)?;
+        posw.mine(&mut block_header, rng)?;
 
         // Ensure the block header is valid.
         match block_header.is_valid() {
@@ -65,7 +120,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Initializes a new instance of a genesis block header.
-    pub fn new_genesis(transactions: &Transactions<N>) -> Result<Self> {
+    pub fn new_genesis<R: Rng + CryptoRng>(transactions: &Transactions<N>, rng: &mut R) -> Result<Self> {
         // Compute the commitments root from the transactions.
         let commitments = transactions.to_commitments()?;
         let commitments_tree = MerkleTree::new(Arc::new(N::commitments_tree_parameters().clone()), &commitments)?;
@@ -75,36 +130,53 @@ impl<N: Network> BlockHeader<N> {
         let serial_numbers_tree =
             MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
 
+        // Construct the genesis block header metadata.
+        let block_height = 0u32;
+        let difficulty_target = u64::MAX;
+
         // Compute the genesis block header.
         Self::new(
             transactions,
             *commitments_tree.root(),
             *serial_numbers_tree.root(),
-            BlockHeaderMetadata::new_genesis(),
+            block_height,
+            difficulty_target,
+            rng,
         )
     }
 
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
-        // Ensure the metadata is for the genesis block.
-        self.metadata.is_genesis()
+        // TODO (howardwu): TEMPORARY - Make this a static once_cell.
+        let posw = PoswMarlin::<N>::load(true).unwrap();
+
+        // Ensure the height in the genesis block is 0.
+        self.metadata.height == 0u32
+            // Ensure the timestamp in the genesis block is 0.
+            && self.metadata.timestamp == 0i64
+            // Ensure the difficulty target in the genesis block is u64::MAX.
+            && self.metadata.difficulty_target == u64::MAX
+            // Ensure the nonce is set to u32::MAX.
+            && self.metadata.nonce == u32::MAX
+            // Ensure the PoSW proof is valid.
+            && posw.verify(&self)
     }
 
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
-        match self.metadata.height() == 0u32 {
+        match self.metadata.height == 0u32 {
             true => self.is_genesis(),
             false => {
+                // TODO (howardwu): TEMPORARY - Make this a static once_cell.
+                let posw = PoswMarlin::<N>::load(true).unwrap();
+
                 // TODO (howardwu): CRITICAL - Fill in after refactor is complete.
-                self.metadata.is_valid()
+                // Ensure the timestamp in the block is greater than 0.
+                self.metadata.timestamp > 0i64
+                    // Ensure the PoSW proof is valid.
+                    && posw.verify(&self)
             }
         }
-    }
-
-    /// Sets the block nonce to the given nonce.
-    /// This method is used by PoSW to iterate over candidate block headers.
-    pub fn set_nonce(&mut self, nonce: Option<u32>) {
-        self.metadata.set_nonce(nonce);
     }
 
     /// Returns the block header root.
@@ -143,43 +215,77 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block height.
     pub fn height(&self) -> u32 {
-        self.metadata.height()
+        self.metadata.height
     }
 
     /// Returns the block timestamp.
     pub fn timestamp(&self) -> i64 {
-        self.metadata.timestamp()
+        self.metadata.timestamp
     }
 
     /// Returns the block difficulty target.
     pub fn difficulty_target(&self) -> u64 {
-        self.metadata.difficulty_target()
+        self.metadata.difficulty_target
     }
 
-    /// Returns the block nonce, if it is set.
-    pub fn nonce(&self) -> Option<u32> {
-        self.metadata.nonce()
+    /// Returns the block nonce.
+    pub fn nonce(&self) -> u32 {
+        self.metadata.nonce
     }
 
-    /// Returns the block header size in bytes - 120 bytes.
+    /// Returns the proof, if it is set.
+    pub fn proof(&self) -> &Option<ProofOfSuccinctWork<N>> {
+        &self.proof
+    }
+
+    /// Returns the block header size in bytes - 891 bytes.
     pub fn size() -> usize {
         MerkleRoot::size() + MerkleRoot::size() + MerkleRoot::size() + BlockHeaderMetadata::size()
+    }
+
+    /// Sets the block header nonce to the given nonce.
+    /// This method is used by PoSW to iterate over candidate block headers.
+    pub(crate) fn set_nonce(&mut self, nonce: u32) {
+        self.metadata.nonce = nonce;
+    }
+
+    /// Sets the block header proof to the given proof.
+    /// This method is used by PoSW to iterate over candidate block headers.
+    pub(crate) fn set_proof(&mut self, proof: ProofOfSuccinctWork<N>) {
+        self.proof = Some(proof);
     }
 }
 
 impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the header core variables.
         let transactions_root = <[u8; 32]>::read_le(&mut reader)?;
         let commitments_root = FromBytes::read_le(&mut reader)?;
         let serial_numbers_root = FromBytes::read_le(&mut reader)?;
-        let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
 
+        // Read the header metadata.
+        let height = <[u8; 4]>::read_le(&mut reader)?;
+        let timestamp = <[u8; 8]>::read_le(&mut reader)?;
+        let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
+        let nonce = <[u8; 4]>::read_le(&mut reader)?; // In this context, nonce must always be set.
+        let metadata = BlockHeaderMetadata {
+            height: u32::from_le_bytes(height),
+            timestamp: i64::from_le_bytes(timestamp),
+            difficulty_target: u64::from_le_bytes(difficulty_target),
+            nonce: u32::from_le_bytes(nonce),
+        };
+
+        // Read the header proof.
+        let proof = FromBytes::read_le(&mut reader)?;
+
+        // Construct the block header.
         let block_header = Self {
             transactions_root: MerkleRoot(transactions_root),
             commitments_root,
             serial_numbers_root,
             metadata,
+            proof: Some(proof),
         };
 
         // Ensure the block header is well-formed.
@@ -193,10 +299,25 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 impl<N: Network> ToBytes for BlockHeader<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // In this context, proof must always be set.
+        let proof = match &self.proof {
+            Some(proof) => proof,
+            None => return Err(BlockError::Message("Proof must be set to serialize block header".to_string()).into()),
+        };
+
+        // Write the header core variables.
         self.transactions_root.0.write_le(&mut writer)?;
         self.commitments_root.write_le(&mut writer)?;
         self.serial_numbers_root.write_le(&mut writer)?;
-        self.metadata.write_le(&mut writer)
+
+        // Write the header metadata.
+        self.metadata.height.to_le_bytes().write_le(&mut writer)?;
+        self.metadata.timestamp.to_le_bytes().write_le(&mut writer)?;
+        self.metadata.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.metadata.nonce.to_le_bytes().write_le(&mut writer)?;
+
+        // Write the header proof.
+        proof.write_le(&mut writer)
     }
 }
 
@@ -206,21 +327,23 @@ mod tests {
     use crate::{testnet2::Testnet2, Transaction};
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
 
+    use rand::thread_rng;
+
     #[test]
     fn test_block_header_genesis() {
-        let block_header =
-            BlockHeader::<Testnet2>::new_genesis(&Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(
-                &Transaction1::load_bytes(),
-            )
-            .unwrap()]))
-            .unwrap();
+        let block_header = BlockHeader::<Testnet2>::new_genesis(
+            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &mut thread_rng(),
+        )
+        .unwrap();
         assert!(block_header.is_genesis());
 
         // Ensure the genesis block contains the following.
-        assert_eq!(block_header.metadata.height(), 0);
-        assert_eq!(block_header.metadata.timestamp(), 0);
-        assert_eq!(block_header.metadata.difficulty_target(), u64::MAX);
-        assert_eq!(block_header.metadata.nonce(), Some(u32::MAX));
+        assert_eq!(block_header.metadata.height, 0);
+        assert_eq!(block_header.metadata.timestamp, 0);
+        assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
+        assert_eq!(block_header.metadata.nonce, u32::MAX);
+        assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, MerkleRoot([0u8; 32]));
@@ -230,12 +353,11 @@ mod tests {
 
     #[test]
     fn test_block_header_serialization() {
-        let block_header = BlockHeader::<Testnet2> {
-            transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: Default::default(),
-            serial_numbers_root: Default::default(),
-            metadata: BlockHeaderMetadata::new_genesis(),
-        };
+        let block_header = BlockHeader::<Testnet2>::new_genesis(
+            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &mut thread_rng(),
+        )
+        .unwrap();
 
         let serialized = block_header.to_bytes_le().unwrap();
         assert_eq!(&serialized[..], &bincode::serialize(&block_header).unwrap()[..]);
@@ -246,12 +368,11 @@ mod tests {
 
     #[test]
     fn test_block_header_size() {
-        let block_header = BlockHeader::<Testnet2> {
-            transactions_root: MerkleRoot([0u8; 32]),
-            commitments_root: Default::default(),
-            serial_numbers_root: Default::default(),
-            metadata: BlockHeaderMetadata::new_genesis(),
-        };
+        let block_header = BlockHeader::<Testnet2>::new_genesis(
+            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &mut thread_rng(),
+        )
+        .unwrap();
         assert_eq!(
             block_header.to_bytes_le().unwrap().len(),
             BlockHeader::<Testnet2>::size()

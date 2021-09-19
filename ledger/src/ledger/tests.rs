@@ -26,10 +26,10 @@ fn test_new_ledger_with_genesis_block() {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
             serial_numbers_root: Default::default(),
-            metadata: BlockHeaderMetadata::new_genesis(),
+            metadata: BlockHeaderMetadata::genesis(),
+            proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),
-        proof: ProofOfSuccinctWork::default(),
     };
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
@@ -62,7 +62,6 @@ fn test_ledger_duplicate_transactions() {
         previous_block_hash: Default::default(),
         header: BlockHeader::new_genesis(&transactions).unwrap(),
         transactions,
-        proof: ProofOfSuccinctWork::default(),
     };
 
     assert!(Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).is_err());

@@ -1794,6 +1794,7 @@ dependencies = [
 name = "snarkvm-marlin"
 version = "0.7.5"
 dependencies = [
+ "bincode",
  "blake2",
  "criterion",
  "derivative",
@@ -1803,6 +1804,7 @@ dependencies = [
  "rand_chacha",
  "rand_core",
  "rayon",
+ "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",

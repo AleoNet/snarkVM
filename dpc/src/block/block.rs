@@ -14,20 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    posw::PoswMarlin,
-    BlockHeader,
-    BlockHeaderMetadata,
-    BlockScheme,
-    Network,
-    ProofOfSuccinctWork,
-    Transactions,
-};
+use crate::{BlockHeader, BlockScheme, Network, Transactions};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use anyhow::{anyhow, Result};
-use rand::{CryptoRng, Rng};
+use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -38,54 +29,12 @@ pub struct Block<N: Network> {
     pub header: BlockHeader<N>,
     /// The block transactions.
     pub transactions: Transactions<N>,
-    /// Proof of Succinct Work
-    pub proof: ProofOfSuccinctWork<N>,
 }
 
 impl<N: Network> BlockScheme for Block<N> {
     type BlockHash = N::BlockHash;
     type BlockHeader = BlockHeader<N>;
-    type CommitmentsRoot = N::CommitmentsRoot;
-    type Proof = ProofOfSuccinctWork<N>;
-    type SerialNumbersRoot = N::SerialNumbersRoot;
     type Transactions = Transactions<N>;
-
-    /// Initializes a new instance of a block.
-    fn new<R: Rng + CryptoRng>(
-        previous_block_hash: Self::BlockHash,
-        transactions: &Self::Transactions,
-        commitments_root: Self::CommitmentsRoot,
-        serial_numbers_root: Self::SerialNumbersRoot,
-        block_height: u32,
-        difficulty_target: u64,
-        rng: &mut R,
-    ) -> Result<Self> {
-        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
-
-        // Construct a candidate block header.
-        let metadata = BlockHeaderMetadata::new(block_height, difficulty_target);
-        let mut header = BlockHeader::new(transactions, commitments_root, serial_numbers_root, metadata)?;
-
-        // TODO (howardwu): TEMPORARY - Make this a static once_cell.
-        // Mine the block.
-        let posw = PoswMarlin::<N>::load(true)?;
-        let proof = posw.mine(&mut header, rng)?;
-
-        // Ensure the block header is valid.
-        if !header.is_valid() {
-            return Err(anyhow!("Invalid block header"));
-        }
-
-        // Serialize the proof.
-        let proof = ProofOfSuccinctWork::new(&proof.to_bytes_le()?[..]);
-
-        Ok(Self {
-            previous_block_hash,
-            header,
-            transactions: transactions.clone(),
-            proof,
-        })
-    }
 
     /// Returns the previous block hash.
     fn previous_block_hash(&self) -> &Self::BlockHash {
@@ -100,11 +49,6 @@ impl<N: Network> BlockScheme for Block<N> {
     /// Returns the transactions.
     fn transactions(&self) -> &Self::Transactions {
         &self.transactions
-    }
-
-    /// Returns the proof.
-    fn proof(&self) -> &Self::Proof {
-        &self.proof
     }
 
     /// Returns the hash of this block.
@@ -123,13 +67,11 @@ impl<N: Network> FromBytes for Block<N> {
         let previous_block_hash = FromBytes::read_le(&mut reader)?;
         let header = FromBytes::read_le(&mut reader)?;
         let transactions = FromBytes::read_le(&mut reader)?;
-        let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash,
             header,
             transactions,
-            proof,
         })
     }
 }
@@ -139,7 +81,6 @@ impl<N: Network> ToBytes for Block<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.previous_block_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
-        self.transactions.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
+        self.transactions.write_le(&mut writer)
     }
 }

@@ -38,16 +38,18 @@ fn test_posw_load_and_mine() {
     let posw = PoswMarlin::<Testnet2>::load(true).unwrap();
 
     // Construct an assigned circuit.
-    let mut block_header =
-        BlockHeader::<Testnet2>::new_genesis(&Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(
-            &Transaction1::load_bytes(),
-        )
-        .unwrap()]))
-        .unwrap();
+    let mut block_header = BlockHeader::<Testnet2>::new_genesis(
+        &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+        &mut thread_rng(),
+    )
+    .unwrap();
 
-    let proof = posw.mine(&mut block_header, &mut thread_rng()).unwrap();
-    assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::POSW_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
-    assert!(posw.verify(&block_header, &proof));
+    posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+    assert_eq!(
+        block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
+        Testnet2::POSW_PROOF_SIZE_IN_BYTES
+    ); // NOTE: Marlin proofs use compressed serialization
+    assert!(posw.verify(&block_header));
 }
 
 /// TODO (howardwu): Update this when testnet2 is live.

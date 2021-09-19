@@ -36,7 +36,7 @@ pub fn generate<N: Network>(recipient: Address<N>, value: u64) -> Result<(Vec<u8
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
             serial_numbers_root: Default::default(),
-            metadata: BlockHeaderMetadata::new_genesis(),
+            metadata: BlockHeaderMetadata::genesis(),
         },
         transactions: Transactions::new(),
         proof: ProofOfSuccinctWork::default(),

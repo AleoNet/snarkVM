@@ -81,36 +81,42 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
 
     /// Given the leaves of the block header, it will calculate a PoSW and nonce
     /// such that they are under the difficulty target.
-    pub fn mine<R: Rng + CryptoRng>(
-        &self,
-        block_header: &mut BlockHeader<N>,
-        rng: &mut R,
-    ) -> Result<<N::PoswSNARK as SNARK>::Proof, PoswError> {
+    pub fn mine<R: Rng + CryptoRng>(&self, block_header: &mut BlockHeader<N>, rng: &mut R) -> Result<(), PoswError> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
-        let mut proof;
         loop {
-            // Instantiate the circuit with a nonce.
+            // Sample a random nonce.
             let nonce = rng.gen_range(0..u32::MAX);
+            block_header.set_nonce(nonce);
+
+            // Instantiate the circuit.
             let leaves = block_header.to_leaves()?;
             let circuit = PoSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, &leaves)?;
 
             // Generate the proof.
             let timer = start_timer!(|| "PoSW proof");
-            proof = <<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?;
+            block_header.set_proof((&<<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?).into());
             end_timer!(timer);
 
-            if self.verify(block_header, &proof) {
-                block_header.set_nonce(Some(nonce));
+            if self.verify(block_header) {
                 break;
             }
         }
 
-        Ok(proof)
+        Ok(())
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
-    pub fn verify(&self, block_header: &BlockHeader<N>, proof: &<N::PoswSNARK as SNARK>::Proof) -> bool {
+    pub fn verify(&self, block_header: &BlockHeader<N>) -> bool {
+        // Retrieve the proof.
+        let proof = match block_header.proof() {
+            Some(proof) => proof,
+            None => {
+                eprintln!("Block header does not have a corresponding PoSW proof");
+                return false;
+            }
+        };
+
         // Ensure the difficulty target is met.
         match proof.to_bytes_le() {
             Ok(proof) => {
@@ -124,7 +130,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
                 eprintln!("Failed to convert PoSW proof to bytes: {}", error);
                 return false;
             }
-        }
+        };
 
         let inputs = |(nonce, root): (u32, &N::BlockHeaderRoot)| -> anyhow::Result<Vec<N::InnerScalarField>> {
             // Commit to the nonce and root.
@@ -137,8 +143,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         };
 
         // Construct the inputs.
-        let nonce = block_header.nonce().unwrap();
-        let inputs = match inputs((nonce, &block_header.to_root().unwrap())) {
+        let inputs = match inputs((block_header.nonce(), &block_header.to_root().unwrap())) {
             Ok(inputs) => inputs,
             Err(error) => {
                 eprintln!("{}", error);
@@ -147,7 +152,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         };
 
         // Ensure the proof is valid.
-        if !<<N as Network>::PoswSNARK as SNARK>::verify(&self.verifying_key, &inputs, &proof).unwrap() {
+        if !<<N as Network>::PoswSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
             eprintln!("PoSW proof verification failed");
             return false;
         }
@@ -183,16 +188,19 @@ mod tests {
         };
 
         // Construct an assigned circuit.
-        let mut block_header =
-            BlockHeader::<Testnet2>::new_genesis(&Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(
-                &Transaction1::load_bytes(),
-            )
-            .unwrap()]))
-            .unwrap();
+        let mut block_header = BlockHeader::<Testnet2>::new_genesis(
+            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &mut thread_rng(),
+        )
+        .unwrap();
 
-        let proof = posw.mine(&mut block_header, &mut thread_rng()).unwrap();
-        assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::POSW_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
-        assert!(posw.verify(&block_header, &proof));
+        posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+        assert!(block_header.proof().is_some());
+        assert_eq!(
+            block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
+            Testnet2::POSW_PROOF_SIZE_IN_BYTES
+        ); // NOTE: Marlin proofs use compressed serialization
+        assert!(posw.verify(&block_header));
     }
 
     #[test]
@@ -207,21 +215,20 @@ mod tests {
         };
 
         // Construct an assigned circuit.
-        let mut block_header =
-            BlockHeader::<Testnet2>::new_genesis(&Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(
-                &Transaction1::load_bytes(),
-            )
-            .unwrap()]))
-            .unwrap();
+        let mut block_header = BlockHeader::<Testnet2>::new_genesis(
+            &Transactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
+            &mut thread_rng(),
+        )
+        .unwrap();
 
         // Construct a PoSW proof.
-        let proof = posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+        posw.mine(&mut block_header, &mut thread_rng()).unwrap();
 
         // Check that the difficulty target is satisfied.
-        assert!(posw.verify(&block_header, &proof));
+        assert!(posw.verify(&block_header));
 
         // Check that the difficulty target is *not* satisfied.
-        assert!(!posw.verify(&block_header, &proof));
+        assert!(!posw.verify(&block_header));
     }
 
     /// TODO (howardwu): TEMPORARY - Move this up to the algorithms level of Merkle tree tests.
