@@ -14,7 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeaderMetadata, MerkleRoot, Network, ProofOfSuccinctWork, Transactions};
+use crate::{
+    posw::PoswMarlin,
+    BlockError,
+    BlockHeaderMetadata,
+    MerkleRoot,
+    Network,
+    ProofOfSuccinctWork,
+    Transactions,
+};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -47,11 +55,11 @@ impl<N: Network> BlockHeader<N> {
         transactions: &Transactions<N>,
         commitments_root: MerkleRoot,
         serial_numbers_root: MerkleRoot,
-        metadata: BlockHeaderMetadata,
+        block_height: u32,
+        difficulty_target: u64,
         rng: &mut R,
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
-        assert!(metadata.is_valid(), "Invalid block header metadata");
 
         let transactions_root = transactions.to_transactions_root()?;
 
@@ -62,18 +70,26 @@ impl<N: Network> BlockHeader<N> {
         posw_leaves.push([0u8; 32]);
 
         // TODO (howardwu): TEMPORARY - Make this a static once_cell.
-        // TODO (howardwu): CRITICAL - Reintroduce PoSW call here.
         // Mine the block.
-        // let posw = PoswMarlin::<N>::load()?;
-        // let (nonce, proof) = posw.mine(&posw_leaves, difficulty_target, rng, max_nonce)?;
-        let proof = vec![0u8; N::POSW_PROOF_SIZE_IN_BYTES];
+        let max_nonce = u32::MAX;
+        let posw = PoswMarlin::<N>::load(true)?;
+        let (nonce, proof) = posw.mine(&posw_leaves, difficulty_target, rng, max_nonce)?;
+
+        // Construct the block header metadata.
+        let metadata = BlockHeaderMetadata::new(block_height, difficulty_target, nonce);
+        if !metadata.is_valid() {
+            return Err(anyhow!("Invalid block header metadata"));
+        }
+
+        // Serialize the proof.
+        let proof = ProofOfSuccinctWork::new(&proof.to_bytes_le()?[..]);
 
         Ok(Self {
             transactions_root,
             commitments_root,
             serial_numbers_root,
             metadata,
-            proof: FromBytes::read_le(&proof[..])?,
+            proof,
         })
     }
 
@@ -90,11 +106,15 @@ impl<N: Network> BlockHeader<N> {
             MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
         let serial_numbers_root = MerkleRoot::from_element(serial_numbers_tree.root());
 
+        // Compute the genesis block header.
+        let height = 0u32;
+        let difficulty_target = u64::MAX;
         let block_header = Self::new(
             transactions,
             commitments_root,
             serial_numbers_root,
-            BlockHeaderMetadata::new_genesis(),
+            height,
+            difficulty_target,
             rng,
         )?;
 
@@ -116,7 +136,7 @@ impl<N: Network> BlockHeader<N> {
             true => self.is_genesis(),
             false => {
                 // TODO (howardwu): CRITICAL - Fill in after refactor is complete.
-                true
+                self.metadata.is_valid()
             }
         }
     }
@@ -165,13 +185,19 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let metadata = BlockHeaderMetadata::read_le(&mut reader)?;
         let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
 
-        Ok(Self {
+        let block_header = Self {
             transactions_root: MerkleRoot(transactions_root),
             commitments_root: MerkleRoot(commitments_root),
             serial_numbers_root: MerkleRoot(serial_numbers_root),
             metadata,
             proof,
-        })
+        };
+
+        // Ensure the block header is well-formed.
+        match block_header.is_valid() {
+            true => Ok(block_header),
+            false => Err(BlockError::Message("Invalid block header".to_string()).into()),
+        }
     }
 }
 
@@ -225,7 +251,7 @@ mod tests {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
-            metadata: BlockHeaderMetadata::new_genesis(),
+            metadata: BlockHeaderMetadata::new_genesis(0),
             proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         };
 
@@ -242,7 +268,7 @@ mod tests {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: MerkleRoot([0u8; 32]),
             serial_numbers_root: MerkleRoot([0u8; 32]),
-            metadata: BlockHeaderMetadata::new_genesis(),
+            metadata: BlockHeaderMetadata::new_genesis(0),
             proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
         };
         assert_eq!(

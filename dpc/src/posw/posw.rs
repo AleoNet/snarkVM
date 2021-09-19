@@ -110,7 +110,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         nonce: u32,
         root: &N::PoswRoot,
         difficulty_target: u64,
-        proof: &<<N as Network>::PoswSNARK as SNARK>::Proof,
+        proof: &<N::PoswSNARK as SNARK>::Proof,
     ) -> bool {
         let inputs = |(nonce, root): (u32, &N::PoswRoot)| -> anyhow::Result<Vec<N::InnerScalarField>> {
             // Commit to the nonce and root.
@@ -149,11 +149,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
 
 impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     /// Hashes the proof and checks it against the difficulty.
-    pub fn check_difficulty(
-        &self,
-        proof: &<<N as Network>::PoswSNARK as SNARK>::Proof,
-        difficulty_target: u64,
-    ) -> bool {
+    pub fn check_difficulty(&self, proof: &<N::PoswSNARK as SNARK>::Proof, difficulty_target: u64) -> bool {
         match proof.to_bytes_le() {
             Ok(proof) => {
                 let hash_difficulty = sha256d_to_u64(&proof);
@@ -172,7 +168,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         nonce: u32,
         leaves: &[[u8; 32]],
         rng: &mut R,
-    ) -> Result<<<N as Network>::PoswSNARK as SNARK>::Proof, PoswError> {
+    ) -> Result<<N::PoswSNARK as SNARK>::Proof, PoswError> {
         assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
 
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");

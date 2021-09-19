@@ -16,6 +16,7 @@
 
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
@@ -38,23 +39,26 @@ pub struct BlockHeaderMetadata {
 
 impl BlockHeaderMetadata {
     /// Initializes a new instance of a block header metadata.
-    pub fn new(height: u32, timestamp: i64, difficulty_target: u64, nonce: u32) -> Self {
-        Self {
-            height,
-            timestamp,
-            difficulty_target,
-            nonce,
+    pub fn new(height: u32, difficulty_target: u64, nonce: u32) -> Self {
+        match height == 0 {
+            true => Self::new_genesis(nonce),
+            false => Self {
+                height,
+                timestamp: Utc::now().timestamp(),
+                difficulty_target,
+                nonce,
+            },
         }
     }
 
     /// Initializes a new instance of a genesis block header metadata.
-    pub fn new_genesis() -> Self {
-        let height = 0u32;
-        let timestamp = 0i64;
-        let difficulty_target = u64::MAX;
-        let nonce = u32::MAX;
-
-        Self::new(height, timestamp, difficulty_target, nonce)
+    pub fn new_genesis(nonce: u32) -> Self {
+        Self {
+            height: 0u32,
+            timestamp: 0i64,
+            difficulty_target: u64::MAX,
+            nonce,
+        }
     }
 
     /// Returns `true` if the block header metadata is for a genesis block header.
@@ -74,8 +78,8 @@ impl BlockHeaderMetadata {
         match self.height == 0u32 {
             true => self.is_genesis(),
             false => {
-                // Ensure the timestamp in the block is not 0.
-                self.timestamp != 0i64
+                // Ensure the timestamp in the block is greater than 0.
+                self.timestamp > 0i64
             }
         }
     }
@@ -103,6 +107,18 @@ impl BlockHeaderMetadata {
     /// Returns the size (in bytes) of a block header's metadata.
     pub const fn size() -> usize {
         size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u32>()
+    }
+}
+
+impl From<(u32, i64, u64, u32)> for BlockHeaderMetadata {
+    #[inline]
+    fn from(metadata: (u32, i64, u64, u32)) -> Self {
+        Self {
+            height: metadata.0,
+            timestamp: metadata.1,
+            difficulty_target: metadata.2,
+            nonce: metadata.3,
+        }
     }
 }
 
@@ -137,11 +153,9 @@ impl ToBytes for BlockHeaderMetadata {
 mod tests {
     use super::*;
 
-    use chrono::Utc;
-
     #[test]
     fn test_block_header_metadata_serialization() {
-        let metadata = BlockHeaderMetadata::new(1, Utc::now().timestamp(), 2, 3);
+        let metadata = BlockHeaderMetadata::new(1, 2, 3);
 
         let serialized = metadata.to_bytes_le().unwrap();
         assert_eq!(&serialized[..], &bincode::serialize(&metadata).unwrap()[..]);
@@ -152,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_block_header_metadata_size() {
-        let metadata = BlockHeaderMetadata::new(1, Utc::now().timestamp(), 2, 3);
+        let metadata = BlockHeaderMetadata::new(1, 2, 3);
         assert_eq!(metadata.to_bytes_le().unwrap().len(), BlockHeaderMetadata::size());
     }
 }

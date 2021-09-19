@@ -48,3 +48,9 @@ impl From<std::io::Error> for BlockError {
         BlockError::Crate("std::io", format!("{:?}", error))
     }
 }
+
+impl From<BlockError> for std::io::Error {
+    fn from(error: BlockError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
+    }
+}
