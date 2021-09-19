@@ -17,9 +17,6 @@
 pub mod block;
 pub use block::*;
 
-pub mod block_hash;
-pub use block_hash::*;
-
 pub mod block_header;
 pub use block_header::*;
 

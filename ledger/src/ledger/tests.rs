@@ -21,7 +21,7 @@ use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
-        previous_block_hash: BlockHash([0u8; 32]),
+        previous_block_hash: Default::default(),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
@@ -33,10 +33,13 @@ fn test_new_ledger_with_genesis_block() {
     };
 
     // If the underlying hash function is changed, this expected block hash will need to be updated.
-    let expected_genesis_block_hash = BlockHash([
-        197, 96, 131, 8, 176, 90, 158, 53, 59, 89, 40, 231, 1, 173, 161, 190, 41, 41, 127, 88, 136, 45, 109, 15, 192,
-        178, 217, 198, 27, 174, 226, 2,
-    ]);
+    let expected_genesis_block_hash = <Testnet2 as Network>::BlockHash::read_le(
+        &[
+            197, 96, 131, 8, 176, 90, 158, 53, 59, 89, 40, 231, 1, 173, 161, 190, 41, 41, 127, 88, 136, 45, 109, 15,
+            192, 178, 217, 198, 27, 174, 226, 2,
+        ][..],
+    )
+    .unwrap();
 
     let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).unwrap();
 
@@ -47,7 +50,7 @@ fn test_new_ledger_with_genesis_block() {
     assert_eq!(ledger.get_block_number(&expected_genesis_block_hash).unwrap(), 0);
     assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
 
-    assert!(ledger.get_block(&BlockHash([0u8; 32])).is_err());
+    assert!(ledger.get_block(&Default::default()).is_err());
 }
 
 #[test]
@@ -56,7 +59,7 @@ fn test_ledger_duplicate_transactions() {
     let transactions = Transactions::from(&[transaction.clone(), transaction]);
 
     let genesis_block = Block {
-        previous_block_hash: BlockHash([0u8; 32]),
+        previous_block_hash: Default::default(),
         header: BlockHeader::new_genesis(&transactions).unwrap(),
         transactions,
         proof: ProofOfSuccinctWork::default(),

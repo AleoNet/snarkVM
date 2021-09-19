@@ -16,7 +16,6 @@
 
 use crate::{
     posw::PoswMarlin,
-    BlockHash,
     BlockHeader,
     BlockHeaderMetadata,
     BlockScheme,
@@ -35,7 +34,7 @@ use std::io::{Read, Result as IoResult, Write};
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Block<N: Network> {
     /// Hash of the previous block - 32 bytes
-    pub previous_block_hash: BlockHash,
+    pub previous_block_hash: N::BlockHash,
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     pub header: BlockHeader<N>,
     /// The block transactions.
@@ -45,7 +44,7 @@ pub struct Block<N: Network> {
 }
 
 impl<N: Network> BlockScheme for Block<N> {
-    type BlockHash = BlockHash;
+    type BlockHash = N::BlockHash;
     type BlockHeader = BlockHeader<N>;
     type CommitmentsRoot = N::CommitmentsRoot;
     type Proof = ProofOfSuccinctWork<N>;
@@ -53,7 +52,7 @@ impl<N: Network> BlockScheme for Block<N> {
 
     /// Initializes a new instance of a block.
     fn new<R: Rng + CryptoRng>(
-        previous_block_hash: BlockHash,
+        previous_block_hash: Self::BlockHash,
         transactions: &Self::Transactions,
         commitments_root: Self::CommitmentsRoot,
         serial_numbers_root: MerkleRoot,
@@ -109,15 +108,12 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 
     /// Returns the hash of this block.
-    fn to_hash(&self) -> Result<BlockHash> {
+    fn to_hash(&self) -> Result<Self::BlockHash> {
         // Construct the preimage.
-        let mut preimage = self.previous_block_hash.0.to_vec();
+        let mut preimage = self.previous_block_hash.to_bytes_le()?;
         preimage.extend_from_slice(&self.header.to_root()?.to_bytes_le()?);
 
-        let mut hash = [0u8; 32];
-        hash.copy_from_slice(&N::block_hash_crh().hash(&preimage)?.to_bytes_le()?);
-
-        Ok(BlockHash(hash))
+        Ok(N::block_hash_crh().hash(&preimage)?)
     }
 }
 

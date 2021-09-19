@@ -105,7 +105,6 @@ impl<N: Network> BlockHeader<N> {
     /// Sets the block nonce to the given nonce.
     /// This method is used by PoSW to iterate over candidate block headers.
     pub fn set_nonce(&mut self, nonce: Option<u32>) {
-        // TODO (howardwu): CRITICAL - Rebuild the Merkle tree.
         self.metadata.set_nonce(nonce);
     }
 

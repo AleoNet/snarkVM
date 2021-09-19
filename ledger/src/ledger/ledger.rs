@@ -100,7 +100,7 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
     }
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &BlockHash) -> Result<Self::Block> {
+    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Self::Block> {
         Ok(Self::Block {
             previous_block_hash: self.get_previous_block_hash(block_hash)?,
             header: self.get_block_header(block_hash)?,
@@ -110,23 +110,23 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
     }
 
     /// Returns the block hash given a block number.
-    fn get_block_hash(&self, block_number: BlockHeight) -> Result<BlockHash> {
+    fn get_block_hash(&self, block_number: BlockHeight) -> Result<N::BlockHash> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
-            Some(block_hash) => Ok(BlockHash::new(&block_hash)),
+            Some(block_hash) => Ok(FromBytes::read_le(&block_hash[..])?),
             None => Err(StorageError::MissingBlockHash(block_number).into()),
         }
     }
 
     /// Returns the block number given a block hash.
-    fn get_block_number(&self, block_hash: &BlockHash) -> Result<u32> {
-        match self.storage.get(COL_BLOCK_LOCATOR, &block_hash.0)? {
+    fn get_block_number(&self, block_hash: &N::BlockHash) -> Result<u32> {
+        match self.storage.get(COL_BLOCK_LOCATOR, &block_hash.to_bytes_le()?)? {
             Some(block_num_bytes) => Ok(bytes_to_u32(&block_num_bytes)),
             None => Err(StorageError::MissingBlockNumber(block_hash.to_string()).into()),
         }
     }
 
     /// Returns true if the given block hash exists in the ledger.
-    fn contains_block_hash(&self, block_hash: &BlockHash) -> bool {
+    fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
         self.get_block_header(block_hash).is_ok()
     }
 }
@@ -172,41 +172,36 @@ impl<N: Network, S: Storage> SerialNumbersTree<N> for Ledger<N, S> {
 }
 
 impl<N: Network, S: Storage> Ledger<N, S> {
-    /// Find the potential child block hashes given a parent block header.
-    pub fn get_child_block_hashes(&self, parent_hash: &BlockHash) -> Result<Vec<BlockHash>, StorageError> {
-        match self.storage.get(COL_CHILD_HASHES, &parent_hash.0)? {
-            Some(encoded_child_block_hashes) => Ok(bincode::deserialize(&encoded_child_block_hashes[..])?),
-            None => Ok(vec![]),
-        }
-    }
-
     /// Get the previous block hash given the block hash.
-    pub fn get_previous_block_hash(&self, block_hash: &BlockHash) -> Result<BlockHash, StorageError> {
-        match self.storage.get(COL_BLOCK_PREVIOUS_BLOCK_HASH, &block_hash.0)? {
-            Some(previous_block_hash) => Ok(BlockHash::read_le(&previous_block_hash[..])?),
+    pub fn get_previous_block_hash(&self, block_hash: &N::BlockHash) -> Result<N::BlockHash, StorageError> {
+        match self
+            .storage
+            .get(COL_BLOCK_PREVIOUS_BLOCK_HASH, &block_hash.to_bytes_le()?)?
+        {
+            Some(previous_block_hash) => Ok(N::BlockHash::read_le(&previous_block_hash[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
         }
     }
 
     /// Get a block header given the block hash.
-    pub fn get_block_header(&self, block_hash: &BlockHash) -> Result<BlockHeader<N>, StorageError> {
-        match self.storage.get(COL_BLOCK_HEADER, &block_hash.0)? {
+    pub fn get_block_header(&self, block_hash: &N::BlockHash) -> Result<BlockHeader<N>, StorageError> {
+        match self.storage.get(COL_BLOCK_HEADER, &block_hash.to_bytes_le()?)? {
             Some(block_header_bytes) => Ok(BlockHeader::read_le(&block_header_bytes[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
         }
     }
 
     /// Get the list of transaction ids given a block hash.
-    pub fn get_block_transactions(&self, block_hash: &BlockHash) -> Result<Transactions<N>, StorageError> {
-        match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
+    pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Transactions<N>, StorageError> {
+        match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.to_bytes_le()?)? {
             Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
         }
     }
 
     /// Get the PoSW proof given the block hash.
-    pub fn get_block_proof(&self, block_hash: &BlockHash) -> Result<ProofOfSuccinctWork<N>, StorageError> {
-        match self.storage.get(COL_BLOCK_POSW_PROOF, &block_hash.0)? {
+    pub fn get_block_proof(&self, block_hash: &N::BlockHash) -> Result<ProofOfSuccinctWork<N>, StorageError> {
+        match self.storage.get(COL_BLOCK_POSW_PROOF, &block_hash.to_bytes_le()?)? {
             Some(block_proof) => Ok(ProofOfSuccinctWork::read_le(&block_proof[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
         }
@@ -386,9 +381,11 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         }
 
         let block_hash_bytes = {
-            assert_eq!(block_hash.0.len(), 32);
+            let block_hash_buffer = block_hash.to_bytes_le()?;
+            assert_eq!(block_hash_buffer.len(), 32);
+
             let mut slice = [0u8; 32];
-            slice.copy_from_slice(&block_hash.0[..]);
+            slice.copy_from_slice(&block_hash_buffer[..]);
             slice
         };
 
@@ -409,7 +406,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_PREVIOUS_BLOCK_HASH,
             key: block_hash_bytes.to_vec(),
-            value: block.previous_block_hash.0.to_vec(),
+            value: block.previous_block_hash.to_bytes_le()?,
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_HEADER,
@@ -426,18 +423,6 @@ impl<N: Network, S: Storage> Ledger<N, S> {
             key: block_hash_bytes.to_vec(),
             value: block.proof.to_bytes_le()?,
         });
-
-        let mut child_hashes = self.get_child_block_hashes(&block.previous_block_hash())?;
-
-        if !child_hashes.contains(&block_hash) {
-            child_hashes.push(block_hash);
-
-            database_transaction.push(Op::Insert {
-                col: COL_CHILD_HASHES,
-                key: block.previous_block_hash.0.to_vec(),
-                value: bincode::serialize(&child_hashes)?,
-            });
-        }
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
@@ -515,7 +500,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
         // Update the block location
 
-        let block_hash_bytes = block_hash.0.to_vec();
+        let block_hash_bytes = block_hash.to_bytes_le()?;
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
@@ -578,7 +563,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Returns true if the block exists in the canon chain.
-    pub fn is_canon(&self, block_hash: &BlockHash) -> bool {
+    pub fn is_canon(&self, block_hash: &N::BlockHash) -> bool {
         self.contains_block_hash(block_hash) && self.get_block_number(block_hash).is_ok()
     }
 }

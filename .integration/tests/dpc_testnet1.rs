@@ -23,7 +23,6 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
@@ -41,7 +40,7 @@ fn dpc_testnet1_integration_test() {
 
     // Create a genesis block.
     let genesis_block = Block {
-        previous_block_hash: BlockHash([0u8; 32]),
+        previous_block_hash: Default::default(),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),
@@ -139,7 +138,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     let genesis_block = Block {
-        previous_block_hash: BlockHash([0u8; 32]),
+        previous_block_hash: Default::default(),
         header: BlockHeader {
             transactions_root: MerkleRoot([0u8; 32]),
             commitments_root: Default::default(),

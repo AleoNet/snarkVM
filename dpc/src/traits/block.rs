@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHash, MerkleRoot};
+use crate::MerkleRoot;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -29,7 +29,7 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
 
     /// Initializes a new instance of a block.
     fn new<R: Rng + CryptoRng>(
-        previous_block_hash: BlockHash,
+        previous_block_hash: Self::BlockHash,
         transactions: &Self::Transactions,
         commitments_root: Self::CommitmentsRoot,
         serial_numbers_root: MerkleRoot,
