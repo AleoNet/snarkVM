@@ -306,4 +306,17 @@ mod tests {
             "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }
+
+    #[test]
+    fn test_posw_tree_sanity_check() {
+        // Verify the PoSW tree depth matches the declared depth.
+        assert_eq!(
+            Testnet2::POSW_TREE_DEPTH,
+            <<Testnet2 as Network>::PoswTreeParameters as MerkleParameters>::DEPTH
+        );
+
+        // Verify the number of leaves corresponds to the correct tree depth.
+        let num_leaves = 2u32.pow(Testnet2::POSW_TREE_DEPTH as u32) as usize;
+        assert_eq!(Testnet2::POSW_NUM_LEAVES, num_leaves);
+    }
 }

@@ -31,8 +31,8 @@ use rand::{CryptoRng, Rng};
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
 pub struct PoSW<N: Network, const MASK_NUM_BYTES: usize> {
-    /// The proving key. If not provided, the PoSW runner will work in verify-only
-    /// mode and the `mine` function will panic.
+    /// The proving key. If not provided, PoSW will work in verify-only mode
+    /// and the `mine` function will panic.
     proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
     /// The verifying key.
     verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
@@ -88,6 +88,8 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         rng: &mut R,
         max_nonce: u32,
     ) -> Result<(u32, <N::PoswSNARK as SNARK>::Proof), PoswError> {
+        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
+
         let mut nonce;
         let mut proof;
         loop {
@@ -171,6 +173,8 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
         leaves: &[[u8; 32]],
         rng: &mut R,
     ) -> Result<<<N as Network>::PoswSNARK as SNARK>::Proof, PoswError> {
+        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
+
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
         // Instantiate the circuit with the nonce.

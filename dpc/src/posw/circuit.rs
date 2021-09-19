@@ -44,8 +44,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
     /// Creates a PoSW circuit from the provided transaction ids and nonce.
     pub fn new(nonce: u32, leaves: &[[u8; 32]]) -> Result<Self> {
         // Ensure the number of leaves is correct.
-        let num_leaves = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
-        if leaves.len() != num_leaves {
+        if leaves.len() != N::POSW_NUM_LEAVES {
             return Err(anyhow!("PoSW number of leaves length is incorrect: {}", leaves.len()));
         }
 
@@ -65,13 +64,12 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
 
     /// Creates a blank PoSW circuit for setup.
     pub fn blank() -> Result<Self> {
-        let num_leaves = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
         let empty_hash = N::posw_tree_parameters()
             .hash_empty()
             .map_err(|_| SynthesisError::Unsatisfiable)?;
 
         Ok(Self {
-            hashed_leaves: vec![empty_hash; num_leaves],
+            hashed_leaves: vec![empty_hash; N::POSW_NUM_LEAVES],
             mask: vec![0; MASK_NUM_BYTES],
             root: Default::default(),
         })
@@ -113,8 +111,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        let num_leaves = 2u32.pow(<N::PoswTreeParameters as MerkleParameters>::DEPTH as u32) as usize;
-        assert_eq!(self.hashed_leaves.len(), num_leaves);
+        assert_eq!(self.hashed_leaves.len(), N::POSW_NUM_LEAVES);
         assert_eq!(self.mask.len(), MASK_NUM_BYTES);
 
         let crh_parameters = N::PoswTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
