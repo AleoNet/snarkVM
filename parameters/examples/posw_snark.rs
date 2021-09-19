@@ -15,12 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256, SNARK, SRS};
-use snarkvm_curves::{
-    bls12_377::{Bls12_377, Fr},
-    PairingEngine,
-};
+use snarkvm_curves::PairingEngine;
 use snarkvm_dpc::{errors::DPCError, posw::PoswMarlin, testnet1::Testnet1, testnet2::Testnet2, Network};
-use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_marlin::{
+    ahp::AHPForR1CS,
+    constraints::snark::MarlinSNARK,
+    marlin::MarlinTestnet1Mode,
+    FiatShamirChaChaRng,
+};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{path::PathBuf, FromBytes, ToBytes};
 
@@ -45,21 +47,21 @@ pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO: decide the size of the universal setup
-    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-    let srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
+    let max_degree = AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+    let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
-    let srs_bytes = srs.to_bytes_le()?;
+    let srs_bytes = universal_srs.to_bytes_le()?;
     let posw_snark = PoswMarlin::<N>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
         &FromBytes::read_le(&srs_bytes[..]).unwrap(),
     ))
     .expect("could not setup params");
 
     let posw_snark_pk = posw_snark
-        .proving_key
+        .proving_key()
+        .as_ref()
         .expect("posw_snark_pk should be populated")
         .to_bytes_le()?;
-    let posw_snark_vk = posw_snark.verifying_key;
-    let posw_snark_vk = posw_snark_vk.to_bytes_le()?;
+    let posw_snark_vk = posw_snark.verifying_key().to_bytes_le()?;
 
     println!("posw_snark_pk.params\n\tsize - {}", posw_snark_pk.len());
     println!("posw_snark_vk.params\n\tsize - {}", posw_snark_vk.len());

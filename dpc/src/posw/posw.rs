@@ -33,7 +33,7 @@ use rand::{CryptoRng, Rng};
 pub struct Posw<N: Network, const MASK_NUM_BYTES: usize> {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
-    pub proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
+    proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
     /// The verifying key.
     pub verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
 }
@@ -69,6 +69,16 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         })
     }
 
+    /// Returns a reference to the PoSW circuit proving key.
+    pub fn proving_key(&self) -> &Option<<N::PoswSNARK as SNARK>::ProvingKey> {
+        &self.proving_key
+    }
+
+    /// Returns a reference to the PoSW circuit verifying key.
+    pub fn verifying_key(&self) -> &<N::PoswSNARK as SNARK>::VerifyingKey {
+        &self.verifying_key
+    }
+
     /// Given the leaves of the block header, it will calculate a PoSW and nonce
     /// such that they are under the difficulty target.
     pub fn mine<R: Rng + CryptoRng>(
@@ -77,7 +87,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> Posw<N, MASK_NUM_BYTES> {
         difficulty_target: u64,
         rng: &mut R,
         max_nonce: u32,
-    ) -> Result<(u32, <<N as Network>::PoswSNARK as SNARK>::Proof), PoswError> {
+    ) -> Result<(u32, <N::PoswSNARK as SNARK>::Proof), PoswError> {
         let mut nonce;
         let mut proof;
         loop {

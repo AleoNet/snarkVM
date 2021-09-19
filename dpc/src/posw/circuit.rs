@@ -35,9 +35,9 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct POSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
-    pub hashed_leaves: Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
-    pub mask: Vec<u8>,
-    pub root: N::PoswRoot,
+    hashed_leaves: Vec<<<N::PoswTreeParameters as MerkleParameters>::H as CRH>::Output>,
+    mask: Vec<u8>,
+    root: N::PoswRoot,
 }
 
 impl<N: Network, const MASK_NUM_BYTES: usize> POSWCircuit<N, MASK_NUM_BYTES> {

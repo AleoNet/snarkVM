@@ -100,8 +100,8 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw: PoswMarlin<Testnet2> = PoswMarlin::load(true).unwrap();
 
-    let generated_proving_key = generated_posw.proving_key.unwrap();
-    let loaded_proving_key = loaded_posw.proving_key.unwrap();
+    let generated_proving_key = generated_posw.proving_key().as_ref().unwrap();
+    let loaded_proving_key = loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;
