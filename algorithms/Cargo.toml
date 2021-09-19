@@ -58,13 +58,13 @@ path = "benches/signature/aleo.rs"
 harness = false
 
 [[bench]]
-name = "snark-gm17"
-path = "benches/snark/gm17.rs"
+name = "snark-groth16"
+path = "benches/snark/groth16.rs"
 harness = false
 
 [[example]]
-name = "gm17"
-path = "examples/snark/gm17.rs"
+name = "groth16"
+path = "examples/snark/groth16.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"

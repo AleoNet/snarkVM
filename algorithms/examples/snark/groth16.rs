@@ -39,8 +39,8 @@ use std::{
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_fields::One;
 
-// We're going to use the Groth-Maller 17 proving system.
-use snarkvm_algorithms::snark::gm17::{
+// We're going to use the Groth16 proving system.
+use snarkvm_algorithms::snark::groth16::{
     create_random_proof,
     generate_random_parameters,
     prepare_verifying_key,
