@@ -1770,6 +1770,7 @@ dependencies = [
  "blake2",
  "chrono",
  "criterion",
+ "derivative",
  "hex",
  "once_cell",
  "parking_lot",

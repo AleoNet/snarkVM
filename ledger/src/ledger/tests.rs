@@ -18,6 +18,8 @@ use crate::{ledger::*, prelude::*};
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 
+use rand::thread_rng;
+
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
@@ -27,7 +29,7 @@ fn test_new_ledger_with_genesis_block() {
             commitments_root: Default::default(),
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
-            proof: ProofOfSuccinctWork::default(),
+            proof: None,
         },
         transactions: BlockTransactions::new(),
     };
@@ -60,7 +62,7 @@ fn test_ledger_duplicate_transactions() {
 
     let genesis_block = Block {
         previous_hash: Default::default(),
-        header: BlockHeader::new_genesis(&transactions).unwrap(),
+        header: BlockHeader::new_genesis(&transactions, &mut thread_rng()).unwrap(),
         transactions,
     };
 

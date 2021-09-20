@@ -93,9 +93,10 @@ impl<N: Network> BlockTransactions<N> {
     }
 
     /// Returns `true` if there is a conflicting serial number or commitment in the transactions.
+    #[deprecated]
     pub fn conflict_exists(&self) -> bool {
-        let mut serial_numbers = vec![];
-        let mut commitments = vec![];
+        let mut serial_numbers: Vec<N::SerialNumber> = vec![];
+        let mut commitments: Vec<N::Commitment> = vec![];
 
         for tx in &self.0 {
             serial_numbers.extend(tx.serial_numbers());

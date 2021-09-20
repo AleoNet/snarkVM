@@ -19,6 +19,7 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTree, MerkleTreeDigest},
     prelude::*,
 };
+use snarkvm_utilities::has_duplicates;
 
 use anyhow::{anyhow, Result};
 use std::{collections::HashMap, sync::Arc};
@@ -52,7 +53,7 @@ impl<N: Network> ProgramCircuitTree<N> {
     pub fn add(&mut self, circuit: Box<dyn ProgramCircuit<N>>) -> Result<u8> {
         // Ensure the circuit does not already exist in the tree.
         if self.contains_circuit(circuit.circuit_id()) {
-            return Err(MerkleError::MissingLeaf(format!("{}", circuit.circuit_id())).into());
+            return Err(MerkleError::Message(format!("Duplicate circuit {}", circuit.circuit_id())).into());
         }
 
         self.tree = self
@@ -69,21 +70,26 @@ impl<N: Network> ProgramCircuitTree<N> {
     /// TODO (howardwu): Add safety checks for u8 (max 255 circuits).
     /// Adds all given circuits to the tree, returning the start and ending circuit index in the tree.
     pub fn add_all(&mut self, circuits: Vec<Box<dyn ProgramCircuit<N>>>) -> Result<(u8, u8)> {
-        // Ensure the list of circuits is non-empty.
+        // Ensure the list of given circuits is non-empty.
         if circuits.is_empty() {
-            return Err(anyhow!("The list of of circuits must be non-empty"));
+            return Err(anyhow!("The list of given circuits must be non-empty"));
+        }
+
+        // Construct a list of circuit IDs.
+        let circuit_ids: Vec<_> = circuits.iter().map(|c| *c.circuit_id()).collect();
+
+        // Ensure the list of given circuit IDs is unique.
+        if has_duplicates(circuit_ids.iter()) {
+            return Err(anyhow!("The list of given circuits contains duplicates"));
         }
 
         // Ensure the circuits do not already exist in the tree.
-        let circuits: Vec<_> = circuits
-            .into_iter()
-            .filter(|c| !self.contains_circuit(c.circuit_id()))
-            .collect();
+        let duplicate_circuits: Vec<_> = circuit_ids.iter().filter(|id| self.contains_circuit(id)).collect();
+        if !duplicate_circuits.is_empty() {
+            return Err(anyhow!("The list of given circuits contains already existing circuits"));
+        }
 
-        self.tree = self.tree.rebuild(
-            self.last_circuit_index as usize,
-            &circuits.iter().map(|c| c.circuit_id()).collect::<Vec<_>>(),
-        )?;
+        self.tree = self.tree.rebuild(self.last_circuit_index as usize, &circuit_ids)?;
 
         let start_index = self.last_circuit_index;
         let num_circuits = circuits.len();
