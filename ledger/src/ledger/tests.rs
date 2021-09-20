@@ -22,35 +22,24 @@ use rand::thread_rng;
 
 #[test]
 fn test_new_ledger_with_genesis_block() {
+    let transactions =
+        BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]);
+    let header = BlockHeader::<Testnet2>::new_genesis(&transactions, &mut thread_rng()).unwrap();
     let genesis_block = Block {
         previous_hash: Default::default(),
-        header: BlockHeader {
-            transactions_root: Default::default(),
-            commitments_root: Default::default(),
-            serial_numbers_root: Default::default(),
-            metadata: BlockHeaderMetadata::genesis(),
-            proof: None,
-        },
-        transactions: BlockTransactions::new(),
+        header,
+        transactions,
     };
 
-    // If the underlying hash function is changed, this expected block hash will need to be updated.
-    let expected_genesis_block_hash = <Testnet2 as Network>::BlockHash::read_le(
-        &[
-            197, 96, 131, 8, 176, 90, 158, 53, 59, 89, 40, 231, 1, 173, 161, 190, 41, 41, 127, 88, 136, 45, 109, 15,
-            192, 178, 217, 198, 27, 174, 226, 2,
-        ][..],
-    )
-    .unwrap();
-
     let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).unwrap();
+    let genesis_block_hash = ledger.get_block_hash(0).unwrap();
 
     assert_eq!(ledger.block_height(), 0);
     assert_eq!(ledger.latest_block().unwrap(), genesis_block.clone());
-    assert_eq!(ledger.get_block_hash(0).unwrap(), expected_genesis_block_hash.clone());
-    assert_eq!(ledger.get_block(&expected_genesis_block_hash).unwrap(), genesis_block);
-    assert_eq!(ledger.get_block_number(&expected_genesis_block_hash).unwrap(), 0);
-    assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
+    assert_eq!(ledger.get_block_hash(0).unwrap(), genesis_block_hash.clone());
+    assert_eq!(ledger.get_block(&genesis_block_hash).unwrap(), genesis_block);
+    assert_eq!(ledger.get_block_number(&genesis_block_hash).unwrap(), 0);
+    assert_eq!(ledger.contains_block_hash(&genesis_block_hash), true);
 
     assert!(ledger.get_block(&Default::default()).is_err());
 }
