@@ -92,7 +92,7 @@ impl<N: Network> BlockTransactions<N> {
             }
         };
 
-        // Ensure there is exactly one coinbase transaction.
+        // Ensure there is the right number of coinbase transaction(s).
         let num_coinbase = self.to_coinbase_transaction_count();
         if num_coinbase != N::BLOCK_COINBASE_TX_COUNT {
             eprintln!(

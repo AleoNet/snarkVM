@@ -28,6 +28,7 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type SerialNumber: Clone + Eq + FromBytes + ToBytes;
 
     type Address: Clone + Eq + FromBytes + ToBytes;
+    type Transaction: Clone + Eq + FromBytes + ToBytes;
 
     /// Initializes a new genesis block, with a coinbase transaction for the given recipient.
     fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self>;
@@ -55,4 +56,7 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
 
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
     fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>>;
+
+    /// Returns the coinbase transaction for the block.
+    fn to_coinbase_transaction(&self) -> Result<Self::Transaction>;
 }

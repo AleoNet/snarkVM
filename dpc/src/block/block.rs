@@ -24,6 +24,7 @@ use crate::{
     LedgerProof,
     Network,
     StateTransition,
+    Transaction,
     TransactionScheme,
     DPC,
 };
@@ -50,6 +51,7 @@ impl<N: Network> BlockScheme for Block<N> {
     type Commitment = N::Commitment;
     type Header = BlockHeader<N>;
     type SerialNumber = N::SerialNumber;
+    type Transaction = Transaction<N>;
     type Transactions = BlockTransactions<N>;
 
     fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self> {
@@ -93,22 +95,11 @@ impl<N: Network> BlockScheme for Block<N> {
         }
 
         // Retrieve the coinbase transaction.
-        let coinbase_transaction = {
-            // Filter out all transactions with a positive value balance.
-            let coinbase_transaction: Vec<_> = self
-                .transactions
-                .iter()
-                .filter(|t| t.value_balance().is_negative())
-                .collect();
-
-            // Ensure there is exactly one coinbase transaction.
-            let num_coinbase = coinbase_transaction.len();
-            match num_coinbase == 1 {
-                true => coinbase_transaction[0],
-                false => {
-                    eprintln!("Block must have one coinbase transaction, found {}", num_coinbase);
-                    return false;
-                }
+        let coinbase_transaction = match self.to_coinbase_transaction() {
+            Ok(coinbase_transaction) => coinbase_transaction,
+            Err(error) => {
+                eprintln!("{}", error);
+                return false;
             }
         };
 
@@ -177,6 +168,26 @@ impl<N: Network> BlockScheme for Block<N> {
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
     fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>> {
         self.transactions.to_serial_numbers()
+    }
+
+    /// Returns the coinbase transaction for the block.
+    fn to_coinbase_transaction(&self) -> Result<Self::Transaction> {
+        // Filter out all transactions with a positive value balance.
+        let coinbase_transaction: Vec<_> = self
+            .transactions
+            .iter()
+            .filter(|t| t.value_balance().is_negative())
+            .collect();
+
+        // Ensure there is the right number of coinbase transaction(s).
+        match coinbase_transaction.len() == N::BLOCK_COINBASE_TX_COUNT {
+            true => Ok(coinbase_transaction[0].clone()),
+            false => Err(anyhow!(
+                "Block must have {} coinbase transaction(s), found {}",
+                N::BLOCK_COINBASE_TX_COUNT,
+                coinbase_transaction.len()
+            )),
+        }
     }
 }
 
