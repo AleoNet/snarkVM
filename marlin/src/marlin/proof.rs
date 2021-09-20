@@ -19,24 +19,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use serde::{
-    de::{Error as DeserializeError, SeqAccess, Visitor},
-    ser::SerializeTuple,
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
-};
-use std::{
-    fmt::{
-        Debug,
-        Display,
-        Formatter,
-        {self},
-    },
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
@@ -137,52 +120,5 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for Proof<F, CF, PC> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
-    }
-}
-
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Serialize for Proof<F, CF, PC> {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let proof_bytes = self.to_bytes_le().expect("Failed to serialize proof bytes");
-
-        let mut tup = s.serialize_tuple(proof_bytes.len() + 1)?;
-        tup.serialize_element(&proof_bytes.len())?;
-
-        for byte in proof_bytes.iter() {
-            tup.serialize_element(byte)?;
-        }
-
-        tup.end()
-    }
-}
-
-impl<'de, F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Deserialize<'de> for Proof<F, CF, PC> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ArrayVisitor<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>>(PhantomData<(F, CF, PC)>);
-
-        impl<'de, F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Visitor<'de> for ArrayVisitor<F, CF, PC> {
-            type Value = Proof<F, CF, PC>;
-
-            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-                formatter.write_str("a valid proof")
-            }
-
-            fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<Proof<F, CF, PC>, S::Error> {
-                let proof_size = seq
-                    .next_element()?
-                    .ok_or_else(|| DeserializeError::custom("could not read proof size"))?;
-
-                let mut proof_bytes: Vec<u8> = vec![0u8; proof_size];
-
-                for b in &mut proof_bytes[..] {
-                    *b = seq
-                        .next_element()?
-                        .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
-                }
-
-                Ok(Proof::from_bytes_le(&proof_bytes).expect("Failed to deserialize proof bytes"))
-            }
-        }
-
-        deserializer.deserialize_tuple(2, ArrayVisitor::<F, CF, PC>(PhantomData))
     }
 }

@@ -86,7 +86,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     
     /// SNARK for PoSW.
     type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, Proof = Self::PoSWProof, UniversalSetupConfig = usize>;
-    type PoSWProof: Clone + Debug + ToBytes + FromBytes + Serialize + PartialEq + Eq + Sync + Send;
+    type PoSWProof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send;
     type PoSW: PoSWScheme<Self>;
     
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.

@@ -36,6 +36,9 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     /// Returns `true` if the block is well-formed.
     fn is_valid(&self) -> bool;
 
+    /// Returns `true` if the block is a genesis block.
+    fn is_genesis(&self) -> bool;
+
     /// Returns the previous block hash.
     fn previous_hash(&self) -> &Self::BlockHash;
 

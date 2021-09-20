@@ -73,7 +73,7 @@ impl<N: Network> BlockScheme for Block<N> {
         };
 
         // Ensure the genesis block is valid.
-        match block.is_valid() {
+        match block.is_genesis() && block.is_valid() {
             true => Ok(block),
             false => Err(anyhow!("Failed to initialize a genesis block")),
         }
@@ -129,6 +129,12 @@ impl<N: Network> BlockScheme for Block<N> {
 
         // Ensure the header and transactions are valid.
         self.header.is_valid() && self.transactions.is_valid()
+    }
+
+    /// Returns `true` if the block is a genesis block.
+    fn is_genesis(&self) -> bool {
+        // Ensure the header is a genesis block header.
+        self.header.is_genesis()
     }
 
     /// Returns the previous block hash.
@@ -272,7 +278,7 @@ mod tests {
 
         assert_eq!(
             Block::<Testnet2>::block_reward(0).0,
-            Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS
+            Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000
         );
 
         // Before block halving

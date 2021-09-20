@@ -21,12 +21,25 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use rand::{CryptoRng, Rng};
-use serde::{Deserialize, Serialize};
+use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     io::{Read, Result as IoResult, Write},
     mem::size_of,
     sync::Arc,
 };
+
+pub mod proof_serialization {
+    use super::*;
+    pub fn serialize<S: Serializer, T: Serialize>(proof: &Option<T>, s: S) -> Result<S::Ok, S::Error> {
+        match *proof {
+            Some(ref d) => d.serialize(s),
+            None => Err(S::Error::custom("Proof must be set to serialize block header")),
+        }
+    }
+    pub fn deserialize<'de, D: Deserializer<'de>, T: Deserialize<'de>>(deserializer: D) -> Result<Option<T>, D::Error> {
+        Ok(T::deserialize(deserializer).ok())
+    }
+}
 
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -70,6 +83,7 @@ pub struct BlockHeader<N: Network> {
     /// The block header metadata - 24 bytes
     pub metadata: BlockHeaderMetadata,
     /// Proof of Succinct Work - 771 bytes
+    #[serde(with = "proof_serialization")]
     pub proof: Option<ProofOfSuccinctWork<N>>,
 }
 
@@ -340,13 +354,95 @@ mod tests {
         assert_eq!(block_header.metadata.height, 0);
         assert_eq!(block_header.metadata.timestamp, 0);
         assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
-        assert_eq!(block_header.metadata.nonce, u32::MAX);
         assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.transactions_root, Default::default());
         assert_ne!(block_header.commitments_root, Default::default());
         assert_ne!(block_header.serial_numbers_root, Default::default());
+    }
+    #[cfg(test)]
+    mod tests {
+        use crate::{testnet2::Testnet2, BlockHeader, BlockTransactions, Network, PoSWScheme, Transaction};
+        use snarkvm_algorithms::{SNARK, SRS};
+        use snarkvm_marlin::ahp::AHPForR1CS;
+        use snarkvm_parameters::{testnet2::Transaction1, Genesis};
+        use snarkvm_utilities::{FromBytes, ToBytes};
+
+        use rand::{rngs::ThreadRng, thread_rng};
+
+        #[test]
+        fn test_load() {
+            let _params = <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::load(true).unwrap();
+        }
+
+        #[test]
+        fn test_posw_marlin() {
+            // Construct an instance of PoSW.
+            let posw = {
+                let max_degree =
+                    AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+                let universal_srs =
+                    <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())
+                        .unwrap();
+                <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
+                    &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
+                )
+                .unwrap()
+            };
+
+            // Construct an assigned circuit.
+            let mut block_header = BlockHeader::<Testnet2>::new_genesis(
+                &BlockTransactions::from(&[
+                    Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()
+                ]),
+                &mut thread_rng(),
+            )
+            .unwrap();
+
+            posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+            assert!(block_header.proof().is_some());
+            assert_eq!(
+                block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
+                Testnet2::POSW_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
+            assert!(posw.verify(&block_header));
+        }
+
+        #[test]
+        fn test_block_header_difficulty_target() {
+            // Construct an instance of PoSW.
+            let posw = {
+                let max_degree =
+                    AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+                let universal_srs =
+                    <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())
+                        .unwrap();
+                <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
+                    &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
+                )
+                .unwrap()
+            };
+
+            // Construct an assigned circuit.
+            let mut block_header = BlockHeader::<Testnet2>::new_genesis(
+                &BlockTransactions::from(&[
+                    Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()
+                ]),
+                &mut thread_rng(),
+            )
+            .unwrap();
+
+            // Construct a PoSW proof.
+            posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+
+            // Check that the difficulty target is satisfied.
+            assert!(posw.verify(&block_header));
+
+            // Check that the difficulty target is *not* satisfied.
+            block_header.metadata.difficulty_target = 0u64;
+            assert!(!posw.verify(&block_header));
+        }
     }
 
     #[test]
@@ -373,6 +469,10 @@ mod tests {
         .unwrap();
         assert_eq!(
             block_header.to_bytes_le().unwrap().len(),
+            BlockHeader::<Testnet2>::size()
+        );
+        assert_eq!(
+            bincode::serialize(&block_header).unwrap().len(),
             BlockHeader::<Testnet2>::size()
         );
     }

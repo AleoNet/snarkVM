@@ -209,35 +209,4 @@ mod tests {
         ); // NOTE: Marlin proofs use compressed serialization
         assert!(posw.verify(&block_header));
     }
-
-    #[test]
-    fn test_posw_difficulty_target() {
-        // Construct an instance of PoSW.
-        let posw = {
-            let max_degree =
-                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
-            let universal_srs =
-                <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
-            <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
-                &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
-            )
-            .unwrap()
-        };
-
-        // Construct an assigned circuit.
-        let mut block_header = BlockHeader::<Testnet2>::new_genesis(
-            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
-            &mut thread_rng(),
-        )
-        .unwrap();
-
-        // Construct a PoSW proof.
-        posw.mine(&mut block_header, &mut thread_rng()).unwrap();
-
-        // Check that the difficulty target is satisfied.
-        assert!(posw.verify(&block_header));
-
-        // Check that the difficulty target is *not* satisfied.
-        assert!(!posw.verify(&block_header));
-    }
 }
