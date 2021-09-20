@@ -169,7 +169,7 @@ mod tests {
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
     use snarkvm_utilities::{FromBytes, ToBytes};
 
-    use rand::{rngs::ThreadRng, thread_rng, Rng};
+    use rand::{rngs::ThreadRng, thread_rng};
 
     #[test]
     fn test_load() {
@@ -235,98 +235,5 @@ mod tests {
 
         // Check that the difficulty target is *not* satisfied.
         assert!(!posw.verify(&block_header));
-    }
-
-    /// TODO (howardwu): TEMPORARY - Move this up to the algorithms level of Merkle tree tests.
-    #[test]
-    fn test_changing_tx_roots() {
-        use crate::{merkle_root_with_subroots, MerkleRoot};
-
-        use anyhow::Result;
-
-        /// Subtree calculation
-        fn txids_to_roots<N: Network>(
-            transaction_ids: &[[u8; 32]],
-        ) -> Result<(MerkleRoot, N::BlockHeaderRoot, Vec<[u8; 32]>)> {
-            assert!(
-                !transaction_ids.is_empty(),
-                "Cannot compute a Merkle tree with no transaction IDs"
-            );
-
-            // START DELETE
-            type MerkleTreeCRH =
-                snarkvm_algorithms::crh::BHPCompressedCRH<snarkvm_curves::edwards_bls12::EdwardsProjective, 16, 32>;
-
-            use once_cell::sync::OnceCell;
-            use snarkvm_algorithms::CRH;
-
-            static MERKLE_TREE_CRH: OnceCell<MerkleTreeCRH> = OnceCell::new();
-            let crh = MERKLE_TREE_CRH.get_or_init(|| MerkleTreeCRH::setup("MerkleTreeCRH"));
-            // END DELETE
-
-            let (root, subroots) = merkle_root_with_subroots(crh, transaction_ids, N::POSW_TREE_DEPTH);
-            let mut merkle_root_bytes = [0u8; 32];
-            merkle_root_bytes[..].copy_from_slice(&root);
-
-            let masked_root = snarkvm_algorithms::merkle_tree::MerkleTree::<N::BlockHeaderTreeParameters>::new(
-                std::sync::Arc::new(N::block_header_tree_parameters().clone()),
-                &subroots,
-            )?
-            .root()
-            .clone();
-
-            Ok((MerkleRoot(merkle_root_bytes.clone()), masked_root, subroots))
-        }
-
-        let mut rng = thread_rng();
-
-        // The number of transactions for which to check subsequent merkle tree root values.
-        let num_txs: usize = rng.gen_range(1..256);
-
-        // Create a vector with transaction ids consisting of random values.
-        let transaction_ids = {
-            let mut vec = Vec::with_capacity(num_txs);
-            for _ in 0..num_txs {
-                let mut id = [0u8; 32];
-                rng.fill(&mut id);
-                vec.push(id);
-            }
-            vec
-        };
-
-        // Collect the transactions into a collection of their growing sequences, i.e.
-        // [[tx0], [tx0, tx1], [tx0, tx1, tx2], ..., [tx0, ..., num_txs]].
-        let growing_tx_ids = transaction_ids
-            .into_iter()
-            .scan(Vec::with_capacity(num_txs), |acc, tx_id| {
-                acc.push(tx_id);
-                Some(acc.clone())
-            })
-            .collect::<Vec<_>>();
-
-        // Calculate the root hashes for the sequences of transactions.
-        let subsequent_root_hashes = growing_tx_ids
-            .into_iter()
-            .map(|tx_ids| {
-                let (root, posw_root, _subroots) = txids_to_roots::<Testnet2>(&tx_ids).unwrap();
-                (root, posw_root)
-            })
-            .collect::<Vec<_>>();
-
-        // Ensure that the subsequent roots differ for every new transaction.
-        let mut hashes_differ = true;
-        for window in subsequent_root_hashes.windows(2) {
-            match window {
-                [(root1, pedersen_root1), (root2, pedersen_root2)] => {
-                    if root1 == root2 || pedersen_root1 == pedersen_root2 {
-                        hashes_differ = false;
-                        break;
-                    }
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        assert!(hashes_differ);
     }
 }
