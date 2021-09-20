@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
@@ -31,7 +30,7 @@ use std::io::{Read, Result as IoResult, Write};
 )]
 pub struct TransactionMetadata<N: Network> {
     /// The root of the ledger commitment tree.
-    ledger_digest: MerkleTreeDigest<N::CommitmentsTreeParameters>,
+    ledger_digest: N::CommitmentsRoot,
     /// The ID of the inner circuit used to execute this transaction.
     inner_circuit_id: N::InnerCircuitID,
 }
@@ -39,10 +38,7 @@ pub struct TransactionMetadata<N: Network> {
 impl<N: Network> TransactionMetadata<N> {
     /// Initializes a new instance of transaction metadata.
     #[inline]
-    pub fn new(
-        ledger_digest: MerkleTreeDigest<N::CommitmentsTreeParameters>,
-        inner_circuit_id: N::InnerCircuitID,
-    ) -> Self {
+    pub fn new(ledger_digest: N::CommitmentsRoot, inner_circuit_id: N::InnerCircuitID) -> Self {
         Self {
             ledger_digest,
             inner_circuit_id,
@@ -51,7 +47,7 @@ impl<N: Network> TransactionMetadata<N> {
 
     /// Returns a reference to the ledger digest.
     #[inline]
-    pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::CommitmentsTreeParameters> {
+    pub fn ledger_digest(&self) -> &N::CommitmentsRoot {
         &self.ledger_digest
     }
 

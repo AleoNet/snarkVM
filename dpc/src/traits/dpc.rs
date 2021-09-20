@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{AccountScheme, CommitmentsTree, Network, SerialNumbersTree, TransactionScheme},
+    traits::{AccountScheme, CommitmentsTreeScheme, Network, TransactionScheme},
     Executable,
 };
 
@@ -25,6 +25,7 @@ use rand::{CryptoRng, Rng};
 pub trait DPCScheme<N: Network>: Sized {
     type Account: AccountScheme;
     type Authorization;
+    type BlockState: CommitmentsTreeScheme<N>;
     type Execution;
     type StateTransition;
     type Transaction: TransactionScheme<N>;
@@ -37,19 +38,19 @@ pub trait DPCScheme<N: Network>: Sized {
     ) -> Result<Self::Authorization>;
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<L: CommitmentsTree<N>, R: Rng + CryptoRng>(
+    fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executables: &Vec<Executable<N>>,
-        ledger: &L,
+        ledger: &Self::BlockState,
         rng: &mut R,
     ) -> Result<Self::Transaction>;
 
-    /// Returns true iff the transaction is valid according to the ledger.
-    fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool;
-
-    /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
-        block: &[Self::Transaction],
-        ledger: &L,
-    ) -> bool;
+    // /// Returns true iff the transaction is valid according to the ledger.
+    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool;
+    //
+    // /// Returns true iff all the transactions in the block are valid according to the ledger.
+    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
+    //     block: &[Self::Transaction],
+    //     ledger: &L,
+    // ) -> bool;
 }

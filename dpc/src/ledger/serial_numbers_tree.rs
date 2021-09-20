@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::prelude::*;
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTree},
     prelude::*,
 };
-use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::has_duplicates;
 
 use anyhow::{anyhow, Result};
@@ -34,9 +34,9 @@ pub struct SerialNumbersTree<N: Network> {
     current_index: u32,
 }
 
-impl<N: Network> SerialNumbersTree<N> {
+impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbersTree<N> {
     /// Initializes an empty serial numbers tree.
-    pub fn new() -> Result<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             tree: MerkleTree::<N::SerialNumbersTreeParameters>::new::<N::SerialNumber>(
                 Arc::new(N::serial_numbers_tree_parameters().clone()),
@@ -49,7 +49,7 @@ impl<N: Network> SerialNumbersTree<N> {
 
     /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds the given serial number to the tree, returning its index in the tree.
-    pub fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u32> {
+    fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u32> {
         // Ensure the serial number does not already exist in the tree.
         if self.contains_serial_number(serial_number) {
             return Err(
@@ -67,7 +67,7 @@ impl<N: Network> SerialNumbersTree<N> {
 
     /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds all given serial numbers to the tree, returning the start and ending index in the tree.
-    pub fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u32, u32)> {
+    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u32, u32)> {
         // Ensure the list of given serial_numbers is non-empty.
         if serial_numbers.is_empty() {
             return Err(anyhow!("The list of given serial numbers must be non-empty"));
@@ -106,17 +106,17 @@ impl<N: Network> SerialNumbersTree<N> {
     }
 
     /// Returns `true` if the given serial number exists.
-    pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
+    fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
         self.serial_numbers.contains_key(serial_number)
     }
 
     /// Returns the index for the given serial number, if it exists.
-    pub fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u32> {
+    fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u32> {
         self.serial_numbers.get(serial_number)
     }
 
     /// Returns the Merkle path for a given serial number.
-    pub fn to_inclusion_proof(
+    fn to_serial_number_inclusion_proof(
         &self,
         serial_number: &N::SerialNumber,
     ) -> Result<MerklePath<N::SerialNumbersTreeParameters>> {
@@ -127,7 +127,7 @@ impl<N: Network> SerialNumbersTree<N> {
     }
 
     /// Returns the serial numbers root.
-    pub fn to_serial_numbers_root(&self) -> &N::SerialNumbersRoot {
+    fn to_serial_numbers_root(&self) -> &N::SerialNumbersRoot {
         self.tree.root()
     }
 }

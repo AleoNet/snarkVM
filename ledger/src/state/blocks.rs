@@ -14,17 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Environment;
 use snarkvm_dpc::prelude::*;
 
 use anyhow::{anyhow, Result};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
-pub struct Blocks<N: Network> {
-    blocks: HashMap<u32, Block<N>>,
+pub struct Blocks<E: Environment> {
+    blocks: HashMap<u32, Block<E::Network>>,
 }
 
-impl<N: Network> Blocks<N> {
+impl<E: Environment> Blocks<E> {
     /// Initializes a new instance of `Blocks`.
     pub fn new() -> Self {
         Self {
@@ -32,7 +33,7 @@ impl<N: Network> Blocks<N> {
         }
     }
 
-    pub fn add(&mut self, block: Block<N>) -> Result<()> {
+    pub fn add(&mut self, block: Block<E::Network>) -> Result<()> {
         // Ensure the block does not already exist in the list.
         if self.blocks.contains_key(&block.height()) {
             return Err(anyhow!("The given block already exists in the list"));

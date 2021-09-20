@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod environment;
-pub use environment::*;
+pub mod commitments_tree;
+pub use commitments_tree::*;
 
-pub mod ledger;
-pub use ledger::*;
-
-pub mod storage;
-pub use storage::*;
+pub mod serial_numbers_tree;
+pub use serial_numbers_tree::*;

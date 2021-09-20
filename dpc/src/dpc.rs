@@ -19,7 +19,6 @@ use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use rayon::prelude::*;
 use std::marker::PhantomData;
 
 pub struct DPC<N: Network>(PhantomData<N>);
@@ -27,6 +26,7 @@ pub struct DPC<N: Network>(PhantomData<N>);
 impl<N: Network> DPCScheme<N> for DPC<N> {
     type Account = Account<N>;
     type Authorization = TransactionAuthorization<N>;
+    type BlockState = CommitmentsTree<N>;
     type Execution = Execution<N>;
     type StateTransition = StateTransition<N>;
     type Transaction = Transaction<N>;
@@ -65,10 +65,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     }
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<L: CommitmentsTree<N>, R: Rng + CryptoRng>(
+    fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executables: &Vec<Executable<N>>,
-        ledger: &L,
+        ledger: &Self::BlockState,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
         assert_eq!(N::NUM_TOTAL_RECORDS, executables.len());
@@ -76,18 +76,18 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
-        let ledger_digest = ledger.latest_digest()?;
+        let ledger_digest = ledger.to_commitments_root();
 
         // Compute the ledger membership witnesses.
         let mut input_witnesses = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for record in authorization.input_records.iter().take(N::NUM_INPUT_RECORDS) {
             input_witnesses.push(match record.is_dummy() {
                 true => MerklePath::default(),
-                false => ledger.prove_cm(&record.commitment())?,
+                false => ledger.to_commitment_inclusion_proof(&record.commitment())?,
             });
         }
 
-        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
+        let metadata = TransactionMetadata::new(*ledger_digest, N::inner_circuit_id().clone());
 
         // Generate the local data.
         let local_data = authorization.to_local_data(rng)?;
@@ -167,56 +167,58 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
 
-    fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
-        let verify_time = start_timer!(|| "DPC::verify");
+    //use rayon::prelude::*;
 
-        // Returns `false` if the transaction is invalid.
-        if !transaction.is_valid() {
-            eprintln!("Transaction is invalid.");
-            return false;
-        }
-
-        let ledger_time = start_timer!(|| "Ledger checks");
-
-        // Returns false if any transaction serial number previously existed in the ledger.
-        for sn in transaction.serial_numbers() {
-            if ledger.contains_serial_number(sn) {
-                eprintln!("Ledger already contains this transaction serial number.");
-                return false;
-            }
-        }
-
-        // Returns false if any transaction commitment previously existed in the ledger.
-        for cm in transaction.commitments() {
-            if ledger.contains_commitment(cm) {
-                eprintln!("Ledger already contains this transaction commitment.");
-                return false;
-            }
-        }
-
-        // Returns false if the ledger digest in the transaction is invalid.
-        if !ledger.is_valid_digest(&transaction.ledger_digest()) {
-            eprintln!("Ledger digest is invalid.");
-            return false;
-        }
-
-        end_timer!(ledger_time);
-
-        end_timer!(verify_time);
-
-        true
-    }
-
-    /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
-        transactions: &[Self::Transaction],
-        ledger: &L,
-    ) -> bool {
-        transactions
-            .as_parallel_slice()
-            .par_iter()
-            .all(|tx| Self::verify(tx, ledger))
-    }
+    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
+    //     let verify_time = start_timer!(|| "DPC::verify");
+    //
+    //     // Returns `false` if the transaction is invalid.
+    //     if !transaction.is_valid() {
+    //         eprintln!("Transaction is invalid.");
+    //         return false;
+    //     }
+    //
+    //     let ledger_time = start_timer!(|| "Ledger checks");
+    //
+    //     // Returns false if any transaction serial number previously existed in the ledger.
+    //     for sn in transaction.serial_numbers() {
+    //         if ledger.contains_serial_number(sn) {
+    //             eprintln!("Ledger already contains this transaction serial number.");
+    //             return false;
+    //         }
+    //     }
+    //
+    //     // Returns false if any transaction commitment previously existed in the ledger.
+    //     for cm in transaction.commitments() {
+    //         if ledger.contains_commitment(cm) {
+    //             eprintln!("Ledger already contains this transaction commitment.");
+    //             return false;
+    //         }
+    //     }
+    //
+    //     // Returns false if the ledger digest in the transaction is invalid.
+    //     if !ledger.is_valid_digest(&transaction.ledger_digest()) {
+    //         eprintln!("Ledger digest is invalid.");
+    //         return false;
+    //     }
+    //
+    //     end_timer!(ledger_time);
+    //
+    //     end_timer!(verify_time);
+    //
+    //     true
+    // }
+    //
+    // /// Returns true iff all the transactions in the block are valid according to the ledger.
+    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
+    //     transactions: &[Self::Transaction],
+    //     ledger: &L,
+    // ) -> bool {
+    //     transactions
+    //         .as_parallel_slice()
+    //         .par_iter()
+    //         .all(|tx| Self::verify(tx, ledger))
+    // }
 }
 
 #[cfg(test)]

@@ -14,11 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod environment;
-pub use environment::*;
-
-pub mod ledger;
-pub use ledger::*;
-
-pub mod storage;
-pub use storage::*;
+pub mod testnet1;
+pub mod testnet2;

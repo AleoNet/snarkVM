@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::prelude::*;
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTree},
     prelude::*,
 };
-use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::has_duplicates;
 
 use anyhow::{anyhow, Result};
@@ -34,9 +34,9 @@ pub struct CommitmentsTree<N: Network> {
     current_index: u32,
 }
 
-impl<N: Network> CommitmentsTree<N> {
+impl<N: Network> CommitmentsTreeScheme<N> for CommitmentsTree<N> {
     /// Initializes an empty commitments tree.
-    pub fn new() -> Result<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             tree: MerkleTree::<N::CommitmentsTreeParameters>::new::<N::Commitment>(
                 Arc::new(N::commitments_tree_parameters().clone()),
@@ -49,7 +49,7 @@ impl<N: Network> CommitmentsTree<N> {
 
     /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds the given commitment to the tree, returning its index in the tree.
-    pub fn add(&mut self, commitment: &N::Commitment) -> Result<u32> {
+    fn add(&mut self, commitment: &N::Commitment) -> Result<u32> {
         // Ensure the commitment does not already exist in the tree.
         if self.contains_commitment(commitment) {
             return Err(MerkleError::Message(format!("{} already exists in the commitments tree", commitment)).into());
@@ -65,7 +65,7 @@ impl<N: Network> CommitmentsTree<N> {
 
     /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    pub fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u32, u32)> {
+    fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u32, u32)> {
         // Ensure the list of given commitments is non-empty.
         if commitments.is_empty() {
             return Err(anyhow!("The list of given commitments must be non-empty"));
@@ -101,17 +101,20 @@ impl<N: Network> CommitmentsTree<N> {
     }
 
     /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+    fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
         self.commitments.contains_key(commitment)
     }
 
     /// Returns the index for the given commitment, if it exists.
-    pub fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u32> {
+    fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u32> {
         self.commitments.get(commitment)
     }
 
     /// Returns the Merkle path for a given commitment.
-    pub fn to_inclusion_proof(&self, commitment: &N::Commitment) -> Result<MerklePath<N::CommitmentsTreeParameters>> {
+    fn to_commitment_inclusion_proof(
+        &self,
+        commitment: &N::Commitment,
+    ) -> Result<MerklePath<N::CommitmentsTreeParameters>> {
         match self.get_commitment_index(commitment) {
             Some(index) => Ok(self.tree.generate_proof(*index as usize, commitment)?),
             _ => Err(MerkleError::MissingLeaf(format!("{}", commitment)).into()),
@@ -119,7 +122,7 @@ impl<N: Network> CommitmentsTree<N> {
     }
 
     /// Returns the commitments root.
-    pub fn to_commitments_root(&self) -> &N::CommitmentsRoot {
+    fn to_commitments_root(&self) -> &N::CommitmentsRoot {
         self.tree.root()
     }
 }

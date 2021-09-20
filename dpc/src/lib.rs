@@ -78,6 +78,9 @@ pub use dpc::*;
 pub mod errors;
 pub use errors::*;
 
+pub mod ledger;
+pub use ledger::*;
+
 pub mod network;
 pub use network::*;
 
@@ -106,6 +109,7 @@ pub mod prelude {
         circuits::*,
         dpc::*,
         errors::*,
+        ledger::*,
         program::*,
         record::*,
         state::*,

@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod environment;
-pub use environment::*;
+use snarkvm_dpc::{CommitmentsTreeScheme, Network, SerialNumbersTreeScheme};
 
-pub mod ledger;
-pub use ledger::*;
+pub trait Environment {
+    type Network: Network;
 
-pub mod storage;
-pub use storage::*;
+    type CommitmentsTree: CommitmentsTreeScheme<Self::Network>;
+    type SerialNumbersTree: SerialNumbersTreeScheme<Self::Network>;
+
+    fn commitments_tree() -> &'static Self::CommitmentsTree;
+    fn serial_numbers_tree() -> &'static Self::SerialNumbersTree;
+}
