@@ -71,21 +71,11 @@ fn dpc_testnet1_integration_test() {
     let transactions = BlockTransactions::from(&[coinbase_transaction]);
 
     // Construct new_commitments_tree
-    let transaction_commitments = transactions
-        .0
-        .iter()
-        .map(|t| t.commitments().to_owned())
-        .flatten()
-        .collect();
+    let transaction_commitments = transactions.to_commitments().unwrap();
     let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
 
     // Construct new_serial_numbers_tree
-    let transaction_serial_numbers = transactions
-        .0
-        .iter()
-        .map(|t| t.serial_numbers().to_owned())
-        .flatten()
-        .collect();
+    let transaction_serial_numbers = transactions.to_serial_numbers().unwrap();
     let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
 
     let header = BlockHeader::new(
