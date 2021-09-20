@@ -44,6 +44,11 @@ impl<N: Network> AccountScheme for Account<N> {
     fn private_key(&self) -> &Self::PrivateKey {
         &self.private_key
     }
+
+    /// Returns a reference to the address.
+    fn address(&self) -> &Self::Address {
+        &self.address
+    }
 }
 
 impl<N: Network> TryFrom<PrivateKey<N>> for Account<N> {

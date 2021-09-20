@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{AccountScheme, CommitmentsTreeScheme, Network, TransactionScheme},
+    traits::{AccountScheme, Network, TransactionScheme},
     Executable,
 };
 
@@ -25,8 +25,8 @@ use rand::{CryptoRng, Rng};
 pub trait DPCScheme<N: Network>: Sized {
     type Account: AccountScheme;
     type Authorization;
-    type BlockState: CommitmentsTreeScheme<N>;
     type Execution;
+    type LedgerProof;
     type StateTransition;
     type Transaction: TransactionScheme<N>;
 
@@ -41,7 +41,7 @@ pub trait DPCScheme<N: Network>: Sized {
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executables: &Vec<Executable<N>>,
-        ledger: &Self::BlockState,
+        ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction>;
 

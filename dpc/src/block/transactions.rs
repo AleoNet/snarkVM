@@ -46,9 +46,10 @@ impl<N: Network> BlockTransactions<N> {
     }
 
     /// Adds the given transaction to the list of transactions, if it is valid.
-    pub fn push(&mut self, transaction: Transaction<N>) {
-        if transaction.is_valid() {
-            self.0.push(transaction);
+    pub fn push(&mut self, transaction: Transaction<N>) -> Result<()> {
+        match transaction.is_valid() {
+            true => Ok(self.0.push(transaction)),
+            false => Err(anyhow!("Failed to push due to an invalid transaction")),
         }
     }
 
@@ -91,6 +92,17 @@ impl<N: Network> BlockTransactions<N> {
             }
         };
 
+        // Ensure there is exactly one coinbase transaction.
+        let num_coinbase = self.to_coinbase_transaction_count();
+        if num_coinbase != N::BLOCK_COINBASE_TX_COUNT {
+            eprintln!(
+                "Block must have exactly {} coinbase transaction(s), found {}",
+                N::BLOCK_COINBASE_TX_COUNT,
+                num_coinbase
+            );
+            return false;
+        }
+
         true
     }
 
@@ -126,6 +138,25 @@ impl<N: Network> BlockTransactions<N> {
     pub fn to_serial_numbers(&self) -> Result<Vec<<N as Network>::SerialNumber>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.serial_numbers()).flatten().cloned().collect())
+    }
+
+    /// Returns `true` if the transactions contains exactly one coinbase transaction.
+    pub fn to_coinbase_transaction_count(&self) -> usize {
+        // Filter out all transactions with a positive value balance.
+        self.iter().filter(|t| t.value_balance().is_negative()).count()
+    }
+
+    /// Returns the total transaction fees, by summing the value balance from all positive transactions.
+    /// Note - this amount does *not* include the block reward.
+    pub fn to_transaction_fees(&self) -> Result<AleoAmount> {
+        self.0
+            .iter()
+            .filter_map(|t| match t.value_balance().is_negative() {
+                true => None,
+                false => Some(*t.value_balance()),
+            })
+            .reduce(|a, b| a.add(b))
+            .ok_or(anyhow!("Failed to compute the transaction fees for block"))
     }
 
     /// Returns the net value balance, by summing the value balance from all transactions.

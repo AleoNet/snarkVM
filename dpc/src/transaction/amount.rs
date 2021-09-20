@@ -31,7 +31,7 @@ pub enum Denomination {
     /// AG
     GATE,
     /// ALEO
-    ALEO,
+    CREDIT,
 }
 
 impl Denomination {
@@ -40,7 +40,7 @@ impl Denomination {
         match self {
             Denomination::BYTE => 0,
             Denomination::GATE => 3,
-            Denomination::ALEO => 6,
+            Denomination::CREDIT => 6,
         }
     }
 }
@@ -50,20 +50,20 @@ impl fmt::Display for Denomination {
         write!(f, "{}", match self {
             Denomination::BYTE => "AB",
             Denomination::GATE => "AG",
-            Denomination::ALEO => "ALEO",
+            Denomination::CREDIT => "ALEO",
         })
     }
 }
 
 impl AleoAmount {
-    /// Number of AB (base unit) per ALEO
-    pub const COIN: i64 = 1_000_000;
-    /// Exactly one ALEO.
-    pub const ONE_ALEO: AleoAmount = AleoAmount(Self::COIN);
-    /// Exactly one byte.
-    pub const ONE_BYTE: AleoAmount = AleoAmount(1);
+    /// Exactly one Aleo byte (AB).
+    pub const ONE_BYTE: AleoAmount = AleoAmount(1i64);
+    /// Exactly one Aleo credit (ALEO).
+    pub const ONE_CREDIT: AleoAmount = AleoAmount(1_000_000i64);
+    /// Exactly one Aleo gate (AG).
+    pub const ONE_GATE: AleoAmount = AleoAmount(1_000i64);
     /// The zero amount.
-    pub const ZERO: AleoAmount = AleoAmount(0);
+    pub const ZERO: AleoAmount = AleoAmount(0i64);
 
     /// Create an `AleoAmount` given a number of bytes
     pub fn from_bytes(bytes: i64) -> Self {
@@ -79,7 +79,7 @@ impl AleoAmount {
 
     /// Create an `AleoAmount` given a number of ALEOs
     pub fn from_aleo(aleo_value: i64) -> Self {
-        let bytes = aleo_value * 10_i64.pow(Denomination::ALEO.precision());
+        let bytes = aleo_value * 10_i64.pow(Denomination::CREDIT.precision());
 
         Self::from_bytes(bytes)
     }

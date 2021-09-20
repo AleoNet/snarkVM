@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
+use snarkvm_algorithms::prelude::*;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -26,8 +26,8 @@ pub struct DPC<N: Network>(PhantomData<N>);
 impl<N: Network> DPCScheme<N> for DPC<N> {
     type Account = Account<N>;
     type Authorization = TransactionAuthorization<N>;
-    type BlockState = CommitmentsTree<N>;
     type Execution = Execution<N>;
+    type LedgerProof = LedgerProof<N>;
     type StateTransition = StateTransition<N>;
     type Transaction = Transaction<N>;
 
@@ -68,7 +68,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executables: &Vec<Executable<N>>,
-        ledger: &Self::BlockState,
+        ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
         assert_eq!(N::NUM_TOTAL_RECORDS, executables.len());
@@ -76,18 +76,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
-        let ledger_digest = ledger.to_commitments_root();
+        let ledger_digest = ledger_proof.commitments_root();
+        let input_witnesses = ledger_proof.commitment_inclusion_proofs();
 
-        // Compute the ledger membership witnesses.
-        let mut input_witnesses = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for record in authorization.input_records.iter().take(N::NUM_INPUT_RECORDS) {
-            input_witnesses.push(match record.is_dummy() {
-                true => MerklePath::default(),
-                false => ledger.to_commitment_inclusion_proof(&record.commitment())?,
-            });
-        }
-
-        let metadata = TransactionMetadata::new(*ledger_digest, N::inner_circuit_id().clone());
+        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
 
         // Generate the local data.
         let local_data = authorization.to_local_data(rng)?;

@@ -17,6 +17,7 @@
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
+use rand::{CryptoRng, Rng};
 
 pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type BlockHash: Clone + Eq + FromBytes + ToBytes;
@@ -25,6 +26,11 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
 
     type Commitment: Clone + Eq + FromBytes + ToBytes;
     type SerialNumber: Clone + Eq + FromBytes + ToBytes;
+
+    type Address: Clone + Eq + FromBytes + ToBytes;
+
+    /// Initializes a new genesis block, with a coinbase transaction for the given recipient.
+    fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self>;
 
     /// Returns `true` if the block is well-formed.
     fn is_valid(&self) -> bool;

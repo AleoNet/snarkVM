@@ -14,11 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, BlockHeader, BlockScheme, BlockTransactions, Network, TransactionScheme};
+use crate::{
+    Address,
+    AleoAmount,
+    BlockHeader,
+    BlockScheme,
+    BlockTransactions,
+    DPCScheme,
+    LedgerProof,
+    Network,
+    StateTransition,
+    TransactionScheme,
+    DPC,
+};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use rand::{CryptoRng, Rng};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -32,11 +45,37 @@ pub struct Block<N: Network> {
 }
 
 impl<N: Network> BlockScheme for Block<N> {
+    type Address = Address<N>;
     type BlockHash = N::BlockHash;
     type Commitment = N::Commitment;
     type Header = BlockHeader<N>;
     type SerialNumber = N::SerialNumber;
     type Transactions = BlockTransactions<N>;
+
+    fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self> {
+        // Compute the coinbase transaction.
+        let transaction = {
+            let amount = Self::block_reward(0);
+            let state = StateTransition::new_coinbase(recipient, amount, rng)?;
+            let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
+            DPC::<N>::execute(authorization, state.executables(), &LedgerProof::default(), rng)?
+        };
+
+        // Compute the genesis block.
+        let transactions = BlockTransactions::from(&[transaction]);
+        let header = BlockHeader::new_genesis(&transactions, rng)?;
+        let block = Self {
+            previous_hash: Default::default(),
+            header,
+            transactions,
+        };
+
+        // Ensure the genesis block is valid.
+        match block.is_valid() {
+            true => Ok(block),
+            false => Err(anyhow!("Failed to initialize a genesis block")),
+        }
+    }
 
     /// Returns `true` if the block is well-formed.
     fn is_valid(&self) -> bool {
@@ -148,16 +187,24 @@ impl<N: Network> Block<N> {
     /// TODO (howardwu): CRITICAL - Update this with the correct emission schedule.
     ///
     pub fn block_reward(height: u32) -> AleoAmount {
-        let expected_blocks_per_hour: u32 = 180;
-        let num_years = 3;
-        let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
+        match height == 0 {
+            true => {
+                // Output the starting supply as the genesis block reward.
+                AleoAmount::from_bytes(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+            }
+            false => {
+                let expected_blocks_per_hour: u32 = 180;
+                let num_years = 3;
+                let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
 
-        // The block reward halves at most 2 times - minimum is 37.5 ALEO after 8 years.
-        let initial_reward = 150i64 * AleoAmount::COIN;
-        let num_halves = u32::min(height / block_segments, 2);
-        let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
+                // The block reward halves at most 2 times - minimum is 37.5 ALEO after 8 years.
+                let initial_reward = 150i64 * AleoAmount::ONE_CREDIT.0;
+                let num_halves = u32::min(height / block_segments, 2);
+                let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
-        AleoAmount::from_bytes(reward)
+                AleoAmount::from_bytes(reward)
+            }
+        }
     }
 }
 
@@ -188,11 +235,20 @@ impl<N: Network> ToBytes for Block<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testnet2::Testnet2;
+    use crate::{testnet2::Testnet2, Account, AccountScheme};
 
     use rand::{thread_rng, Rng};
 
     const ITERATIONS: usize = 1000;
+
+    #[test]
+    fn test_block_genesis() {
+        let rng = &mut thread_rng();
+
+        let account = Account::<Testnet2>::new(rng).unwrap();
+        let genesis_block = Block::<Testnet2>::new_genesis(*account.address(), rng).unwrap();
+        println!("{:?}", genesis_block);
+    }
 
     #[test]
     fn test_block_rewards() {
@@ -201,10 +257,16 @@ mod tests {
         let first_halving: u32 = 3 * 365 * 24 * 180;
         let second_halving: u32 = first_halving * 2;
 
-        let mut block_reward: i64 = 150 * 1_000_000;
+        // Genesis
+
+        assert_eq!(
+            Block::<Testnet2>::block_reward(0).0,
+            Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS
+        );
 
         // Before block halving
-        assert_eq!(Block::<Testnet2>::block_reward(0).0, block_reward);
+
+        let mut block_reward: i64 = 150 * 1_000_000;
 
         for _ in 0..ITERATIONS {
             let block_height: u32 = rng.gen_range(0..first_halving);

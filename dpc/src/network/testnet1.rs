@@ -84,7 +84,11 @@ impl Network for Testnet1 {
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const POSW_NUM_LEAVES: usize = 4;
     const POSW_TREE_DEPTH: usize = 2;
-
+    
+    const BLOCK_COINBASE_TX_COUNT: usize = 1;
+    
+    const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
+    
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     

@@ -76,15 +76,14 @@ pub struct BlockHeader<N: Network> {
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
     pub fn new<R: Rng + CryptoRng>(
-        transactions: &BlockTransactions<N>,
+        transactions_root: N::TransactionsRoot,
         commitments_root: N::CommitmentsRoot,
         serial_numbers_root: N::SerialNumbersRoot,
         block_height: u32,
         difficulty_target: u64,
         rng: &mut R,
     ) -> Result<Self> {
-        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
-        let transactions_root = transactions.to_transactions_root()?;
+        assert_ne!(transactions_root, Default::default(), "Cannot create an empty block");
 
         // Construct the candidate block metadata.
         let metadata = match block_height == 0 {
@@ -134,7 +133,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Compute the genesis block header.
         Self::new(
-            transactions,
+            transactions.to_transactions_root()?,
             *commitments_tree.root(),
             *serial_numbers_tree.root(),
             block_height,

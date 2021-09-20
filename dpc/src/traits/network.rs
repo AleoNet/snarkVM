@@ -51,6 +51,10 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     const POSW_PROOF_SIZE_IN_BYTES: usize;
     const POSW_NUM_LEAVES: usize;
     const POSW_TREE_DEPTH: usize;
+    
+    const BLOCK_COINBASE_TX_COUNT: usize;
+
+    const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
