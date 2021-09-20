@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeader, BlockScheme, BlockTransactions, Network};
+use crate::{AleoAmount, BlockHeader, BlockScheme, BlockTransactions, Network, TransactionScheme};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -41,7 +41,7 @@ impl<N: Network> BlockScheme for Block<N> {
     /// Returns `true` if the block is well-formed.
     fn is_valid(&self) -> bool {
         // Ensure the previous block hash is well-formed.
-        if self.header.height() == 0u32 {
+        if self.height() == 0u32 {
             if self.previous_hash != Default::default() {
                 eprintln!("Genesis block must have an empty previous block hash");
                 return false;
@@ -53,6 +53,51 @@ impl<N: Network> BlockScheme for Block<N> {
             }
         }
 
+        // Retrieve the coinbase transaction.
+        let coinbase_transaction = {
+            // Filter out all transactions with a positive value balance.
+            let coinbase_transaction: Vec<_> = self
+                .transactions
+                .iter()
+                .filter(|t| t.value_balance().is_negative())
+                .collect();
+
+            // Ensure there is exactly one coinbase transaction.
+            let num_coinbase = coinbase_transaction.len();
+            match num_coinbase == 1 {
+                true => coinbase_transaction[0],
+                false => {
+                    eprintln!("Block must have one coinbase transaction, found {}", num_coinbase);
+                    return false;
+                }
+            }
+        };
+
+        // Ensure the coinbase transaction contains a coinbase reward
+        // that is equal to or greater than the expected block reward.
+        let coinbase_reward = AleoAmount(0).sub(*coinbase_transaction.value_balance()); // Make it a positive number.
+        let block_reward = Self::block_reward(self.height());
+        if coinbase_reward < block_reward {
+            eprintln!("Coinbase reward must be >= {}, found {}", block_reward, coinbase_reward);
+            return false;
+        }
+
+        // Ensure the block reward is not overpaid.
+        match self.transactions.to_net_value_balance() {
+            Ok(net_value_balance) => {
+                let candidate_block_reward = AleoAmount(0).sub(net_value_balance); // Make it a positive number.
+                if candidate_block_reward > block_reward {
+                    eprintln!("Block reward must be <= {}", block_reward);
+                    return false;
+                }
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+                return false;
+            }
+        };
+
+        // Ensure the header and transactions are valid.
         self.header.is_valid() && self.transactions.is_valid()
     }
 
@@ -96,6 +141,26 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 }
 
+impl<N: Network> Block<N> {
+    ///
+    /// Returns the block reward for the given block height.
+    ///
+    /// TODO (howardwu): CRITICAL - Update this with the correct emission schedule.
+    ///
+    pub fn block_reward(height: u32) -> AleoAmount {
+        let expected_blocks_per_hour: u32 = 180;
+        let num_years = 3;
+        let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
+
+        // The block reward halves at most 2 times - minimum is 37.5 ALEO after 8 years.
+        let initial_reward = 150i64 * AleoAmount::COIN;
+        let num_halves = u32::min(height / block_segments, 2);
+        let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
+
+        AleoAmount::from_bytes(reward)
+    }
+}
+
 impl<N: Network> FromBytes for Block<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -117,5 +182,56 @@ impl<N: Network> ToBytes for Block<N> {
         self.previous_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
         self.transactions.write_le(&mut writer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+
+    use rand::{thread_rng, Rng};
+
+    const ITERATIONS: usize = 1000;
+
+    #[test]
+    fn test_block_rewards() {
+        let rng = &mut thread_rng();
+
+        let first_halving: u32 = 3 * 365 * 24 * 180;
+        let second_halving: u32 = first_halving * 2;
+
+        let mut block_reward: i64 = 150 * 1_000_000;
+
+        // Before block halving
+        assert_eq!(Block::<Testnet2>::block_reward(0).0, block_reward);
+
+        for _ in 0..ITERATIONS {
+            let block_height: u32 = rng.gen_range(0..first_halving);
+            assert_eq!(Block::<Testnet2>::block_reward(block_height).0, block_reward);
+        }
+
+        // First block halving
+
+        block_reward /= 2;
+
+        assert_eq!(Block::<Testnet2>::block_reward(first_halving).0, block_reward);
+
+        for _ in 0..ITERATIONS {
+            let block_num: u32 = rng.gen_range((first_halving + 1)..second_halving);
+            assert_eq!(Block::<Testnet2>::block_reward(block_num).0, block_reward);
+        }
+
+        // Second and final block halving
+
+        block_reward /= 2;
+
+        assert_eq!(Block::<Testnet2>::block_reward(second_halving).0, block_reward);
+        assert_eq!(Block::<Testnet2>::block_reward(u32::MAX).0, block_reward);
+
+        for _ in 0..ITERATIONS {
+            let block_num: u32 = rng.gen_range(second_halving..u32::MAX);
+            assert_eq!(Block::<Testnet2>::block_reward(block_num).0, block_reward);
+        }
     }
 }

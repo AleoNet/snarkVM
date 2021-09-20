@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Transaction, TransactionError, TransactionScheme};
+use crate::{AleoAmount, Network, Transaction, TransactionError, TransactionScheme};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{
     has_duplicates,
@@ -24,7 +24,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Deref, DerefMut},
@@ -45,9 +45,11 @@ impl<N: Network> BlockTransactions<N> {
         Self(transactions.to_vec())
     }
 
-    /// Initializes an empty list of transactions.
+    /// Adds the given transaction to the list of transactions, if it is valid.
     pub fn push(&mut self, transaction: Transaction<N>) {
-        self.0.push(transaction);
+        if transaction.is_valid() {
+            self.0.push(transaction);
+        }
     }
 
     /// Returns `true` if the transactions are well-formed.
@@ -124,6 +126,16 @@ impl<N: Network> BlockTransactions<N> {
     pub fn to_serial_numbers(&self) -> Result<Vec<<N as Network>::SerialNumber>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.serial_numbers()).flatten().cloned().collect())
+    }
+
+    /// Returns the net value balance, by summing the value balance from all transactions.
+    pub fn to_net_value_balance(&self) -> Result<AleoAmount> {
+        assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
+        self.0
+            .iter()
+            .map(|transaction| *transaction.value_balance())
+            .reduce(|a, b| a.add(b))
+            .ok_or(anyhow!("Failed to compute net value balance for block"))
     }
 
     /// Serializes the transactions into strings.
