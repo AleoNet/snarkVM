@@ -17,11 +17,8 @@
 pub mod block;
 pub use block::*;
 
-pub mod block_header;
-pub use block_header::*;
-
-pub mod posw;
-pub use posw::ProofOfSuccinctWork;
+pub mod header;
+pub use header::*;
 
 pub mod transactions;
 pub use transactions::*;

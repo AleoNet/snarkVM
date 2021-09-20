@@ -75,6 +75,20 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         let execution_timer = start_timer!(|| "DPC::execute");
 
+        // Construct the ledger witnesses.
+        let ledger_digest = ledger.latest_digest()?;
+
+        // Compute the ledger membership witnesses.
+        let mut input_witnesses = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for record in authorization.input_records.iter().take(N::NUM_INPUT_RECORDS) {
+            input_witnesses.push(match record.is_dummy() {
+                true => MerklePath::default(),
+                false => ledger.prove_cm(&record.commitment())?,
+            });
+        }
+
+        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
+
         // Generate the local data.
         let local_data = authorization.to_local_data(rng)?;
 
@@ -97,20 +111,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             output_records,
             signatures,
         } = authorization;
-
-        // Construct the ledger witnesses.
-        let ledger_digest = ledger.latest_digest()?;
-
-        // Compute the ledger membership witnesses.
-        let mut input_witnesses = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
-            input_witnesses.push(match record.is_dummy() {
-                true => MerklePath::default(),
-                false => ledger.prove_cm(&record.commitment())?,
-            });
-        }
-
-        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
 
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
