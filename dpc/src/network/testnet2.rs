@@ -208,6 +208,7 @@ impl Network for Testnet2 {
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
     type TransactionsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type TransactionsTreeParameters = MerkleTreeParameters<Self::TransactionsTreeCRH, 16>;
     type TransactionsRoot = <Self::TransactionsTreeCRH as CRH>::Output;
 
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
@@ -230,6 +231,7 @@ impl Network for Testnet2 {
     dpc_merkle!{Testnet2, serial_numbers_tree_parameters, SerialNumbersTreeParameters, serial_numbers_tree_crh}
     dpc_setup!{Testnet2, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet2, transactions_tree_crh, TransactionsTreeCRH, "AleoTransactionsTreeCRH0"}
+    dpc_merkle!{Testnet2, transactions_tree_parameters, TransactionsTreeParameters, transactions_tree_crh}
 
     dpc_snark_setup!{Testnet2, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}

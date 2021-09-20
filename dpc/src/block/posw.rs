@@ -42,11 +42,6 @@ use std::{
 pub struct ProofOfSuccinctWork<N: Network>(N::PoSWProof);
 
 impl<N: Network> ProofOfSuccinctWork<N> {
-    // pub fn new(proof: &[u8]) -> Self {
-    //     assert_eq!(proof.len(), Self::size());
-    //     Self(proof.to_vec(), PhantomData)
-    // }
-
     pub fn new(proof: N::PoSWProof) -> Self {
         Self(proof)
     }

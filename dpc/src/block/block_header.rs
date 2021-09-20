@@ -62,7 +62,7 @@ impl BlockHeaderMetadata {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockHeader<N: Network> {
     /// The Merkle root representing the transactions in the block - 32 bytes
-    pub transactions_root: MerkleRoot,
+    pub transactions_root: N::TransactionsRoot,
     /// The Merkle root representing the ledger commitments - 32 bytes
     pub commitments_root: N::CommitmentsRoot,
     /// The Merkle root representing the ledger serial numbers - 32 bytes
@@ -173,6 +173,11 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block header root.
     pub fn to_leaves(&self) -> Result<Vec<[u8; 32]>> {
+        let transactions_root_bytes = self.transactions_root.to_bytes_le()?;
+        assert_eq!(transactions_root_bytes.len(), 32);
+        let mut transactions_root = [0u8; 32];
+        transactions_root.copy_from_slice(&transactions_root_bytes);
+
         let commitments_root_bytes = self.commitments_root.to_bytes_le()?;
         assert_eq!(commitments_root_bytes.len(), 32);
         let mut commitments_root = [0u8; 32];
@@ -185,7 +190,7 @@ impl<N: Network> BlockHeader<N> {
 
         // TODO (howardwu): CRITICAL - Implement a (masked) Merkle tree for the block header.
         let mut leaves: Vec<[u8; 32]> = Vec::with_capacity(N::POSW_NUM_LEAVES);
-        leaves.push(self.transactions_root.0);
+        leaves.push(transactions_root);
         leaves.push(commitments_root);
         leaves.push(serial_numbers_root);
         leaves.push([0u8; 32]);
@@ -252,7 +257,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the header core variables.
-        let transactions_root = <[u8; 32]>::read_le(&mut reader)?;
+        let transactions_root = FromBytes::read_le(&mut reader)?;
         let commitments_root = FromBytes::read_le(&mut reader)?;
         let serial_numbers_root = FromBytes::read_le(&mut reader)?;
 
@@ -260,7 +265,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let nonce = <[u8; 4]>::read_le(&mut reader)?; // In this context, nonce must always be set.
+        let nonce = <[u8; 4]>::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata {
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
@@ -273,7 +278,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 
         // Construct the block header.
         let block_header = Self {
-            transactions_root: MerkleRoot(transactions_root),
+            transactions_root,
             commitments_root,
             serial_numbers_root,
             metadata,
@@ -298,7 +303,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         };
 
         // Write the header core variables.
-        self.transactions_root.0.write_le(&mut writer)?;
+        self.transactions_root.write_le(&mut writer)?;
         self.commitments_root.write_le(&mut writer)?;
         self.serial_numbers_root.write_le(&mut writer)?;
 
@@ -338,7 +343,7 @@ mod tests {
         assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.transactions_root, MerkleRoot([0u8; 32]));
+        assert_ne!(block_header.transactions_root, Default::default());
         assert_ne!(block_header.commitments_root, Default::default());
         assert_ne!(block_header.serial_numbers_root, Default::default());
     }

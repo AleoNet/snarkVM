@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{merkle_root, MerkleRoot, Network, Transaction, TransactionError, TransactionScheme};
+use crate::{Network, Transaction, TransactionError, TransactionScheme};
+use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{
     has_duplicates,
     to_bytes_le,
@@ -27,6 +28,7 @@ use anyhow::Result;
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -49,7 +51,7 @@ impl<N: Network> BlockTransactions<N> {
     }
 
     /// Returns the transactions root, by computing the root for a Merkle tree of the transactions.
-    pub fn to_transactions_root(&self) -> Result<MerkleRoot> {
+    pub fn to_transactions_root(&self) -> Result<N::TransactionsRoot> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         let transaction_ids = (*self)
             .iter()
@@ -63,8 +65,11 @@ impl<N: Network> BlockTransactions<N> {
             })
             .collect::<Result<Vec<[u8; 32]>>>()?;
 
-        let root = merkle_root(N::transactions_tree_crh(), &transaction_ids);
-        Ok(MerkleRoot::new(&root))
+        Ok(*MerkleTree::<N::TransactionsTreeParameters>::new(
+            Arc::new(N::transactions_tree_parameters().clone()),
+            &transaction_ids,
+        )?
+        .root())
     }
 
     /// Returns the commitments, by construction a flattened list of commitments from all transactions.

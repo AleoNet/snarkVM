@@ -179,6 +179,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     /// CRH scheme for computing the transactions root. Invoked only over `Self::InnerScalarField`.
     type TransactionsTreeCRH: CRH<Output = Self::TransactionsRoot>;
+    type TransactionsTreeParameters: LoadableMerkleParameters<H = Self::TransactionsTreeCRH>;
     type TransactionsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
@@ -202,6 +203,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
     fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
+    fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
     
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;

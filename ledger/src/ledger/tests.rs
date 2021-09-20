@@ -21,9 +21,9 @@ use snarkvm_parameters::{testnet2::Transaction1, traits::Genesis};
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Block {
-        previous_block_hash: Default::default(),
+        previous_hash: Default::default(),
         header: BlockHeader {
-            transactions_root: MerkleRoot([0u8; 32]),
+            transactions_root: Default::default(),
             commitments_root: Default::default(),
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
@@ -59,7 +59,7 @@ fn test_ledger_duplicate_transactions() {
     let transactions = BlockTransactions::from(&[transaction.clone(), transaction]);
 
     let genesis_block = Block {
-        previous_block_hash: Default::default(),
+        previous_hash: Default::default(),
         header: BlockHeader::new_genesis(&transactions).unwrap(),
         transactions,
     };

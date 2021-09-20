@@ -102,7 +102,7 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
     /// Returns the block given the block hash.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Self::Block> {
         Ok(Self::Block {
-            previous_block_hash: self.get_previous_block_hash(block_hash)?,
+            previous_hash: self.get_previous_block_hash(block_hash)?,
             header: self.get_block_header(block_hash)?,
             transactions: self.get_block_transactions(block_hash)?,
         })
@@ -397,7 +397,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_PREVIOUS_BLOCK_HASH,
             key: block_hash_bytes.to_vec(),
-            value: block.previous_block_hash.to_bytes_le()?,
+            value: block.previous_hash.to_bytes_le()?,
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_HEADER,

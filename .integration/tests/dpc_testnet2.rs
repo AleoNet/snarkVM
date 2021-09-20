@@ -40,9 +40,9 @@ fn dpc_testnet2_integration_test() {
 
     // Create a genesis block.
     let genesis_block = Block {
-        previous_block_hash: Default::default(),
+        previous_hash: Default::default(),
         header: BlockHeader {
-            transactions_root: MerkleRoot([0u8; 32]),
+            transactions_root: Default::default(),
             commitments_root: Default::default(),
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
@@ -123,7 +123,7 @@ fn dpc_testnet2_integration_test() {
     assert!(DPC::verify_transactions(&transactions.0, &ledger));
 
     let block = Block {
-        previous_block_hash: previous_block.to_hash().unwrap(),
+        previous_hash: previous_block.to_hash().unwrap(),
         header,
         transactions,
         proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
@@ -138,9 +138,9 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     let genesis_block = Block {
-        previous_block_hash: Default::default(),
+        previous_hash: Default::default(),
         header: BlockHeader {
-            transactions_root: MerkleRoot([0u8; 32]),
+            transactions_root: Default::default(),
             commitments_root: Default::default(),
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
