@@ -20,9 +20,6 @@ pub use block::*;
 pub mod block_header;
 pub use block_header::*;
 
-pub mod merkle_root;
-pub use merkle_root::*;
-
 pub mod posw;
 pub use posw::ProofOfSuccinctWork;
 

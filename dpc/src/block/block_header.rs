@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, BlockTransactions, MerkleRoot, Network, PoSWScheme, ProofOfSuccinctWork};
+use crate::{BlockError, BlockTransactions, Network, PoSWScheme, ProofOfSuccinctWork};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -237,7 +237,11 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block header size in bytes - 891 bytes.
     pub fn size() -> usize {
-        MerkleRoot::size() + MerkleRoot::size() + MerkleRoot::size() + BlockHeaderMetadata::size()
+        32 // TransactionsRoot
+            + 32 // CommitmentsRoot
+            + 32 // SerialNumbersRoot
+            + BlockHeaderMetadata::size()
+            + N::POSW_PROOF_SIZE_IN_BYTES
     }
 
     /// Sets the block header nonce to the given nonce.
