@@ -16,3 +16,6 @@
 
 pub mod commitments_tree;
 pub use commitments_tree::*;
+
+pub mod serial_numbers_tree;
+pub use serial_numbers_tree::*;

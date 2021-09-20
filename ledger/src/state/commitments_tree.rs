@@ -38,7 +38,7 @@ impl<N: Network> CommitmentsTree<N> {
     /// Initializes an empty commitments tree.
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tree: MerkleTree::<N::CommitmentsTreeParameters>::new::<N::ProgramCircuitID>(
+            tree: MerkleTree::<N::CommitmentsTreeParameters>::new::<N::Commitment>(
                 Arc::new(N::commitments_tree_parameters().clone()),
                 &vec![],
             )?,
@@ -47,7 +47,7 @@ impl<N: Network> CommitmentsTree<N> {
         })
     }
 
-    /// TODO (howardwu): Add safety checks for u32 (max 2^32 circuits).
+    /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds the given commitment to the tree, returning its index in the tree.
     pub fn add(&mut self, commitment: &N::Commitment) -> Result<u32> {
         // Ensure the commitment does not already exist in the tree.
@@ -57,13 +57,13 @@ impl<N: Network> CommitmentsTree<N> {
 
         self.tree = self.tree.rebuild(self.current_index as usize, &[commitment])?;
 
-        self.commitments.insert(commitment.clone(), self.current_index);
+        self.commitments.insert(*commitment, self.current_index);
 
         self.current_index += 1;
         Ok(self.current_index - 1)
     }
 
-    /// TODO (howardwu): Add safety checks for u32 (max 2^32 circuits).
+    /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
     pub fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u32, u32)> {
         // Ensure the list of given commitments is non-empty.
@@ -73,7 +73,7 @@ impl<N: Network> CommitmentsTree<N> {
 
         // Ensure the list of given commitments is unique.
         if has_duplicates(commitments.iter()) {
-            return Err(anyhow!("The list of given circuits contains duplicates"));
+            return Err(anyhow!("The list of given commitments contains duplicates"));
         }
 
         // Ensure the commitments do not already exist in the tree.
