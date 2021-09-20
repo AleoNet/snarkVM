@@ -55,9 +55,6 @@
 #![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
 
 #[macro_use]
-extern crate derivative;
-
-#[macro_use]
 extern crate thiserror;
 
 pub mod environment;

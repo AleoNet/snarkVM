@@ -130,7 +130,47 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
     }
 }
 
-impl<N: Network, S: Storage> CommitmentsTree<N> for Ledger<N, S> {
+// impl<N: Network, S: Storage> CommitmentsTree<N> for Ledger<N, S> {
+//     /// Return the latest state root of the ledger commitments tree.
+//     fn latest_digest(&self) -> Result<<N as Network>::CommitmentsRoot> {
+//         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
+//             Some(current_digest) => current_digest,
+//             None => to_bytes_le![self.commitments_tree.read().root()]?,
+//         };
+//         Ok(FromBytes::read_le(digest.as_slice())?)
+//     }
+//
+//     /// Check that st_{ts} is a valid digest for some (past) ledger state.
+//     fn is_valid_digest(&self, digest: &<N as Network>::CommitmentsRoot) -> bool {
+//         self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
+//     }
+//
+//     /// Returns true if the given commitment exists in the ledger.
+//     fn contains_commitment(&self, commitment: &<N as Network>::Commitment) -> bool {
+//         self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
+//     }
+//
+//     /// Returns the Merkle path to the latest ledger digest for a given commitment, if it exists in the ledger.
+//     fn prove_cm(
+//         &self,
+//         cm: &<N as Network>::Commitment,
+//     ) -> Result<MerklePath<<N as Network>::CommitmentsTreeParameters>> {
+//         let cm_index = self
+//             .get_cm_index(&cm.to_bytes_le()?)?
+//             .ok_or(LedgerError::InvalidCmIndex)?;
+//         Ok(self.commitments_tree.read().generate_proof(cm_index, cm)?)
+//     }
+// }
+//
+// impl<N: Network, S: Storage> SerialNumbersTree<N> for Ledger<N, S> {
+//     /// Returns true if the given serial number exists in the ledger.
+//     fn contains_serial_number(&self, serial_number: &<N as Network>::SerialNumber) -> bool {
+//         self.storage
+//             .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
+//     }
+// }
+
+impl<N: Network, S: Storage> Ledger<N, S> {
     /// Return the latest state root of the ledger commitments tree.
     fn latest_digest(&self) -> Result<<N as Network>::CommitmentsRoot> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
@@ -140,37 +180,6 @@ impl<N: Network, S: Storage> CommitmentsTree<N> for Ledger<N, S> {
         Ok(FromBytes::read_le(digest.as_slice())?)
     }
 
-    /// Check that st_{ts} is a valid digest for some (past) ledger state.
-    fn is_valid_digest(&self, digest: &<N as Network>::CommitmentsRoot) -> bool {
-        self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
-    }
-
-    /// Returns true if the given commitment exists in the ledger.
-    fn contains_commitment(&self, commitment: &<N as Network>::Commitment) -> bool {
-        self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
-    }
-
-    /// Returns the Merkle path to the latest ledger digest for a given commitment, if it exists in the ledger.
-    fn prove_cm(
-        &self,
-        cm: &<N as Network>::Commitment,
-    ) -> Result<MerklePath<<N as Network>::CommitmentsTreeParameters>> {
-        let cm_index = self
-            .get_cm_index(&cm.to_bytes_le()?)?
-            .ok_or(LedgerError::InvalidCmIndex)?;
-        Ok(self.commitments_tree.read().generate_proof(cm_index, cm)?)
-    }
-}
-
-impl<N: Network, S: Storage> SerialNumbersTree<N> for Ledger<N, S> {
-    /// Returns true if the given serial number exists in the ledger.
-    fn contains_serial_number(&self, serial_number: &<N as Network>::SerialNumber) -> bool {
-        self.storage
-            .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
-    }
-}
-
-impl<N: Network, S: Storage> Ledger<N, S> {
     /// Get the previous block hash given the block hash.
     pub fn get_previous_block_hash(&self, block_hash: &N::BlockHash) -> Result<N::BlockHash, StorageError> {
         match self

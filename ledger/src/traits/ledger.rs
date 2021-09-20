@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{BlockScheme, CommitmentsTree, Network, SerialNumbersTree};
+use snarkvm_dpc::{BlockScheme, Network};
 
 use anyhow::Result;
 use std::path::Path;
 
-pub trait LedgerScheme<N: Network>: CommitmentsTree<N> + SerialNumbersTree<N> + Sized {
+pub trait LedgerScheme<N: Network>: Sized {
     type Block: BlockScheme;
 
     /// Instantiates a new ledger with a genesis block.
