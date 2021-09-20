@@ -190,7 +190,7 @@ impl Network for Testnet1 {
     type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 32>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
-    type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 62>;
+    type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 63>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
     type TransactionsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;

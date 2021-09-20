@@ -27,8 +27,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        248, 38, 233, 209, 152, 143, 211, 182, 12, 9, 67, 81, 141, 63, 83, 73, 202, 36, 42, 241, 145, 34, 232, 155, 99,
-        85, 212, 0, 242, 37, 246, 65, 110, 96, 43, 131, 129, 55, 252, 114, 227, 62, 168, 22, 183, 193, 178, 0,
+        99, 86, 177, 42, 94, 11, 132, 107, 25, 235, 100, 165, 114, 113, 10, 152, 76, 21, 204, 14, 203, 192, 14, 11,
+        110, 36, 178, 96, 7, 68, 177, 232, 65, 137, 72, 210, 134, 104, 29, 130, 107, 198, 37, 149, 239, 116, 124, 0,
     ];
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -183,7 +183,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(283473, num_constraints);
+    assert_eq!(283483, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());

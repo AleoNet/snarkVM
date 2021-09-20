@@ -121,8 +121,12 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
         match proof.to_bytes_le() {
             Ok(proof) => {
                 let hash_difficulty = sha256d_to_u64(&proof);
-                if hash_difficulty <= block_header.difficulty_target() {
-                    eprintln!("PoSW difficulty target is not met");
+                if hash_difficulty > block_header.difficulty_target() {
+                    eprintln!(
+                        "PoSW difficulty target is not met. Expected {}, found {}",
+                        block_header.difficulty_target(),
+                        hash_difficulty
+                    );
                     return false;
                 }
             }

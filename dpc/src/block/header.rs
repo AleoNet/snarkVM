@@ -164,8 +164,6 @@ impl<N: Network> BlockHeader<N> {
             && self.metadata.timestamp == 0i64
             // Ensure the difficulty target in the genesis block is u64::MAX.
             && self.metadata.difficulty_target == u64::MAX
-            // Ensure the nonce is set to u32::MAX.
-            && self.metadata.nonce == u32::MAX
             // Ensure the PoSW proof is valid.
             && N::posw().verify(&self)
     }
