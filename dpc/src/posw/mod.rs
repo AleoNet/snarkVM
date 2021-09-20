@@ -18,8 +18,4 @@ pub mod circuit;
 pub use circuit::*;
 
 mod posw;
-use posw::PoSW;
-
-/// PoSW instantiated over BLS12-377 with Marlin.
-/// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
-pub type PoswMarlin<N> = PoSW<N, 32>;
+pub(crate) use posw::PoSW;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{posw::PoswMarlin, BlockError, BlockTransactions, MerkleRoot, Network, ProofOfSuccinctWork};
+use crate::{BlockError, BlockTransactions, MerkleRoot, Network, PoSWScheme, ProofOfSuccinctWork};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -107,10 +107,8 @@ impl<N: Network> BlockHeader<N> {
         };
         debug_assert!(!block_header.is_valid(), "Block header with a missing proof is invalid");
 
-        // TODO (howardwu): TEMPORARY - Make this a static once_cell.
         // Mine the block.
-        let posw = PoswMarlin::<N>::load(true)?;
-        posw.mine(&mut block_header, rng)?;
+        N::posw().mine(&mut block_header, rng)?;
 
         // Ensure the block header is valid.
         match block_header.is_valid() {
@@ -145,11 +143,22 @@ impl<N: Network> BlockHeader<N> {
         )
     }
 
+    /// Returns `true` if the block header is well-formed.
+    pub fn is_valid(&self) -> bool {
+        match self.metadata.height == 0u32 {
+            true => self.is_genesis(),
+            false => {
+                // TODO (howardwu): CRITICAL - Fill in after refactor is complete.
+                // Ensure the timestamp in the block is greater than 0.
+                self.metadata.timestamp > 0i64
+                    // Ensure the PoSW proof is valid.
+                    && N::posw().verify(&self)
+            }
+        }
+    }
+
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
-        // TODO (howardwu): TEMPORARY - Make this a static once_cell.
-        let posw = PoswMarlin::<N>::load(true).unwrap();
-
         // Ensure the height in the genesis block is 0.
         self.metadata.height == 0u32
             // Ensure the timestamp in the genesis block is 0.
@@ -159,24 +168,7 @@ impl<N: Network> BlockHeader<N> {
             // Ensure the nonce is set to u32::MAX.
             && self.metadata.nonce == u32::MAX
             // Ensure the PoSW proof is valid.
-            && posw.verify(&self)
-    }
-
-    /// Returns `true` if the block header is well-formed.
-    pub fn is_valid(&self) -> bool {
-        match self.metadata.height == 0u32 {
-            true => self.is_genesis(),
-            false => {
-                // TODO (howardwu): TEMPORARY - Make this a static once_cell.
-                let posw = PoswMarlin::<N>::load(true).unwrap();
-
-                // TODO (howardwu): CRITICAL - Fill in after refactor is complete.
-                // Ensure the timestamp in the block is greater than 0.
-                self.metadata.timestamp > 0i64
-                    // Ensure the PoSW proof is valid.
-                    && posw.verify(&self)
-            }
-        }
+            && N::posw().verify(&self)
     }
 
     /// Returns the block header root.

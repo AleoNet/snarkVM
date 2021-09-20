@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPublicVariables, NoopProgram, OuterPublicVariables, PublicVariables};
+use crate::{InnerPublicVariables, NoopProgram, OuterPublicVariables, PoSWScheme, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -83,7 +83,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     /// SNARK for PoSW.
     type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, Proof = Self::PoSWProof, UniversalSetupConfig = usize>;
     type PoSWProof: Clone + Debug + ToBytes + FromBytes + Serialize + PartialEq + Eq + Sync + Send;
-
+    type PoSW: PoSWScheme<Self>;
+    
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
@@ -213,7 +214,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     fn outer_circuit_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
     fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
-
+    
+    fn posw() -> &'static Self::PoSW;
+    
     /// Returns the program circuit ID given a program circuit verifying key.
     fn program_circuit_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,

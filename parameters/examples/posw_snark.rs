@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{crh::sha256, SNARK, SRS};
 use snarkvm_curves::PairingEngine;
-use snarkvm_dpc::{errors::DPCError, posw::PoswMarlin, testnet1::Testnet1, testnet2::Testnet2, Network};
+use snarkvm_dpc::{errors::DPCError, testnet1::Testnet1, testnet2::Testnet2, Network, PoSWScheme};
 use snarkvm_marlin::{
     ahp::AHPForR1CS,
     constraints::snark::MarlinSNARK,
@@ -51,17 +51,17 @@ pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
     let srs_bytes = universal_srs.to_bytes_le()?;
-    let posw_snark = PoswMarlin::<N>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
+    let posw = <N::PoSW as PoSWScheme<N>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
         &FromBytes::read_le(&srs_bytes[..]).unwrap(),
     ))
     .expect("could not setup params");
 
-    let posw_snark_pk = posw_snark
+    let posw_snark_pk = posw
         .proving_key()
         .as_ref()
         .expect("posw_snark_pk should be populated")
         .to_bytes_le()?;
-    let posw_snark_vk = posw_snark.verifying_key().to_bytes_le()?;
+    let posw_snark_vk = posw.verifying_key().to_bytes_le()?;
 
     println!("posw_snark_pk.params\n\tsize - {}", posw_snark_pk.len());
     println!("posw_snark_vk.params\n\tsize - {}", posw_snark_vk.len());

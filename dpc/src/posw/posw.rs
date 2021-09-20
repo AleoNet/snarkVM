@@ -16,7 +16,7 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::PoSWCircuit, BlockHeader, Network, PoswError};
+use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
@@ -38,9 +38,9 @@ pub struct PoSW<N: Network, const MASK_NUM_BYTES: usize> {
     verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
+impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM_BYTES> {
     /// Sets up an instance of PoSW using an SRS.
-    pub fn setup<R: Rng + CryptoRng>(
+    fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoswSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError> {
         let (proving_key, verifying_key) =
@@ -53,7 +53,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     }
 
     /// Loads an instance of PoSW using stored parameters.
-    pub fn load(is_prover: bool) -> Result<Self, PoswError> {
+    fn load(is_prover: bool) -> Result<Self, PoswError> {
         let pk = match is_prover {
             true => Some(<<N as Network>::PoswSNARK as SNARK>::ProvingKey::read_le(
                 &PoswSNARKPKParameters::load_bytes()?[..],
@@ -70,18 +70,18 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     }
 
     /// Returns a reference to the PoSW circuit proving key.
-    pub fn proving_key(&self) -> &Option<<N::PoswSNARK as SNARK>::ProvingKey> {
+    fn proving_key(&self) -> &Option<<N::PoswSNARK as SNARK>::ProvingKey> {
         &self.proving_key
     }
 
     /// Returns a reference to the PoSW circuit verifying key.
-    pub fn verifying_key(&self) -> &<N::PoswSNARK as SNARK>::VerifyingKey {
+    fn verifying_key(&self) -> &<N::PoswSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
     }
 
     /// Given the leaves of the block header, it will calculate a PoSW and nonce
     /// such that they are under the difficulty target.
-    pub fn mine<R: Rng + CryptoRng>(&self, block_header: &mut BlockHeader<N>, rng: &mut R) -> Result<(), PoswError> {
+    fn mine<R: Rng + CryptoRng>(&self, block_header: &mut BlockHeader<N>, rng: &mut R) -> Result<(), PoswError> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
         loop {
@@ -107,7 +107,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
-    pub fn verify(&self, block_header: &BlockHeader<N>) -> bool {
+    fn verify(&self, block_header: &BlockHeader<N>) -> bool {
         // Retrieve the proof.
         let proof = match block_header.proof() {
             Some(proof) => proof,
@@ -163,7 +163,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSW<N, MASK_NUM_BYTES> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{posw::PoswMarlin, testnet2::Testnet2, BlockHeader, BlockTransactions, Network, Transaction};
+    use crate::{testnet2::Testnet2, BlockHeader, BlockTransactions, Network, PoSWScheme, Transaction};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
     use snarkvm_parameters::{testnet2::Transaction1, Genesis};
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_load() {
-        let _params = PoswMarlin::<Testnet2>::load(true).unwrap();
+        let _params = <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::load(true).unwrap();
     }
 
     #[test]
@@ -184,7 +184,10 @@ mod tests {
                 AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
             let universal_srs =
                 <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
-            PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
+            <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
+                &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
+            )
+            .unwrap()
         };
 
         // Construct an assigned circuit.
@@ -211,7 +214,10 @@ mod tests {
                 AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
             let universal_srs =
                 <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
-            PoswMarlin::<Testnet2>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
+            <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
+                &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
+            )
+            .unwrap()
         };
 
         // Construct an assigned circuit.

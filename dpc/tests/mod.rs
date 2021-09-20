@@ -17,12 +17,12 @@
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::{
-    posw::{PoSWCircuit, PoswMarlin},
     testnet1::Testnet1,
     testnet2::Testnet2,
     BlockHeader,
     BlockTransactions,
     Network,
+    PoSWScheme,
     Transaction,
 };
 use snarkvm_parameters::{testnet2::Transaction1, Genesis};
@@ -34,22 +34,19 @@ use rand::{rngs::ThreadRng, thread_rng};
 fn test_posw_load_and_mine() {
     let rng = &mut thread_rng();
 
-    // Load the PoSW Marlin parameters.
-    let posw = PoswMarlin::<Testnet2>::load(true).unwrap();
-
     // Construct an assigned circuit.
     let mut block_header = BlockHeader::<Testnet2>::new_genesis(
         &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
-        &mut thread_rng(),
+        rng,
     )
     .unwrap();
 
-    posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+    Testnet2::posw().mine(&mut block_header, rng).unwrap();
     assert_eq!(
         block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
         Testnet2::POSW_PROOF_SIZE_IN_BYTES
     ); // NOTE: Marlin proofs use compressed serialization
-    assert!(posw.verify(&block_header));
+    assert!(Testnet2::posw().verify(&block_header));
 }
 
 /// TODO (howardwu): Update this when testnet2 is live.
@@ -83,16 +80,19 @@ fn test_posw_verify_testnet1() {
 
 #[test]
 fn test_posw_setup_vs_load_weak_sanity_check() {
-    let generated_posw: PoswMarlin<Testnet2> = {
+    let generated_posw: <Testnet2 as Network>::PoSW = {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoswSNARK::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
-        PoswMarlin::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(&universal_srs)).unwrap()
+        <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
+            &universal_srs,
+        ))
+        .unwrap()
     };
-    let loaded_posw: PoswMarlin<Testnet2> = PoswMarlin::load(true).unwrap();
+    let loaded_posw = Testnet2::posw().clone();
 
     let generated_proving_key = generated_posw.proving_key().as_ref().unwrap();
     let loaded_proving_key = loaded_posw.proving_key().as_ref().unwrap();

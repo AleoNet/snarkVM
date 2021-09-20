@@ -16,10 +16,12 @@
 
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
+    posw::PoSW,
     InnerPublicVariables,
     Network,
     NoopProgram,
     OuterPublicVariables,
+    PoSWScheme,
     PublicVariables,
 };
 use snarkvm_algorithms::{
@@ -114,6 +116,7 @@ impl Network for Testnet1 {
         Vec<Self::InnerScalarField>,
     >;
     type PoSWProof = <Self::PoswSNARK as SNARK>::Proof;
+    type PoSW = PoSW<Self, 32>;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
@@ -234,6 +237,11 @@ impl Network for Testnet1 {
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
         static NOOP_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::ProgramCircuitID> = OnceCell::new();
         NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
+    }
+
+    fn posw() -> &'static Self::PoSW {
+        static POSW: OnceCell<<Testnet1 as Network>::PoSW> = OnceCell::new();
+        POSW.get_or_init(|| <Self::PoSW as PoSWScheme<Self>>::load(true).expect("Failed to load PoSW"))        
     }
 
     /// Returns the program SRS for Aleo applications.
