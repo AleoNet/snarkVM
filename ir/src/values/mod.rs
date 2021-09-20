@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::TryFrom;
 use std::fmt;
 
 use crate::{ir, Type};
@@ -39,6 +40,19 @@ pub enum Integer {
     I32(i32),
     I64(i64),
     I128(i128),
+}
+
+impl Integer {
+    pub fn get_unsigned(&self) -> u32 {
+        match self {
+            Self::U8(n) => *n as u32,
+            Self::U16(n) => *n as u32,
+            Self::U32(n) => *n,
+            Self::U64(n) => u32::try_from(*n).unwrap_or_else(|e| panic!("{}: {:?}", e, self)),
+            Self::U128(n) => u32::try_from(*n).unwrap_or_else(|e| panic!("{}: {:?}", e, self)),
+            _ => panic!("cant get u32 from signed int {:?}", self),
+        }
+    }
 }
 
 impl fmt::Display for Integer {
