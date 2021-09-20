@@ -23,6 +23,12 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Header: Clone + Eq + FromBytes + ToBytes;
     type Transactions: Clone + Eq + FromBytes + ToBytes;
 
+    type Commitment: Clone + Eq + FromBytes + ToBytes;
+    type SerialNumber: Clone + Eq + FromBytes + ToBytes;
+
+    /// Returns `true` if the block is well-formed.
+    fn is_valid(&self) -> bool;
+
     /// Returns the previous block hash.
     fn previous_hash(&self) -> &Self::BlockHash;
 
@@ -32,6 +38,15 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     /// Returns the transactions.
     fn transactions(&self) -> &Self::Transactions;
 
+    /// Returns the block height.
+    fn height(&self) -> u32;
+
     /// Returns the hash of this block.
-    fn to_hash(&self) -> Result<Self::BlockHash>;
+    fn to_block_hash(&self) -> Result<Self::BlockHash>;
+
+    /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
+    fn to_commitments(&self) -> Result<Vec<Self::Commitment>>;
+
+    /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
+    fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>>;
 }

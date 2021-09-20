@@ -361,13 +361,13 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         }
 
         // Check that the block does not already exist.
-        let block_hash = block.to_hash()?;
+        let block_hash = block.to_block_hash()?;
         if self.contains_block_hash(&block_hash) {
             return Err(BlockError::BlockExists(block_hash.to_string()).into());
         }
 
         // Ensure there is no conflicting serial number or commitment in the block transactions.
-        if block.transactions.conflict_exists() {
+        if !block.transactions.is_valid() {
             return Err(StorageError::ConflictingTransactions);
         }
 
@@ -431,13 +431,13 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         }
 
         // Ensure the block is not already in the canon chain.
-        let block_hash = block.to_hash()?;
+        let block_hash = block.to_block_hash()?;
         if self.is_canon(&block_hash) {
             return Err(StorageError::ExistingCanonBlock(block_hash.to_string()));
         }
 
         // Ensure there is no conflicting serial number or commitment in the block transactions.
-        if block.transactions.conflict_exists() {
+        if !block.transactions.is_valid() {
             return Err(StorageError::ConflictingTransactions);
         }
 
@@ -537,7 +537,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
     /// Insert a block into the storage and commit as part of the longest chain.
     pub fn insert_and_commit(&self, block: &Block<N>) -> Result<(), StorageError> {
-        let block_hash = block.to_hash()?;
+        let block_hash = block.to_block_hash()?;
 
         // If the block does not exist in the storage
         if !self.contains_block_hash(&block_hash) {

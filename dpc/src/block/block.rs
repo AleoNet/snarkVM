@@ -33,8 +33,28 @@ pub struct Block<N: Network> {
 
 impl<N: Network> BlockScheme for Block<N> {
     type BlockHash = N::BlockHash;
+    type Commitment = N::Commitment;
     type Header = BlockHeader<N>;
+    type SerialNumber = N::SerialNumber;
     type Transactions = BlockTransactions<N>;
+
+    /// Returns `true` if the block is well-formed.
+    fn is_valid(&self) -> bool {
+        // Ensure the previous block hash is well-formed.
+        if self.header.height() == 0u32 {
+            if self.previous_hash != Default::default() {
+                eprintln!("Genesis block must have an empty previous block hash");
+                return false;
+            }
+        } else {
+            if self.previous_hash == Default::default() {
+                eprintln!("Block must have a non-empty previous block hash");
+                return false;
+            }
+        }
+
+        self.header.is_valid() && self.transactions.is_valid()
+    }
 
     /// Returns the previous block hash.
     fn previous_hash(&self) -> &Self::BlockHash {
@@ -51,13 +71,28 @@ impl<N: Network> BlockScheme for Block<N> {
         &self.transactions
     }
 
+    /// Returns the block height.
+    fn height(&self) -> u32 {
+        self.header.height()
+    }
+
     /// Returns the hash of this block.
-    fn to_hash(&self) -> Result<Self::BlockHash> {
+    fn to_block_hash(&self) -> Result<Self::BlockHash> {
         // Construct the preimage.
         let mut preimage = self.previous_hash.to_bytes_le()?;
         preimage.extend_from_slice(&self.header.to_root()?.to_bytes_le()?);
 
         Ok(N::block_hash_crh().hash(&preimage)?)
+    }
+
+    /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
+    fn to_commitments(&self) -> Result<Vec<Self::Commitment>> {
+        self.transactions.to_commitments()
+    }
+
+    /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
+    fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>> {
+        self.transactions.to_serial_numbers()
     }
 }
 

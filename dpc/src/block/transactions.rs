@@ -50,6 +50,48 @@ impl<N: Network> BlockTransactions<N> {
         self.0.push(transaction);
     }
 
+    /// Returns `true` if the transactions are well-formed.
+    pub fn is_valid(&self) -> bool {
+        // TODO (howardwu): This check can be parallelized for performance improvement.
+        // Ensure each transaction is well-formed.
+        for transaction in &self.0 {
+            if !transaction.is_valid() {
+                eprintln!("Invalid transaction found in the transactions list");
+                return false;
+            }
+        }
+
+        // Ensure there are no duplicate serial numbers.
+        match self.to_serial_numbers() {
+            Ok(serial_numbers) => {
+                if has_duplicates(serial_numbers) {
+                    eprintln!("Found duplicate serial numbers in the transactions");
+                    return false;
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to retrieve serial numbers from the transactions: {}", error);
+                return false;
+            }
+        };
+
+        // Ensure there are no duplicate commitments.
+        match self.to_commitments() {
+            Ok(commitments) => {
+                if has_duplicates(commitments) {
+                    eprintln!("Found duplicate commitments in the transactions");
+                    return false;
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to retrieve commitments from the transactions: {}", error);
+                return false;
+            }
+        };
+
+        true
+    }
+
     /// Returns the transactions root, by computing the root for a Merkle tree of the transactions.
     pub fn to_transactions_root(&self) -> Result<N::TransactionsRoot> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
@@ -72,13 +114,13 @@ impl<N: Network> BlockTransactions<N> {
         .root())
     }
 
-    /// Returns the commitments, by construction a flattened list of commitments from all transactions.
+    /// Returns the commitments, by constructing a flattened list of commitments from all transactions.
     pub fn to_commitments(&self) -> Result<Vec<<N as Network>::Commitment>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.commitments()).flatten().cloned().collect())
     }
 
-    /// Returns the serial numbers, by construction a flattened list of serial numbers from all transactions.
+    /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
     pub fn to_serial_numbers(&self) -> Result<Vec<<N as Network>::SerialNumber>> {
         assert!(!self.0.is_empty(), "Cannot process an empty list of transactions");
         Ok(self.0.iter().map(|tx| tx.serial_numbers()).flatten().cloned().collect())
@@ -90,30 +132,6 @@ impl<N: Network> BlockTransactions<N> {
             .iter()
             .map(|transaction| -> Result<String, TransactionError> { Ok(hex::encode(to_bytes_le![transaction]?)) })
             .collect::<Result<Vec<String>, TransactionError>>()
-    }
-
-    /// Returns `true` if there is a conflicting serial number or commitment in the transactions.
-    #[deprecated]
-    pub fn conflict_exists(&self) -> bool {
-        let mut serial_numbers: Vec<N::SerialNumber> = vec![];
-        let mut commitments: Vec<N::Commitment> = vec![];
-
-        for tx in &self.0 {
-            serial_numbers.extend(tx.serial_numbers());
-            commitments.extend(tx.commitments());
-        }
-
-        // Check if the transactions in the block have duplicate serial numbers
-        if has_duplicates(serial_numbers) {
-            return true;
-        }
-
-        // Check if the transactions in the block have duplicate commitments
-        if has_duplicates(commitments) {
-            return true;
-        }
-
-        false
     }
 }
 

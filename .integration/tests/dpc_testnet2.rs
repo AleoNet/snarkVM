@@ -123,7 +123,7 @@ fn dpc_testnet2_integration_test() {
     assert!(DPC::verify_transactions(&transactions.0, &ledger));
 
     let block = Block {
-        previous_hash: previous_block.to_hash().unwrap(),
+        previous_hash: previous_block.to_block_hash().unwrap(),
         header,
         transactions,
         proof: ProofOfSuccinctWork::new(&vec![0u8; ProofOfSuccinctWork::<Testnet2>::size()]),
