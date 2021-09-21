@@ -19,7 +19,7 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -27,8 +27,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        207, 249, 81, 218, 7, 40, 196, 252, 216, 43, 76, 140, 255, 180, 215, 169, 183, 186, 20, 134, 150, 161, 32, 234,
-        238, 85, 157, 181, 217, 10, 96, 147, 32, 185, 138, 155, 143, 3, 103, 135, 26, 170, 84, 60, 182, 46, 223, 0,
+        126, 111, 139, 25, 71, 200, 187, 91, 53, 148, 135, 104, 35, 224, 153, 158, 31, 65, 204, 37, 107, 242, 142, 41,
+        226, 82, 131, 66, 67, 140, 190, 114, 171, 251, 252, 230, 249, 206, 124, 159, 3, 72, 126, 95, 197, 250, 48, 0,
     ];
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -36,60 +36,63 @@ fn test_testnet2_inner_circuit_id_sanity_check() {
 
 #[test]
 fn dpc_testnet2_integration_test() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+    let mut rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     // Create a genesis block.
-    let recipient = Account::new(&mut rng).unwrap();
-    let genesis_block = Block::<Testnet2>::new_genesis(*recipient.address(), &mut rng).unwrap();
+    let recipient = Account::new(rng).unwrap();
+    let genesis_block = Block::<Testnet2>::new_genesis(recipient.address(), rng).unwrap();
     let coinbase_transaction = genesis_block.to_coinbase_transaction().unwrap();
 
     let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block).unwrap();
 
-    // Check that the transaction is serialized and deserialized correctly
-    let transaction_bytes = to_bytes_le![coinbase_transaction].unwrap();
+    // Check that the coinbase transaction is serialized and deserialized correctly.
+    let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
     let recovered_transaction = Transaction::<Testnet2>::read_le(&transaction_bytes[..]).unwrap();
     assert_eq!(coinbase_transaction, recovered_transaction);
 
-    // // Check that new_records can be decrypted from the transaction
-    // {
-    //     let encrypted_records = transaction.encrypted_records();
-    //     let new_account_private_keys = vec![recipient.private_key(); Testnet2::NUM_OUTPUT_RECORDS];
-    //
-    //     for ((encrypted_record, private_key), new_record) in
-    //         encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
-    //     {
-    //         let account_view_key = ViewKey::from_private_key(&private_key).unwrap();
-    //         let decrypted_record = encrypted_record.decrypt(&account_view_key).unwrap();
-    //         assert_eq!(decrypted_record, new_record);
-    //     }
-    // }
+    // Check that coinbase record can be decrypted from the transaction.
+    let encrypted_record = &coinbase_transaction.encrypted_records()[0];
+    let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
+    let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
+    assert_eq!(decrypted_record.owner(), recipient.address());
+    assert_eq!(decrypted_record.value() as i64, Block::<Testnet2>::block_reward(0).0);
 
-    // Craft the block
-
+    // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
+    let previous_hash = previous_block.to_block_hash().unwrap();
+    let block_height = previous_block.header.height() + 1;
+    assert_eq!(block_height, 1);
 
-    let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
+    // Construct the new block transactions.
+    let amount = Block::<Testnet2>::block_reward(block_height);
+    let transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, rng).unwrap();
+    let transactions = Transactions::from(&[transaction]).unwrap();
+    let transactions_root = transactions.to_transactions_root().unwrap();
 
-    // Construct new_serial_numbers_tree
+    // Construct the new serial numbers root.
     let transaction_serial_numbers = transactions.to_serial_numbers().unwrap();
     let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
+    let serial_numbers_root = *new_serial_numbers_tree.root();
 
-    // Construct new_commitments_tree
+    // Construct the new commitments root.
     let transaction_commitments = transactions.to_commitments().unwrap();
     let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
+    let commitments_root = *new_commitments_tree.root();
 
+    // Construct the new block header.
     let header = BlockHeader::new(
-        previous_block.header.height() + 1,
+        block_height,
         previous_block.header.difficulty_target(),
-        transactions.to_transactions_root().unwrap(),
-        *new_serial_numbers_tree.root(),
-        *new_commitments_tree.root(),
+        transactions_root,
+        serial_numbers_root,
+        commitments_root,
         &mut rng,
     )
     .unwrap();
 
+    // Construct the new block.
     let block = Block {
-        previous_hash: previous_block.to_block_hash().unwrap(),
+        previous_hash,
         header,
         transactions,
     };

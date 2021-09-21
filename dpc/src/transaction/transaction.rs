@@ -16,13 +16,18 @@
 
 use crate::{
     record::*,
+    Address,
     AleoAmount,
+    DPCScheme,
+    LedgerProof,
     Memo,
     Network,
     OuterPublicVariables,
+    StateTransition,
     TransactionKernel,
     TransactionMetadata,
     TransactionScheme,
+    DPC,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -31,6 +36,7 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
+use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -55,6 +61,13 @@ pub struct Transaction<N: Network> {
 }
 
 impl<N: Network> Transaction<N> {
+    /// Initializes a new coinbase transaction.
+    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
+        let state = StateTransition::new_coinbase(recipient, amount, rng)?;
+        let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
+        DPC::<N>::execute(authorization, state.executables(), &LedgerProof::default(), rng)
+    }
+
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<N>,

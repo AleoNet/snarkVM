@@ -17,8 +17,6 @@
 use crate::{ledger::*, prelude::*};
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
-use rand::thread_rng;
-
 #[test]
 fn test_new_ledger_with_genesis_block() {
     let genesis_block = Testnet2::genesis_block();

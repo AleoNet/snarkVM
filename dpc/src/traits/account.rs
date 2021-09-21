@@ -30,5 +30,5 @@ pub trait AccountScheme: Sized {
     fn private_key(&self) -> &Self::PrivateKey;
 
     /// Returns a reference to the address.
-    fn address(&self) -> &Self::Address;
+    fn address(&self) -> Self::Address;
 }

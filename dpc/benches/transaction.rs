@@ -22,33 +22,28 @@ use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use criterion::Criterion;
 use rand::thread_rng;
 
-fn coinbase_transaction<N: Network>(recipient: Address<N>, value: u64) -> Result<Transaction<N>, DPCError> {
+fn testnet1_coinbase_transaction(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let amount = AleoAmount::from_bytes(value as i64);
-    let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-    let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
-    let transaction = DPC::<N>::execute(authorization, state.executables(), &LedgerProof::default(), rng)?;
-
-    Ok(transaction)
-}
-
-fn testnet1_coinbase_transaction(c: &mut Criterion) {
-    let recipient_account = Account::<Testnet1>::new(&mut thread_rng()).unwrap();
+    let address = Account::<Testnet1>::new(rng).unwrap().address;
+    let amount = AleoAmount::from_aleo(100);
 
     c.bench_function("testnet1_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = coinbase_transaction::<Testnet1>(recipient_account.address, 100).unwrap();
+            let _transaction = Transaction::<Testnet1>::new_coinbase(address, amount, rng).unwrap();
         })
     });
 }
 
 fn testnet2_coinbase_transaction(c: &mut Criterion) {
-    let recipient_account = Account::<Testnet2>::new(&mut thread_rng()).unwrap();
+    let rng = &mut thread_rng();
+
+    let address = Account::<Testnet2>::new(rng).unwrap().address;
+    let amount = AleoAmount::from_aleo(100);
 
     c.bench_function("testnet2_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = coinbase_transaction::<Testnet2>(recipient_account.address, 100).unwrap();
+            let _transaction = Transaction::<Testnet2>::new_coinbase(address, amount, rng).unwrap();
         })
     });
 }

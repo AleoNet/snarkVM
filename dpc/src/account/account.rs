@@ -46,8 +46,8 @@ impl<N: Network> AccountScheme for Account<N> {
     }
 
     /// Returns a reference to the address.
-    fn address(&self) -> &Self::Address {
-        &self.address
+    fn address(&self) -> Self::Address {
+        self.address
     }
 }
 

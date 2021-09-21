@@ -14,20 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    Address,
-    AleoAmount,
-    BlockHeader,
-    BlockScheme,
-    DPCScheme,
-    LedgerProof,
-    Network,
-    StateTransition,
-    Transaction,
-    TransactionScheme,
-    Transactions,
-    DPC,
-};
+use crate::{Address, AleoAmount, BlockHeader, BlockScheme, Network, Transaction, TransactionScheme, Transactions};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -87,12 +74,7 @@ impl<N: Network> BlockScheme for Block<N> {
     /// Initializes a new genesis block with one coinbase transaction.
     fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
-        let transactions = Transactions::from(&[{
-            let amount = Self::block_reward(0);
-            let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-            let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
-            DPC::<N>::execute(authorization, state.executables(), &LedgerProof::default(), rng)?
-        }])?;
+        let transactions = Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), rng)?])?;
 
         // Compute the transactions root from the transactions.
         let transactions_root = transactions.to_transactions_root()?;
@@ -331,7 +313,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let account = Account::<Testnet2>::new(rng).unwrap();
-        let genesis_block = Block::<Testnet2>::new_genesis(*account.address(), rng).unwrap();
+        let genesis_block = Block::<Testnet2>::new_genesis(account.address(), rng).unwrap();
         println!("{:?}", genesis_block);
     }
 
