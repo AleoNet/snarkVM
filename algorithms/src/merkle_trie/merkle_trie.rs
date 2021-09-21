@@ -22,15 +22,15 @@ use std::{collections::BTreeMap, sync::Arc};
 #[derive(Default, Clone)]
 pub struct MerkleTrie<P: CRH, T: ToBytes + PartialEq + Clone> {
     /// The CRH used to create the root hash.
-    parameters: Arc<P>,
+    pub(crate) parameters: Arc<P>,
     /// The root hash of the Merkle trie.
-    root: [u8; 32],
+    pub(crate) root: [u8; 32],
     /// The key of the current Merkle trie.
-    pub key: Vec<u8>, // TODO (raychu86): Enforce a max depth size.
+    pub(crate) key: Vec<u8>, // TODO (raychu86): Enforce a max depth size (bound by the length of the key).
     /// The value existing at the current Merkle trie node.
-    pub value: Option<T>,
+    pub(crate) value: Option<T>,
     /// Any child Merkle tries. Currently has u8::MAX potential branches. // TODO (raychu86): Allow for generic branch sizes.
-    pub children: BTreeMap<u8, MerkleTrie<P, T>>, // TODO (raychu86): Remove the current duplication of parameters.
+    pub(crate) children: BTreeMap<u8, MerkleTrie<P, T>>, // TODO (raychu86): Remove the current duplication of parameters.
 }
 
 impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
@@ -122,7 +122,6 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
     pub fn get(&self, key: &[u8]) -> Option<&T> {
         // If the key is the root, return the value.
         if self.key == key {
-            println!("self.root(): {:?}", self.root());
             return self.value.as_ref();
         } else if key.starts_with(&self.key) {
             // If the given key starts with the root key.
@@ -169,8 +168,6 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             if temp_key == expected_key {
                 found = true;
             } else {
-                println!("temp_key: {:?}", temp_key);
-                println!("expected_key: {:?}", expected_key);
                 // If the given key starts with the root key.
                 let suffix = &expected_key[temp_key.len()..];
 
@@ -183,9 +180,6 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
                 if let Some(child_node) = temp_children.get(&suffix[0]) {
                     parents.push((child_node.key.clone(), child_node.value.clone()));
-                    println!("child_node: {:?}", child_node.root());
-                    println!("child_node key: {:?}", &child_node.key);
-
                     temp_children = &child_node.children;
                     temp_key = child_node.key.clone();
                 }
@@ -194,14 +188,15 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             }
         }
 
-        end_timer!(prove_time);
-
         // Do not include the provided key/value pair in the list of parents;
         parents.pop();
 
+        // Reverse the vectors to start from the leaf.
         path.reverse();
         parents.reverse();
         traversal.reverse();
+
+        end_timer!(prove_time);
 
         let proof = MerkleTriePath {
             parameters: self.parameters.clone(),
@@ -218,10 +213,6 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
     pub fn root(&self) -> &[u8; 32] {
         &self.root
     }
-
-    // pub fn generate_proof(&self, _key: &[u8], _value: T) -> Result<MerkleTriePath<P, T>, MerkleTrieError> {
-    //     unimplemented!()
-    // }
 
     /// Insert a (key, value) pair into the current Merkle trie node.
     fn insert_child(&mut self, suffix: &Vec<u8>, value: T) -> Result<(), MerkleTrieError> {
@@ -267,14 +258,19 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
     }
 }
 
+/// Calculate the root hash of a given node with it's key, value, and children.
 pub fn calculate_root<P: CRH, T: ToBytes>(
     parameters: &Arc<P>,
-    key: &[u8],
+    _key: &[u8],
     value: &Option<T>,
     child_roots: &Vec<&[u8; 32]>,
 ) -> Result<[u8; 32], MerkleTrieError> {
     // Add the current node's key and value to the hash input.
-    let mut input = hash_leaf(&parameters, &key, &value)?.to_vec();
+    let mut input = vec![]; // TODO (raychu86): Add the key to the root hash. Full key vs key suffix?
+    if let Some(value) = &value {
+        let value_bytes = to_bytes_le![value]?;
+        input.extend(value_bytes);
+    }
 
     // Add the children roots to the hash input.
     for child in child_roots {
@@ -284,28 +280,6 @@ pub fn calculate_root<P: CRH, T: ToBytes>(
     // Hash the input
     let hash = parameters.hash(&input)?;
     let hash_bytes = to_bytes_le![hash]?;
-    let mut root = [0u8; 32];
-    root.copy_from_slice(&hash_bytes);
-
-    Ok(root)
-}
-
-/// Returns the hash of a given key value pair.
-pub fn hash_leaf<P: CRH, T: ToBytes>(
-    parameters: &Arc<P>,
-    key: &[u8],
-    value: &Option<T>,
-) -> Result<[u8; 32], MerkleTrieError> {
-    let mut input = vec![];
-    if let Some(value) = &value {
-        let value_bytes = to_bytes_le![value]?;
-        input.extend(value_bytes);
-    }
-
-    // Hash the input
-    let hash = parameters.hash(&input)?;
-    let hash_bytes = to_bytes_le![hash]?;
-
     let mut root = [0u8; 32];
     root.copy_from_slice(&hash_bytes);
 

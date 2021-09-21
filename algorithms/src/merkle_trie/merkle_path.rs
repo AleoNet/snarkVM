@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    errors::MerkleTrieError,
-    merkle_trie::{calculate_root, hash_leaf},
-    traits::CRH,
-};
+use crate::{errors::MerkleTrieError, merkle_trie::calculate_root, traits::CRH};
 use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
 use std::sync::Arc;
 
 pub struct MerkleTriePath<P: CRH, T: ToBytes> {
-    pub parameters: Arc<P>,
+    pub(crate) parameters: Arc<P>,
     /// A Vector of existing sibling children from leaf to root.
     /// (Does NOT including the parents of the leaf being proven)
-    pub path: Vec<Vec<[u8; 32]>>, // Vector of branch roots
-    pub parents: Vec<(Vec<u8>, Option<T>)>, // Vector of (key, value) pairs.
-    pub traversal: Vec<usize>,
+    pub(crate) path: Vec<Vec<[u8; 32]>>,
+    /// Vector of parent node key values up to the root.
+    pub(crate) parents: Vec<(Vec<u8>, Option<T>)>,
+    /// Location of the parent nodes within each depth of siblings.
+    pub(crate) traversal: Vec<usize>,
 }
 
 impl<P: CRH, T: ToBytes> MerkleTriePath<P, T> {
@@ -39,8 +37,6 @@ impl<P: CRH, T: ToBytes> MerkleTriePath<P, T> {
         assert_eq!(self.parents.len(), self.traversal.len());
 
         let mut curr_hash = calculate_root(&self.parameters, &key, &Some(value), &vec![])?;
-
-        println!("\n LEAF HASH: {:?}", curr_hash);
 
         // Check that the given leaf matches the leaf in the membership proof.
         if !self.path.is_empty() {
