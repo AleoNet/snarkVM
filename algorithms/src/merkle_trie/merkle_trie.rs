@@ -53,11 +53,11 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
     }
 
     /// Insert a (key, value) pair into the Merkle trie.
-    pub fn insert(&mut self, key: &[u8], value: Option<T>) -> Result<(), MerkleTrieError> {
+    pub fn insert(&mut self, key: &[u8], value: T) -> Result<(), MerkleTrieError> {
         // If the trie is currently empty, set the key value pair.
         if self.is_empty() {
             self.key = key.to_vec();
-            self.value = value;
+            self.value = Some(value);
             self.update_root()?;
             return Ok(());
         }
@@ -70,16 +70,16 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
         // If the prefix exists outside the key of the current key.
         if prefix_length >= self.key.len() {
             // If the match length is equal to the length of the root key, then attempt to insert.
-            if prefix_length == key.len() {
+            if prefix_length == key.len() && prefix == self.key {
                 if self.value.is_some() {
                     // TODO (raychu86): Update the Error type.
                     return Err(MerkleTrieError::Message("Key already exists".to_string()));
                 }
 
-                self.value = value;
+                self.value = Some(value);
             } else {
                 // Insert a child trie based on the suffix.
-                self.insert_child(&suffix, value.unwrap())?;
+                self.insert_child(&suffix, value)?;
             }
         } else {
             // If the prefix exists within the key of the current trie.
@@ -88,7 +88,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 parameters: self.parameters.clone(),
                 key: suffix.clone(),
                 root: [0u8; 32],
-                value: self.value.take(),
+                value: None,
                 children: BTreeMap::new(),
             };
 
@@ -106,10 +106,10 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             // Update the values if we have found the correct node.
             if prefix_length == key.len() {
                 // Update the value in the current node if the key matches.
-                self.value = value;
+                self.value = Some(value);
             } else {
                 // Update the value in a subtrie node.
-                self.insert_child(&suffix, value.unwrap())?;
+                self.insert_child(&suffix, value)?;
             }
         }
 
@@ -222,7 +222,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 // No child tree for this suffix exists yet.
                 // Crate a new subtree.
                 let mut new_child = MerkleTrie::new(self.parameters.clone())?;
-                new_child.insert(&suffix, Some(value))?;
+                new_child.insert(&suffix, value)?;
 
                 // Insert the new subtree into the current tree.
                 self.children.insert(new_child.key[0], new_child);
@@ -230,7 +230,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             Some(child_trie) => {
                 // The child tree already exists.
                 // Insert the (suffix, value) pair to the child tree.
-                child_trie.insert(&suffix, Some(value))?;
+                child_trie.insert(&suffix, value)?;
             }
         }
 

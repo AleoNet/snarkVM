@@ -39,24 +39,20 @@ impl<P: CRH, T: ToBytes> MerkleTriePath<P, T> {
         let mut curr_hash = calculate_root(&self.parameters, &key, &Some(value), &vec![])?;
 
         // Check that the given leaf matches the leaf in the membership proof.
-        if !self.path.is_empty() {
-            for (i, (index, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
-                let mut node_hashes: Vec<&[u8; 32]> = siblings.iter().map(|x| x).collect();
-                node_hashes.insert(*index, &curr_hash);
+        for (i, (index, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
+            let mut node_hashes: Vec<&[u8; 32]> = siblings.iter().map(|x| x).collect();
+            node_hashes.insert(*index, &curr_hash);
 
-                let (key, value) = &self.parents[i];
+            let (key, value) = &self.parents[i];
 
-                curr_hash = calculate_root(&self.parameters, key, value, &node_hashes)?;
-            }
-
-            // Check if final hash is root
-            if &curr_hash != root_hash {
-                return Ok(false);
-            }
-
-            Ok(true)
-        } else {
-            Ok(false)
+            curr_hash = calculate_root(&self.parameters, key, value, &node_hashes)?;
         }
+
+        // Check if final hash is root
+        if &curr_hash != root_hash {
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 }
