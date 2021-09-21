@@ -18,71 +18,32 @@
 extern crate criterion;
 
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
-use snarkvm_ledger::{ledger::*, prelude::*};
 
 use criterion::Criterion;
 use rand::thread_rng;
-use std::sync::Arc;
-
-fn coinbase_transaction<C: Parameters>(
-    ledger: &Ledger<C, MemDb>,
-    recipient: Address<C>,
-    value: u64,
-) -> Result<Transaction<C>, DPCError> {
-    let rng = &mut thread_rng();
-
-    let amount = AleoAmount::from_bytes(value as i64);
-    let state = StateTransition::new_coinbase(recipient, amount, rng)?;
-    let authorization = DPC::<C>::authorize(&vec![], &state, rng)?;
-    let transaction = DPC::<C>::execute(authorization, state.executables(), ledger, rng)?;
-
-    Ok(transaction)
-}
 
 fn testnet1_coinbase_transaction(c: &mut Criterion) {
-    // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
-    let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, Block {
-        header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
-            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork([0u8; 771]),
-        },
-        transactions: Transactions::new(),
-    })
-    .unwrap();
+    let rng = &mut thread_rng();
 
-    let recipient_account = Account::new(&mut thread_rng()).unwrap();
+    let address = Account::<Testnet1>::new(rng).unwrap().address;
+    let amount = AleoAmount::from_aleo(100);
 
     c.bench_function("testnet1_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = coinbase_transaction(&ledger, recipient_account.address, 100).unwrap();
+            let _transaction = Transaction::<Testnet1>::new_coinbase(address, amount, rng).unwrap();
         })
     });
 }
 
 fn testnet2_coinbase_transaction(c: &mut Criterion) {
-    // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
-    let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, Block {
-        header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
-            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork([0u8; 771]),
-        },
-        transactions: Transactions::new(),
-    })
-    .unwrap();
+    let rng = &mut thread_rng();
 
-    let recipient_account = Account::new(&mut thread_rng()).unwrap();
+    let address = Account::<Testnet2>::new(rng).unwrap().address;
+    let amount = AleoAmount::from_aleo(100);
 
     c.bench_function("testnet2_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = coinbase_transaction(&ledger, recipient_account.address, 100).unwrap();
+            let _transaction = Transaction::<Testnet2>::new_coinbase(address, amount, rng).unwrap();
         })
     });
 }

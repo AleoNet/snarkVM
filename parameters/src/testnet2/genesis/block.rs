@@ -24,13 +24,14 @@ pub struct GenesisBlock;
 
 impl Genesis for GenesisBlock {
     const CHECKSUM: &'static str = "";
-    const SIZE: u64 = 2134;
+    const SIZE: u64 = 2139;
 
     fn load_bytes() -> Vec<u8> {
         let block_header_bytes = GenesisBlockHeader::load_bytes();
         let transactions = [Transaction1::load_bytes()];
 
         let mut buffer = vec![];
+        buffer.extend([0u8; 32]); // Previous block hash bytes
         buffer.extend(block_header_bytes); // Genesis block header bytes
         buffer.extend(variable_length_integer(transactions.len() as u64)); // Number of transactions
         buffer.extend(transactions.concat()); // Ordered buffer of all transaction bytes

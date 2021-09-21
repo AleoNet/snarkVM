@@ -1,0 +1,82 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use snarkvm_utilities::{FromBytes, ToBytes};
+
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
+
+pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
+    type BlockHash: Clone + Eq + FromBytes + ToBytes;
+    type Header: Clone + Eq + FromBytes + ToBytes;
+    type Transactions: Clone + Eq + FromBytes + ToBytes;
+
+    type CommitmentsRoot: Clone + Eq + FromBytes + ToBytes;
+    type SerialNumbersRoot: Clone + Eq + FromBytes + ToBytes;
+
+    type Commitment: Clone + Eq + FromBytes + ToBytes;
+    type SerialNumber: Clone + Eq + FromBytes + ToBytes;
+
+    type Address: Clone + Eq + FromBytes + ToBytes;
+    type Transaction: Clone + Eq + FromBytes + ToBytes;
+
+    /// Initializes a new block.
+    fn new<R: Rng + CryptoRng>(
+        previous_block_hash: Self::BlockHash,
+        block_height: u32,
+        difficulty_target: u64,
+        transactions: Self::Transactions,
+        serial_numbers_root: Self::SerialNumbersRoot,
+        commitments_root: Self::CommitmentsRoot,
+        rng: &mut R,
+    ) -> Result<Self>;
+
+    /// Initializes a new genesis block, with a coinbase transaction for the given recipient.
+    fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self>;
+
+    /// Initializes a new block from a given previous hash, header, and transactions list.
+    fn from(previous_hash: Self::BlockHash, header: Self::Header, transactions: Self::Transactions) -> Result<Self>;
+
+    /// Returns `true` if the block is well-formed.
+    fn is_valid(&self) -> bool;
+
+    /// Returns `true` if the block is a genesis block.
+    fn is_genesis(&self) -> bool;
+
+    /// Returns the previous block hash.
+    fn previous_hash(&self) -> &Self::BlockHash;
+
+    /// Returns the header.
+    fn header(&self) -> &Self::Header;
+
+    /// Returns the transactions.
+    fn transactions(&self) -> &Self::Transactions;
+
+    /// Returns the block height.
+    fn height(&self) -> u32;
+
+    /// Returns the hash of this block.
+    fn to_block_hash(&self) -> Result<Self::BlockHash>;
+
+    /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
+    fn to_commitments(&self) -> Result<Vec<Self::Commitment>>;
+
+    /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
+    fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>>;
+
+    /// Returns the coinbase transaction for the block.
+    fn to_coinbase_transaction(&self) -> Result<Self::Transaction>;
+}

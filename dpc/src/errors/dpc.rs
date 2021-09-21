@@ -63,7 +63,7 @@ pub enum DPCError {
         _1,
         _2
     )]
-    InvalidKernel(u8, usize, usize),
+    InvalidKernel(u16, usize, usize),
 
     #[error("Invalid number of inputs - (current: {}, max: {})", _0, _1)]
     InvalidNumberOfInputs(usize, usize),

@@ -18,7 +18,6 @@ use crate::{FftField, FieldParameters};
 use snarkvm_utilities::{biginteger::BigInteger, cmp::min, str::FromStr};
 
 /// The interface for a prime field.
-#[allow(clippy::wrong_self_convention)]
 pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters> + FromStr {
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;

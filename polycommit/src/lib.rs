@@ -131,7 +131,7 @@ pub type QuerySet<'a, T> = BTreeSet<(String, (String, T))>;
 pub type Evaluations<'a, F> = BTreeMap<(String, F), F>;
 
 /// A proof of satisfaction of linear combinations.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct BatchLCProof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// Evaluation proof.
     pub proof: PC::BatchProof,
@@ -186,6 +186,8 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         + Clone
         + From<Vec<Self::Proof>>
         + Into<Vec<Self::Proof>>
+        + PartialEq
+        + Eq
         + Debug
         + Send
         + Sync;

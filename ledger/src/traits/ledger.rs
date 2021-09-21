@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeaderHash, BlockScheme};
-use snarkvm_dpc::{Parameters, RecordCommitmentTree, RecordSerialNumberTree};
+use snarkvm_dpc::{BlockScheme, Network};
 
 use anyhow::Result;
 use std::path::Path;
 
-pub trait LedgerScheme<C: Parameters>: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sized {
+pub trait LedgerScheme<N: Network>: Sized {
     type Block: BlockScheme;
 
     /// Instantiates a new ledger with a genesis block.
@@ -35,14 +34,14 @@ pub trait LedgerScheme<C: Parameters>: RecordCommitmentTree<C> + RecordSerialNum
     fn latest_block(&self) -> Result<Self::Block>;
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &BlockHeaderHash) -> Result<Self::Block>;
+    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Self::Block>;
 
     /// Returns the block hash given a block number.
-    fn get_block_hash(&self, block_number: u32) -> Result<BlockHeaderHash>;
+    fn get_block_hash(&self, block_number: u32) -> Result<N::BlockHash>;
 
     /// Returns the block number given a block hash.
-    fn get_block_number(&self, block_hash: &BlockHeaderHash) -> Result<u32>;
+    fn get_block_number(&self, block_hash: &N::BlockHash) -> Result<u32>;
 
     /// Returns true if the given block hash exists in the ledger.
-    fn contains_block_hash(&self, block_hash: &BlockHeaderHash) -> bool;
+    fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool;
 }

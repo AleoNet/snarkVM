@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, DPCError, Parameters, Payload, Record, RecordScheme, ViewKey};
+use crate::{Address, DPCError, Network, Payload, Record, RecordScheme, ViewKey};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, CRH},
@@ -32,21 +32,21 @@ use rand::{thread_rng, CryptoRng, Rng};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct EncryptedRecord<C: Parameters> {
-    pub ciphertext: Vec<u8>,
-    c_phantom: PhantomData<C>,
+pub struct EncryptedRecord<N: Network> {
+    ciphertext: Vec<u8>,
+    phantom: PhantomData<N>,
 }
 
-impl<C: Parameters> EncryptedRecord<C> {
+impl<N: Network> EncryptedRecord<N> {
     pub fn new(ciphertext: Vec<u8>) -> Self {
         Self {
             ciphertext,
-            c_phantom: PhantomData,
+            phantom: PhantomData,
         }
     }
 
@@ -54,12 +54,12 @@ impl<C: Parameters> EncryptedRecord<C> {
     /// 1. Encrypted record
     /// 2. Encryption randomness
     pub fn encrypt<R: Rng + CryptoRng>(
-        record: &Record<C>,
+        record: &Record<N>,
         rng: &mut R,
     ) -> Result<
         (
             Self,
-            <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
+            <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
         ),
         DPCError,
     > {
@@ -93,23 +93,23 @@ impl<C: Parameters> EncryptedRecord<C> {
 
         // Encrypt the record plaintext.
         let encryption_key = record.owner().encryption_key();
-        let encryption_randomness = C::account_encryption_scheme().generate_randomness(&encryption_key, rng)?;
+        let encryption_randomness = N::account_encryption_scheme().generate_randomness(&encryption_key, rng)?;
         let encrypted_record =
-            C::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &bytes)?;
+            N::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &bytes)?;
         let encrypted_record = Self::new(encrypted_record);
 
         Ok((encrypted_record, encryption_randomness))
     }
 
     /// Decrypt and reconstruct the encrypted record.
-    pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
+    pub fn decrypt(&self, account_view_key: &ViewKey<N>) -> Result<Record<N>, DPCError> {
         // Decrypt the encrypted record
-        let plaintext = C::account_encryption_scheme().decrypt(&*account_view_key, &self.ciphertext)?;
+        let plaintext = N::account_encryption_scheme().decrypt(&*account_view_key, &self.ciphertext)?;
 
         let mut cursor = Cursor::new(plaintext);
 
         // Program ID
-        let program_id: MerkleTreeDigest<C::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
+        let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
 
         // Value
         let value = u64::read_le(&mut cursor)?;
@@ -118,10 +118,10 @@ impl<C: Parameters> EncryptedRecord<C> {
         let payload = Payload::read_le(&mut cursor)?;
 
         // Serial number nonce
-        let serial_number_nonce = C::SerialNumberNonce::read_le(&mut cursor)?;
+        let serial_number_nonce = N::SerialNumberNonce::read_le(&mut cursor)?;
 
         // Commitment randomness
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
+        let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
         // Construct the record account address
         let owner = Address::from_view_key(&account_view_key)?;
@@ -144,19 +144,19 @@ impl<C: Parameters> EncryptedRecord<C> {
 
     /// Returns the encrypted record hash.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<<<C as Parameters>::EncryptedRecordCRH as CRH>::Output, DPCError> {
-        Ok(C::encrypted_record_crh().hash(&self.ciphertext)?)
+    pub fn to_hash(&self) -> Result<<<N as Network>::EncryptedRecordCRH as CRH>::Output, DPCError> {
+        Ok(N::encrypted_record_crh().hash(&self.ciphertext)?)
     }
 }
 
-impl<C: Parameters> Default for EncryptedRecord<C> {
+impl<N: Network> Default for EncryptedRecord<N> {
     fn default() -> Self {
         let (record, _randomness) = Self::encrypt(&Record::default(), &mut thread_rng()).unwrap();
         record
     }
 }
 
-impl<C: Parameters> ToBytes for EncryptedRecord<C> {
+impl<N: Network> ToBytes for EncryptedRecord<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.ciphertext.len() as u16).write_le(&mut writer)?;
@@ -164,7 +164,7 @@ impl<C: Parameters> ToBytes for EncryptedRecord<C> {
     }
 }
 
-impl<C: Parameters> FromBytes for EncryptedRecord<C> {
+impl<N: Network> FromBytes for EncryptedRecord<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let ciphertext_len = u16::read_le(&mut reader)?;

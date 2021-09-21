@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
-use snarkvm_dpc::{DPCError, InnerCircuit, NoopProgram, OuterCircuit, Parameters};
+use snarkvm_dpc::{DPCError, InnerCircuit, Network, NoopProgram, OuterCircuit};
 use snarkvm_parameters::{
     testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
     traits::Parameter,
@@ -28,7 +28,7 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
@@ -70,8 +70,8 @@ pub fn main() {
     }
 
     let (outer_snark_pk, outer_snark_vk) = match args[1].as_str() {
-        "testnet1" => setup::<snarkvm_dpc::testnet1::Testnet1Parameters>().unwrap(),
-        "testnet2" => setup::<snarkvm_dpc::testnet2::Testnet2Parameters>().unwrap(),
+        "testnet1" => setup::<snarkvm_dpc::testnet1::Testnet1>().unwrap(),
+        "testnet2" => setup::<snarkvm_dpc::testnet2::Testnet2>().unwrap(),
         _ => panic!("Invalid parameters"),
     };
 

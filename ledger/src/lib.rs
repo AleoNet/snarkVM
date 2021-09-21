@@ -57,19 +57,23 @@
 #[macro_use]
 extern crate thiserror;
 
-pub mod block;
-pub use block::*;
+pub mod environment;
+pub use environment::*;
 
 pub mod errors;
 pub use errors::*;
 
 pub mod ledger;
 
-pub mod posw;
+pub mod memory_pool;
+pub use memory_pool::*;
+
+pub mod state;
+pub use state::*;
 
 pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{block::*, errors::*, traits::*};
+    pub use crate::{errors::*, traits::*};
 }

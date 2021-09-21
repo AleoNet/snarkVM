@@ -16,9 +16,9 @@
 
 use crate::{
     Execution,
+    Network,
     NoopCircuit,
     NoopPrivateVariables,
-    Parameters,
     Program,
     ProgramCircuit,
     ProgramError,
@@ -32,13 +32,13 @@ use std::ops::Deref;
 /// As there is only one circuit in a noop program, this struct explicitly stores
 /// the noop circuit ID and provides a convenience method to execute the noop circuit directly.
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
-pub struct NoopProgram<C: Parameters> {
-    program: Program<C>,
-    noop_circuit_id: C::ProgramCircuitID,
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+pub struct NoopProgram<N: Network> {
+    program: Program<N>,
+    noop_circuit_id: N::ProgramCircuitID,
 }
 
-impl<C: Parameters> NoopProgram<C> {
+impl<N: Network> NoopProgram<N> {
     /// Initializes a new instance of the program.
     pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
         let noop_circuit = NoopCircuit::setup(rng)?;
@@ -60,7 +60,7 @@ impl<C: Parameters> NoopProgram<C> {
     }
 
     /// Returns the noop execution with the given public variables.
-    pub fn execute_noop(&self, public: &PublicVariables<C>) -> Result<Execution<C>, ProgramError> {
+    pub fn execute_noop(&self, public: &PublicVariables<N>) -> Result<Execution<N>, ProgramError> {
         debug_assert!(self.program.contains_circuit(&self.noop_circuit_id));
         Ok(self
             .program
@@ -68,14 +68,14 @@ impl<C: Parameters> NoopProgram<C> {
     }
 
     /// Returns a blank noop execution.
-    pub fn execute_blank_noop(&self) -> Result<Execution<C>, ProgramError> {
+    pub fn execute_blank_noop(&self) -> Result<Execution<N>, ProgramError> {
         debug_assert!(self.program.contains_circuit(&self.noop_circuit_id));
         Ok(self.program.execute_blank(&self.noop_circuit_id)?)
     }
 }
 
-impl<C: Parameters> From<(Program<C>, C::ProgramCircuitID)> for NoopProgram<C> {
-    fn from((program, noop_circuit_id): (Program<C>, C::ProgramCircuitID)) -> Self {
+impl<N: Network> From<(Program<N>, N::ProgramCircuitID)> for NoopProgram<N> {
+    fn from((program, noop_circuit_id): (Program<N>, N::ProgramCircuitID)) -> Self {
         debug_assert!(program.contains_circuit(&noop_circuit_id));
         Self {
             program,
@@ -84,8 +84,8 @@ impl<C: Parameters> From<(Program<C>, C::ProgramCircuitID)> for NoopProgram<C> {
     }
 }
 
-impl<C: Parameters> Deref for NoopProgram<C> {
-    type Target = Program<C>;
+impl<N: Network> Deref for NoopProgram<N> {
+    type Target = Program<N>;
 
     fn deref(&self) -> &Self::Target {
         &self.program

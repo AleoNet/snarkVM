@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
+use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Network, Payload, RecordScheme};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -32,13 +32,13 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct InnerCircuit<C: Parameters> {
-    public: InnerPublicVariables<C>,
-    private: InnerPrivateVariables<C>,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct InnerCircuit<N: Network> {
+    public: InnerPublicVariables<N>,
+    private: InnerPrivateVariables<N>,
 }
 
-impl<C: Parameters> InnerCircuit<C> {
+impl<N: Network> InnerCircuit<N> {
     pub fn blank() -> Self {
         Self {
             public: InnerPublicVariables::blank(),
@@ -46,24 +46,24 @@ impl<C: Parameters> InnerCircuit<C> {
         }
     }
 
-    pub fn new(public: InnerPublicVariables<C>, private: InnerPrivateVariables<C>) -> Self {
+    pub fn new(public: InnerPublicVariables<N>, private: InnerPrivateVariables<N>) -> Self {
         Self { public, private }
     }
 }
 
-impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
-    fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
+impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> {
+    fn generate_constraints<CS: ConstraintSystem<N::InnerScalarField>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        execute_inner_circuit::<C, CS>(cs, &self.public, &self.private)
+        execute_inner_circuit::<N, CS>(cs, &self.public, &self.private)
     }
 }
 
-pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarField>>(
+pub fn execute_inner_circuit<N: Network, CS: ConstraintSystem<N::InnerScalarField>>(
     cs: &mut CS,
-    public: &InnerPublicVariables<C>,
-    private: &InnerPrivateVariables<C>,
+    public: &InnerPublicVariables<N>,
+    private: &InnerPrivateVariables<N>,
 ) -> Result<(), SynthesisError> {
     // In the inner circuit, these two variables must be allocated as public inputs.
     debug_assert!(public.program_commitment.is_some());
@@ -78,53 +78,53 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         local_data_crh,
         local_data_commitment_parameters,
         serial_number_nonce_crh,
-        record_commitment_tree_parameters,
+        commitments_tree_parameters,
     ) = {
         let cs = &mut cs.ns(|| "Declare parameters");
 
         let account_encryption_parameters =
-            C::AccountEncryptionGadget::alloc_constant(&mut cs.ns(|| "Declare account encryption parameters"), || {
-                Ok(C::account_encryption_scheme().clone())
+            N::AccountEncryptionGadget::alloc_constant(&mut cs.ns(|| "Declare account encryption parameters"), || {
+                Ok(N::account_encryption_scheme().clone())
             })?;
 
         let account_signature_parameters =
-            C::AccountSignatureGadget::alloc_constant(&mut cs.ns(|| "Declare account signature parameters"), || {
-                Ok(C::account_signature_scheme().clone())
+            N::AccountSignatureGadget::alloc_constant(&mut cs.ns(|| "Declare account signature parameters"), || {
+                Ok(N::account_signature_scheme().clone())
             })?;
 
         let record_commitment_parameters =
-            C::RecordCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
-                Ok(C::record_commitment_scheme().clone())
+            N::CommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
+                Ok(N::commitment_scheme().clone())
             })?;
 
-        let encrypted_record_crh_parameters = C::EncryptedRecordCRHGadget::alloc_constant(
+        let encrypted_record_crh_parameters = N::EncryptedRecordCRHGadget::alloc_constant(
             &mut cs.ns(|| "Declare record ciphertext CRH parameters"),
-            || Ok(C::encrypted_record_crh().clone()),
+            || Ok(N::encrypted_record_crh().clone()),
         )?;
 
         let program_commitment_parameters =
-            C::ProgramCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare program commitment parameters"), || {
-                Ok(C::program_commitment_scheme().clone())
+            N::ProgramCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare program commitment parameters"), || {
+                Ok(N::program_commitment_scheme().clone())
             })?;
 
         let local_data_crh_parameters =
-            C::LocalDataCRHGadget::alloc_constant(&mut cs.ns(|| "Declare local data CRH parameters"), || {
-                Ok(C::local_data_crh().clone())
+            N::LocalDataCRHGadget::alloc_constant(&mut cs.ns(|| "Declare local data CRH parameters"), || {
+                Ok(N::local_data_crh().clone())
             })?;
 
-        let local_data_commitment_parameters = C::LocalDataCommitmentGadget::alloc_constant(
+        let local_data_commitment_parameters = N::LocalDataCommitmentGadget::alloc_constant(
             &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment_scheme().clone()),
+            || Ok(N::local_data_commitment_scheme().clone()),
         )?;
 
-        let serial_number_nonce_crh_parameters = C::SerialNumberNonceCRHGadget::alloc_constant(
+        let serial_number_nonce_crh_parameters = N::SerialNumberNonceCRHGadget::alloc_constant(
             &mut cs.ns(|| "Declare serial number nonce CRH parameters"),
-            || Ok(C::serial_number_nonce_crh().clone()),
+            || Ok(N::serial_number_nonce_crh().clone()),
         )?;
 
-        let record_commitment_tree_parameters =
-            C::RecordCommitmentTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
-                Ok(C::record_commitment_tree_parameters().crh())
+        let commitments_tree_parameters =
+            N::CommitmentsTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
+                Ok(N::commitments_tree_parameters().crh())
             })?;
 
         (
@@ -136,7 +136,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             local_data_crh_parameters,
             local_data_commitment_parameters,
             serial_number_nonce_crh_parameters,
-            record_commitment_tree_parameters,
+            commitments_tree_parameters,
         )
     };
 
@@ -150,7 +150,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let empty_payload_field_elements =
         empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
 
-    let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+    let digest_gadget = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
         || Ok(public.ledger_digest),
     )?;
@@ -166,7 +166,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         .iter()
         .zip(&private.input_witnesses)
         .zip(&private.signatures)
-        .zip(&public.kernel.serial_numbers)
+        .zip(public.kernel.serial_numbers())
         .enumerate()
     {
         let cs = &mut cs.ns(|| format!("Process input record {}", i));
@@ -195,9 +195,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // are trusted, and so when we recompute these, the newly computed
             // values will always be in correct subgroup. If the input cm, pk
             // or hash is incorrect, then it will not match the computed equivalent.
-            let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
+            let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
+                N::AccountEncryptionScheme,
+                N::InnerScalarField,
             >>::PublicKeyGadget::alloc(
                 &mut declare_cs.ns(|| "given_record_owner"),
                 || Ok(record.owner().encryption_key()),
@@ -208,9 +208,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             {
                 let owner = record.owner().encryption_key();
                 let public_key = FromBytes::read_le(&owner.to_bytes_le()?[..])?;
-                let public_key_gadget = <C::AccountSignatureGadget as SignatureGadget<
-                    C::AccountSignatureScheme,
-                    C::InnerScalarField,
+                let public_key_gadget = <N::AccountSignatureGadget as SignatureGadget<
+                    N::AccountSignatureScheme,
+                    N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     declare_cs.ns(|| format!("alloc_public_key{}", i)), || Ok(&public_key)
                 )?;
@@ -225,22 +225,22 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
             let given_serial_number_nonce =
-                <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Input::alloc(
+                <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Input::alloc(
                     &mut declare_cs.ns(|| "given_serial_number_nonce"),
                     || Ok(vec![record.serial_number_nonce().clone()]),
                 )?;
 
-            let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
+            let given_commitment = <N::CommitmentGadget as CommitmentGadget<
+                N::CommitmentScheme,
+                N::InnerScalarField,
             >>::OutputGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
             )?;
             old_record_commitments_gadgets.push(given_commitment.clone());
 
-            let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
+            let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
+                N::CommitmentScheme,
+                N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment_randomness"),
                 || Ok(record.commitment_randomness()),
@@ -265,14 +265,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
 
-            let witness_gadget = MerklePathGadget::<_, C::RecordCommitmentTreeCRHGadget, _>::alloc(
+            let witness_gadget = MerklePathGadget::<_, N::CommitmentsTreeCRHGadget, _>::alloc(
                 &mut witness_cs.ns(|| "Declare membership witness"),
                 || Ok(witness),
             )?;
 
             witness_gadget.conditionally_check_membership(
                 &mut witness_cs.ns(|| "Perform ledger membership witness check"),
-                &record_commitment_tree_parameters,
+                &commitments_tree_parameters,
                 &digest_gadget,
                 &given_commitment,
                 &given_is_dummy.not(),
@@ -289,19 +289,19 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
             // Allocate sk_prf.
             let sk_prf = {
-                let compute_key = ComputeKey::<C>::from_signature(&signature)
+                let compute_key = ComputeKey::<N>::from_signature(&signature)
                     .expect("Failed to derive the compute key from signature");
                 FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?
             };
 
-            let sk_prf = <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Seed::alloc(
+            let sk_prf = <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Seed::alloc(
                 &mut sn_cs.ns(|| "Declare sk_prf"),
                 || Ok(&sk_prf),
             )?;
 
-            let candidate_serial_number_gadget = <C::SerialNumberPRFGadget as PRFGadget<
-                C::SerialNumberPRF,
-                C::InnerScalarField,
+            let candidate_serial_number_gadget = <N::SerialNumberPRFGadget as PRFGadget<
+                N::SerialNumberPRF,
+                N::InnerScalarField,
             >>::check_evaluation_gadget(
                 &mut sn_cs.ns(|| "Compute serial number"),
                 &sk_prf,
@@ -309,7 +309,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             )?;
 
             let given_serial_number_gadget =
-                <C::SerialNumberPRFGadget as PRFGadget<C::SerialNumberPRF, C::InnerScalarField>>::Output::alloc_input(
+                <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc_input(
                     &mut sn_cs.ns(|| "Declare given serial number"),
                     || Ok(given_serial_number),
                 )?;
@@ -390,7 +390,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
         .output_records
         .iter()
-        .zip(&public.kernel.commitments)
+        .zip(public.kernel.commitments())
         .zip(&private.encrypted_record_randomizers)
         .zip(&public.encrypted_record_hashes)
         .enumerate()
@@ -416,9 +416,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             )?;
             new_program_ids_gadgets.push(given_program_id.clone());
 
-            let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
+            let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
+                N::AccountEncryptionScheme,
+                N::InnerScalarField,
             >>::PublicKeyGadget::alloc(
                 &mut declare_cs.ns(|| "given_record_owner"),
                 || Ok(record.owner().encryption_key()),
@@ -431,9 +431,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let given_payload =
                 UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
-            let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
-                C::SerialNumberNonceCRH,
-                C::InnerScalarField,
+            let given_serial_number_nonce = <N::SerialNumberNonceCRHGadget as CRHGadget<
+                N::SerialNumberNonceCRH,
+                N::InnerScalarField,
             >>::OutputGadget::alloc(
                 &mut declare_cs.ns(|| "given_serial_number_nonce"),
                 || Ok(record.serial_number_nonce()),
@@ -443,16 +443,16 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 given_serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
 
             let given_commitment = {
-                let record_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                    C::RecordCommitmentScheme,
-                    C::InnerScalarField,
+                let record_commitment = <N::CommitmentGadget as CommitmentGadget<
+                    N::CommitmentScheme,
+                    N::InnerScalarField,
                 >>::OutputGadget::alloc(
                     &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
                 )?;
 
-                let public_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                    C::RecordCommitmentScheme,
-                    C::InnerScalarField,
+                let public_commitment = <N::CommitmentGadget as CommitmentGadget<
+                    N::CommitmentScheme,
+                    N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
                     &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
                 )?;
@@ -468,9 +468,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             output_commitments_bytes
                 .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 
-            let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
+            let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
+                N::CommitmentScheme,
+                N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment_randomness"),
                 || Ok(record.commitment_randomness()),
@@ -496,7 +496,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let sn_cs = &mut cs.ns(|| "Check that serial number nonce is computed correctly");
 
-            let record_position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8);
+            let record_position = UInt8::constant((N::NUM_INPUT_RECORDS + j) as u8);
             let mut serial_number_nonce_input_bytes_le = vec![record_position];
             serial_number_nonce_input_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
 
@@ -602,9 +602,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // *******************************************************************
             // Construct the record encryption
 
-            let encryption_randomness_gadget = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
+            let encryption_randomness_gadget = <N::AccountEncryptionGadget as EncryptionGadget<
+                N::AccountEncryptionScheme,
+                N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 &mut encryption_cs.ns(|| format!("output record {} encryption_randomness", j)),
                 || Ok(encryption_randomness),
@@ -620,9 +620,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // *******************************************************************
             // Check that the encrypted record hash is correct
 
-            let encrypted_record_hash_gadget = <C::EncryptedRecordCRHGadget as CRHGadget<
-                C::EncryptedRecordCRH,
-                C::InnerScalarField,
+            let encrypted_record_hash_gadget = <N::EncryptedRecordCRHGadget as CRHGadget<
+                N::EncryptedRecordCRH,
+                N::InnerScalarField,
             >>::OutputGadget::alloc_input(
                 &mut encryption_cs.ns(|| format!("output record {} encrypted record hash", j)),
                 || Ok(encrypted_record_hash),
@@ -648,21 +648,21 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
         let mut input = Vec::new();
-        for id_gadget in old_program_ids_gadgets.iter().take(C::NUM_INPUT_RECORDS) {
+        for id_gadget in old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
-        for id_gadget in new_program_ids_gadgets.iter().take(C::NUM_OUTPUT_RECORDS) {
+        for id_gadget in new_program_ids_gadgets.iter().take(N::NUM_OUTPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
 
         let given_commitment_randomness =
-            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::RandomnessGadget::alloc(
+            <N::ProgramCommitmentGadget as CommitmentGadget<_, N::InnerScalarField>>::RandomnessGadget::alloc(
                 &mut commitment_cs.ns(|| "given_commitment_randomness"),
                 || Ok(&private.program_randomness),
             )?;
 
         let given_commitment =
-            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::OutputGadget::alloc_input(
+            <N::ProgramCommitmentGadget as CommitmentGadget<_, N::InnerScalarField>>::OutputGadget::alloc_input(
                 &mut commitment_cs.ns(|| "given_commitment"),
                 || Ok(public.program_commitment.as_ref().unwrap()),
             )?;
@@ -686,11 +686,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     let (network_id, memo) = {
         let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &public.kernel.memo)?;
-        let network_id = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &[public.kernel.network_id])?;
+        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &*public.kernel.memo())?;
+        let network_id = UInt8::alloc_input_vec_le(
+            cs.ns(|| "Allocate network id"),
+            &public.kernel.network_id().to_le_bytes(),
+        )?;
 
         let mut local_data_input_commitment_bytes = vec![];
-        for i in 0..C::NUM_INPUT_RECORDS {
+        for i in 0..N::NUM_INPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
 
             let mut input_bytes = vec![];
@@ -700,9 +703,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
 
-            let commitment_randomness = <C::LocalDataCommitmentGadget as CommitmentGadget<
-                C::LocalDataCommitmentScheme,
-                C::InnerScalarField,
+            let commitment_randomness = <N::LocalDataCommitmentGadget as CommitmentGadget<
+                N::LocalDataCommitmentScheme,
+                N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 cs.ns(|| format!("Allocate old record local data commitment randomness {}", i)),
                 || Ok(&private.local_data_leaf_randomizers[i]),
@@ -719,21 +722,21 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         }
 
         let mut local_data_output_commitment_bytes = Vec::new();
-        for j in 0..C::NUM_OUTPUT_RECORDS {
+        for j in 0..N::NUM_OUTPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
 
             let mut input_bytes = vec![];
-            input_bytes.extend_from_slice(&[UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8)]);
+            input_bytes.extend_from_slice(&[UInt8::constant((N::NUM_INPUT_RECORDS + j) as u8)]);
             input_bytes.extend_from_slice(&output_commitments[j].to_bytes(&mut cs.ns(|| "commitment"))?);
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
 
-            let commitment_randomness = <C::LocalDataCommitmentGadget as CommitmentGadget<
-                C::LocalDataCommitmentScheme,
-                C::InnerScalarField,
+            let commitment_randomness = <N::LocalDataCommitmentGadget as CommitmentGadget<
+                N::LocalDataCommitmentScheme,
+                N::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 cs.ns(|| format!("Allocate new record local data commitment randomness {}", j)),
-                || Ok(&private.local_data_leaf_randomizers[C::NUM_INPUT_RECORDS + j]),
+                || Ok(&private.local_data_leaf_randomizers[N::NUM_INPUT_RECORDS + j]),
             )?;
 
             let commitment = local_data_commitment_parameters.check_commitment_gadget(
@@ -768,7 +771,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         )?;
 
         let given_local_data_root =
-            <C::LocalDataCRHGadget as CRHGadget<C::LocalDataCRH, C::InnerScalarField>>::OutputGadget::alloc_input(
+            <N::LocalDataCRHGadget as CRHGadget<N::LocalDataCRH, N::InnerScalarField>>::OutputGadget::alloc_input(
                 cs.ns(|| "Allocate local data root"),
                 || Ok(public.local_data_root.unwrap()),
             )?;
@@ -789,7 +792,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
         let given_value_balance =
-            Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance.0)?;
+            Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance().0)?;
 
         let mut candidate_value_balance = Int64::zero();
 
@@ -836,9 +839,9 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
         // Verify each signature is valid.
         for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {
-            let signature_gadget = <C::AccountSignatureGadget as SignatureGadget<
-                C::AccountSignatureScheme,
-                C::InnerScalarField,
+            let signature_gadget = <N::AccountSignatureGadget as SignatureGadget<
+                N::AccountSignatureScheme,
+                N::InnerScalarField,
             >>::SignatureGadget::alloc(
                 signature_cs.ns(|| format!("alloc_signature_{}", i)), || Ok(signature)
             )?;

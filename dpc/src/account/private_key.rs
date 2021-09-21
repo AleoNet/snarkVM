@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    account_format,
-    AccountError,
-    ComputeKey,
-    Parameters,
-    ACCOUNT_SEED_R_SIG_DOMAIN,
-    ACCOUNT_SEED_SK_SIG_DOMAIN,
-};
+use crate::{account_format, AccountError, ComputeKey, Network, ACCOUNT_SEED_R_SIG_DOMAIN, ACCOUNT_SEED_SK_SIG_DOMAIN};
 use snarkvm_algorithms::traits::{SignatureScheme, PRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
@@ -32,21 +25,21 @@ use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct PrivateKey<C: Parameters> {
-    seed: C::AccountSeed,
-    pub(super) sk_sig: C::ProgramScalarField,
-    pub(super) r_sig: C::ProgramScalarField,
+pub struct PrivateKey<N: Network> {
+    seed: N::AccountSeed,
+    pub(super) sk_sig: N::ProgramScalarField,
+    pub(super) r_sig: N::ProgramScalarField,
 }
 
-impl<C: Parameters> PrivateKey<C> {
+impl<N: Network> PrivateKey<N> {
     /// Creates a new account private key.
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         // Sample a random account seed.
-        Self::from(&C::AccountSeed::rand(rng))
+        Self::from(&N::AccountSeed::rand(rng))
     }
 
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
@@ -61,43 +54,43 @@ impl<C: Parameters> PrivateKey<C> {
     }
 
     /// Signs a message using the account private key.
-    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<C::AccountSignature, AccountError> {
-        Ok(C::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?)
+    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
+        Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?)
     }
 
     /// Returns a reference to the account compute key.
-    pub fn to_compute_key(&self) -> Result<ComputeKey<C>, AccountError> {
+    pub fn to_compute_key(&self) -> Result<ComputeKey<N>, AccountError> {
         Ok(ComputeKey::from_private_key(self)?)
     }
 
     /// Returns the decryption key.
-    pub fn to_decryption_key(&self) -> Result<C::ProgramScalarField, AccountError> {
+    pub fn to_decryption_key(&self) -> Result<N::ProgramScalarField, AccountError> {
         Ok(self.sk_sig + self.r_sig + self.to_compute_key()?.sk_prf())
     }
 }
 
-impl<C: Parameters> From<&C::AccountSeed> for PrivateKey<C> {
+impl<N: Network> From<&N::AccountSeed> for PrivateKey<N> {
     /// Returns the account private key from an account seed.
-    fn from(seed: &C::AccountSeed) -> Self {
+    fn from(seed: &N::AccountSeed) -> Self {
         // Construct the sk_sig domain separator.
         let sk_sig_input = ACCOUNT_SEED_SK_SIG_DOMAIN;
-        let sk_sig_domain = C::ProgramScalarField::from_bytes_le_mod_order(&sk_sig_input.as_bytes());
+        let sk_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(&sk_sig_input.as_bytes());
 
         // Construct the r_sig domain separator.
         let r_sig_input = format!("{}_{}", ACCOUNT_SEED_R_SIG_DOMAIN, 0);
-        let r_sig_domain = C::ProgramScalarField::from_bytes_le_mod_order(r_sig_input.as_bytes());
+        let r_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(r_sig_input.as_bytes());
 
         Self {
             seed: seed.clone(),
-            sk_sig: C::AccountPRF::evaluate(seed, &vec![sk_sig_domain])
+            sk_sig: N::AccountPRF::evaluate(seed, &vec![sk_sig_domain])
                 .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
-            r_sig: C::AccountPRF::evaluate(seed, &vec![r_sig_domain])
+            r_sig: N::AccountPRF::evaluate(seed, &vec![r_sig_domain])
                 .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
         }
     }
 }
 
-impl<C: Parameters> FromStr for PrivateKey<C> {
+impl<N: Network> FromStr for PrivateKey<N> {
     type Err = AccountError;
 
     /// Reads in an account private key string.
@@ -115,7 +108,7 @@ impl<C: Parameters> FromStr for PrivateKey<C> {
     }
 }
 
-impl<C: Parameters> fmt::Display for PrivateKey<C> {
+impl<N: Network> fmt::Display for PrivateKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut private_key = [0u8; 43];
         private_key[0..11].copy_from_slice(&account_format::PRIVATE_KEY_PREFIX);
@@ -127,7 +120,7 @@ impl<C: Parameters> fmt::Display for PrivateKey<C> {
     }
 }
 
-impl<C: Parameters> fmt::Debug for PrivateKey<C> {
+impl<N: Network> fmt::Debug for PrivateKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PrivateKey {{ seed: {:?} }}", self.seed)
     }

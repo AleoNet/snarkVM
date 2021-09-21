@@ -21,15 +21,15 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct Input<C: Parameters> {
-    record: Record<C>,
-    serial_number: C::SerialNumber,
-    noop_private_key: Option<PrivateKey<C>>,
-    executable: Executable<C>,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct Input<N: Network> {
+    record: Record<N>,
+    serial_number: N::SerialNumber,
+    noop_private_key: Option<PrivateKey<N>>,
+    executable: Executable<N>,
 }
 
-impl<C: Parameters> Input<C> {
+impl<N: Network> Input<N> {
     pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Construct the noop executable.
         let executable = Executable::Noop;
@@ -54,7 +54,7 @@ impl<C: Parameters> Input<C> {
     }
 
     /// Initializes a new instance of `Input`.
-    pub fn new(compute_key: &ComputeKey<C>, record: Record<C>, executable: Option<Executable<C>>) -> Result<Self> {
+    pub fn new(compute_key: &ComputeKey<N>, record: Record<N>, executable: Option<Executable<N>>) -> Result<Self> {
         // Ensure the account address matches.
         if Address::from_compute_key(compute_key)? != record.owner() {
             return Err(anyhow!("Address from compute key does not match the record owner"));
@@ -84,12 +84,12 @@ impl<C: Parameters> Input<C> {
 
     /// Initializes a new instance of `Input`.
     pub fn new_full(
-        compute_key: &ComputeKey<C>,
+        compute_key: &ComputeKey<N>,
         value: AleoAmount,
         payload: Payload,
-        executable: Executable<C>,
-        serial_number_nonce: C::SerialNumberNonce,
-        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+        executable: Executable<N>,
+        serial_number_nonce: N::SerialNumberNonce,
+        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
         let address = Address::from_compute_key(compute_key)?;
@@ -120,22 +120,22 @@ impl<C: Parameters> Input<C> {
     }
 
     /// Returns a reference to the input record.
-    pub fn record(&self) -> &Record<C> {
+    pub fn record(&self) -> &Record<N> {
         &self.record
     }
 
     /// Returns a reference to the input serial number.
-    pub fn serial_number(&self) -> &C::SerialNumber {
+    pub fn serial_number(&self) -> &N::SerialNumber {
         &self.serial_number
     }
 
     /// Returns a reference to the noop private key, if it exists.
-    pub fn noop_private_key(&self) -> &Option<PrivateKey<C>> {
+    pub fn noop_private_key(&self) -> &Option<PrivateKey<N>> {
         &self.noop_private_key
     }
 
     /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<C> {
+    pub fn executable(&self) -> &Executable<N> {
         &self.executable
     }
 }
@@ -171,7 +171,7 @@ mod tests {
             // Generate the candidate input state.
             let (candidate_record, candidate_serial_number, candidate_noop_private_key, candidate_executable) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
-                let input = Input::<Testnet2Parameters>::new_noop(rng).unwrap();
+                let input = Input::<Testnet2>::new_noop(rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),

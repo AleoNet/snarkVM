@@ -28,6 +28,11 @@ path = "benches/noop_program.rs"
 harness = false
 
 [[bench]]
+name = "posw"
+path = "benches/posw.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
@@ -97,6 +102,10 @@ version = "1.3"
 [dependencies.blake2]
 version = "0.9"
 
+[dependencies.chrono]
+version = "0.4"
+features = [ "serde" ]
+
 [dependencies.derivative]
 version = "2"
 
@@ -119,15 +128,8 @@ version = "1"
 version = "1.0"
 features = [ "derive" ]
 
-[dependencies.sha2]
-version = "0.9"
-
 [dependencies.thiserror]
 version = "1.0"
-
-[dev-dependencies.snarkvm-ledger]
-path = "../ledger"
-default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.5"

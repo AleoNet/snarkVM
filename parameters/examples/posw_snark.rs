@@ -14,18 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::{crh::sha256, SNARK, SRS};
+use snarkvm_curves::PairingEngine;
+use snarkvm_dpc::{errors::DPCError, testnet1::Testnet1, testnet2::Testnet2, Network, PoSWScheme};
+use snarkvm_marlin::{
+    ahp::AHPForR1CS,
+    constraints::snark::MarlinSNARK,
+    marlin::MarlinTestnet1Mode,
+    FiatShamirChaChaRng,
+};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
+use snarkvm_utilities::{path::PathBuf, FromBytes, ToBytes};
+
 use blake2::Blake2s;
 use rand::{prelude::ThreadRng, thread_rng};
-use snarkvm_algorithms::{crh::sha256, SNARK};
-use snarkvm_curves::{
-    bls12_377::{Bls12_377, Fr},
-    PairingEngine,
-};
-use snarkvm_dpc::errors::DPCError;
-use snarkvm_ledger::posw::PoswMarlin;
-use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
-use snarkvm_utilities::{path::PathBuf, ToBytes};
 
 mod utils;
 use utils::store;
@@ -41,22 +43,25 @@ pub type Marlin<E> = MarlinSNARK<
 >;
 
 #[allow(clippy::type_complexity)]
-pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO: decide the size of the universal setup
-    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-    let srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
+    let max_degree = AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+    let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
-    let srs_bytes = srs.to_bytes_le()?;
-    let posw_snark = PoswMarlin::index::<_, ThreadRng>(&srs).expect("could not setup params");
+    let srs_bytes = universal_srs.to_bytes_le()?;
+    let posw = <N::PoSW as PoSWScheme<N>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
+        &FromBytes::read_le(&srs_bytes[..]).unwrap(),
+    ))
+    .expect("could not setup params");
 
-    let posw_snark_pk = posw_snark
-        .pk
+    let posw_snark_pk = posw
+        .proving_key()
+        .as_ref()
         .expect("posw_snark_pk should be populated")
         .to_bytes_le()?;
-    let posw_snark_vk = posw_snark.vk;
-    let posw_snark_vk = posw_snark_vk.to_bytes_le()?;
+    let posw_snark_vk = posw.verifying_key().to_bytes_le()?;
 
     println!("posw_snark_pk.params\n\tsize - {}", posw_snark_pk.len());
     println!("posw_snark_vk.params\n\tsize - {}", posw_snark_vk.len());
@@ -72,7 +77,18 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let (posw_snark_pk, posw_snark_vk, _srs) = setup().unwrap();
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        println!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
+        return;
+    }
+
+    let (posw_snark_pk, posw_snark_vk, _srs) = match args[1].as_str() {
+        "testnet1" => setup::<Testnet1>().unwrap(),
+        "testnet2" => setup::<Testnet2>().unwrap(),
+        _ => panic!("Invalid network"),
+    };
+
     let posw_snark_pk_checksum = hex::encode(sha256(&posw_snark_pk));
     store(
         &PathBuf::from(&versioned_filename(&posw_snark_pk_checksum)),

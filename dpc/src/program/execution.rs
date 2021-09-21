@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
+use crate::Network;
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 
 /// Program index, path, verifying key, and proof.
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct Execution<C: Parameters> {
-    pub program_path: MerklePath<C::ProgramCircuitTreeParameters>,
-    pub verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
-    pub proof: <C::ProgramSNARK as SNARK>::Proof,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct Execution<N: Network> {
+    pub program_path: MerklePath<N::ProgramCircuitTreeParameters>,
+    pub verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
+    pub proof: <N::ProgramSNARK as SNARK>::Proof,
 }

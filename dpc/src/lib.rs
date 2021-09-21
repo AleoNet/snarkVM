@@ -66,6 +66,9 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
+pub mod block;
+pub use block::*;
+
 pub mod circuits;
 pub use circuits::*;
 
@@ -75,8 +78,14 @@ pub use dpc::*;
 pub mod errors;
 pub use errors::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod ledger;
+pub use ledger::*;
+
+pub mod network;
+pub use network::*;
+
+pub mod posw;
+pub use posw::*;
 
 pub mod program;
 pub use program::*;
@@ -96,9 +105,11 @@ pub use transaction::*;
 pub mod prelude {
     pub use crate::{
         account::*,
+        block::*,
         circuits::*,
         dpc::*,
         errors::*,
+        ledger::*,
         program::*,
         record::*,
         state::*,

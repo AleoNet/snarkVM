@@ -16,7 +16,7 @@
 
 use crate::{
     Execution,
-    Parameters,
+    Network,
     PrivateVariables,
     ProgramCircuit,
     ProgramCircuitTree,
@@ -29,14 +29,14 @@ use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, prelude::*};
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
-pub struct Program<C: Parameters> {
-    circuits: Arc<ProgramCircuitTree<C>>,
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+pub struct Program<N: Network> {
+    circuits: Arc<ProgramCircuitTree<N>>,
 }
 
-impl<C: Parameters> ProgramScheme<C> for Program<C> {
+impl<N: Network> ProgramScheme<N> for Program<N> {
     /// Initializes an instance of the program with the given circuits.
-    fn new(circuits: Vec<Box<dyn ProgramCircuit<C>>>) -> Result<Self, ProgramError> {
+    fn new(circuits: Vec<Box<dyn ProgramCircuit<N>>>) -> Result<Self, ProgramError> {
         // Initialize a new program circuit tree, and add all circuits to the tree.
         let mut circuit_tree = ProgramCircuitTree::new()?;
         circuit_tree.add_all(circuits)?;
@@ -47,31 +47,31 @@ impl<C: Parameters> ProgramScheme<C> for Program<C> {
     }
 
     /// Returns a reference to the program ID.
-    fn program_id(&self) -> MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+    fn program_id(&self) -> MerkleTreeDigest<N::ProgramCircuitTreeParameters> {
         *self.circuits.to_program_id()
     }
 
     /// Returns `true` if the given circuit ID exists in the program.
-    fn contains_circuit(&self, circuit_id: &C::ProgramCircuitID) -> bool {
+    fn contains_circuit(&self, circuit_id: &N::ProgramCircuitID) -> bool {
         self.circuits.contains_circuit(circuit_id)
     }
 
     /// Returns the circuit given the circuit ID, if it exists.
-    fn get_circuit(&self, circuit_id: &C::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<C>>> {
+    fn get_circuit(&self, circuit_id: &N::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<N>>> {
         self.circuits.get_circuit(circuit_id)
     }
 
     /// Returns the circuit given the circuit index, if it exists.
-    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<C>>> {
+    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<N>>> {
         self.circuits.find_circuit_by_index(circuit_index)
     }
 
     fn execute(
         &self,
-        circuit_id: &C::ProgramCircuitID,
-        public: &PublicVariables<C>,
-        private: &dyn PrivateVariables<C>,
-    ) -> Result<Execution<C>, ProgramError> {
+        circuit_id: &N::ProgramCircuitID,
+        public: &PublicVariables<N>,
+        private: &dyn PrivateVariables<N>,
+    ) -> Result<Execution<N>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuits.get_circuit(circuit_id) {
             Some(circuit) => circuit,
@@ -92,7 +92,7 @@ impl<C: Parameters> ProgramScheme<C> for Program<C> {
         })
     }
 
-    fn execute_blank(&self, circuit_id: &C::ProgramCircuitID) -> Result<Execution<C>, ProgramError> {
+    fn execute_blank(&self, circuit_id: &N::ProgramCircuitID) -> Result<Execution<N>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuits.get_circuit(circuit_id) {
             Some(circuit) => circuit,

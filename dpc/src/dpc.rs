@@ -15,22 +15,21 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::has_duplicates;
+use snarkvm_algorithms::prelude::*;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use rayon::prelude::*;
 use std::marker::PhantomData;
 
-pub struct DPC<C: Parameters>(PhantomData<C>);
+pub struct DPC<N: Network>(PhantomData<N>);
 
-impl<C: Parameters> DPCScheme<C> for DPC<C> {
-    type Account = Account<C>;
-    type Authorization = TransactionAuthorization<C>;
-    type Execution = Execution<C>;
-    type StateTransition = StateTransition<C>;
-    type Transaction = Transaction<C>;
+impl<N: Network> DPCScheme<N> for DPC<N> {
+    type Account = Account<N>;
+    type Authorization = TransactionAuthorization<N>;
+    type Execution = Execution<N>;
+    type LedgerProof = LedgerProof<N>;
+    type StateTransition = StateTransition<N>;
+    type Transaction = Transaction<N>;
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
@@ -45,8 +44,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let signature_message = state.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
-        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for noop_private_key in state.noop_private_keys().iter().take(C::NUM_INPUT_RECORDS) {
+        let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for noop_private_key in state.noop_private_keys().iter().take(N::NUM_INPUT_RECORDS) {
             // Fetch the correct private key.
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
@@ -66,21 +65,27 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
+    fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
-        executables: &Vec<Executable<C>>,
-        ledger: &L,
+        executables: &Vec<Executable<N>>,
+        ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(C::NUM_TOTAL_RECORDS, executables.len());
+        assert_eq!(N::NUM_TOTAL_RECORDS, executables.len());
 
         let execution_timer = start_timer!(|| "DPC::execute");
+
+        // Construct the ledger witnesses.
+        let ledger_digest = ledger_proof.commitments_root();
+        let input_witnesses = ledger_proof.commitment_inclusion_proofs();
+
+        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
 
         // Generate the local data.
         let local_data = authorization.to_local_data(rng)?;
 
         // Execute the programs.
-        let mut executions = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
+        let mut executions = Vec::with_capacity(N::NUM_TOTAL_RECORDS);
         for (i, executable) in executables.iter().enumerate() {
             executions.push(executable.execute(i as u8, &local_data).unwrap());
         }
@@ -98,18 +103,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             output_records,
             signatures,
         } = authorization;
-
-        // Construct the ledger witnesses.
-        let ledger_digest = ledger.latest_digest()?;
-
-        // Compute the ledger membership witnesses.
-        let mut input_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
-            input_witnesses.push(match record.is_dummy() {
-                true => MerklePath::default(),
-                false => ledger.prove_cm(&record.commitment())?,
-            });
-        }
 
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
@@ -130,30 +123,24 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         );
 
         // Compute the inner circuit proof.
-        let inner_proof = {
-            let inner_proving_key = C::inner_circuit_proving_key(true)
-                .as_ref()
-                .ok_or(DPCError::MissingInnerProvingKey)?;
-
-            C::InnerSNARK::prove(
-                &inner_proving_key,
-                &InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables),
-                rng,
-            )?
-        };
+        let inner_proof = N::InnerSNARK::prove(
+            N::inner_circuit_proving_key(),
+            &InnerCircuit::<N>::new(inner_public_variables.clone(), inner_private_variables),
+            rng,
+        )?;
 
         // Verify that the inner circuit proof passes.
-        assert!(C::InnerSNARK::verify(
-            C::inner_circuit_verifying_key(),
+        assert!(N::InnerSNARK::verify(
+            N::inner_circuit_verifying_key(),
             &inner_public_variables,
             &inner_proof
         )?);
 
         let transaction_proof = {
             // Construct the outer circuit public and private variables.
-            let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, C::inner_circuit_id());
+            let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, N::inner_circuit_id());
             let outer_private_variables = OuterPrivateVariables::new(
-                C::inner_circuit_verifying_key().clone(),
+                N::inner_circuit_verifying_key().clone(),
                 inner_proof,
                 executions.to_vec(),
                 program_commitment.clone(),
@@ -161,143 +148,69 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 local_data.root().clone(),
             );
 
-            let outer_proving_key = C::outer_circuit_proving_key(true)
-                .as_ref()
-                .ok_or(DPCError::MissingOuterProvingKey)?;
-
-            let outer_proof = C::OuterSNARK::prove(
-                &outer_proving_key,
-                &OuterCircuit::<C>::new(outer_public_variables.clone(), outer_private_variables),
+            N::OuterSNARK::prove(
+                N::outer_circuit_proving_key(),
+                &OuterCircuit::<N>::new(outer_public_variables, outer_private_variables),
                 rng,
-            )?;
-
-            // Verify the outer circuit proof passes.
-            assert!(C::OuterSNARK::verify(
-                C::outer_circuit_verifying_key(),
-                &outer_public_variables,
-                &outer_proof
-            )?);
-
-            outer_proof
+            )?
         };
         end_timer!(execution_timer);
 
-        Ok(Self::Transaction::from(
-            kernel,
-            ledger_digest,
-            C::inner_circuit_id().clone(),
-            encrypted_records,
-            transaction_proof,
-        ))
+        Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
 
-    fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> bool {
-        let verify_time = start_timer!(|| "DPC::verify");
+    //use rayon::prelude::*;
 
-        // Returns false if the number of serial numbers in the transaction is incorrect.
-        if transaction.serial_numbers().len() != C::NUM_INPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of serial numbers");
-            return false;
-        }
-
-        // Returns false if there are duplicate serial numbers in the transaction.
-        if has_duplicates(transaction.serial_numbers().iter()) {
-            eprintln!("Transaction contains duplicate serial numbers");
-            return false;
-        }
-
-        // Returns false if the number of commitments in the transaction is incorrect.
-        if transaction.commitments().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
-            return false;
-        }
-
-        // Returns false if there are duplicate commitments numbers in the transaction.
-        if has_duplicates(transaction.commitments().iter()) {
-            eprintln!("Transaction contains duplicate commitments");
-            return false;
-        }
-
-        let ledger_time = start_timer!(|| "Ledger checks");
-
-        // Returns false if any transaction serial number previously existed in the ledger.
-        for sn in transaction.serial_numbers() {
-            if ledger.contains_serial_number(sn) {
-                eprintln!("Ledger already contains this transaction serial number.");
-                return false;
-            }
-        }
-
-        // Returns false if any transaction commitment previously existed in the ledger.
-        for cm in transaction.commitments() {
-            if ledger.contains_commitment(cm) {
-                eprintln!("Ledger already contains this transaction commitment.");
-                return false;
-            }
-        }
-
-        // Returns false if the ledger digest in the transaction is invalid.
-        if !ledger.is_valid_digest(&transaction.ledger_digest) {
-            eprintln!("Ledger digest is invalid.");
-            return false;
-        }
-
-        end_timer!(ledger_time);
-
-        // Construct the ciphertext hashes
-
-        // Returns false if the number of encrypted records in the transaction is incorrect.
-        if transaction.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of encrypted records");
-            return false;
-        }
-
-        let outer_public_variables = match OuterPublicVariables::from(transaction) {
-            Ok(outer_public_variables) => outer_public_variables,
-            Err(error) => {
-                eprintln!("Unable to construct outer public variables - {}", error);
-                return false;
-            }
-        };
-
-        match C::OuterSNARK::verify(
-            C::outer_circuit_verifying_key(),
-            &outer_public_variables,
-            &transaction.proof,
-        ) {
-            Ok(is_valid) => {
-                if !is_valid {
-                    eprintln!("Transaction proof failed to verify.");
-                    return false;
-                }
-            }
-            Err(error) => {
-                eprintln!(
-                    "Outer circuit verifier failed to validate transaction proof: {:?}",
-                    error
-                );
-                return false;
-            }
-        }
-
-        end_timer!(verify_time);
-
-        true
-    }
-
-    /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C> + Sync>(
-        transactions: &[Self::Transaction],
-        ledger: &L,
-    ) -> bool {
-        transactions
-            .as_parallel_slice()
-            .par_iter()
-            .all(|tx| Self::verify(tx, ledger))
-    }
+    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
+    //     let verify_time = start_timer!(|| "DPC::verify");
+    //
+    //     // Returns `false` if the transaction is invalid.
+    //     if !transaction.is_valid() {
+    //         eprintln!("Transaction is invalid.");
+    //         return false;
+    //     }
+    //
+    //     let ledger_time = start_timer!(|| "Ledger checks");
+    //
+    //     // Returns false if any transaction serial number previously existed in the ledger.
+    //     for sn in transaction.serial_numbers() {
+    //         if ledger.contains_serial_number(sn) {
+    //             eprintln!("Ledger already contains this transaction serial number.");
+    //             return false;
+    //         }
+    //     }
+    //
+    //     // Returns false if any transaction commitment previously existed in the ledger.
+    //     for cm in transaction.commitments() {
+    //         if ledger.contains_commitment(cm) {
+    //             eprintln!("Ledger already contains this transaction commitment.");
+    //             return false;
+    //         }
+    //     }
+    //
+    //     // Returns false if the ledger digest in the transaction is invalid.
+    //     if !ledger.is_valid_digest(&transaction.ledger_digest()) {
+    //         eprintln!("Ledger digest is invalid.");
+    //         return false;
+    //     }
+    //
+    //     end_timer!(ledger_time);
+    //
+    //     end_timer!(verify_time);
+    //
+    //     true
+    // }
+    //
+    // /// Returns true iff all the transactions in the block are valid according to the ledger.
+    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
+    //     transactions: &[Self::Transaction],
+    //     ledger: &L,
+    // ) -> bool {
+    //     transactions
+    //         .as_parallel_slice()
+    //         .par_iter()
+    //         .all(|tx| Self::verify(tx, ledger))
+    // }
 }
 
 #[cfg(test)]
@@ -308,13 +221,13 @@ mod tests {
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
 
-    fn transaction_authorization_serialization_test<C: Parameters>() {
+    fn transaction_authorization_serialization_test<N: Network>() {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
         let recipient = Account::new(&mut rng).unwrap();
         let amount = AleoAmount::from_bytes(10);
         let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
-        let authorization = DPC::<C>::authorize(&vec![], &state, &mut rng).unwrap();
+        let authorization = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
 
         // Serialize and deserialize the transaction authorization.
         let deserialized_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
@@ -323,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_transaction_authorization_serialization() {
-        transaction_authorization_serialization_test::<crate::testnet1::Testnet1Parameters>();
-        transaction_authorization_serialization_test::<crate::testnet2::Testnet2Parameters>();
+        transaction_authorization_serialization_test::<crate::testnet1::Testnet1>();
+        transaction_authorization_serialization_test::<crate::testnet2::Testnet2>();
     }
 }

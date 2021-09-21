@@ -19,7 +19,7 @@ use crate::errors::AccountError;
 use rand::{CryptoRng, Rng};
 
 pub trait AccountScheme: Sized {
-    type Address: Default;
+    type Address: Copy + Clone + Default;
     type PrivateKey;
     type ViewKey;
 
@@ -28,4 +28,7 @@ pub trait AccountScheme: Sized {
 
     /// Returns a reference to the private key.
     fn private_key(&self) -> &Self::PrivateKey;
+
+    /// Returns a reference to the address.
+    fn address(&self) -> Self::Address;
 }

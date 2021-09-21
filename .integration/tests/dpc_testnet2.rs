@@ -14,124 +14,88 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        207, 249, 81, 218, 7, 40, 196, 252, 216, 43, 76, 140, 255, 180, 215, 169, 183, 186, 20, 134, 150, 161, 32, 234,
-        238, 85, 157, 181, 217, 10, 96, 147, 32, 185, 138, 155, 143, 3, 103, 135, 26, 170, 84, 60, 182, 46, 223, 0,
+        126, 111, 139, 25, 71, 200, 187, 91, 53, 148, 135, 104, 35, 224, 153, 158, 31, 65, 204, 37, 107, 242, 142, 41,
+        226, 82, 131, 66, 67, 140, 190, 114, 171, 251, 252, 230, 249, 206, 124, 159, 3, 72, 126, 95, 197, 250, 48, 0,
     ];
-    let candidate_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
-        .to_bytes_le()
-        .unwrap();
+    let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
 
 #[test]
 fn dpc_testnet2_integration_test() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+    let mut rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     // Create a genesis block.
-    let genesis_block = Block {
-        header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
-            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork::default(),
-        },
-        transactions: Transactions::new(),
-    };
+    let recipient = Account::new(rng).unwrap();
+    let genesis_block = Block::<Testnet2>::new_genesis(recipient.address(), rng).unwrap();
+    let coinbase_transaction = genesis_block.to_coinbase_transaction().unwrap();
 
-    let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
+    let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block).unwrap();
 
-    let recipient = Account::new(&mut rng).unwrap();
-    let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .build(&mut rng)
-        .unwrap();
-    let authorization = DPC::authorize(&vec![], &state, &mut rng).unwrap();
+    // Check that the coinbase transaction is serialized and deserialized correctly.
+    let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
+    let recovered_transaction = Transaction::<Testnet2>::read_le(&transaction_bytes[..]).unwrap();
+    assert_eq!(coinbase_transaction, recovered_transaction);
 
-    let new_records = authorization.output_records.clone();
+    // Check that coinbase record can be decrypted from the transaction.
+    let encrypted_record = &coinbase_transaction.encrypted_records()[0];
+    let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
+    let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
+    assert_eq!(decrypted_record.owner(), recipient.address());
+    assert_eq!(decrypted_record.value() as i64, Block::<Testnet2>::block_reward(0).0);
 
-    let transaction = DPC::execute(authorization, state.executables(), &ledger, &mut rng).unwrap();
-
-    // Check that the transaction is serialized and deserialized correctly
-    let transaction_bytes = to_bytes_le![transaction].unwrap();
-    let recovered_transaction = Testnet2Transaction::read_le(&transaction_bytes[..]).unwrap();
-    assert_eq!(transaction, recovered_transaction);
-
-    // Check that new_records can be decrypted from the transaction
-    {
-        let encrypted_records = transaction.encrypted_records();
-        let new_account_private_keys = vec![recipient.private_key(); Testnet2Parameters::NUM_OUTPUT_RECORDS];
-
-        for ((encrypted_record, private_key), new_record) in
-            encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
-        {
-            let account_view_key = ViewKey::from_private_key(&private_key).unwrap();
-            let decrypted_record = encrypted_record.decrypt(&account_view_key).unwrap();
-            assert_eq!(decrypted_record, new_record);
-        }
-    }
-
-    // Craft the block
-
+    // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
+    let previous_hash = previous_block.to_block_hash().unwrap();
+    let block_height = previous_block.header.height() + 1;
+    assert_eq!(block_height, 1);
 
-    let mut transactions = Transactions::new();
-    transactions.push(transaction);
+    // Construct the new block transactions.
+    let amount = Block::<Testnet2>::block_reward(block_height);
+    let transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, rng).unwrap();
+    let transactions = Transactions::from(&[transaction]).unwrap();
+    let transactions_root = transactions.to_transactions_root().unwrap();
 
-    let transaction_ids = transactions.to_transaction_ids().unwrap();
-
-    let time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
-
-    // Construct new_commitments_tree
-    let transaction_commitments = transactions
-        .0
-        .iter()
-        .map(|t| t.commitments().to_owned())
-        .flatten()
-        .collect();
-    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
-
-    // Construct new_serial_numbers_tree
-    let transaction_serial_numbers = transactions
-        .0
-        .iter()
-        .map(|t| t.serial_numbers().to_owned())
-        .flatten()
-        .collect();
+    // Construct the new serial numbers root.
+    let transaction_serial_numbers = transactions.to_serial_numbers().unwrap();
     let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
+    let serial_numbers_root = *new_serial_numbers_tree.root();
 
-    let header = BlockHeader {
-        previous_block_hash: previous_block.header.to_hash().unwrap(),
-        transactions_root: pedersen_merkle_root(&transaction_ids),
-        commitments_root: MerkleRootHash::from_element(new_commitments_tree.root()),
-        serial_numbers_root: MerkleRootHash::from_element(new_serial_numbers_tree.root()),
-        metadata: BlockHeaderMetadata::new(time, previous_block.header.metadata.difficulty_target, 0),
-        proof: ProofOfSuccinctWork::default(),
+    // Construct the new commitments root.
+    let transaction_commitments = transactions.to_commitments().unwrap();
+    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
+    let commitments_root = *new_commitments_tree.root();
+
+    // Construct the new block header.
+    let header = BlockHeader::new(
+        block_height,
+        previous_block.header.difficulty_target(),
+        transactions_root,
+        serial_numbers_root,
+        commitments_root,
+        &mut rng,
+    )
+    .unwrap();
+
+    // Construct the new block.
+    let block = Block {
+        previous_hash,
+        header,
+        transactions,
     };
-
-    assert!(DPC::verify_transactions(&transactions.0, &ledger));
-
-    let block = Block { header, transactions };
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.block_height(), 1);
@@ -141,37 +105,21 @@ fn dpc_testnet2_integration_test() {
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    let genesis_block = Block {
-        header: BlockHeader {
-            previous_block_hash: BlockHeaderHash([0u8; 32]),
-            transactions_root: PedersenMerkleRootHash([0u8; 32]),
-            commitments_root: MerkleRootHash([0u8; 32]),
-            serial_numbers_root: MerkleRootHash([0u8; 32]),
-            metadata: BlockHeaderMetadata::new(0, 0xFFFF_FFFF_FFFF_FFFF_u64, 0),
-            proof: ProofOfSuccinctWork::default(),
-        },
-        transactions: Transactions::new(),
-    };
-
-    // Use genesis block to initialize the ledger.
-    let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
-
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10 as i64);
-
     let state = StateTransition::builder()
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
 
-    let authorization = DPC::<Testnet2Parameters>::authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::<Testnet2>::authorize(&vec![], &state, &mut rng).unwrap();
 
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Execute the programs.
-    let mut executions = Vec::with_capacity(Testnet2Parameters::NUM_TOTAL_RECORDS);
+    let mut executions = Vec::with_capacity(Testnet2::NUM_TOTAL_RECORDS);
     for (i, executable) in state.executables().iter().enumerate() {
         executions.push(executable.execute(i as u8, &local_data).unwrap());
     }
@@ -192,21 +140,10 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let local_data_root = local_data.root();
 
-    // Construct the ledger witnesses
-    let ledger_digest = ledger.latest_digest().expect("could not get digest");
-
-    // Generate the ledger membership witnesses
-    let mut old_witnesses = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
-
-    // Compute the ledger membership witness and serial number from the input records.
-    for record in input_records.iter() {
-        if record.is_dummy() {
-            old_witnesses.push(MerklePath::default());
-        } else {
-            let witness = ledger.prove_cm(&record.commitment()).unwrap();
-            old_witnesses.push(witness);
-        }
-    }
+    // Construct the ledger witnesses.
+    let ledger_proof = LedgerProof::<Testnet2>::default();
+    let ledger_digest = ledger_proof.commitments_root();
+    let input_witnesses = ledger_proof.commitment_inclusion_proofs();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -221,7 +158,7 @@ fn test_testnet2_dpc_execute_constraints() {
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
         input_records.clone(),
-        old_witnesses,
+        input_witnesses,
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,
@@ -253,14 +190,14 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(283473, num_constraints);
+    assert_eq!(283483, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet2Parameters as Parameters>::InnerSNARK::setup(
-        &InnerCircuit::<Testnet2Parameters>::blank(),
+    let inner_snark_parameters = <Testnet2 as Network>::InnerSNARK::setup(
+        &InnerCircuit::<Testnet2>::blank(),
         &mut SRS::CircuitSpecific(&mut rng),
     )
     .unwrap();
@@ -268,11 +205,11 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_snark_vk = inner_snark_parameters.1.clone();
 
     // NOTE: Do not change this to `Testnet2Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
+    let inner_circuit_id = <Testnet2 as Network>::inner_circuit_id_crh()
         .hash_bits(&inner_snark_vk.to_minimal_bits())
         .unwrap();
 
-    let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(
+    let inner_snark_proof = <Testnet2 as Network>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(inner_public_variables.clone(), inner_private_variables),
         &mut rng,
@@ -293,7 +230,7 @@ fn test_testnet2_dpc_execute_constraints() {
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
-    execute_outer_circuit::<Testnet2Parameters, _>(
+    execute_outer_circuit::<Testnet2, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
         &outer_public_variables,
         &outer_private_variables,

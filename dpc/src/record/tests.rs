@@ -19,8 +19,8 @@ use crate::{
     testnet2::*,
     Account,
     AccountScheme,
+    Network,
     NoopProgram,
-    Parameters,
     Payload,
     ProgramScheme,
     Record,
@@ -39,10 +39,10 @@ pub(crate) const ITERATIONS: usize = 25;
 fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+    let noop_program = NoopProgram::<Testnet2>::setup(&mut rng).unwrap();
 
     for _ in 0..ITERATIONS {
-        let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        let dummy_account = Account::<Testnet2>::new(&mut rng).unwrap();
 
         let value = rng.gen();
         let mut payload = [0u8; PAYLOAD_SIZE];
@@ -50,9 +50,7 @@ fn test_record_encryption() {
 
         // Sample a new record commitment randomness.
         let commitment_randomness =
-            <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(
-                &mut rng,
-            );
+            <<Testnet2 as Network>::CommitmentScheme as CommitmentScheme>::Randomness::rand(&mut rng);
 
         let given_record = Record::new_input(
             noop_program.program_id(),
@@ -60,7 +58,7 @@ fn test_record_encryption() {
             false,
             value,
             Payload::from_bytes_le(&payload).unwrap(),
-            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+            <Testnet2 as Network>::serial_number_nonce_crh()
                 .hash(&rng.gen::<[u8; 32]>())
                 .unwrap(),
             commitment_randomness,

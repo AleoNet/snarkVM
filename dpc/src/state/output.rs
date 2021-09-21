@@ -21,15 +21,15 @@ use rand::{CryptoRng, Rng};
 use std::convert::TryInto;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct Output<C: Parameters> {
-    address: Address<C>,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct Output<N: Network> {
+    address: Address<N>,
     value: AleoAmount,
     payload: Payload,
-    executable: Executable<C>,
+    executable: Executable<N>,
 }
 
-impl<C: Parameters> Output<C> {
+impl<N: Network> Output<N> {
     pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
@@ -40,10 +40,10 @@ impl<C: Parameters> Output<C> {
 
     /// Initializes a new instance of `Output`.
     pub fn new(
-        address: Address<C>,
+        address: Address<N>,
         value: AleoAmount,
         payload: Payload,
-        executable: Option<Executable<C>>,
+        executable: Option<Executable<N>>,
     ) -> Result<Self> {
         // Retrieve the executable. If `None` is provided, construct the noop executable.
         let executable = match executable {
@@ -65,7 +65,7 @@ impl<C: Parameters> Output<C> {
         position: u8,
         joint_serial_numbers: &Vec<u8>,
         rng: &mut R,
-    ) -> Result<Record<C>> {
+    ) -> Result<Record<N>> {
         // Determine if the record is a dummy.
         let is_dummy = self.value == AleoAmount::from_bytes(0) && self.payload.is_empty() && self.executable.is_noop();
 
@@ -82,7 +82,7 @@ impl<C: Parameters> Output<C> {
     }
 
     /// Returns the address.
-    pub fn address(&self) -> Address<C> {
+    pub fn address(&self) -> Address<N> {
         self.address
     }
 
@@ -97,7 +97,7 @@ impl<C: Parameters> Output<C> {
     }
 
     /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<C> {
+    pub fn executable(&self) -> &Executable<N> {
         &self.executable
     }
 }
@@ -122,9 +122,9 @@ mod tests {
             // Generate the given inputs.
             let mut given_rng = ChaChaRng::seed_from_u64(seed);
             let given_joint_serial_numbers = {
-                let mut joint_serial_numbers = Vec::with_capacity(Testnet2Parameters::NUM_INPUT_RECORDS);
-                for _ in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-                    let input = Input::<Testnet2Parameters>::new_noop(&mut given_rng).unwrap();
+                let mut joint_serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+                for _ in 0..Testnet2::NUM_INPUT_RECORDS {
+                    let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
                     joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
                 }
                 joint_serial_numbers
@@ -136,10 +136,10 @@ mod tests {
 
             // Generate the expected output state.
             let expected_record = {
-                let account = Account::<Testnet2Parameters>::new(&mut expected_rng).unwrap();
+                let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
                 Record::new_noop_output(
                     account.address,
-                    Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                    Testnet2::NUM_INPUT_RECORDS as u8,
                     &given_joint_serial_numbers,
                     &mut expected_rng,
                 )
@@ -151,7 +151,7 @@ mod tests {
                 let output = Output::new_noop(&mut candidate_rng).unwrap();
                 let record = output
                     .to_record(
-                        Testnet2Parameters::NUM_INPUT_RECORDS as u8,
+                        Testnet2::NUM_INPUT_RECORDS as u8,
                         &given_joint_serial_numbers,
                         &mut candidate_rng,
                     )

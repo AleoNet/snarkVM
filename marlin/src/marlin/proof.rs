@@ -19,17 +19,10 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use derivative::Derivative;
-use std::io::{
-    Read,
-    Write,
-    {self},
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// A zkSNARK proof.
-#[derive(Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// Commitments to the polynomials produced by the AHP prover.
     pub commitments: Vec<Vec<PC::Commitment>>,

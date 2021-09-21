@@ -16,7 +16,7 @@
 
 #[cfg(test)]
 mod testnet1 {
-    use crate::{testnet1::Testnet1Parameters, Account, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
+    use crate::{testnet1::Testnet1, Account, AccountScheme, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::ToBytes;
@@ -39,21 +39,21 @@ mod testnet1 {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
-        let account = Account::<Testnet1Parameters>::new(&mut rng).unwrap();
+        let account = Account::<Testnet1>::new(&mut rng).unwrap();
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
         assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
 
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
-            assert!(Account::<Testnet1Parameters>::new(&mut rng).is_ok());
+            assert!(Account::<Testnet1>::new(&mut rng).is_ok());
         }
     }
 
     #[test]
     fn test_from_private_key() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
-        let account = Account::<Testnet1Parameters>::try_from(private_key).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let account = Account::<Testnet1>::try_from(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
@@ -62,9 +62,9 @@ mod testnet1 {
 
     #[test]
     fn test_account_derivation() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
-        let view_key = ViewKey::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
-        let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let view_key = ViewKey::<Testnet1>::from_private_key(&private_key).unwrap();
+        let address = Address::<Testnet1>::from_private_key(&private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, private_key.to_string());
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, view_key.to_string());
@@ -73,51 +73,51 @@ mod testnet1 {
 
     #[test]
     fn test_private_key_from_str() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, private_key.to_string());
     }
 
     #[test]
     fn test_private_key_from_invalid_str() {
-        assert!(PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_VIEW_KEY).is_err());
-        assert!(PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_ADDRESS).is_err());
-        assert!(PrivateKey::<Testnet1Parameters>::from_str("APrivateKey1abcdefghijklmnopqrstuvwxyz").is_err());
-        assert!(PrivateKey::<Testnet1Parameters>::from_str("APrivateKey1").is_err());
-        assert!(PrivateKey::<Testnet1Parameters>::from_str("").is_err());
+        assert!(PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_VIEW_KEY).is_err());
+        assert!(PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_ADDRESS).is_err());
+        assert!(PrivateKey::<Testnet1>::from_str("APrivateKey1abcdefghijklmnopqrstuvwxyz").is_err());
+        assert!(PrivateKey::<Testnet1>::from_str("APrivateKey1").is_err());
+        assert!(PrivateKey::<Testnet1>::from_str("").is_err());
     }
 
     #[test]
     fn test_private_key_into_view_key() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         let view_key: ViewKey<_> = private_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, view_key.to_string());
     }
 
     #[test]
     fn test_view_key_from_str() {
-        let view_key = ViewKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_VIEW_KEY).unwrap();
+        let view_key = ViewKey::<Testnet1>::from_str(ALEO_TESTNET1_VIEW_KEY).unwrap();
         assert_eq!(ALEO_TESTNET1_VIEW_KEY, view_key.to_string());
     }
 
     #[test]
     fn test_view_key_from_invalid_str() {
-        assert!(ViewKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).is_err());
-        assert!(ViewKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_ADDRESS).is_err());
-        assert!(ViewKey::<Testnet1Parameters>::from_str("AViewKey1abcdefghijklmnopqrstuvwxyz").is_err());
-        assert!(ViewKey::<Testnet1Parameters>::from_str("AViewKey1").is_err());
-        assert!(ViewKey::<Testnet1Parameters>::from_str("").is_err());
+        assert!(ViewKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).is_err());
+        assert!(ViewKey::<Testnet1>::from_str(ALEO_TESTNET1_ADDRESS).is_err());
+        assert!(ViewKey::<Testnet1>::from_str("AViewKey1abcdefghijklmnopqrstuvwxyz").is_err());
+        assert!(ViewKey::<Testnet1>::from_str("AViewKey1").is_err());
+        assert!(ViewKey::<Testnet1>::from_str("").is_err());
     }
 
     #[test]
     fn test_private_key_into_address() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         let address: Address<_> = private_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET1_ADDRESS, address.to_string());
     }
 
     #[test]
     fn test_compute_key_into_address() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
         let compute_key = private_key.to_compute_key().unwrap();
         let address: Address<_> = compute_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET1_ADDRESS, address.to_string());
@@ -125,29 +125,29 @@ mod testnet1 {
 
     #[test]
     fn test_view_key_into_address() {
-        let view_key = ViewKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_VIEW_KEY).unwrap();
+        let view_key = ViewKey::<Testnet1>::from_str(ALEO_TESTNET1_VIEW_KEY).unwrap();
         let address: Address<_> = view_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET1_ADDRESS, address.to_string());
     }
 
     #[test]
     fn test_address_from_str() {
-        let address = Address::<Testnet1Parameters>::from_str(ALEO_TESTNET1_ADDRESS).unwrap();
+        let address = Address::<Testnet1>::from_str(ALEO_TESTNET1_ADDRESS).unwrap();
         assert_eq!(ALEO_TESTNET1_ADDRESS, address.to_string());
     }
 
     #[test]
     fn test_address_from_invalid_str() {
-        assert!(Address::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).is_err());
-        assert!(Address::<Testnet1Parameters>::from_str(ALEO_TESTNET1_VIEW_KEY).is_err());
-        assert!(Address::<Testnet1Parameters>::from_str("aleo1").is_err());
-        assert!(Address::<Testnet1Parameters>::from_str("").is_err());
+        assert!(Address::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).is_err());
+        assert!(Address::<Testnet1>::from_str(ALEO_TESTNET1_VIEW_KEY).is_err());
+        assert!(Address::<Testnet1>::from_str("aleo1").is_err());
+        assert!(Address::<Testnet1>::from_str("").is_err());
     }
 
     #[test]
     fn test_account_signatures() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
-        let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let address = Address::<Testnet1>::from_private_key(&private_key).unwrap();
 
         for i in 0..ITERATIONS {
             let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
@@ -159,8 +159,8 @@ mod testnet1 {
 
     #[test]
     fn test_invalid_account_signatures() {
-        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
-        let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+        let private_key = PrivateKey::<Testnet1>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let address = Address::<Testnet1>::from_private_key(&private_key).unwrap();
 
         for i in 0..ITERATIONS {
             let message = "Hi, I'm an Aleo account signature!".as_bytes();
@@ -176,12 +176,12 @@ mod testnet1 {
     fn test_account_signature_compatibility() {
         for i in 0..25 {
             // Sample an Aleo account.
-            let private_key = PrivateKey::<Testnet1Parameters>::new(&mut thread_rng());
-            let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+            let private_key = PrivateKey::<Testnet1>::new(&mut thread_rng());
+            let address = Address::<Testnet1>::from_private_key(&private_key).unwrap();
 
             // Derive the signature public key.
             let signature_private_key = (private_key.sk_sig, private_key.r_sig);
-            let signature_public_key = Testnet1Parameters::account_signature_scheme()
+            let signature_public_key = Testnet1::account_signature_scheme()
                 .generate_public_key(&signature_private_key)
                 .unwrap();
 
@@ -197,7 +197,7 @@ mod testnet1 {
 
             // Ensure the Aleo signatures match.
             let expected_signature = private_key.sign(&message, &mut rng.clone()).unwrap();
-            let candidate_signature = Testnet1Parameters::account_signature_scheme()
+            let candidate_signature = Testnet1::account_signature_scheme()
                 .sign(&signature_private_key, &message, &mut rng.clone())
                 .unwrap();
             assert_eq!(expected_signature, candidate_signature);
@@ -206,12 +206,12 @@ mod testnet1 {
             assert!(address.verify_signature(&message, &expected_signature).unwrap());
             assert!(address.verify_signature(&message, &candidate_signature).unwrap());
             assert!(
-                Testnet1Parameters::account_signature_scheme()
+                Testnet1::account_signature_scheme()
                     .verify(&signature_public_key, &message, &expected_signature)
                     .unwrap()
             );
             assert!(
-                Testnet1Parameters::account_signature_scheme()
+                Testnet1::account_signature_scheme()
                     .verify(&signature_public_key, &message, &candidate_signature)
                     .unwrap()
             );
@@ -221,7 +221,7 @@ mod testnet1 {
 
 #[cfg(test)]
 mod testnet2 {
-    use crate::{testnet2::Testnet2Parameters, Account, AccountScheme, Address, Parameters, PrivateKey, ViewKey};
+    use crate::{testnet2::Testnet2, Account, AccountScheme, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::ToBytes;
@@ -244,21 +244,21 @@ mod testnet2 {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
-        let account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        let account = Account::<Testnet2>::new(&mut rng).unwrap();
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
         assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
 
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
-            assert!(Account::<Testnet2Parameters>::new(&mut rng).is_ok());
+            assert!(Account::<Testnet2>::new(&mut rng).is_ok());
         }
     }
 
     #[test]
     fn test_from_private_key() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
-        let account = Account::<Testnet2Parameters>::try_from(private_key).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let account = Account::<Testnet2>::try_from(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
@@ -267,9 +267,9 @@ mod testnet2 {
 
     #[test]
     fn test_account_derivation() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
-        let view_key = ViewKey::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
-        let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let view_key = ViewKey::<Testnet2>::from_private_key(&private_key).unwrap();
+        let address = Address::<Testnet2>::from_private_key(&private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, private_key.to_string());
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, view_key.to_string());
@@ -278,51 +278,51 @@ mod testnet2 {
 
     #[test]
     fn test_private_key_from_str() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, private_key.to_string());
     }
 
     #[test]
     fn test_private_key_from_invalid_str() {
-        assert!(PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_VIEW_KEY).is_err());
-        assert!(PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_ADDRESS).is_err());
-        assert!(PrivateKey::<Testnet2Parameters>::from_str("APrivateKey1abcdefghijklmnopqrstuvwxyz").is_err());
-        assert!(PrivateKey::<Testnet2Parameters>::from_str("APrivateKey1").is_err());
-        assert!(PrivateKey::<Testnet2Parameters>::from_str("").is_err());
+        assert!(PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_VIEW_KEY).is_err());
+        assert!(PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_ADDRESS).is_err());
+        assert!(PrivateKey::<Testnet2>::from_str("APrivateKey1abcdefghijklmnopqrstuvwxyz").is_err());
+        assert!(PrivateKey::<Testnet2>::from_str("APrivateKey1").is_err());
+        assert!(PrivateKey::<Testnet2>::from_str("").is_err());
     }
 
     #[test]
     fn test_private_key_into_view_key() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
         let view_key: ViewKey<_> = private_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, view_key.to_string());
     }
 
     #[test]
     fn test_view_key_from_str() {
-        let view_key = ViewKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_VIEW_KEY).unwrap();
+        let view_key = ViewKey::<Testnet2>::from_str(ALEO_TESTNET2_VIEW_KEY).unwrap();
         assert_eq!(ALEO_TESTNET2_VIEW_KEY, view_key.to_string());
     }
 
     #[test]
     fn test_view_key_from_invalid_str() {
-        assert!(ViewKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).is_err());
-        assert!(ViewKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_ADDRESS).is_err());
-        assert!(ViewKey::<Testnet2Parameters>::from_str("AViewKey1abcdefghijklmnopqrstuvwxyz").is_err());
-        assert!(ViewKey::<Testnet2Parameters>::from_str("AViewKey1").is_err());
-        assert!(ViewKey::<Testnet2Parameters>::from_str("").is_err());
+        assert!(ViewKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).is_err());
+        assert!(ViewKey::<Testnet2>::from_str(ALEO_TESTNET2_ADDRESS).is_err());
+        assert!(ViewKey::<Testnet2>::from_str("AViewKey1abcdefghijklmnopqrstuvwxyz").is_err());
+        assert!(ViewKey::<Testnet2>::from_str("AViewKey1").is_err());
+        assert!(ViewKey::<Testnet2>::from_str("").is_err());
     }
 
     #[test]
     fn test_private_key_into_address() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
         let address: Address<_> = private_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
     }
 
     #[test]
     fn test_compute_key_into_address() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
         let compute_key = private_key.to_compute_key().unwrap();
         let address: Address<_> = compute_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
@@ -330,30 +330,30 @@ mod testnet2 {
 
     #[test]
     fn test_view_key_into_address() {
-        let view_key = ViewKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_VIEW_KEY).unwrap();
+        let view_key = ViewKey::<Testnet2>::from_str(ALEO_TESTNET2_VIEW_KEY).unwrap();
         let address: Address<_> = view_key.try_into().unwrap();
         assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
     }
 
     #[test]
     fn test_address_from_str() {
-        let address = Address::<Testnet2Parameters>::from_str(ALEO_TESTNET2_ADDRESS).unwrap();
+        let address = Address::<Testnet2>::from_str(ALEO_TESTNET2_ADDRESS).unwrap();
         assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
     }
 
     #[test]
     fn test_address_from_invalid_str() {
-        assert!(Address::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).is_err());
-        assert!(Address::<Testnet2Parameters>::from_str(ALEO_TESTNET2_VIEW_KEY).is_err());
-        assert!(Address::<Testnet2Parameters>::from_str("aleo1abcdefghijklmnopqrstuvwxyz").is_err());
-        assert!(Address::<Testnet2Parameters>::from_str("aleo1").is_err());
-        assert!(Address::<Testnet2Parameters>::from_str("").is_err());
+        assert!(Address::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).is_err());
+        assert!(Address::<Testnet2>::from_str(ALEO_TESTNET2_VIEW_KEY).is_err());
+        assert!(Address::<Testnet2>::from_str("aleo1abcdefghijklmnopqrstuvwxyz").is_err());
+        assert!(Address::<Testnet2>::from_str("aleo1").is_err());
+        assert!(Address::<Testnet2>::from_str("").is_err());
     }
 
     #[test]
     fn test_account_signatures() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
-        let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let address = Address::<Testnet2>::from_private_key(&private_key).unwrap();
 
         for i in 0..ITERATIONS {
             let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
@@ -365,8 +365,8 @@ mod testnet2 {
 
     #[test]
     fn test_invalid_account_signatures() {
-        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
-        let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+        let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let address = Address::<Testnet2>::from_private_key(&private_key).unwrap();
 
         for i in 0..ITERATIONS {
             let message = "Hi, I'm an Aleo account signature!".as_bytes();
@@ -382,12 +382,12 @@ mod testnet2 {
     fn test_account_signature_compatibility() {
         for i in 0..25 {
             // Sample an Aleo account.
-            let private_key = PrivateKey::<Testnet2Parameters>::new(&mut thread_rng());
-            let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+            let private_key = PrivateKey::<Testnet2>::new(&mut thread_rng());
+            let address = Address::<Testnet2>::from_private_key(&private_key).unwrap();
 
             // Derive the signature public key.
             let signature_private_key = (private_key.sk_sig, private_key.r_sig);
-            let signature_public_key = Testnet2Parameters::account_signature_scheme()
+            let signature_public_key = Testnet2::account_signature_scheme()
                 .generate_public_key(&signature_private_key)
                 .unwrap();
 
@@ -403,7 +403,7 @@ mod testnet2 {
 
             // Ensure the Aleo signatures match.
             let expected_signature = private_key.sign(&message, &mut rng.clone()).unwrap();
-            let candidate_signature = Testnet2Parameters::account_signature_scheme()
+            let candidate_signature = Testnet2::account_signature_scheme()
                 .sign(&signature_private_key, &message, &mut rng.clone())
                 .unwrap();
             assert_eq!(expected_signature, candidate_signature);
@@ -412,12 +412,12 @@ mod testnet2 {
             assert!(address.verify_signature(&message, &expected_signature).unwrap());
             assert!(address.verify_signature(&message, &candidate_signature).unwrap());
             assert!(
-                Testnet2Parameters::account_signature_scheme()
+                Testnet2::account_signature_scheme()
                     .verify(&signature_public_key, &message, &expected_signature)
                     .unwrap()
             );
             assert!(
-                Testnet2Parameters::account_signature_scheme()
+                Testnet2::account_signature_scheme()
                     .verify(&signature_public_key, &message, &candidate_signature)
                     .unwrap()
             );

@@ -34,6 +34,7 @@ pub const COL_BLOCK_LOCATOR: u32 = 3; // Block num -> block hash && block hash -
 pub const COL_TRANSACTION_LOCATION: u32 = 4; // Transaction Hash -> (block hash and index)
 pub const COL_COMMITMENT: u32 = 5; // Commitment -> index
 pub const COL_SERIAL_NUMBER: u32 = 6; // SN -> index
+pub const COL_BLOCK_PREVIOUS_BLOCK_HASH: u32 = 7; // Block hash -> previous block hash // TODO (howardwu): Reorder this from 7 -> 1.
 pub const COL_DIGEST: u32 = 8; // Ledger digest -> index
 pub const COL_RECORDS: u32 = 9; // commitment -> record bytes
 pub const COL_CHILD_HASHES: u32 = 10; // block hash -> vector of potential child hashes
