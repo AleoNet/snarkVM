@@ -23,6 +23,8 @@ use crate::{
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_utilities::any::TypeId;
 
+use std::borrow::Cow;
+
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CRH
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
@@ -41,8 +43,10 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
         assert!(input.len() <= Self::INPUT_SIZE_BITS);
 
-        let mut input = input.to_vec();
-        input.resize(Self::INPUT_SIZE_BITS, false);
+        let mut input = Cow::Borrowed(input);
+        if input.len() < Self::INPUT_SIZE_BITS {
+            input.to_mut().resize(Self::INPUT_SIZE_BITS, false);
+        }
         Ok(Self::evaluate(&input.to_field_elements().unwrap())?)
     }
 
