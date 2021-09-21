@@ -89,7 +89,11 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             | (ConstrainedValue::Integer(Integer::U64(_)), Type::U64)
             | (ConstrainedValue::Integer(Integer::U128(_)), Type::U128) => true,
             (ConstrainedValue::Array(inner), Type::Array(inner_type, len)) => {
-                inner.len() == *len as usize && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
+                let len_match = match len {
+                    Some(l) => inner.len() == *l as usize,
+                    None => true,
+                }; 
+                len_match && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
             }
             (ConstrainedValue::Tuple(values), Type::Tuple(types)) => values
                 .iter()

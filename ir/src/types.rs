@@ -39,7 +39,7 @@ pub enum Type {
     I64,
     I128,
 
-    Array(Box<Type>, u32),
+    Array(Box<Type>, Option<u32>),
     Tuple(Vec<Type>),
     Circuit(Vec<(String, Type)>), // represented as a Tuple internally, used for input type description
 }
@@ -66,7 +66,12 @@ impl Type {
                 if type_.subtypes.len() != 1 {
                     return Err(anyhow!("invalid subtypes length for array: {}", type_.subtypes.len()));
                 }
-                Type::Array(Box::new(Type::decode(type_.subtypes.remove(0))?), type_.array_length)
+                let len = if !type_.length_unknown {
+                    Some(type_.array_length)
+                } else {
+                    None
+                };
+                Type::Array(Box::new(Type::decode(type_.subtypes.remove(0))?), len)
             }
             x if x == ir::TypeClass::TypeTuple as i32 => Type::Tuple(
                 type_
@@ -102,9 +107,10 @@ impl Type {
                 Type::Circuit(_) => ir::TypeClass::TypeCircuit as i32,
             },
             array_length: match self {
-                Type::Array(_, length) => *length,
+                Type::Array(_, Some(length)) => *length,
                 _ => 0,
             },
+            length_unknown: matches!(self, Type::Array(_, None)),
             subtypes: match self {
                 Type::Array(item, _) => vec![item.encode()],
                 Type::Tuple(items) => items.iter().map(|x| x.encode()).collect(),
@@ -137,7 +143,8 @@ impl fmt::Display for Type {
             Type::I32 => write!(f, "i32"),
             Type::I64 => write!(f, "i64"),
             Type::I128 => write!(f, "i128"),
-            Type::Array(inner, len) => write!(f, "[{}; {}]", inner, len),
+            Type::Array(inner, Some(len)) => write!(f, "[{}; {}]", inner, len),
+            Type::Array(inner, None) => write!(f, "[{}; _]", inner),
             Type::Tuple(inner) => {
                 write!(f, "(")?;
                 for (i, type_) in inner.iter().enumerate() {

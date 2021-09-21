@@ -116,7 +116,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     Value::Array(x) => x,
                     value => return Err(ValueError::bad_value_for_type(&*type_.to_string(), &*value.to_string())),
                 };
-                if values.len() != *len as usize {
+                if values.len() != len.unwrap() as usize {
                     return Err(ValueError::bad_value_for_type(
                         &*type_.to_string(),
                         &*format!("array of length {}", values.len()),
