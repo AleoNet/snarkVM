@@ -14,32 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod commitment;
-pub use commitment::*;
+#[derive(Debug, Error)]
+pub enum MerkleTrieError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
 
-pub mod crh;
-pub use crh::*;
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
 
-pub mod crypto_hash;
-pub use crypto_hash::*;
+    #[error("{}", _0)]
+    CRHError(#[from] crate::CRHError),
 
-pub mod encoding;
-pub use encoding::*;
+    #[error("Incorrect key: {:?}", _0)]
+    IncorrectKey(Vec<u8>),
 
-pub mod encryption;
-pub use encryption::*;
+    #[error("{}", _0)]
+    Message(String),
 
-pub mod merkle;
-pub use merkle::*;
+    #[error("Missing value  at key: {:?}", _0)]
+    MissingLeaf(Vec<u8>),
+}
 
-pub mod merkle_trie;
-pub use merkle_trie::*;
-
-pub mod prf;
-pub use prf::*;
-
-pub mod signature;
-pub use signature::*;
-
-pub mod snark;
-pub use snark::*;
+impl From<std::io::Error> for MerkleTrieError {
+    fn from(error: std::io::Error) -> Self {
+        MerkleTrieError::Crate("std::io", format!("{:?}", error))
+    }
+}
