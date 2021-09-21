@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{SNARK, SRS};
-use snarkvm_dpc::{
-    posw::{PoSWCircuit, PoswMarlin},
-    testnet2::Testnet2,
-    Network,
-};
-use snarkvm_marlin::ahp::AHPForR1CS;
+use snarkvm_dpc::{testnet2::Testnet2, BlockScheme, Network, PoSWScheme};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
@@ -32,33 +26,18 @@ fn marlin_posw(c: &mut Criterion) {
 
     let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
-    // Construct an instance of PoSW.
-    let posw = {
-        let max_degree =
-            AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
-        PoswMarlin::<Testnet2>::setup::<ChaChaRng>(&mut SRS::<ChaChaRng, _>::Universal(&universal_srs)).unwrap()
-    };
-
-    // Construct an assigned circuit.
-    let nonce = 1u32;
-    let block_header_leaves = vec![[3u8; 32]; Testnet2::POSW_NUM_LEAVES];
-    let assigned_circuit = PoSWCircuit::<Testnet2, 32>::new(nonce, &block_header_leaves).unwrap();
-    let difficulty_target = u64::MAX;
+    // Construct a block header.
+    let mut block_header = Testnet2::genesis_block().header().clone();
 
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&block_header_leaves, difficulty_target, rng).unwrap();
+            Testnet2::posw().mine(&mut block_header, rng).unwrap();
         });
     });
 
-    let (nonce, proof) = posw.mine(&block_header_leaves, difficulty_target, rng).unwrap();
-
     group.bench_function("verify", |b| {
         b.iter(|| {
-            let _ = posw
-                .verify(nonce, assigned_circuit.block_header_root(), difficulty_target, &proof)
-                .unwrap();
+            let _is_valid = Testnet2::posw().verify(&block_header);
         });
     });
 }
