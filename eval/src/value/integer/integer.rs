@@ -37,15 +37,8 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use std::{convert::TryInto, fmt};
 
 use crate::{
-    allocate_type,
-    errors::IntegerError,
-    match_integer,
-    match_integers,
-    match_integers_arithmetic,
-    match_signed_integer,
-    match_unsigned_integer,
-    ConstrainedValue,
-    GroupType,
+    allocate_type, errors::IntegerError, match_integer, match_integers, match_integers_arithmetic,
+    match_signed_integer, match_unsigned_integer, ConstrainedValue, GroupType,
 };
 
 /// An integer type enum wrapping the integer value.
@@ -128,13 +121,13 @@ impl Integer {
         }
     }
 
-    pub fn get_bits(&self) -> Vec<Boolean> {
+    pub fn to_bits_le(&self) -> Vec<Boolean> {
         let integer = self;
         match_integer!(integer => integer.to_bits_le())
     }
 
     pub fn is_allocated(&self) -> bool {
-        self.get_bits()
+        self.to_bits_le()
             .into_iter()
             .any(|b| matches!(b, Boolean::Is(_) | Boolean::Not(_)))
     }
