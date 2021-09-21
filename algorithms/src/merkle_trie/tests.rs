@@ -85,7 +85,7 @@ fn run_good_root_test<P: CRH>() {
     let (keys, leaves) = generate_random_key_pairs!(4, 32, 32);
     generate_merkle_trie::<P, _>(&keys, &leaves, parameters);
 
-    let (keys, leaves) = generate_random_key_pairs!(32, 32, 32);
+    let (keys, leaves) = generate_random_key_pairs!(16, 32, 32);
     generate_merkle_trie::<P, _>(&keys, &leaves, parameters);
 }
 
@@ -95,7 +95,7 @@ fn run_bad_root_test<P: CRH>() {
     let (keys, leaves) = generate_random_key_pairs!(4, 32, 32);
     generate_merkle_trie::<P, _>(&keys, &leaves, parameters);
 
-    let (keys, leaves) = generate_random_key_pairs!(32, 32, 32);
+    let (keys, leaves) = generate_random_key_pairs!(16, 32, 32);
     bad_merkle_trie_verify::<P, _>(&keys, &leaves, parameters);
 }
 

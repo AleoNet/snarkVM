@@ -161,7 +161,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
         let mut temp_key = self.key.clone();
         let mut temp_children = &self.children;
 
-        let mut expected_key = key.clone();
+        let mut expected_key = key;
 
         let mut found = false;
         while !found {
