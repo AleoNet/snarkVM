@@ -83,4 +83,19 @@ mod tests {
         assert_eq!(value_3, Some(&VALUE_PAIR_3.1));
         assert_eq!(value_4, None);
     }
+
+    #[test]
+    fn test_trie_verify() {
+        let crh = Arc::new(H::setup("TEST_MERKLE_TRIE_CRH"));
+
+        let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone()).unwrap();
+
+        tree_1.insert(VALUE_PAIR_1.0, Some(VALUE_PAIR_1.1)).unwrap();
+        tree_1.insert(VALUE_PAIR_2.0, Some(VALUE_PAIR_2.1)).unwrap();
+        tree_1.insert(VALUE_PAIR_3.0, Some(VALUE_PAIR_3.1)).unwrap();
+
+        let proof = tree_1.generate_proof(VALUE_PAIR_3.0, &VALUE_PAIR_3.1).unwrap();
+
+        assert!(proof.verify(&tree_1.root(), VALUE_PAIR_3.0, &VALUE_PAIR_3.1).unwrap());
+    }
 }
