@@ -26,10 +26,8 @@ use std::{
 };
 
 pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
-    let rng = &mut thread_rng();
-
     // Create a genesis block.
-    let genesis_block = Block::<N>::new_genesis(recipient, rng).unwrap();
+    let genesis_block = Block::<N>::new_genesis(recipient, &mut thread_rng()).unwrap();
     let transaction = genesis_block.to_coinbase_transaction().unwrap();
 
     let transaction_bytes = transaction.to_bytes_le()?;

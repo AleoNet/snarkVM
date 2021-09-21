@@ -68,22 +68,22 @@ fn dpc_testnet1_integration_test() {
 
     let previous_block = ledger.latest_block().unwrap();
 
-    let transactions = BlockTransactions::from(&[coinbase_transaction]);
-
-    // Construct new_commitments_tree
-    let transaction_commitments = transactions.to_commitments().unwrap();
-    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
+    let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
 
     // Construct new_serial_numbers_tree
     let transaction_serial_numbers = transactions.to_serial_numbers().unwrap();
     let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
 
+    // Construct new_commitments_tree
+    let transaction_commitments = transactions.to_commitments().unwrap();
+    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
+
     let header = BlockHeader::new(
-        transactions.to_transactions_root().unwrap(),
-        *new_commitments_tree.root(),
-        *new_serial_numbers_tree.root(),
         previous_block.header.height() + 1,
         previous_block.header.difficulty_target(),
+        transactions.to_transactions_root().unwrap(),
+        *new_serial_numbers_tree.root(),
+        *new_commitments_tree.root(),
         &mut rng,
     )
     .unwrap();

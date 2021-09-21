@@ -24,14 +24,31 @@ pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Header: Clone + Eq + FromBytes + ToBytes;
     type Transactions: Clone + Eq + FromBytes + ToBytes;
 
+    type CommitmentsRoot: Clone + Eq + FromBytes + ToBytes;
+    type SerialNumbersRoot: Clone + Eq + FromBytes + ToBytes;
+
     type Commitment: Clone + Eq + FromBytes + ToBytes;
     type SerialNumber: Clone + Eq + FromBytes + ToBytes;
 
     type Address: Clone + Eq + FromBytes + ToBytes;
     type Transaction: Clone + Eq + FromBytes + ToBytes;
 
+    /// Initializes a new block.
+    fn new<R: Rng + CryptoRng>(
+        previous_block_hash: Self::BlockHash,
+        block_height: u32,
+        difficulty_target: u64,
+        transactions: Self::Transactions,
+        serial_numbers_root: Self::SerialNumbersRoot,
+        commitments_root: Self::CommitmentsRoot,
+        rng: &mut R,
+    ) -> Result<Self>;
+
     /// Initializes a new genesis block, with a coinbase transaction for the given recipient.
     fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self>;
+
+    /// Initializes a new block from a given previous hash, header, and transactions list.
+    fn from(previous_hash: Self::BlockHash, header: Self::Header, transactions: Self::Transactions) -> Result<Self>;
 
     /// Returns `true` if the block is well-formed.
     fn is_valid(&self) -> bool;

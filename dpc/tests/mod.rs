@@ -16,32 +16,17 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{
-    testnet1::Testnet1,
-    testnet2::Testnet2,
-    BlockHeader,
-    BlockTransactions,
-    Network,
-    PoSWScheme,
-    Transaction,
-};
-use snarkvm_parameters::{testnet2::Transaction1, Genesis};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_dpc::{testnet1::Testnet1, testnet2::Testnet2, BlockScheme, Network, PoSWScheme};
+use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};
 
 #[test]
 fn test_posw_load_and_mine() {
-    let rng = &mut thread_rng();
+    // Construct a block header.
+    let mut block_header = Testnet2::genesis_block().header().clone();
+    Testnet2::posw().mine(&mut block_header, &mut thread_rng()).unwrap();
 
-    // Construct an assigned circuit.
-    let mut block_header = BlockHeader::<Testnet2>::new_genesis(
-        &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
-        rng,
-    )
-    .unwrap();
-
-    Testnet2::posw().mine(&mut block_header, rng).unwrap();
     assert_eq!(
         block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
         Testnet2::POSW_PROOF_SIZE_IN_BYTES

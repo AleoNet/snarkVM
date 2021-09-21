@@ -19,21 +19,24 @@ use crate::{
     AleoAmount,
     BlockHeader,
     BlockScheme,
-    BlockTransactions,
     DPCScheme,
     LedgerProof,
     Network,
     StateTransition,
     Transaction,
     TransactionScheme,
+    Transactions,
     DPC,
 };
-use snarkvm_algorithms::CRH;
+use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Block<N: Network> {
@@ -42,30 +45,82 @@ pub struct Block<N: Network> {
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     pub header: BlockHeader<N>,
     /// The block transactions.
-    pub transactions: BlockTransactions<N>,
+    pub transactions: Transactions<N>,
 }
 
 impl<N: Network> BlockScheme for Block<N> {
     type Address = Address<N>;
     type BlockHash = N::BlockHash;
     type Commitment = N::Commitment;
+    type CommitmentsRoot = N::CommitmentsRoot;
     type Header = BlockHeader<N>;
     type SerialNumber = N::SerialNumber;
+    type SerialNumbersRoot = N::SerialNumbersRoot;
     type Transaction = Transaction<N>;
-    type Transactions = BlockTransactions<N>;
+    type Transactions = Transactions<N>;
 
+    /// Initializes a new block.
+    fn new<R: Rng + CryptoRng>(
+        previous_block_hash: Self::BlockHash,
+        block_height: u32,
+        difficulty_target: u64,
+        transactions: Self::Transactions,
+        serial_numbers_root: Self::SerialNumbersRoot,
+        commitments_root: Self::CommitmentsRoot,
+        rng: &mut R,
+    ) -> Result<Self> {
+        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
+
+        // Compute the block header.
+        let header = BlockHeader::new(
+            block_height,
+            difficulty_target,
+            transactions.to_transactions_root()?,
+            serial_numbers_root,
+            commitments_root,
+            rng,
+        )?;
+
+        <Self as BlockScheme>::from(previous_block_hash, header, transactions)
+    }
+
+    /// Initializes a new genesis block with one coinbase transaction.
     fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
-        let transaction = {
+        let transactions = Transactions::from(&[{
             let amount = Self::block_reward(0);
             let state = StateTransition::new_coinbase(recipient, amount, rng)?;
             let authorization = DPC::<N>::authorize(&vec![], &state, rng)?;
             DPC::<N>::execute(authorization, state.executables(), &LedgerProof::default(), rng)?
-        };
+        }])?;
 
-        // Compute the genesis block.
-        let transactions = BlockTransactions::from(&[transaction]);
-        let header = BlockHeader::new_genesis(&transactions, rng)?;
+        // Compute the transactions root from the transactions.
+        let transactions_root = transactions.to_transactions_root()?;
+
+        // Compute the serial numbers root from the transactions.
+        let serial_numbers = transactions.to_serial_numbers()?;
+        let serial_numbers_tree =
+            MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
+
+        // Compute the commitments root from the transactions.
+        let commitments = transactions.to_commitments()?;
+        let commitments_tree = MerkleTree::new(Arc::new(N::commitments_tree_parameters().clone()), &commitments)?;
+
+        // Construct the genesis block header metadata.
+        let block_height = 0u32;
+        let difficulty_target = u64::MAX;
+
+        // Compute the genesis block header.
+        let header = BlockHeader::new(
+            block_height,
+            difficulty_target,
+            transactions_root,
+            *serial_numbers_tree.root(),
+            *commitments_tree.root(),
+            rng,
+        )?;
+
+        // Construct the genesis block.
         let block = Self {
             previous_hash: Default::default(),
             header,
@@ -79,6 +134,22 @@ impl<N: Network> BlockScheme for Block<N> {
         }
     }
 
+    /// Initializes a new block from a given previous hash, header, and transactions list.
+    fn from(previous_hash: Self::BlockHash, header: Self::Header, transactions: Self::Transactions) -> Result<Self> {
+        // Construct the block.
+        let block = Self {
+            previous_hash,
+            header,
+            transactions,
+        };
+
+        // Ensure the block is valid.
+        match block.is_valid() {
+            true => Ok(block),
+            false => Err(anyhow!("Failed to initialize a block from given inputs")),
+        }
+    }
+
     /// Returns `true` if the block is well-formed.
     fn is_valid(&self) -> bool {
         // Ensure the previous block hash is well-formed.
@@ -87,11 +158,9 @@ impl<N: Network> BlockScheme for Block<N> {
                 eprintln!("Genesis block must have an empty previous block hash");
                 return false;
             }
-        } else {
-            if self.previous_hash == Default::default() {
-                eprintln!("Block must have a non-empty previous block hash");
-                return false;
-            }
+        } else if self.previous_hash == Default::default() {
+            eprintln!("Block must have a non-empty previous block hash");
+            return false;
         }
 
         // Retrieve the coinbase transaction.
@@ -103,8 +172,7 @@ impl<N: Network> BlockScheme for Block<N> {
             }
         };
 
-        // Ensure the coinbase transaction contains a coinbase reward
-        // that is equal to or greater than the expected block reward.
+        // Ensure the coinbase reward is equal to or greater than the expected block reward.
         let coinbase_reward = AleoAmount(0).sub(*coinbase_transaction.value_balance()); // Make it a positive number.
         let block_reward = Self::block_reward(self.height());
         if coinbase_reward < block_reward {
@@ -112,7 +180,7 @@ impl<N: Network> BlockScheme for Block<N> {
             return false;
         }
 
-        // Ensure the block reward is not overpaid.
+        // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
         match self.transactions.to_net_value_balance() {
             Ok(net_value_balance) => {
                 let candidate_block_reward = AleoAmount(0).sub(net_value_balance); // Make it a positive number.
@@ -161,19 +229,19 @@ impl<N: Network> BlockScheme for Block<N> {
     fn to_block_hash(&self) -> Result<Self::BlockHash> {
         // Construct the preimage.
         let mut preimage = self.previous_hash.to_bytes_le()?;
-        preimage.extend_from_slice(&self.header.to_root()?.to_bytes_le()?);
+        preimage.extend_from_slice(&self.header.to_header_root()?.to_bytes_le()?);
 
         Ok(N::block_hash_crh().hash(&preimage)?)
-    }
-
-    /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
-    fn to_commitments(&self) -> Result<Vec<Self::Commitment>> {
-        self.transactions.to_commitments()
     }
 
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
     fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>> {
         self.transactions.to_serial_numbers()
+    }
+
+    /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
+    fn to_commitments(&self) -> Result<Vec<Self::Commitment>> {
+        self.transactions.to_commitments()
     }
 
     /// Returns the coinbase transaction for the block.
@@ -185,13 +253,13 @@ impl<N: Network> BlockScheme for Block<N> {
             .filter(|t| t.value_balance().is_negative())
             .collect();
 
-        // Ensure there is the right number of coinbase transaction(s).
-        match coinbase_transaction.len() == N::BLOCK_COINBASE_TX_COUNT {
+        // Ensure there is exactly 1 coinbase transaction.
+        let num_coinbase = coinbase_transaction.len();
+        match num_coinbase == 1 {
             true => Ok(coinbase_transaction[0].clone()),
             false => Err(anyhow!(
-                "Block must have {} coinbase transaction(s), found {}",
-                N::BLOCK_COINBASE_TX_COUNT,
-                coinbase_transaction.len()
+                "Block must have 1 coinbase transaction, found {}",
+                num_coinbase
             )),
         }
     }

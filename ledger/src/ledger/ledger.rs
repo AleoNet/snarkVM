@@ -200,9 +200,9 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     }
 
     /// Get the list of transaction ids given a block hash.
-    pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<BlockTransactions<N>, StorageError> {
+    pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Transactions<N>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.to_bytes_le()?)? {
-            Some(encoded_block_transactions) => Ok(BlockTransactions::read_le(&encoded_block_transactions[..])?),
+            Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
         }
     }
@@ -391,7 +391,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
         let mut database_transaction = DatabaseTransaction::new();
 
-        for (index, transaction) in block.transactions.0.iter().enumerate() {
+        for (index, transaction) in block.transactions.iter().enumerate() {
             let transaction_location = TransactionLocation {
                 index: index as u32,
                 block_hash: block_hash_bytes,
@@ -460,7 +460,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         let mut transaction_cms = vec![];
         let mut transaction_sns = vec![];
 
-        for transaction in block.transactions.0.iter() {
+        for transaction in block.transactions.iter() {
             let (tx_ops, cms, sns) = self.commit_transaction(&mut sn_index, &mut cm_index, transaction)?;
             database_transaction.push_vec(tx_ops);
             transaction_cms.extend(cms);

@@ -90,7 +90,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
             block_header.set_nonce(nonce);
 
             // Instantiate the circuit.
-            let leaves = block_header.to_leaves()?;
+            let leaves = block_header.to_header_leaves()?;
             let circuit = PoSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, &leaves)?;
 
             // Generate the proof.
@@ -147,7 +147,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
         };
 
         // Construct the inputs.
-        let inputs = match inputs((block_header.nonce(), &block_header.to_root().unwrap())) {
+        let inputs = match inputs((block_header.nonce(), &block_header.to_header_root().unwrap())) {
             Ok(inputs) => inputs,
             Err(error) => {
                 eprintln!("{}", error);
@@ -167,11 +167,10 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
 
 #[cfg(test)]
 mod tests {
-    use crate::{testnet2::Testnet2, BlockHeader, BlockTransactions, Network, PoSWScheme, Transaction};
+    use crate::{testnet2::Testnet2, BlockScheme, Network, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
-    use snarkvm_parameters::{testnet2::Transaction1, Genesis};
-    use snarkvm_utilities::{FromBytes, ToBytes};
+    use snarkvm_utilities::ToBytes;
 
     use rand::{rngs::ThreadRng, thread_rng};
 
@@ -194,14 +193,10 @@ mod tests {
             .unwrap()
         };
 
-        // Construct an assigned circuit.
-        let mut block_header = BlockHeader::<Testnet2>::new_genesis(
-            &BlockTransactions::from(&[Transaction::<Testnet2>::from_bytes_le(&Transaction1::load_bytes()).unwrap()]),
-            &mut thread_rng(),
-        )
-        .unwrap();
-
+        // Construct a block header.
+        let mut block_header = Testnet2::genesis_block().header().clone();
         posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+
         assert!(block_header.proof().is_some());
         assert_eq!(
             block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),

@@ -17,6 +17,7 @@
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     posw::PoSW,
+    Block,
     InnerPublicVariables,
     Network,
     NoopProgram,
@@ -62,7 +63,7 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
-use snarkvm_parameters::{testnet2::*, Parameter};
+use snarkvm_parameters::{testnet2::*, Genesis, Parameter};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
@@ -153,6 +154,8 @@ impl Network for Testnet2 {
 
     type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
+
+    type Block = Block<Self>;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
@@ -266,6 +269,11 @@ impl Network for Testnet2 {
     fn posw() -> &'static Self::PoSW {
         static POSW: OnceCell<<Testnet2 as Network>::PoSW> = OnceCell::new();
         POSW.get_or_init(|| <Self::PoSW as PoSWScheme<Self>>::load(true).expect("Failed to load PoSW"))
+    }
+    
+    fn genesis_block() -> &'static Self::Block {
+        static BLOCK: OnceCell<<Testnet2 as Network>::Block> = OnceCell::new();
+        BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load genesis block"))
     }
     
     /// Returns the program SRS for Aleo applications.

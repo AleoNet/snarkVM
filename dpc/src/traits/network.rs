@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPublicVariables, NoopProgram, OuterPublicVariables, PoSWScheme, PublicVariables};
+use crate::{BlockScheme, InnerPublicVariables, NoopProgram, OuterPublicVariables, PoSWScheme, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -108,6 +108,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type BlockHashCRH: CRH<Output = Self::BlockHash>;
     type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + PartialEq + Eq + Hash + Sync + Send;
 
+    /// Block scheme for the ledger.
+    type Block: BlockScheme;
+    
     /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderTreeCRH: CRH<Output = Self::BlockHeaderRoot>;
     type BlockHeaderTreeCRHGadget: MaskedCRHGadget<<Self::BlockHeaderTreeParameters as MerkleParameters>::H, Self::InnerScalarField>;
@@ -223,6 +226,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     
     fn posw() -> &'static Self::PoSW;
     
+    fn genesis_block() -> &'static Self::Block;
+
     /// Returns the program circuit ID given a program circuit verifying key.
     fn program_circuit_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,

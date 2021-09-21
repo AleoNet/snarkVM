@@ -49,7 +49,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
         },
-        transactions: BlockTransactions::new(),
+        transactions: Transactions::new(),
         proof: ProofOfSuccinctWork([0u8; 771]),
     })
     .unwrap();
@@ -73,7 +73,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
             serial_numbers_root: Default::default(),
             metadata: BlockHeaderMetadata::genesis(),
         },
-        transactions: BlockTransactions::new(),
+        transactions: Transactions::new(),
         proof: ProofOfSuccinctWork([0u8; 771]),
     })
     .unwrap();

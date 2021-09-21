@@ -17,6 +17,7 @@
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     posw::PoSW,
+    Block,
     InnerPublicVariables,
     Network,
     NoopProgram,
@@ -56,7 +57,7 @@ use snarkvm_gadgets::{
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
-use snarkvm_parameters::{testnet1::*, Parameter};
+use snarkvm_parameters::{testnet1::*, Genesis, Parameter};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 // TODO (howardwu): TEMPORARY - Remove me.
@@ -135,7 +136,9 @@ impl Network for Testnet1 {
 
     type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
-    
+
+    type Block = Block<Self>;
+
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
     type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 2>;
@@ -248,6 +251,11 @@ impl Network for Testnet1 {
     fn posw() -> &'static Self::PoSW {
         static POSW: OnceCell<<Testnet1 as Network>::PoSW> = OnceCell::new();
         POSW.get_or_init(|| <Self::PoSW as PoSWScheme<Self>>::load(true).expect("Failed to load PoSW"))        
+    }
+
+    fn genesis_block() -> &'static Self::Block {
+        static BLOCK: OnceCell<<Testnet1 as Network>::Block> = OnceCell::new();
+        BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load genesis block"))
     }
 
     /// Returns the program SRS for Aleo applications.
