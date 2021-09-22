@@ -271,7 +271,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         let claimed_program_id_bytes =
             claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
 
-        program_ids_bytes.extend_from_slice(claimed_program_id_bytes);
+        program_ids_bytes.extend_from_slice(&claimed_program_id_bytes);
 
         let position_fe = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
