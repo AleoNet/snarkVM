@@ -199,8 +199,10 @@ impl<N: Network> BlockHeader<N> {
         let mut commitments_root = [0u8; 32];
         commitments_root.copy_from_slice(&commitments_root_bytes);
 
-        let metadata_bytes = self.metadata.to_bytes_le()?;
+        let mut metadata_bytes = self.metadata.to_bytes_le()?;
         assert_eq!(metadata_bytes.len(), 24);
+        metadata_bytes.resize(32, 0u8);
+        assert_eq!(metadata_bytes.len(), 32);
         let mut metadata = [0u8; 32];
         metadata.copy_from_slice(&metadata_bytes);
 
