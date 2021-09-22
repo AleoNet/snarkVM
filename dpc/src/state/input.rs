@@ -94,13 +94,9 @@ impl<N: Network> Input<N> {
         // Derive the account address.
         let address = Address::from_compute_key(compute_key)?;
 
-        // Determine if the record is a dummy.
-        let is_dummy = value == AleoAmount::from_bytes(0) && payload.is_empty() && executable.is_noop();
-
         // Construct the input record.
         let record = Record::new_input(
             address,
-            is_dummy,
             value.0 as u64,
             payload,
             executable.program_id(),

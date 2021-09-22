@@ -37,15 +37,14 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Record<N: Network> {
-    pub(crate) owner: Address<N>,
-    pub(crate) is_dummy: bool,
+    owner: Address<N>,
     // TODO (raychu86) use AleoAmount which will guard the value range
     pub(crate) value: u64,
-    pub(crate) payload: Payload,
-    pub(crate) program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
-    pub(crate) serial_number_nonce: N::SerialNumber,
-    pub(crate) commitment: N::Commitment,
-    pub(crate) commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+    payload: Payload,
+    program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
+    serial_number_nonce: N::SerialNumber,
+    commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+    commitment: N::Commitment,
 }
 
 impl<N: Network> Record<N> {
@@ -53,7 +52,6 @@ impl<N: Network> Record<N> {
     pub fn new_noop_input<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
         Self::new_input(
             owner,
-            true,
             0,
             Payload::default(),
             N::noop_program_id(),
@@ -63,10 +61,8 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns a new input record.
-    #[allow(clippy::too_many_arguments)]
     pub fn new_input(
         owner: Address<N>,
-        is_dummy: bool,
         value: u64,
         payload: Payload,
         program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
@@ -75,7 +71,6 @@ impl<N: Network> Record<N> {
     ) -> Result<Self, RecordError> {
         Self::from(
             owner,
-            is_dummy,
             value,
             payload,
             program_id,
@@ -92,7 +87,6 @@ impl<N: Network> Record<N> {
     ) -> Result<Self, RecordError> {
         Self::new_output(
             owner,
-            true,
             0,
             Payload::default(),
             N::noop_program_id(),
@@ -102,10 +96,8 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns a new output record.
-    #[allow(clippy::too_many_arguments)]
     pub fn new_output<R: Rng + CryptoRng>(
         owner: Address<N>,
-        is_dummy: bool,
         value: u64,
         payload: Payload,
         program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
@@ -114,7 +106,6 @@ impl<N: Network> Record<N> {
     ) -> Result<Self, RecordError> {
         Self::from(
             owner,
-            is_dummy,
             value,
             payload,
             program_id,
@@ -126,13 +117,15 @@ impl<N: Network> Record<N> {
     #[allow(clippy::too_many_arguments)]
     pub fn from(
         owner: Address<N>,
-        is_dummy: bool,
         value: u64,
         payload: Payload,
         program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
         serial_number_nonce: N::SerialNumber,
         commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
+        // Determine if the record is a dummy.
+        let is_dummy = value == 0 && payload.is_empty() && program_id == N::noop_program_id();
+
         // Total = 32 + 1 + 8 + 128 + 48 + 32 = 249 bytes
         let commitment_input = to_bytes_le![
             owner,               // 256 bits = 32 bytes
@@ -149,12 +142,11 @@ impl<N: Network> Record<N> {
         Ok(Self {
             program_id,
             owner,
-            is_dummy,
             value,
             payload,
             serial_number_nonce,
-            commitment,
             commitment_randomness,
+            commitment,
         })
     }
 
@@ -182,12 +174,12 @@ impl<N: Network> RecordScheme for Record<N> {
     type ProgramID = MerkleTreeDigest<N::ProgramCircuitTreeParameters>;
     type SerialNumberNonce = N::SerialNumber;
 
-    fn owner(&self) -> Self::Owner {
-        self.owner
+    fn is_dummy(&self) -> bool {
+        self.value == 0 && self.payload.is_empty() && self.program_id == N::noop_program_id()
     }
 
-    fn is_dummy(&self) -> bool {
-        self.is_dummy
+    fn owner(&self) -> Self::Owner {
+        self.owner
     }
 
     fn value(&self) -> u64 {
@@ -206,12 +198,12 @@ impl<N: Network> RecordScheme for Record<N> {
         &self.serial_number_nonce
     }
 
-    fn commitment(&self) -> Self::Commitment {
-        self.commitment.clone()
-    }
-
     fn commitment_randomness(&self) -> Self::CommitmentRandomness {
         self.commitment_randomness.clone()
+    }
+
+    fn commitment(&self) -> Self::Commitment {
+        self.commitment.clone()
     }
 }
 
@@ -219,12 +211,10 @@ impl<N: Network> ToBytes for Record<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write_le(&mut writer)?;
-        self.is_dummy.write_le(&mut writer)?;
         self.value.write_le(&mut writer)?;
         self.payload.write_le(&mut writer)?;
         self.program_id.write_le(&mut writer)?;
         self.serial_number_nonce.write_le(&mut writer)?;
-        self.commitment.write_le(&mut writer)?;
         self.commitment_randomness.write_le(&mut writer)
     }
 }
@@ -233,25 +223,21 @@ impl<N: Network> FromBytes for Record<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<N> = FromBytes::read_le(&mut reader)?;
-        let is_dummy: bool = FromBytes::read_le(&mut reader)?;
         let value: u64 = FromBytes::read_le(&mut reader)?;
         let payload: Payload = FromBytes::read_le(&mut reader)?;
         let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut reader)?;
         let serial_number_nonce: N::SerialNumber = FromBytes::read_le(&mut reader)?;
-        let commitment: N::Commitment = FromBytes::read_le(&mut reader)?;
         let commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
+        Ok(Self::from(
             owner,
-            is_dummy,
             value,
             payload,
             program_id,
             serial_number_nonce,
-            commitment,
             commitment_randomness,
-        })
+        )?)
     }
 }
 

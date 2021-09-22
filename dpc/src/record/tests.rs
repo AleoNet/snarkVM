@@ -48,7 +48,6 @@ fn test_record_encryption() {
 
         let given_record = Record::new_input(
             dummy_account.address,
-            false,
             value,
             Payload::from_bytes_le(&payload).unwrap(),
             noop_program.program_id(),

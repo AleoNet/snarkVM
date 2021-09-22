@@ -78,3 +78,9 @@ impl From<std::io::Error> for RecordError {
         RecordError::Crate("std::io", format!("{:?}", error))
     }
 }
+
+impl From<RecordError> for std::io::Error {
+    fn from(error: RecordError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
+}

@@ -24,11 +24,11 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     type Payload;
     type SerialNumberNonce;
 
+    /// Returns `true` if the record is a dummy.
+    fn is_dummy(&self) -> bool;
+
     /// Returns the record owner.
     fn owner(&self) -> Self::Owner;
-
-    /// Returns whether or not the record is dummy.
-    fn is_dummy(&self) -> bool;
 
     /// Returns the record value.
     fn value(&self) -> u64;
@@ -42,9 +42,9 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     /// Returns the nonce used for the serial number.
     fn serial_number_nonce(&self) -> &Self::SerialNumberNonce;
 
-    /// Returns the commitment of this record.
-    fn commitment(&self) -> Self::Commitment;
-
     /// Returns the randomness used for the commitment.
     fn commitment_randomness(&self) -> Self::CommitmentRandomness;
+
+    /// Returns the commitment of this record.
+    fn commitment(&self) -> Self::Commitment;
 }

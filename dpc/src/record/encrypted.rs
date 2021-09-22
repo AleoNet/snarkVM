@@ -126,14 +126,8 @@ impl<N: Network> EncryptedRecord<N> {
         // Construct the record account address
         let owner = Address::from_view_key(&account_view_key)?;
 
-        // Determine if the record is a dummy
-        // TODO (raychu86) Establish `is_dummy` flag properly by checking that the value is 0 and the programs are equivalent to a global dummy
-        let dummy_program = program_id.clone();
-        let is_dummy = (value == 0) && (payload == Payload::default()) && (program_id == dummy_program);
-
         Ok(Record::from(
             owner,
-            is_dummy,
             value,
             payload,
             program_id,

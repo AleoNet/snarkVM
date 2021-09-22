@@ -65,12 +65,8 @@ impl<N: Network> Output<N> {
         serial_number_nonce: N::SerialNumber,
         rng: &mut R,
     ) -> Result<Record<N>> {
-        // Determine if the record is a dummy.
-        let is_dummy = self.value == AleoAmount::from_bytes(0) && self.payload.is_empty() && self.executable.is_noop();
-
         Ok(Record::new_output(
             self.address,
-            is_dummy,
             self.value.0 as u64,
             self.payload.clone(),
             self.executable.program_id(),
