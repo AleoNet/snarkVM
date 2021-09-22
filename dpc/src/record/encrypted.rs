@@ -66,10 +66,6 @@ impl<N: Network> EncryptedRecord<N> {
         // Serialize the record into bytes
         let mut bytes = vec![];
 
-        // Program ID
-        let program_id = record.program_id();
-        bytes.extend_from_slice(&program_id.to_bytes_le()?);
-
         // Value
         let value = record.value();
         bytes.extend_from_slice(&value.to_bytes_le()?);
@@ -77,6 +73,10 @@ impl<N: Network> EncryptedRecord<N> {
         // Payload
         let payload = record.payload();
         bytes.extend_from_slice(&payload.to_bytes_le()?);
+
+        // Program ID
+        let program_id = record.program_id();
+        bytes.extend_from_slice(&program_id.to_bytes_le()?);
 
         // Serial number nonce
         let serial_number_nonce = record.serial_number_nonce();
@@ -108,14 +108,14 @@ impl<N: Network> EncryptedRecord<N> {
 
         let mut cursor = Cursor::new(plaintext);
 
-        // Program ID
-        let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
-
         // Value
         let value = u64::read_le(&mut cursor)?;
 
         // Payload
         let payload = Payload::read_le(&mut cursor)?;
+
+        // Program ID
+        let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
 
         // Serial number nonce
         let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
@@ -132,11 +132,11 @@ impl<N: Network> EncryptedRecord<N> {
         let is_dummy = (value == 0) && (payload == Payload::default()) && (program_id == dummy_program);
 
         Ok(Record::from(
-            program_id,
             owner,
             is_dummy,
             value,
             payload,
+            program_id,
             serial_number_nonce,
             commitment_randomness,
         )?)

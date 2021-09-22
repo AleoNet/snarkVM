@@ -99,11 +99,11 @@ impl<N: Network> Input<N> {
 
         // Construct the input record.
         let record = Record::new_input(
-            executable.program_id(),
             address,
             is_dummy,
             value.0 as u64,
             payload,
+            executable.program_id(),
             serial_number_nonce,
             commitment_randomness,
         )?;

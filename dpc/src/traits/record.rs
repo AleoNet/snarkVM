@@ -24,9 +24,6 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     type Payload;
     type SerialNumberNonce;
 
-    /// Returns the program id of this record.
-    fn program_id(&self) -> Self::ProgramID;
-
     /// Returns the record owner.
     fn owner(&self) -> Self::Owner;
 
@@ -38,6 +35,9 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
 
     /// Returns the record payload.
     fn payload(&self) -> &Self::Payload;
+
+    /// Returns the program id of this record.
+    fn program_id(&self) -> Self::ProgramID;
 
     /// Returns the nonce used for the serial number.
     fn serial_number_nonce(&self) -> &Self::SerialNumberNonce;

@@ -47,11 +47,11 @@ fn test_record_encryption() {
         rng.fill(&mut payload);
 
         let given_record = Record::new_input(
-            noop_program.program_id(),
             dummy_account.address,
             false,
             value,
             Payload::from_bytes_le(&payload).unwrap(),
+            noop_program.program_id(),
             UniformRand::rand(rng),
             UniformRand::rand(rng),
         )

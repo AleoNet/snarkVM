@@ -168,22 +168,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Declare record contents
             let (
-                given_program_id,
                 given_owner,
                 given_is_dummy,
                 given_value,
                 given_payload,
+                given_program_id,
                 given_serial_number_nonce,
                 given_commitment,
                 given_commitment_randomness,
             ) = {
                 let declare_cs = &mut cs.ns(|| "Declare input record");
-
-                let given_program_id = UInt8::alloc_vec(
-                    &mut declare_cs.ns(|| "given_program_id"),
-                    &record.program_id().to_bytes_le()?,
-                )?;
-                old_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 // No need to check that commitments, public keys and hashes are in
                 // prime order subgroup because the commitment and CRH parameters
@@ -221,6 +215,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
+                let given_program_id = UInt8::alloc_vec(
+                    &mut declare_cs.ns(|| "given_program_id"),
+                    &record.program_id().to_bytes_le()?,
+                )?;
+                old_program_ids_bytes_gadgets.push(given_program_id.clone());
+
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Input::alloc(
                         &mut declare_cs.ns(|| "given_serial_number_nonce"),
@@ -244,11 +244,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 (
-                    given_program_id,
                     given_owner,
                     given_is_dummy,
                     given_value,
                     given_payload,
+                    given_program_id,
                     given_serial_number_nonce,
                     given_commitment,
                     given_commitment_randomness,
@@ -374,11 +374,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .to_bytes(&mut commitment_cs.ns(|| "Convert given_serial_number_nonce to bytes"))?;
 
                 let mut commitment_input = Vec::new();
-                commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&record_owner_bytes);
                 commitment_input.extend_from_slice(&is_dummy_bytes);
                 commitment_input.extend_from_slice(&given_value);
                 commitment_input.extend_from_slice(&given_payload);
+                commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
                 let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
@@ -411,23 +411,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
             let (
-                given_program_id,
                 given_owner,
                 given_is_dummy,
                 given_value,
                 given_payload,
+                given_program_id,
                 given_serial_number_nonce,
                 given_serial_number_nonce_bytes,
                 given_commitment,
                 given_commitment_randomness,
             ) = {
                 let declare_cs = &mut cs.ns(|| "Declare output record");
-
-                let given_program_id = UInt8::alloc_vec(
-                    &mut declare_cs.ns(|| "given_program_id"),
-                    &record.program_id().to_bytes_le()?,
-                )?;
-                new_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -445,6 +439,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
+
+                let given_program_id = UInt8::alloc_vec(
+                    &mut declare_cs.ns(|| "given_program_id"),
+                    &record.program_id().to_bytes_le()?,
+                )?;
+                new_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
@@ -490,11 +490,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 (
-                    given_program_id,
                     given_owner,
                     given_is_dummy,
                     given_value,
                     given_payload,
+                    given_program_id,
                     given_serial_number_nonce,
                     given_serial_number_nonce_bytes,
                     given_commitment,
@@ -562,11 +562,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
                 let mut commitment_input = Vec::new();
-                commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&given_owner_bytes);
                 commitment_input.extend_from_slice(&given_is_dummy_bytes);
                 commitment_input.extend_from_slice(&given_value);
                 commitment_input.extend_from_slice(&given_payload);
+                commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
 
                 let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
@@ -596,14 +596,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let plaintext_bytes = {
                     let mut res = vec![];
 
-                    // Program ID
-                    res.extend_from_slice(&given_program_id);
-
                     // Value
                     res.extend_from_slice(&given_value);
 
                     // Payload
                     res.extend_from_slice(&given_payload);
+
+                    // Program ID
+                    res.extend_from_slice(&given_program_id);
 
                     // Serial number nonce
                     res.extend_from_slice(&given_serial_number_nonce_bytes);
