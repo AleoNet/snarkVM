@@ -185,10 +185,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
-    fn block_header_tree_crh() -> &'static Self::BlockHeaderTreeCRH;
     fn block_header_tree_parameters() -> &'static Self::BlockHeaderTreeParameters;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
-    fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH;
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
@@ -198,10 +196,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
-    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
-    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
     
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
