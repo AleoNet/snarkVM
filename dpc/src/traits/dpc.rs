@@ -44,13 +44,4 @@ pub trait DPCScheme<N: Network>: Sized {
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction>;
-
-    // /// Returns true iff the transaction is valid according to the ledger.
-    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool;
-    //
-    // /// Returns true iff all the transactions in the block are valid according to the ledger.
-    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
-    //     block: &[Self::Transaction],
-    //     ledger: &L,
-    // ) -> bool;
 }
