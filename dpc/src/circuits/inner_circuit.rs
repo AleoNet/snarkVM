@@ -31,6 +31,8 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use itertools::Itertools;
+
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerCircuit<N: Network> {
@@ -647,6 +649,23 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // *******************************************************************
         {
             let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
+
+            // Check that each input record and output record at corresponding indices
+            // have matching program IDs (e.g. input 1 and output 1 have the same program ID).
+            for (index, (input_program_id, output_program_id)) in old_program_ids_gadgets
+                .iter()
+                .zip_eq(new_program_ids_gadgets.iter())
+                .take(N::NUM_INPUT_RECORDS)
+                .enumerate()
+            {
+                input_program_id.enforce_equal(
+                    &mut commitment_cs
+                        .ns(|| format!("Check that input and output record {} have matching program IDs", index)),
+                    &output_program_id,
+                )?;
+            }
+
+            // *******************************************************************
 
             let mut input = Vec::new();
             for id_gadget in old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS) {
