@@ -138,32 +138,29 @@ impl<N: Network> StateBuilder<N> {
             .map(|input| input.noop_private_key().clone())
             .collect();
 
-        // Compute an instance of the output records, commitments, and value balance.
-        let (output_records, commitments, value_balance) = {
-            // Compute the output records.
-            let mut output_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-            for (j, output) in outputs.iter().enumerate().take(N::NUM_OUTPUT_RECORDS) {
-                output_records.push(output.to_record(serial_numbers[j], rng)?);
-            }
+        // Compute the output records.
+        let output_records = outputs
+            .iter()
+            .enumerate()
+            .take(N::NUM_OUTPUT_RECORDS)
+            .map(|(i, output)| Ok(output.to_record(serial_numbers[i], rng)?))
+            .collect::<Result<Vec<_>>>()?;
 
-            // Compute the commitments.
-            let commitments = output_records
-                .iter()
-                .take(N::NUM_OUTPUT_RECORDS)
-                .map(|output| output.commitment())
-                .collect();
+        // Compute the commitments.
+        let commitments = output_records
+            .iter()
+            .take(N::NUM_OUTPUT_RECORDS)
+            .map(|output| output.commitment())
+            .collect();
 
-            // Compute the value balance.
-            let mut value_balance = AleoAmount::ZERO;
-            for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
-                value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
-            }
-            for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
-                value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
-            }
-
-            (output_records, commitments, value_balance)
-        };
+        // Compute the value balance.
+        let mut value_balance = AleoAmount::ZERO;
+        for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
+            value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
+        }
+        for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
+            value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
+        }
 
         // Process the memo.
         let mut memo_bytes = self.memo.clone();

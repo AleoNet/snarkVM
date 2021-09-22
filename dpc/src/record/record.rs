@@ -39,7 +39,7 @@ use std::{
 pub struct Record<N: Network> {
     owner: Address<N>,
     // TODO (raychu86) use AleoAmount which will guard the value range
-    pub(crate) value: u64,
+    value: u64,
     payload: Payload,
     program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
     serial_number_nonce: N::SerialNumber,

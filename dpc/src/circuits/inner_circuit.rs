@@ -851,7 +851,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let mut candidate_value_balance = Int64::zero();
 
             for (i, old_record) in private.input_records.iter().enumerate() {
-                let value = old_record.value as i64;
+                let value = old_record.value() as i64;
                 let record_value = Int64::alloc(cs.ns(|| format!("old record {} value", i)), || Ok(value))?;
 
                 candidate_value_balance = candidate_value_balance
@@ -860,7 +860,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             }
 
             for (j, new_record) in private.output_records.iter().enumerate() {
-                let value = new_record.value as i64;
+                let value = new_record.value() as i64;
                 let record_value = Int64::alloc(cs.ns(|| format!("new record {} value", j)), || Ok(value))?;
 
                 candidate_value_balance = candidate_value_balance
