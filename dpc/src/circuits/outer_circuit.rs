@@ -233,7 +233,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // Verify each circuit exist in declared program and verify their proofs.
     // ************************************************************************
 
-    let mut program_ids = Vec::with_capacity(N::NUM_TOTAL_RECORDS);
+    let mut program_ids_bytes = Vec::with_capacity(N::NUM_TOTAL_RECORDS);
     for (index, input) in private.program_proofs.iter().enumerate().take(N::NUM_TOTAL_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check program for record {}", index));
 
@@ -257,12 +257,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         let claimed_circuit_id_bytes =
             claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
-        let death_program_merkle_path_gadget = MerklePathGadget::<_, N::ProgramCircuitIDTreeCRHGadget, _>::alloc(
+        let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitIDTreeCRHGadget, _>::alloc(
             &mut cs.ns(|| "Declare program path for circuit"),
             || Ok(&input.program_path),
         )?;
 
-        let claimed_program_id = death_program_merkle_path_gadget.calculate_root(
+        let claimed_program_id = program_path_gadget.calculate_root(
             &mut cs.ns(|| "calculate_program_id"),
             &program_circuit_id_tree_crh,
             claimed_circuit_id_bytes,
@@ -271,7 +271,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         let claimed_program_id_bytes =
             claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
 
-        program_ids.push(claimed_program_id_bytes);
+        program_ids_bytes.extend_from_slice(claimed_program_id_bytes);
 
         let position_fe = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
@@ -295,11 +295,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     {
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
-        let mut input = Vec::new();
-        for id in program_ids.iter().take(N::NUM_TOTAL_RECORDS) {
-            input.extend_from_slice(&id);
-        }
-
         let given_commitment_randomness =
             <N::ProgramCommitmentGadget as CommitmentGadget<_, N::OuterScalarField>>::RandomnessGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment randomness"),
@@ -314,7 +309,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "Compute commitment"),
-            &input,
+            &program_ids_bytes,
             &given_commitment_randomness,
         )?;
 
