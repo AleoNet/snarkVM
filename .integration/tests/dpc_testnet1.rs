@@ -18,7 +18,7 @@ use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
 use snarkvm_ledger::{ledger::*, prelude::*};
-use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use rand::SeedableRng;
@@ -169,12 +169,10 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
-    execute_inner_circuit(
-        &mut inner_circuit_cs.ns(|| "Inner circuit"),
-        &inner_public_variables,
-        &inner_private_variables,
-    )
-    .unwrap();
+    let inner_circuit = InnerCircuit::new(inner_public_variables.clone(), inner_private_variables);
+    inner_circuit
+        .generate_constraints(&mut inner_circuit_cs.ns(|| "Inner circuit"))
+        .unwrap();
 
     if !inner_circuit_cs.is_satisfied() {
         println!("=========================================================");
@@ -205,12 +203,8 @@ fn test_testnet1_dpc_execute_constraints() {
         .hash_bits(&inner_snark_vk.to_minimal_bits())
         .unwrap();
 
-    let inner_snark_proof = <Testnet1 as Network>::InnerSNARK::prove(
-        &inner_snark_parameters.0,
-        &InnerCircuit::new(inner_public_variables.clone(), inner_private_variables),
-        &mut rng,
-    )
-    .unwrap();
+    let inner_snark_proof =
+        <Testnet1 as Network>::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, &mut rng).unwrap();
 
     // Construct the outer circuit public and private variables.
     let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
