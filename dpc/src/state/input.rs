@@ -88,7 +88,7 @@ impl<N: Network> Input<N> {
         value: AleoAmount,
         payload: Payload,
         executable: Executable<N>,
-        serial_number_nonce: N::SerialNumberNonce,
+        serial_number_nonce: N::SerialNumber,
         commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.

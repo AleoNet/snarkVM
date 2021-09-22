@@ -118,7 +118,7 @@ impl<N: Network> EncryptedRecord<N> {
         let payload = Payload::read_le(&mut cursor)?;
 
         // Serial number nonce
-        let serial_number_nonce = N::SerialNumberNonce::read_le(&mut cursor)?;
+        let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
 
         // Commitment randomness
         let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;

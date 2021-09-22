@@ -73,7 +73,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             program_commitment_parameters,
             local_data_crh,
             local_data_commitment_parameters,
-            serial_number_nonce_crh,
             commitments_tree_parameters,
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
@@ -113,11 +112,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 || Ok(N::local_data_commitment_scheme().clone()),
             )?;
 
-            let serial_number_nonce_crh_parameters = N::SerialNumberNonceCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare serial number nonce CRH parameters"),
-                || Ok(N::serial_number_nonce_crh().clone()),
-            )?;
-
             let commitments_tree_parameters = N::CommitmentsTreeCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare commitments tree CRH parameters"),
                 || Ok(N::commitments_tree_parameters().crh()),
@@ -131,7 +125,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 program_commitment_parameters,
                 local_data_crh_parameters,
                 local_data_commitment_parameters,
-                serial_number_nonce_crh_parameters,
                 commitments_tree_parameters,
             )
         };
@@ -433,13 +426,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
-                let given_serial_number_nonce = <N::SerialNumberNonceCRHGadget as CRHGadget<
-                    N::SerialNumberNonceCRH,
-                    N::InnerScalarField,
-                >>::OutputGadget::alloc(
-                    &mut declare_cs.ns(|| "given_serial_number_nonce"),
-                    || Ok(record.serial_number_nonce()),
-                )?;
+                let given_serial_number_nonce =
+                    <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
+                        &mut declare_cs.ns(|| "given_serial_number_nonce"),
+                        || Ok(record.serial_number_nonce()),
+                    )?;
 
                 let given_serial_number_nonce_bytes =
                     given_serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
@@ -493,19 +484,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // ********************************************************************
 
             // *******************************************************************
-            // Check that the serial number nonce is computed correctly.
+            // Check that the serial number nonce is correct.
             // *******************************************************************
             {
-                let sn_cs = &mut cs.ns(|| "Check that serial number nonce is computed correctly");
+                let sn_cs = &mut cs.ns(|| "Check that serial number nonce is correct");
 
-                let record_position = UInt8::constant((N::NUM_INPUT_RECORDS + j) as u8);
-                let mut serial_number_nonce_input_bytes_le = vec![record_position];
-                serial_number_nonce_input_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
-
-                let candidate_serial_number_nonce = serial_number_nonce_crh.check_evaluation_gadget(
-                    &mut sn_cs.ns(|| "Compute serial number nonce"),
-                    serial_number_nonce_input_bytes_le,
-                )?;
+                let candidate_serial_number_nonce = &old_serial_numbers_gadgets[j];
 
                 candidate_serial_number_nonce.enforce_equal(
                     &mut sn_cs.ns(|| "Check that computed nonce matches provided nonce"),

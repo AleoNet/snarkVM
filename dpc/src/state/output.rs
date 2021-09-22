@@ -59,11 +59,10 @@ impl<N: Network> Output<N> {
         })
     }
 
-    /// Returns the output record, given the position and joint serial numbers.
+    /// Returns the output record, given the previous serial number.
     pub fn to_record<R: Rng + CryptoRng>(
         &self,
-        position: u8,
-        joint_serial_numbers: &Vec<u8>,
+        serial_number_nonce: N::SerialNumber,
         rng: &mut R,
     ) -> Result<Record<N>> {
         // Determine if the record is a dummy.
@@ -75,8 +74,7 @@ impl<N: Network> Output<N> {
             is_dummy,
             self.value.0 as u64,
             self.payload.clone(),
-            position,
-            joint_serial_numbers,
+            serial_number_nonce,
             rng,
         )?)
     }
@@ -106,7 +104,6 @@ impl<N: Network> Output<N> {
 mod tests {
     use super::*;
     use crate::testnet2::*;
-    use snarkvm_utilities::ToBytes;
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
@@ -121,13 +118,13 @@ mod tests {
 
             // Generate the given inputs.
             let mut given_rng = ChaChaRng::seed_from_u64(seed);
-            let given_joint_serial_numbers = {
-                let mut joint_serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+            let given_serial_numbers = {
+                let mut serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
                 for _ in 0..Testnet2::NUM_INPUT_RECORDS {
                     let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
-                    joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
+                    serial_numbers.push(input.serial_number().clone());
                 }
-                joint_serial_numbers
+                serial_numbers
             };
 
             // Checkpoint the RNG and clone it.
@@ -137,25 +134,13 @@ mod tests {
             // Generate the expected output state.
             let expected_record = {
                 let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
-                Record::new_noop_output(
-                    account.address,
-                    Testnet2::NUM_INPUT_RECORDS as u8,
-                    &given_joint_serial_numbers,
-                    &mut expected_rng,
-                )
-                .unwrap()
+                Record::new_noop_output(account.address, given_serial_numbers[0], &mut expected_rng).unwrap()
             };
 
             // Generate the candidate output state.
             let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_executable) = {
                 let output = Output::new_noop(&mut candidate_rng).unwrap();
-                let record = output
-                    .to_record(
-                        Testnet2::NUM_INPUT_RECORDS as u8,
-                        &given_joint_serial_numbers,
-                        &mut candidate_rng,
-                    )
-                    .unwrap();
+                let record = output.to_record(given_serial_numbers[0], &mut candidate_rng).unwrap();
                 (
                     record,
                     output.address(),

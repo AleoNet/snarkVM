@@ -73,10 +73,7 @@ impl<N: Network> StateTransition<N> {
             return Err(anyhow!("Sender(s) has insufficient balance"));
         }
 
-        // Construct the recipient output.
-        let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
-
-        // Construct the change output for the sender.
+        // Construct the sender output.
         let sender_output = Output::new(
             Address::from_private_key(sender)?,
             balance.sub(total_cost),
@@ -84,10 +81,13 @@ impl<N: Network> StateTransition<N> {
             None,
         )?;
 
+        // Construct the recipient output.
+        let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
+
         Ok(Self::builder()
             .add_inputs(inputs)
-            .add_output(recipient_output)
             .add_output(sender_output)
+            .add_output(recipient_output)
             .build(rng)?)
     }
 

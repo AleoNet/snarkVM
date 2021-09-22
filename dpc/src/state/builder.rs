@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_utilities::ToBytes;
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -141,17 +140,10 @@ impl<N: Network> StateBuilder<N> {
 
         // Compute an instance of the output records, commitments, and value balance.
         let (output_records, commitments, value_balance) = {
-            // Compute the joint serial numbers.
-            let mut joint_serial_numbers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-            for serial_number in serial_numbers.iter().take(N::NUM_INPUT_RECORDS) {
-                joint_serial_numbers.extend_from_slice(&serial_number.to_bytes_le()?);
-            }
-
             // Compute the output records.
             let mut output_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
             for (j, output) in outputs.iter().enumerate().take(N::NUM_OUTPUT_RECORDS) {
-                let position = (N::NUM_INPUT_RECORDS + j) as u8;
-                output_records.push(output.to_record(position, &joint_serial_numbers, rng)?);
+                output_records.push(output.to_record(serial_numbers[j], rng)?);
             }
 
             // Compute the commitments.
@@ -298,17 +290,17 @@ mod tests {
 
             // Generate the given inputs.
             let mut given_rng = ChaChaRng::seed_from_u64(seed);
-            let (_given_inputs, given_joint_serial_numbers) = {
+            let (_given_inputs, given_serial_numbers) = {
                 let mut inputs = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
-                let mut joint_serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+                let mut serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
                 for _ in 0..Testnet2::NUM_INPUT_RECORDS {
                     let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
-                    let serial_number = input.serial_number().to_bytes_le().unwrap();
+                    let serial_number = input.serial_number().clone();
 
                     inputs.push(input);
-                    joint_serial_numbers.extend_from_slice(&serial_number);
+                    serial_numbers.push(serial_number);
                 }
-                (inputs, joint_serial_numbers)
+                (inputs, serial_numbers)
             };
 
             // Checkpoint the RNG and clone it.
@@ -318,13 +310,7 @@ mod tests {
             // Generate the expected output state.
             let expected_record = {
                 let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
-                Record::new_noop_output(
-                    account.address,
-                    Testnet2::NUM_INPUT_RECORDS as u8,
-                    &given_joint_serial_numbers,
-                    &mut expected_rng,
-                )
-                .unwrap()
+                Record::new_noop_output(account.address, given_serial_numbers[0].clone(), &mut expected_rng).unwrap()
             };
 
             // Generate the candidate output state.

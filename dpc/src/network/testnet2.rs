@@ -198,11 +198,7 @@ impl Network for Testnet2 {
     type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
     type ProgramCircuitTreeParameters = MerkleTreeParameters<Self::ProgramCircuitIDTreeCRH, 8>;
     type ProgramID = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
-
-    type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
-    type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 32, 63>;
-    type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
-
+    
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
@@ -233,7 +229,6 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet2, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
     dpc_merkle!{Testnet2, program_circuit_tree_parameters, ProgramCircuitTreeParameters, program_circuit_id_tree_crh}
-    dpc_setup!{Testnet2, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
     dpc_setup!{Testnet2, serial_numbers_tree_crh, SerialNumbersTreeCRH, "AleoSerialNumbersTreeCRH0"}
     dpc_merkle!{Testnet2, serial_numbers_tree_parameters, SerialNumbersTreeParameters, serial_numbers_tree_crh}
     dpc_setup!{Testnet2, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
