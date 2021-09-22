@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, ComputeKey, Network, Payload, ProgramScheme, RecordError, RecordScheme};
+use crate::{Address, ComputeKey, Network, Payload, RecordError, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, PRF},
@@ -52,7 +52,7 @@ impl<N: Network> Record<N> {
     /// Returns a new noop input record.
     pub fn new_noop_input<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
         Self::new_input(
-            N::noop_program().program_id(),
+            N::noop_program_id(),
             owner,
             true,
             0,
@@ -91,7 +91,7 @@ impl<N: Network> Record<N> {
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
-            N::noop_program().program_id(),
+            N::noop_program_id(),
             owner,
             true,
             0,

@@ -133,11 +133,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
         // Declares a constant for an empty payload in a record.
         let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
+        // Declare the noop program ID as bytes.
+        let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
 
         let zero_value_field_elements =
             zero_value.to_constraint_field(&mut cs.ns(|| "convert zero value to field elements"))?;
         let empty_payload_field_elements =
             empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
+        let noop_program_id_field_elements =
+            noop_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert noop program ID to field elements"))?;
 
         let digest_gadget = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
             &mut cs.ns(|| "Declare ledger digest"),
@@ -148,7 +152,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
         let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
         let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
+        let mut old_program_ids_bytes_gadgets = Vec::with_capacity(private.input_records.len());
         let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
+        let mut input_is_dummy_gadgets = Vec::with_capacity(private.input_records.len());
 
         for (i, (((record, witness), signature), given_serial_number)) in private
             .input_records
@@ -177,7 +183,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_program_id"),
                     &record.program_id().to_bytes_le()?,
                 )?;
-                old_program_ids_gadgets.push(given_program_id.clone());
+                old_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 // No need to check that commitments, public keys and hashes are in
                 // prime order subgroup because the commitment and CRH parameters
@@ -207,6 +213,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 }
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
+                input_is_dummy_gadgets.push(given_is_dummy.clone());
 
                 let given_value =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
@@ -334,19 +341,29 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
                     let given_payload_field_elements = given_payload
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
+                    let given_program_id_field_elements = given_program_id
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given program ID to field elements"))?;
 
                     given_value_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the input record {} is a noop, enforce it has a value of 0", i)),
+                            .ns(|| format!("If the input record {} is empty, enforce it has a value of 0", i)),
                         &zero_value_field_elements,
                         &given_is_dummy,
                     )?;
                     given_payload_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the input record {} is a noop, enforce it has an empty payload", i)),
+                            .ns(|| format!("If the input record {} is empty, enforce it has an empty payload", i)),
                         &empty_payload_field_elements,
                         &given_is_dummy,
                     )?;
+                    given_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the input record {} is empty, enforce it has a noop program ID", i)),
+                        &noop_program_id_field_elements,
+                        &given_is_dummy,
+                    )?;
+
+                    old_program_ids_gadgets.push(given_program_id_field_elements);
                 }
 
                 // Compute the record commitment and check that it matches the declared commitment.
@@ -380,6 +397,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut output_commitments = Vec::with_capacity(private.output_records.len());
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
         let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
+        let mut new_program_ids_bytes_gadgets = Vec::with_capacity(private.output_records.len());
+        let mut output_is_dummy_gadgets = Vec::with_capacity(private.output_records.len());
 
         for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
             .output_records
@@ -408,7 +427,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_program_id"),
                     &record.program_id().to_bytes_le()?,
                 )?;
-                new_program_ids_gadgets.push(given_program_id.clone());
+                new_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -419,6 +438,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
+                output_is_dummy_gadgets.push(given_is_dummy.clone());
 
                 let given_value =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
@@ -510,19 +530,29 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
                     let given_payload_field_elements = given_payload
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
+                    let given_program_id_field_elements = given_program_id
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given program ID to field elements"))?;
 
                     given_value_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the output record {} is a noop, enforce it has a value of 0", j)),
+                            .ns(|| format!("If the output record {} is empty, enforce it has a value of 0", j)),
                         &zero_value_field_elements,
                         &given_is_dummy,
                     )?;
                     given_payload_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the output record {} is a noop, enforce it has an empty payload", j)),
+                            .ns(|| format!("If the output record {} is empty, enforce it has an empty payload", j)),
                         &empty_payload_field_elements,
                         &given_is_dummy,
                     )?;
+                    given_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the output record {} is empty, enforce it has a noop program ID", j)),
+                        &noop_program_id_field_elements,
+                        &given_is_dummy,
+                    )?;
+
+                    new_program_ids_gadgets.push(given_program_id_field_elements);
                 }
 
                 // Compute the record commitment and check that it matches the declared commitment.
@@ -634,28 +664,47 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
-            // Check that each input record and output record at corresponding indices
-            // have matching program IDs (e.g. input 1 and output 1 have the same program ID).
-            for (index, (input_program_id, output_program_id)) in old_program_ids_gadgets
+            // Check that the input program ID either matches the output program ID or noop program ID,
+            // for each (input, output) record pair.
+            for (
+                index,
+                (
+                    ((input_program_id_field_elements, input_is_dummy), output_program_id_field_elements),
+                    output_is_dummy,
+                ),
+            ) in old_program_ids_gadgets
                 .iter()
+                .zip_eq(input_is_dummy_gadgets.iter())
                 .zip_eq(new_program_ids_gadgets.iter())
+                .zip_eq(output_is_dummy_gadgets.iter())
                 .take(N::NUM_INPUT_RECORDS)
                 .enumerate()
             {
-                input_program_id.enforce_equal(
+                // Because we already enforce the program ID is a noop program ID, if the record is a dummy,
+                //  we only need to check for the case where the record is not a dummy now.
+
+                input_program_id_field_elements.conditional_enforce_equal(
                     &mut commitment_cs
-                        .ns(|| format!("Check that input and output record {} have matching program IDs", index)),
-                    &output_program_id,
+                        .ns(|| format!("Check input program ID matches output, if not dummy - {}", index)),
+                    output_program_id_field_elements,
+                    &input_is_dummy.not(),
+                )?;
+
+                output_program_id_field_elements.conditional_enforce_equal(
+                    &mut commitment_cs
+                        .ns(|| format!("Check output program ID matches input, if not dummy - {}", index)),
+                    input_program_id_field_elements,
+                    &output_is_dummy.not(),
                 )?;
             }
 
             // *******************************************************************
 
             let mut input = Vec::new();
-            for id_gadget in old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS) {
+            for id_gadget in old_program_ids_bytes_gadgets.iter().take(N::NUM_INPUT_RECORDS) {
                 input.extend_from_slice(id_gadget);
             }
-            for id_gadget in new_program_ids_gadgets.iter().take(N::NUM_OUTPUT_RECORDS) {
+            for id_gadget in new_program_ids_bytes_gadgets.iter().take(N::NUM_OUTPUT_RECORDS) {
                 input.extend_from_slice(id_gadget);
             }
 

@@ -43,7 +43,7 @@ impl<N: Network> Executable<N> {
     /// Returns a reference to the program ID of the executable.
     pub fn program_id(&self) -> MerkleTreeDigest<N::ProgramCircuitTreeParameters> {
         match self {
-            Self::Noop => N::noop_program().program_id(),
+            Self::Noop => N::noop_program_id(),
             Self::Circuit(program, _, _) => program.program_id(),
         }
     }

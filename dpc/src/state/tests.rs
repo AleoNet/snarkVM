@@ -53,7 +53,7 @@ mod coinbase {
                 // Generate the expected coinbase record.
                 let coinbase_record = {
                     Record::new_output(
-                        Testnet2::noop_program().program_id(),
+                        Testnet2::noop_program_id(),
                         coinbase_account.address,
                         false,
                         123456,
@@ -141,7 +141,7 @@ mod transfer {
 
             // Generate the expected sender output record
             let sender_output_record = Record::new_output(
-                Testnet2::noop_program().program_id(),
+                Testnet2::noop_program_id(),
                 sender.address,
                 false,
                 100,
@@ -153,7 +153,7 @@ mod transfer {
 
             // Generate the expected recipient output record
             let recipient_output_record = Record::new_output(
-                Testnet2::noop_program().program_id(),
+                Testnet2::noop_program_id(),
                 recipient.address,
                 false,
                 123256,

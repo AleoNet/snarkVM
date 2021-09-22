@@ -23,13 +23,14 @@ use crate::{
     NoopProgram,
     OuterPublicVariables,
     PoSWScheme,
+    ProgramScheme,
     PublicVariables,
 };
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
+    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeDigest, MerkleTreeParameters},
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -231,6 +232,10 @@ impl Network for Testnet1 {
     fn noop_program() -> &'static NoopProgram<Self> {
         static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1>> = OnceCell::new();
         NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet1>::load().expect("Failed to fetch the noop program"))
+    }
+    
+    fn noop_program_id() -> MerkleTreeDigest<Self::ProgramCircuitTreeParameters> {
+        Self::noop_program().program_id()
     }
     
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
