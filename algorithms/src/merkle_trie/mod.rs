@@ -16,8 +16,8 @@
 
 #![allow(clippy::module_inception)]
 
-pub mod merkle_path;
-pub use merkle_path::*;
+pub mod merkle_trie_path;
+pub use merkle_trie_path::*;
 
 pub mod merkle_trie;
 pub use merkle_trie::*;
