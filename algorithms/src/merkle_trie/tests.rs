@@ -44,14 +44,14 @@ macro_rules! generate_random_key_pairs {
 }
 
 /// Generates a valid Merkle trie and verifies the Merkle path witness for each leaf.
-fn generate_merkle_trie<P: CRH, L: ToBytes + Send + Sync + Clone + Eq>(
+fn generate_merkle_trie<P: CRH, L: std::fmt::Debug + ToBytes + Send + Sync + Clone + Eq>(
     keys: &[Vec<u8>],
     leaves: &[L],
     parameters: &P,
 ) -> MerkleTrie<P, L> {
     let mut trie = MerkleTrie::<P, L>::new(Arc::new(parameters.clone())).unwrap();
     for (_, (key, leaf)) in keys.iter().zip(leaves.iter()).enumerate() {
-        trie.insert(&key, leaf.clone()).unwrap();
+        trie.insert(&key, Some(leaf.clone())).unwrap();
         let proof = trie.generate_proof(&key, &leaf).unwrap();
         assert!(proof.verify(&trie.root(), &key, &leaf).unwrap());
     }
@@ -67,7 +67,7 @@ fn bad_merkle_trie_verify<P: CRH, L: ToBytes + Send + Sync + Clone + Eq>(
     let bad_root = [0u8; 32];
     let mut trie = MerkleTrie::<P, L>::new(Arc::new(parameters.clone())).unwrap();
     for (_, (key, leaf)) in keys.iter().zip(leaves.iter()).enumerate() {
-        trie.insert(&key, leaf.clone()).unwrap();
+        trie.insert(&key, Some(leaf.clone())).unwrap();
         let proof = trie.generate_proof(&key, &leaf).unwrap();
         assert!(proof.verify(&bad_root, &key, &leaf).unwrap());
     }
@@ -132,9 +132,9 @@ mod poseidon_on_bls12_377_fr {
 
         let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone()).unwrap();
 
-        tree_1.insert(VALUE_PAIR_1.0, VALUE_PAIR_1.1).unwrap();
-        tree_1.insert(VALUE_PAIR_2.0, VALUE_PAIR_2.1).unwrap();
-        tree_1.insert(VALUE_PAIR_3.0, VALUE_PAIR_3.1).unwrap();
+        tree_1.insert(VALUE_PAIR_1.0, Some(VALUE_PAIR_1.1)).unwrap();
+        tree_1.insert(VALUE_PAIR_2.0, Some(VALUE_PAIR_2.1)).unwrap();
+        tree_1.insert(VALUE_PAIR_3.0, Some(VALUE_PAIR_3.1)).unwrap();
 
         let value_1 = tree_1.get(VALUE_PAIR_1.0);
         let value_2 = tree_1.get(VALUE_PAIR_2.0);
@@ -153,9 +153,9 @@ mod poseidon_on_bls12_377_fr {
 
         let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone()).unwrap();
 
-        tree_1.insert(VALUE_PAIR_1.0, VALUE_PAIR_1.1).unwrap();
-        tree_1.insert(VALUE_PAIR_2.0, VALUE_PAIR_2.1).unwrap();
-        tree_1.insert(VALUE_PAIR_3.0, VALUE_PAIR_3.1).unwrap();
+        tree_1.insert(VALUE_PAIR_1.0, Some(VALUE_PAIR_1.1)).unwrap();
+        tree_1.insert(VALUE_PAIR_2.0, Some(VALUE_PAIR_2.1)).unwrap();
+        tree_1.insert(VALUE_PAIR_3.0, Some(VALUE_PAIR_3.1)).unwrap();
 
         let proof = tree_1.generate_proof(VALUE_PAIR_3.0, &VALUE_PAIR_3.1).unwrap();
 
