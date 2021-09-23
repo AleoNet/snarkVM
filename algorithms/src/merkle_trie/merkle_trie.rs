@@ -14,17 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::MerkleTrieError, merkle_trie::MerkleTriePath, traits::CRH};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use crate::{
+    errors::MerkleTrieError,
+    merkle_trie::{MerkleTrieDigest, MerkleTriePath},
+    traits::MerkleTrieParameters,
+};
+use snarkvm_utilities::ToBytes;
 
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Default, Clone)]
-pub struct MerkleTrie<P: CRH, T: ToBytes + PartialEq + Clone> {
+pub struct MerkleTrie<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> {
     /// The CRH used to create the root hash.
     pub(crate) parameters: Arc<P>,
     /// The root hash of the Merkle trie.
-    pub(crate) root: [u8; 32],
+    pub(crate) root: MerkleTrieDigest<P>,
     /// The key of the current Merkle trie.
     pub(crate) key: Vec<u8>, // TODO (raychu86): Enforce a max depth size (bound by the length of the key).
     /// The value existing at the current Merkle trie node.
@@ -33,23 +37,29 @@ pub struct MerkleTrie<P: CRH, T: ToBytes + PartialEq + Clone> {
     pub(crate) children: BTreeMap<u8, MerkleTrie<P, T>>, // TODO (raychu86): Remove the current duplication of parameters.
 }
 
-impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
+impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
+    pub const MAX_DEPTH: usize = P::MAX_DEPTH;
+
     /// Create a new Merkle trie.
-    pub fn new(parameters: Arc<P>) -> Result<Self, MerkleTrieError> {
-        let merkle_trie = Self {
+    pub fn new(parameters: Arc<P>, key_pairs: Vec<(Vec<u8>, T)>) -> Result<Self, MerkleTrieError> {
+        let mut merkle_trie = Self {
             parameters,
-            root: [0u8; 32],
+            root: MerkleTrieDigest::<P>::default(),
             key: Vec::new(),
             value: None,
             children: BTreeMap::new(),
         };
+
+        for (key, value) in key_pairs {
+            merkle_trie.insert(&key, value)?;
+        }
 
         Ok(merkle_trie)
     }
 
     /// Check if the Merkle trie is empty.
     pub fn is_empty(&self) -> bool {
-        self.root == [0u8; 32] && self.value.is_none() && self.children.is_empty()
+        self.root == MerkleTrieDigest::<P>::default() && self.value.is_none() && self.children.is_empty()
     }
 
     /// Insert a (key, value) pair into the Merkle trie.
@@ -90,7 +100,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             let mut new_node = MerkleTrie::<P, T> {
                 parameters: self.parameters.clone(),
                 key: old_key_suffix.clone(),
-                root: [0u8; 32],
+                root: MerkleTrieDigest::<P>::default(),
                 value: self.value.take(),
                 children: BTreeMap::new(),
             };
@@ -175,7 +185,8 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 let suffix = &expected_key[temp_key.len()..];
 
                 let index = temp_children.keys().position(|&r| r == suffix[0]).unwrap();
-                let mut siblings: Vec<[u8; 32]> = temp_children.iter().map(|(_x, trie)| trie.root().clone()).collect();
+                let mut siblings: Vec<MerkleTrieDigest<P>> =
+                    temp_children.iter().map(|(_x, trie)| trie.root().clone()).collect();
                 siblings.remove(index);
 
                 traversal.push(index);
@@ -213,7 +224,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
     /// Returns the root hash of the Merkle trie.
     #[inline]
-    pub fn root(&self) -> &[u8; 32] {
+    pub fn root(&self) -> &MerkleTrieDigest<P> {
         &self.root
     }
 
@@ -224,7 +235,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             None => {
                 // No child tree for this suffix exists yet.
                 // Crate a new subtree.
-                let mut new_child = MerkleTrie::new(self.parameters.clone())?;
+                let mut new_child = MerkleTrie::new(self.parameters.clone(), vec![])?;
                 new_child.insert(&suffix, value)?;
 
                 // Insert the new subtree into the current tree.
@@ -243,7 +254,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
     /// Update the root of the Merkle trie using its current children.
     fn update_root(&mut self) -> Result<(), MerkleTrieError> {
         if self.is_empty() {
-            self.root = [0; 32];
+            self.root = MerkleTrieDigest::<P>::default();
         } else {
             // Add the children roots to the hash input.
             let mut child_roots = vec![];
@@ -251,7 +262,7 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 child_roots.push(child.root());
             }
 
-            let root = calculate_root(&self.parameters, &self.key, &self.value, &child_roots)?;
+            let root = self.parameters.hash_node(&self.key, &self.value, &child_roots)?;
 
             // Update the new root.
             self.root = root;
@@ -259,34 +270,6 @@ impl<P: CRH, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
         Ok(())
     }
-}
-
-/// Calculate the root hash of a given node with it's key, value, and children.
-pub fn calculate_root<P: CRH, T: ToBytes>(
-    parameters: &Arc<P>,
-    _key: &[u8],
-    value: &Option<T>,
-    child_roots: &Vec<&[u8; 32]>,
-) -> Result<[u8; 32], MerkleTrieError> {
-    // Add the current node's key and value to the hash input.
-    let mut input = vec![]; // TODO (raychu86): Add the key to the root hash. Full key vs key suffix?
-    if let Some(value) = &value {
-        let value_bytes = to_bytes_le![value]?;
-        input.extend(value_bytes);
-    }
-
-    // Add the children roots to the hash input.
-    for child in child_roots {
-        input.extend(*child);
-    }
-
-    // Hash the input
-    let hash = parameters.hash(&input)?;
-    let hash_bytes = to_bytes_le![hash]?;
-    let mut root = [0u8; 32];
-    root.copy_from_slice(&hash_bytes);
-
-    Ok(root)
 }
 
 /// Number of prefix elements the two keys have in common.

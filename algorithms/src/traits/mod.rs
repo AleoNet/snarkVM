@@ -29,6 +29,9 @@ pub use encryption::*;
 pub mod merkle_tree;
 pub use merkle_tree::*;
 
+pub mod merkle_trie;
+pub use merkle_trie::*;
+
 pub mod prf;
 pub use prf::*;
 

@@ -24,3 +24,32 @@ pub use merkle_trie::*;
 
 #[cfg(test)]
 pub mod tests;
+
+#[macro_export]
+/// Defines a Merkle trie using the provided hash and max depth.
+macro_rules! define_merkle_trie_parameters {
+    ($struct_name:ident, $hash:ty, $depth:expr) => {
+        #[derive(Clone, PartialEq, Eq, Debug)]
+        pub struct $struct_name($hash);
+
+        impl MerkleTrieParameters for $struct_name {
+            type H = $hash;
+
+            const MAX_DEPTH: usize = $depth;
+
+            fn setup(message: &str) -> Self {
+                Self(Self::H::setup(message))
+            }
+
+            fn crh(&self) -> &Self::H {
+                &self.0
+            }
+        }
+
+        impl From<$hash> for $struct_name {
+            fn from(crh: $hash) -> Self {
+                Self(crh)
+            }
+        }
+    };
+}

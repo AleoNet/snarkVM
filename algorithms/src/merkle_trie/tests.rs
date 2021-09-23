@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crypto_hash::PoseidonCryptoHash, merkle_trie::MerkleTrie, traits::CRH};
+use crate::{
+    crypto_hash::PoseidonCryptoHash,
+    define_merkle_trie_parameters,
+    merkle_trie::{MerkleTrie, MerkleTrieDigest},
+    traits::{MerkleTrieParameters, CRH},
+};
 use snarkvm_utilities::ToBytes;
 
 use rand::{thread_rng, Rng};
@@ -25,33 +30,28 @@ macro_rules! generate_random_key_pairs {
     ($num_leaves:expr, $key_size:expr, $leaf_size:expr) => {{
         let mut rng = thread_rng();
 
-        let mut keys = Vec::with_capacity($num_leaves);
+        let mut key_pairs = Vec::with_capacity($num_leaves);
         for _ in 0..$num_leaves {
-            let mut id = [0u8; $key_size];
-            rng.fill(&mut id);
-            keys.push(id.to_vec());
+            let mut key = [0u8; $key_size];
+            rng.fill(&mut key);
+
+            let mut val = [0u8; $leaf_size];
+            rng.fill(&mut val);
+
+            key_pairs.push((key.to_vec(), val));
         }
 
-        let mut leaves = Vec::with_capacity($num_leaves);
-        for _ in 0..$num_leaves {
-            let mut id = [0u8; $leaf_size];
-            rng.fill(&mut id);
-            leaves.push(id);
-        }
-
-        (keys, leaves)
+        key_pairs
     }};
 }
 
 /// Generates a valid Merkle trie and verifies the Merkle path witness for each leaf.
-fn generate_merkle_trie<P: CRH, L: std::fmt::Debug + ToBytes + Send + Sync + Clone + Eq>(
-    keys: &[Vec<u8>],
-    leaves: &[L],
+fn generate_merkle_trie<P: MerkleTrieParameters, L: std::fmt::Debug + ToBytes + Send + Sync + Clone + Eq>(
+    key_pairs: Vec<(Vec<u8>, L)>,
     parameters: &P,
 ) -> MerkleTrie<P, L> {
-    let mut trie = MerkleTrie::<P, L>::new(Arc::new(parameters.clone())).unwrap();
-    for (_, (key, leaf)) in keys.iter().zip(leaves.iter()).enumerate() {
-        trie.insert(&key, leaf.clone()).unwrap();
+    let trie = MerkleTrie::<P, L>::new(Arc::new(parameters.clone()), key_pairs.clone()).unwrap();
+    for (_, (key, leaf)) in key_pairs.iter().enumerate() {
         let proof = trie.generate_proof(&key, &leaf).unwrap();
         assert!(proof.verify(&trie.root(), &key, &leaf).unwrap());
     }
@@ -59,66 +59,68 @@ fn generate_merkle_trie<P: CRH, L: std::fmt::Debug + ToBytes + Send + Sync + Clo
 }
 
 /// Generates a valid Merkle trie and verifies the Merkle path witness for each leaf does not verify to an invalid root hash.
-fn bad_merkle_trie_verify<P: CRH, L: ToBytes + Send + Sync + Clone + Eq>(
-    keys: &[Vec<u8>],
-    leaves: &[L],
+fn bad_merkle_trie_verify<P: MerkleTrieParameters, L: ToBytes + Send + Sync + Clone + Eq>(
+    key_pairs: Vec<(Vec<u8>, L)>,
     parameters: &P,
 ) -> MerkleTrie<P, L> {
-    let bad_root = [0u8; 32];
-    let mut trie = MerkleTrie::<P, L>::new(Arc::new(parameters.clone())).unwrap();
-    for (_, (key, leaf)) in keys.iter().zip(leaves.iter()).enumerate() {
-        trie.insert(&key, leaf.clone()).unwrap();
+    let bad_root = MerkleTrieDigest::<P>::default();
+    let trie = MerkleTrie::<P, L>::new(Arc::new(parameters.clone()), key_pairs.clone()).unwrap();
+    for (_, (key, leaf)) in key_pairs.iter().enumerate() {
         let proof = trie.generate_proof(&key, &leaf).unwrap();
         assert!(proof.verify(&bad_root, &key, &leaf).unwrap());
     }
     trie
 }
 
-fn run_empty_merkle_tree_test<P: CRH>() {
+fn run_empty_merkle_tree_test<P: MerkleTrieParameters>() {
     let parameters = &P::setup("merkle_trie_test");
-    generate_merkle_trie::<P, Vec<u8>>(&[], &[], parameters);
+    generate_merkle_trie::<P, Vec<u8>>(vec![], parameters);
 }
 
-fn run_good_root_test<P: CRH>() {
+fn run_good_root_test<P: MerkleTrieParameters>() {
     let parameters = &P::setup("merkle_trie_test");
 
-    let (keys, leaves) = generate_random_key_pairs!(4, 32, 32);
-    generate_merkle_trie::<P, _>(&keys, &leaves, parameters);
+    let key_pairs = generate_random_key_pairs!(4, 32, 32);
+    generate_merkle_trie::<P, _>(key_pairs, parameters);
 
-    let (keys, leaves) = generate_random_key_pairs!(16, 32, 32);
-    generate_merkle_trie::<P, _>(&keys, &leaves, parameters);
+    let key_pairs = generate_random_key_pairs!(16, 32, 32);
+    generate_merkle_trie::<P, _>(key_pairs, parameters);
 }
 
-fn run_bad_root_test<P: CRH>() {
+fn run_bad_root_test<P: MerkleTrieParameters>() {
     let parameters = &P::setup("merkle_tree_test");
 
-    let (keys, leaves) = generate_random_key_pairs!(4, 32, 32);
-    generate_merkle_trie::<P, _>(&keys, &leaves, parameters);
+    let key_pairs = generate_random_key_pairs!(4, 32, 32);
+    generate_merkle_trie::<P, _>(key_pairs, parameters);
 
-    let (keys, leaves) = generate_random_key_pairs!(16, 32, 32);
-    bad_merkle_trie_verify::<P, _>(&keys, &leaves, parameters);
+    let key_pairs = generate_random_key_pairs!(16, 32, 32);
+    bad_merkle_trie_verify::<P, _>(key_pairs, parameters);
 }
 
 mod poseidon_on_bls12_377_fr {
     use super::*;
     use snarkvm_curves::bls12_377::Fr;
 
-    type H = PoseidonCryptoHash<Fr, 4, false>;
-
     #[test]
     fn empty_merkle_tree_test() {
-        run_empty_merkle_tree_test::<H>();
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+
+        run_empty_merkle_tree_test::<MerkleTrieParams>();
     }
 
     #[test]
     fn good_root_test_123() {
-        run_good_root_test::<H>();
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+
+        run_good_root_test::<MerkleTrieParams>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        run_bad_root_test::<H>();
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+
+        run_bad_root_test::<MerkleTrieParams>();
     }
 
     const VALUE_PAIR_1: (&'static [u8; 1], u8) = (b"a", 1u8);
@@ -128,9 +130,11 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn test_trie_get() {
-        let crh = Arc::new(H::setup("TEST_MERKLE_TRIE_CRH"));
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
 
-        let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone()).unwrap();
+        let crh = Arc::new(MerkleTrieParams::setup("TEST_MERKLE_TRIE_CRH"));
+
+        let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone(), vec![]).unwrap();
 
         tree_1.insert(VALUE_PAIR_1.0, VALUE_PAIR_1.1).unwrap();
         tree_1.insert(VALUE_PAIR_2.0, VALUE_PAIR_2.1).unwrap();
@@ -149,9 +153,11 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn test_trie_verify() {
-        let crh = Arc::new(H::setup("TEST_MERKLE_TRIE_CRH"));
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
 
-        let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone()).unwrap();
+        let crh = Arc::new(MerkleTrieParams::setup("TEST_MERKLE_TRIE_CRH"));
+
+        let mut tree_1 = MerkleTrie::<_, u8>::new(crh.clone(), vec![]).unwrap();
 
         tree_1.insert(VALUE_PAIR_1.0, VALUE_PAIR_1.1).unwrap();
         tree_1.insert(VALUE_PAIR_2.0, VALUE_PAIR_2.1).unwrap();
