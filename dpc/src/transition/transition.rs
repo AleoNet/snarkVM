@@ -64,7 +64,7 @@ impl<N: Network> StateTransition<N> {
         let mut inputs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for record in records {
             balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
-            inputs.push(Input::new(&sender.to_compute_key()?, record.clone(), None)?);
+            inputs.push(Input::new(&sender.to_compute_key()?, record.clone())?);
         }
 
         // Ensure the sender has sufficient balance.

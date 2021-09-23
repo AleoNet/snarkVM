@@ -25,7 +25,6 @@ use rand::{CryptoRng, Rng};
 pub trait DPCScheme<N: Network>: Sized {
     type Account: AccountScheme;
     type Authorization;
-    type Execution;
     type LedgerProof;
     type StateTransition;
     type Transaction: TransactionScheme<N>;

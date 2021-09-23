@@ -16,7 +16,7 @@
 
 use crate::{Network, ProgramCircuit};
 use snarkvm_algorithms::{
-    merkle_tree::{MerklePath, MerkleTree, MerkleTreeDigest},
+    merkle_tree::{MerklePath, MerkleTree},
     prelude::*,
 };
 use snarkvm_utilities::has_duplicates;
@@ -144,7 +144,7 @@ impl<N: Network> ProgramCircuitTree<N> {
     }
 
     /// Returns the program ID.
-    pub fn to_program_id(&self) -> &MerkleTreeDigest<N::ProgramCircuitTreeParameters> {
+    pub fn to_program_id(&self) -> &N::ProgramID {
         self.tree.root()
     }
 }

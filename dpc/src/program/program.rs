@@ -16,6 +16,7 @@
 
 use crate::{
     Execution,
+    ExecutionType,
     Network,
     PrivateVariables,
     ProgramCircuit,
@@ -24,7 +25,7 @@ use crate::{
     ProgramScheme,
     PublicVariables,
 };
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, prelude::*};
+use snarkvm_algorithms::prelude::*;
 
 use std::sync::Arc;
 
@@ -47,7 +48,7 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     }
 
     /// Returns a reference to the program ID.
-    fn program_id(&self) -> MerkleTreeDigest<N::ProgramCircuitTreeParameters> {
+    fn program_id(&self) -> N::ProgramID {
         *self.circuits.to_program_id()
     }
 
@@ -64,6 +65,17 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     /// Returns the circuit given the circuit index, if it exists.
     fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<N>>> {
         self.circuits.find_circuit_by_index(circuit_index)
+    }
+
+    /// Returns the circuit execution type given the circuit ID, if it exists.
+    fn get_circuit_execution_type(&self, circuit_id: &N::ProgramCircuitID) -> Result<ExecutionType, ProgramError> {
+        // Fetch the circuit from the tree.
+        let circuit = match self.circuits.get_circuit(circuit_id) {
+            Some(circuit) => circuit,
+            _ => return Err(MerkleError::MissingLeaf(format!("{}", circuit_id)).into()),
+        };
+        debug_assert_eq!(circuit.circuit_id(), circuit_id);
+        Ok(circuit.execution_type())
     }
 
     fn execute(

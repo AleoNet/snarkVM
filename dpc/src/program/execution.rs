@@ -25,3 +25,40 @@ pub struct Execution<N: Network> {
     pub verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
     pub proof: <N::ProgramSNARK as SNARK>::Proof,
 }
+
+#[derive(Clone)]
+pub enum ExecutionType {
+    Noop,
+    Add,
+    Update,
+    Remove,
+    Join,
+    Split,
+    JoinSplit,
+}
+
+impl ExecutionType {
+    pub fn input_count(&self) -> u8 {
+        match self {
+            Self::Noop => 0,
+            Self::Add => 0,
+            Self::Update => 1,
+            Self::Remove => 1,
+            Self::Join => 2,
+            Self::Split => 1,
+            Self::JoinSplit => 2,
+        }
+    }
+
+    pub fn output_count(&self) -> u8 {
+        match self {
+            Self::Noop => 0,
+            Self::Add => 1,
+            Self::Update => 1,
+            Self::Remove => 0,
+            Self::Join => 1,
+            Self::Split => 2,
+            Self::JoinSplit => 2,
+        }
+    }
+}

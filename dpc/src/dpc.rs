@@ -26,7 +26,6 @@ pub struct DPC<N: Network>(PhantomData<N>);
 impl<N: Network> DPCScheme<N> for DPC<N> {
     type Account = Account<N>;
     type Authorization = TransactionAuthorization<N>;
-    type Execution = Execution<N>;
     type LedgerProof = LedgerProof<N>;
     type StateTransition = StateTransition<N>;
     type Transaction = Transaction<N>;
@@ -71,7 +70,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(N::NUM_TOTAL_RECORDS, executables.len());
+        assert_eq!(N::NUM_INPUT_RECORDS, executables.len());
 
         let execution_timer = start_timer!(|| "DPC::execute");
 
@@ -85,8 +84,8 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let local_data = authorization.to_local_data(rng)?;
 
         // Execute the programs.
-        let mut executions = Vec::with_capacity(N::NUM_TOTAL_RECORDS);
-        for (i, executable) in executables.iter().enumerate() {
+        let mut executions = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for (i, executable) in executables.iter().take(N::NUM_INPUT_RECORDS).enumerate() {
             executions.push(executable.execute(i as u8, &local_data).unwrap());
         }
 
@@ -118,9 +117,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             signatures,
             output_records.clone(),
             encrypted_record_randomizers,
+            &executables,
             program_randomness.clone(),
             local_data.leaf_randomizers().clone(),
-        );
+        )?;
 
         // Compute the inner circuit proof.
         let inner_proof = N::InnerSNARK::prove(

@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Record};
+use crate::{Executable, ExecutionType, Network, Record};
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CommitmentScheme, EncryptionScheme},
 };
+
+use anyhow::Result;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
@@ -31,6 +33,9 @@ pub struct InnerPrivateVariables<N: Network> {
     pub(super) output_records: Vec<Record<N>>,
     // Encryption of output records.
     pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+    // Executables.
+    pub(super) program_ids: Vec<N::ProgramID>,
+    pub(super) execution_types: Vec<ExecutionType>,
     // Commitment to programs and local data.
     pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     pub(super) local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
@@ -47,6 +52,8 @@ impl<N: Network> InnerPrivateVariables<N> {
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
+            program_ids: vec![N::noop_program_id(); N::NUM_EXECUTABLES],
+            execution_types: vec![ExecutionType::Noop; N::NUM_EXECUTABLES],
             program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_leaf_randomizers: vec![
                 <N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
@@ -61,24 +68,37 @@ impl<N: Network> InnerPrivateVariables<N> {
         signatures: Vec<N::AccountSignature>,
         output_records: Vec<Record<N>>,
         encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+        executables: &Vec<Executable<N>>,
         program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
-    ) -> Self {
+    ) -> Result<Self> {
         assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
         assert_eq!(N::NUM_INPUT_RECORDS, input_witnesses.len());
         assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
+        assert_eq!(N::NUM_EXECUTABLES, executables.len());
         assert_eq!(N::NUM_TOTAL_RECORDS, local_data_leaf_randomizers.len());
 
-        Self {
+        // Prepare the executable program IDs.
+        let program_ids = executables.iter().map(|e| e.program_id()).collect::<Vec<_>>();
+
+        // Prepare the execution types.
+        let execution_types = executables
+            .iter()
+            .map(|e| Ok(e.execution_type()?))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self {
             input_records,
             input_witnesses,
             signatures,
             output_records,
             encrypted_record_randomizers,
+            program_ids,
+            execution_types,
             program_randomness,
             local_data_leaf_randomizers,
-        }
+        })
     }
 }

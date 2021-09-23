@@ -233,14 +233,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // Verify each circuit exist in declared program and verify their proofs.
     // ************************************************************************
 
-    let mut program_ids_bytes = Vec::with_capacity(N::NUM_TOTAL_RECORDS);
-    for (index, input) in private.program_proofs.iter().enumerate().take(N::NUM_TOTAL_RECORDS) {
-        let cs = &mut cs.ns(|| format!("Check program for record {}", index));
-
-        let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
-            &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&input.proof),
-        )?;
+    let mut program_ids_bytes = Vec::with_capacity(N::NUM_EXECUTABLES);
+    for (index, input) in private.program_proofs.iter().enumerate().take(N::NUM_EXECUTABLES) {
+        let cs = &mut cs.ns(|| format!("Check execution for program {}", index));
 
         let program_circuit_verifying_key =
             <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
@@ -248,36 +243,46 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 || Ok(&input.verifying_key),
             )?;
 
-        let program_circuit_verifying_key_bits = program_circuit_verifying_key
-            .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
+        // Verify that the claimed circuit ID is a valid Merkle path in the program circuit tree.
+        {
+            let program_circuit_verifying_key_bits = program_circuit_verifying_key
+                .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
-        let claimed_circuit_id = program_circuit_id_crh
-            .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute circuit ID"), program_circuit_verifying_key_bits)?;
+            let claimed_circuit_id = program_circuit_id_crh.check_evaluation_gadget_on_bits(
+                &mut cs.ns(|| "Compute circuit ID"),
+                program_circuit_verifying_key_bits,
+            )?;
 
-        let claimed_circuit_id_bytes =
-            claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
+            let claimed_circuit_id_bytes =
+                claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
-        let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitIDTreeCRHGadget, _>::alloc(
-            &mut cs.ns(|| "Declare program path for circuit"),
-            || Ok(&input.program_path),
-        )?;
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitIDTreeCRHGadget, _>::alloc(
+                &mut cs.ns(|| "Declare program path for circuit"),
+                || Ok(&input.program_path),
+            )?;
 
-        let claimed_program_id = program_path_gadget.calculate_root(
-            &mut cs.ns(|| "calculate_program_id"),
-            &program_circuit_id_tree_crh,
-            claimed_circuit_id_bytes,
-        )?;
+            let claimed_program_id = program_path_gadget.calculate_root(
+                &mut cs.ns(|| "calculate_program_id"),
+                &program_circuit_id_tree_crh,
+                claimed_circuit_id_bytes,
+            )?;
 
-        let claimed_program_id_bytes =
-            claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
+            let claimed_program_id_bytes =
+                claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
 
-        program_ids_bytes.extend_from_slice(&claimed_program_id_bytes);
+            program_ids_bytes.extend_from_slice(&claimed_program_id_bytes);
+        }
 
         let position_fe = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
             || Ok(vec![N::InnerScalarField::from(index as u128)]),
         )?;
         let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
+
+        let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
+            &mut cs.ns(|| "Allocate program circuit proof"),
+            || Ok(&input.proof),
+        )?;
 
         N::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),

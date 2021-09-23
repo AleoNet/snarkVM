@@ -26,7 +26,7 @@ pub struct Output<N: Network> {
     address: Address<N>,
     value: AleoAmount,
     payload: Payload,
-    executable: Executable<N>,
+    program_id: N::ProgramID,
 }
 
 impl<N: Network> Output<N> {
@@ -43,19 +43,19 @@ impl<N: Network> Output<N> {
         address: Address<N>,
         value: AleoAmount,
         payload: Payload,
-        executable: Option<Executable<N>>,
+        program_id: Option<N::ProgramID>,
     ) -> Result<Self> {
-        // Retrieve the executable. If `None` is provided, construct the noop executable.
-        let executable = match executable {
-            Some(executable) => executable,
-            None => Executable::Noop,
+        // Retrieve the program ID. If `None` is provided, construct the noop program ID.
+        let program_id = match program_id {
+            Some(program_id) => program_id,
+            None => N::noop_program_id(),
         };
 
         Ok(Self {
             address,
             value,
             payload,
-            executable,
+            program_id,
         })
     }
 
@@ -69,7 +69,7 @@ impl<N: Network> Output<N> {
             self.address,
             self.value.0 as u64,
             self.payload.clone(),
-            self.executable.program_id(),
+            self.program_id,
             serial_number_nonce,
             rng,
         )?)
@@ -90,9 +90,9 @@ impl<N: Network> Output<N> {
         &self.payload
     }
 
-    /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<N> {
-        &self.executable
+    /// Returns a reference to the program ID.
+    pub fn program_id(&self) -> N::ProgramID {
+        self.program_id
     }
 }
 
@@ -134,7 +134,7 @@ mod tests {
             };
 
             // Generate the candidate output state.
-            let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_executable) = {
+            let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_program_id) = {
                 let output = Output::new_noop(&mut candidate_rng).unwrap();
                 let record = output.to_record(given_serial_numbers[0], &mut candidate_rng).unwrap();
                 (
@@ -142,7 +142,7 @@ mod tests {
                     output.address(),
                     output.value(),
                     output.payload().clone(),
-                    output.executable().clone(),
+                    output.program_id(),
                 )
             };
 
@@ -150,7 +150,7 @@ mod tests {
             assert_eq!(expected_record.owner(), candidate_address);
             assert_eq!(expected_record.value(), candidate_value.0 as u64);
             assert_eq!(expected_record.payload(), &candidate_payload);
-            assert!(candidate_executable.is_noop());
+            assert_eq!(expected_record.program_id(), candidate_program_id);
         }
     }
 }

@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, ComputeKey, Network, Payload, RecordError, RecordScheme};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, PRF},
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
@@ -41,7 +38,7 @@ pub struct Record<N: Network> {
     // TODO (raychu86) use AleoAmount which will guard the value range
     value: u64,
     payload: Payload,
-    program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
+    program_id: N::ProgramID,
     serial_number_nonce: N::SerialNumber,
     commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     commitment: N::Commitment,
@@ -65,7 +62,7 @@ impl<N: Network> Record<N> {
         owner: Address<N>,
         value: u64,
         payload: Payload,
-        program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
+        program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
         commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
@@ -100,7 +97,7 @@ impl<N: Network> Record<N> {
         owner: Address<N>,
         value: u64,
         payload: Payload,
-        program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
+        program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
@@ -119,7 +116,7 @@ impl<N: Network> Record<N> {
         owner: Address<N>,
         value: u64,
         payload: Payload,
-        program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters>,
+        program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
         commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
@@ -171,7 +168,7 @@ impl<N: Network> RecordScheme for Record<N> {
     type CommitmentRandomness = <N::CommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<N>;
     type Payload = Payload;
-    type ProgramID = MerkleTreeDigest<N::ProgramCircuitTreeParameters>;
+    type ProgramID = N::ProgramID;
     type SerialNumberNonce = N::SerialNumber;
 
     fn is_dummy(&self) -> bool {
@@ -225,7 +222,7 @@ impl<N: Network> FromBytes for Record<N> {
         let owner: Address<N> = FromBytes::read_le(&mut reader)?;
         let value: u64 = FromBytes::read_le(&mut reader)?;
         let payload: Payload = FromBytes::read_le(&mut reader)?;
-        let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut reader)?;
+        let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
         let serial_number_nonce: N::SerialNumber = FromBytes::read_le(&mut reader)?;
         let commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;

@@ -37,7 +37,7 @@ impl<N: Network> OuterPrivateVariables<N> {
         Self {
             inner_snark_vk,
             inner_snark_proof,
-            program_proofs: vec![execution.clone(); N::NUM_TOTAL_RECORDS],
+            program_proofs: vec![execution.clone(); N::NUM_EXECUTABLES],
             program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output::default(),
             program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_root: N::LocalDataRoot::default(),
@@ -52,7 +52,7 @@ impl<N: Network> OuterPrivateVariables<N> {
         program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_root: N::LocalDataRoot,
     ) -> Self {
-        assert_eq!(N::NUM_TOTAL_RECORDS, program_proofs.len());
+        assert_eq!(N::NUM_EXECUTABLES, program_proofs.len());
         Self {
             inner_snark_vk,
             inner_snark_proof,

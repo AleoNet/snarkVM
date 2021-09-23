@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, LocalData, Network, PrivateVariables, ProgramScheme, PublicVariables};
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
+use crate::{Execution, ExecutionType, LocalData, Network, PrivateVariables, ProgramScheme, PublicVariables};
 
 use anyhow::Result;
 use std::{ops::Deref, sync::Arc};
@@ -41,10 +40,18 @@ impl<N: Network> Executable<N> {
     }
 
     /// Returns a reference to the program ID of the executable.
-    pub fn program_id(&self) -> MerkleTreeDigest<N::ProgramCircuitTreeParameters> {
+    pub fn program_id(&self) -> N::ProgramID {
         match self {
             Self::Noop => N::noop_program_id(),
             Self::Circuit(program, _, _) => program.program_id(),
+        }
+    }
+
+    /// Returns the execution type of the executable.
+    pub fn execution_type(&self) -> Result<ExecutionType> {
+        match self {
+            Self::Noop => Ok(ExecutionType::Noop),
+            Self::Circuit(program, circuit_id, _) => Ok(program.get_circuit_execution_type(circuit_id)?),
         }
     }
 

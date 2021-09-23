@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, DPCError, Network, Payload, Record, RecordScheme, ViewKey};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, EncryptionScheme, CRH},
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
@@ -115,7 +112,7 @@ impl<N: Network> EncryptedRecord<N> {
         let payload = Payload::read_le(&mut cursor)?;
 
         // Program ID
-        let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
+        let program_id: N::ProgramID = FromBytes::read_le(&mut cursor)?;
 
         // Serial number nonce
         let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;

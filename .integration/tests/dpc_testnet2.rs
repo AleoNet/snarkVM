@@ -119,7 +119,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Execute the programs.
-    let mut executions = Vec::with_capacity(Testnet2::NUM_TOTAL_RECORDS);
+    let mut executions = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
     for (i, executable) in state.executables().iter().enumerate() {
         executions.push(executable.execute(i as u8, &local_data).unwrap());
     }
@@ -162,9 +162,11 @@ fn test_testnet2_dpc_execute_constraints() {
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,
+        state.executables(),
         program_randomness.clone(),
         local_data.leaf_randomizers().clone(),
-    );
+    )
+    .unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();

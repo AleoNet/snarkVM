@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Network, PrivateVariables, ProgramCircuit, PublicVariables};
+use crate::{CircuitError, ExecutionType, Network, PrivateVariables, ProgramCircuit, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -83,6 +83,11 @@ impl<N: Network> ProgramCircuit<N> for NoopCircuit<N> {
     /// Returns the circuit verifying key.
     fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
+    }
+
+    /// Returns the circuit execution type.
+    fn execution_type(&self) -> ExecutionType {
+        ExecutionType::Noop
     }
 
     /// Executes the circuit, returning an proof.

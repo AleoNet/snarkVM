@@ -27,6 +27,8 @@ pub struct StateBuilder<N: Network> {
     outputs: Vec<Output<N>>,
     /// A publicly-visible field with data from the state transition.
     memo: Vec<u8>,
+    /// A list of executables for a state transition.
+    executables: Vec<Executable<N>>,
     /// A list of errors accumulated from calling the builder.
     errors: Vec<String>,
 }
@@ -37,9 +39,10 @@ impl<N: Network> StateBuilder<N> {
     ///
     pub fn new() -> Self {
         Self {
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            memo: Vec::new(),
+            inputs: Vec::with_capacity(N::NUM_INPUT_RECORDS),
+            outputs: Vec::with_capacity(N::NUM_OUTPUT_RECORDS),
+            memo: Vec::with_capacity(N::MEMO_SIZE_IN_BYTES),
+            executables: Vec::with_capacity(N::NUM_EXECUTABLES),
             errors: Vec::new(),
         }
     }
@@ -88,6 +91,17 @@ impl<N: Network> StateBuilder<N> {
         for output in outputs {
             self = self.add_output(output);
         }
+        self
+    }
+
+    ///
+    /// Adds the given executable into the builder.
+    ///
+    pub fn add_executable(mut self, executable: Executable<N>) -> Self {
+        match self.executables.len() < N::NUM_EXECUTABLES {
+            true => self.executables.push(executable),
+            false => self.errors.push("Builder exceeded maximum executables".into()),
+        };
         self
     }
 
@@ -174,11 +188,10 @@ impl<N: Network> StateBuilder<N> {
         let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo)?;
 
         // Construct the executables.
-        let executables: Vec<_> = inputs
-            .iter()
-            .map(|state| state.executable().clone())
-            .chain(outputs.iter().map(|state| state.executable().clone()))
-            .collect();
+        let executables = Executables::from(self.executables.clone())?;
+        if !executables.verify_records(&input_records, &output_records) {
+            return Err(anyhow!("Program IDs in records do not match executables"));
+        }
 
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;
@@ -189,7 +202,8 @@ impl<N: Network> StateBuilder<N> {
             input_records,
             output_records,
             noop_private_keys,
-            executables,
+            // TODO (howardwu): TEMPORARY - Clean this up after usage is stabilized.
+            executables: self.executables.clone(),
         })
     }
 
@@ -213,7 +227,6 @@ impl<N: Network> StateBuilder<N> {
         let mut inputs = self.inputs.clone();
         // Pad the inputs with noop inputs if necessary.
         while inputs.len() < N::NUM_INPUT_RECORDS {
-            // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
             inputs.push(Input::new_noop(rng)?);
         }
 
@@ -221,7 +234,6 @@ impl<N: Network> StateBuilder<N> {
         let mut outputs = self.outputs.clone();
         // Pad the outputs with noop outputs if necessary.
         while outputs.len() < N::NUM_OUTPUT_RECORDS {
-            // TODO (howardwu): Decide whether to "push" or "push_front" for program flow.
             outputs.push(Output::new_noop(rng)?);
         }
 
@@ -246,7 +258,7 @@ mod tests {
             let seed: u64 = thread_rng().gen();
 
             // Generate the expected input state.
-            let (expected_record, expected_serial_number) = {
+            let (expected_record, expected_serial_number, expected_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
@@ -254,12 +266,13 @@ mod tests {
                 let serial_number = input_record
                     .to_serial_number(&account.private_key().to_compute_key().unwrap())
                     .unwrap();
+                let program_id = input_record.program_id();
 
-                (input_record, serial_number)
+                (input_record, serial_number, program_id)
             };
 
             // Generate the candidate input state.
-            let (candidate_record, candidate_serial_number, candidate_executable) = {
+            let (candidate_record, candidate_serial_number, candidate_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let mut builder = StateBuilder::<Testnet2>::new();
@@ -269,13 +282,13 @@ mod tests {
                 (
                     builder.inputs[0].record().clone(),
                     builder.inputs[0].serial_number().clone(),
-                    builder.inputs[0].executable().clone(),
+                    builder.inputs[0].program_id().clone(),
                 )
             };
 
             assert_eq!(expected_record, candidate_record);
             assert_eq!(expected_serial_number, candidate_serial_number);
-            assert!(candidate_executable.is_noop());
+            assert_eq!(expected_program_id, candidate_program_id);
         }
     }
 
@@ -307,11 +320,11 @@ mod tests {
             // Generate the expected output state.
             let expected_record = {
                 let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
-                Record::new_noop_output(account.address, given_serial_numbers[0].clone(), &mut expected_rng).unwrap()
+                Record::new_noop_output(account.address, given_serial_numbers[0], &mut expected_rng).unwrap()
             };
 
             // Generate the candidate output state.
-            let (candidate_address, candidate_value, candidate_payload, candidate_executable) = {
+            let (candidate_address, candidate_value, candidate_payload, candidate_program_id) = {
                 let mut builder = StateBuilder::new();
                 builder = builder.add_output(Output::new_noop(&mut candidate_rng).unwrap());
                 builder.build(&mut candidate_rng).unwrap();
@@ -319,14 +332,14 @@ mod tests {
                     builder.outputs[0].address(),
                     builder.outputs[0].value(),
                     builder.outputs[0].payload().clone(),
-                    builder.outputs[0].executable().clone(),
+                    builder.outputs[0].program_id(),
                 )
             };
 
             assert_eq!(expected_record.owner(), candidate_address);
             assert_eq!(expected_record.value(), candidate_value.0 as u64);
             assert_eq!(expected_record.payload(), &candidate_payload);
-            assert!(candidate_executable.is_noop());
+            assert_eq!(expected_record.program_id(), candidate_program_id);
         }
     }
 }

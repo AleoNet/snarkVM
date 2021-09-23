@@ -26,6 +26,8 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
+    ComparatorGadget,
+    EvaluateLtGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
@@ -664,47 +666,146 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
-            // Check that the input program ID either matches the output program ID or noop program ID,
-            // for each (input, output) record pair.
-            for (
-                index,
-                (
-                    ((input_program_id_field_elements, input_is_dummy), output_program_id_field_elements),
-                    output_is_dummy,
-                ),
-            ) in old_program_ids_gadgets
+            // Keep a counter to tally and increment the inputs.
+            let mut inputs_counter = UInt8::constant(0);
+
+            // Keep a counter to tally and increment the outputs.
+            let mut outputs_counter = UInt8::constant(0);
+
+            for (index, (program_id, execution_type)) in private
+                .program_ids
                 .iter()
-                .zip_eq(input_is_dummy_gadgets.iter())
-                .zip_eq(new_program_ids_gadgets.iter())
-                .zip_eq(output_is_dummy_gadgets.iter())
-                .take(N::NUM_INPUT_RECORDS)
+                .zip_eq(private.execution_types.iter())
+                .take(N::NUM_EXECUTABLES)
                 .enumerate()
             {
-                // Because we already enforce the program ID is a noop program ID, if the record is a dummy,
-                //  we only need to check for the case where the record is not a dummy now.
-
-                input_program_id_field_elements.conditional_enforce_equal(
-                    &mut commitment_cs
-                        .ns(|| format!("Check input program ID matches output, if not dummy - {}", index)),
-                    output_program_id_field_elements,
-                    &input_is_dummy.not(),
+                // Declare the program ID as bytes.
+                let executable_program_id_bytes = UInt8::alloc_vec(
+                    &mut commitment_cs.ns(|| format!("executable_program_id {}", index)),
+                    &program_id.to_bytes_le()?,
                 )?;
+                let executable_program_id_field_elements = executable_program_id_bytes
+                    .to_constraint_field(&mut commitment_cs.ns(|| "convert executable program ID to field elements"))?;
 
-                output_program_id_field_elements.conditional_enforce_equal(
-                    &mut commitment_cs
-                        .ns(|| format!("Check output program ID matches input, if not dummy - {}", index)),
-                    input_program_id_field_elements,
-                    &output_is_dummy.not(),
-                )?;
+                // Declare the required number of inputs for this execution type.
+                let number_of_inputs = &UInt8::alloc_vec(
+                    &mut commitment_cs.ns(|| format!("number_of_inputs for executable {}", index)),
+                    &[execution_type.input_count()],
+                )?[0];
+
+                // Declare the input start and end index.
+                let input_start_index = &inputs_counter;
+                let input_end_index = inputs_counter
+                    .add(
+                        &mut commitment_cs.ns(|| format!("input_end_index for executable {}", index)),
+                        &number_of_inputs,
+                    )
+                    .map_err(|_| SynthesisError::Unsatisfiable)?;
+
+                for (i, (input_program_id_field_elements, input_is_dummy)) in old_program_ids_gadgets
+                    .iter()
+                    .zip_eq(input_is_dummy_gadgets.iter())
+                    .take(N::NUM_INPUT_RECORDS)
+                    .enumerate()
+                {
+                    let input_index = UInt8::constant(i as u8);
+
+                    let is_in_start_range = input_index.greater_than_or_equal(
+                        &mut commitment_cs.ns(|| format!("greater than or equal for input {}", i)),
+                        &input_start_index,
+                    )?;
+                    let is_in_end_range = input_index.less_than(
+                        &mut commitment_cs.ns(|| format!("less than for input {}", i)),
+                        &input_end_index,
+                    )?;
+                    let requires_check = Boolean::and(
+                        &mut commitment_cs.ns(|| format!("requires check for input {}", i)),
+                        &is_in_start_range,
+                        &is_in_end_range,
+                    )?;
+
+                    input_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs.ns(|| format!("Check input program ID, if not dummy - {}", i)),
+                        &executable_program_id_field_elements,
+                        &requires_check,
+                    )?;
+                }
+
+                inputs_counter = input_end_index;
+
+                // Declare the required number of outputs for this execution type.
+                let number_of_outputs = &UInt8::alloc_vec(
+                    &mut commitment_cs.ns(|| format!("number_of_outputs for executable {}", index)),
+                    &[execution_type.output_count()],
+                )?[0];
+
+                // Declare the output start and end index.
+                let output_start_index = &outputs_counter;
+                let output_end_index = outputs_counter
+                    .add(
+                        &mut commitment_cs.ns(|| format!("input_end_index for executable {}", index)),
+                        &number_of_outputs,
+                    )
+                    .map_err(|_| SynthesisError::Unsatisfiable)?;
+
+                for (j, (output_program_id_field_elements, output_is_dummy)) in new_program_ids_gadgets
+                    .iter()
+                    .zip_eq(output_is_dummy_gadgets.iter())
+                    .take(N::NUM_OUTPUT_RECORDS)
+                    .enumerate()
+                {
+                    let output_index = UInt8::constant(j as u8);
+
+                    let is_in_start_range = output_index.greater_than_or_equal(
+                        &mut commitment_cs.ns(|| format!("greater than or equal for output {}", j)),
+                        &output_start_index,
+                    )?;
+                    let is_in_end_range = output_index.less_than(
+                        &mut commitment_cs.ns(|| format!("less than for output {}", j)),
+                        &output_end_index,
+                    )?;
+                    let requires_check = Boolean::and(
+                        &mut commitment_cs.ns(|| format!("requires check for output {}", j)),
+                        &is_in_start_range,
+                        &is_in_end_range,
+                    )?;
+
+                    output_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs.ns(|| format!("Check output program ID, if not dummy - {}", j)),
+                        &executable_program_id_field_elements,
+                        &requires_check,
+                    )?;
+                }
+
+                outputs_counter = output_end_index;
             }
+
+            let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
+            let is_inputs_size_correct = inputs_counter.less_than_or_equal(
+                &mut commitment_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
+                &number_of_input_records,
+            )?;
+            is_inputs_size_correct.enforce_equal(
+                &mut commitment_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
+                &Boolean::constant(true),
+            )?;
+
+            let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);
+            let is_outputs_size_correct = outputs_counter.less_than_or_equal(
+                &mut commitment_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
+                &number_of_output_records,
+            )?;
+            is_outputs_size_correct.enforce_equal(
+                &mut commitment_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
+                &Boolean::constant(true),
+            )?;
 
             // *******************************************************************
 
+            // Check that the program commitment is computed correctly.
+
             let mut input = Vec::new();
             for id_gadget in old_program_ids_bytes_gadgets.iter().take(N::NUM_INPUT_RECORDS) {
-                input.extend_from_slice(id_gadget);
-            }
-            for id_gadget in new_program_ids_bytes_gadgets.iter().take(N::NUM_OUTPUT_RECORDS) {
                 input.extend_from_slice(id_gadget);
             }
 
