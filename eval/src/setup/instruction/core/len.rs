@@ -8,7 +8,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             Some(ConstrainedValue::Array(array)) => Ok(ConstrainedValue::Integer(Integer::new(&IrInteger::U32(
                 array.len() as u32,
             )))),
-            Some(v) => Err(ValueError::incompatible_types(format!("{}.len()", v)).into()),
+            Some(v) => Err(ValueError::incompatible_types(&format!("{}.len()", v)).into()),
             None => Err(anyhow!("illegal `len` call, expected 1 argument")),
         }
     }
