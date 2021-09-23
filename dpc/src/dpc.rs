@@ -70,7 +70,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(N::NUM_INPUT_RECORDS, executables.len());
+        assert_eq!(N::NUM_EXECUTABLES, executables.len());
 
         let execution_timer = start_timer!(|| "DPC::execute");
 
@@ -84,8 +84,8 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let local_data = authorization.to_local_data(rng)?;
 
         // Execute the programs.
-        let mut executions = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for (i, executable) in executables.iter().take(N::NUM_INPUT_RECORDS).enumerate() {
+        let mut executions = Vec::with_capacity(N::NUM_EXECUTABLES);
+        for (i, executable) in executables.iter().take(N::NUM_EXECUTABLES).enumerate() {
             executions.push(executable.execute(i as u8, &local_data).unwrap());
         }
 

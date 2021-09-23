@@ -203,7 +203,7 @@ impl<N: Network> StateBuilder<N> {
             output_records,
             noop_private_keys,
             // TODO (howardwu): TEMPORARY - Clean this up after usage is stabilized.
-            executables: self.executables.clone(),
+            executables: (*executables).clone(),
         })
     }
 

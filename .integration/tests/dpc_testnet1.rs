@@ -119,7 +119,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Execute the programs.
-    let mut executions = Vec::with_capacity(Testnet1::NUM_INPUT_RECORDS);
+    let mut executions = Vec::with_capacity(Testnet1::NUM_EXECUTABLES);
     for (i, executable) in state.executables().iter().enumerate() {
         executions.push(executable.execute(i as u8, &local_data).unwrap());
     }

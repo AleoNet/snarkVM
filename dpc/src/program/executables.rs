@@ -17,6 +17,7 @@
 use crate::{Executable, Network, Record, RecordScheme};
 
 use anyhow::{anyhow, Result};
+use std::ops::Deref;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
@@ -25,7 +26,12 @@ pub struct Executables<N: Network>(Vec<Executable<N>>);
 impl<N: Network> Executables<N> {
     /// Initializes a new instance of `Executables`.
     pub fn from(executables: Vec<Executable<N>>) -> Result<Self> {
-        let executables = Self(executables);
+        let mut padded_executables = executables.clone();
+        while padded_executables.len() < N::NUM_EXECUTABLES {
+            padded_executables.push(Executable::Noop);
+        }
+
+        let executables = Self(padded_executables);
         match executables.is_valid() {
             true => Ok(executables),
             false => Err(anyhow!("Failed to initialize the executables")),
@@ -102,5 +108,13 @@ impl<N: Network> Executables<N> {
         }
 
         true
+    }
+}
+
+impl<N: Network> Deref for Executables<N> {
+    type Target = Vec<Executable<N>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
