@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod builder;
-pub use builder::*;
+pub mod commitments_tree;
+pub use commitments_tree::*;
 
-pub mod input;
-pub use input::*;
+pub mod ledger_proof;
+pub use ledger_proof::*;
 
-pub mod output;
-pub use output::*;
-
-pub mod transition;
-pub use transition::*;
-
-#[cfg(test)]
-mod tests;
+pub mod serial_numbers_tree;
+pub use serial_numbers_tree::*;

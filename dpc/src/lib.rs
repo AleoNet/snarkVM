@@ -78,9 +78,6 @@ pub use dpc::*;
 pub mod errors;
 pub use errors::*;
 
-pub mod ledger;
-pub use ledger::*;
-
 pub mod network;
 pub use network::*;
 
@@ -102,6 +99,9 @@ pub use traits::*;
 pub mod transaction;
 pub use transaction::*;
 
+pub mod transition;
+pub use transition::*;
+
 pub mod prelude {
     pub use crate::{
         account::*,
@@ -109,11 +109,11 @@ pub mod prelude {
         circuits::*,
         dpc::*,
         errors::*,
-        ledger::*,
         program::*,
         record::*,
         state::*,
         traits::*,
         transaction::*,
+        transition::*,
     };
 }
