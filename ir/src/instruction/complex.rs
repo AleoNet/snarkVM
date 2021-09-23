@@ -75,8 +75,8 @@ impl fmt::Display for RepeatData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}, &v{}, {}, {}",
-            self.instruction_count, self.iter_variable, self.from, self.to
+            "{}, &v{}, {}, {}, {}",
+            self.instruction_count, self.iter_variable, self.inclusive, self.from, self.to
         )
     }
 }
@@ -112,6 +112,12 @@ impl RepeatData {
         operands.push(ir::Operand {
             u32: Some(ir::U32 {
                 u32: self.iter_variable,
+            }),
+            ..Default::default()
+        });
+        operands.push(ir::Operand {
+            boolean: Some(ir::Bool {
+                boolean: self.inclusive,
             }),
             ..Default::default()
         });
