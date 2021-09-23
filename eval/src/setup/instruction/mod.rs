@@ -59,6 +59,8 @@ mod array_slice_get;
 mod array_slice_store;
 mod core;
 
+pub use self::core::*;
+
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     fn resolve_binary(&mut self, data: &QueryData<2>) -> Result<(ConstrainedValue<F, G>, ConstrainedValue<F, G>)> {
         let left = self.resolve(data.values.get(0).unwrap())?.into_owned();
