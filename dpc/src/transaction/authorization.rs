@@ -26,7 +26,7 @@ use std::{
     str::FromStr,
 };
 
-type EncryptedRecordHash<N> = <<N as Network>::EncryptedRecordCRH as CRH>::Output;
+type EncryptedRecordID<N> = <<N as Network>::EncryptedRecordCRH as CRH>::Output;
 type EncryptedRecordRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
 type ProgramCommitment<N> = <<N as Network>::ProgramCommitmentScheme as CommitmentScheme>::Output;
 type ProgramCommitmentRandomness<N> = <<N as Network>::ProgramCommitmentScheme as CommitmentScheme>::Randomness;
@@ -102,21 +102,21 @@ impl<N: Network> TransactionAuthorization<N> {
         rng: &mut R,
     ) -> Result<(
         Vec<EncryptedRecord<N>>,
-        Vec<EncryptedRecordHash<N>>,
+        Vec<EncryptedRecordID<N>>,
         Vec<EncryptedRecordRandomizer<N>>,
     )> {
         let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut encrypted_record_hashes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut encrypted_record_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
         for record in self.output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
             let (encrypted_record, encrypted_record_randomizer) = EncryptedRecord::encrypt(record, rng)?;
-            encrypted_record_hashes.push(encrypted_record.to_hash()?);
+            encrypted_record_ids.push(encrypted_record.to_hash()?);
             encrypted_records.push(encrypted_record);
             encrypted_record_randomizers.push(encrypted_record_randomizer);
         }
 
-        Ok((encrypted_records, encrypted_record_hashes, encrypted_record_randomizers))
+        Ok((encrypted_records, encrypted_record_ids, encrypted_record_randomizers))
     }
 }
 

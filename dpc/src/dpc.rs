@@ -94,7 +94,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
 
         // Compute the encrypted records.
-        let (encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
+        let (encrypted_records, encrypted_record_ids, encrypted_record_randomizers) =
             authorization.to_encrypted_records(rng)?;
 
         let TransactionAuthorization {
@@ -108,7 +108,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let inner_public_variables = InnerPublicVariables::new(
             &kernel,
             &ledger_digest,
-            &encrypted_record_hashes,
+            &encrypted_record_ids,
             Some(program_commitment.clone()),
             Some(local_data.root().clone()),
         )?;

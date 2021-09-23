@@ -405,7 +405,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             .iter()
             .zip(public.kernel.commitments())
             .zip(&private.encrypted_record_randomizers)
-            .zip(&public.encrypted_record_hashes)
+            .zip(&public.encrypted_record_ids)
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));

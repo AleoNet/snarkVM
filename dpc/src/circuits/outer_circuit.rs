@@ -140,7 +140,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             .kernel
             .commitments()
             .iter()
-            .zip_eq(inner_public.encrypted_record_hashes.iter())
+            .zip_eq(inner_public.encrypted_record_ids.iter())
             .enumerate()
         {
             let commitment_fe =
