@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryFrom;
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 
 use crate::{ir, Type};
 
@@ -148,7 +147,7 @@ impl Value {
                 let len_match = match len {
                     Some(l) => inner.len() == *l as usize,
                     None => true,
-                }; 
+                };
                 len_match && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
             }
             (Value::Tuple(values), Type::Tuple(types)) => values

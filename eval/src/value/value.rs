@@ -92,7 +92,7 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
                 let len_match = match len {
                     Some(l) => inner.len() == *l as usize,
                     None => true,
-                }; 
+                };
                 len_match && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
             }
             (ConstrainedValue::Tuple(values), Type::Tuple(types)) => values
