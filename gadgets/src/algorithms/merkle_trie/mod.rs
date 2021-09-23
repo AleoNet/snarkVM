@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod commitment;
-pub mod commitment_tree;
-pub mod crh;
-pub mod crypto_hash;
-pub mod encryption;
-pub mod merkle_tree;
-pub mod merkle_trie;
-pub mod prf;
-pub mod signature;
-pub mod snark;
+pub mod merkle_trie_path;
+pub use merkle_trie_path::*;
+
+#[cfg(test)]
+pub mod tests;
