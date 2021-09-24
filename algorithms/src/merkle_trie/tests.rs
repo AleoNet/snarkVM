@@ -80,20 +80,30 @@ fn run_empty_merkle_tree_test<P: MerkleTrieParameters>() {
 fn run_good_root_test<P: MerkleTrieParameters>() {
     let parameters = &P::setup("merkle_trie_test");
 
-    let key_pairs = generate_random_key_pairs!(4, 32, 32);
+    const KEY_SIZE: usize = 32;
+    const VALUE_SIZE: usize = 32;
+    assert_eq!(P::KEY_SIZE, KEY_SIZE);
+    assert_eq!(P::VALUE_SIZE, VALUE_SIZE);
+
+    let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
     generate_merkle_trie::<P, _>(key_pairs, parameters);
 
-    let key_pairs = generate_random_key_pairs!(16, 32, 32);
+    let key_pairs = generate_random_key_pairs!(16, KEY_SIZE, VALUE_SIZE);
     generate_merkle_trie::<P, _>(key_pairs, parameters);
 }
 
 fn run_bad_root_test<P: MerkleTrieParameters>() {
     let parameters = &P::setup("merkle_tree_test");
 
-    let key_pairs = generate_random_key_pairs!(4, 32, 32);
+    const KEY_SIZE: usize = 32;
+    const VALUE_SIZE: usize = 32;
+    assert_eq!(P::KEY_SIZE, KEY_SIZE);
+    assert_eq!(P::VALUE_SIZE, VALUE_SIZE);
+
+    let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
     generate_merkle_trie::<P, _>(key_pairs, parameters);
 
-    let key_pairs = generate_random_key_pairs!(16, 32, 32);
+    let key_pairs = generate_random_key_pairs!(16, KEY_SIZE, VALUE_SIZE);
     bad_merkle_trie_verify::<P, _>(key_pairs, parameters);
 }
 
@@ -103,14 +113,14 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn empty_merkle_tree_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
 
         run_empty_merkle_tree_test::<MerkleTrieParams>();
     }
 
     #[test]
     fn good_root_test_123() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
 
         run_good_root_test::<MerkleTrieParams>();
     }
@@ -118,19 +128,19 @@ mod poseidon_on_bls12_377_fr {
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
 
         run_bad_root_test::<MerkleTrieParams>();
     }
 
     const VALUE_PAIR_1: (&'static [u8; 1], u8) = (b"a", 1u8);
-    const VALUE_PAIR_2: (&'static [u8; 2], u8) = (b"ab", 2u8);
-    const VALUE_PAIR_3: (&'static [u8; 3], u8) = (b"abc", 3u8);
-    const VALUE_PAIR_4: (&'static [u8; 4], u8) = (b"abcd", 4u8);
+    const VALUE_PAIR_2: (&'static [u8; 1], u8) = (b"b", 2u8);
+    const VALUE_PAIR_3: (&'static [u8; 1], u8) = (b"c", 3u8);
+    const VALUE_PAIR_4: (&'static [u8; 1], u8) = (b"d", 4u8);
 
     #[test]
     fn test_trie_get() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 1, 1);
 
         let crh = Arc::new(MerkleTrieParams::setup("TEST_MERKLE_TRIE_CRH"));
 
@@ -153,7 +163,7 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn test_trie_verify() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 1, 1);
 
         let crh = Arc::new(MerkleTrieParams::setup("TEST_MERKLE_TRIE_CRH"));
 

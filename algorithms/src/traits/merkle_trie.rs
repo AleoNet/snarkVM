@@ -21,6 +21,10 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
     type H: CRH;
 
     const MAX_DEPTH: usize;
+    const MAX_BRANCH: usize;
+
+    const KEY_SIZE: usize;
+    const VALUE_SIZE: usize;
 
     /// Setup the MerkleParameters
     fn setup(message: &str) -> Self;

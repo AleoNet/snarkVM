@@ -38,6 +38,7 @@ pub struct MerkleTrie<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> {
 }
 
 impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
+    pub const MAX_BRANCH: usize = P::MAX_BRANCH;
     pub const MAX_DEPTH: usize = P::MAX_DEPTH;
 
     /// Create a new Merkle trie.
@@ -64,6 +65,9 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
     /// Insert a (key, value) pair into the Merkle trie.
     pub fn insert(&mut self, key: &[u8], value: T) -> Result<(), MerkleTrieError> {
+        assert_eq!(key.len(), P::KEY_SIZE);
+        assert_eq!(value.to_bytes_le()?.len(), P::VALUE_SIZE);
+
         // If the trie is currently empty, set the key value pair.
         if self.is_empty() {
             self.key = key.to_vec();
@@ -189,7 +193,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                     temp_children.iter().map(|(_x, trie)| trie.root().clone()).collect();
                 siblings.remove(index);
 
-                traversal.push(index);
+                traversal.push(index as u8);
                 path.push(siblings);
 
                 if let Some(child_node) = temp_children.get(&suffix[0]) {

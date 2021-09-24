@@ -25,15 +25,16 @@ use std::sync::Arc;
 
 pub type MerkleTrieDigest<P> = <<P as MerkleTrieParameters>::H as CRH>::Output;
 
+#[derive(Clone, Debug)]
 pub struct MerkleTriePath<P: MerkleTrieParameters, T: ToBytes> {
     pub(crate) parameters: Arc<P>,
     /// A Vector of existing sibling children from leaf to root.
     /// (Does NOT including the parents of the leaf being proven)
-    pub(crate) path: Vec<Vec<MerkleTrieDigest<P>>>,
+    pub path: Vec<Vec<MerkleTrieDigest<P>>>,
     /// Vector of parent node key values up to the root.
-    pub(crate) parents: Vec<(Vec<u8>, Option<T>)>,
+    pub parents: Vec<(Vec<u8>, Option<T>)>,
     /// Location of the parent nodes within each depth of siblings.
-    pub(crate) traversal: Vec<usize>,
+    pub traversal: Vec<u8>,
 }
 
 impl<P: MerkleTrieParameters, T: ToBytes> MerkleTriePath<P, T> {
@@ -46,7 +47,7 @@ impl<P: MerkleTrieParameters, T: ToBytes> MerkleTriePath<P, T> {
         // Check that the given leaf matches the leaf in the membership proof.
         for (i, (index, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
             let mut node_hashes: Vec<&MerkleTrieDigest<P>> = siblings.iter().map(|x| x).collect();
-            node_hashes.insert(*index, &curr_hash);
+            node_hashes.insert(*index as usize, &curr_hash);
 
             let (key, value) = &self.parents[i];
 
