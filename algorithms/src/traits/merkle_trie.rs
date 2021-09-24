@@ -44,6 +44,9 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
         if let Some(value) = &value {
             let value_bytes = to_bytes_le![value]?;
             input.extend(value_bytes);
+        } else {
+            let empty_value = <Self::H as CRH>::Output::default().to_bytes_le()?;
+            input.extend(&empty_value);
         }
 
         // Add the children roots to the hash input.

@@ -65,7 +65,6 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
     /// Insert a (key, value) pair into the Merkle trie.
     pub fn insert(&mut self, key: &[u8], value: T) -> Result<(), MerkleTrieError> {
-        assert_eq!(key.len(), P::KEY_SIZE);
         assert_eq!(value.to_bytes_le()?.len(), P::VALUE_SIZE);
 
         // If the trie is currently empty, set the key value pair.
