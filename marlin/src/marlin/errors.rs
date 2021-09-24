@@ -61,6 +61,15 @@ impl From<snarkvm_polycommit::Error> for MarlinError {
     }
 }
 
+impl MarlinError {
+    pub fn into_snark_error(&self, prefix: &str) -> SNARKError {
+        match self {
+            MarlinError::Terminated => SNARKError::Terminated,
+            err => SNARKError::Crate("marlin", format!("{} - {:?}", prefix, err)),
+        }
+    }
+}
+
 impl From<MarlinError> for SNARKError {
     fn from(error: MarlinError) -> Self {
         match error {

@@ -61,7 +61,7 @@ where
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
         let (proving_key, verifying_key) = MarlinTestnet1::<E>::circuit_setup(universal_srs, circuit)
-            .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
+            .map_err(|error| error.into_snark_error("could not index"))?;
         Ok(Self {
             proving_key,
             verifying_key,
