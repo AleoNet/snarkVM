@@ -154,8 +154,37 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
     /// Remove the value at a given key. Returns the value if it was removed successfully, and None
     /// if there was no value associated to the given key.
-    pub fn remove(&mut self, _key: &[u8]) -> Option<T> {
-        unimplemented!()
+    pub fn remove(&mut self, key: &[u8]) -> Result<Option<T>, MerkleTrieError> {
+        // If the node key is empty or is a subset of the given key.
+        if key.starts_with(&self.key) || self.key.is_empty() {
+            // If the key is the same.
+            if key == self.key {
+                let value = self.value.take();
+                self.value = None;
+                self.compress()?;
+                return Ok(value);
+            } else if self.key.len() <= key.len() {
+                // If the current node is a parent, find it's child.
+                let suffix = &key[self.key.len()..];
+
+                // If a child with the suffix exists, then remove it.
+                if let Some(child_node) = self.children.get_mut(&suffix[0]) {
+                    // Attempt to remove the node with the suffix
+                    match child_node.remove(&suffix)? {
+                        Some(value) => {
+                            // If there was a value removed, then remove the child from the list of children.
+                            self.children.remove(&suffix[0]);
+
+                            self.compress()?;
+                            return Ok(Some(value));
+                        }
+                        None => return Ok(None),
+                    }
+                }
+            }
+        }
+
+        Ok(None)
     }
 
     pub fn generate_proof(&self, key: &[u8], value: &T) -> Result<MerkleTriePath<P, T>, MerkleTrieError> {
@@ -269,6 +298,29 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
             // Update the new root.
             self.root = root;
+        }
+
+        Ok(())
+    }
+
+    /// Compress the node under 2 conditions.
+    /// 1. It is empty.
+    /// 2. It has no value, and only 1 child.
+    fn compress(&mut self) -> Result<(), MerkleTrieError> {
+        // If the node is empty, clear the key.
+        if self.is_empty() {
+            self.key.clear();
+            self.update_root()?;
+        } else if self.value.is_none() && self.children.len() == 1 {
+            // If the value is none and there is only 1 child, then move the child up.
+            let child = self.children.values().next().unwrap();
+
+            // Append the child key to the current key.
+            self.key.extend_from_slice(&child.key);
+            self.value = child.value.clone();
+            self.children = child.children.clone();
+
+            self.update_root()?;
         }
 
         Ok(())
