@@ -153,7 +153,7 @@ mod merkle_trie_poseidon {
 
     #[test]
     fn good_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, H, 32, 64, KEY_SIZE, VALUE_SIZE);
+        define_merkle_trie_parameters!(MerkleTrieParams, H, 16, 32, KEY_SIZE, VALUE_SIZE);
 
         let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
 
@@ -163,7 +163,7 @@ mod merkle_trie_poseidon {
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, H, 32, 64, KEY_SIZE, VALUE_SIZE);
+        define_merkle_trie_parameters!(MerkleTrieParams, H, 16, 32, KEY_SIZE, VALUE_SIZE);
 
         let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
 

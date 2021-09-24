@@ -44,7 +44,7 @@ pub struct MerkleTriePathGadget<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>,
     /// `traversal[i]` is the location of the parent node among its siblings.
     traversal: Vec<UInt8>,
     /// `path[i]`is the entry of siblings of ith depth from bottom to top and the number of non-filler siblings.
-    path: Vec<(UInt8, Vec<HG::OutputGadget>)>,
+    path: Vec<Vec<HG::OutputGadget>>,
     /// `parents[i]`is the parent key value pair at the ith depth from bottom to top.
     parents: Vec<(Key, Value)>,
     /// The depth of the key, value pair in the tree. All elements of `traversal`, `path`,
@@ -71,49 +71,23 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
         {
             let current_depth = UInt8::alloc(cs.ns(|| format!("depth_{}", i)), || Ok(i as u8))?;
 
-            // Select the correct sibling roots size.
-            let mut sibling_roots = vec![];
-
-            let num_valid_siblings = &siblings.0;
-            for (j, sibling) in siblings.1.iter().enumerate() {
-                let current_sibling_index =
-                    UInt8::alloc(cs.ns(|| format!("sibling_index_{}_{}", i, j)), || Ok(j as u8))?;
-
-                // Create a temporary vec and add the sibling.
-                let mut add_sibling = sibling_roots.clone();
-                add_sibling.push(sibling.clone());
-
-                // Check if the sibling is a filler and should be added or not.
-                let index_is_in_range = num_valid_siblings.less_than(
-                    cs.ns(|| format!("sibling_less_than_{}_{}", i, j)),
-                    &current_sibling_index,
-                )?;
-
-                let selected_siblings = Vec::<HG::OutputGadget>::conditionally_select(
-                    cs.ns(|| format!("conditionally_select_siblings_{}", i)),
-                    &index_is_in_range,
-                    &add_sibling,
-                    &sibling_roots,
-                )?;
-
-                sibling_roots = selected_siblings;
-            }
-
             // Insert the current node into the siblings
-            let mut final_siblings = sibling_roots.clone();
-            for (j, sibling) in sibling_roots.iter().enumerate() {
+            let mut final_siblings = siblings.clone();
+            final_siblings.push(curr_hash.clone());
+
+            for j in 0..siblings.len() {
                 let current_sibling_index =
                     UInt8::alloc(cs.ns(|| format!("sibling_index_insert_{}_{}", i, j)), || Ok(j as u8))?;
 
                 // Create a temporary vec and add the sibling to a specific index.
-                let mut add_sibling = sibling_roots.clone();
-                add_sibling.insert(j, sibling.clone());
+                let mut add_sibling = siblings.clone();
+                add_sibling.insert(j, curr_hash.clone());
 
                 // Check if the sibling is a filler and should be added or not.
                 let index_is_correct =
                     current_sibling_index.is_eq(cs.ns(|| format!("sibling_is_eq_{}_{}", i, j)), &position)?;
                 let selected_siblings = Vec::<HG::OutputGadget>::conditionally_select(
-                    cs.ns(|| format!("conditionally_select_siblings_insert_{}", i)),
+                    cs.ns(|| format!("conditionally_select_siblings_insert_{}_{}", i, j)),
                     &index_is_correct,
                     &add_sibling,
                     &final_siblings,
@@ -123,7 +97,13 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
             }
 
             // Create the new hash and select it as valid only if the current depth is less than or equal to the given depth.
-            let new_hash = Self::hash_node(cs.ns(|| "leaf_hash"), crh, parent_key, parent_value, &final_siblings)?;
+            let new_hash = Self::hash_node(
+                cs.ns(|| format!("leaf_hash_{}", i)),
+                crh,
+                parent_key,
+                parent_value,
+                &final_siblings,
+            )?;
             let depth_is_in_range = self
                 .depth
                 .less_than(cs.ns(|| format!("less_than_{}", i)), &current_depth)?;
@@ -221,16 +201,14 @@ where
                 )?);
             }
 
-            let num_real_siblings = UInt8::alloc(cs.ns(|| format!("num_siblings_{}", i)), || Ok(siblings.len() as u8))?;
-
             // Add the filler siblings
-            for j in sibling_roots.len()..P::MAX_BRANCH {
+            for j in sibling_roots.len()..P::MAX_BRANCH - 1 {
                 siblings.push(HGadget::OutputGadget::alloc(
                     &mut cs.ns(|| format!("alloc_sibling_{}_{}", i, j)),
                     || Ok(filler_sibling.clone()),
                 )?);
             }
-            path.push((num_real_siblings, siblings));
+            path.push(siblings);
         }
 
         let mut parents = Vec::with_capacity(P::MAX_DEPTH);
@@ -256,14 +234,13 @@ where
 
         for i in path.len()..P::MAX_DEPTH {
             let mut siblings = vec![];
-            for j in 0..P::MAX_BRANCH {
+            for j in 0..P::MAX_BRANCH - 1 {
                 siblings.push(HGadget::OutputGadget::alloc(
                     &mut cs.ns(|| format!("alloc_filler_sibling_{}_{}", i, j)),
                     || Ok(<P::H as CRH>::Output::default()),
                 )?);
             }
-            let filler_depth = UInt8::alloc(cs.ns(|| format!("filler_depth_{}", i)), || Ok(0))?;
-            path.push((filler_depth, siblings));
+            path.push(siblings);
         }
 
         for i in parents.len()..P::MAX_DEPTH {
