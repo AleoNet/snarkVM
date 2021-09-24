@@ -45,19 +45,18 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
             let value_bytes = to_bytes_le![value]?;
             input.extend(value_bytes);
         } else {
-            let empty_value = <Self::H as CRH>::Output::default().to_bytes_le()?;
-            input.extend(&empty_value);
-        }
-
-        while input.len() < Self::MAX_DEPTH {
-            let empty_value = <Self::H as CRH>::Output::default().to_bytes_le()?;
-            input.extend(&empty_value);
+            input.extend(&vec![0u8; Self::VALUE_SIZE]);
         }
 
         // Add the children roots to the hash input.
         for child in child_roots {
             let child_root_bytes = to_bytes_le![child]?;
             input.extend(child_root_bytes);
+        }
+
+        for _ in child_roots.len()..Self::MAX_BRANCH {
+            let empty_value = <Self::H as CRH>::Output::default().to_bytes_le()?;
+            input.extend(&empty_value);
         }
 
         // Hash the input

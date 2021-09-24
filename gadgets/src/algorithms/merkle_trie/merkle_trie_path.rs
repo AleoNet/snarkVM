@@ -60,7 +60,12 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
         key: impl ToBytesGadget<F>,
         value: impl ToBytesGadget<F>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
-        let mut curr_hash = Self::hash_node(cs.ns(|| "leaf_hash"), crh, key, value, &vec![])?;
+        let empty_child =
+            HG::OutputGadget::alloc(&mut cs.ns(|| "empty_child"), || Ok(<P::H as CRH>::Output::default()))?;
+        let mut curr_hash = Self::hash_node(cs.ns(|| "leaf_hash"), crh, key, value, &vec![
+            empty_child.clone();
+            P::MAX_BRANCH
+        ])?;
 
         for (i, (((parent_key, parent_value), position), siblings)) in self
             .parents
@@ -104,16 +109,13 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
                 parent_value,
                 &final_siblings,
             )?;
-            let depth_is_in_range = self
-                .depth
-                .less_than(cs.ns(|| format!("less_than_{}", i)), &current_depth)?;
+            let depth_is_in_range = current_depth.less_than(cs.ns(|| format!("less_than_{}", i)), &self.depth)?;
             let selected_hash = HG::OutputGadget::conditionally_select(
                 cs.ns(|| format!("conditionally_select_hash_{}", i)),
                 &depth_is_in_range,
                 &new_hash,
                 &curr_hash,
             )?;
-
             curr_hash = selected_hash;
         }
 
