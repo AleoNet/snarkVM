@@ -28,26 +28,27 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
-        <C::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
+    let inner_snark_pk: <N::InnerSNARK as SNARK>::ProvingKey =
+        <N::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
 
-    let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-        <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+    let inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey =
+        <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
-    let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_pk, &InnerCircuit::<C>::blank(), rng)?;
+    let inner_snark_proof = N::InnerSNARK::prove(&inner_snark_pk, &InnerCircuit::<N>::blank(), rng)?;
 
-    let noop_program = NoopProgram::<C>::load()?;
+    let noop_program = N::noop_program()?;
+    let noop_executable = noop_program.to_executable();
 
-    let outer_snark_parameters = C::OuterSNARK::setup(
-        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank_noop()?),
+    let outer_snark_parameters = N::OuterSNARK::setup(
+        &OuterCircuit::<N>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank_noop()?),
         &mut SRS::CircuitSpecific(rng),
     )?;
 
     let outer_snark_pk = outer_snark_parameters.0.to_bytes_le()?;
-    let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
+    let outer_snark_vk: <N::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
     let outer_snark_vk = outer_snark_vk.to_bytes_le()?;
 
     println!("outer_snark_pk.params\n\tsize - {}", outer_snark_pk.len());

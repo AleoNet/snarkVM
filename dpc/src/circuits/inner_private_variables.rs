@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitType, Executable, Network, Record};
+use crate::{CircuitType, Executable, Network, ProgramExecutable, Record};
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CommitmentScheme, EncryptionScheme},
@@ -52,7 +52,7 @@ impl<N: Network> InnerPrivateVariables<N> {
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
-            program_ids: vec![N::noop_program_id(); N::NUM_EXECUTABLES],
+            program_ids: vec![*N::noop_program_id(); N::NUM_EXECUTABLES],
             circuit_types: vec![CircuitType::Noop; N::NUM_EXECUTABLES],
             program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_leaf_randomizers: vec![
@@ -84,10 +84,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         let program_ids = executables.iter().map(|e| e.program_id()).collect::<Vec<_>>();
 
         // Prepare the circuit types.
-        let circuit_types = executables
-            .iter()
-            .map(|e| Ok(e.circuit_type()?))
-            .collect::<Result<Vec<_>>>()?;
+        let circuit_types = executables.iter().map(|e| e.circuit_type()).collect::<Vec<_>>();
 
         Ok(Self {
             input_records,

@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockScheme, InnerPublicVariables, NoopProgram, OuterPublicVariables, PoSWScheme, PublicVariables};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
+use crate::{BlockScheme, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, PublicVariables};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -206,8 +206,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
-    fn noop_program() -> &'static NoopProgram<Self>;
-    fn noop_program_id() -> Self::ProgramID;
+    fn noop_program() -> &'static Program<Self>;
+    fn noop_program_id() -> &'static Self::ProgramID;
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitTreeParameters>;
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;

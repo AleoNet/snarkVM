@@ -85,7 +85,7 @@ impl<N: Network> TransactionAuthorization<N> {
             .chain(self.output_records.iter())
             .take(N::NUM_TOTAL_RECORDS)
             .map(|record| record.program_id())
-            .filter(|program_id| *program_id != N::noop_program_id())
+            .filter(|program_id| program_id != N::noop_program_id())
             .collect::<HashSet<_>>();
 
         // Ensure the number of unique programs is within the declared limit.
@@ -96,6 +96,8 @@ impl<N: Network> TransactionAuthorization<N> {
                 program_ids.len()
             ));
         }
+
+        //
         // TODO (howardwu): This still does not correctly construct the program commitment.
         //  There are 2 cases unaccounted for: 1) need to pad with noop program IDs, 2) when two executables are of the same program ID.
 

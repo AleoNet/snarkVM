@@ -51,7 +51,7 @@ impl<N: Network> Record<N> {
             owner,
             0,
             Payload::default(),
-            N::noop_program_id(),
+            *N::noop_program_id(),
             UniformRand::rand(rng),
             UniformRand::rand(rng),
         )
@@ -86,7 +86,7 @@ impl<N: Network> Record<N> {
             owner,
             0,
             Payload::default(),
-            N::noop_program_id(),
+            *N::noop_program_id(),
             serial_number_nonce,
             rng,
         )
@@ -121,7 +121,7 @@ impl<N: Network> Record<N> {
         commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         // Determine if the record is a dummy.
-        let is_dummy = value == 0 && payload.is_empty() && program_id == N::noop_program_id();
+        let is_dummy = value == 0 && payload.is_empty() && program_id == *N::noop_program_id();
 
         // Total = 32 + 1 + 8 + 128 + 48 + 32 = 249 bytes
         let commitment_input = to_bytes_le![
@@ -172,7 +172,7 @@ impl<N: Network> RecordScheme for Record<N> {
     type SerialNumberNonce = N::SerialNumber;
 
     fn is_dummy(&self) -> bool {
-        self.value == 0 && self.payload.is_empty() && self.program_id == N::noop_program_id()
+        self.value == 0 && self.payload.is_empty() && self.program_id == *N::noop_program_id()
     }
 
     fn owner(&self) -> Self::Owner {

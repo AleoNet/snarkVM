@@ -14,96 +14,92 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, CircuitType, Execution, Network, ProgramError, PublicVariables};
-use snarkvm_algorithms::SNARK;
+use crate::{CircuitType, Executable, Execution, LocalData, Network, ProgramCircuit, ProgramError, PublicVariables};
+use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 
-use rand::{CryptoRng, Rng};
+use anyhow::Result;
 
 pub trait ProgramScheme<N: Network>: Send + Sync {
     /// Initializes an instance of the program with the given circuits.
-    fn new(circuits: Vec<Box<dyn ProgramCircuit<N>>>) -> Result<Self, ProgramError>
+    fn new(circuits: Vec<ProgramCircuit<N>>) -> Result<Self, ProgramError>
     where
         Self: Sized;
 
-    /// Returns a reference to the program ID.
+    /// Initializes an instance of the noop program.
+    fn new_noop() -> Result<Self, ProgramError>
+    where
+        Self: Sized;
+
+    /// Returns the program ID.
     fn program_id(&self) -> N::ProgramID;
 
     /// Returns `true` if the given circuit ID exists in the program.
     fn contains_circuit(&self, circuit_id: &N::ProgramCircuitID) -> bool;
 
     /// Returns the circuit given the circuit ID, if it exists.
-    fn get_circuit(&self, circuit_id: &N::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<N>>>;
+    fn to_circuit(&self, circuit_id: &N::ProgramCircuitID) -> Option<&ProgramCircuit<N>>;
 
-    /// Returns the circuit given the circuit index, if it exists.
-    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<N>>>;
-
-    /// Returns the circuit type given the circuit ID.
-    fn get_circuit_type(&self, circuit_id: &N::ProgramCircuitID) -> Result<CircuitType, ProgramError>;
-
-    /// Returns the execution of the program.
-    fn execute(
+    /// Returns the program path (the Merkle path for a given circuit ID).
+    fn to_program_path(
         &self,
         circuit_id: &N::ProgramCircuitID,
-        public: &PublicVariables<N>,
-        private: &dyn PrivateVariables<N>,
-    ) -> Result<Execution<N>, ProgramError>;
+    ) -> Result<MerklePath<N::ProgramCircuitTreeParameters>, ProgramError>;
 
-    /// Returns the blank execution of the program, typically used for a SNARK setup.
-    fn execute_blank(&self, circuit_id: &N::ProgramCircuitID) -> Result<Execution<N>, ProgramError>;
-
-    /// Returns the native evaluation of the program on given public and private variables.
-    fn evaluate(
-        &self,
-        _circuit_id: &N::ProgramCircuitID,
-        _public: &PublicVariables<N>,
-        _private: &dyn PrivateVariables<N>,
-    ) -> bool {
-        unimplemented!("The native evaluation of this program is unimplemented")
-    }
+    /// Returns an instance of an executable given the circuit ID, if it exists.
+    fn to_executable(&self, circuit_id: &N::ProgramCircuitID) -> Result<Executable<N>, ProgramError>;
 }
 
-pub trait ProgramCircuit<N: Network>: Send + Sync {
-    /// Initializes a new instance of a circuit.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, CircuitError>
+pub trait ProgramExecutable<N: Network>: Send + Sync {
+    /// Initializes a new instance of an executable.
+    fn new(
+        program_id: N::ProgramID,
+        circuit: ProgramCircuit<N>,
+        program_path: MerklePath<N::ProgramCircuitTreeParameters>,
+    ) -> Result<Self, ProgramError>
     where
         Self: Sized;
 
-    /// Loads an instance of a circuit.
-    fn load() -> Result<Self, CircuitError>
-    where
-        Self: Sized;
+    /// Returns the program ID of the executable.
+    fn program_id(&self) -> N::ProgramID;
 
-    /// Returns the circuit ID.
-    fn circuit_id(&self) -> &N::ProgramCircuitID;
+    /// Returns the circuit ID of the executable.
+    fn circuit_id(&self) -> N::ProgramCircuitID;
 
-    /// Returns the circuit proving key.
-    fn proving_key(&self) -> &<N::ProgramSNARK as SNARK>::ProvingKey;
-
-    /// Returns the circuit verifying key.
-    fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey;
-
-    /// Returns the circuit type.
+    /// Returns the circuit type of the executable.
     fn circuit_type(&self) -> CircuitType;
 
-    /// Returns the execution of the circuit.
-    fn execute(
-        &self,
-        public: &PublicVariables<N>,
-        private: &dyn PrivateVariables<N>,
-    ) -> Result<<N::ProgramSNARK as SNARK>::Proof, CircuitError>;
+    /// Returns the native evaluation of the executable on given public and private variables.
+    fn evaluate(&self, _public: &PublicVariables<N>, _private: &dyn PrivateVariables<N>) -> bool {
+        unimplemented!("The native evaluation of this executable is unimplemented")
+    }
 
-    /// Returns the blank execution of the circuit, typically used for a SNARK setup.
-    fn execute_blank(&self) -> Result<<N::ProgramSNARK as SNARK>::Proof, CircuitError>;
+    /// Executes the circuit, returning an proof.
+    fn execute(&self, record_position: u8, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError>;
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: &PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool;
-
-    /// Returns the native evaluation of the circuit on given public and private variables.
-    fn evaluate(&self, _public: &PublicVariables<N>, _private: &dyn PrivateVariables<N>) -> bool {
-        unimplemented!("The native evaluation of this circuit is unimplemented")
-    }
+    fn verify(&self, record_position: u8, local_data: &LocalData<N>, proof: &<N::ProgramSNARK as SNARK>::Proof)
+    -> bool;
 }
 
 pub trait PrivateVariables<N: Network>: Send + Sync {
+    // /// Initializes a blank instance of the private variables, typically used for a SNARK setup.
+    // fn blank() -> Result<Self>
+    // where
+    //     Self: Sized;
+
     fn as_any(&self) -> &dyn std::any::Any;
+}
+
+// use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
+pub trait CircuitLogic<N: Network>: Send + Sync {
+    /// Returns the circuit type.
+    fn circuit_type(&self) -> CircuitType;
+
+    // /// Synthesizes the circuit inside the given constraint system.
+    // fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(
+    //     &self,
+    //     cs: &mut CS,
+    //     public: &PublicVariables<N>,
+    // ) -> Result<(), SynthesisError>;
 }

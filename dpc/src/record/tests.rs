@@ -19,8 +19,8 @@ use crate::{
     testnet2::*,
     Account,
     AccountScheme,
-    NoopProgram,
     Payload,
+    Program,
     ProgramScheme,
     Record,
     ViewKey,
@@ -37,7 +37,7 @@ pub(crate) const ITERATIONS: usize = 25;
 fn test_record_encryption() {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let noop_program = NoopProgram::<Testnet2>::setup(rng).unwrap();
+    let noop_program = Program::<Testnet2>::new_noop().unwrap();
 
     for _ in 0..ITERATIONS {
         let dummy_account = Account::<Testnet2>::new(rng).unwrap();

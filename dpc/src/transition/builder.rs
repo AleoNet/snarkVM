@@ -207,6 +207,7 @@ impl<N: Network> StateBuilder<N> {
         })
     }
 
+    //
     // fn is_compatible(&self) -> bool {
     //     // if !self.is_valid() {
     //     //     eprintln!("Executables is not well-formed");
@@ -254,6 +255,7 @@ impl<N: Network> StateBuilder<N> {
     //
     //     true
     // }
+    //
 
     ///
     /// Prepares the inputs and outputs for the `Self::build()` phase.

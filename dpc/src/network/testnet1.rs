@@ -20,9 +20,9 @@ use crate::{
     Block,
     InnerPublicVariables,
     Network,
-    NoopProgram,
     OuterPublicVariables,
     PoSWScheme,
+    Program,
     ProgramScheme,
     PublicVariables,
 };
@@ -30,7 +30,7 @@ use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
+    merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -112,7 +112,7 @@ impl Network for Testnet1 {
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-
+    
     type PoswSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
@@ -231,13 +231,19 @@ impl Network for Testnet1 {
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
-    fn noop_program() -> &'static NoopProgram<Self> {
-        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1>> = OnceCell::new();
-        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet1>::load().expect("Failed to fetch the noop program"))
+    fn noop_program() -> &'static Program<Self> {
+        static NOOP_PROGRAM: OnceCell<Program<Testnet1>> = OnceCell::new();
+        NOOP_PROGRAM.get_or_init(|| Program::<Testnet1>::new_noop().expect("Failed to fetch the noop program"))
+    }
+
+    fn noop_program_id() -> &'static Self::ProgramID {
+        static NOOP_PROGRAM_ID: OnceCell<<Testnet1 as Network>::ProgramID> = OnceCell::new();
+        NOOP_PROGRAM_ID.get_or_init(|| Testnet1::noop_program().program_id())
     }
     
-    fn noop_program_id() -> Self::ProgramID {
-        Self::noop_program().program_id()
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitTreeParameters> {
+        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet1 as Network>::ProgramCircuitTreeParameters>> = OnceCell::new();
+        NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_circuit_id()).expect("Failed to fetch the noop program path"))
     }
     
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {

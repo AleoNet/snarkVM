@@ -56,7 +56,7 @@ mod coinbase {
                         coinbase_account.address,
                         123456,
                         Payload::default(),
-                        Testnet2::noop_program_id(),
+                        *Testnet2::noop_program_id(),
                         serial_numbers[0],
                         rng,
                     )
@@ -139,7 +139,7 @@ mod transfer {
                 sender.address,
                 100,
                 Payload::default(),
-                Testnet2::noop_program_id(),
+                *Testnet2::noop_program_id(),
                 serial_numbers[0].clone(),
                 rng,
             )
@@ -150,7 +150,7 @@ mod transfer {
                 recipient.address,
                 123256,
                 Payload::default(),
-                Testnet2::noop_program_id(),
+                *Testnet2::noop_program_id(),
                 serial_numbers[1].clone(),
                 rng,
             )

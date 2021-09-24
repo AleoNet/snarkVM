@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Executable, Network, Record, RecordScheme};
+use crate::{Executable, Network, ProgramExecutable, Record, RecordScheme};
 
 use anyhow::{anyhow, Result};
 use std::ops::Deref;
@@ -51,13 +51,7 @@ impl<N: Network> Executables<N> {
 
         for executable in &self.0 {
             // Fetch the circuit type.
-            let circuit_type = match executable.circuit_type() {
-                Ok(circuit_type) => circuit_type,
-                Err(error) => {
-                    eprintln!("{}", error);
-                    return false;
-                }
-            };
+            let circuit_type = executable.circuit_type();
 
             // Tally the number of inputs and outputs required for this executable.
             inputs += circuit_type.input_count() as usize;
@@ -78,13 +72,7 @@ impl<N: Network> Executables<N> {
 
         for executable in &self.0 {
             // Fetch the circuit type.
-            let circuit_type = match executable.circuit_type() {
-                Ok(circuit_type) => circuit_type,
-                Err(error) => {
-                    eprintln!("{}", error);
-                    return false;
-                }
-            };
+            let circuit_type = executable.circuit_type();
 
             // Verify the input records have the correct program ID.
             for i in 0..circuit_type.input_count() as usize {

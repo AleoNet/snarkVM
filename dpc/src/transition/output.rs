@@ -48,7 +48,7 @@ impl<N: Network> Output<N> {
         // Retrieve the program ID. If `None` is provided, construct the noop program ID.
         let program_id = match program_id {
             Some(program_id) => program_id,
-            None => N::noop_program_id(),
+            None => *N::noop_program_id(),
         };
 
         Ok(Self {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{DPCError, Network, NoopCircuit, ProgramCircuit};
+use snarkvm_dpc::{DPCError, Network, ProgramCircuit};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -26,9 +26,9 @@ use utils::store;
 pub fn setup<C: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let noop_circuit = NoopCircuit::<C>::setup(rng)?;
-    let noop_program_snark_pk = noop_circuit.proving_key().to_bytes_le()?;
-    let noop_program_snark_vk = noop_circuit.verifying_key().to_bytes_le()?;
+    let noop_circuit = ProgramCircuit::<C>::setup(rng)?;
+    let noop_program_snark_pk = noop_circuit.to_proving_key().to_bytes_le()?;
+    let noop_program_snark_vk = noop_circuit.to_verifying_key().to_bytes_le()?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());
     println!("noop_program_snark_vk.params\n\tsize - {}", noop_program_snark_vk.len());

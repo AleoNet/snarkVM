@@ -14,26 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod circuit_type;
+pub use circuit_type::*;
+
 pub mod executable;
 pub use executable::*;
 
 pub mod executables;
 pub use executables::*;
 
-pub mod execution;
-pub use execution::*;
-
-pub mod noop_circuit;
-pub use noop_circuit::*;
-
-pub mod noop_program;
-pub use noop_program::*;
-
 pub mod program;
 pub use program::*;
 
-pub mod program_circuit_type;
-pub use program_circuit_type::*;
+pub mod program_circuit;
+pub use program_circuit::*;
 
-pub mod program_public_variables;
-pub use program_public_variables::*;
+pub mod public_variables;
+pub use public_variables::*;

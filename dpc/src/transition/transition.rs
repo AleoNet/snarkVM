@@ -120,4 +120,14 @@ impl<N: Network> StateTransition<N> {
     pub fn executables(&self) -> &Vec<Executable<N>> {
         &self.executables
     }
+
+    /// Returns the local data.
+    pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<N>> {
+        Ok(LocalData::new(
+            &self.kernel,
+            &self.input_records,
+            &self.output_records,
+            rng,
+        )?)
+    }
 }

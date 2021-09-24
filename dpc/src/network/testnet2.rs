@@ -20,9 +20,9 @@ use crate::{
     Block,
     InnerPublicVariables,
     Network,
-    NoopProgram,
     OuterPublicVariables,
     PoSWScheme,
+    Program,
     ProgramScheme,
     PublicVariables,
 };
@@ -30,7 +30,7 @@ use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
+    merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -249,13 +249,19 @@ impl Network for Testnet2 {
             .expect("Failed to hash inner circuit verifying key elements"))
     }
     
-    fn noop_program() -> &'static NoopProgram<Self> {
-        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet2>> = OnceCell::new();
-        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet2>::load().expect("Failed to fetch the noop program"))
+    fn noop_program() -> &'static Program<Self> {
+        static NOOP_PROGRAM: OnceCell<Program<Testnet2>> = OnceCell::new();
+        NOOP_PROGRAM.get_or_init(|| Program::<Testnet2>::new_noop().expect("Failed to fetch the noop program"))
     }
 
-    fn noop_program_id() -> Self::ProgramID {
-        Self::noop_program().program_id()
+    fn noop_program_id() -> &'static Self::ProgramID {
+        static NOOP_PROGRAM_ID: OnceCell<<Testnet2 as Network>::ProgramID> = OnceCell::new();
+        NOOP_PROGRAM_ID.get_or_init(|| Testnet2::noop_program().program_id())
+    }
+
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitTreeParameters> {
+        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet2 as Network>::ProgramCircuitTreeParameters>> = OnceCell::new();
+        NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_circuit_id()).expect("Failed to fetch the noop program path"))
     }
     
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
