@@ -18,9 +18,10 @@ use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
+    collections::HashSet,
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
@@ -49,16 +50,16 @@ pub struct TransactionAuthorization<N: Network> {
 
 impl<N: Network> TransactionAuthorization<N> {
     #[inline]
-    pub fn from(state: &StateTransition<N>, signatures: Vec<N::AccountSignature>) -> Self {
-        debug_assert!(state.kernel().is_valid());
-        debug_assert_eq!(N::NUM_INPUT_RECORDS, state.input_records().len());
-        debug_assert_eq!(N::NUM_OUTPUT_RECORDS, state.output_records().len());
+    pub fn from(transition: &StateTransition<N>, signatures: Vec<N::AccountSignature>) -> Self {
+        debug_assert!(transition.kernel().is_valid());
+        debug_assert_eq!(N::NUM_INPUT_RECORDS, transition.input_records().len());
+        debug_assert_eq!(N::NUM_OUTPUT_RECORDS, transition.output_records().len());
         debug_assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
 
         Self {
-            kernel: state.kernel().clone(),
-            input_records: state.input_records().clone(),
-            output_records: state.output_records().clone(),
+            kernel: transition.kernel().clone(),
+            input_records: transition.input_records().clone(),
+            output_records: transition.output_records().clone(),
             signatures,
         }
     }
@@ -83,16 +84,29 @@ impl<N: Network> TransactionAuthorization<N> {
             .iter()
             .chain(self.output_records.iter())
             .take(N::NUM_TOTAL_RECORDS)
-            .flat_map(|record| {
-                record
-                    .program_id()
-                    .to_bytes_le()
-                    .expect("Failed to convert program ID to bytes")
-            })
-            .collect::<Vec<_>>();
+            .map(|record| record.program_id())
+            .filter(|program_id| *program_id != N::noop_program_id())
+            .collect::<HashSet<_>>();
+
+        // Ensure the number of unique programs is within the declared limit.
+        if program_ids.len() > N::NUM_EXECUTABLES {
+            return Err(anyhow!(
+                "Expected at most {} program IDs, found {} program IDs",
+                N::NUM_EXECUTABLES,
+                program_ids.len()
+            ));
+        }
+        // TODO (howardwu): This still does not correctly construct the program commitment.
+        //  There are 2 cases unaccounted for: 1) need to pad with noop program IDs, 2) when two executables are of the same program ID.
+
+        // Flatten and concatenate the program IDs into bytes.
+        let program_ids_bytes = program_ids
+            .iter()
+            .flat_map(|program_id| program_id.to_bytes_le().expect("Failed to convert program ID to bytes"))
+            .collect::<Vec<u8>>();
 
         let program_randomness = UniformRand::rand(rng);
-        let program_commitment = N::program_commitment_scheme().commit(&program_ids, &program_randomness)?;
+        let program_commitment = N::program_commitment_scheme().commit(&program_ids_bytes, &program_randomness)?;
         Ok((program_commitment, program_randomness))
     }
 

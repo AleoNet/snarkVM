@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, ExecutionType, LocalData, Network, PrivateVariables, ProgramScheme, PublicVariables};
+use crate::{CircuitType, Execution, LocalData, Network, PrivateVariables, ProgramScheme, PublicVariables};
 
 use anyhow::Result;
 use std::{ops::Deref, sync::Arc};
@@ -47,11 +47,11 @@ impl<N: Network> Executable<N> {
         }
     }
 
-    /// Returns the execution type of the executable.
-    pub fn execution_type(&self) -> Result<ExecutionType> {
+    /// Returns the circuit type of the executable.
+    pub fn circuit_type(&self) -> Result<CircuitType> {
         match self {
-            Self::Noop => Ok(ExecutionType::Noop),
-            Self::Circuit(program, circuit_id, _) => Ok(program.get_circuit_execution_type(circuit_id)?),
+            Self::Noop => Ok(CircuitType::Noop),
+            Self::Circuit(program, circuit_id, _) => Ok(program.get_circuit_type(circuit_id)?),
         }
     }
 

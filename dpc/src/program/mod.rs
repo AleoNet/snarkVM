@@ -32,8 +32,8 @@ pub use noop_program::*;
 pub mod program;
 pub use program::*;
 
-pub mod program_circuit_tree;
-pub use program_circuit_tree::*;
+pub mod program_circuit_type;
+pub use program_circuit_type::*;
 
-pub mod public_variables;
-pub use public_variables::*;
+pub mod program_public_variables;
+pub use program_public_variables::*;

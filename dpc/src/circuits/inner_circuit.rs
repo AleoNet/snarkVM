@@ -674,10 +674,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Keep a counter to tally and increment the outputs.
             let mut outputs_counter = UInt8::constant(0);
 
-            for (index, (program_id, execution_type)) in private
+            for (index, (program_id, circuit_type)) in private
                 .program_ids
                 .iter()
-                .zip_eq(private.execution_types.iter())
+                .zip_eq(private.circuit_types.iter())
                 .take(N::NUM_EXECUTABLES)
                 .enumerate()
             {
@@ -691,10 +691,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
                 executable_program_id_bytes_gadgets.push(executable_program_id_bytes);
 
-                // Declare the required number of inputs for this execution type.
+                // Declare the required number of inputs for this circuit type.
                 let number_of_inputs = &UInt8::alloc_vec(
                     &mut commitment_cs.ns(|| format!("number_of_inputs for executable {}", index)),
-                    &[execution_type.input_count()],
+                    &[circuit_type.input_count()],
                 )?[0];
 
                 // Declare the input start and end index.
@@ -740,10 +740,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 inputs_counter = input_end_index;
 
-                // Declare the required number of outputs for this execution type.
+                // Declare the required number of outputs for this circuit type.
                 let number_of_outputs = &UInt8::alloc_vec(
                     &mut commitment_cs.ns(|| format!("number_of_outputs for executable {}", index)),
-                    &[execution_type.output_count()],
+                    &[circuit_type.output_count()],
                 )?[0];
 
                 // Declare the output start and end index.

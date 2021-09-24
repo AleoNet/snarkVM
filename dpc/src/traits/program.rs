@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Execution, ExecutionType, Network, ProgramError, PublicVariables};
+use crate::{CircuitError, CircuitType, Execution, Network, ProgramError, PublicVariables};
 use snarkvm_algorithms::SNARK;
 
 use rand::{CryptoRng, Rng};
@@ -37,8 +37,8 @@ pub trait ProgramScheme<N: Network>: Send + Sync {
     /// Returns the circuit given the circuit index, if it exists.
     fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<N>>>;
 
-    /// Returns the circuit execution type given the circuit ID.
-    fn get_circuit_execution_type(&self, circuit_id: &N::ProgramCircuitID) -> Result<ExecutionType, ProgramError>;
+    /// Returns the circuit type given the circuit ID.
+    fn get_circuit_type(&self, circuit_id: &N::ProgramCircuitID) -> Result<CircuitType, ProgramError>;
 
     /// Returns the execution of the program.
     fn execute(
@@ -82,8 +82,8 @@ pub trait ProgramCircuit<N: Network>: Send + Sync {
     /// Returns the circuit verifying key.
     fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey;
 
-    /// Returns the circuit execution type.
-    fn execution_type(&self) -> ExecutionType;
+    /// Returns the circuit type.
+    fn circuit_type(&self) -> CircuitType;
 
     /// Returns the execution of the circuit.
     fn execute(

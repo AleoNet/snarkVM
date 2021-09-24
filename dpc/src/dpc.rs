@@ -33,18 +33,18 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: &Self::StateTransition,
+        transition: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         // Keep a cursor for the private keys.
         let mut index = 0;
 
         // Construct the signature message.
-        let signature_message = state.kernel().to_signature_message()?;
+        let signature_message = transition.kernel().to_signature_message()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for noop_private_key in state.noop_private_keys().iter().take(N::NUM_INPUT_RECORDS) {
+        for noop_private_key in transition.noop_private_keys().iter().take(N::NUM_INPUT_RECORDS) {
             // Fetch the correct private key.
             let private_key = match noop_private_key {
                 Some(noop_private_key) => noop_private_key,
@@ -60,7 +60,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization::from(state, signatures))
+        Ok(TransactionAuthorization::from(transition, signatures))
     }
 
     /// Returns a transaction by executing an authorized state transition.

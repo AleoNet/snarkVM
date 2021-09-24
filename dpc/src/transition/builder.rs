@@ -21,14 +21,14 @@ use rand::{CryptoRng, Rng};
 
 #[derive(Clone)]
 pub struct StateBuilder<N: Network> {
+    /// A list of executables for a state transition.
+    executables: Vec<Executable<N>>,
     /// A list of given inputs for a state transition.
     inputs: Vec<Input<N>>,
     /// A list of expected outputs for a state transition.
     outputs: Vec<Output<N>>,
     /// A publicly-visible field with data from the state transition.
     memo: Vec<u8>,
-    /// A list of executables for a state transition.
-    executables: Vec<Executable<N>>,
     /// A list of errors accumulated from calling the builder.
     errors: Vec<String>,
 }
@@ -39,12 +39,23 @@ impl<N: Network> StateBuilder<N> {
     ///
     pub fn new() -> Self {
         Self {
+            executables: Vec::with_capacity(N::NUM_EXECUTABLES),
             inputs: Vec::with_capacity(N::NUM_INPUT_RECORDS),
             outputs: Vec::with_capacity(N::NUM_OUTPUT_RECORDS),
             memo: Vec::with_capacity(N::MEMO_SIZE_IN_BYTES),
-            executables: Vec::with_capacity(N::NUM_EXECUTABLES),
             errors: Vec::new(),
         }
+    }
+
+    ///
+    /// Adds the given executable into the builder.
+    ///
+    pub fn add_executable(mut self, executable: Executable<N>) -> Self {
+        match self.executables.len() < N::NUM_EXECUTABLES {
+            true => self.executables.push(executable),
+            false => self.errors.push("Builder exceeded maximum executables".into()),
+        };
+        self
     }
 
     ///
@@ -91,17 +102,6 @@ impl<N: Network> StateBuilder<N> {
         for output in outputs {
             self = self.add_output(output);
         }
-        self
-    }
-
-    ///
-    /// Adds the given executable into the builder.
-    ///
-    pub fn add_executable(mut self, executable: Executable<N>) -> Self {
-        match self.executables.len() < N::NUM_EXECUTABLES {
-            true => self.executables.push(executable),
-            false => self.errors.push("Builder exceeded maximum executables".into()),
-        };
         self
     }
 
@@ -206,6 +206,54 @@ impl<N: Network> StateBuilder<N> {
             executables: (*executables).clone(),
         })
     }
+
+    // fn is_compatible(&self) -> bool {
+    //     // if !self.is_valid() {
+    //     //     eprintln!("Executables is not well-formed");
+    //     //     return false;
+    //     // }
+    //
+    //     let mut num_inputs: usize = 0;
+    //     let mut num_outputs: usize = 0;
+    //
+    //     for executable in &self.executables {
+    //         // Fetch the program ID, input count, and output count.
+    //         let (program_id, input_count, output_count) = match executable.circuit_type() {
+    //             Ok(circuit_type) => {
+    //                 let program_id = executable.program_id();
+    //                 let input_count = circuit_type.input_count() as usize;
+    //                 let output_count = circuit_type.output_count() as usize;
+    //                 (program_id, input_count, output_count)
+    //             }
+    //             Err(error) => {
+    //                 eprintln!("{}", error);
+    //                 return false;
+    //             }
+    //         };
+    //
+    //         // Verify the input records have the correct program ID.
+    //         for i in 0..input_count {
+    //             if self.input_records[num_inputs + i].program_id() != program_id {
+    //                 eprintln!("Program ID in input record {} does not match executable", i);
+    //                 return false;
+    //             }
+    //         }
+    //
+    //         // Verify the output records have the correct program ID.
+    //         for j in 0..output_count {
+    //             if self.output_records[num_outputs + j].program_id() != program_id {
+    //                 eprintln!("Program ID in output record {} does not match executable", j);
+    //                 return false;
+    //             }
+    //         }
+    //
+    //         // Increment the number of inputs and outputs from this executable.
+    //         num_inputs += input_count;
+    //         num_outputs += output_count;
+    //     }
+    //
+    //     true
+    // }
 
     ///
     /// Prepares the inputs and outputs for the `Self::build()` phase.

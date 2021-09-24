@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{BlockScheme, InnerPublicVariables, NoopProgram, OuterPublicVariables, PoSWScheme, PublicVariables};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerkleTreeDigest, prelude::*};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -207,7 +207,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
     fn noop_program() -> &'static NoopProgram<Self>;
-    fn noop_program_id() -> MerkleTreeDigest<Self::ProgramCircuitTreeParameters>;
+    fn noop_program_id() -> Self::ProgramID;
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;

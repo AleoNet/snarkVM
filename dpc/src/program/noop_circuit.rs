@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, ExecutionType, Network, PrivateVariables, ProgramCircuit, PublicVariables};
+use crate::{CircuitError, CircuitType, Network, PrivateVariables, ProgramCircuit, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -39,6 +39,7 @@ impl<N: Network> NoopPrivateVariables<N> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct NoopCircuit<N: Network> {
+    circuit_type: CircuitType,
     circuit_id: N::ProgramCircuitID,
     #[derivative(Debug = "ignore")]
     proving_key: <N::ProgramSNARK as SNARK>::ProvingKey,
@@ -55,6 +56,7 @@ impl<N: Network> ProgramCircuit<N> for NoopCircuit<N> {
         )?;
 
         Ok(Self {
+            circuit_type: CircuitType::Noop,
             circuit_id: <N as Network>::program_circuit_id(&verifying_key)?,
             proving_key,
             verifying_key,
@@ -64,10 +66,16 @@ impl<N: Network> ProgramCircuit<N> for NoopCircuit<N> {
     /// Loads an instance of the noop circuit.
     fn load() -> Result<Self, CircuitError> {
         Ok(Self {
+            circuit_type: CircuitType::Noop,
             circuit_id: N::noop_circuit_id().clone(),
             proving_key: N::noop_circuit_proving_key().clone(),
             verifying_key: N::noop_circuit_verifying_key().clone(),
         })
+    }
+
+    /// Returns the circuit type.
+    fn circuit_type(&self) -> CircuitType {
+        self.circuit_type
     }
 
     /// Returns the circuit ID.
@@ -83,11 +91,6 @@ impl<N: Network> ProgramCircuit<N> for NoopCircuit<N> {
     /// Returns the circuit verifying key.
     fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
-    }
-
-    /// Returns the circuit execution type.
-    fn execution_type(&self) -> ExecutionType {
-        ExecutionType::Noop
     }
 
     /// Executes the circuit, returning an proof.

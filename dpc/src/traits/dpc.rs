@@ -32,7 +32,7 @@ pub trait DPCScheme<N: Network>: Sized {
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: &Self::StateTransition,
+        transition: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 

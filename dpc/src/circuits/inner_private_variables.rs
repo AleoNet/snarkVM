@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Executable, ExecutionType, Network, Record};
+use crate::{CircuitType, Executable, Network, Record};
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CommitmentScheme, EncryptionScheme},
@@ -35,7 +35,7 @@ pub struct InnerPrivateVariables<N: Network> {
     pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Executables.
     pub(super) program_ids: Vec<N::ProgramID>,
-    pub(super) execution_types: Vec<ExecutionType>,
+    pub(super) circuit_types: Vec<CircuitType>,
     // Commitment to programs and local data.
     pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     pub(super) local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
@@ -53,7 +53,7 @@ impl<N: Network> InnerPrivateVariables<N> {
                 N::NUM_OUTPUT_RECORDS
             ],
             program_ids: vec![N::noop_program_id(); N::NUM_EXECUTABLES],
-            execution_types: vec![ExecutionType::Noop; N::NUM_EXECUTABLES],
+            circuit_types: vec![CircuitType::Noop; N::NUM_EXECUTABLES],
             program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_leaf_randomizers: vec![
                 <N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
@@ -83,10 +83,10 @@ impl<N: Network> InnerPrivateVariables<N> {
         // Prepare the executable program IDs.
         let program_ids = executables.iter().map(|e| e.program_id()).collect::<Vec<_>>();
 
-        // Prepare the execution types.
-        let execution_types = executables
+        // Prepare the circuit types.
+        let circuit_types = executables
             .iter()
-            .map(|e| Ok(e.execution_type()?))
+            .map(|e| Ok(e.circuit_type()?))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
@@ -96,7 +96,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             output_records,
             encrypted_record_randomizers,
             program_ids,
-            execution_types,
+            circuit_types,
             program_randomness,
             local_data_leaf_randomizers,
         })

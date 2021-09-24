@@ -32,7 +32,7 @@ use std::ops::Deref;
 /// As there is only one circuit in a noop program, this struct explicitly stores
 /// the noop circuit ID and provides a convenience method to execute the noop circuit directly.
 #[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derivative(Debug(bound = "N: Network"))]
 pub struct NoopProgram<N: Network> {
     program: Program<N>,
     noop_circuit_id: N::ProgramCircuitID,

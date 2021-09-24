@@ -30,7 +30,7 @@ use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeDigest, MerkleTreeParameters},
+    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -254,7 +254,7 @@ impl Network for Testnet2 {
         NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet2>::load().expect("Failed to fetch the noop program"))
     }
 
-    fn noop_program_id() -> MerkleTreeDigest<Self::ProgramCircuitTreeParameters> {
+    fn noop_program_id() -> Self::ProgramID {
         Self::noop_program().program_id()
     }
     

@@ -50,9 +50,9 @@ impl<N: Network> Executables<N> {
         let mut outputs = 0;
 
         for executable in &self.0 {
-            // Fetch the execution type.
-            let execution_type = match executable.execution_type() {
-                Ok(execution_type) => execution_type,
+            // Fetch the circuit type.
+            let circuit_type = match executable.circuit_type() {
+                Ok(circuit_type) => circuit_type,
                 Err(error) => {
                     eprintln!("{}", error);
                     return false;
@@ -60,8 +60,8 @@ impl<N: Network> Executables<N> {
             };
 
             // Tally the number of inputs and outputs required for this executable.
-            inputs += execution_type.input_count() as usize;
-            outputs += execution_type.output_count() as usize;
+            inputs += circuit_type.input_count() as usize;
+            outputs += circuit_type.output_count() as usize;
         }
 
         inputs <= N::NUM_INPUT_RECORDS && outputs <= N::NUM_OUTPUT_RECORDS && (inputs + outputs) <= N::NUM_TOTAL_RECORDS
@@ -77,9 +77,9 @@ impl<N: Network> Executables<N> {
         let mut num_outputs: usize = 0;
 
         for executable in &self.0 {
-            // Fetch the execution type.
-            let execution_type = match executable.execution_type() {
-                Ok(execution_type) => execution_type,
+            // Fetch the circuit type.
+            let circuit_type = match executable.circuit_type() {
+                Ok(circuit_type) => circuit_type,
                 Err(error) => {
                     eprintln!("{}", error);
                     return false;
@@ -87,7 +87,7 @@ impl<N: Network> Executables<N> {
             };
 
             // Verify the input records have the correct program ID.
-            for i in 0..execution_type.input_count() as usize {
+            for i in 0..circuit_type.input_count() as usize {
                 if input_records[num_inputs + i].program_id() != executable.program_id() {
                     eprintln!("Program ID in input record {} does not match executable", i);
                     return false;
@@ -95,7 +95,7 @@ impl<N: Network> Executables<N> {
             }
 
             // Verify the output records have the correct program ID.
-            for j in 0..execution_type.output_count() as usize {
+            for j in 0..circuit_type.output_count() as usize {
                 if output_records[num_outputs + j].program_id() != executable.program_id() {
                     eprintln!("Program ID in output record {} does not match executable", j);
                     return false;
@@ -103,8 +103,8 @@ impl<N: Network> Executables<N> {
             }
 
             // Increment the number of inputs and outputs from this executable.
-            num_inputs += execution_type.input_count() as usize;
-            num_outputs += execution_type.output_count() as usize;
+            num_inputs += circuit_type.input_count() as usize;
+            num_outputs += circuit_type.output_count() as usize;
         }
 
         true
