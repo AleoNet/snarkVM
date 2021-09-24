@@ -41,15 +41,21 @@ pub enum Integer {
     I128(i128),
 }
 
-impl Integer {
-    pub fn get_unsigned(&self) -> u32 {
-        match self {
-            Self::U8(n) => *n as u32,
-            Self::U16(n) => *n as u32,
-            Self::U32(n) => *n,
-            Self::U64(n) => u32::try_from(*n).unwrap_or_else(|e| panic!("{}: {:?}", e, self)),
-            Self::U128(n) => u32::try_from(*n).unwrap_or_else(|e| panic!("{}: {:?}", e, self)),
-            _ => panic!("cant get u32 from signed int {:?}", self),
+impl TryFrom<Integer> for u32 {
+    type Error = anyhow::Error;
+
+    fn try_from(int: Integer) -> Result<Self, Self::Error> {
+        match int {
+            Integer::U8(n) => Ok(n as u32),
+            Integer::U16(n) => Ok(n as u32),
+            Integer::U32(n) => Ok(n),
+            Integer::U64(n) => {
+                u32::try_from(n).map_err(|e| anyhow!("failed to get u32 from u64 int value `{}`: `{}`", n, e))
+            }
+            Integer::U128(n) => {
+                u32::try_from(n).map_err(|e| anyhow!("failed to get u32 from u128 int value `{}`: `{}`", n, e))
+            }
+            _ => Err(anyhow!("cant get u32 from signed int value `{}`", int)),
         }
     }
 }
