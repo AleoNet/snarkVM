@@ -46,7 +46,7 @@ macro_rules! generate_random_key_pairs {
 }
 
 /// Generates a valid Merkle trie and verifies the Merkle path witness for each leaf.
-fn generate_merkle_trie<P: MerkleTrieParameters, L: std::fmt::Debug + ToBytes + Send + Sync + Clone + Eq>(
+fn generate_merkle_trie<P: MerkleTrieParameters, L: ToBytes + Send + Sync + Clone + Eq>(
     key_pairs: Vec<(Vec<u8>, L)>,
     parameters: &P,
 ) -> MerkleTrie<P, L> {

@@ -31,7 +31,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 
     // TODO (raychu86): This value bounds the input size of the PoseidonCRH. And will also affect the gadget size. Find a way to
     //  make this generic for each declared use of PoseidonCryptoHash as a CRH protocol.
-    const INPUT_SIZE_BITS: usize = 4096;
+    const INPUT_SIZE_BITS: usize = 8000;
 
     fn setup(_message: &str) -> Self {
         Self {
@@ -40,10 +40,6 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        assert!(input.len() <= Self::INPUT_SIZE_BITS);
-
-        let mut input = input.to_vec();
-        input.resize(Self::INPUT_SIZE_BITS, false);
         Ok(Self::evaluate(&input.to_field_elements().unwrap())?)
     }
 
