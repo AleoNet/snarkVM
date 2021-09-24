@@ -1,6 +1,4 @@
 decl f0: <0>
   store &v1, ((v0), (), (), ())
-  ainitn &v3, 2, 0
-  ainitn &v4, 3, v3
-  eq &v5, v2, v4
-  retn v5
+  eq &v3, v2, [[0, 0], [0, 0], [0, 0]]
+  retn v3

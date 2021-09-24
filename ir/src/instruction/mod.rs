@@ -112,6 +112,15 @@ fn decode_control_u32(operand: ir::Operand) -> Result<u32> {
     }
 }
 
+fn decode_control_bool(operand: ir::Operand) -> Result<bool> {
+    match operand {
+        ir::Operand {
+            boolean: Some(bool), ..
+        } => Ok(bool.boolean),
+        _ => Err(anyhow!("illegal value for control operand: {:?}", operand)),
+    }
+}
+
 fn decode_control_string(operand: ir::Operand) -> Result<String> {
     match operand {
         ir::Operand {
