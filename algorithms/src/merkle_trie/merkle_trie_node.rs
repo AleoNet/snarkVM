@@ -23,8 +23,10 @@ use std::collections::BTreeMap;
 pub struct MerkleTrieNode<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> {
     /// The root hash of the Merkle trie.
     pub(crate) root: MerkleTrieDigest<P>,
-    /// The key of the current Merkle trie.
+    /// The key of the current Merkle node.
     pub(crate) key: Vec<u8>, // TODO (raychu86): Enforce a max depth size (bound by the length of the key).
+    /// The full non-truncated key of the key/value pair inserted into the merkle trie.
+    pub(crate) full_key: Option<Vec<u8>>, // TODO (raychu86): Enforce a max depth size (bound by the length of the key).
     /// The value existing at the current Merkle trie node.
     pub(crate) value: Option<T>,
     /// Any child Merkle tries. Currently has u8::MAX potential branches. // TODO (raychu86): Allow for generic branch sizes.
@@ -43,7 +45,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
                 child_roots.push(child.root());
             }
 
-            let root = parameters.hash_node(&self.key, &self.value, &child_roots)?;
+            let root = parameters.hash_node(&self.full_key, &self.value, &child_roots)?;
 
             // Update the new root.
             self.root = root;
@@ -53,12 +55,13 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
     }
 
     /// Insert a (key, value) pair into the Merkle trie.
-    pub fn insert(&mut self, parameters: &P, key: &[u8], value: T) -> Result<(), MerkleTrieError> {
+    pub fn insert(&mut self, parameters: &P, key: &[u8], full_key: &[u8], value: T) -> Result<(), MerkleTrieError> {
         assert_eq!(value.to_bytes_le()?.len(), P::VALUE_SIZE);
 
         // If the trie is currently empty, set the key value pair.
         if self.is_empty() {
             self.key = key.to_vec();
+            self.full_key = Some(full_key.to_vec());
             self.value = Some(value);
             self.update_root(parameters)?;
             return Ok(());
@@ -73,15 +76,16 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
         if prefix_length >= self.key.len() {
             // If the match length is equal to the length of the root key, then attempt to insert.
             if prefix_length == key.len() && prefix == self.key {
-                if self.value.is_some() {
+                if self.value.is_some() || self.full_key.is_some() {
                     // TODO (raychu86): Update the Error type.
                     return Err(MerkleTrieError::Message("Key already exists".to_string()));
                 }
 
+                self.full_key = Some(full_key.to_vec());
                 self.value = Some(value);
             } else {
                 // Insert a child trie based on the suffix.
-                self.insert_child(parameters, &suffix, value)?;
+                self.insert_child(parameters, &suffix, &full_key.to_vec(), value)?;
             }
         } else {
             let old_key_prefix = self.key[0..prefix_length].to_vec();
@@ -90,8 +94,9 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
             // If the prefix exists within the key of the current trie.
             // Build the new subtrie.
             let mut new_node = MerkleTrieNode::<P, T> {
-                key: old_key_suffix.clone(),
                 root: MerkleTrieDigest::<P>::default(),
+                key: old_key_suffix.clone(),
+                full_key: self.full_key.take(),
                 value: self.value.take(),
                 children: BTreeMap::new(),
             };
@@ -103,6 +108,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
 
             // Update the original trie key, and children.
             self.key = old_key_prefix;
+            self.full_key = None;
             self.value = None;
             self.children = BTreeMap::new(); // This line is not necessary because of the mem swap.
             self.children.insert(new_node.key[0], new_node);
@@ -110,10 +116,11 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
             // Update the values if we have found the correct node.
             if prefix_length == key.len() {
                 // Update the value in the current node if the key matches.
+                self.full_key = Some(full_key.to_vec());
                 self.value = Some(value);
             } else {
                 // Update the value in a subtrie node.
-                self.insert_child(parameters, &suffix, value)?;
+                self.insert_child(parameters, &suffix, &full_key.to_vec(), value)?;
             }
         }
 
@@ -148,6 +155,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
             // If the key is the same.
             if key == self.key {
                 let value = self.value.take();
+                self.full_key = None;
                 self.value = None;
                 self.compress(parameters)?;
                 return Ok(value);
@@ -176,7 +184,13 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
     }
 
     /// Insert a (key, value) pair into the current Merkle trie node.
-    fn insert_child(&mut self, parameters: &P, suffix: &Vec<u8>, value: T) -> Result<(), MerkleTrieError> {
+    fn insert_child(
+        &mut self,
+        parameters: &P,
+        suffix: &Vec<u8>,
+        full_key: &Vec<u8>,
+        value: T,
+    ) -> Result<(), MerkleTrieError> {
         // Check the first element of the suffix.
         match self.children.get_mut(&suffix[0]) {
             None => {
@@ -185,10 +199,11 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
                 let mut new_child = Self {
                     root: MerkleTrieDigest::<P>::default(),
                     key: Vec::new(),
+                    full_key: None,
                     value: None,
                     children: BTreeMap::new(),
                 };
-                new_child.insert(parameters, &suffix, value)?;
+                new_child.insert(parameters, &suffix, full_key, value)?;
 
                 // Insert the new subtree into the current tree.
                 self.children.insert(new_child.key[0], new_child);
@@ -196,7 +211,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
             Some(child_trie) => {
                 // The child tree already exists.
                 // Insert the (suffix, value) pair to the child tree.
-                child_trie.insert(parameters, &suffix, value)?;
+                child_trie.insert(parameters, &suffix, full_key, value)?;
             }
         }
 
@@ -217,6 +232,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
 
             // Append the child key to the current key.
             self.key.extend_from_slice(&child.key);
+            self.full_key = child.full_key.clone();
             self.value = child.value.clone();
             self.children = child.children.clone();
 
@@ -228,7 +244,10 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
 
     /// Check if the Merkle trie is empty.
     pub fn is_empty(&self) -> bool {
-        self.root == MerkleTrieDigest::<P>::default() && self.value.is_none() && self.children.is_empty()
+        self.root == MerkleTrieDigest::<P>::default()
+            && self.full_key.is_none()
+            && self.value.is_none()
+            && self.children.is_empty()
     }
 
     /// Returns the root hash of the Merkle trie node.

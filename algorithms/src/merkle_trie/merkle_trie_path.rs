@@ -32,7 +32,7 @@ pub struct MerkleTriePath<P: MerkleTrieParameters, T: ToBytes> {
     /// (Does NOT including the parents of the leaf being proven)
     pub path: Vec<Vec<MerkleTrieDigest<P>>>,
     /// Vector of parent node key values up to the root.
-    pub parents: Vec<(Vec<u8>, Option<T>)>,
+    pub parents: Vec<(Option<Vec<u8>>, Option<T>)>,
     /// Location of the parent nodes within each depth of siblings.
     pub traversal: Vec<u8>,
 }
@@ -42,7 +42,7 @@ impl<P: MerkleTrieParameters, T: ToBytes> MerkleTriePath<P, T> {
         assert_eq!(self.path.len(), self.traversal.len());
         assert_eq!(self.parents.len(), self.traversal.len());
 
-        let mut curr_hash = self.parameters.hash_node(&key, &Some(value), &vec![])?;
+        let mut curr_hash = self.parameters.hash_node(&Some(key.to_vec()), &Some(value), &vec![])?;
 
         // Check that the given leaf matches the leaf in the membership proof.
         for (i, (index, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {

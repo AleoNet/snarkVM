@@ -41,6 +41,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
             node: MerkleTrieNode {
                 root: MerkleTrieDigest::<P>::default(),
                 key: Vec::new(),
+                full_key: None,
                 value: None,
                 children: BTreeMap::new(),
             },
@@ -60,7 +61,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
     /// Insert a (key, value) pair into the Merkle trie.
     pub fn insert(&mut self, key: &[u8], value: T) -> Result<(), MerkleTrieError> {
-        self.node.insert(&self.parameters, key, value)
+        self.node.insert(&self.parameters, key, key, value)
     }
 
     /// Get a value given a key.
@@ -87,7 +88,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
         }
 
         let mut path = vec![];
-        let mut parents = vec![(self.node.key.clone(), self.node.value.clone())];
+        let mut parents = vec![(self.node.full_key.clone(), self.node.value.clone())];
         let mut traversal = vec![];
 
         let mut temp_key = self.node.key.clone();
@@ -95,12 +96,14 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
 
         let mut expected_key = key;
 
+        // Traverse the children until the key/value pair is found.
         let mut found = false;
         while !found {
             if temp_key == expected_key {
                 found = true;
             } else {
                 // If the given key starts with the root key.
+
                 let suffix = &expected_key[temp_key.len()..];
 
                 let index = temp_children.keys().position(|&r| r == suffix[0]).unwrap();
@@ -112,7 +115,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 path.push(siblings);
 
                 if let Some(child_node) = temp_children.get(&suffix[0]) {
-                    parents.push((child_node.key.clone(), child_node.value.clone()));
+                    parents.push((child_node.full_key.clone(), child_node.value.clone()));
                     temp_children = &child_node.children;
                     temp_key = child_node.key.clone();
                 }
