@@ -19,12 +19,10 @@ use std::sync::Arc;
 use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
-    crypto_hash::PoseidonCryptoHash,
     define_merkle_trie_parameters,
     merkle_trie::MerkleTrie,
     traits::{MerkleTrieParameters, CRH},
 };
-use snarkvm_curves::bls12_377::Fr;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
@@ -144,6 +142,8 @@ fn generate_merkle_tree<
 mod merkle_trie_poseidon {
     use super::*;
     use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
+    use snarkvm_algorithms::crypto_hash::PoseidonCryptoHash;
+    use snarkvm_curves::bls12_377::Fr;
 
     type H = PoseidonCryptoHash<Fr, 4, false>;
     type HG = PoseidonCryptoHashGadget<Fr, 4, false>;
@@ -151,7 +151,42 @@ mod merkle_trie_poseidon {
     const KEY_SIZE: usize = 32;
     const VALUE_SIZE: usize = 32;
 
-    const DEPTH: usize = 8;
+    const DEPTH: usize = 64;
+    const BRANCH: usize = 16;
+
+    #[test]
+    fn good_root_test() {
+        define_merkle_trie_parameters!(MerkleTrieParams, H, DEPTH, BRANCH, KEY_SIZE, VALUE_SIZE);
+
+        let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
+
+        generate_merkle_tree::<MerkleTrieParams, Fr, HG, _>(key_pairs, false);
+    }
+
+    #[should_panic]
+    #[test]
+    fn bad_root_test() {
+        define_merkle_trie_parameters!(MerkleTrieParams, H, DEPTH, BRANCH, KEY_SIZE, VALUE_SIZE);
+
+        let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
+
+        generate_merkle_tree::<MerkleTrieParams, Fr, HG, _>(key_pairs, true);
+    }
+}
+
+mod merkle_trie_bhp {
+    use super::*;
+    use crate::{algorithms::crh::BHPCompressedCRHGadget, curves::edwards_bls12::EdwardsBls12Gadget};
+    use snarkvm_algorithms::crh::BHPCompressedCRH;
+    use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
+
+    type H = BHPCompressedCRH<EdwardsProjective, 74, 63>;
+    type HG = BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, 74, 63>;
+
+    const KEY_SIZE: usize = 32;
+    const VALUE_SIZE: usize = 32;
+
+    const DEPTH: usize = 64;
     const BRANCH: usize = 16;
 
     #[test]
