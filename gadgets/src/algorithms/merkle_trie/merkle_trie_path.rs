@@ -125,7 +125,7 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
         value: impl ToBytesGadget<F>,
         child_roots: &Vec<HG::OutputGadget>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
-        let mut bytes = vec![]; // TODO (raychu86): Add key to hashing.
+        let mut bytes = key.to_bytes(cs.ns(|| "key_to_bytes"))?;
         bytes.extend_from_slice(&value.to_bytes(cs.ns(|| "value_to_bytes"))?);
 
         for (i, child) in child_roots.iter().enumerate() {
@@ -219,7 +219,11 @@ where
 
         let mut parents = Vec::with_capacity(P::MAX_DEPTH);
         for (i, (key, value)) in merkle_trie_path.parents.iter().enumerate() {
-            let key_gadget = UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &key)?;
+            let key_gadget = match key {
+                Some(k) => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &k.to_bytes_le()?)?,
+                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &vec![0u8; P::KEY_SIZE])?, // TODO (raychu86): Use the size of the value.
+            };
+
             let value_gadget = match value {
                 Some(l) => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &l.to_bytes_le()?)?,
                 None => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?, // TODO (raychu86): Use the size of the value.
