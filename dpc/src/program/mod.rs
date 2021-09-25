@@ -20,9 +20,6 @@ pub use circuit_type::*;
 pub mod executable;
 pub use executable::*;
 
-pub mod executables;
-pub use executables::*;
-
 pub mod program;
 pub use program::*;
 

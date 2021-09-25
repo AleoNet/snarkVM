@@ -167,6 +167,56 @@ impl<N: Network> StateBuilder<N> {
             .map(|output| output.commitment())
             .collect();
 
+        // Ensure the executables input and output size requirements matches the records.
+        {
+            // Ensure the number of executables is valid.
+            if self.executables.len() > N::NUM_EXECUTABLES {
+                return Err(anyhow!("Incorrect number of executables: {}", self.executables.len()));
+            }
+
+            let mut num_inputs: usize = 0;
+            let mut num_outputs: usize = 0;
+
+            for executable in self.executables.iter().take(N::NUM_EXECUTABLES) {
+                // Fetch the circuit type.
+                let input_count = executable.circuit_type().input_count() as usize;
+                let output_count = executable.circuit_type().output_count() as usize;
+
+                for i in 0..input_count {
+                    // Ensure the input records have the correct program ID.
+                    if input_records[num_inputs + i].program_id() != executable.program_id() {
+                        return Err(anyhow!("Program ID in input record {} does not match executable", i));
+                    }
+                }
+
+                for j in 0..output_count {
+                    // Ensure the output records have the correct program ID.
+                    if output_records[num_outputs + j].program_id() != executable.program_id() {
+                        return Err(anyhow!("Program ID in output record {} does not match executable", j));
+                    }
+                }
+
+                // Increment the number of inputs and outputs from this executable.
+                num_inputs += input_count;
+                num_outputs += output_count;
+            }
+
+            // Ensure the number of inputs required is valid.
+            if num_inputs > N::NUM_INPUT_RECORDS {
+                return Err(anyhow!("Number of required inputs exceeds transaction input size"));
+            }
+
+            // Ensure the number of outputs required is valid.
+            if num_outputs > N::NUM_OUTPUT_RECORDS {
+                return Err(anyhow!("Number of required outputs exceeds transaction output size"));
+            }
+
+            // Ensure the total size required is valid.
+            if (num_inputs + num_outputs) > N::NUM_TOTAL_RECORDS {
+                return Err(anyhow!("Number of required inputs & outputs exceeds transaction size"));
+            }
+        }
+
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
@@ -187,12 +237,6 @@ impl<N: Network> StateBuilder<N> {
         // Construct the transaction kernel.
         let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo)?;
 
-        // Construct the executables.
-        let executables = Executables::from(self.executables.clone())?;
-        if !executables.verify_records(&input_records, &output_records) {
-            return Err(anyhow!("Program IDs in records do not match executables"));
-        }
-
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;
         self.outputs = outputs;
@@ -202,60 +246,9 @@ impl<N: Network> StateBuilder<N> {
             input_records,
             output_records,
             noop_private_keys,
-            // TODO (howardwu): TEMPORARY - Clean this up after usage is stabilized.
-            executables: (*executables).clone(),
+            executables: self.executables.clone(),
         })
     }
-
-    //
-    // fn is_compatible(&self) -> bool {
-    //     // if !self.is_valid() {
-    //     //     eprintln!("Executables is not well-formed");
-    //     //     return false;
-    //     // }
-    //
-    //     let mut num_inputs: usize = 0;
-    //     let mut num_outputs: usize = 0;
-    //
-    //     for executable in &self.executables {
-    //         // Fetch the program ID, input count, and output count.
-    //         let (program_id, input_count, output_count) = match executable.circuit_type() {
-    //             Ok(circuit_type) => {
-    //                 let program_id = executable.program_id();
-    //                 let input_count = circuit_type.input_count() as usize;
-    //                 let output_count = circuit_type.output_count() as usize;
-    //                 (program_id, input_count, output_count)
-    //             }
-    //             Err(error) => {
-    //                 eprintln!("{}", error);
-    //                 return false;
-    //             }
-    //         };
-    //
-    //         // Verify the input records have the correct program ID.
-    //         for i in 0..input_count {
-    //             if self.input_records[num_inputs + i].program_id() != program_id {
-    //                 eprintln!("Program ID in input record {} does not match executable", i);
-    //                 return false;
-    //             }
-    //         }
-    //
-    //         // Verify the output records have the correct program ID.
-    //         for j in 0..output_count {
-    //             if self.output_records[num_outputs + j].program_id() != program_id {
-    //                 eprintln!("Program ID in output record {} does not match executable", j);
-    //                 return false;
-    //             }
-    //         }
-    //
-    //         // Increment the number of inputs and outputs from this executable.
-    //         num_inputs += input_count;
-    //         num_outputs += output_count;
-    //     }
-    //
-    //     true
-    // }
-    //
 
     ///
     /// Prepares the inputs and outputs for the `Self::build()` phase.

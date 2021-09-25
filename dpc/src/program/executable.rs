@@ -111,18 +111,3 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
             .expect("Failed to verify program execution proof")
     }
 }
-
-// impl<N: Network> Executable<N> {
-//     /// Returns the execution of the executable given the public variables.
-//     pub fn execute(&self, record_position: u8, local_data: &LocalData<N>) -> Result<Execution<N>> {
-//         // Construct the public variables.
-//         let public_variables = PublicVariables::new(record_position, local_data.root());
-//         // Execute the program circuit with the declared variables.
-//         match self {
-//             Self::Noop => Ok(N::noop_program().execute_noop(&public_variables)?),
-//             Self::Circuit(program, circuit_id, private_variables) => {
-//                 Ok(program.execute(circuit_id, &public_variables, private_variables.deref())?)
-//             }
-//         }
-//     }
-// }

@@ -123,8 +123,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
             }
             Self::Assigned(logic, public) => {
                 // TODO (howardwu): Add any DPC related safety checks around program executions.
-
-                logic.synthesize::<CS>(cs, public)
+                unimplemented!()
+                // logic.synthesize::<CS>(cs, public)
             }
         }
     }
