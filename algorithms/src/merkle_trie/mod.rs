@@ -22,6 +22,9 @@ pub use merkle_trie_path::*;
 pub mod merkle_trie;
 pub use merkle_trie::*;
 
+pub mod merkle_trie_node;
+pub use merkle_trie_node::*;
+
 #[cfg(test)]
 pub mod tests;
 
