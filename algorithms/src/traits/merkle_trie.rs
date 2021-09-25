@@ -35,12 +35,19 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
     /// Calculate the root hash of a given node with it's key, value, and children.
     fn hash_node<L: ToBytes>(
         &self,
-        _key: &[u8],
+        key: &Option<Vec<u8>>,
         value: &Option<L>,
         child_roots: &Vec<&<Self::H as CRH>::Output>,
     ) -> Result<<Self::H as CRH>::Output, MerkleTrieError> {
         // Add the current node's key and value to the hash input.
         let mut input = vec![]; // TODO (raychu86): Add the key to the root hash. Full key vs key suffix?
+        if let Some(key) = &key {
+            let key_bytes = to_bytes_le![key]?;
+            input.extend(key_bytes);
+        } else {
+            input.extend(&vec![0u8; Self::KEY_SIZE]);
+        }
+
         if let Some(value) = &value {
             let value_bytes = to_bytes_le![value]?;
             input.extend(value_bytes);
