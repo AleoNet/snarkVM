@@ -43,7 +43,7 @@ pub type Value = Vec<UInt8>;
 pub struct MerkleTriePathGadget<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> {
     /// `traversal[i]` is the location of the parent node among its siblings.
     traversal: Vec<UInt8>,
-    /// `path[i]`is the entry of siblings of ith depth from bottom to top and the number of non-filler siblings.
+    /// `path[i]`is the entry of siblings of ith depth from leaf to root.
     path: Vec<Vec<HG::OutputGadget>>,
     /// `parents[i]`is the parent key value pair at the ith depth from bottom to top.
     parents: Vec<(Key, Value)>,
