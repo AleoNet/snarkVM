@@ -77,28 +77,24 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
             let current_depth = UInt8::alloc(cs.ns(|| format!("depth_{}", i)), || Ok(i as u8))?;
 
             // Insert the current node into the siblings
-            let mut final_siblings = siblings.clone();
-            final_siblings.push(curr_hash.clone());
-
-            for j in 0..siblings.len() {
+            let mut final_siblings = vec![];
+            for (j, sibling_root) in siblings.iter().enumerate() {
                 let current_sibling_index =
                     UInt8::alloc(cs.ns(|| format!("sibling_index_insert_{}_{}", i, j)), || Ok(j as u8))?;
-
-                // Create a temporary vec and add the sibling to a specific index.
-                let mut add_sibling = siblings.clone();
-                add_sibling.insert(j, curr_hash.clone());
 
                 // Check if the sibling is a filler and should be added or not.
                 let index_is_correct =
                     current_sibling_index.is_eq(cs.ns(|| format!("sibling_is_eq_{}_{}", i, j)), &position)?;
-                let selected_siblings = Vec::<HG::OutputGadget>::conditionally_select(
+
+                // Select the sibling based on the given index.
+                let selected_sibling = HG::OutputGadget::conditionally_select(
                     cs.ns(|| format!("conditionally_select_siblings_insert_{}_{}", i, j)),
                     &index_is_correct,
-                    &add_sibling,
-                    &final_siblings,
+                    &curr_hash,
+                    &sibling_root,
                 )?;
 
-                final_siblings = selected_siblings;
+                final_siblings.push(selected_sibling);
             }
 
             // Create the new hash and select it as valid only if the current depth is less than or equal to the given depth.
@@ -210,6 +206,14 @@ where
                     || Ok(filler_sibling.clone()),
                 )?);
             }
+
+            // The final filler, where the calculated node will be placed.
+            let final_filler =
+                HGadget::OutputGadget::alloc(&mut cs.ns(|| format!("alloc_final_filler_{}", i)), || {
+                    Ok(<P::H as CRH>::Output::default())
+                })?;
+            siblings.insert(merkle_trie_path.traversal[i] as usize, final_filler);
+
             path.push(siblings);
         }
 
@@ -236,7 +240,7 @@ where
 
         for i in path.len()..P::MAX_DEPTH {
             let mut siblings = vec![];
-            for j in 0..P::MAX_BRANCH - 1 {
+            for j in 0..P::MAX_BRANCH {
                 siblings.push(HGadget::OutputGadget::alloc(
                     &mut cs.ns(|| format!("alloc_filler_sibling_{}_{}", i, j)),
                     || Ok(<P::H as CRH>::Output::default()),
