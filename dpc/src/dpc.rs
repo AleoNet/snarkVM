@@ -86,7 +86,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         // Execute the programs.
         let mut executions = Vec::with_capacity(N::NUM_EXECUTABLES);
         for (i, executable) in executables.iter().take(N::NUM_EXECUTABLES).enumerate() {
-            executions.push(executable.execute(i as u8, &local_data).unwrap());
+            // Construct the public variables.
+            let public_variables = PublicVariables::new(i as u8, local_data.root());
+
+            executions.push(executable.execute(public_variables, &local_data)?);
         }
 
         // Compute the program commitment.

@@ -16,6 +16,7 @@
 
 use crate::{CircuitType, Executable, Execution, LocalData, Network, ProgramCircuit, ProgramError, PublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use anyhow::Result;
 
@@ -69,37 +70,36 @@ pub trait ProgramExecutable<N: Network>: Send + Sync {
     fn circuit_type(&self) -> CircuitType;
 
     /// Returns the native evaluation of the executable on given public and private variables.
-    fn evaluate(&self, _public: &PublicVariables<N>, _private: &dyn PrivateVariables<N>) -> bool {
+    fn evaluate(&self, _public: PublicVariables<N>, _local_data: &LocalData<N>) -> bool {
         unimplemented!("The native evaluation of this executable is unimplemented")
     }
 
     /// Executes the circuit, returning an proof.
-    fn execute(&self, record_position: u8, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError>;
+    fn execute(&self, public: PublicVariables<N>, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError>;
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, record_position: u8, local_data: &LocalData<N>, proof: &<N::ProgramSNARK as SNARK>::Proof)
-    -> bool;
+    fn verify(&self, public: PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool;
 }
 
 pub trait PrivateVariables<N: Network>: Send + Sync {
-    // /// Initializes a blank instance of the private variables, typically used for a SNARK setup.
-    // fn blank() -> Result<Self>
-    // where
-    //     Self: Sized;
+    /// Initializes a blank instance of the private variables, typically used for a SNARK setup.
+    fn new_blank() -> Result<Self>
+    where
+        Self: Sized;
 
     fn as_any(&self) -> &dyn std::any::Any;
 }
-
-// use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 pub trait CircuitLogic<N: Network>: Send + Sync {
     /// Returns the circuit type.
     fn circuit_type(&self) -> CircuitType;
 
-    // /// Synthesizes the circuit inside the given constraint system.
-    // fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(
-    //     &self,
-    //     cs: &mut CS,
-    //     public: &PublicVariables<N>,
-    // ) -> Result<(), SynthesisError>;
+    /// Synthesizes the circuit inside the given constraint system.
+    fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(
+        &self,
+        cs: &mut CS,
+        public: &PublicVariables<N>,
+    ) -> Result<(), SynthesisError>
+    where
+        Self: Sized;
 }

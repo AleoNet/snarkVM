@@ -81,15 +81,10 @@ impl<N: Network> ProgramCircuit<N> {
     }
 
     /// Returns the assigned circuit.
-    pub(crate) fn synthesize(&self, record_position: u8, local_data: &LocalData<N>) -> SynthesizedCircuit<N> {
-        // Construct the public variables.
-        let public_variables = PublicVariables::new(record_position, local_data.root());
-
+    pub(crate) fn synthesize(&self, public: PublicVariables<N>, _local_data: &LocalData<N>) -> SynthesizedCircuit<N> {
         match self {
-            Self::Noop => SynthesizedCircuit::Noop(public_variables),
-            Self::Circuit(_, logic, _, _) => {
-                SynthesizedCircuit::Assigned(logic.clone(), public_variables, local_data.clone())
-            }
+            Self::Noop => SynthesizedCircuit::Noop(public),
+            Self::Circuit(_, logic, _, _) => SynthesizedCircuit::Assigned(logic.clone(), public),
         }
     }
 }
@@ -97,7 +92,7 @@ impl<N: Network> ProgramCircuit<N> {
 pub(crate) enum SynthesizedCircuit<N: Network> {
     Noop(PublicVariables<N>),
     Blank(Arc<dyn CircuitLogic<N>>),
-    Assigned(Arc<dyn CircuitLogic<N>>, PublicVariables<N>, LocalData<N>),
+    Assigned(Arc<dyn CircuitLogic<N>>, PublicVariables<N>),
 }
 
 impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircuit<N> {
@@ -123,16 +118,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
                 Ok(())
             }
             Self::Blank(logic) => {
-                unimplemented!()
-
-                // let synthesizer = Self::Assigned(*logic, Default::default());
-                // synthesizer.generate_constraints(cs)
+                let synthesizer = Self::Assigned(logic.clone(), Default::default());
+                synthesizer.generate_constraints(cs)
             }
-            Self::Assigned(logic, public, local_data) => {
+            Self::Assigned(logic, public) => {
                 // TODO (howardwu): Add any DPC related safety checks around program executions.
 
-                unimplemented!()
-                // logic.synthesize::<CS>(public)
+                logic.synthesize::<CS>(cs, public)
             }
         }
     }

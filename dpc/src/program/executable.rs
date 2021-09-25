@@ -74,7 +74,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
     }
 
     /// Executes the circuit, returning an proof.
-    fn execute(&self, record_position: u8, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError> {
+    fn execute(&self, public: PublicVariables<N>, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError> {
         let (circuit, verifying_key, program_path) = match self {
             Self::Noop => (
                 &ProgramCircuit::Noop,
@@ -87,10 +87,10 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
         // Compute the proof.
         let proof = <N::ProgramSNARK as SNARK>::prove(
             circuit.proving_key(),
-            &circuit.synthesize(record_position, local_data),
+            &circuit.synthesize(public.clone(), local_data),
             &mut rand::thread_rng(),
         )?;
-        assert!(self.verify(record_position, local_data, &proof));
+        assert!(self.verify(public, &proof));
 
         Ok(Execution {
             program_path,
@@ -100,22 +100,14 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
     }
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(
-        &self,
-        record_position: u8,
-        local_data: &LocalData<N>,
-        proof: &<N::ProgramSNARK as SNARK>::Proof,
-    ) -> bool {
-        // Construct the public variables.
-        let public_variables = PublicVariables::new(record_position, local_data.root());
-
+    fn verify(&self, public: PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool {
         // Fetch the verifying key.
         let verifying_key = match self {
             Self::Noop => ProgramCircuit::<N>::Noop.verifying_key(),
             Self::Circuit(_, circuit, _) => circuit.verifying_key(),
         };
 
-        <N::ProgramSNARK as SNARK>::verify(&verifying_key, &public_variables, proof)
+        <N::ProgramSNARK as SNARK>::verify(&verifying_key, &public, proof)
             .expect("Failed to verify program execution proof")
     }
 }
