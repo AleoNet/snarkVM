@@ -221,12 +221,12 @@ where
         for (i, (key, value)) in merkle_trie_path.parents.iter().enumerate() {
             let key_gadget = match key {
                 Some(k) => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &k.to_bytes_le()?)?,
-                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &vec![0u8; P::KEY_SIZE])?, // TODO (raychu86): Use the size of the value.
+                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &vec![0u8; P::KEY_SIZE])?,
             };
 
             let value_gadget = match value {
                 Some(l) => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &l.to_bytes_le()?)?,
-                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?, // TODO (raychu86): Use the size of the value.
+                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?,
             };
 
             parents.push((key_gadget, value_gadget));
@@ -254,9 +254,9 @@ where
         }
 
         for i in parents.len()..P::MAX_DEPTH {
-            let key_gadget = UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_key_{}", i)), &vec![0u8; P::KEY_SIZE])?; // TODO (raychu86): Use the size of the key.
+            let key_gadget = UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_key_{}", i)), &vec![0u8; P::KEY_SIZE])?;
             let value_gadget =
-                UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?; // TODO (raychu86): Use the size of the value.
+                UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?;
             parents.push((key_gadget, value_gadget));
         }
 
