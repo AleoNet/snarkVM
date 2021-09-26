@@ -17,6 +17,11 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
+[[bench]]
+name = "linear_combination"
+path = "benches/linear_combination.rs"
+harness = false
+
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.7.5"
@@ -71,6 +76,9 @@ optional = true
 
 [dependencies.once_cell]
 version = "1.8.0"
+
+[dependencies.rayon]
+version = "1"
 
 [dependencies.thiserror]
 version = "1.0"

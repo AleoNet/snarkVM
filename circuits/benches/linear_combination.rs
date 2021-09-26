@@ -17,49 +17,33 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
+use snarkvm_circuits::{traits::One, CircuitBuilder, Environment, Field, Mode};
+use snarkvm_fields::One as O;
 
 use criterion::Criterion;
-use rand::thread_rng;
 
-fn account_private_key(c: &mut Criterion) {
-    let rng = &mut thread_rng();
+fn evaluate(c: &mut Criterion) {
+    let one = <CircuitBuilder as Environment>::Field::one();
 
-    c.bench_function("account_private_key", move |b| {
+    // Public variables
+    let mut candidate = Field::<CircuitBuilder>::one();
+    for _ in 0..1000000 {
+        candidate += Field::new(Mode::Constant, one);
+        candidate += Field::new(Mode::Public, one);
+        candidate += Field::new(Mode::Private, one);
+    }
+
+    c.bench_function("evaluate", move |b| {
         b.iter(|| {
-            let _private_key = PrivateKey::<Testnet2>::new(rng);
-        })
-    });
-}
-
-fn account_view_key(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
-    c.bench_function("account_view_key", move |b| {
-        let private_key = PrivateKey::<Testnet2>::new(rng);
-
-        b.iter(|| {
-            let _view_key = ViewKey::from_private_key(&private_key).unwrap();
-        })
-    });
-}
-
-fn account_address(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
-    c.bench_function("account_address", move |b| {
-        let private_key = PrivateKey::<Testnet2>::new(rng);
-
-        b.iter(|| {
-            let _address = Address::from_private_key(&private_key).unwrap();
+            let _value = candidate.to_value();
         })
     });
 }
 
 criterion_group! {
-    name = account;
+    name = linear_combination;
     config = Criterion::default().sample_size(20);
-    targets = account_private_key, account_view_key, account_address
+    targets = evaluate
 }
 
-criterion_main!(account);
+criterion_main!(linear_combination);

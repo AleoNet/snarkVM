@@ -1655,6 +1655,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rand_xorshift",
+ "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",

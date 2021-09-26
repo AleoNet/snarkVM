@@ -28,7 +28,7 @@ impl<E: Environment> Add<&Self> for Field<E> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        Self(self.0 + other.0.clone())
+        Self(self.0 + &other.0)
     }
 }
 
@@ -40,7 +40,7 @@ impl<E: Environment> AddAssign<Self> for Field<E> {
 
 impl<E: Environment> AddAssign<&Self> for Field<E> {
     fn add_assign(&mut self, other: &Self) {
-        self.0 = self.0.clone() + other.0.clone()
+        self.0 += &other.0
     }
 }
 

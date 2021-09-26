@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod boolean;
+
 pub mod field;
+pub use field::*;
+
 pub mod traits;
 
 use snarkvm_curves::bls12_377::Fr;
@@ -26,6 +29,8 @@ use std::{
     cell::{Ref, RefCell},
     rc::Rc,
 };
+
+// use rayon::prelude::*;
 
 pub trait Environment {
     type Field: PrimeField + Copy;
@@ -308,28 +313,31 @@ pub enum Mode {
 
 pub type Index = u64;
 
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 use std::collections::{HashMap, HashSet};
+
+use rayon::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct LinearCombination<F: PrimeField>(HashMap<Variable<F>, F>);
 
 impl<F: PrimeField> LinearCombination<F> {
     fn to_value(&self) -> F {
-        let mut result = F::zero();
-
-        for (variable, coefficient) in self.0.iter() {
-            let value = match variable {
-                Variable::Constant(value) => value,
-                Variable::Public(_, value) => value,
-                Variable::Private(_, value) => value,
-            };
-
-            result += *value * coefficient;
+        // Note that 200_000 is derived empirically.
+        // The setup cost of Rayon is only worth it after sufficient size.
+        match self.0.len() > 200_000 {
+            true => self
+                .0
+                .par_iter()
+                .map(|(variable, coefficient)| variable.value() * coefficient)
+                .sum(),
+            false => self
+                .0
+                .iter()
+                .map(|(variable, coefficient)| variable.value() * coefficient)
+                .sum(),
         }
-
-        result
     }
 }
 
@@ -389,16 +397,41 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        let mut combination = self.0;
+        if self.0.is_empty() {
+            other.clone()
+        } else if other.0.is_empty() {
+            self
+        } else if self.0.len() > other.0.len() {
+            let mut output = self;
+            output += other;
+            output
+        } else {
+            let mut output = other.clone();
+            output += self;
+            output
+        }
+    }
+}
+
+impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
+    fn add_assign(&mut self, other: Self) {
+        *self += &other;
+    }
+}
+impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
+    fn add_assign(&mut self, other: &Self) {
+        if other.0.is_empty() {
+            return;
+        }
+
         for (variable, other_coefficient) in other.0.iter() {
-            match combination.get_mut(variable) {
+            match self.0.get_mut(variable) {
                 Some(coefficient) => *coefficient += *other_coefficient,
                 None => {
-                    combination.insert(*variable, *other_coefficient);
+                    self.0.insert(*variable, *other_coefficient);
                 }
             }
         }
-        Self(combination)
     }
 }
 
@@ -407,6 +440,16 @@ pub enum Variable<F: PrimeField> {
     Constant(F),
     Public(Index, F),
     Private(Index, F),
+}
+
+impl<F: PrimeField> Variable<F> {
+    pub fn value(&self) -> F {
+        match self {
+            Variable::Constant(value) => *value,
+            Variable::Public(_, value) => *value,
+            Variable::Private(_, value) => *value,
+        }
+    }
 }
 
 impl<F: PrimeField> Add<Self> for Variable<F> {
