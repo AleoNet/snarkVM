@@ -32,6 +32,18 @@ impl<E: Environment> Add<&Self> for Field<E> {
     }
 }
 
+impl<E: Environment> AddAssign<Self> for Field<E> {
+    fn add_assign(&mut self, other: Self) {
+        *self += &other;
+    }
+}
+
+impl<E: Environment> AddAssign<&Self> for Field<E> {
+    fn add_assign(&mut self, other: &Self) {
+        self.0 = self.0.clone() + other.0.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,6 +103,68 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
                 candidate_sum = candidate_sum + Field::new(Mode::Private, one);
+                assert_eq!(expected_sum, candidate_sum.to_value());
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(i + 1, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let one = <CircuitBuilder as Environment>::Field::one();
+
+        // Constant variables
+        {
+            let mut expected_sum = one;
+            let mut candidate_sum = Field::<CircuitBuilder>::one();
+
+            let scope = CircuitBuilder::scope("Constant");
+
+            for i in 0..ITERATIONS {
+                expected_sum += &one;
+                candidate_sum += Field::one();
+                assert_eq!(expected_sum, candidate_sum.to_value());
+
+                assert_eq!(i + 1, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+            }
+        }
+
+        // Public variables
+        {
+            let mut expected_sum = one;
+            let mut candidate_sum = Field::<CircuitBuilder>::one();
+
+            let scope = CircuitBuilder::scope("Public");
+
+            for i in 0..ITERATIONS {
+                expected_sum += &one;
+                candidate_sum += Field::new(Mode::Public, one);
+                assert_eq!(expected_sum, candidate_sum.to_value());
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(i + 1, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+            }
+        }
+
+        // Private variables
+        {
+            let mut expected_sum = one;
+            let mut candidate_sum = Field::<CircuitBuilder>::one();
+
+            let scope = CircuitBuilder::scope("Private");
+
+            for i in 0..ITERATIONS {
+                expected_sum += &one;
+                candidate_sum += Field::new(Mode::Private, one);
                 assert_eq!(expected_sum, candidate_sum.to_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());

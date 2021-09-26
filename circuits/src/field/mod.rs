@@ -23,7 +23,7 @@ use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode, V
 use snarkvm_fields::{One as O, Zero as Z};
 
 use anyhow::Result;
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 pub struct Field<E: Environment>(LinearCombination<E::Field>);
 

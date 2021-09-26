@@ -382,6 +382,13 @@ impl<F: PrimeField> Add<LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
+        self + &other
+    }
+}
+impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn add(self, other: &Self) -> Self::Output {
         let mut combination = self.0;
         for (variable, other_coefficient) in other.0.iter() {
             match combination.get_mut(variable) {
