@@ -30,7 +30,7 @@ use std::{
 pub trait Environment {
     type Field: PrimeField + Copy;
 
-    fn span(name: &str) -> CircuitSpan<Self>;
+    fn scope(name: &str) -> CircuitSpan<Self::Field>;
 
     // fn scoped<'a, EE, F>(name: &str, logic: F)
     // where
@@ -61,14 +61,14 @@ thread_local! {
 pub type Scope = String;
 
 #[derive(Clone)]
-pub struct CircuitBuilder(CircuitSpan<CircuitBuilder>);
+pub struct CircuitBuilder(CircuitSpan<Fr>);
 
 impl CircuitBuilder {
-    fn cs() -> CircuitSpan<Self> {
+    fn cs() -> CircuitSpan<<Self as Environment>::Field> {
         CB.with(|cb| {
             cb.get_or_init(|| {
                 let circuit = Rc::new(RefCell::new(Circuit::new()));
-                let builder = CircuitBuilder(CircuitSpan::<Self>::new(
+                let builder = CircuitBuilder(CircuitSpan::<<Self as Environment>::Field>::new(
                     circuit,
                     format!("ConstraintSystem::new"),
                     None,
@@ -96,7 +96,7 @@ impl Environment for CircuitBuilder {
     //     })
     // }
 
-    fn span(name: &str) -> CircuitSpan<Self> {
+    fn scope(name: &str) -> CircuitSpan<Self::Field> {
         CB.with(|cb| {
             let span = cb.get().unwrap().borrow().0.clone().scope(name);
             (*cb.get().unwrap().borrow_mut()).0 = span.clone();
@@ -171,6 +171,23 @@ impl Environment for CircuitBuilder {
 }
 
 // impl Drop for CircuitBuilder {
+//     #[inline]
+//     fn drop(&mut self) {
+//         println!("I AM IN DROP {:?} {:?}", self.0.scope, self.0.previous);
+//         if let Some(scope) = &self.0.previous {
+//             println!("I AM DROPPING {:?} {:?}", self.0.scope, self.0.previous);
+//
+//             // self.scope = (*scope).clone();
+//
+//             // CB.with(|cb| {
+//             //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//             //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//             // });
+//         }
+//     }
+// }
+
+// impl Drop for CircuitBuilder {
 //     /// Pops the scope.
 //     #[inline]
 //     fn drop(&mut self) {
@@ -192,14 +209,14 @@ impl Environment for CircuitBuilder {
 // }
 
 #[derive(Clone)]
-pub struct CircuitSpan<E: Environment + ?Sized> {
-    circuit: Rc<RefCell<Circuit<E::Field>>>,
+pub struct CircuitSpan<F: PrimeField> {
+    circuit: Rc<RefCell<Circuit<F>>>,
     scope: Scope,
-    previous: Option<Box<CircuitSpan<E>>>,
+    previous: Option<Scope>,
 }
 
-impl<E: Environment> CircuitSpan<E> {
-    fn new(circuit: Rc<RefCell<Circuit<E::Field>>>, scope: Scope, previous: Option<Box<CircuitSpan<E>>>) -> Self {
+impl<F: PrimeField> CircuitSpan<F> {
+    fn new(circuit: Rc<RefCell<Circuit<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
         Self {
             circuit,
             scope,
@@ -211,23 +228,23 @@ impl<E: Environment> CircuitSpan<E> {
         Self {
             circuit: self.circuit.clone(),
             scope: format!("{}/{}", self.scope, name),
-            previous: Some(Box::new(self)),
+            previous: Some(self.scope.clone()),
         }
     }
 
-    fn one(&self) -> Variable<E::Field> {
+    fn one(&self) -> Variable<F> {
         self.circuit.borrow().one()
     }
 
-    fn new_constant(&mut self, value: E::Field) -> Variable<E::Field> {
+    fn new_constant(&mut self, value: F) -> Variable<F> {
         self.circuit.borrow_mut().new_constant(value, self.scope.clone())
     }
 
-    fn new_public(&mut self, value: E::Field) -> Variable<E::Field> {
+    fn new_public(&mut self, value: F) -> Variable<F> {
         self.circuit.borrow_mut().new_public(value, self.scope.clone())
     }
 
-    fn new_private(&mut self, value: E::Field) -> Variable<E::Field> {
+    fn new_private(&mut self, value: F) -> Variable<F> {
         self.circuit.borrow_mut().new_private(value, self.scope.clone())
     }
 
@@ -264,11 +281,21 @@ impl<E: Environment> CircuitSpan<E> {
     }
 }
 
-// impl<E: Environment + ?Sized> Drop for CircuitSpan<E> {
+// impl<F: PrimeField> Drop for CircuitSpan<F> {
 //     #[inline]
 //     fn drop(&mut self) {
-//         if let Some(span) = &self.previous {
-//             *self = (**span);
+//         println!("I AM IN DROP {:?} {:?}", self.scope, self.previous);
+//         if let Some(scope) = &self.previous {
+//             println!("I AM DROPPING {:?} {:?}", self.scope, self.previous);
+//
+//             let prev = (*self).circuit.borrow_mut().pop_scope();
+//             (*self).scope = (prev).clone();
+//             (*self).previous = None;
+//
+//             // CB.with(|cb| {
+//             //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//             //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//             // });
 //         }
 //     }
 // }

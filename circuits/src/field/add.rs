@@ -48,7 +48,7 @@ mod tests {
             let mut expected_sum = one;
             let mut candidate_sum = Field::<CircuitBuilder>::one();
 
-            let scope = CircuitBuilder::span("Constant");
+            let scope = CircuitBuilder::scope("Constant");
 
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
@@ -67,7 +67,7 @@ mod tests {
             let mut expected_sum = one;
             let mut candidate_sum = Field::<CircuitBuilder>::one();
 
-            let scope = CircuitBuilder::span("Public");
+            let scope = CircuitBuilder::scope("Public");
 
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
@@ -86,7 +86,7 @@ mod tests {
             let mut expected_sum = one;
             let mut candidate_sum = Field::<CircuitBuilder>::one();
 
-            let scope = CircuitBuilder::span("Private");
+            let scope = CircuitBuilder::scope("Private");
 
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
@@ -99,8 +99,6 @@ mod tests {
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
         }
-
-        println!("{:?}", CircuitBuilder::print_circuit());
     }
 
     #[test]
