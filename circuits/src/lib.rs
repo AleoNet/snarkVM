@@ -30,10 +30,10 @@ use std::{
     rc::Rc,
 };
 
-// use rayon::prelude::*;
-
 pub trait Environment {
     type Field: PrimeField + Copy;
+
+    fn is_satisfied() -> bool;
 
     fn scope(name: &str) -> CircuitSpan<Self::Field>;
 
@@ -47,11 +47,19 @@ pub trait Environment {
     //     E: Environment<Field = Fr>,
     //     F: FnOnce(E) -> ();
 
-    fn one() -> Variable<Self::Field>;
+    fn zero() -> LinearCombination<Self::Field>;
+    fn one() -> LinearCombination<Self::Field>;
 
     fn new_constant(value: Self::Field) -> Variable<Self::Field>;
     fn new_public(value: Self::Field) -> Variable<Self::Field>;
     fn new_private(value: Self::Field) -> Variable<Self::Field>;
+
+    fn enforce<Fn, A, B, C>(constraint: Fn)
+    where
+        Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<Self::Field>>,
+        B: Into<LinearCombination<Self::Field>>,
+        C: Into<LinearCombination<Self::Field>>;
 
     fn num_constants() -> usize;
     fn num_public() -> usize;
@@ -101,6 +109,10 @@ impl Environment for CircuitBuilder {
     //     })
     // }
 
+    fn is_satisfied() -> bool {
+        Self::cs().is_satisfied()
+    }
+
     fn scope(name: &str) -> CircuitSpan<Self::Field> {
         CB.with(|cb| {
             let span = cb.get().unwrap().borrow().0.clone().scope(name);
@@ -142,8 +154,12 @@ impl Environment for CircuitBuilder {
     //     });
     // }
 
-    fn one() -> Variable<Self::Field> {
-        Self::cs().one()
+    fn zero() -> LinearCombination<Self::Field> {
+        LinearCombination::zero()
+    }
+
+    fn one() -> LinearCombination<Self::Field> {
+        Variable::one().into()
     }
 
     fn new_constant(value: Self::Field) -> Variable<Self::Field> {
@@ -156,6 +172,16 @@ impl Environment for CircuitBuilder {
 
     fn new_private(value: Self::Field) -> Variable<Self::Field> {
         Self::cs().new_private(value)
+    }
+
+    fn enforce<Fn, A, B, C>(constraint: Fn)
+    where
+        Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<Self::Field>>,
+        B: Into<LinearCombination<Self::Field>>,
+        C: Into<LinearCombination<Self::Field>>,
+    {
+        Self::cs().enforce(constraint)
     }
 
     fn num_constants() -> usize {
@@ -229,6 +255,10 @@ impl<F: PrimeField> CircuitSpan<F> {
         }
     }
 
+    fn is_satisfied(&self) -> bool {
+        self.circuit.borrow().is_satisfied()
+    }
+
     fn scope(self, name: &str) -> Self {
         Self {
             circuit: self.circuit.clone(),
@@ -237,8 +267,12 @@ impl<F: PrimeField> CircuitSpan<F> {
         }
     }
 
-    fn one(&self) -> Variable<F> {
-        self.circuit.borrow().one()
+    fn zero(&self) -> LinearCombination<F> {
+        LinearCombination::zero()
+    }
+
+    fn one(&self) -> LinearCombination<F> {
+        Variable::one().into()
     }
 
     fn new_constant(&mut self, value: F) -> Variable<F> {
@@ -251,6 +285,16 @@ impl<F: PrimeField> CircuitSpan<F> {
 
     fn new_private(&mut self, value: F) -> Variable<F> {
         self.circuit.borrow_mut().new_private(value, self.scope.clone())
+    }
+
+    fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
+    where
+        Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<F>>,
+        B: Into<LinearCombination<F>>,
+        C: Into<LinearCombination<F>>,
+    {
+        self.circuit.borrow_mut().enforce(constraint, self.scope.clone());
     }
 
     fn num_constants(&self) -> usize {
@@ -313,7 +357,7 @@ pub enum Mode {
 
 pub type Index = u64;
 
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, AddAssign, Neg, Sub};
 
 use std::collections::{HashMap, HashSet};
 
@@ -323,6 +367,10 @@ use rayon::prelude::*;
 pub struct LinearCombination<F: PrimeField>(HashMap<Variable<F>, F>);
 
 impl<F: PrimeField> LinearCombination<F> {
+    pub fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn to_value(&self) -> F {
         // Note that 200_000 is derived empirically.
         // The setup cost of Rayon is only worth it after sufficient size.
@@ -343,7 +391,13 @@ impl<F: PrimeField> LinearCombination<F> {
 
 impl<F: PrimeField> From<Variable<F>> for LinearCombination<F> {
     fn from(variable: Variable<F>) -> Self {
-        Self([(variable, F::one())].iter().cloned().collect())
+        Self::from(&variable)
+    }
+}
+
+impl<F: PrimeField> From<&Variable<F>> for LinearCombination<F> {
+    fn from(variable: &Variable<F>) -> Self {
+        Self([(*variable, F::one())].iter().cloned().collect())
     }
 }
 
@@ -386,6 +440,18 @@ impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Neg for LinearCombination<F> {
+    type Output = Self;
+
+    #[inline]
+    fn neg(mut self) -> Self::Output {
+        self.0
+            .iter_mut()
+            .for_each(|(_, coefficient)| *coefficient = -(*coefficient));
+        self
+    }
+}
+
 impl<F: PrimeField> Add<LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
@@ -393,6 +459,7 @@ impl<F: PrimeField> Add<LinearCombination<F>> for LinearCombination<F> {
         self + &other
     }
 }
+
 impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
@@ -418,6 +485,7 @@ impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
         *self += &other;
     }
 }
+
 impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: &Self) {
         if other.0.is_empty() {
@@ -435,6 +503,30 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Sub<LinearCombination<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        self + (-other)
+    }
+}
+
+impl<F: PrimeField> Sub<Variable<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn sub(self, other: Variable<F>) -> Self::Output {
+        self - &other
+    }
+}
+
+impl<F: PrimeField> Sub<&Variable<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn sub(self, other: &Variable<F>) -> Self::Output {
+        self - Self::from(other)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
     Constant(F),
@@ -443,6 +535,10 @@ pub enum Variable<F: PrimeField> {
 }
 
 impl<F: PrimeField> Variable<F> {
+    pub fn one() -> Self {
+        Self::Public(0, F::one())
+    }
+
     pub fn value(&self) -> F {
         match self {
             Variable::Constant(value) => *value,
@@ -459,6 +555,17 @@ impl<F: PrimeField> Add<Self> for Variable<F> {
         match (self, other) {
             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b).into(),
             (first, second) => LinearCombination::from([first, second]),
+        }
+    }
+}
+
+impl<F: PrimeField> Sub<Self> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b).into(),
+            (first, second) => LinearCombination::from(first) - second,
         }
     }
 }
@@ -534,7 +641,7 @@ pub struct Circuit<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
-    constraints: HashMap<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>), Scope>,
+    constraints: Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)>,
     transcript: HashMap<Variable<F>, Scope>,
     counter: CircuitCounter,
 }
@@ -549,6 +656,19 @@ impl<F: PrimeField> Circuit<F> {
             transcript: Default::default(),
             counter: Default::default(),
         }
+    }
+
+    fn is_satisfied(&self) -> bool {
+        for (a, b, c) in &self.constraints {
+            let a = a.to_value();
+            let b = b.to_value();
+            let c = c.to_value();
+
+            if a * b != c {
+                return false;
+            }
+        }
+        true
     }
 
     /// Return the "one" input variable.
@@ -578,6 +698,18 @@ impl<F: PrimeField> Circuit<F> {
         self.counter.increment_private(&scope);
         self.transcript.insert(variable, scope);
         variable
+    }
+
+    pub(crate) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn, scope: Scope)
+    where
+        Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<F>>,
+        B: Into<LinearCombination<F>>,
+        C: Into<LinearCombination<F>>,
+    {
+        let (a, b, c) = constraint();
+        self.constraints.push((a.into(), b.into(), c.into()));
+        self.counter.increment_constraints(&scope);
     }
 
     fn num_constants(&self) -> usize {
