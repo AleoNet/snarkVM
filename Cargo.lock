@@ -1638,6 +1638,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-circuits"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "blake2",
+ "criterion",
+ "derivative",
+ "digest",
+ "itertools",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "once_cell",
+ "paste",
+ "rand",
+ "rand_chacha",
+ "rand_xorshift",
+ "snarkvm-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-r1cs",
+ "snarkvm-utilities",
+ "thiserror",
+]
+
+[[package]]
 name = "snarkvm-curves"
 version = "0.7.5"
 dependencies = [

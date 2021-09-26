@@ -20,6 +20,7 @@ edition = "2018"
 [workspace]
 members = [
   "algorithms",
+  "circuits",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",

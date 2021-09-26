@@ -193,6 +193,9 @@ mod poseidon {
                 Ok(output)
             })
             .unwrap();
+
+        println!("alloc constraints: {}", cs.num_constraints());
+
         let candidate_output_gadget = PoseidonPRFGadget::<Fr, 4, false>::check_evaluation_gadget(
             &mut cs.ns(|| "evaluate"),
             &seed_gadget,
@@ -200,9 +203,13 @@ mod poseidon {
         )
         .unwrap();
 
+        println!("evaluation constraints: {}", cs.num_constraints());
+
         candidate_output_gadget
             .enforce_equal(&mut cs, &expected_output_gadget)
             .unwrap();
+
+        println!("after checking equal constraints: {}", cs.num_constraints());
 
         if !cs.is_satisfied() {
             println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
