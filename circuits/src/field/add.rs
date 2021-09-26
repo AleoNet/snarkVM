@@ -49,7 +49,7 @@ mod tests {
     use super::*;
     use crate::CircuitBuilder;
 
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: usize = 1_000_000;
 
     #[test]
     fn test_add() {
@@ -65,13 +65,13 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
                 candidate_sum = candidate_sum + Field::one();
-                assert_eq!(expected_sum, candidate_sum.to_value());
-
                 assert_eq!(i + 1, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
+
+            assert_eq!(expected_sum, candidate_sum.to_value());
         }
 
         // Public variables
@@ -84,13 +84,13 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
                 candidate_sum = candidate_sum + Field::new(Mode::Public, one);
-                assert_eq!(expected_sum, candidate_sum.to_value());
-
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(i + 1, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
+
+            assert_eq!(expected_sum, candidate_sum.to_value());
         }
 
         // Private variables
@@ -103,13 +103,13 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum = expected_sum + &one;
                 candidate_sum = candidate_sum + Field::new(Mode::Private, one);
-                assert_eq!(expected_sum, candidate_sum.to_value());
-
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(i + 1, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
+
+            assert_eq!(expected_sum, candidate_sum.to_value());
         }
     }
 
@@ -127,13 +127,13 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum += &one;
                 candidate_sum += Field::one();
-                assert_eq!(expected_sum, candidate_sum.to_value());
-
                 assert_eq!(i + 1, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
+
+            assert_eq!(expected_sum, candidate_sum.to_value());
         }
 
         // Public variables
@@ -146,13 +146,13 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum += &one;
                 candidate_sum += Field::new(Mode::Public, one);
-                assert_eq!(expected_sum, candidate_sum.to_value());
-
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(i + 1, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
+
+            assert_eq!(expected_sum, candidate_sum.to_value());
         }
 
         // Private variables
@@ -165,13 +165,13 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected_sum += &one;
                 candidate_sum += Field::new(Mode::Private, one);
-                assert_eq!(expected_sum, candidate_sum.to_value());
-
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(i + 1, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
+
+            assert_eq!(expected_sum, candidate_sum.to_value());
         }
     }
 

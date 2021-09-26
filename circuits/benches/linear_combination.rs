@@ -27,7 +27,7 @@ fn evaluate(c: &mut Criterion) {
 
     // Public variables
     let mut candidate = Field::<CircuitBuilder>::one();
-    for _ in 0..1000000 {
+    for _ in 0..1_000_000 {
         candidate += Field::new(Mode::Constant, one);
         candidate += Field::new(Mode::Public, one);
         candidate += Field::new(Mode::Private, one);
