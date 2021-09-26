@@ -14,13 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod boolean;
+pub mod builder;
+pub use builder::*;
 
-pub mod field;
-pub use field::*;
+pub mod circuit;
+pub use circuit::*;
 
-pub mod models;
-pub use models::*;
+pub mod counter;
+pub use counter::*;
 
-pub mod traits;
-pub use traits::*;
+pub mod linear_combination;
+pub use linear_combination::*;
+
+pub mod span;
+pub use span::*;
+
+pub mod variable;
+pub use variable::*;
