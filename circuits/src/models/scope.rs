@@ -25,14 +25,16 @@ use std::{
     rc::Rc,
 };
 
+pub type Scope = String;
+
 #[derive(Clone)]
-pub struct CircuitSpan<F: PrimeField> {
+pub struct CircuitScope<F: PrimeField> {
     pub(super) circuit: Rc<RefCell<Circuit<F>>>,
     scope: Scope,
     previous: Option<Scope>,
 }
 
-impl<F: PrimeField> CircuitSpan<F> {
+impl<F: PrimeField> CircuitScope<F> {
     pub(super) fn new(circuit: Rc<RefCell<Circuit<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
         Self {
             circuit,

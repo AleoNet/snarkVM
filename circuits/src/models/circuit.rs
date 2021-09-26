@@ -19,8 +19,6 @@ use snarkvm_fields::traits::*;
 
 use std::collections::HashMap;
 
-pub type Scope = String;
-
 #[derive(Debug)]
 pub(super) struct Circuit<F: PrimeField> {
     constants: Vec<Variable<F>>,

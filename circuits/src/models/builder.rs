@@ -30,14 +30,14 @@ thread_local! {
 }
 
 #[derive(Clone)]
-pub struct CircuitBuilder(CircuitSpan<Fr>);
+pub struct CircuitBuilder(CircuitScope<Fr>);
 
 impl CircuitBuilder {
-    fn cs() -> CircuitSpan<<Self as Environment>::Field> {
+    fn cs() -> CircuitScope<<Self as Environment>::Field> {
         CB.with(|cb| {
             cb.get_or_init(|| {
                 let circuit = Rc::new(RefCell::new(Circuit::new()));
-                let builder = CircuitBuilder(CircuitSpan::<<Self as Environment>::Field>::new(
+                let builder = CircuitBuilder(CircuitScope::<<Self as Environment>::Field>::new(
                     circuit,
                     format!("ConstraintSystem::new"),
                     None,
@@ -69,7 +69,7 @@ impl Environment for CircuitBuilder {
         Self::cs().is_satisfied()
     }
 
-    fn scope(name: &str) -> CircuitSpan<Self::Field> {
+    fn scope(name: &str) -> CircuitScope<Self::Field> {
         CB.with(|cb| {
             let span = cb.get().unwrap().borrow().0.clone().scope(name);
             (*cb.get().unwrap().borrow_mut()).0 = span.clone();

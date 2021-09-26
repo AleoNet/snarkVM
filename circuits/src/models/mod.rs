@@ -26,8 +26,8 @@ pub use counter::*;
 pub mod linear_combination;
 pub use linear_combination::*;
 
-pub mod span;
-pub use span::*;
+pub mod scope;
+pub use scope::*;
 
 pub mod variable;
 pub use variable::*;

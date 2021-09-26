@@ -106,11 +106,27 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
     type Output = Self;
 
     #[inline]
-    fn neg(mut self) -> Self::Output {
-        self.0
+    fn neg(self) -> Self::Output {
+        let mut output = self.clone();
+        output
+            .0
             .iter_mut()
             .for_each(|(_, coefficient)| *coefficient = -(*coefficient));
-        self
+        output
+    }
+}
+
+impl<F: PrimeField> Neg for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        let mut output = self.clone();
+        output
+            .0
+            .iter_mut()
+            .for_each(|(_, coefficient)| *coefficient = -(*coefficient));
+        output
     }
 }
 

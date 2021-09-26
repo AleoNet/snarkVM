@@ -30,7 +30,7 @@ pub trait Environment {
 
     fn is_satisfied() -> bool;
 
-    fn scope(name: &str) -> CircuitSpan<Self::Field>;
+    fn scope(name: &str) -> CircuitScope<Self::Field>;
 
     // fn scoped<'a, EE, F>(name: &str, logic: F)
     // where
