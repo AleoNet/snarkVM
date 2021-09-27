@@ -16,18 +16,28 @@
 
 use super::*;
 
-mod blake2s;
-pub mod len;
-pub use len::*;
-mod to_bits;
+pub const TO_BITS_CORE: &str = "to_bits";
 
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub fn call_core(&mut self, name: &str, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
-        match name {
-            blake2s::BLAKE2S_CORE => self.call_core_blake2s(arguments),
-            len::LEN_CORE => self.call_core_len(arguments),
-            to_bits::TO_BITS_CORE => self.call_core_to_bits(arguments),
-            _ => Err(anyhow!("unknown core call: {}", name)),
-        }
+    pub fn call_core_to_bits(&mut self, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
+        let bits = match arguments.get(0) {
+            None => Err(anyhow!("illegal `to_bits` call, expected call on target")),
+            Some(value) => value.to_bits_le(),
+        }?;
+
+        Ok(ConstrainedValue::Array(
+            bits.into_iter().map(ConstrainedValue::Boolean).collect(),
+        ))
     }
 }
+
+/* pub fn from_bits<'a, F: PrimeField, G: GroupType<F>>(
+    arg: ConstrainedValue<'a, F, G>,
+    output: leo_asg::Type<'a>,
+    span: &Span,
+) -> Result<ConstrainedValue<'a, F, G>> {
+    let bits = unwrap_boolean_array_argument(arg);
+
+    ConstrainedValue::from_bits_le(output, &bits, span)
+}
+ */
