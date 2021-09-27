@@ -19,6 +19,9 @@ pub mod boolean;
 pub mod field;
 pub use field::*;
 
+pub mod group;
+pub use group::*;
+
 pub mod models;
 pub use models::*;
 

@@ -15,8 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::models::*;
-
-use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::{
+    bls12_377::Fr,
+    edwards_bls12::{EdwardsAffine, EdwardsParameters},
+    AffineCurve,
+};
 
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
@@ -29,10 +32,10 @@ thread_local! {
 pub struct Circuit(CircuitScope<Fr>);
 
 impl Circuit {
-    fn cs() -> CircuitScope<<Self as Environment>::Field> {
+    fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
         CB.with(|cb| {
             cb.get_or_init(|| {
-                let scope = CircuitScope::<<Self as Environment>::Field>::new(
+                let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
                     Rc::new(RefCell::new(ConstraintSystem::new())),
                     format!("ConstraintSystem::new"),
                     None,
@@ -48,7 +51,7 @@ impl Circuit {
     #[cfg(test)]
     pub fn reset_circuit() {
         CB.with(|cb| {
-            (*cb.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::Field>::new(
+            (*cb.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
                 Rc::new(RefCell::new(ConstraintSystem::new())),
                 format!("ConstraintSystem::new"),
                 None,
@@ -67,9 +70,11 @@ impl Circuit {
 }
 
 impl Environment for Circuit {
-    type Field = Fr;
+    type Affine = EdwardsAffine;
+    type AffineParameters = EdwardsParameters;
+    type BaseField = Fr;
 
-    fn new_variable(mode: Mode, value: Self::Field) -> Variable<Self::Field> {
+    fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
         match mode {
             Mode::Constant => Self::cs().new_constant(value),
             Mode::Public => Self::cs().new_public(value),
@@ -77,11 +82,11 @@ impl Environment for Circuit {
         }
     }
 
-    fn zero() -> LinearCombination<Self::Field> {
+    fn zero() -> LinearCombination<Self::BaseField> {
         LinearCombination::zero()
     }
 
-    fn one() -> LinearCombination<Self::Field> {
+    fn one() -> LinearCombination<Self::BaseField> {
         LinearCombination::one()
     }
 
@@ -89,7 +94,7 @@ impl Environment for Circuit {
         Self::cs().is_satisfied()
     }
 
-    fn scope(name: &str) -> CircuitScope<Self::Field> {
+    fn scope(name: &str) -> CircuitScope<Self::BaseField> {
         CB.with(|cb| {
             let scope = Self::cs().scope(name);
             (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
@@ -99,7 +104,7 @@ impl Environment for Circuit {
 
     fn scoped<Fn>(name: &str, logic: Fn)
     where
-        Fn: FnOnce(CircuitScope<Self::Field>) -> (),
+        Fn: FnOnce(CircuitScope<Self::BaseField>),
     {
         CB.with(|cb| {
             // Fetch the current environment.
@@ -118,9 +123,9 @@ impl Environment for Circuit {
     fn enforce<Fn, A, B, C>(constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
-        A: Into<LinearCombination<Self::Field>>,
-        B: Into<LinearCombination<Self::Field>>,
-        C: Into<LinearCombination<Self::Field>>,
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+        C: Into<LinearCombination<Self::BaseField>>,
     {
         Self::cs().enforce(constraint)
     }
@@ -141,8 +146,41 @@ impl Environment for Circuit {
         Self::cs().num_constraints()
     }
 
-    fn halt<T>(message: &'static str) -> T {
-        eprintln!("{}", message);
-        panic!("{}", message)
+    fn num_constants_in_scope(scope: &Scope) -> usize {
+        Self::cs().circuit.borrow().num_constants_in_scope(scope)
+    }
+
+    fn num_public_in_scope(scope: &Scope) -> usize {
+        Self::cs().circuit.borrow().num_public_in_scope(scope)
+    }
+
+    fn num_private_in_scope(scope: &Scope) -> usize {
+        Self::cs().circuit.borrow().num_private_in_scope(scope)
+    }
+
+    fn num_constraints_in_scope(scope: &Scope) -> usize {
+        Self::cs().circuit.borrow().num_constraints_in_scope(scope)
+    }
+
+    fn recover_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
+        if let Some(element) = Self::Affine::from_x_coordinate(x, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return element;
+            }
+        }
+
+        if let Some(element) = Self::Affine::from_x_coordinate(x, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return element;
+            }
+        }
+
+        Self::halt(format!("Failed to recover affine group element from {}", x))
+    }
+
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        let error = message.into();
+        eprintln!("{}", &error);
+        panic!("{}", &error)
     }
 }

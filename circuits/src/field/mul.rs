@@ -73,11 +73,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    const ITERATIONS: usize = 500_000;
+    const ITERATIONS: usize = 1_000;
 
     #[test]
     fn test_mul() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
 
         // Constant variables
@@ -111,6 +111,7 @@ mod tests {
                 assert_eq!(i + 1, scope.num_public_in_scope());
                 assert_eq!(i + 1, scope.num_private_in_scope());
                 assert_eq!(i + 1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             }
 
             assert_eq!(expected_product, candidate_product.to_value());
@@ -129,6 +130,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!((i + 1) * 2, scope.num_private_in_scope());
                 assert_eq!(i + 1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             }
 
             assert_eq!(expected_product, candidate_product.to_value());
@@ -137,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_0_times_0() {
-        let zero = <Circuit as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::zero() * Field::zero();
         assert_eq!(zero, candidate.to_value());
@@ -157,8 +159,8 @@ mod tests {
 
     #[test]
     fn test_0_times_1() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::zero() * Field::one();
         assert_eq!(zero, candidate.to_value());
@@ -184,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_1_times_1() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::one() * Field::one();
         assert_eq!(one, candidate.to_value());
@@ -204,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_2_times_2() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
         let four = two + two;
 

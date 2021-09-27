@@ -37,18 +37,6 @@ impl<F: PrimeField> CircuitScope<F> {
         }
     }
 
-    pub(crate) fn scope(self, name: &str) -> Self {
-        Self {
-            circuit: self.circuit.clone(),
-            scope: format!("{}/{}", self.scope, name),
-            previous: Some(self.scope.clone()),
-        }
-    }
-
-    pub(crate) fn is_satisfied(&self) -> bool {
-        self.circuit.borrow().is_satisfied()
-    }
-
     pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {
         self.circuit.borrow_mut().new_constant(value, self.scope.clone())
     }
@@ -59,6 +47,18 @@ impl<F: PrimeField> CircuitScope<F> {
 
     pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
         self.circuit.borrow_mut().new_private(value, self.scope.clone())
+    }
+
+    pub(crate) fn scope(self, name: &str) -> Self {
+        Self {
+            circuit: self.circuit.clone(),
+            scope: format!("{}/{}", self.scope, name),
+            previous: Some(self.scope.clone()),
+        }
+    }
+
+    pub(crate) fn is_satisfied(&self) -> bool {
+        self.circuit.borrow().is_satisfied()
     }
 
     pub(crate) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
@@ -87,19 +87,19 @@ impl<F: PrimeField> CircuitScope<F> {
         self.circuit.borrow().num_constraints()
     }
 
-    pub(crate) fn num_constants_in_scope(&self) -> usize {
+    pub fn num_constants_in_scope(&self) -> usize {
         self.circuit.borrow().num_constants_in_scope(&self.scope)
     }
 
-    pub(crate) fn num_public_in_scope(&self) -> usize {
+    pub fn num_public_in_scope(&self) -> usize {
         self.circuit.borrow().num_public_in_scope(&self.scope)
     }
 
-    pub(crate) fn num_private_in_scope(&self) -> usize {
+    pub fn num_private_in_scope(&self) -> usize {
         self.circuit.borrow().num_private_in_scope(&self.scope)
     }
 
-    pub(crate) fn num_constraints_in_scope(&self) -> usize {
+    pub fn num_constraints_in_scope(&self) -> usize {
         self.circuit.borrow().num_constraints_in_scope(&self.scope)
     }
 }

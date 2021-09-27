@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::models::*;
+use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -34,36 +35,44 @@ impl Mode {
 }
 
 pub trait Environment: Clone {
-    type Field: PrimeField + Copy;
+    type Affine: AffineCurve<BaseField = Self::BaseField>;
+    type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
+    type BaseField: PrimeField + Copy;
 
-    fn new_variable(mode: Mode, value: Self::Field) -> Variable<Self::Field>;
+    fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
-    fn zero() -> LinearCombination<Self::Field>;
+    fn zero() -> LinearCombination<Self::BaseField>;
 
-    fn one() -> LinearCombination<Self::Field>;
+    fn one() -> LinearCombination<Self::BaseField>;
 
     fn is_satisfied() -> bool;
 
-    fn scope(name: &str) -> CircuitScope<Self::Field>;
+    fn scope(name: &str) -> CircuitScope<Self::BaseField>;
 
     fn scoped<Fn>(name: &str, logic: Fn)
     where
-        Fn: FnOnce(CircuitScope<Self::Field>) -> ();
+        Fn: FnOnce(CircuitScope<Self::BaseField>);
 
     fn enforce<Fn, A, B, C>(constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
-        A: Into<LinearCombination<Self::Field>>,
-        B: Into<LinearCombination<Self::Field>>,
-        C: Into<LinearCombination<Self::Field>>;
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+        C: Into<LinearCombination<Self::BaseField>>;
 
     fn num_constants() -> usize;
     fn num_public() -> usize;
     fn num_private() -> usize;
     fn num_constraints() -> usize;
 
-    fn halt<T>(message: &'static str) -> T {
-        eprintln!("{}", message);
-        panic!("{}", message)
+    fn num_constants_in_scope(scope: &Scope) -> usize;
+    fn num_public_in_scope(scope: &Scope) -> usize;
+    fn num_private_in_scope(scope: &Scope) -> usize;
+    fn num_constraints_in_scope(scope: &Scope) -> usize;
+
+    fn recover_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
+
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        panic!("{}", message.into())
     }
 }

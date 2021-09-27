@@ -52,11 +52,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    const ITERATIONS: usize = 100_000;
+    const ITERATIONS: usize = 1_000;
 
     #[test]
     fn test_inv() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
         Circuit::scoped("Constant", |scope| {
@@ -89,6 +89,7 @@ mod tests {
                 assert_eq!(i + 1, scope.num_public_in_scope());
                 assert_eq!(i + 1, scope.num_private_in_scope());
                 assert_eq!(i + 1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
 
                 accumulator += one;
             }
@@ -107,6 +108,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!((i + 1) * 2, scope.num_private_in_scope());
                 assert_eq!(i + 1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
 
                 accumulator += one;
             }
@@ -115,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_zero_inv_fails() {
-        let zero = <Circuit as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::BaseField::zero();
 
         let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inv());
         assert!(result.is_err()); // Probe further for specific error type here, if desired

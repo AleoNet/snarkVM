@@ -33,7 +33,7 @@ impl<E: Environment> Not for &Boolean<E> {
             E::halt("Boolean variable is not well-formed")
         }
 
-        let one = E::Field::one();
+        let one = E::BaseField::one();
         let boolean = self.to_value();
 
         let output = if self.0.is_constant() {

@@ -50,7 +50,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 // Assign the expected multiplier.
                 let multiplier = E::new_variable(Mode::Private, match this != that {
                     true => (this - that).inverse().expect("Failed to compute a native inverse"),
-                    false => E::Field::one(),
+                    false => E::BaseField::one(),
                 });
 
                 //
@@ -139,12 +139,12 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    const ITERATIONS: usize = 100_000;
+    const ITERATIONS: usize = 1_000;
 
     #[test]
     fn test_is_eq() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Basic `true` and `false` cases
         {
@@ -204,6 +204,7 @@ mod tests {
                 assert_eq!((i + 1) * 2, scope.num_public_in_scope());
                 assert_eq!((i + 1) * 2, scope.num_private_in_scope());
                 assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
 
                 accumulator = accumulator + &one;
             }
@@ -223,6 +224,7 @@ mod tests {
                 assert_eq!(i + 1, scope.num_public_in_scope());
                 assert_eq!((i + 1) * 3, scope.num_private_in_scope());
                 assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
 
                 accumulator = accumulator + &one;
             }
@@ -237,6 +239,7 @@ mod tests {
                 let b = Field::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(true, is_eq.to_value());
+                assert!(scope.is_satisfied());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -250,8 +253,8 @@ mod tests {
 
     #[test]
     fn test_is_neq_cases() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
         let five = two + two + one;
 

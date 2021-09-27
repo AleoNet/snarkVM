@@ -23,7 +23,7 @@ use snarkvm_fields::One as O;
 use criterion::Criterion;
 
 fn evaluate(c: &mut Criterion) {
-    let one = <Circuit as Environment>::Field::one();
+    let one = <Circuit as Environment>::BaseField::one();
 
     // Public variables
     let mut candidate = Field::<Circuit>::one();

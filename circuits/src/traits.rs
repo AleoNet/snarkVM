@@ -65,5 +65,5 @@ pub trait Double {
 pub trait Square {
     type Output;
 
-    fn square(self) -> Self::Output;
+    fn square(&self) -> Self::Output;
 }

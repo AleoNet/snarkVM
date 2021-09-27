@@ -33,25 +33,25 @@ use num_traits::Inv;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone)]
-pub struct Field<E: Environment>(LinearCombination<E::Field>);
+pub struct Field<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> Field<E> {
-    pub fn new(mode: Mode, value: E::Field) -> Self {
+    pub fn new(mode: Mode, value: E::BaseField) -> Self {
         Self(E::new_variable(mode, value).into())
     }
 
-    pub fn to_value(&self) -> E::Field {
+    pub fn to_value(&self) -> E::BaseField {
         self.0.to_value()
     }
 }
 
-impl<E: Environment> From<Field<E>> for LinearCombination<E::Field> {
+impl<E: Environment> From<Field<E>> for LinearCombination<E::BaseField> {
     fn from(field: Field<E>) -> Self {
         field.0
     }
 }
 
-impl<E: Environment> From<&Field<E>> for LinearCombination<E::Field> {
+impl<E: Environment> From<&Field<E>> for LinearCombination<E::BaseField> {
     fn from(field: &Field<E>) -> Self {
         field.0.clone()
     }

@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let zero = <Circuit as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = LinearCombination::zero();
         assert_eq!(zero, candidate.constant);
@@ -348,8 +348,8 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = LinearCombination::one();
         assert_eq!(zero, candidate.constant);
@@ -364,8 +364,8 @@ mod tests {
 
     #[test]
     fn test_is_constant() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = LinearCombination::zero();
         assert!(candidate.is_constant());
@@ -380,8 +380,8 @@ mod tests {
 
     #[test]
     fn test_mul() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
         let four = two + two;
 

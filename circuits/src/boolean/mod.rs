@@ -23,13 +23,13 @@ use snarkvm_fields::{One as O, Zero as Z};
 use std::ops::Not;
 
 #[derive(Clone)]
-pub struct Boolean<E: Environment>(LinearCombination<E::Field>);
+pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> Boolean<E> {
     pub fn new(mode: Mode, value: bool) -> Self {
         let variable = E::new_variable(mode, match value {
-            true => E::Field::one(),
-            false => E::Field::zero(),
+            true => E::BaseField::one(),
+            false => E::BaseField::zero(),
         });
 
         if !mode.is_constant() {
@@ -50,13 +50,13 @@ impl<E: Environment> Boolean<E> {
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
-impl<E: Environment> From<Boolean<E>> for LinearCombination<E::Field> {
+impl<E: Environment> From<Boolean<E>> for LinearCombination<E::BaseField> {
     fn from(boolean: Boolean<E>) -> Self {
         boolean.0
     }
 }
 
-impl<E: Environment> From<&Boolean<E>> for LinearCombination<E::Field> {
+impl<E: Environment> From<&Boolean<E>> for LinearCombination<E::BaseField> {
     fn from(boolean: &Boolean<E>) -> Self {
         boolean.0.clone()
     }
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_new_fail() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
         {
             let candidate = Circuit::new_variable(Mode::Constant, two);

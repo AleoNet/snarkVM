@@ -41,7 +41,7 @@ mod tests {
 
     #[test]
     fn test_double() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
         Circuit::scoped("Constant", |scope| {
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_0_double() {
-        let zero = <Circuit as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero).double();
         assert_eq!(zero, candidate.to_value());
@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_1_double() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
 
         let candidate = Field::<Circuit>::new(Mode::Public, one).double();

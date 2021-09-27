@@ -51,11 +51,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    const ITERATIONS: usize = 500;
+    const ITERATIONS: usize = 25;
 
     #[test]
     fn test_div() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
         let mut dividend = one;
@@ -94,6 +94,7 @@ mod tests {
                     assert_eq!(2, scope.num_public_in_scope());
                     assert_eq!(2, scope.num_private_in_scope());
                     assert_eq!(2, scope.num_constraints_in_scope());
+                    assert!(scope.is_satisfied());
 
                     divisor += one;
                 });
@@ -116,6 +117,7 @@ mod tests {
                     assert_eq!(0, scope.num_public_in_scope());
                     assert_eq!(4, scope.num_private_in_scope());
                     assert_eq!(2, scope.num_constraints_in_scope());
+                    assert!(scope.is_satisfied());
 
                     divisor += one;
                 });
@@ -126,8 +128,8 @@ mod tests {
 
     #[test]
     fn test_div_by_zero_fails() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let result = std::panic::catch_unwind(|| Field::<Circuit>::one() / Field::zero());
         assert!(result.is_err()); // Probe further for specific error type here, if desired

@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let zero = <Circuit as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::zero();
         assert_eq!(zero, candidate.to_value());
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::one();
         assert_eq!(one, candidate.to_value());

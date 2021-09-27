@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
         Circuit::scoped("Constant", |scope| {
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_add_assign() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
         {
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_0_plus_0() {
-        let zero = <Circuit as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::zero() + Field::zero();
         assert_eq!(zero, candidate.to_value());
@@ -207,8 +207,8 @@ mod tests {
 
     #[test]
     fn test_0_plus_1() {
-        let zero = <Circuit as Environment>::Field::zero();
-        let one = <Circuit as Environment>::Field::one();
+        let zero = <Circuit as Environment>::BaseField::zero();
+        let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::zero() + Field::one();
         assert_eq!(one, candidate.to_value());
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_1_plus_1() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
 
         let candidate = Field::<Circuit>::one() + Field::one();
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_1_plus_2() {
-        let one = <Circuit as Environment>::Field::one();
+        let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
         let three = two + one;
 
