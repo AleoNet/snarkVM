@@ -33,7 +33,7 @@ pub fn unwrap_boolean_array_argument<F: PrimeField, G: GroupType<F>>(arg: &Const
             })
             .collect()
     } else {
-        panic!("illegal non-array type in blake2s call");
+        panic!("illegal non-array type in from_bits call");
     }
 }
 
@@ -44,11 +44,11 @@ pub fn unwrap_u8_array_argument<F: PrimeField, G: GroupType<F>>(arg: &Constraine
                 if let ConstrainedValue::Integer(Integer::U8(u8int)) = item {
                     u8int.clone()
                 } else {
-                    panic!("illegal non-u8 type in from_bits call");
+                    panic!("illegal non-u8 type in from_bytes call");
                 }
             })
             .collect()
     } else {
-        panic!("illegal non-array type in blake2s call");
+        panic!("illegal non-array type in from_bytes call");
     }
 }
