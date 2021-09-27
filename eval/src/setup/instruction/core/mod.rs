@@ -21,7 +21,8 @@ mod blake2s;
 mod bytes;
 pub mod common;
 pub use common::*;
-mod len;
+pub mod len;
+pub use len::*;
 
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core(&mut self, name: &str, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
