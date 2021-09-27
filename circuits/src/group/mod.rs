@@ -15,14 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod add;
-// pub mod div;
-// pub mod double;
+pub mod double;
 // pub mod equal;
 // pub mod inv;
 // pub mod mul;
 // pub mod neg;
 // pub mod one;
-// pub mod square;
 // pub mod sub;
 // pub mod zero;
 
@@ -43,7 +41,7 @@ impl<E: Environment> Affine<E> {
     ///
     /// Initializes a new affine group element.
     ///
-    /// If only the x-coordinate is given, recovery of the y-coordinate is performed natively...
+    /// If only the x-coordinate is given, recovery of the y-coordinate is performed natively.
     ///
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
@@ -62,6 +60,10 @@ impl<E: Environment> Affine<E> {
         Self::from(x, y)
     }
 
+    ///
+    /// For safety, the resulting point is always enforced to be on the curve with constraints.
+    /// regardless of whether the y-coordinate was recovered.
+    ///
     pub fn from(x: Field<E>, y: Field<E>) -> Self {
         //
         // Check the point is on the curve.

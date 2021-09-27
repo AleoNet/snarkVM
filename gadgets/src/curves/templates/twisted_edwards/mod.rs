@@ -412,7 +412,7 @@ mod affine_impl {
                 Ok(t0 * t1.inverse().get()?)
             })?;
 
-            let a_x2_plus_y2 = a_x2.add(cs.ns(|| "v2 + 1"), &y2)?;
+            let a_x2_plus_y2 = a_x2.add(cs.ns(|| "a * x^2 + y^2"), &y2)?;
             let two_xy = xy.double(cs.ns(|| "2xy"))?;
             x3.mul_equals(cs.ns(|| "check x3"), &a_x2_plus_y2, &two_xy)?;
 
@@ -424,6 +424,7 @@ mod affine_impl {
                 let t1 = two - a_x2 - y2.get_value().get()?;
                 Ok(t0 * t1.inverse().get()?)
             })?;
+
             let y2_minus_a_x2 = y2.sub(cs.ns(|| "y^2 - ax^2"), &a_x2)?;
             let two_minus_ax2_minus_y2 = a_x2
                 .add(cs.ns(|| "ax2 + y2"), &y2)?
