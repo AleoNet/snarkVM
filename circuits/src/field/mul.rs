@@ -34,6 +34,16 @@ impl<E: Environment> Mul<&Self> for Field<E> {
     }
 }
 
+impl<E: Environment> Mul<&Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn mul(self, other: &Field<E>) -> Self::Output {
+        let mut output = (*self).clone();
+        output *= other;
+        output
+    }
+}
+
 impl<E: Environment> MulAssign<Self> for Field<E> {
     fn mul_assign(&mut self, other: Self) {
         *self *= &other;

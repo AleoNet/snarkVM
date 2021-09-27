@@ -53,3 +53,17 @@ pub trait Equal<Rhs: ?Sized = Self> {
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_neq(&self, other: &Rhs) -> Self::Output;
 }
+
+/// Unary operator for retrieving the doubled value.
+pub trait Double {
+    type Output;
+
+    fn double(self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the squared value.
+pub trait Square {
+    type Output;
+
+    fn square(self) -> Self::Output;
+}

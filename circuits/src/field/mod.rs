@@ -16,11 +16,13 @@
 
 pub mod add;
 pub mod div;
+pub mod double;
 pub mod equal;
 pub mod inv;
 pub mod mul;
 pub mod neg;
 pub mod one;
+pub mod square;
 pub mod sub;
 pub mod zero;
 
@@ -30,6 +32,7 @@ use snarkvm_fields::{Field as F, One as O, Zero as Z};
 use num_traits::Inv;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+#[derive(Clone)]
 pub struct Field<E: Environment>(LinearCombination<E::Field>);
 
 impl<E: Environment> Field<E> {

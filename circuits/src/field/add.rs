@@ -32,6 +32,14 @@ impl<E: Environment> Add<&Self> for Field<E> {
     }
 }
 
+impl<E: Environment> Add<&Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn add(self, other: &Field<E>) -> Self::Output {
+        (*self).clone() + other
+    }
+}
+
 impl<E: Environment> AddAssign<Self> for Field<E> {
     fn add_assign(&mut self, other: Self) {
         *self += &other;
