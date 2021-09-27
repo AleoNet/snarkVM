@@ -323,8 +323,8 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     match part {
                         Value::Str(s) => out += &**s,
                         x => {
-                            dbg!(x.to_string());
-                            out += &*x.to_string();
+                            let val = self.resolve(x)?;
+                            out += &*val.to_string()
                         }
                     }
                 }
