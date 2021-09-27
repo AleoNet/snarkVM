@@ -322,7 +322,10 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 for part in parts {
                     match part {
                         Value::Str(s) => out += &**s,
-                        x => out += &*x.to_string(),
+                        x => {
+                            dbg!(x.to_string());
+                            out += &*x.to_string();
+                        }
                     }
                 }
                 match log_level {
