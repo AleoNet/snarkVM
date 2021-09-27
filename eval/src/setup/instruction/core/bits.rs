@@ -172,7 +172,8 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
 pub const FROM_U8_BITS_CORE: &str = "u8_from_bits";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core_u8_from_bits(&mut self, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
+        dbg!(arguments.len());
+        let arg = match arguments.get(1) {
             None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
