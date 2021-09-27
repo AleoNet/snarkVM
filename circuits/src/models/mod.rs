@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod builder;
-pub use builder::*;
-
 pub mod circuit;
 pub use circuit::*;
 
-pub mod counter;
-pub use counter::*;
+mod constraint_system;
+use constraint_system::*;
+
+mod counter;
+use counter::*;
+
+pub mod environment;
+pub use environment::*;
 
 pub mod linear_combination;
 pub use linear_combination::*;

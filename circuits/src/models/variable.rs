@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{models::*, traits::*};
+use crate::models::*;
 use snarkvm_fields::traits::*;
 
 use std::ops::{Add, AddAssign, Neg, Sub};
+
+pub type Index = u64;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {

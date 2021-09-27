@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod add;
+pub mod div;
+pub mod equal;
 pub mod inv;
 pub mod mul;
 pub mod neg;
@@ -22,12 +24,11 @@ pub mod one;
 pub mod sub;
 pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode, Variable};
+use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
 
-use anyhow::Result;
 use num_traits::Inv;
-use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub struct Field<E: Environment>(LinearCombination<E::Field>);
 

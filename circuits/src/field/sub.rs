@@ -47,90 +47,90 @@ impl<E: Environment> SubAssign<&Self> for Field<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CircuitBuilder;
+    use crate::Circuit;
 
     #[test]
     fn test_0_minus_0() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::Field::zero();
 
-        let candidate = Field::<CircuitBuilder>::zero() - Field::zero();
+        let candidate = Field::<Circuit>::zero() - Field::zero();
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::zero() - &Field::zero();
+        let candidate = Field::<Circuit>::zero() - &Field::zero();
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, zero) - Field::new(Mode::Public, zero);
+        let candidate = Field::<Circuit>::new(Mode::Public, zero) - Field::new(Mode::Public, zero);
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, zero) - Field::new(Mode::Private, zero);
+        let candidate = Field::<Circuit>::new(Mode::Public, zero) - Field::new(Mode::Private, zero);
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, zero) - Field::new(Mode::Private, zero);
+        let candidate = Field::<Circuit>::new(Mode::Private, zero) - Field::new(Mode::Private, zero);
         assert_eq!(zero, candidate.to_value());
     }
 
     #[test]
     fn test_1_minus_0() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
 
-        let candidate = Field::<CircuitBuilder>::one() - Field::zero();
+        let candidate = Field::<Circuit>::one() - Field::zero();
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::one() - &Field::zero();
+        let candidate = Field::<Circuit>::one() - &Field::zero();
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, one) - Field::new(Mode::Public, zero);
+        let candidate = Field::<Circuit>::new(Mode::Public, one) - Field::new(Mode::Public, zero);
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, one) - Field::new(Mode::Private, zero);
+        let candidate = Field::<Circuit>::new(Mode::Public, one) - Field::new(Mode::Private, zero);
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, one) - Field::new(Mode::Private, zero);
+        let candidate = Field::<Circuit>::new(Mode::Private, one) - Field::new(Mode::Private, zero);
         assert_eq!(one, candidate.to_value());
     }
 
     #[test]
     fn test_1_minus_1() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
 
-        let candidate = Field::<CircuitBuilder>::one() - Field::one();
+        let candidate = Field::<Circuit>::one() - Field::one();
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::one() - &Field::one();
+        let candidate = Field::<Circuit>::one() - &Field::one();
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, one) - Field::new(Mode::Public, one);
+        let candidate = Field::<Circuit>::new(Mode::Public, one) - Field::new(Mode::Public, one);
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, one) - Field::new(Mode::Public, one);
+        let candidate = Field::<Circuit>::new(Mode::Private, one) - Field::new(Mode::Public, one);
         assert_eq!(zero, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, one) - Field::new(Mode::Private, one);
+        let candidate = Field::<Circuit>::new(Mode::Private, one) - Field::new(Mode::Private, one);
         assert_eq!(zero, candidate.to_value());
     }
 
     #[test]
     fn test_2_minus_1() {
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let one = <Circuit as Environment>::Field::one();
         let two = one + one;
 
-        let candidate_two = Field::<CircuitBuilder>::one() + Field::one();
+        let candidate_two = Field::<Circuit>::one() + Field::one();
         let candidate = candidate_two - Field::one();
         assert_eq!(one, candidate.to_value());
 
-        let candidate_two = Field::<CircuitBuilder>::one() + &Field::one();
+        let candidate_two = Field::<Circuit>::one() + &Field::one();
         let candidate = candidate_two - &Field::one();
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, two) - Field::new(Mode::Public, one);
+        let candidate = Field::<Circuit>::new(Mode::Public, two) - Field::new(Mode::Public, one);
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, two) - Field::new(Mode::Public, one);
+        let candidate = Field::<Circuit>::new(Mode::Private, two) - Field::new(Mode::Public, one);
         assert_eq!(one, candidate.to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, two) - Field::new(Mode::Private, one);
+        let candidate = Field::<Circuit>::new(Mode::Private, two) - Field::new(Mode::Private, one);
         assert_eq!(one, candidate.to_value());
     }
 }

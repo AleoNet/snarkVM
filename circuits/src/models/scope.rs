@@ -14,27 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{models::*, traits::*};
-
+use crate::models::*;
 use snarkvm_fields::PrimeField;
 
-use once_cell::unsync::OnceCell;
-use std::{
-    cell::{Ref, RefCell},
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 pub type Scope = String;
 
 #[derive(Clone)]
 pub struct CircuitScope<F: PrimeField> {
-    pub(super) circuit: Rc<RefCell<Circuit<F>>>,
+    pub(super) circuit: Rc<RefCell<ConstraintSystem<F>>>,
     scope: Scope,
     previous: Option<Scope>,
 }
 
 impl<F: PrimeField> CircuitScope<F> {
-    pub(super) fn new(circuit: Rc<RefCell<Circuit<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
+    pub(super) fn new(circuit: Rc<RefCell<ConstraintSystem<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
         Self {
             circuit,
             scope,
@@ -52,14 +47,6 @@ impl<F: PrimeField> CircuitScope<F> {
 
     pub(crate) fn is_satisfied(&self) -> bool {
         self.circuit.borrow().is_satisfied()
-    }
-
-    pub(crate) fn zero(&self) -> LinearCombination<F> {
-        LinearCombination::zero()
-    }
-
-    pub(crate) fn one(&self) -> LinearCombination<F> {
-        Variable::one().into()
     }
 
     pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {

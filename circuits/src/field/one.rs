@@ -18,45 +18,44 @@ use super::*;
 
 impl<E: Environment> One for Field<E> {
     type Boolean = Boolean<E>;
-    type Output = Result<Self::Boolean>;
+    type Output = Self::Boolean;
 
     fn one() -> Self {
         Self(E::one())
     }
 
     fn is_one(&self) -> Self::Output {
-        unimplemented!()
-        // Ok(self.eq(&Self::one())?)
+        self.is_eq(&Self::one())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CircuitBuilder;
+    use crate::Circuit;
 
     #[test]
     fn test_one() {
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let one = <Circuit as Environment>::Field::one();
 
-        CircuitBuilder::scoped("One", |scope| {
-            assert_eq!(0, CircuitBuilder::num_constants());
-            assert_eq!(1, CircuitBuilder::num_public());
-            assert_eq!(0, CircuitBuilder::num_private());
-            assert_eq!(0, CircuitBuilder::num_constraints());
+        Circuit::scoped("One", |scope| {
+            assert_eq!(0, Circuit::num_constants());
+            assert_eq!(1, Circuit::num_public());
+            assert_eq!(0, Circuit::num_private());
+            assert_eq!(0, Circuit::num_constraints());
 
             assert_eq!(0, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            let candidate = Field::<CircuitBuilder>::one();
+            let candidate = Field::<Circuit>::one();
             assert_eq!(one, candidate.to_value());
 
-            assert_eq!(0, CircuitBuilder::num_constants());
-            assert_eq!(1, CircuitBuilder::num_public());
-            assert_eq!(0, CircuitBuilder::num_private());
-            assert_eq!(0, CircuitBuilder::num_constraints());
+            assert_eq!(0, Circuit::num_constants());
+            assert_eq!(1, Circuit::num_public());
+            assert_eq!(0, Circuit::num_private());
+            assert_eq!(0, Circuit::num_constraints());
 
             assert_eq!(0, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
@@ -65,18 +64,16 @@ mod tests {
         });
     }
 
-    // #[test]
-    // fn test_is_one() -> anyhow::Result<()> {
-    //     let candidate = CandidateField::one();
-    //
-    //     // Should equal 1
-    //     let candidate_boolean = candidate.is_one()?;
-    //     assert_eq!(true, candidate_boolean.to_value()?);
-    //
-    //     // Should not equal 0
-    //     let candidate_boolean = candidate.is_zero()?;
-    //     assert_eq!(false, candidate_boolean.to_value()?);
-    //
-    //     Ok(())
-    // }
+    #[test]
+    fn test_is_one() {
+        let candidate = Field::<Circuit>::one();
+
+        // Should equal 1.
+        let candidate_boolean = candidate.is_one();
+        assert_eq!(true, candidate_boolean.to_value());
+
+        // Should not equal 0.
+        let candidate_boolean = candidate.is_zero();
+        assert_eq!(false, candidate_boolean.to_value());
+    }
 }

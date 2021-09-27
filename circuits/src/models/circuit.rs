@@ -14,116 +14,135 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{models::*, traits::*};
-use snarkvm_fields::traits::*;
+use crate::models::*;
 
-use std::collections::HashMap;
+use snarkvm_curves::bls12_377::Fr;
 
-#[derive(Debug)]
-pub(super) struct Circuit<F: PrimeField> {
-    constants: Vec<Variable<F>>,
-    public: Vec<Variable<F>>,
-    private: Vec<Variable<F>>,
-    constraints: Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)>,
-    transcript: HashMap<Variable<F>, Scope>,
-    counter: CircuitCounter,
+use once_cell::unsync::OnceCell;
+use std::{cell::RefCell, rc::Rc};
+
+thread_local! {
+    static CB: OnceCell<RefCell<Circuit >> = OnceCell::new();
 }
 
-impl<F: PrimeField> Circuit<F> {
-    pub(super) fn new() -> Self {
-        Self {
-            constants: Default::default(),
-            public: vec![Variable::Public(0u64, F::one())],
-            private: Default::default(),
-            constraints: Default::default(),
-            transcript: Default::default(),
-            counter: Default::default(),
+#[derive(Clone)]
+pub struct Circuit(CircuitScope<Fr>);
+
+impl Circuit {
+    fn cs() -> CircuitScope<<Self as Environment>::Field> {
+        CB.with(|cb| {
+            cb.get_or_init(|| {
+                let scope = CircuitScope::<<Self as Environment>::Field>::new(
+                    Rc::new(RefCell::new(ConstraintSystem::new())),
+                    format!("ConstraintSystem::new"),
+                    None,
+                );
+                RefCell::new(Circuit(scope))
+            })
+            .borrow()
+            .0
+            .clone()
+        })
+    }
+
+    #[cfg(test)]
+    pub fn reset_circuit() {
+        CB.with(|cb| {
+            (*cb.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::Field>::new(
+                Rc::new(RefCell::new(ConstraintSystem::new())),
+                format!("ConstraintSystem::new"),
+                None,
+            );
+        });
+
+        assert_eq!(0, Self::cs().num_constants());
+        assert_eq!(1, Self::cs().num_public());
+        assert_eq!(0, Self::cs().num_private());
+        assert_eq!(0, Self::cs().num_constraints());
+    }
+
+    pub fn print_circuit() {
+        println!("{:?}", Self::cs().circuit.borrow());
+    }
+}
+
+impl Environment for Circuit {
+    type Field = Fr;
+
+    fn new_variable(mode: Mode, value: Self::Field) -> Variable<Self::Field> {
+        match mode {
+            Mode::Constant => Self::cs().new_constant(value),
+            Mode::Public => Self::cs().new_public(value),
+            Mode::Private => Self::cs().new_private(value),
         }
     }
 
-    pub(crate) fn is_satisfied(&self) -> bool {
-        for (a, b, c) in &self.constraints {
-            let a = a.to_value();
-            let b = b.to_value();
-            let c = c.to_value();
-
-            if a * b != c {
-                return false;
-            }
-        }
-        true
+    fn zero() -> LinearCombination<Self::Field> {
+        LinearCombination::zero()
     }
 
-    /// Return the "one" input variable.
-    fn one(&self) -> Variable<F> {
-        self.public[0]
+    fn one() -> LinearCombination<Self::Field> {
+        LinearCombination::one()
     }
 
-    pub(crate) fn new_constant(&mut self, value: F, scope: Scope) -> Variable<F> {
-        let variable = Variable::Constant(value);
-        self.constants.push(variable);
-        self.counter.increment_constant(&scope);
-        self.transcript.insert(variable, scope);
-        variable
+    fn is_satisfied() -> bool {
+        Self::cs().is_satisfied()
     }
 
-    pub(crate) fn new_public(&mut self, value: F, scope: Scope) -> Variable<F> {
-        let variable = Variable::Public(self.public.len() as u64, value);
-        self.public.push(variable);
-        self.counter.increment_public(&scope);
-        self.transcript.insert(variable, scope);
-        variable
+    fn scope(name: &str) -> CircuitScope<Self::Field> {
+        CB.with(|cb| {
+            let scope = Self::cs().scope(name);
+            (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
+            scope
+        })
     }
 
-    pub(crate) fn new_private(&mut self, value: F, scope: Scope) -> Variable<F> {
-        let variable = Variable::Private(self.private.len() as u64, value);
-        self.private.push(variable);
-        self.counter.increment_private(&scope);
-        self.transcript.insert(variable, scope);
-        variable
+    fn scoped<Fn>(name: &str, logic: Fn)
+    where
+        Fn: FnOnce(CircuitScope<Self::Field>) -> (),
+    {
+        CB.with(|cb| {
+            // Fetch the current environment.
+            let current = Self::cs().clone();
+
+            // Set the entire environment to the new scope, and run the logic.
+            let scope = current.clone().scope(name);
+            (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
+            logic(scope);
+
+            // Return the entire environment to the previous scope.
+            (*cb.get().unwrap().borrow_mut()).0 = current;
+        });
     }
 
-    pub(crate) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn, scope: Scope)
+    fn enforce<Fn, A, B, C>(constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
-        A: Into<LinearCombination<F>>,
-        B: Into<LinearCombination<F>>,
-        C: Into<LinearCombination<F>>,
+        A: Into<LinearCombination<Self::Field>>,
+        B: Into<LinearCombination<Self::Field>>,
+        C: Into<LinearCombination<Self::Field>>,
     {
-        let (a, b, c) = constraint();
-        self.constraints.push((a.into(), b.into(), c.into()));
-        self.counter.increment_constraints(&scope);
+        Self::cs().enforce(constraint)
     }
 
-    pub(crate) fn num_constants(&self) -> usize {
-        self.constants.len()
+    fn num_constants() -> usize {
+        Self::cs().num_constants()
     }
 
-    pub(crate) fn num_public(&self) -> usize {
-        self.public.len()
+    fn num_public() -> usize {
+        Self::cs().num_public()
     }
 
-    pub(crate) fn num_private(&self) -> usize {
-        self.private.len()
+    fn num_private() -> usize {
+        Self::cs().num_private()
     }
 
-    pub(crate) fn num_constraints(&self) -> usize {
-        self.constraints.len()
+    fn num_constraints() -> usize {
+        Self::cs().num_constraints()
     }
 
-    pub(crate) fn num_constants_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_constants_in_scope(scope)
-    }
-
-    pub(crate) fn num_public_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_public_in_scope(scope)
-    }
-
-    pub(crate) fn num_private_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_private_in_scope(scope)
-    }
-
-    pub(crate) fn num_constraints_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_constraints_in_scope(scope)
+    fn halt<T>(message: &'static str) -> T {
+        eprintln!("{}", message);
+        panic!("{}", message)
     }
 }

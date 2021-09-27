@@ -35,23 +35,23 @@ impl<E: Environment> Neg for &Field<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CircuitBuilder;
+    use crate::Circuit;
 
     #[test]
     fn test_zero() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::Field::zero();
 
-        let candidate = Field::<CircuitBuilder>::zero();
+        let candidate = Field::<Circuit>::zero();
         assert_eq!(zero, candidate.to_value());
         assert_eq!(zero, (-&candidate).to_value());
         assert_eq!(zero, (-(-candidate)).to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, zero);
+        let candidate = Field::<Circuit>::new(Mode::Public, zero);
         assert_eq!(zero, candidate.to_value());
         assert_eq!(zero, (-&candidate).to_value());
         assert_eq!(zero, (-(-candidate)).to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, zero);
+        let candidate = Field::<Circuit>::new(Mode::Private, zero);
         assert_eq!(zero, candidate.to_value());
         assert_eq!(zero, (-&candidate).to_value());
         assert_eq!(zero, (-(-candidate)).to_value());
@@ -59,19 +59,19 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let one = <Circuit as Environment>::Field::one();
 
-        let candidate = Field::<CircuitBuilder>::one();
+        let candidate = Field::<Circuit>::one();
         assert_eq!(one, candidate.to_value());
         assert_eq!(-one, (-&candidate).to_value());
         assert_eq!(one, (-(-candidate)).to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Public, one);
+        let candidate = Field::<Circuit>::new(Mode::Public, one);
         assert_eq!(one, candidate.to_value());
         assert_eq!(-one, (-&candidate).to_value());
         assert_eq!(one, (-(-candidate)).to_value());
 
-        let candidate = Field::<CircuitBuilder>::new(Mode::Private, one);
+        let candidate = Field::<Circuit>::new(Mode::Private, one);
         assert_eq!(one, candidate.to_value());
         assert_eq!(-one, (-&candidate).to_value());
         assert_eq!(one, (-(-candidate)).to_value());

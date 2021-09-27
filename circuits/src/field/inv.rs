@@ -28,7 +28,11 @@ impl<E: Environment> Inv for &Field<E> {
     type Output = Field<E>;
 
     fn inv(self) -> Self::Output {
-        let inverse = self.to_value().inverse().expect("Failed to compute the inverse");
+        let inverse = match self.to_value().inverse() {
+            Some(inverse) => inverse,
+            None => E::halt("Failed to compute the inverse"),
+        };
+
         match self.0.is_constant() {
             true => Field::<E>::new(Mode::Constant, inverse),
             false => {
@@ -46,22 +50,21 @@ impl<E: Environment> Inv for &Field<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CircuitBuilder;
+    use crate::Circuit;
 
-    const ITERATIONS: usize = 500_000;
+    const ITERATIONS: usize = 100_000;
 
     #[test]
     fn test_inv() {
-        // let zero = <CircuitBuilder as Environment>::Field::zero();
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let one = <Circuit as Environment>::Field::one();
 
         // Constant variables
-        CircuitBuilder::scoped("Constant", |scope| {
+        Circuit::scoped("Constant", |scope| {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
-                let candidate = Field::<CircuitBuilder>::new(Mode::Constant, accumulator).inv();
+                let candidate = Field::<Circuit>::new(Mode::Constant, accumulator).inv();
                 assert_eq!(expected, candidate.to_value());
 
                 assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
@@ -74,12 +77,12 @@ mod tests {
         });
 
         // Public variables
-        CircuitBuilder::scoped("Public", |scope| {
+        Circuit::scoped("Public", |scope| {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
-                let candidate = Field::<CircuitBuilder>::new(Mode::Public, accumulator).inv();
+                let candidate = Field::<Circuit>::new(Mode::Public, accumulator).inv();
                 assert_eq!(expected, candidate.to_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -92,12 +95,12 @@ mod tests {
         });
 
         // Private variables
-        CircuitBuilder::scoped("Private", |scope| {
+        Circuit::scoped("Private", |scope| {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
-                let candidate = Field::<CircuitBuilder>::new(Mode::Private, accumulator).inv();
+                let candidate = Field::<Circuit>::new(Mode::Private, accumulator).inv();
                 assert_eq!(expected, candidate.to_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -108,5 +111,22 @@ mod tests {
                 accumulator += one;
             }
         });
+    }
+
+    #[test]
+    fn test_zero_inv_fails() {
+        let zero = <Circuit as Environment>::Field::zero();
+
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inv());
+        assert!(result.is_err()); // Probe further for specific error type here, if desired
+
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, zero).inv());
+        assert!(result.is_err()); // Probe further for specific error type here, if desired
+
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, zero).inv());
+        assert!(result.is_err()); // Probe further for specific error type here, if desired
+
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, zero).inv());
+        assert!(result.is_err()); // Probe further for specific error type here, if desired
     }
 }

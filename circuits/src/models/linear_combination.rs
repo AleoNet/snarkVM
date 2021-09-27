@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{models::*, traits::*};
+use crate::models::*;
 use snarkvm_fields::PrimeField;
 
-pub type Index = u64;
-
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
-
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::HashMap,
+    ops::{Add, AddAssign, Mul, Neg, Sub},
+};
 
 use rayon::prelude::*;
 
@@ -45,6 +44,51 @@ impl<F: PrimeField> LinearCombination<F> {
 
     pub fn is_constant(&self) -> bool {
         self.terms.is_empty()
+    }
+
+    ///
+    /// Returns `true` if the linear combination represents a `Boolean` type,
+    /// and is well-formed.
+    ///
+    /// Properties:
+    /// 1. Either `constant` or `terms` is utilized, however never both.
+    /// 2. Every individual variable in the linear combination must always be either `0` or `1`.
+    /// 3. The value of the linear combination must always be either `0` or `1`.
+    ///
+    pub fn is_boolean_type(&self) -> bool {
+        if self.terms.is_empty() {
+            // Constant case
+            self.constant.is_zero() || self.constant.is_one()
+        } else if self.constant.is_zero() {
+            // Public and private cases
+
+            // Enforce property 1.
+            if self.terms.is_empty() {
+                return false;
+            }
+
+            // Enforce property 2.
+            if self
+                .terms
+                .iter()
+                .filter(|(v, _)| !(v.value().is_zero() || v.value().is_one()))
+                .count()
+                > 0
+            {
+                return false;
+            }
+
+            // Enforce property 3.
+            let value = self.to_value();
+            if !(value.is_zero() || value.is_one()) {
+                return false;
+            }
+
+            true
+        } else {
+            // Both self.constant and self.terms contain elements. This is a violation.
+            false
+        }
     }
 
     pub fn to_value(&self) -> F {
@@ -145,6 +189,22 @@ impl<F: PrimeField> Neg for &LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Add<Variable<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn add(self, other: Variable<F>) -> Self::Output {
+        self + &other
+    }
+}
+
+impl<F: PrimeField> Add<&Variable<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn add(self, other: &Variable<F>) -> Self::Output {
+        self + Self::from(other)
+    }
+}
+
 impl<F: PrimeField> Add<LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
@@ -173,19 +233,11 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
     }
 }
 
-impl<F: PrimeField> Add<Variable<F>> for LinearCombination<F> {
-    type Output = Self;
+impl<F: PrimeField> Add<&LinearCombination<F>> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
 
-    fn add(self, other: Variable<F>) -> Self::Output {
-        self + &other
-    }
-}
-
-impl<F: PrimeField> Add<&Variable<F>> for LinearCombination<F> {
-    type Output = Self;
-
-    fn add(self, other: &Variable<F>) -> Self::Output {
-        self + Self::from(other)
+    fn add(self, other: &LinearCombination<F>) -> Self::Output {
+        (*self).clone() + other
     }
 }
 
@@ -217,14 +269,6 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
     }
 }
 
-impl<F: PrimeField> Sub<LinearCombination<F>> for LinearCombination<F> {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self::Output {
-        self + (-other)
-    }
-}
-
 impl<F: PrimeField> Sub<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
@@ -238,6 +282,30 @@ impl<F: PrimeField> Sub<&Variable<F>> for LinearCombination<F> {
 
     fn sub(self, other: &Variable<F>) -> Self::Output {
         self - Self::from(other)
+    }
+}
+
+impl<F: PrimeField> Sub<LinearCombination<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        self - &other
+    }
+}
+
+impl<F: PrimeField> Sub<&LinearCombination<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn sub(self, other: &Self) -> Self::Output {
+        self + (-other)
+    }
+}
+
+impl<F: PrimeField> Sub<&LinearCombination<F>> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: &LinearCombination<F>) -> Self::Output {
+        self.clone() - other
     }
 }
 
@@ -270,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let zero = <Circuit as Environment>::Field::zero();
 
         let candidate = LinearCombination::zero();
         assert_eq!(zero, candidate.constant);
@@ -280,8 +348,8 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
 
         let candidate = LinearCombination::one();
         assert_eq!(zero, candidate.constant);
@@ -296,8 +364,8 @@ mod tests {
 
     #[test]
     fn test_is_constant() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
 
         let candidate = LinearCombination::zero();
         assert!(candidate.is_constant());
@@ -312,8 +380,8 @@ mod tests {
 
     #[test]
     fn test_mul() {
-        let zero = <CircuitBuilder as Environment>::Field::zero();
-        let one = <CircuitBuilder as Environment>::Field::one();
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
         let two = one + one;
         let four = two + two;
 

@@ -14,61 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::models::*;
-use snarkvm_fields::traits::*;
+use std::ops::Not;
 
-use std::ops::{Add, Div, Mul, Neg, Not, Sub};
-
-pub enum Mode {
-    Constant,
-    Public,
-    Private,
-}
-
-pub trait Environment {
-    type Field: PrimeField + Copy;
-
-    fn is_satisfied() -> bool;
-
-    fn scope(name: &str) -> CircuitScope<Self::Field>;
-
-    fn scoped<Fn>(name: &str, logic: Fn)
-    where
-        Fn: FnOnce(CircuitScope<Self::Field>) -> ();
-
-    // fn scoped<'a, EE, F>(name: &str, logic: F)
-    // where
-    //     EE: 'a + Environment,
-    //     F: FnOnce(CircuitScope<'a, EE>) -> ();
-
-    // fn scope<E, F>(name: &str, logic: F)
-    // where
-    //     E: Environment<Field = Fr>,
-    //     F: FnOnce(E) -> ();
-
-    fn zero() -> LinearCombination<Self::Field>;
-    fn one() -> LinearCombination<Self::Field>;
-
-    fn new_variable(mode: Mode, value: Self::Field) -> Variable<Self::Field>;
-    // fn new_constant(value: Self::Field) -> Variable<Self::Field>;
-    // fn new_public(value: Self::Field) -> Variable<Self::Field>;
-    // fn new_private(value: Self::Field) -> Variable<Self::Field>;
-
-    fn enforce<Fn, A, B, C>(constraint: Fn)
-    where
-        Fn: FnOnce() -> (A, B, C),
-        A: Into<LinearCombination<Self::Field>>,
-        B: Into<LinearCombination<Self::Field>>,
-        C: Into<LinearCombination<Self::Field>>;
-
-    fn num_constants() -> usize;
-    fn num_public() -> usize;
-    fn num_private() -> usize;
-    fn num_constraints() -> usize;
-}
-
-pub trait BooleanTrait {}
-// pub trait BooleanTrait: Sized + Clone + Not {}
+pub trait BooleanTrait: Not {}
 
 /// Representation of the zero value.
 pub trait Zero {
@@ -100,5 +48,8 @@ pub trait Equal<Rhs: ?Sized = Self> {
     type Output;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn eq(&self, other: &Rhs) -> Self::Output;
+    fn is_eq(&self, other: &Rhs) -> Self::Output;
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_neq(&self, other: &Rhs) -> Self::Output;
 }

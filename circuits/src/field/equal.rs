@@ -16,203 +16,348 @@
 
 use super::*;
 
-impl<E: Environment> Equal for Field<E> {
+impl<E: Environment> Equal<Self> for Field<E> {
     type Boolean = Boolean<E>;
-    type Output = Result<Self::Boolean>;
+    type Output = Boolean<E>;
 
-    #[named]
-    fn eq(&self, other: &Self) -> Self::Output {
-        match (self, other) {
-            (Field::Constant(a), Field::Constant(b)) => Ok(Boolean::constant(a == b)),
-            (Field::Constant(a), Field::Variable(b, cb)) => {
-                // let element = b.(&mut cb.borrow_mut().ns(|| function_name!()), &a)?;
-                // Ok(Fp::from((element, cb.clone())))
-                unimplemented!()
-            }
-            (Field::Variable(a, cb), Field::Constant(b)) => {
-                // let element = a.(&mut cb.borrow_mut().ns(|| function_name!()), &b)?;
-                // Ok(Fp::from((element, cb.clone())))
-                unimplemented!()
-            }
-            (Field::Variable(a, cb), Field::Variable(b, _)) => {
-                // Allocate the _negation_ of the expected output boolean value as a witness.
-                let witness = Boolean::alloc_private(function_name!(), (a != b, cb.clone()))?;
-                let witness_variable = match witness.to_gadget_unsafe() {
-                    Some(gadget) => gadget.lc(<CB::CS as ConstraintSystem<F>>::one(), F::one()),
-                    None => return Err(FieldError::ConstantShouldBeVariable),
-                };
-                let witness_not_variable = match (&witness).not().to_gadget_unsafe() {
-                    Some(gadget) => gadget.lc(<CB::CS as ConstraintSystem<F>>::one(), F::one()),
-                    None => return Err(FieldError::ConstantShouldBeVariable),
-                };
+    ///
+    /// Returns `true` if `self` and `other` are equal.
+    ///
+    /// This method costs 3 constraints.
+    ///
+    fn is_eq(&self, other: &Self) -> Self::Output {
+        !self.is_neq(other)
+    }
 
-                // If the witness is `true`, allocate the _inverse_ of (a - b).
-                // Else, allocate one.
-                let multiplier = Field::alloc_private(
-                    function_name!(),
-                    (
-                        match witness.to_value()? {
-                            true => match (self.to_value()? - &other.to_value()?).inverse() {
-                                Some(value) => value,
-                                _ => return Err(FieldError::MissingValue),
-                            },
-                            false => Field::<F, CB>::one().to_value()?,
-                        },
-                        cb.clone(),
-                    ),
-                )?;
-                let multiplier_variable = match multiplier.to_gadget_unsafe() {
-                    Some(gadget) => gadget.variable,
-                    None => return Err(FieldError::ConstantShouldBeVariable),
-                };
+    ///
+    /// Returns `true` if `self` and `other` are *not* equal.
+    ///
+    /// This method constructs a boolean that indicates if
+    /// `self` and `other ` are *not* equal to each other.
+    ///
+    /// This method costs 3 constraints.
+    ///
+    fn is_neq(&self, other: &Self) -> Self::Output {
+        match (self.0.is_constant(), other.0.is_constant()) {
+            (true, true) => Boolean::new(Mode::Constant, self.to_value() != other.to_value()),
+            _ => {
+                let this = self.to_value();
+                let that = other.to_value();
+
+                // Compute a boolean that is `true` if `this` and `that` are not equivalent.
+                let is_neq = Boolean::new(Mode::Private, this != that);
+
+                // Assign the expected multiplier.
+                let multiplier = E::new_variable(Mode::Private, match this != that {
+                    true => (this - that).inverse().expect("Failed to compute a native inverse"),
+                    false => E::Field::one(),
+                });
+
                 //
-                // Equality Enforcement
-                // --------------------------------------------------------------
-                // Check 1:  (a - b) * multiplier = witness
-                // Check 2:  (a - b) * not(witness) = 0
+                // Inequality Enforcement
+                // ----------------------------------------------------------------
+                // Check 1:  (a - b) * multiplier = is_neq
+                // Check 2:  (a - b) * not(is_neq) = 0
                 //
                 //
-                // Case 1: a == b AND witness == 0 (completeness)
-                // --------------------------------------------------------------
+                // Case 1: a == b AND is_neq == 0 (honest)
+                // ----------------------------------------------------------------
                 // Check 1:  (a - b) * 1 = 0
                 //                 a - b = 0
-                // => As a == b, the witness is correct.
+                // => As a == b, is_neq is correct.
                 //
                 // Check 2:  (a - b) * not(0) = 0
                 //                      a - b = 0
-                // => As a == b, the witness is correct.
+                // => As a == b, is_neq is correct.
                 //
-                // Remark: While the multiplier = 1 here, letting multiplier = n,
+                // Remark: While the multiplier = 1 here, letting multiplier := n,
                 //         for n as any field element, also holds.
                 //
                 //
-                // Case 2: a == b AND witness == 1 (soundness)
-                // --------------------------------------------------------------
+                // Case 2: a == b AND is_neq == 1 (dishonest)
+                // ----------------------------------------------------------------
                 // Check 1:  (a - b) * 1 = 1
                 //                 a - b = 1
-                // => As a == b, the witness is incorrect.
+                // => As a == b, the is_neq is incorrect.
                 //
-                // Remark: While the multiplier = 1 here, letting multiplier = n,
+                // Remark: While the multiplier = 1 here, letting multiplier := n,
                 //         for n as any field element, also holds.
                 //
                 //
-                // Case 3a: a != b AND witness == 0 AND multiplier = 0 (soundness)
+                // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
                 // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 0 = 0
-                //                     0 = 0
-                // => We must rely on Check 2 to enforce correctness.
-                //
                 // Check 2:  (a - b) * not(0) = 0
                 //                      a - b = 0
-                // => As a != b, the witness is incorrect.
+                // => As a != b, is_neq is incorrect.
                 //
-                //
-                // Case 3b: a != b AND witness == 0 AND multiplier = 1 (soundness)
-                // -----------------------------------------------------------------
+                // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
+                // ----------------------------------------------------------------
                 // Check 1:  (a - b) * 1 = 0
                 //                 a - b = 0
-                // => As a != b, the witness is incorrect.
+                // => As a != b, is_neq is incorrect.
                 //
                 // Remark: While the multiplier = 1 here, letting multiplier = n,
                 //         for n as any field element (n != 0), also holds.
                 //
                 //
-                // Case 4a: a != b AND witness == 1 AND multiplier = n [!= (a - b)^(-1)] (soundness)
+                // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
                 // ---------------------------------------------------------------------------------
                 // Check 1:  (a - b) * n = 1
-                // => As n != (a - b)^(-1), the witness is incorrect.
+                // => As n != (a - b)^(-1), is_neq is incorrect.
                 //
-                //
-                // Case 4b: a != b AND witness == 1 AND multiplier = (a - b)^(-1) (completeness)
+                // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
                 // ---------------------------------------------------------------------------------
                 // Check 1:  (a - b) * (a - b)^(-1) = 1
                 //                                1 = 1
-                // => The witness is trivially correct.
+                // => is_neq is trivially correct.
                 //
                 // Check 2:  (a - b) * not(1) = 0
                 //                          0 = 0
-                // => The witness is trivially correct.
+                // => is_neq is trivially correct.
                 //
-                cb.borrow_mut().enforce(
-                    || function_name!(),
-                    |lc| (&a.variable - &b.variable) + lc,
-                    |lc| multiplier_variable + lc,
-                    |lc| witness_variable + lc,
-                );
-                cb.borrow_mut().enforce(
-                    || function_name!(),
-                    |lc| (&a.variable - &b.variable) + lc,
-                    |lc| witness_not_variable + lc,
-                    |lc| lc,
-                );
-                Ok(witness.not())
+
+                // Compute `self` - `other`.
+                let delta = &self.0 - &other.0;
+
+                // Negate `is_neq`.
+                let is_eq = !is_neq.clone();
+
+                // Check 1: (a - b) * multiplier = is_neq
+                E::enforce(|| (delta.clone(), multiplier, is_neq.clone()));
+
+                // Check 2: (a - b) * not(is_neq) = 0
+                E::enforce(|| (delta, is_eq, E::zero()));
+
+                is_neq
             }
         }
     }
 }
 
 #[cfg(test)]
-mod constant {
+mod tests {
     use super::*;
+    use crate::Circuit;
+
+    const ITERATIONS: usize = 100_000;
 
     #[test]
-    fn test_0_equals_0() -> anyhow::Result<()> {
-        let candidate = CandidateField::zero().eq(&CandidateField::zero())?;
-        assert!(candidate.to_value()?);
+    fn test_is_eq() {
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
 
-        Ok(())
+        // Basic `true` and `false` cases
+        {
+            let mut accumulator = one + one;
+
+            for _ in 0..ITERATIONS {
+                let a = Field::<Circuit>::new(Mode::Private, accumulator);
+                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let is_eq = a.is_eq(&b);
+                assert_eq!(true, is_eq.to_value());
+
+                let a = Field::<Circuit>::new(Mode::Private, one);
+                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let is_eq = a.is_eq(&b);
+                assert_eq!(false, is_eq.to_value());
+
+                let a = Field::<Circuit>::new(Mode::Private, accumulator);
+                let b = Field::<Circuit>::new(Mode::Private, accumulator - one);
+                let is_eq = a.is_eq(&b);
+                assert_eq!(false, is_eq.to_value());
+
+                accumulator = accumulator + &one;
+            }
+        }
+
+        // Constant variables
+        Circuit::scoped("Constant", |scope| {
+            let mut accumulator = zero;
+
+            for i in 0..ITERATIONS {
+                let a = Field::<Circuit>::new(Mode::Constant, accumulator);
+                let b = Field::<Circuit>::new(Mode::Constant, accumulator);
+
+                let is_eq = a.is_eq(&b);
+                assert_eq!(true, is_eq.to_value());
+
+                assert_eq!((i + 1) * 3, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                accumulator = accumulator + &one;
+            }
+        });
+
+        // Public variables
+        Circuit::scoped("Public", |scope| {
+            let mut accumulator = zero;
+
+            for i in 0..ITERATIONS {
+                let a = Field::<Circuit>::new(Mode::Public, accumulator);
+                let b = Field::<Circuit>::new(Mode::Public, accumulator);
+                let is_eq = a.is_eq(&b);
+                assert_eq!(true, is_eq.to_value());
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!((i + 1) * 2, scope.num_public_in_scope());
+                assert_eq!((i + 1) * 2, scope.num_private_in_scope());
+                assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
+
+                accumulator = accumulator + &one;
+            }
+        });
+
+        // Public and private variables
+        Circuit::scoped("Public and Private", |scope| {
+            let mut accumulator = zero;
+
+            for i in 0..ITERATIONS {
+                let a = Field::<Circuit>::new(Mode::Public, accumulator);
+                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let is_eq = a.is_eq(&b);
+                assert_eq!(true, is_eq.to_value());
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(i + 1, scope.num_public_in_scope());
+                assert_eq!((i + 1) * 3, scope.num_private_in_scope());
+                assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
+
+                accumulator = accumulator + &one;
+            }
+        });
+
+        // Private variables
+        Circuit::scoped("Private", |scope| {
+            let mut accumulator = zero;
+
+            for i in 0..ITERATIONS {
+                let a = Field::<Circuit>::new(Mode::Private, accumulator);
+                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let is_eq = a.is_eq(&b);
+                assert_eq!(true, is_eq.to_value());
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!((i + 1) * 4, scope.num_private_in_scope());
+                assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
+
+                accumulator = accumulator + &one;
+            }
+        });
     }
 
     #[test]
-    fn test_1_equals_1() -> anyhow::Result<()> {
-        let candidate = CandidateField::one().eq(&CandidateField::one())?;
-        assert!(candidate.to_value()?);
+    fn test_is_neq_cases() {
+        let zero = <Circuit as Environment>::Field::zero();
+        let one = <Circuit as Environment>::Field::one();
+        let two = one + one;
+        let five = two + two + one;
 
-        Ok(())
-    }
+        // Inequality Enforcement
+        // ----------------------------------------------------------------
+        // Check 1:  (a - b) * multiplier = is_neq
+        // Check 2:  (a - b) * not(is_neq) = 0
 
-    #[test]
-    fn test_0_equals_1() -> anyhow::Result<()> {
-        let candidate = CandidateField::zero().eq(&CandidateField::one())?;
-        assert!(!candidate.to_value()?);
+        let enforce = |a: Field<Circuit>, b: Field<Circuit>, multiplier: Field<Circuit>, is_neq: Boolean<Circuit>| {
+            // Compute `self` - `other`.
+            let delta = &a.0 - &b.0;
 
-        Ok(())
-    }
+            // Negate `is_neq`.
+            let is_eq = !is_neq.clone();
 
-    #[test]
-    fn test_1_equals_0() -> anyhow::Result<()> {
-        let candidate = CandidateField::one().eq(&CandidateField::zero())?;
-        assert!(!candidate.to_value()?);
+            // Check 1: (a - b) * multiplier = is_neq
+            Circuit::enforce(|| (delta.clone(), multiplier, is_neq.clone()));
 
-        Ok(())
-    }
-}
+            // Check 2: (a - b) * not(is_neq) = 0
+            Circuit::enforce(|| (delta, is_eq, Circuit::zero()));
+        };
 
-#[cfg(test)]
-mod variable {
-    use super::*;
+        //
+        // Case 1: a == b AND is_neq == 0 (honest)
+        // ----------------------------------------------------------------
 
-    #[test]
-    #[named]
-    fn test_0_equals_0() -> anyhow::Result<()> {
-        let zero = Fr::zero();
-        let cb = TestCircuitBuilder(Rc::new(RefCell::new(crate::cs::TestConstraintSystem::<Fr>::new())));
+        let a = Field::<Circuit>::new(Mode::Private, five);
+        let b = Field::<Circuit>::new(Mode::Private, five);
+        let multiplier = Field::<Circuit>::new(Mode::Private, one);
+        let is_neq = Boolean::new(Mode::Private, false);
 
-        let public = CandidateField::alloc_public(function_name!(), (zero, cb.clone()))?;
-        let private = CandidateField::alloc_private(function_name!(), (zero, cb.clone()))?;
+        assert!(Circuit::is_satisfied());
+        enforce(a, b, multiplier, is_neq);
+        assert!(Circuit::is_satisfied());
+        Circuit::reset_circuit();
 
-        let candidate = public.eq(&public)?;
-        assert!(candidate.to_value()?);
+        //
+        // Case 2: a == b AND is_neq == 1 (dishonest)
+        // ----------------------------------------------------------------
 
-        let candidate = public.eq(&private)?;
-        assert!(candidate.to_value()?);
+        let a = Field::<Circuit>::new(Mode::Private, five);
+        let b = Field::<Circuit>::new(Mode::Private, five);
+        let multiplier = Field::<Circuit>::new(Mode::Private, one);
+        let is_neq = Boolean::new(Mode::Private, true);
 
-        let candidate = private.eq(&public)?;
-        assert!(candidate.to_value()?);
+        assert!(Circuit::is_satisfied());
+        enforce(a, b, multiplier, is_neq);
+        assert!(!Circuit::is_satisfied());
+        Circuit::reset_circuit();
 
-        let candidate = private.eq(&private)?;
-        assert!(candidate.to_value()?);
+        // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
+        // ----------------------------------------------------------------
 
-        Ok(())
+        let a = Field::<Circuit>::new(Mode::Private, five);
+        let b = Field::<Circuit>::new(Mode::Private, two);
+        let multiplier = Field::<Circuit>::new(Mode::Private, zero);
+        let is_neq = Boolean::new(Mode::Private, false);
+
+        assert!(Circuit::is_satisfied());
+        enforce(a, b, multiplier, is_neq);
+        assert!(!Circuit::is_satisfied());
+        Circuit::reset_circuit();
+
+        //
+        // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
+        // ----------------------------------------------------------------
+
+        let a = Field::<Circuit>::new(Mode::Private, five);
+        let b = Field::<Circuit>::new(Mode::Private, two);
+        let multiplier = Field::<Circuit>::new(Mode::Private, one);
+        let is_neq = Boolean::new(Mode::Private, false);
+
+        assert!(Circuit::is_satisfied());
+        enforce(a, b, multiplier, is_neq);
+        assert!(!Circuit::is_satisfied());
+        Circuit::reset_circuit();
+
+        //
+        // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
+        // ---------------------------------------------------------------------------------
+
+        let a = Field::<Circuit>::new(Mode::Private, five);
+        let b = Field::<Circuit>::new(Mode::Private, two);
+        let multiplier = Field::<Circuit>::new(Mode::Private, two);
+        let is_neq = Boolean::new(Mode::Private, true);
+
+        assert!(Circuit::is_satisfied());
+        enforce(a, b, multiplier, is_neq);
+        assert!(!Circuit::is_satisfied());
+        Circuit::reset_circuit();
+
+        //
+        // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
+        // ---------------------------------------------------------------------------------
+
+        let a = Field::<Circuit>::new(Mode::Private, five);
+        let b = Field::<Circuit>::new(Mode::Private, two);
+        let multiplier = Field::<Circuit>::new(
+            Mode::Private,
+            (five - two).inverse().expect("Failed to compute a native inverse"),
+        );
+        let is_neq = Boolean::new(Mode::Private, true);
+
+        assert!(Circuit::is_satisfied());
+        enforce(a, b, multiplier, is_neq);
+        assert!(Circuit::is_satisfied());
+        Circuit::reset_circuit();
     }
 }
