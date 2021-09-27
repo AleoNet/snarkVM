@@ -15,30 +15,40 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod add;
+pub mod inv;
+pub mod mul;
 pub mod neg;
 pub mod one;
 pub mod sub;
 pub mod zero;
 
 use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode, Variable};
-// use snarkvm_fields::Field as F;
-use snarkvm_fields::{One as O, Zero as Z};
+use snarkvm_fields::{Field as F, One as O, Zero as Z};
 
 use anyhow::Result;
-use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
+use num_traits::Inv;
+use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub struct Field<E: Environment>(LinearCombination<E::Field>);
 
 impl<E: Environment> Field<E> {
     pub fn new(mode: Mode, value: E::Field) -> Self {
-        match mode {
-            Mode::Constant => Self(E::new_constant(value).into()),
-            Mode::Public => Self(E::new_public(value).into()),
-            Mode::Private => Self(E::new_private(value).into()),
-        }
+        Self(E::new_variable(mode, value).into())
     }
 
     pub fn to_value(&self) -> E::Field {
         self.0.to_value()
+    }
+}
+
+impl<E: Environment> From<Field<E>> for LinearCombination<E::Field> {
+    fn from(field: Field<E>) -> Self {
+        field.0
+    }
+}
+
+impl<E: Environment> From<&Field<E>> for LinearCombination<E::Field> {
+    fn from(field: &Field<E>) -> Self {
+        field.0.clone()
     }
 }

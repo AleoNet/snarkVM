@@ -16,7 +16,6 @@
 
 use crate::{models::*, traits::*};
 
-use snarkvm_curves::bls12_377::Fr;
 use snarkvm_fields::PrimeField;
 
 use once_cell::unsync::OnceCell;
@@ -43,16 +42,16 @@ impl<F: PrimeField> CircuitScope<F> {
         }
     }
 
-    pub(crate) fn is_satisfied(&self) -> bool {
-        self.circuit.borrow().is_satisfied()
-    }
-
     pub(crate) fn scope(self, name: &str) -> Self {
         Self {
             circuit: self.circuit.clone(),
             scope: format!("{}/{}", self.scope, name),
             previous: Some(self.scope.clone()),
         }
+    }
+
+    pub(crate) fn is_satisfied(&self) -> bool {
+        self.circuit.borrow().is_satisfied()
     }
 
     pub(crate) fn zero(&self) -> LinearCombination<F> {
@@ -85,19 +84,19 @@ impl<F: PrimeField> CircuitScope<F> {
         self.circuit.borrow_mut().enforce(constraint, self.scope.clone());
     }
 
-    pub(crate) fn num_constants(&self) -> usize {
+    pub(super) fn num_constants(&self) -> usize {
         self.circuit.borrow().num_constants()
     }
 
-    pub(crate) fn num_public(&self) -> usize {
+    pub(super) fn num_public(&self) -> usize {
         self.circuit.borrow().num_public()
     }
 
-    pub(crate) fn num_private(&self) -> usize {
+    pub(super) fn num_private(&self) -> usize {
         self.circuit.borrow().num_private()
     }
 
-    pub(crate) fn num_constraints(&self) -> usize {
+    pub(super) fn num_constraints(&self) -> usize {
         self.circuit.borrow().num_constraints()
     }
 
@@ -118,21 +117,21 @@ impl<F: PrimeField> CircuitScope<F> {
     }
 }
 
-// impl<F: PrimeField> Drop for CircuitSpan<F> {
+// impl<F: PrimeField> Drop for CircuitScope<F> {
 //     #[inline]
 //     fn drop(&mut self) {
 //         println!("I AM IN DROP {:?} {:?}", self.scope, self.previous);
-//         if let Some(scope) = &self.previous {
-//             println!("I AM DROPPING {:?} {:?}", self.scope, self.previous);
-//
-//             let prev = (*self).circuit.borrow_mut().pop_scope();
-//             (*self).scope = (prev).clone();
-//             (*self).previous = None;
-//
-//             // CB.with(|cb| {
-//             //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
-//             //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
-//             // });
-//         }
+//         // if let Some(scope) = &self.previous {
+//         //     println!("I AM DROPPING {:?} {:?}", self.scope, self.previous);
+//         //
+//         //     let prev = (*self).circuit.borrow_mut().pop_scope();
+//         //     (*self).scope = (prev).clone();
+//         //     (*self).previous = None;
+//         //
+//         //     // CB.with(|cb| {
+//         //     //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//         //     //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//         //     // });
+//         // }
 //     }
 // }

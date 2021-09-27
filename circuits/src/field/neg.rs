@@ -28,7 +28,7 @@ impl<E: Environment> Neg for &Field<E> {
     type Output = Field<E>;
 
     fn neg(self) -> Self::Output {
-        Field::<E>(-&(self.0))
+        Field(-&(self.0))
     }
 }
 

@@ -21,12 +21,11 @@ impl<E: Environment> One for Field<E> {
     type Output = Result<Self::Boolean>;
 
     fn one() -> Self {
-        Field::new(Mode::Constant, E::Field::one())
+        Self(E::one())
     }
 
     fn is_one(&self) -> Self::Output {
         unimplemented!()
-
         // Ok(self.eq(&Self::one())?)
     }
 }
@@ -40,8 +39,30 @@ mod tests {
     fn test_one() {
         let one = <CircuitBuilder as Environment>::Field::one();
 
-        let candidate = Field::<CircuitBuilder>::one();
-        assert_eq!(one, candidate.to_value());
+        CircuitBuilder::scoped("One", |scope| {
+            assert_eq!(0, CircuitBuilder::num_constants());
+            assert_eq!(1, CircuitBuilder::num_public());
+            assert_eq!(0, CircuitBuilder::num_private());
+            assert_eq!(0, CircuitBuilder::num_constraints());
+
+            assert_eq!(0, scope.num_constants_in_scope());
+            assert_eq!(0, scope.num_public_in_scope());
+            assert_eq!(0, scope.num_private_in_scope());
+            assert_eq!(0, scope.num_constraints_in_scope());
+
+            let candidate = Field::<CircuitBuilder>::one();
+            assert_eq!(one, candidate.to_value());
+
+            assert_eq!(0, CircuitBuilder::num_constants());
+            assert_eq!(1, CircuitBuilder::num_public());
+            assert_eq!(0, CircuitBuilder::num_private());
+            assert_eq!(0, CircuitBuilder::num_constraints());
+
+            assert_eq!(0, scope.num_constants_in_scope());
+            assert_eq!(0, scope.num_public_in_scope());
+            assert_eq!(0, scope.num_private_in_scope());
+            assert_eq!(0, scope.num_constraints_in_scope());
+        });
     }
 
     // #[test]

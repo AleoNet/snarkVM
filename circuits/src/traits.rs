@@ -32,6 +32,10 @@ pub trait Environment {
 
     fn scope(name: &str) -> CircuitScope<Self::Field>;
 
+    fn scoped<Fn>(name: &str, logic: Fn)
+    where
+        Fn: FnOnce(CircuitScope<Self::Field>) -> ();
+
     // fn scoped<'a, EE, F>(name: &str, logic: F)
     // where
     //     EE: 'a + Environment,
@@ -45,9 +49,10 @@ pub trait Environment {
     fn zero() -> LinearCombination<Self::Field>;
     fn one() -> LinearCombination<Self::Field>;
 
-    fn new_constant(value: Self::Field) -> Variable<Self::Field>;
-    fn new_public(value: Self::Field) -> Variable<Self::Field>;
-    fn new_private(value: Self::Field) -> Variable<Self::Field>;
+    fn new_variable(mode: Mode, value: Self::Field) -> Variable<Self::Field>;
+    // fn new_constant(value: Self::Field) -> Variable<Self::Field>;
+    // fn new_public(value: Self::Field) -> Variable<Self::Field>;
+    // fn new_private(value: Self::Field) -> Variable<Self::Field>;
 
     fn enforce<Fn, A, B, C>(constraint: Fn)
     where

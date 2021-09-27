@@ -50,6 +50,18 @@ impl CircuitBuilder {
         })
     }
 
+    // fn new_constant(value: Self::Field) -> Variable<Self::Field> {
+    //     Self::cs().new_constant(value)
+    // }
+    //
+    // fn new_public(value: Self::Field) -> Variable<Self::Field> {
+    //     Self::cs().new_public(value)
+    // }
+    //
+    // fn new_private(value: Self::Field) -> Variable<Self::Field> {
+    //     Self::cs().new_private(value)
+    // }
+
     pub fn print_circuit() {
         println!("{:?}", Self::cs().circuit.borrow());
     }
@@ -70,11 +82,35 @@ impl Environment for CircuitBuilder {
     }
 
     fn scope(name: &str) -> CircuitScope<Self::Field> {
+        // CB.with(|cb| {
+        //     let span = cb.get().unwrap().borrow().0.clone().scope(name);
+        //     (*cb.get().unwrap().borrow_mut()).0 = span.clone();
+        //     span
+        // })
+
         CB.with(|cb| {
-            let span = cb.get().unwrap().borrow().0.clone().scope(name);
-            (*cb.get().unwrap().borrow_mut()).0 = span.clone();
-            span
+            let scope = Self::cs().scope(name);
+            (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
+            scope
         })
+    }
+
+    fn scoped<Fn>(name: &str, logic: Fn)
+    where
+        Fn: FnOnce(CircuitScope<Self::Field>) -> (),
+    {
+        CB.with(|cb| {
+            // Fetch the current environment.
+            let current = Self::cs().clone();
+
+            // Set the entire environment to the new scope, and run the logic.
+            let scope = current.clone().scope(name);
+            (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
+            logic(scope);
+
+            // Return the entire environment to the previous scope.
+            (*cb.get().unwrap().borrow_mut()).0 = current;
+        });
     }
 
     // fn span(name: &str) -> CircuitSpan<Self> {
@@ -115,19 +151,15 @@ impl Environment for CircuitBuilder {
     }
 
     fn one() -> LinearCombination<Self::Field> {
-        Variable::one().into()
+        LinearCombination::one()
     }
 
-    fn new_constant(value: Self::Field) -> Variable<Self::Field> {
-        Self::cs().new_constant(value)
-    }
-
-    fn new_public(value: Self::Field) -> Variable<Self::Field> {
-        Self::cs().new_public(value)
-    }
-
-    fn new_private(value: Self::Field) -> Variable<Self::Field> {
-        Self::cs().new_private(value)
+    fn new_variable(mode: Mode, value: Self::Field) -> Variable<Self::Field> {
+        match mode {
+            Mode::Constant => Self::cs().new_constant(value),
+            Mode::Public => Self::cs().new_public(value),
+            Mode::Private => Self::cs().new_private(value),
+        }
     }
 
     fn enforce<Fn, A, B, C>(constraint: Fn)
@@ -160,17 +192,17 @@ impl Environment for CircuitBuilder {
 // impl Drop for CircuitBuilder {
 //     #[inline]
 //     fn drop(&mut self) {
-//         println!("I AM IN DROP {:?} {:?}", self.0.scope, self.0.previous);
-//         if let Some(scope) = &self.0.previous {
-//             println!("I AM DROPPING {:?} {:?}", self.0.scope, self.0.previous);
-//
-//             // self.scope = (*scope).clone();
-//
-//             // CB.with(|cb| {
-//             //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
-//             //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
-//             // });
-//         }
+//         println!("I AM IN DROP {:?}", self);
+//         // if let Some(scope) = &self.0.previous {
+//         //     println!("I AM DROPPING {:?}", self);
+//         //
+//         //     // self.scope = (*scope).clone();
+//         //
+//         //     // CB.with(|cb| {
+//         //     //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//         //     //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
+//         //     // });
+//         // }
 //     }
 // }
 

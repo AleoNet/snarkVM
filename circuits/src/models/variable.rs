@@ -29,7 +29,21 @@ pub enum Variable<F: PrimeField> {
 impl<F: PrimeField> Variable<F> {
     pub fn is_constant(&self) -> bool {
         match self {
-            Self::Constant(_) => true,
+            Self::Constant(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_public(&self) -> bool {
+        match self {
+            Self::Public(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_private(&self) -> bool {
+        match self {
+            Self::Private(..) => true,
             _ => false,
         }
     }
@@ -47,24 +61,24 @@ impl<F: PrimeField> Variable<F> {
     }
 }
 
-impl<F: PrimeField> Add<Self> for Variable<F> {
-    type Output = LinearCombination<F>;
-
-    fn add(self, other: Self) -> Self::Output {
-        match (self, other) {
-            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b).into(),
-            (first, second) => LinearCombination::from([first, second]),
-        }
-    }
-}
-
-impl<F: PrimeField> Sub<Self> for Variable<F> {
-    type Output = LinearCombination<F>;
-
-    fn sub(self, other: Self) -> Self::Output {
-        match (self, other) {
-            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b).into(),
-            (first, second) => LinearCombination::from(first) - second,
-        }
-    }
-}
+// impl<F: PrimeField> Add<Self> for Variable<F> {
+//     type Output = LinearCombination<F>;
+//
+//     fn add(self, other: Self) -> Self::Output {
+//         match (self, other) {
+//             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b).into(),
+//             (first, second) => LinearCombination::from([first, second]),
+//         }
+//     }
+// }
+//
+// impl<F: PrimeField> Sub<Self> for Variable<F> {
+//     type Output = LinearCombination<F>;
+//
+//     fn sub(self, other: Self) -> Self::Output {
+//         match (self, other) {
+//             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b).into(),
+//             (first, second) => LinearCombination::from(first) - second,
+//         }
+//     }
+// }

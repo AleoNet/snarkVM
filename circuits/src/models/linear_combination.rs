@@ -15,39 +15,55 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{models::*, traits::*};
-use snarkvm_fields::traits::*;
+use snarkvm_fields::PrimeField;
 
 pub type Index = u64;
 
-use std::ops::{Add, AddAssign, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
 use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::*;
 
 #[derive(Clone, Debug)]
-pub struct LinearCombination<F: PrimeField>(HashMap<Variable<F>, F>);
+pub struct LinearCombination<F: PrimeField> {
+    constant: F,
+    terms: HashMap<Variable<F>, F>,
+}
 
 impl<F: PrimeField> LinearCombination<F> {
     pub fn zero() -> Self {
-        Self(Default::default())
+        Self {
+            constant: F::zero(),
+            terms: Default::default(),
+        }
+    }
+
+    pub fn one() -> Self {
+        Variable::one().into()
+    }
+
+    pub fn is_constant(&self) -> bool {
+        self.terms.is_empty()
     }
 
     pub fn to_value(&self) -> F {
         // Note that 200_000 is derived empirically.
         // The setup cost of Rayon is only worth it after sufficient size.
-        match self.0.len() > 200_000 {
+        let sum: F = match self.terms.len() > 200_000 {
             true => self
-                .0
+                .terms
                 .par_iter()
                 .map(|(variable, coefficient)| variable.value() * coefficient)
                 .sum(),
             false => self
-                .0
+                .terms
                 .iter()
                 .map(|(variable, coefficient)| variable.value() * coefficient)
                 .sum(),
-        }
+        };
+
+        self.constant + sum
     }
 }
 
@@ -59,7 +75,7 @@ impl<F: PrimeField> From<Variable<F>> for LinearCombination<F> {
 
 impl<F: PrimeField> From<&Variable<F>> for LinearCombination<F> {
     fn from(variable: &Variable<F>) -> Self {
-        Self([(*variable, F::one())].iter().cloned().collect())
+        Self::from(&[*variable])
     }
 }
 
@@ -89,16 +105,19 @@ impl<F: PrimeField> From<&Vec<Variable<F>>> for LinearCombination<F> {
 
 impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
     fn from(variables: &[Variable<F>]) -> Self {
-        let mut combination = HashMap::with_capacity(variables.len());
+        let mut output = Self::zero();
         for variable in variables {
-            match combination.get_mut(variable) {
-                Some(coefficient) => *coefficient += F::one(),
-                None => {
-                    combination.insert(*variable, F::one());
-                }
+            match variable.is_constant() {
+                true => output.constant += variable.value(),
+                false => match output.terms.get_mut(variable) {
+                    Some(coefficient) => *coefficient += F::one(),
+                    None => {
+                        output.terms.insert(*variable, F::one());
+                    }
+                },
             }
         }
-        Self(combination)
+        output
     }
 }
 
@@ -108,8 +127,9 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
     #[inline]
     fn neg(self) -> Self::Output {
         let mut output = self.clone();
+        output.constant = -output.constant;
         output
-            .0
+            .terms
             .iter_mut()
             .for_each(|(_, coefficient)| *coefficient = -(*coefficient));
         output
@@ -121,12 +141,7 @@ impl<F: PrimeField> Neg for &LinearCombination<F> {
 
     #[inline]
     fn neg(self) -> Self::Output {
-        let mut output = self.clone();
-        output
-            .0
-            .iter_mut()
-            .for_each(|(_, coefficient)| *coefficient = -(*coefficient));
-        output
+        -(self.clone())
     }
 }
 
@@ -142,11 +157,11 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        if self.0.is_empty() {
+        if self.constant.is_zero() && self.terms.is_empty() {
             other.clone()
-        } else if other.0.is_empty() {
+        } else if other.constant.is_zero() && other.terms.is_empty() {
             self
-        } else if self.0.len() > other.0.len() {
+        } else if self.terms.len() > other.terms.len() {
             let mut output = self;
             output += other;
             output
@@ -158,6 +173,22 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Add<Variable<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn add(self, other: Variable<F>) -> Self::Output {
+        self + &other
+    }
+}
+
+impl<F: PrimeField> Add<&Variable<F>> for LinearCombination<F> {
+    type Output = Self;
+
+    fn add(self, other: &Variable<F>) -> Self::Output {
+        self + Self::from(other)
+    }
+}
+
 impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: Self) {
         *self += &other;
@@ -166,16 +197,21 @@ impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
 
 impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: &Self) {
-        if other.0.is_empty() {
+        if other.constant.is_zero() && other.terms.is_empty() {
             return;
         }
 
-        for (variable, other_coefficient) in other.0.iter() {
-            match self.0.get_mut(variable) {
-                Some(coefficient) => *coefficient += *other_coefficient,
-                None => {
-                    self.0.insert(*variable, *other_coefficient);
-                }
+        self.constant += other.constant;
+
+        for (variable, other_coefficient) in other.terms.iter() {
+            match variable.is_constant() {
+                true => self.constant += variable.value(),
+                false => match self.terms.get_mut(variable) {
+                    Some(coefficient) => *coefficient += *other_coefficient,
+                    None => {
+                        self.terms.insert(*variable, *other_coefficient);
+                    }
+                },
             }
         }
     }
@@ -202,5 +238,98 @@ impl<F: PrimeField> Sub<&Variable<F>> for LinearCombination<F> {
 
     fn sub(self, other: &Variable<F>) -> Self::Output {
         self - Self::from(other)
+    }
+}
+
+impl<F: PrimeField> Mul<F> for LinearCombination<F> {
+    type Output = Self;
+
+    fn mul(self, coefficient: F) -> Self::Output {
+        self * &coefficient
+    }
+}
+
+impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
+    type Output = Self;
+
+    fn mul(self, coefficient: &F) -> Self::Output {
+        let mut output = self.clone();
+        output.constant = output.constant * coefficient;
+        output
+            .terms
+            .iter_mut()
+            .for_each(|(_, current_coefficient)| *current_coefficient *= coefficient);
+        output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_fields::{One as O, Zero as Z};
+
+    #[test]
+    fn test_zero() {
+        let zero = <CircuitBuilder as Environment>::Field::zero();
+
+        let candidate = LinearCombination::zero();
+        assert_eq!(zero, candidate.constant);
+        assert!(candidate.terms.is_empty());
+        assert_eq!(zero, candidate.to_value());
+    }
+
+    #[test]
+    fn test_one() {
+        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let one = <CircuitBuilder as Environment>::Field::one();
+
+        let candidate = LinearCombination::one();
+        assert_eq!(zero, candidate.constant);
+        assert_eq!(1, candidate.terms.len());
+        assert_eq!(one, candidate.to_value());
+
+        let (candidate_variable, candidate_coefficient) = candidate.terms.iter().next().unwrap();
+        assert!(candidate_variable.is_public());
+        assert_eq!(one, candidate_variable.value());
+        assert_eq!(one, *candidate_coefficient);
+    }
+
+    #[test]
+    fn test_is_constant() {
+        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let one = <CircuitBuilder as Environment>::Field::one();
+
+        let candidate = LinearCombination::zero();
+        assert!(candidate.is_constant());
+        assert_eq!(zero, candidate.constant);
+        assert_eq!(zero, candidate.to_value());
+
+        let candidate = LinearCombination::one();
+        assert!(!candidate.is_constant());
+        assert_eq!(zero, candidate.constant);
+        assert_eq!(one, candidate.to_value());
+    }
+
+    #[test]
+    fn test_mul() {
+        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let one = <CircuitBuilder as Environment>::Field::one();
+        let two = one + one;
+        let four = two + two;
+
+        let start = LinearCombination::one();
+        assert!(!start.is_constant());
+        assert_eq!(one, start.to_value());
+
+        // Compute 1 * 4.
+        let candidate = start * four;
+        assert_eq!(four, candidate.to_value());
+        assert_eq!(zero, candidate.constant);
+        assert_eq!(1, candidate.terms.len());
+
+        let (candidate_variable, candidate_coefficient) = candidate.terms.iter().next().unwrap();
+        assert!(candidate_variable.is_public());
+        assert_eq!(one, candidate_variable.value());
+        assert_eq!(four, *candidate_coefficient);
     }
 }

@@ -28,11 +28,7 @@ impl<E: Environment> Boolean<E> {
             false => E::Field::zero(),
         };
 
-        let variable = match mode {
-            Mode::Constant => E::new_constant(value),
-            Mode::Public => E::new_public(value),
-            Mode::Private => E::new_private(value),
-        };
+        let variable = E::new_variable(mode, value);
 
         // Ensure `a` is either 0 or 1:
         // (1 - a) * a = 0
@@ -54,19 +50,38 @@ mod tests {
     use crate::CircuitBuilder;
 
     #[test]
-    fn test_new() {
+    fn test_new_constant() {
         let zero = <CircuitBuilder as Environment>::Field::zero();
         let one = <CircuitBuilder as Environment>::Field::one();
+
+        assert_eq!(0, CircuitBuilder::num_constants());
+        assert_eq!(1, CircuitBuilder::num_public());
+        assert_eq!(0, CircuitBuilder::num_private());
+        assert_eq!(0, CircuitBuilder::num_constraints());
 
         let candidate = Boolean::<CircuitBuilder>::new(Mode::Constant, false);
         assert_eq!(zero, candidate.to_value());
         assert!(CircuitBuilder::is_satisfied());
-        // assert_eq!(0, CircuitBuilder::num_constraints());
 
         let candidate = Boolean::<CircuitBuilder>::new(Mode::Constant, true);
         assert_eq!(one, candidate.to_value());
         assert!(CircuitBuilder::is_satisfied());
+
+        assert_eq!(2, CircuitBuilder::num_constants());
+        assert_eq!(1, CircuitBuilder::num_public());
+        assert_eq!(0, CircuitBuilder::num_private());
         // assert_eq!(0, CircuitBuilder::num_constraints());
+    }
+
+    #[test]
+    fn test_new_public() {
+        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let one = <CircuitBuilder as Environment>::Field::one();
+
+        assert_eq!(0, CircuitBuilder::num_constants());
+        assert_eq!(1, CircuitBuilder::num_public());
+        assert_eq!(0, CircuitBuilder::num_private());
+        assert_eq!(0, CircuitBuilder::num_constraints());
 
         let candidate = Boolean::<CircuitBuilder>::new(Mode::Public, false);
         assert_eq!(zero, candidate.to_value());
@@ -76,6 +91,22 @@ mod tests {
         assert_eq!(one, candidate.to_value());
         assert!(CircuitBuilder::is_satisfied());
 
+        assert_eq!(0, CircuitBuilder::num_constants());
+        assert_eq!(3, CircuitBuilder::num_public());
+        assert_eq!(0, CircuitBuilder::num_private());
+        assert_eq!(2, CircuitBuilder::num_constraints());
+    }
+
+    #[test]
+    fn test_new_private() {
+        let zero = <CircuitBuilder as Environment>::Field::zero();
+        let one = <CircuitBuilder as Environment>::Field::one();
+
+        assert_eq!(0, CircuitBuilder::num_constants());
+        assert_eq!(1, CircuitBuilder::num_public());
+        assert_eq!(0, CircuitBuilder::num_private());
+        assert_eq!(0, CircuitBuilder::num_constraints());
+
         let candidate = Boolean::<CircuitBuilder>::new(Mode::Private, false);
         assert_eq!(zero, candidate.to_value());
         assert!(CircuitBuilder::is_satisfied());
@@ -83,6 +114,11 @@ mod tests {
         let candidate = Boolean::<CircuitBuilder>::new(Mode::Private, true);
         assert_eq!(one, candidate.to_value());
         assert!(CircuitBuilder::is_satisfied());
+
+        assert_eq!(0, CircuitBuilder::num_constants());
+        assert_eq!(1, CircuitBuilder::num_public());
+        assert_eq!(2, CircuitBuilder::num_private());
+        assert_eq!(2, CircuitBuilder::num_constraints());
     }
 
     #[test]
@@ -90,7 +126,7 @@ mod tests {
         let one = <CircuitBuilder as Environment>::Field::one();
         let two = one + one;
         {
-            let candidate = CircuitBuilder::new_constant(two);
+            let candidate = CircuitBuilder::new_variable(Mode::Constant, two);
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
@@ -98,7 +134,7 @@ mod tests {
             assert!(!CircuitBuilder::is_satisfied());
         }
         {
-            let candidate = CircuitBuilder::new_public(two);
+            let candidate = CircuitBuilder::new_variable(Mode::Public, two);
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
@@ -106,7 +142,7 @@ mod tests {
             assert!(!CircuitBuilder::is_satisfied());
         }
         {
-            let candidate = CircuitBuilder::new_private(two);
+            let candidate = CircuitBuilder::new_variable(Mode::Private, two);
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0

@@ -21,7 +21,7 @@ impl<E: Environment> Zero for Field<E> {
     type Output = Result<Self::Boolean>;
 
     fn zero() -> Self {
-        Field::new(Mode::Constant, E::Field::zero())
+        Self(E::zero())
     }
 
     fn is_zero(&self) -> Self::Output {
@@ -39,8 +39,30 @@ mod tests {
     fn test_zero() {
         let zero = <CircuitBuilder as Environment>::Field::zero();
 
-        let candidate = Field::<CircuitBuilder>::zero();
-        assert_eq!(zero, candidate.to_value());
+        CircuitBuilder::scoped("Zero", |scope| {
+            assert_eq!(0, CircuitBuilder::num_constants());
+            assert_eq!(1, CircuitBuilder::num_public());
+            assert_eq!(0, CircuitBuilder::num_private());
+            assert_eq!(0, CircuitBuilder::num_constraints());
+
+            assert_eq!(0, scope.num_constants_in_scope());
+            assert_eq!(0, scope.num_public_in_scope());
+            assert_eq!(0, scope.num_private_in_scope());
+            assert_eq!(0, scope.num_constraints_in_scope());
+
+            let candidate = Field::<CircuitBuilder>::zero();
+            assert_eq!(zero, candidate.to_value());
+
+            assert_eq!(0, CircuitBuilder::num_constants());
+            assert_eq!(1, CircuitBuilder::num_public());
+            assert_eq!(0, CircuitBuilder::num_private());
+            assert_eq!(0, CircuitBuilder::num_constraints());
+
+            assert_eq!(0, scope.num_constants_in_scope());
+            assert_eq!(0, scope.num_public_in_scope());
+            assert_eq!(0, scope.num_private_in_scope());
+            assert_eq!(0, scope.num_constraints_in_scope());
+        });
     }
 
     // #[test]
