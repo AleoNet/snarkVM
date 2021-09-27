@@ -54,6 +54,14 @@ pub trait Equal<Rhs: ?Sized = Self> {
     fn is_neq(&self, other: &Rhs) -> Self::Output;
 }
 
+/// Binary operator for performing `a && b`.
+pub trait And<Rhs: ?Sized = Self> {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    fn and(&self, other: &Rhs) -> Self::Output;
+}
+
 /// Unary operator for retrieving the doubled value.
 pub trait Double {
     type Output;

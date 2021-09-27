@@ -19,12 +19,12 @@ pub mod double;
 // pub mod equal;
 // pub mod inv;
 // pub mod mul;
-// pub mod neg;
+pub mod neg;
 // pub mod one;
 // pub mod sub;
-// pub mod zero;
+pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, Field, LinearCombination, Mode};
+use crate::{boolean::Boolean, traits::*, Environment, Field, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
 
