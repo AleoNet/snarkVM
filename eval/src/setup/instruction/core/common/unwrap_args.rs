@@ -20,8 +20,8 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{bits::Boolean, integers::uint::UInt8};
 
 // TODO figure out how to make this function generic?
-
 pub fn unwrap_boolean_array_argument<F: PrimeField, G: GroupType<F>>(arg: &ConstrainedValue<F, G>) -> Vec<Boolean> {
+    dbg!(arg);
     if let ConstrainedValue::Array(args) = arg {
         args.into_iter()
             .map(|item| {
@@ -38,6 +38,7 @@ pub fn unwrap_boolean_array_argument<F: PrimeField, G: GroupType<F>>(arg: &Const
 }
 
 pub fn unwrap_u8_array_argument<F: PrimeField, G: GroupType<F>>(arg: &ConstrainedValue<F, G>) -> Vec<UInt8> {
+    dbg!(arg);
     if let ConstrainedValue::Array(args) = arg {
         args.into_iter()
             .map(|item| {
