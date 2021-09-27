@@ -143,10 +143,6 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bytes method")),
         }
     }
-
-    pub fn from_bytes(_bytes: &[UInt8]) -> Result<Self> {
-        Err(anyhow!("the type does not implement the from_bytes method"))
-    }
 }
 
 impl<F: PrimeField, G: GroupType<F>> fmt::Display for ConstrainedValue<F, G> {

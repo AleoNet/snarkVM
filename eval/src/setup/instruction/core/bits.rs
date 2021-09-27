@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_gadgets::integers::{int::*, uint::*};
 
 pub const TO_BITS_CORE: &str = "to_bits";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
@@ -40,9 +41,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let bits = unwrap_boolean_array_argument(arg);
+        let _bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Err(anyhow!("the type `address` does not implement the from_bits method"))
     }
 }
 
@@ -53,9 +54,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let bits = unwrap_boolean_array_argument(arg);
+        let _bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Err(anyhow!("the type `bool` does not implement the from_bits method"))
     }
 }
 
@@ -66,9 +67,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let bits = unwrap_boolean_array_argument(arg);
+        let _bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Err(anyhow!("the type `char` does not implement the from_bits method"))
     }
 }
 
@@ -82,9 +83,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let bits = unwrap_boolean_array_argument(arg);
+        let _bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Err(anyhow!("the type `field` does not implement the from_bits method"))
     }
 }
 
@@ -98,9 +99,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let bits = unwrap_boolean_array_argument(arg);
+        let _bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Err(anyhow!("the type `group` does not implement the from_bits method"))
     }
 }
 
@@ -113,7 +114,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::I8(Int8::from_bits_le(&bits))))
     }
 }
 
@@ -126,7 +127,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_le(&bits))))
     }
 }
 pub const FROM_I32_BITS_CORE: &str = "i32_from_bits";
@@ -138,7 +139,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::I32(Int32::from_bits_le(&bits))))
     }
 }
 
@@ -151,7 +152,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::I64(Int64::from_bits_le(&bits))))
     }
 }
 
@@ -164,7 +165,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::I128(Int128::from_bits_le(&bits))))
     }
 }
 
@@ -177,7 +178,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::U8(UInt8::from_bits_le(&bits))))
     }
 }
 
@@ -190,7 +191,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::U16(UInt16::from_bits_le(&bits))))
     }
 }
 
@@ -203,7 +204,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::U32(UInt32::from_bits_le(&bits))))
     }
 }
 
@@ -216,7 +217,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::U64(UInt64::from_bits_le(&bits))))
     }
 }
 
@@ -229,6 +230,6 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }?;
         let bits = unwrap_boolean_array_argument(arg);
 
-        ConstrainedValue::from_bits_le(&bits)
+        Ok(ConstrainedValue::Integer(Integer::U128(UInt128::from_bits_le(&bits))))
     }
 }
