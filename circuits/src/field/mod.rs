@@ -40,6 +40,10 @@ impl<E: Environment> Field<E> {
         Self(E::new_variable(mode, value).into())
     }
 
+    pub fn is_constant(&self) -> bool {
+        self.0.is_constant()
+    }
+
     pub fn to_value(&self) -> E::BaseField {
         self.0.to_value()
     }

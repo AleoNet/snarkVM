@@ -52,7 +52,7 @@ impl<E: Environment> MulAssign<Self> for Field<E> {
 
 impl<E: Environment> MulAssign<&Self> for Field<E> {
     fn mul_assign(&mut self, other: &Self) {
-        match (self.0.is_constant(), other.0.is_constant()) {
+        match (self.is_constant(), other.is_constant()) {
             (true, true) => *self = Self::new(Mode::Constant, self.to_value() * other.to_value()),
             (true, false) => self.0 = other.0.clone() * self.to_value(),
             (false, true) => self.0 = self.0.clone() * other.to_value(),

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod add;
+pub mod add;
 // pub mod div;
 // pub mod double;
 // pub mod equal;
@@ -31,7 +31,7 @@ use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
 
 // use num_traits::Inv;
-// use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone)]
 pub struct Affine<E: Environment> {
@@ -59,6 +59,10 @@ impl<E: Environment> Affine<E> {
         let x = Field::new(mode, x);
         let y = Field::new(mode, y);
 
+        Self::from(x, y)
+    }
+
+    pub fn from(x: Field<E>, y: Field<E>) -> Self {
         //
         // Check the point is on the curve.
         //
@@ -82,6 +86,10 @@ impl<E: Environment> Affine<E> {
         }
 
         Self { x, y }
+    }
+
+    pub fn is_constant(&self) -> bool {
+        self.x.is_constant() && self.y.is_constant()
     }
 
     pub fn to_value(&self) -> (E::BaseField, E::BaseField) {

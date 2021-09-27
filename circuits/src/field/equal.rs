@@ -38,7 +38,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
     /// This method costs 3 constraints.
     ///
     fn is_neq(&self, other: &Self) -> Self::Output {
-        match (self.0.is_constant(), other.0.is_constant()) {
+        match (self.is_constant(), other.is_constant()) {
             (true, true) => Boolean::new(Mode::Constant, self.to_value() != other.to_value()),
             _ => {
                 let this = self.to_value();
