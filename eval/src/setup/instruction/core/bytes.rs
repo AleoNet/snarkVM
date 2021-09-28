@@ -39,14 +39,14 @@ pub const FROM_ADDRESS_BYTES_CORE: &str = "address_from_bytes";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core_address_from_bytes(
         &mut self,
-        arguments: &[ConstrainedValue<F, G>],
+        _arguments: &[ConstrainedValue<F, G>],
     ) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
-            None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
-            Some(value) => Ok(value),
-        }?;
-        let _bytes = unwrap_u8_array_argument(arg);
-
+        /* let arg = match arguments.get(0) {
+                   None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
+                   Some(value) => Ok(value),
+               }?;
+               let bytes = unwrap_u8_array_argument(arg, "from_bytes")?;
+        */
         Err(anyhow!("the type `address` does not implement the to_bytes method"))
     }
 }
@@ -55,13 +55,13 @@ pub const FROM_BOOL_BYTES_CORE: &str = "bool_from_bytes";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core_bool_from_bytes(
         &mut self,
-        arguments: &[ConstrainedValue<F, G>],
+        _arguments: &[ConstrainedValue<F, G>],
     ) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
+        /* let arg = match arguments.get(0) {
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let bytes = unwrap_u8_array_argument(arg, "from_bytes")?; */
 
         Err(anyhow!("the type `bool` does not implement the to_bytes method"))
     }
@@ -71,13 +71,13 @@ pub const FROM_CHAR_BYTES_CORE: &str = "char_from_bytes";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core_char_from_bytes(
         &mut self,
-        arguments: &[ConstrainedValue<F, G>],
+        _arguments: &[ConstrainedValue<F, G>],
     ) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
+        /* let arg = match arguments.get(0) {
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let bytes = unwrap_u8_array_argument(arg, "from_bytes")?; */
 
         Err(anyhow!("the type `char` does not implement the to_bytes method"))
     }
@@ -87,13 +87,13 @@ pub const FROM_FIELD_BYTES_CORE: &str = "field_from_bytes";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core_field_from_bytes(
         &mut self,
-        arguments: &[ConstrainedValue<F, G>],
+        _arguments: &[ConstrainedValue<F, G>],
     ) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
+        /* let arg = match arguments.get(0) {
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let bytes = unwrap_u8_array_argument(arg, "from_bytes")?; */
 
         Err(anyhow!("the type `field` does not implement the to_bytes method"))
     }
@@ -103,13 +103,13 @@ pub const FROM_GROUP_BYTES_CORE: &str = "group_from_bytes";
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core_group_from_bytes(
         &mut self,
-        arguments: &[ConstrainedValue<F, G>],
+        _arguments: &[ConstrainedValue<F, G>],
     ) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
+        /* let arg = match arguments.get(0) {
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let bytes = unwrap_u8_array_argument(arg, "from_bytes")?; */
 
         Err(anyhow!("the type `group` does not implement the to_bytes method"))
     }
@@ -122,7 +122,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 1, "from_bytes")?;
 
         Err(anyhow!("the type `i8` does not implement the to_bytes method"))
     }
@@ -135,7 +135,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 2, "from_bytes")?;
 
         Err(anyhow!("the type `i16` does not implement the to_bytes method"))
     }
@@ -147,7 +147,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 4, "from_bytes")?;
 
         Err(anyhow!("the type `i32` does not implement the to_bytes method"))
     }
@@ -160,7 +160,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 8, "from_bytes")?;
 
         Err(anyhow!("the type `i64` does not implement the to_bytes method"))
     }
@@ -176,7 +176,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 16, "from_bytes")?;
 
         Err(anyhow!("the type `i128` does not implement the to_bytes method"))
     }
@@ -189,7 +189,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 1, "from_bytes")?;
 
         Err(anyhow!("the type `u8` does not implement the to_bytes method"))
     }
@@ -202,7 +202,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 2, "from_bytes")?;
 
         Err(anyhow!("the type `u16` does not implement the to_bytes method"))
     }
@@ -215,7 +215,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 4, "from_bytes")?;
 
         Err(anyhow!("the type `u32` does not implement the to_bytes method"))
     }
@@ -228,7 +228,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 8, "from_bytes")?;
 
         Err(anyhow!("the type `u64` does not implement the to_bytes method"))
     }
@@ -244,7 +244,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             None => Err(anyhow!("illegal `from_bytes` call, expected 1 argument")),
             Some(value) => Ok(value),
         }?;
-        let _bytes = unwrap_u8_array_argument(arg);
+        let _bytes = unwrap_u8_array_argument(arg, 16, "from_bytes")?;
 
         Err(anyhow!("the type `u128` does not implement the to_bytes method"))
     }

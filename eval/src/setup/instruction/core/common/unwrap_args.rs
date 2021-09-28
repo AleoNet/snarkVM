@@ -19,37 +19,61 @@ use crate::{ConstrainedValue, GroupType, Integer};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{bits::Boolean, integers::uint::UInt8};
 
+use anyhow::*;
+
 // TODO figure out how to make this function generic?
-pub fn unwrap_boolean_array_argument<F: PrimeField, G: GroupType<F>>(arg: &ConstrainedValue<F, G>) -> Vec<Boolean> {
-    dbg!(arg);
+pub fn unwrap_boolean_array_argument<F: PrimeField, G: GroupType<F>>(
+    arg: &ConstrainedValue<F, G>,
+    expected_len: usize,
+    fn_call: &str,
+) -> Result<Vec<Boolean>> {
     if let ConstrainedValue::Array(args) = arg {
+        if args.len() != expected_len {
+            return Err(anyhow!(
+                "illegal `{}` parameter length, expected `{}`",
+                fn_call,
+                expected_len
+            ));
+        }
+
         args.into_iter()
             .map(|item| {
                 if let ConstrainedValue::Boolean(boolean) = item {
-                    boolean.clone()
+                    Ok(boolean.clone())
                 } else {
-                    panic!("illegal non-boolean type in from_bits call");
+                    Err(anyhow!("illegal non-boolean type in `{}` call", fn_call))
                 }
             })
-            .collect()
+            .collect::<Result<Vec<_>>>()
     } else {
-        panic!("illegal non-array type in from_bits call");
+        Err(anyhow!("illegal non-array type in `{}` call", fn_call))
     }
 }
 
-pub fn unwrap_u8_array_argument<F: PrimeField, G: GroupType<F>>(arg: &ConstrainedValue<F, G>) -> Vec<UInt8> {
-    dbg!(arg);
+pub fn unwrap_u8_array_argument<F: PrimeField, G: GroupType<F>>(
+    arg: &ConstrainedValue<F, G>,
+    expected_len: usize,
+    fn_call: &str,
+) -> Result<Vec<UInt8>> {
     if let ConstrainedValue::Array(args) = arg {
+        if args.len() != expected_len {
+            return Err(anyhow!(
+                "illegal `{}` parameter length, expected `{}`",
+                fn_call,
+                expected_len
+            ));
+        }
+
         args.into_iter()
             .map(|item| {
                 if let ConstrainedValue::Integer(Integer::U8(u8int)) = item {
-                    u8int.clone()
+                    Ok(u8int.clone())
                 } else {
-                    panic!("illegal non-u8 type in from_bytes call");
+                    Err(anyhow!("illegal non-u8 type in `{}` call", fn_call))
                 }
             })
-            .collect()
+            .collect::<Result<Vec<_>>>()
     } else {
-        panic!("illegal non-array type in from_bytes call");
+        Err(anyhow!("illegal non-array type in `{}` call", fn_call))
     }
 }
