@@ -179,7 +179,7 @@ where
         assert_eq!(merkle_trie_path.parents.len(), merkle_trie_path.path.len());
         assert_eq!(merkle_trie_path.path.len(), merkle_trie_path.traversal.len());
 
-        let mut traversal = Vec::with_capacity(P::MAX_DEPTH);
+        let mut traversal = Vec::with_capacity(P::max_depth());
         for (i, position) in merkle_trie_path.traversal.iter().enumerate() {
             traversal.push(UInt8::alloc(
                 cs.ns(|| format!("alloc_traversal_position_{}", i)),
@@ -189,7 +189,7 @@ where
 
         let filler_sibling = <P::H as CRH>::Output::default();
 
-        let mut path = Vec::with_capacity(P::MAX_DEPTH);
+        let mut path = Vec::with_capacity(P::max_depth());
         for (i, sibling_roots) in merkle_trie_path.path.iter().enumerate() {
             let mut siblings = vec![];
             for (j, sibling) in sibling_roots.iter().enumerate() {
@@ -217,7 +217,7 @@ where
             path.push(siblings);
         }
 
-        let mut parents = Vec::with_capacity(P::MAX_DEPTH);
+        let mut parents = Vec::with_capacity(P::max_depth());
         for (i, (key, value)) in merkle_trie_path.parents.iter().enumerate() {
             let key_gadget = match key {
                 Some(k) => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &k.to_bytes_le()?)?,
@@ -236,13 +236,13 @@ where
 
         // Fill `traversal`, `path`, and `parents` to the max depth.
 
-        for i in traversal.len()..P::MAX_DEPTH {
+        for i in traversal.len()..P::max_depth() {
             traversal.push(UInt8::alloc(cs.ns(|| format!("alloc_filler_traversal_{}", i)), || {
                 Ok(0)
             })?);
         }
 
-        for i in path.len()..P::MAX_DEPTH {
+        for i in path.len()..P::max_depth() {
             let mut siblings = vec![];
             for j in 0..P::MAX_BRANCH {
                 siblings.push(HGadget::OutputGadget::alloc(
@@ -253,16 +253,16 @@ where
             path.push(siblings);
         }
 
-        for i in parents.len()..P::MAX_DEPTH {
+        for i in parents.len()..P::max_depth() {
             let key_gadget = UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_key_{}", i)), &vec![0u8; P::KEY_SIZE])?;
             let value_gadget =
                 UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?;
             parents.push((key_gadget, value_gadget));
         }
 
-        assert_eq!(traversal.len(), P::MAX_DEPTH);
-        assert_eq!(path.len(), P::MAX_DEPTH);
-        assert_eq!(parents.len(), P::MAX_DEPTH);
+        assert_eq!(traversal.len(), P::max_depth());
+        assert_eq!(path.len(), P::max_depth());
+        assert_eq!(parents.len(), P::max_depth());
 
         Ok(MerkleTriePathGadget {
             traversal,

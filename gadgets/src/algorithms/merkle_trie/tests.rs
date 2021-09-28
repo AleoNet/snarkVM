@@ -185,7 +185,6 @@ mod merkle_trie_bhp {
     const KEY_SIZE: usize = 32;
     const VALUE_SIZE: usize = 32;
 
-    const DEPTH: usize = 64;
     const BRANCH: usize = 16;
 
     #[test]
