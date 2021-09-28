@@ -20,6 +20,7 @@ pub mod crh;
 pub mod crypto_hash;
 pub mod encryption;
 pub mod merkle_tree;
+pub mod merkle_trie;
 pub mod prf;
 pub mod signature;
 pub mod snark;

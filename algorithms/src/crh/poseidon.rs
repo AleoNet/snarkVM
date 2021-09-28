@@ -29,8 +29,8 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     type Output = F;
     type Parameters = PoseidonParameters<F>;
 
-    // TODO (raychu86): Specify this value correctly. Currently an arbitrary value
-    const INPUT_SIZE_BITS: usize = 20 * 48;
+    // TODO (raychu86): Unused.
+    const INPUT_SIZE_BITS: usize = 0;
 
     fn setup(_message: &str) -> Self {
         Self {
@@ -39,10 +39,6 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        assert!(input.len() <= Self::INPUT_SIZE_BITS);
-
-        let mut input = input.to_vec();
-        input.resize(Self::INPUT_SIZE_BITS, false);
         Ok(Self::evaluate(&input.to_field_elements().unwrap())?)
     }
 

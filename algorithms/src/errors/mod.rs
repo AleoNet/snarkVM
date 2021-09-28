@@ -32,6 +32,9 @@ pub use encryption::*;
 pub mod merkle;
 pub use merkle::*;
 
+pub mod merkle_trie;
+pub use merkle_trie::*;
+
 pub mod prf;
 pub use prf::*;
 

@@ -61,6 +61,9 @@ pub mod hash_to_curve;
 #[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;
 
+#[cfg(feature = "merkle_trie")]
+pub mod merkle_trie;
+
 #[cfg(feature = "msm")]
 pub mod msm;
 
