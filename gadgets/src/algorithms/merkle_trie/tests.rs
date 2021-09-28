@@ -151,12 +151,11 @@ mod merkle_trie_poseidon {
     const KEY_SIZE: usize = 32;
     const VALUE_SIZE: usize = 32;
 
-    const DEPTH: usize = 64;
     const BRANCH: usize = 16;
 
     #[test]
     fn good_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, H, DEPTH, BRANCH, KEY_SIZE, VALUE_SIZE);
+        define_merkle_trie_parameters!(MerkleTrieParams, H, BRANCH, KEY_SIZE, VALUE_SIZE);
 
         let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
 
@@ -166,7 +165,7 @@ mod merkle_trie_poseidon {
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, H, DEPTH, BRANCH, KEY_SIZE, VALUE_SIZE);
+        define_merkle_trie_parameters!(MerkleTrieParams, H, BRANCH, KEY_SIZE, VALUE_SIZE);
 
         let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
 
@@ -191,7 +190,7 @@ mod merkle_trie_bhp {
 
     #[test]
     fn good_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, H, DEPTH, BRANCH, KEY_SIZE, VALUE_SIZE);
+        define_merkle_trie_parameters!(MerkleTrieParams, H, BRANCH, KEY_SIZE, VALUE_SIZE);
 
         let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
 
@@ -201,7 +200,7 @@ mod merkle_trie_bhp {
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, H, DEPTH, BRANCH, KEY_SIZE, VALUE_SIZE);
+        define_merkle_trie_parameters!(MerkleTrieParams, H, BRANCH, KEY_SIZE, VALUE_SIZE);
 
         let key_pairs = generate_random_key_pairs!(4, KEY_SIZE, VALUE_SIZE);
 

@@ -20,7 +20,6 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 pub trait MerkleTrieParameters: Send + Sync + Clone {
     type H: CRH;
 
-    const MAX_DEPTH: usize;
     const MAX_BRANCH: usize;
 
     const KEY_SIZE: usize;
@@ -28,6 +27,12 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
 
     /// Setup the MerkleParameters
     fn setup(message: &str) -> Self;
+
+    /// The maximum depth of the trie derived from `MAX_BRANCH` and `KEY_SIZE`.
+    fn max_depth() -> usize {
+        let chunk_size = (Self::MAX_BRANCH as f64).log2() as usize;
+        (8 * Self::KEY_SIZE + (chunk_size - 1)) / chunk_size
+    }
 
     /// Returns the collision-resistant hash function used by the Merkle tree.
     fn crh(&self) -> &Self::H;
