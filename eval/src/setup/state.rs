@@ -116,7 +116,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     Value::Array(x) => x,
                     value => return Err(ValueError::bad_value_for_type(&*type_.to_string(), &*value.to_string())),
                 };
-                if values.len() != len.unwrap() as usize {
+                if values.len() != *len as usize {
                     return Err(ValueError::bad_value_for_type(
                         &*type_.to_string(),
                         &*format!("array of length {}", values.len()),
@@ -353,7 +353,6 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             Instruction::Repeat(RepeatData {
                 instruction_count,
                 iter_variable,
-                inclusive,
                 from,
                 to,
             }) => {
@@ -378,17 +377,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     .to_usize()
                     .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
 
-                let iter: Box<dyn Iterator<Item = usize>> = match (from < to, inclusive) {
-                    (true, true) => Box::new(from..=to),
-                    (true, false) => Box::new(from..to),
-                    (false, true) => Box::new((to..=from).rev()),
-                    // add the range to the values to get correct bound
-                    (false, false) => Box::new(((to + 1)..(from + 1)).rev()),
-                };
-
                 *instruction_index += 1;
                 //todo: max loop count (DOS vector)
-                for i in iter {
+                for i in from..to {
                     self.variables.insert(
                         *iter_variable,
                         ConstrainedValue::Integer(match from_int.get_type() {
