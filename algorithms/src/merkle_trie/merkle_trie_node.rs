@@ -159,7 +159,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
                 self.value = None;
                 self.compress(parameters)?;
                 return Ok(value);
-            } else if self.key.len() <= key.len() {
+            } else if self.key.len() < key.len() {
                 // If the current node is a parent, find it's child.
                 let suffix = &key[self.key.len()..];
 
@@ -168,8 +168,10 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
                     // Attempt to remove the node with the suffix
                     match child_node.remove(parameters, &suffix)? {
                         Some(value) => {
-                            // If there was a value removed, then remove the child from the list of children.
-                            self.children.remove(&suffix[0]);
+                            // If there was a value removed, then remove the child from the list of children (if it is empty).
+                            if child_node.is_empty() {
+                                self.children.remove(&suffix[0]);
+                            }
 
                             self.compress(parameters)?;
                             return Ok(Some(value));

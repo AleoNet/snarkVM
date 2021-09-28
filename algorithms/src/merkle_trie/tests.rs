@@ -144,21 +144,21 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn empty_merkle_trie_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 32, 32);
 
         run_empty_merkle_trie_test::<MerkleTrieParams>();
     }
 
     #[test]
     fn merkle_trie_get_remove_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 32, 32);
 
         run_get_remove_test::<MerkleTrieParams>();
     }
 
     #[test]
     fn good_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 32, 32);
 
         run_good_root_test::<MerkleTrieParams>();
     }
@@ -166,7 +166,7 @@ mod poseidon_on_bls12_377_fr {
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 32, 32);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 32, 32);
 
         run_bad_root_test::<MerkleTrieParams>();
     }
@@ -178,7 +178,7 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn test_trie_get() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 1, 1);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 1, 1);
 
         let crh = Arc::new(MerkleTrieParams::setup("TEST_MERKLE_TRIE_CRH"));
 
@@ -201,7 +201,7 @@ mod poseidon_on_bls12_377_fr {
 
     #[test]
     fn test_trie_verify() {
-        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 32, 64, 1, 1);
+        define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 1, 1);
 
         let crh = Arc::new(MerkleTrieParams::setup("TEST_MERKLE_TRIE_CRH"));
 
