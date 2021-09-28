@@ -27,7 +27,7 @@ pub use len::*;
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core(&mut self, name: &str, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
         match name {
-            blake2s::BLAKE2S_CORE => self.call_core_blake2s(arguments),
+            blake2s::BLAKE2S_HASH_CORE => self.call_core_blake2s_hash(arguments),
             len::LEN_CORE => self.call_core_len(arguments),
             bits::TO_BITS_CORE => self.call_core_to_bits(arguments),
             bits::FROM_ADDRESS_BITS_CORE => self.call_core_address_from_bits(arguments),
