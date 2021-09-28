@@ -123,9 +123,8 @@ message Operand {
 message Type {
     TypeClass class = 1;
     uint32 array_length = 2;
-    bool length_unknown = 3;
-    repeated Type subtypes = 4;
-    repeated string subtype_names = 5;
+    repeated Type subtypes = 3;
+    repeated string subtype_names = 4;
 }
 
 message Input {

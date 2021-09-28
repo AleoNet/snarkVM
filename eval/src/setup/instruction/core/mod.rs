@@ -17,14 +17,11 @@
 use super::*;
 
 mod blake2s;
-pub mod len;
-pub use len::*;
 
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     pub fn call_core(&mut self, name: &str, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
         match name {
             blake2s::BLAKE2S_CORE => self.call_core_blake2s(arguments),
-            len::LEN_CORE => self.call_core_len(arguments),
             _ => Err(anyhow!("unknown core call: {}", name)),
         }
     }

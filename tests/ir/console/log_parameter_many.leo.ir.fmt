@@ -1,5 +1,5 @@
 decl f0: <0>
   store &v1, ((v0), (), (), ())
-  log INFO, "", 1, " ", true, ""
+  log INFO, "", 1, " ", true
   eq &v3, v2, true
   retn v3
