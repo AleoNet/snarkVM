@@ -84,4 +84,13 @@ impl ValueError {
 
         Self::new(message)
     }
+
+    pub fn array_sizes_must_match_in_eq(arr_1: usize, arr_2: usize) -> Self {
+        let message = format!(
+            "array sizes must match for comparison; left: {}, right: {}",
+            arr_1, arr_2
+        );
+
+        Self::new(message)
+    }
 }
