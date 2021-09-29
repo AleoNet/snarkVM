@@ -53,6 +53,11 @@ pub fn evaluate_eq<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>>(
         }
         (ConstrainedValue::Array(arr_1), ConstrainedValue::Array(arr_2)) => {
             let mut current = ConstrainedValue::Boolean(Boolean::constant(true));
+
+            if arr_1.len() != arr_2.len() {
+                return Err(ValueError::array_sizes_must_match_in_eq(arr_1.len(), arr_2.len()));
+            }
+
             for (i, (left, right)) in arr_1.into_iter().zip(arr_2.into_iter()).enumerate() {
                 let next = evaluate_eq(&mut cs.ns(|| format!("array[{}]", i)), left, right)?;
 
