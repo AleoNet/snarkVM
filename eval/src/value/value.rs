@@ -125,10 +125,6 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         }
     }
 
-    pub fn from_bits_le(_bits: &[Boolean]) -> Result<Self> {
-        Err(anyhow!("the type does not implement the from_bits method"))
-    }
-
     pub fn to_bytes(&self) -> Result<Vec<UInt8>> {
         use ConstrainedValue::*;
 
