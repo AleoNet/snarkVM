@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{DPCError, Network, ProgramCircuit};
+use snarkvm_algorithms::prelude::*;
+use snarkvm_dpc::{DPCError, Network, SynthesizedCircuit};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -23,12 +24,20 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let noop_circuit = ProgramCircuit::<C>::setup(rng)?;
-    let noop_program_snark_pk = noop_circuit.to_proving_key().to_bytes_le()?;
-    let noop_program_snark_vk = noop_circuit.to_verifying_key().to_bytes_le()?;
+    // Compute the proving key and verifying key.
+    let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
+        &SynthesizedCircuit::<N>::Noop(Default::default()),
+        &mut *N::program_srs(rng).borrow_mut(),
+    )?;
+
+    // Compute the circuit ID.
+    let circuit_id = <N as Network>::program_circuit_id(&verifying_key)?;
+
+    let noop_program_snark_pk = proving_key.to_bytes_le()?;
+    let noop_program_snark_vk = verifying_key.to_bytes_le()?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());
     println!("noop_program_snark_vk.params\n\tsize - {}", noop_program_snark_vk.len());

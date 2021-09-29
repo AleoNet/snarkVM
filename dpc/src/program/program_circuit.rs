@@ -89,7 +89,8 @@ impl<N: Network> ProgramCircuit<N> {
     }
 }
 
-pub(crate) enum SynthesizedCircuit<N: Network> {
+// TODO (howardwu): TEMPORARY - Guard access to this enum, to prevent abuse of it.
+pub enum SynthesizedCircuit<N: Network> {
     Noop(PublicVariables<N>),
     Blank(Arc<dyn CircuitLogic<N>>),
     Assigned(Arc<dyn CircuitLogic<N>>, PublicVariables<N>),

@@ -210,6 +210,10 @@ impl<N: Network> BlockHeader<N> {
         leaves.push(transactions_root);
         leaves.push(serial_numbers_root);
         leaves.push(commitments_root);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
         leaves.push(metadata);
         assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
 

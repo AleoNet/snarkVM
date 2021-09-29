@@ -306,6 +306,7 @@ mod tests {
     #[test]
     fn test_posw_tree_sanity_check() {
         // Verify the PoSW tree depth matches the declared depth.
+        assert_eq!(Testnet1::POSW_TREE_DEPTH, 2); // Testnet1 has a tree depth of 2.
         assert_eq!(
             Testnet1::POSW_TREE_DEPTH,
             <<Testnet1 as Network>::BlockHeaderTreeParameters as MerkleParameters>::DEPTH
