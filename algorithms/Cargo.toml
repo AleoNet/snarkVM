@@ -138,7 +138,7 @@ version = "0.9"
 default-features = false
 
 [dependencies.smallvec]
-version = "1.6"
+version = "1.7"
 
 [dependencies.thiserror]
 version = "1.0"
