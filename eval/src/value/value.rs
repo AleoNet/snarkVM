@@ -125,7 +125,7 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         }
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<UInt8>> {
+    pub fn to_bytes_le(&self) -> Result<Vec<UInt8>> {
         use ConstrainedValue::*;
 
         match self {
