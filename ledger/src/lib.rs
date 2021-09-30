@@ -57,9 +57,6 @@
 #[macro_use]
 extern crate thiserror;
 
-pub mod environment;
-pub use environment::*;
-
 pub mod errors;
 pub use errors::*;
 
