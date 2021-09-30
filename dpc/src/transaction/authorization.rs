@@ -79,7 +79,7 @@ impl<N: Network> TransactionAuthorization<N> {
         &self,
         rng: &mut R,
     ) -> Result<(ProgramCommitment<N>, ProgramCommitmentRandomness<N>)> {
-        let program_ids = self
+        let program_id = self
             .input_records
             .iter()
             .chain(self.output_records.iter())
@@ -89,12 +89,8 @@ impl<N: Network> TransactionAuthorization<N> {
             .collect::<HashSet<_>>();
 
         // Ensure the number of unique programs is within the declared limit.
-        if program_ids.len() > N::NUM_EXECUTABLES {
-            return Err(anyhow!(
-                "Expected at most {} program IDs, found {} program IDs",
-                N::NUM_EXECUTABLES,
-                program_ids.len()
-            ));
+        if program_id.len() > 1 {
+            return Err(anyhow!("Expected 1 program ID, found {} program IDs", program_id.len()));
         }
 
         //
@@ -102,7 +98,7 @@ impl<N: Network> TransactionAuthorization<N> {
         //  There are 2 cases unaccounted for: 1) need to pad with noop program IDs, 2) when two executables are of the same program ID.
 
         // Flatten and concatenate the program IDs into bytes.
-        let program_ids_bytes = program_ids
+        let program_ids_bytes = program_id
             .iter()
             .flat_map(|program_id| program_id.to_bytes_le().expect("Failed to convert program ID to bytes"))
             .collect::<Vec<u8>>();

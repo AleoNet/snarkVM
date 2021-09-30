@@ -33,9 +33,9 @@ pub struct InnerPrivateVariables<N: Network> {
     pub(super) output_records: Vec<Record<N>>,
     // Encryption of output records.
     pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-    // Executables.
-    pub(super) program_ids: Vec<N::ProgramID>,
-    pub(super) circuit_types: Vec<CircuitType>,
+    // Executable.
+    pub(super) program_id: N::ProgramID,
+    pub(super) circuit_type: CircuitType,
     // Commitment to programs and local data.
     pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     pub(super) local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
@@ -52,8 +52,8 @@ impl<N: Network> InnerPrivateVariables<N> {
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
-            program_ids: vec![*N::noop_program_id(); N::NUM_EXECUTABLES],
-            circuit_types: vec![CircuitType::Noop; N::NUM_EXECUTABLES],
+            program_id: *N::noop_program_id(),
+            circuit_type: CircuitType::Noop,
             program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_leaf_randomizers: vec![
                 <N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
@@ -68,7 +68,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         signatures: Vec<N::AccountSignature>,
         output_records: Vec<Record<N>>,
         encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-        executables: &Vec<Executable<N>>,
+        executable: &Executable<N>,
         program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Result<Self> {
@@ -77,14 +77,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
-        assert_eq!(N::NUM_EXECUTABLES, executables.len());
         assert_eq!(N::NUM_TOTAL_RECORDS, local_data_leaf_randomizers.len());
-
-        // Prepare the executable program IDs.
-        let program_ids = executables.iter().map(|e| e.program_id()).collect::<Vec<_>>();
-
-        // Prepare the circuit types.
-        let circuit_types = executables.iter().map(|e| e.circuit_type()).collect::<Vec<_>>();
 
         Ok(Self {
             input_records,
@@ -92,8 +85,8 @@ impl<N: Network> InnerPrivateVariables<N> {
             signatures,
             output_records,
             encrypted_record_randomizers,
-            program_ids,
-            circuit_types,
+            program_id: executable.program_id(),
+            circuit_type: executable.circuit_type(),
             program_randomness,
             local_data_leaf_randomizers,
         })

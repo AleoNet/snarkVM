@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, CircuitLogic, CircuitType, LocalData, Network, PublicVariables};
+use crate::{CircuitError, CircuitLogic, CircuitType, Network, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -81,7 +81,7 @@ impl<N: Network> ProgramCircuit<N> {
     }
 
     /// Returns the assigned circuit.
-    pub(crate) fn synthesize(&self, public: PublicVariables<N>, _local_data: &LocalData<N>) -> SynthesizedCircuit<N> {
+    pub(crate) fn synthesize(&self, public: PublicVariables<N>) -> SynthesizedCircuit<N> {
         match self {
             Self::Noop => SynthesizedCircuit::Noop(public),
             Self::Circuit(_, logic, _, _) => SynthesizedCircuit::Assigned(logic.clone(), public),
@@ -103,9 +103,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
     ) -> Result<(), SynthesisError> {
         match self {
             Self::Noop(public) => {
-                let _record_position =
-                    UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[public.record_position])?;
-
                 let _local_data_commitment_scheme = N::LocalDataCommitmentGadget::alloc_constant(
                     &mut cs.ns(|| "Declare the local data commitment scheme"),
                     || Ok(N::local_data_commitment_scheme().clone()),

@@ -17,12 +17,13 @@
 use crate::prelude::*;
 
 use anyhow::{anyhow, Result};
+use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 
 #[derive(Clone)]
 pub struct StateBuilder<N: Network> {
-    /// A list of executables for a state transition.
-    executables: Vec<Executable<N>>,
+    /// The executable for a state transition.
+    executable: OnceCell<Executable<N>>,
     /// A list of given inputs for a state transition.
     inputs: Vec<Input<N>>,
     /// A list of expected outputs for a state transition.
@@ -39,7 +40,7 @@ impl<N: Network> StateBuilder<N> {
     ///
     pub fn new() -> Self {
         Self {
-            executables: Vec::with_capacity(N::NUM_EXECUTABLES),
+            executable: OnceCell::new(),
             inputs: Vec::with_capacity(N::NUM_INPUT_RECORDS),
             outputs: Vec::with_capacity(N::NUM_OUTPUT_RECORDS),
             memo: Vec::with_capacity(N::MEMO_SIZE_IN_BYTES),
@@ -51,10 +52,11 @@ impl<N: Network> StateBuilder<N> {
     /// Adds the given executable into the builder.
     ///
     pub fn add_executable(mut self, executable: Executable<N>) -> Self {
-        match self.executables.len() < N::NUM_EXECUTABLES {
-            true => self.executables.push(executable),
-            false => self.errors.push("Builder exceeded maximum executables".into()),
-        };
+        if self.executable.get().is_some() {
+            self.errors.push("Builder already set an executable".into());
+        } else if self.executable.set(executable).is_err() {
+            self.errors.push("Builder failed to set an executable".into());
+        }
         self
     }
 
@@ -62,7 +64,13 @@ impl<N: Network> StateBuilder<N> {
     /// Adds the given input into the builder.
     ///
     pub fn add_input(mut self, input: Input<N>) -> Self {
-        // Ensure there are no outputs assigned yet, as the builder computes joint serial numbers.
+        // Ensure the executable is already set, or the input is a noop.
+        if self.executable.get().is_none() && !input.is_noop() {
+            self.errors
+                .push("Builder cannot add new inputs before adding an executable".into());
+        }
+
+        // Ensure there are no outputs assigned yet, as the builder computes serial number nonces.
         if !self.outputs.is_empty() {
             self.errors.push("Builder cannot add new inputs after outputs".into());
         }
@@ -88,6 +96,12 @@ impl<N: Network> StateBuilder<N> {
     /// Adds the given output into the builder.
     ///
     pub fn add_output(mut self, output: Output<N>) -> Self {
+        // Ensure the executable is already set, or the output is a noop.
+        if self.executable.get().is_none() && !output.is_noop() {
+            self.errors
+                .push("Builder cannot add new outputs before adding an executable".into());
+        }
+
         match self.outputs.len() < N::NUM_OUTPUT_RECORDS {
             true => self.outputs.push(output),
             false => self.errors.push("Builder exceeded maximum outputs".into()),
@@ -167,53 +181,29 @@ impl<N: Network> StateBuilder<N> {
             .map(|output| output.commitment())
             .collect();
 
-        // Ensure the executables input and output size requirements matches the records.
+        // Fetch the executable.
+        let executable = match self.executable.get() {
+            Some(executable) => executable.clone(),
+            None => return Err(anyhow!("Failed to get the executable during build phase")),
+        };
+
+        // Ensure the executable input and output size requirements matches the records.
         {
-            // Ensure the number of executables is valid.
-            if self.executables.len() > N::NUM_EXECUTABLES {
-                return Err(anyhow!("Incorrect number of executables: {}", self.executables.len()));
-            }
+            // Fetch the circuit type and program ID.
+            let (circuit_type, program_id) = (executable.circuit_type(), executable.program_id());
 
-            let mut num_inputs: usize = 0;
-            let mut num_outputs: usize = 0;
-
-            for executable in self.executables.iter().take(N::NUM_EXECUTABLES) {
-                // Fetch the circuit type.
-                let input_count = executable.circuit_type().input_count() as usize;
-                let output_count = executable.circuit_type().output_count() as usize;
-
-                for i in 0..input_count {
-                    // Ensure the input records have the correct program ID.
-                    if input_records[num_inputs + i].program_id() != executable.program_id() {
-                        return Err(anyhow!("Program ID in input record {} does not match executable", i));
-                    }
+            // Ensure the input records have the correct program ID.
+            for i in 0..(circuit_type.input_count() as usize) {
+                if input_records[i].program_id() != program_id {
+                    return Err(anyhow!("Program ID in input record {} does not match executable", i));
                 }
+            }
 
-                for j in 0..output_count {
-                    // Ensure the output records have the correct program ID.
-                    if output_records[num_outputs + j].program_id() != executable.program_id() {
-                        return Err(anyhow!("Program ID in output record {} does not match executable", j));
-                    }
+            // Ensure the output records have the correct program ID.
+            for j in 0..(circuit_type.output_count() as usize) {
+                if output_records[j].program_id() != program_id {
+                    return Err(anyhow!("Program ID in output record {} does not match executable", j));
                 }
-
-                // Increment the number of inputs and outputs from this executable.
-                num_inputs += input_count;
-                num_outputs += output_count;
-            }
-
-            // Ensure the number of inputs required is valid.
-            if num_inputs > N::NUM_INPUT_RECORDS {
-                return Err(anyhow!("Number of required inputs exceeds transaction input size"));
-            }
-
-            // Ensure the number of outputs required is valid.
-            if num_outputs > N::NUM_OUTPUT_RECORDS {
-                return Err(anyhow!("Number of required outputs exceeds transaction output size"));
-            }
-
-            // Ensure the total size required is valid.
-            if (num_inputs + num_outputs) > N::NUM_TOTAL_RECORDS {
-                return Err(anyhow!("Number of required inputs & outputs exceeds transaction size"));
             }
         }
 
@@ -246,7 +236,7 @@ impl<N: Network> StateBuilder<N> {
             input_records,
             output_records,
             noop_private_keys,
-            executables: self.executables.clone(),
+            executable,
         })
     }
 
@@ -257,6 +247,13 @@ impl<N: Network> StateBuilder<N> {
     /// of inputs and outputs for the transaction.
     ///
     fn prepare_inputs_and_outputs<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<(Vec<Input<N>>, Vec<Output<N>>)> {
+        // Set the executable with the noop if necessary.
+        if self.executable.get().is_none() {
+            if self.executable.set(Executable::Noop).is_err() {
+                return Err(anyhow!("Builder failed to set the noop executable"));
+            }
+        }
+
         // Ensure a valid number of inputs are provided.
         if self.inputs.len() > N::NUM_INPUT_RECORDS {
             return Err(anyhow!("Builder exceeded maximum number of inputs"));

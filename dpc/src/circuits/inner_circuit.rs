@@ -666,35 +666,28 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
-            let mut executable_program_id_bytes_gadgets = Vec::with_capacity(N::NUM_EXECUTABLES);
-
             // Keep a counter to tally and increment the inputs.
             let mut inputs_counter = UInt8::constant(0);
 
             // Keep a counter to tally and increment the outputs.
             let mut outputs_counter = UInt8::constant(0);
 
-            for (index, (program_id, circuit_type)) in private
-                .program_ids
-                .iter()
-                .zip_eq(private.circuit_types.iter())
-                .take(N::NUM_EXECUTABLES)
-                .enumerate()
-            {
+            let executable_program_id_bytes = {
+                let index = 0;
+
                 // Declare the program ID as bytes.
                 let executable_program_id_bytes = UInt8::alloc_vec(
                     &mut commitment_cs.ns(|| format!("executable_program_id {}", index)),
-                    &program_id.to_bytes_le()?,
+                    &private.program_id.to_bytes_le()?,
                 )?;
                 let executable_program_id_field_elements = executable_program_id_bytes.to_constraint_field(
                     &mut commitment_cs.ns(|| format!("convert executable program ID {} to field elements", index)),
                 )?;
-                executable_program_id_bytes_gadgets.push(executable_program_id_bytes);
 
                 // Declare the required number of inputs for this circuit type.
                 let number_of_inputs = &UInt8::alloc_vec(
                     &mut commitment_cs.ns(|| format!("number_of_inputs for executable {}", index)),
-                    &[circuit_type.input_count()],
+                    &[private.circuit_type.input_count()],
                 )?[0];
 
                 // Declare the input start and end index.
@@ -743,7 +736,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Declare the required number of outputs for this circuit type.
                 let number_of_outputs = &UInt8::alloc_vec(
                     &mut commitment_cs.ns(|| format!("number_of_outputs for executable {}", index)),
-                    &[circuit_type.output_count()],
+                    &[private.circuit_type.output_count()],
                 )?[0];
 
                 // Declare the output start and end index.
@@ -788,7 +781,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 }
 
                 outputs_counter = output_end_index;
-            }
+
+                executable_program_id_bytes
+            };
 
             let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
             let is_inputs_size_correct = inputs_counter.less_than_or_equal(
@@ -814,11 +809,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Check that the program commitment is computed correctly.
 
-            let mut input = Vec::new();
-            for id_gadget in executable_program_id_bytes_gadgets.iter().take(N::NUM_EXECUTABLES) {
-                input.extend_from_slice(id_gadget);
-            }
-
             let given_commitment_randomness =
                 <N::ProgramCommitmentGadget as CommitmentGadget<_, N::InnerScalarField>>::RandomnessGadget::alloc(
                     &mut commitment_cs.ns(|| "given_commitment_randomness"),
@@ -833,7 +823,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             let candidate_commitment = program_commitment_parameters.check_commitment_gadget(
                 &mut commitment_cs.ns(|| "candidate_commitment"),
-                &input,
+                &executable_program_id_bytes,
                 &given_commitment_randomness,
             )?;
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitType, Executable, Execution, LocalData, Network, ProgramCircuit, ProgramError, PublicVariables};
+use crate::{CircuitType, Executable, Execution, Network, ProgramCircuit, ProgramError, PublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -70,12 +70,12 @@ pub trait ProgramExecutable<N: Network>: Send + Sync {
     fn circuit_type(&self) -> CircuitType;
 
     /// Returns the native evaluation of the executable on given public and private variables.
-    fn evaluate(&self, _public: PublicVariables<N>, _local_data: &LocalData<N>) -> bool {
+    fn evaluate(&self, _public: PublicVariables<N>) -> bool {
         unimplemented!("The native evaluation of this executable is unimplemented")
     }
 
     /// Executes the circuit, returning an proof.
-    fn execute(&self, public: PublicVariables<N>, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError>;
+    fn execute(&self, public: PublicVariables<N>) -> Result<Execution<N>, ProgramError>;
 
     /// Returns true if the execution of the circuit is valid.
     fn verify(&self, public: PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool;

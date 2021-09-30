@@ -39,7 +39,7 @@ pub trait DPCScheme<N: Network>: Sized {
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
-        executables: &Vec<Executable<N>>,
+        executable: &Executable<N>,
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction>;

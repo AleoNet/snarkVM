@@ -80,14 +80,12 @@ impl Network for Testnet1 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-
-    const NUM_EXECUTABLES: usize = 2;
-
+    
     const MEMO_SIZE_IN_BYTES: usize = 64;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    const POSW_NUM_LEAVES: usize = 4;
-    const POSW_TREE_DEPTH: usize = 2;
+    const POSW_NUM_LEAVES: usize = 8;
+    const POSW_TREE_DEPTH: usize = 3;
     
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
     
@@ -306,7 +304,6 @@ mod tests {
     #[test]
     fn test_posw_tree_sanity_check() {
         // Verify the PoSW tree depth matches the declared depth.
-        assert_eq!(Testnet1::POSW_TREE_DEPTH, 2); // Testnet1 has a tree depth of 2.
         assert_eq!(
             Testnet1::POSW_TREE_DEPTH,
             <<Testnet1 as Network>::BlockHeaderTreeParameters as MerkleParameters>::DEPTH

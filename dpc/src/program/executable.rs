@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitType, LocalData, Network, ProgramCircuit, ProgramError, ProgramExecutable, PublicVariables};
+use crate::{CircuitType, Network, ProgramCircuit, ProgramError, ProgramExecutable, PublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::Result;
@@ -74,7 +74,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
     }
 
     /// Executes the circuit, returning an proof.
-    fn execute(&self, public: PublicVariables<N>, local_data: &LocalData<N>) -> Result<Execution<N>, ProgramError> {
+    fn execute(&self, public: PublicVariables<N>) -> Result<Execution<N>, ProgramError> {
         let (circuit, verifying_key, program_path) = match self {
             Self::Noop => (
                 &ProgramCircuit::Noop,
@@ -87,7 +87,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
         // Compute the proof.
         let proof = <N::ProgramSNARK as SNARK>::prove(
             circuit.proving_key(),
-            &circuit.synthesize(public.clone(), local_data),
+            &circuit.synthesize(public.clone()),
             &mut rand::thread_rng(),
         )?;
         assert!(self.verify(public, &proof));

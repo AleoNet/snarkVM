@@ -118,11 +118,11 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
-    // Execute the programs.
-    let mut executions = Vec::with_capacity(Testnet1::NUM_EXECUTABLES);
-    for (i, executable) in state.executables().iter().enumerate() {
-        executions.push(executable.execute(i as u8, &local_data).unwrap());
-    }
+    // Execute the program circuit.
+    let execution = state
+        .executable()
+        .execute(PublicVariables::new(local_data.root()))
+        .unwrap();
 
     // Compute the program commitment.
     let (program_commitment, program_randomness) = authorization.to_program_commitment(&mut rng).unwrap();
@@ -162,7 +162,7 @@ fn test_testnet1_dpc_execute_constraints() {
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,
-        state.executables(),
+        state.executable(),
         program_randomness.clone(),
         local_data.leaf_randomizers().clone(),
     )
@@ -213,7 +213,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let outer_private_variables = OuterPrivateVariables::new(
         inner_snark_vk.clone(),
         inner_snark_proof,
-        executions.to_vec(),
+        execution,
         program_commitment.clone(),
         program_randomness,
         local_data_root.clone(),

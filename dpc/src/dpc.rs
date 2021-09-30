@@ -66,12 +66,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
-        executables: &Vec<Executable<N>>,
+        executable: &Executable<N>,
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(N::NUM_EXECUTABLES, executables.len());
-
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
@@ -83,14 +81,8 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         // Generate the local data.
         let local_data = authorization.to_local_data(rng)?;
 
-        // Execute the programs.
-        let mut executions = Vec::with_capacity(N::NUM_EXECUTABLES);
-        for (i, executable) in executables.iter().take(N::NUM_EXECUTABLES).enumerate() {
-            // Construct the public variables.
-            let public_variables = PublicVariables::new(i as u8, local_data.root());
-
-            executions.push(executable.execute(public_variables, &local_data)?);
-        }
+        // Execute the program circuit.
+        let execution = executable.execute(PublicVariables::new(local_data.root()))?;
 
         // Compute the program commitment.
         let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
@@ -120,7 +112,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             signatures,
             output_records.clone(),
             encrypted_record_randomizers,
-            &executables,
+            &executable,
             program_randomness.clone(),
             local_data.leaf_randomizers().clone(),
         )?;
@@ -145,7 +137,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             let outer_private_variables = OuterPrivateVariables::new(
                 N::inner_circuit_verifying_key().clone(),
                 inner_proof,
-                executions.to_vec(),
+                execution,
                 program_commitment.clone(),
                 program_randomness,
                 local_data.root().clone(),
