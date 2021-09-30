@@ -17,7 +17,7 @@
 use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
-use snarkvm_ledger::ledger::*;
+use snarkvm_ledger::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
