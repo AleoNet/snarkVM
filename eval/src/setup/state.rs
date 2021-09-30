@@ -21,7 +21,7 @@ use super::*;
 pub(super) struct EvaluatorState<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> {
     pub program: &'a Program,
     variables: HashMap<u32, ConstrainedValue<F, G>>,
-    call_depth: usize,
+    call_depth: u32,
     cs: CS,
     pub parent_variables: HashMap<u32, ConstrainedValue<F, G>>,
     pub function_index: u32,
@@ -264,6 +264,10 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         self.function_index = index as u32;
         self.instruction_index = 0;
         self.call_depth += 1;
+
+        if self.call_depth > self.program.header.inline_limit {
+            return Err(anyhow!("f#{}: max inline limit hit"));
+        }
 
         let out = self.evaluate_block(0, &function.instructions[..], &mut result);
 
