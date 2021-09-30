@@ -19,10 +19,11 @@ use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::Result;
 
-/// Program path, verifying key, and proof.
+/// Program ID, program path, verifying key, and proof.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct Execution<N: Network> {
+    pub program_id: N::ProgramID,
     pub program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
     pub verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
     pub proof: <N::ProgramSNARK as SNARK>::Proof,
@@ -93,6 +94,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
         assert!(self.verify(public, &proof));
 
         Ok(Execution {
+            program_id: self.program_id(),
             program_path,
             verifying_key,
             proof,

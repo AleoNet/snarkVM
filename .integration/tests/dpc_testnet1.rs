@@ -216,7 +216,6 @@ fn test_testnet1_dpc_execute_constraints() {
         inner_snark_vk.clone(),
         inner_snark_proof,
         execution,
-        state.executable().program_id(),
         local_data_root.clone(),
     );
 

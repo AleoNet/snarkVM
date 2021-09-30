@@ -172,8 +172,11 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         "value balance",
     )?;
 
-    let program_id_fe =
-        alloc_inner_snark_field_element::<N, _, _>(cs, &private.program_id.to_bytes_le()?[..], "program ID")?;
+    let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
+        cs,
+        &private.program_execution.program_id.to_bytes_le()?[..],
+        "program ID",
+    )?;
 
     let local_data_root_fe_inner_snark =
         alloc_inner_snark_field_element::<N, _, _>(cs, &private.local_data_root, "local data root inner snark")?;
@@ -268,7 +271,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
             let given_program_id = UInt8::alloc_vec(
                 &mut cs.ns(|| "Allocate given program ID"),
-                &private.program_id.to_bytes_le()?[..],
+                &private.program_execution.program_id.to_bytes_le()?[..],
             )?;
             let given_program_id_bytes =
                 given_program_id.to_bytes(&mut cs.ns(|| "Convert given program ID to bytes"))?;

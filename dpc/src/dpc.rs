@@ -134,7 +134,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
                 N::inner_circuit_verifying_key().clone(),
                 inner_proof,
                 execution,
-                executable.program_id(),
                 local_data.root().clone(),
             );
 
@@ -150,16 +149,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     }
 
     // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
-    //     let verify_time = start_timer!(|| "DPC::verify");
-    //
-    //     // Returns `false` if the transaction is invalid.
-    //     if !transaction.is_valid() {
-    //         eprintln!("Transaction is invalid.");
-    //         return false;
-    //     }
-    //
-    //     let ledger_time = start_timer!(|| "Ledger checks");
-    //
     //     // Returns false if any transaction serial number previously existed in the ledger.
     //     for sn in transaction.serial_numbers() {
     //         if ledger.contains_serial_number(sn) {
@@ -181,10 +170,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     //         eprintln!("Ledger digest is invalid.");
     //         return false;
     //     }
-    //
-    //     end_timer!(ledger_time);
-    //
-    //     end_timer!(verify_time);
     //
     //     true
     // }
