@@ -121,7 +121,7 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             Group(_) => Err(anyhow!("the type `group` does not implement the to_bits_le method")),
             Integer(integer) => Ok(integer.to_bits_le()),
             Array(_) => Err(anyhow!("the type `array` does not implement the to_bits_le method")),
-            Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bits_le method")),
+            Tuple(_) => Err(anyhow!("the type `tuple` does not implement the to_bits_le method")),
         }
     }
 
@@ -136,7 +136,7 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             Group(_) => Err(anyhow!("the type `group` does not implement the to_bytes_le method")),
             Integer(_) => Err(anyhow!("the type `int` does not implement the to_bytes_le method")),
             Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes_le method")),
-            Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bytes_le method")),
+            Tuple(_) => Err(anyhow!("the type `tuple` does not implement the to_bytes_le method")),
         }
     }
 }
