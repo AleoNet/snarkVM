@@ -25,6 +25,7 @@ use snarkvm_utilities::{
 };
 
 use anyhow::{anyhow, Result};
+use rayon::prelude::*;
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::Deref,
@@ -70,13 +71,15 @@ impl<N: Network> Transactions<N> {
             return false;
         }
 
-        // TODO (howardwu): This check can be parallelized for performance improvement.
         // Ensure each transaction is well-formed.
-        for transaction in &self.0 {
-            if !transaction.is_valid() {
-                eprintln!("Invalid transaction found in the transactions list");
-                return false;
-            }
+        if !self
+            .0
+            .as_parallel_slice()
+            .par_iter()
+            .all(|transaction| transaction.is_valid())
+        {
+            eprintln!("Invalid transaction found in the transactions list");
+            return false;
         }
 
         // Ensure there are no duplicate serial numbers.

@@ -20,16 +20,17 @@ use crate::{
     Block,
     InnerPublicVariables,
     Network,
-    NoopProgram,
     OuterPublicVariables,
     PoSWScheme,
+    Program,
+    ProgramScheme,
     PublicVariables,
 };
 use snarkvm_algorithms::{
-    commitment::{BHPCompressedCommitment, Blake2sCommitment},
+    commitment::BHPCompressedCommitment,
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
+    merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -48,7 +49,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
+        commitment::BHPCompressedCommitmentGadget,
         crh::{BHPCompressedCRHGadget, PedersenCompressedCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -79,14 +80,12 @@ impl Network for Testnet1 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-
+    
     const MEMO_SIZE_IN_BYTES: usize = 64;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    const POSW_NUM_LEAVES: usize = 4;
-    const POSW_TREE_DEPTH: usize = 2;
-    
-    const BLOCK_COINBASE_TX_COUNT: usize = 1;
+    const POSW_NUM_LEAVES: usize = 8;
+    const POSW_TREE_DEPTH: usize = 3;
     
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
     
@@ -111,7 +110,7 @@ impl Network for Testnet1 {
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-
+    
     type PoswSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
@@ -136,12 +135,11 @@ impl Network for Testnet1 {
 
     type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
-
     type Block = Block<Self>;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 2>;
+    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 3>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
     type CommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
@@ -167,23 +165,15 @@ impl Network for Testnet1 {
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
-    
-    type ProgramCommitmentScheme = Blake2sCommitment;
-    type ProgramCommitmentGadget = Blake2sCommitmentGadget;
-    type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
     type ProgramCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 237, 16>;
     type ProgramCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
     type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
 
-    type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
-    type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
-    type ProgramCircuitTreeParameters = MerkleTreeParameters<Self::ProgramCircuitIDTreeCRH, 8>;
-    type ProgramID = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
-
-    type SerialNumberNonceCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 32, 63>;
-    type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 32, 63>;
-    type SerialNumberNonce = <Self::SerialNumberNonceCRH as CRH>::Output;
+    type ProgramCircuitsTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
+    type ProgramCircuitsTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
+    type ProgramCircuitsTreeParameters = MerkleTreeParameters<Self::ProgramCircuitsTreeCRH, 8>;
+    type ProgramID = <Self::ProgramCircuitsTreeCRH as CRH>::Output;
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
@@ -203,24 +193,19 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
-    dpc_setup!{Testnet1, block_header_tree_crh, BlockHeaderTreeCRH, "AleoBlockHeaderTreeCRH0"}
+    dpc_setup!{Testnet1, block_header_tree_parameters, BlockHeaderTreeParameters, "AleoBlockHeaderTreeCRH0"}
     dpc_setup!{Testnet1, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
-    dpc_setup!{Testnet1, commitments_tree_crh, CommitmentsTreeCRH, "AleoCommitmentsTreeCRH0"}
-    dpc_merkle!{Testnet1, commitments_tree_parameters, CommitmentsTreeParameters, commitments_tree_crh}
+    dpc_setup!{Testnet1, commitments_tree_parameters, CommitmentsTreeParameters, "AleoCommitmentsTreeCRH0"}
     dpc_setup!{Testnet1, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet1, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
     dpc_setup!{Testnet1, local_data_crh, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{Testnet1, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
     dpc_setup!{Testnet1, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
-    dpc_setup!{Testnet1, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_merkle!{Testnet1, program_circuit_tree_parameters, ProgramCircuitTreeParameters, program_circuit_id_tree_crh}
-    dpc_setup!{Testnet1, serial_number_nonce_crh, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
-    dpc_setup!{Testnet1, serial_numbers_tree_crh, SerialNumbersTreeCRH, "AleoSerialNumbersTreeCRH0"}
-    dpc_merkle!{Testnet1, serial_numbers_tree_parameters, SerialNumbersTreeParameters, serial_numbers_tree_crh}
+    dpc_setup!{Testnet1, program_circuits_tree_crh, ProgramCircuitsTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_merkle!{Testnet1, program_circuits_tree_parameters, ProgramCircuitsTreeParameters, program_circuits_tree_crh}
+    dpc_setup!{Testnet1, serial_numbers_tree_parameters, SerialNumbersTreeParameters, "AleoSerialNumbersTreeCRH0"}
     dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
-    dpc_setup!{Testnet1, transactions_tree_crh, TransactionsTreeCRH, "AleoTransactionsTreeCRH0"}
-    dpc_merkle!{Testnet1, transactions_tree_parameters, TransactionsTreeParameters, transactions_tree_crh}
+    dpc_setup!{Testnet1, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
 
     dpc_snark_setup!{Testnet1, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet1, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
@@ -238,9 +223,19 @@ impl Network for Testnet1 {
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
-    fn noop_program() -> &'static NoopProgram<Self> {
-        static NOOP_PROGRAM: OnceCell<NoopProgram<Testnet1>> = OnceCell::new();
-        NOOP_PROGRAM.get_or_init(|| NoopProgram::<Testnet1>::load().expect("Failed to fetch the noop program"))
+    fn noop_program() -> &'static Program<Self> {
+        static NOOP_PROGRAM: OnceCell<Program<Testnet1>> = OnceCell::new();
+        NOOP_PROGRAM.get_or_init(|| Program::<Testnet1>::new_noop().expect("Failed to fetch the noop program"))
+    }
+
+    fn noop_program_id() -> &'static Self::ProgramID {
+        static NOOP_PROGRAM_ID: OnceCell<<Testnet1 as Network>::ProgramID> = OnceCell::new();
+        NOOP_PROGRAM_ID.get_or_init(|| Testnet1::noop_program().program_id())
+    }
+    
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters> {
+        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet1 as Network>::ProgramCircuitsTreeParameters>> = OnceCell::new();
+        NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_circuit_id()).expect("Failed to fetch the noop program path"))
     }
     
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
@@ -261,11 +256,6 @@ impl Network for Testnet1 {
     /// Returns the program SRS for Aleo applications.
     fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
         Rc::new(RefCell::new(SRS::CircuitSpecific(rng)))
-    }
-
-    fn block_header_tree_parameters() -> &'static Self::BlockHeaderTreeParameters {
-        static MASKED_MERKLE_TREE_PARAMETERS: OnceCell<<Testnet1 as Network>::BlockHeaderTreeParameters> = OnceCell::new();
-        MASKED_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::BlockHeaderTreeParameters::setup("MerkleTreeParameters"))
     }
 }
 

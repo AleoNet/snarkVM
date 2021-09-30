@@ -118,23 +118,6 @@ impl<N: Network> TransactionKernel<N> {
             }
         }
     }
-
-    #[inline]
-    pub fn to_joint_serial_numbers(&self) -> Result<Vec<u8>> {
-        // Ensure the kernel is well-formed before computing the output serial number nonces.
-        if !self.is_valid() {
-            return Err(
-                DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into(),
-            );
-        }
-
-        // Compute the joint serial numbers.
-        let mut joint_serial_numbers = vec![];
-        for serial_number in self.serial_numbers.iter().take(N::NUM_INPUT_RECORDS) {
-            joint_serial_numbers.extend_from_slice(&serial_number.to_bytes_le()?);
-        }
-        Ok(joint_serial_numbers)
-    }
 }
 
 impl<N: Network> ToBytes for TransactionKernel<N> {

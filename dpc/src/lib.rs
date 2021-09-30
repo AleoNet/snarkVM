@@ -93,14 +93,14 @@ pub use program::*;
 pub mod record;
 pub use record::*;
 
-pub mod state;
-pub use state::*;
-
 pub mod traits;
 pub use traits::*;
 
 pub mod transaction;
 pub use transaction::*;
+
+pub mod transition;
+pub use transition::*;
 
 pub mod prelude {
     pub use crate::{
@@ -112,8 +112,8 @@ pub mod prelude {
         ledger::*,
         program::*,
         record::*,
-        state::*,
         traits::*,
         transaction::*,
+        transition::*,
     };
 }

@@ -19,19 +19,18 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 #[derive(Derivative)]
 #[derivative(
+    Copy(bound = "N: Network"),
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
     Default(bound = "N: Network")
 )]
 pub struct PublicVariables<N: Network> {
-    pub record_position: u8,
     pub local_data_root: N::LocalDataRoot,
 }
 
 impl<N: Network> PublicVariables<N> {
-    pub fn new(record_position: u8, local_data_root: &N::LocalDataRoot) -> Self {
+    pub fn new(local_data_root: &N::LocalDataRoot) -> Self {
         Self {
-            record_position,
             local_data_root: local_data_root.clone(),
         }
     }
@@ -40,7 +39,7 @@ impl<N: Network> PublicVariables<N> {
 /// Converts the public variables into bytes and packs them into field elements.
 impl<N: Network> ToConstraintField<N::InnerScalarField> for PublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[self.record_position][..])?;
+        let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }

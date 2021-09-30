@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -26,10 +26,8 @@ use std::{
     str::FromStr,
 };
 
-type EncryptedRecordHash<N> = <<N as Network>::EncryptedRecordCRH as CRH>::Output;
+type EncryptedRecordID<N> = <<N as Network>::EncryptedRecordCRH as CRH>::Output;
 type EncryptedRecordRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
-type ProgramCommitment<N> = <<N as Network>::ProgramCommitmentScheme as CommitmentScheme>::Output;
-type ProgramCommitmentRandomness<N> = <<N as Network>::ProgramCommitmentScheme as CommitmentScheme>::Randomness;
 
 /// The transaction authorization contains caller signatures and is required to
 /// produce the final transaction proof.
@@ -49,16 +47,16 @@ pub struct TransactionAuthorization<N: Network> {
 
 impl<N: Network> TransactionAuthorization<N> {
     #[inline]
-    pub fn from(state: &StateTransition<N>, signatures: Vec<N::AccountSignature>) -> Self {
-        debug_assert!(state.kernel().is_valid());
-        debug_assert_eq!(N::NUM_INPUT_RECORDS, state.input_records().len());
-        debug_assert_eq!(N::NUM_OUTPUT_RECORDS, state.output_records().len());
+    pub fn from(transition: &StateTransition<N>, signatures: Vec<N::AccountSignature>) -> Self {
+        debug_assert!(transition.kernel().is_valid());
+        debug_assert_eq!(N::NUM_INPUT_RECORDS, transition.input_records().len());
+        debug_assert_eq!(N::NUM_OUTPUT_RECORDS, transition.output_records().len());
         debug_assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
 
         Self {
-            kernel: state.kernel().clone(),
-            input_records: state.input_records().clone(),
-            output_records: state.output_records().clone(),
+            kernel: transition.kernel().clone(),
+            input_records: transition.input_records().clone(),
+            output_records: transition.output_records().clone(),
             signatures,
         }
     }
@@ -74,49 +72,26 @@ impl<N: Network> TransactionAuthorization<N> {
     }
 
     #[inline]
-    pub fn to_program_commitment<R: Rng + CryptoRng>(
-        &self,
-        rng: &mut R,
-    ) -> Result<(ProgramCommitment<N>, ProgramCommitmentRandomness<N>)> {
-        let program_ids = self
-            .input_records
-            .iter()
-            .chain(self.output_records.iter())
-            .take(N::NUM_TOTAL_RECORDS)
-            .flat_map(|record| {
-                record
-                    .program_id()
-                    .to_bytes_le()
-                    .expect("Failed to convert program ID to bytes")
-            })
-            .collect::<Vec<_>>();
-
-        let program_randomness = UniformRand::rand(rng);
-        let program_commitment = N::program_commitment_scheme().commit(&program_ids, &program_randomness)?;
-        Ok((program_commitment, program_randomness))
-    }
-
-    #[inline]
     pub fn to_encrypted_records<R: Rng + CryptoRng>(
         &self,
         rng: &mut R,
     ) -> Result<(
         Vec<EncryptedRecord<N>>,
-        Vec<EncryptedRecordHash<N>>,
+        Vec<EncryptedRecordID<N>>,
         Vec<EncryptedRecordRandomizer<N>>,
     )> {
         let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut encrypted_record_hashes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut encrypted_record_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
         for record in self.output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
             let (encrypted_record, encrypted_record_randomizer) = EncryptedRecord::encrypt(record, rng)?;
-            encrypted_record_hashes.push(encrypted_record.to_hash()?);
+            encrypted_record_ids.push(encrypted_record.to_hash()?);
             encrypted_records.push(encrypted_record);
             encrypted_record_randomizers.push(encrypted_record_randomizer);
         }
 
-        Ok((encrypted_records, encrypted_record_hashes, encrypted_record_randomizers))
+        Ok((encrypted_records, encrypted_record_ids, encrypted_record_randomizers))
     }
 }
 

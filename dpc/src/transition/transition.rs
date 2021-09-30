@@ -32,7 +32,7 @@ pub struct StateTransition<N: Network> {
     pub(super) output_records: Vec<Record<N>>,
     pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub(super) executables: Vec<Executable<N>>,
+    pub(super) executable: Executable<N>,
 }
 
 impl<N: Network> StateTransition<N> {
@@ -64,7 +64,7 @@ impl<N: Network> StateTransition<N> {
         let mut inputs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for record in records {
             balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
-            inputs.push(Input::new(&sender.to_compute_key()?, record.clone(), None)?);
+            inputs.push(Input::new(&sender.to_compute_key()?, record.clone())?);
         }
 
         // Ensure the sender has sufficient balance.
@@ -73,10 +73,7 @@ impl<N: Network> StateTransition<N> {
             return Err(anyhow!("Sender(s) has insufficient balance"));
         }
 
-        // Construct the recipient output.
-        let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
-
-        // Construct the change output for the sender.
+        // Construct the sender output.
         let sender_output = Output::new(
             Address::from_private_key(sender)?,
             balance.sub(total_cost),
@@ -84,16 +81,19 @@ impl<N: Network> StateTransition<N> {
             None,
         )?;
 
+        // Construct the recipient output.
+        let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
+
         Ok(Self::builder()
             .add_inputs(inputs)
-            .add_output(recipient_output)
             .add_output(sender_output)
+            .add_output(recipient_output)
             .build(rng)?)
     }
 
     /// Returns a new instance of `StateBuilder`.
-    pub fn builder() -> StateBuilder<N> {
-        StateBuilder::new()
+    pub fn builder() -> TransitionBuilder<N> {
+        TransitionBuilder::new()
     }
 
     /// Returns a reference to the transaction kernel.
@@ -116,8 +116,18 @@ impl<N: Network> StateTransition<N> {
         &self.noop_private_keys
     }
 
-    /// Returns a reference to the executables.
-    pub fn executables(&self) -> &Vec<Executable<N>> {
-        &self.executables
+    /// Returns a reference to the executable.
+    pub fn executable(&self) -> &Executable<N> {
+        &self.executable
+    }
+
+    /// Returns the local data.
+    pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<N>> {
+        Ok(LocalData::new(
+            &self.kernel,
+            &self.input_records,
+            &self.output_records,
+            rng,
+        )?)
     }
 }

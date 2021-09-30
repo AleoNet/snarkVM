@@ -25,7 +25,6 @@ use rand::{CryptoRng, Rng};
 pub trait DPCScheme<N: Network>: Sized {
     type Account: AccountScheme;
     type Authorization;
-    type Execution;
     type LedgerProof;
     type StateTransition;
     type Transaction: TransactionScheme<N>;
@@ -33,24 +32,15 @@ pub trait DPCScheme<N: Network>: Sized {
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        state: &Self::StateTransition,
+        transition: &Self::StateTransition,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
-        executables: &Vec<Executable<N>>,
+        executable: &Executable<N>,
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction>;
-
-    // /// Returns true iff the transaction is valid according to the ledger.
-    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool;
-    //
-    // /// Returns true iff all the transactions in the block are valid according to the ledger.
-    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
-    //     block: &[Self::Transaction],
-    //     ledger: &L,
-    // ) -> bool;
 }

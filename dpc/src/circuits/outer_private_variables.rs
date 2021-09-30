@@ -15,16 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, Network};
-use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
+use snarkvm_algorithms::traits::SNARK;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct OuterPrivateVariables<N: Network> {
     pub(super) inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
     pub(super) inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
-    pub(super) program_proofs: Vec<Execution<N>>,
-    pub(super) program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    pub(super) program_execution: Execution<N>,
     pub(super) local_data_root: N::LocalDataRoot,
 }
 
@@ -37,9 +35,7 @@ impl<N: Network> OuterPrivateVariables<N> {
         Self {
             inner_snark_vk,
             inner_snark_proof,
-            program_proofs: vec![execution.clone(); N::NUM_TOTAL_RECORDS],
-            program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output::default(),
-            program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
+            program_execution: execution,
             local_data_root: N::LocalDataRoot::default(),
         }
     }
@@ -47,18 +43,13 @@ impl<N: Network> OuterPrivateVariables<N> {
     pub fn new(
         inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
-        program_proofs: Vec<Execution<N>>,
-        program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output,
-        program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+        program_execution: Execution<N>,
         local_data_root: N::LocalDataRoot,
     ) -> Self {
-        assert_eq!(N::NUM_TOTAL_RECORDS, program_proofs.len());
         Self {
             inner_snark_vk,
             inner_snark_proof,
-            program_proofs,
-            program_commitment,
-            program_randomness,
+            program_execution,
             local_data_root,
         }
     }

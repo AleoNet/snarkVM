@@ -71,6 +71,15 @@ impl BlockHeaderMetadata {
     }
 }
 
+impl ToBytes for BlockHeaderMetadata {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.height.to_le_bytes().write_le(&mut writer)?;
+        self.timestamp.to_le_bytes().write_le(&mut writer)?;
+        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.nonce.to_le_bytes().write_le(&mut writer)
+    }
+}
+
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockHeader<N: Network> {
@@ -173,7 +182,7 @@ impl<N: Network> BlockHeader<N> {
             && N::posw().verify(&self)
     }
 
-    /// Returns the block header root.
+    /// Returns the block header leaves.
     pub fn to_header_leaves(&self) -> Result<Vec<[u8; 32]>> {
         let transactions_root_bytes = self.transactions_root.to_bytes_le()?;
         assert_eq!(transactions_root_bytes.len(), 32);
@@ -190,12 +199,22 @@ impl<N: Network> BlockHeader<N> {
         let mut commitments_root = [0u8; 32];
         commitments_root.copy_from_slice(&commitments_root_bytes);
 
-        // TODO (howardwu): CRITICAL - Implement a (masked) Merkle tree for the block header.
+        let mut metadata_bytes = self.metadata.to_bytes_le()?;
+        assert_eq!(metadata_bytes.len(), 24);
+        metadata_bytes.resize(32, 0u8);
+        assert_eq!(metadata_bytes.len(), 32);
+        let mut metadata = [0u8; 32];
+        metadata.copy_from_slice(&metadata_bytes);
+
         let mut leaves: Vec<[u8; 32]> = Vec::with_capacity(N::POSW_NUM_LEAVES);
         leaves.push(transactions_root);
         leaves.push(serial_numbers_root);
         leaves.push(commitments_root);
         leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push(metadata);
         assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
 
         Ok(leaves)
@@ -353,7 +372,7 @@ mod tests {
         // Construct an instance of PoSW.
         let posw = {
             let max_degree =
-                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
             let universal_srs =
                 <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(

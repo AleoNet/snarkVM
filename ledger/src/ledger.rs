@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ledger::*, *};
+use crate::*;
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
@@ -129,46 +129,6 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
         self.get_block_header(block_hash).is_ok()
     }
 }
-
-// impl<N: Network, S: Storage> CommitmentsTree<N> for Ledger<N, S> {
-//     /// Return the latest state root of the ledger commitments tree.
-//     fn latest_digest(&self) -> Result<<N as Network>::CommitmentsRoot> {
-//         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
-//             Some(current_digest) => current_digest,
-//             None => to_bytes_le![self.commitments_tree.read().root()]?,
-//         };
-//         Ok(FromBytes::read_le(digest.as_slice())?)
-//     }
-//
-//     /// Check that st_{ts} is a valid digest for some (past) ledger state.
-//     fn is_valid_digest(&self, digest: &<N as Network>::CommitmentsRoot) -> bool {
-//         self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
-//     }
-//
-//     /// Returns true if the given commitment exists in the ledger.
-//     fn contains_commitment(&self, commitment: &<N as Network>::Commitment) -> bool {
-//         self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
-//     }
-//
-//     /// Returns the Merkle path to the latest ledger digest for a given commitment, if it exists in the ledger.
-//     fn prove_cm(
-//         &self,
-//         cm: &<N as Network>::Commitment,
-//     ) -> Result<MerklePath<<N as Network>::CommitmentsTreeParameters>> {
-//         let cm_index = self
-//             .get_cm_index(&cm.to_bytes_le()?)?
-//             .ok_or(LedgerError::InvalidCmIndex)?;
-//         Ok(self.commitments_tree.read().generate_proof(cm_index, cm)?)
-//     }
-// }
-//
-// impl<N: Network, S: Storage> SerialNumbersTree<N> for Ledger<N, S> {
-//     /// Returns true if the given serial number exists in the ledger.
-//     fn contains_serial_number(&self, serial_number: &<N as Network>::SerialNumber) -> bool {
-//         self.storage
-//             .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
-//     }
-// }
 
 impl<N: Network, S: Storage> Ledger<N, S> {
     /// Return the latest state root of the ledger commitments tree.
@@ -560,5 +520,27 @@ impl<N: Network, S: Storage> Ledger<N, S> {
     /// Returns true if the block exists in the canon chain.
     pub fn is_canon(&self, block_hash: &N::BlockHash) -> bool {
         self.contains_block_hash(block_hash) && self.get_block_number(block_hash).is_ok()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
+
+    #[test]
+    fn test_new_ledger_with_genesis_block() {
+        let genesis_block = Testnet2::genesis_block();
+        let ledger = Ledger::<Testnet2, MemDb>::new(None, genesis_block.clone()).unwrap();
+        let genesis_block_hash = ledger.get_block_hash(0).unwrap();
+
+        assert_eq!(ledger.block_height(), 0);
+        assert_eq!(ledger.latest_block().unwrap(), genesis_block.clone());
+        assert_eq!(ledger.get_block_hash(0).unwrap(), genesis_block_hash.clone());
+        assert_eq!(ledger.get_block(&genesis_block_hash).unwrap(), genesis_block.clone());
+        assert_eq!(ledger.get_block_number(&genesis_block_hash).unwrap(), 0);
+        assert_eq!(ledger.contains_block_hash(&genesis_block_hash), true);
+
+        assert!(ledger.get_block(&Default::default()).is_err());
     }
 }

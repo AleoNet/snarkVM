@@ -23,6 +23,7 @@ use rand::{CryptoRng, Rng};
 use std::{
     io::{Read, Result as IoResult, Write},
     sync::Arc,
+    time::Instant,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -74,7 +75,9 @@ impl<N: Network> BlockScheme for Block<N> {
     /// Initializes a new genesis block with one coinbase transaction.
     fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
+        let start = Instant::now();
         let transactions = Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), rng)?])?;
+        println!("{} seconds", (Instant::now() - start).as_secs());
 
         // Compute the transactions root from the transactions.
         let transactions_root = transactions.to_transactions_root()?;

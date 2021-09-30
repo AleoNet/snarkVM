@@ -26,14 +26,10 @@ pub struct Input<N: Network> {
     record: Record<N>,
     serial_number: N::SerialNumber,
     noop_private_key: Option<PrivateKey<N>>,
-    executable: Executable<N>,
 }
 
 impl<N: Network> Input<N> {
     pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
-        // Construct the noop executable.
-        let executable = Executable::Noop;
-
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
         let noop_compute_key = noop_private_key.to_compute_key()?;
@@ -49,26 +45,14 @@ impl<N: Network> Input<N> {
             record,
             serial_number,
             noop_private_key: Some(noop_private_key),
-            executable,
         })
     }
 
     /// Initializes a new instance of `Input`.
-    pub fn new(compute_key: &ComputeKey<N>, record: Record<N>, executable: Option<Executable<N>>) -> Result<Self> {
+    pub fn new(compute_key: &ComputeKey<N>, record: Record<N>) -> Result<Self> {
         // Ensure the account address matches.
         if Address::from_compute_key(compute_key)? != record.owner() {
             return Err(anyhow!("Address from compute key does not match the record owner"));
-        }
-
-        // Retrieve the executable. If `None` is provided, construct the noop executable.
-        let executable = match executable {
-            Some(executable) => executable,
-            None => Executable::Noop,
-        };
-
-        // Ensure its program ID matches what is declared in the record.
-        if executable.program_id() != record.program_id() {
-            return Err(anyhow!("Executable program ID does not match record program ID"));
         }
 
         // Compute the serial number.
@@ -78,7 +62,6 @@ impl<N: Network> Input<N> {
             record,
             serial_number,
             noop_private_key: None,
-            executable,
         })
     }
 
@@ -87,23 +70,19 @@ impl<N: Network> Input<N> {
         compute_key: &ComputeKey<N>,
         value: AleoAmount,
         payload: Payload,
-        executable: Executable<N>,
-        serial_number_nonce: N::SerialNumberNonce,
+        program_id: N::ProgramID,
+        serial_number_nonce: N::SerialNumber,
         commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self> {
         // Derive the account address.
         let address = Address::from_compute_key(compute_key)?;
 
-        // Determine if the record is a dummy.
-        let is_dummy = value == AleoAmount::from_bytes(0) && payload.is_empty() && executable.is_noop();
-
         // Construct the input record.
         let record = Record::new_input(
-            executable.program_id(),
             address,
-            is_dummy,
             value.0 as u64,
             payload,
+            program_id,
             serial_number_nonce,
             commitment_randomness,
         )?;
@@ -115,8 +94,12 @@ impl<N: Network> Input<N> {
             record,
             serial_number,
             noop_private_key: None,
-            executable,
         })
+    }
+
+    /// Returns `true` if the program ID is the noop program.
+    pub fn is_noop(&self) -> bool {
+        self.record.program_id() == *N::noop_program_id()
     }
 
     /// Returns a reference to the input record.
@@ -134,9 +117,9 @@ impl<N: Network> Input<N> {
         &self.noop_private_key
     }
 
-    /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<N> {
-        &self.executable
+    /// Returns a reference to the program ID.
+    pub fn program_id(&self) -> N::ProgramID {
+        self.record.program_id()
     }
 }
 
@@ -157,7 +140,7 @@ mod tests {
             let seed: u64 = thread_rng().gen();
 
             // Generate the expected input state.
-            let (expected_record, expected_serial_number, expected_noop_private_key) = {
+            let (expected_record, expected_serial_number, expected_noop_private_key, expected_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
@@ -165,25 +148,27 @@ mod tests {
                 let serial_number = input_record
                     .to_serial_number(&account.private_key().to_compute_key().unwrap())
                     .unwrap();
-                (input_record, serial_number, account.private_key().clone())
+                let program_id = input_record.program_id();
+
+                (input_record, serial_number, account.private_key().clone(), program_id)
             };
 
             // Generate the candidate input state.
-            let (candidate_record, candidate_serial_number, candidate_noop_private_key, candidate_executable) = {
+            let (candidate_record, candidate_serial_number, candidate_noop_private_key, candidate_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
                 let input = Input::<Testnet2>::new_noop(rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),
                     input.noop_private_key().clone(),
-                    input.executable().clone(),
+                    input.program_id().clone(),
                 )
             };
 
             assert_eq!(expected_record, candidate_record);
             assert_eq!(expected_serial_number, candidate_serial_number);
             assert_eq!(Some(expected_noop_private_key), candidate_noop_private_key);
-            assert!(candidate_executable.is_noop());
+            assert_eq!(expected_program_id, candidate_program_id);
         }
     }
 }

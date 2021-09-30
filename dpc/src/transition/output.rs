@@ -26,7 +26,7 @@ pub struct Output<N: Network> {
     address: Address<N>,
     value: AleoAmount,
     payload: Payload,
-    executable: Executable<N>,
+    program_id: N::ProgramID,
 }
 
 impl<N: Network> Output<N> {
@@ -43,40 +43,39 @@ impl<N: Network> Output<N> {
         address: Address<N>,
         value: AleoAmount,
         payload: Payload,
-        executable: Option<Executable<N>>,
+        program_id: Option<N::ProgramID>,
     ) -> Result<Self> {
-        // Retrieve the executable. If `None` is provided, construct the noop executable.
-        let executable = match executable {
-            Some(executable) => executable,
-            None => Executable::Noop,
+        // Retrieve the program ID. If `None` is provided, construct the noop program ID.
+        let program_id = match program_id {
+            Some(program_id) => program_id,
+            None => *N::noop_program_id(),
         };
 
         Ok(Self {
             address,
             value,
             payload,
-            executable,
+            program_id,
         })
     }
 
-    /// Returns the output record, given the position and joint serial numbers.
+    /// Returns `true` if the program ID is the noop program.
+    pub fn is_noop(&self) -> bool {
+        self.program_id == *N::noop_program_id()
+    }
+
+    /// Returns the output record, given the previous serial number.
     pub fn to_record<R: Rng + CryptoRng>(
         &self,
-        position: u8,
-        joint_serial_numbers: &Vec<u8>,
+        serial_number_nonce: N::SerialNumber,
         rng: &mut R,
     ) -> Result<Record<N>> {
-        // Determine if the record is a dummy.
-        let is_dummy = self.value == AleoAmount::from_bytes(0) && self.payload.is_empty() && self.executable.is_noop();
-
         Ok(Record::new_output(
-            self.executable.program_id(),
             self.address,
-            is_dummy,
             self.value.0 as u64,
             self.payload.clone(),
-            position,
-            joint_serial_numbers,
+            self.program_id,
+            serial_number_nonce,
             rng,
         )?)
     }
@@ -96,9 +95,9 @@ impl<N: Network> Output<N> {
         &self.payload
     }
 
-    /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<N> {
-        &self.executable
+    /// Returns a reference to the program ID.
+    pub fn program_id(&self) -> N::ProgramID {
+        self.program_id
     }
 }
 
@@ -106,7 +105,6 @@ impl<N: Network> Output<N> {
 mod tests {
     use super::*;
     use crate::testnet2::*;
-    use snarkvm_utilities::ToBytes;
 
     use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaChaRng;
@@ -121,13 +119,13 @@ mod tests {
 
             // Generate the given inputs.
             let mut given_rng = ChaChaRng::seed_from_u64(seed);
-            let given_joint_serial_numbers = {
-                let mut joint_serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+            let given_serial_numbers = {
+                let mut serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
                 for _ in 0..Testnet2::NUM_INPUT_RECORDS {
                     let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
-                    joint_serial_numbers.extend_from_slice(&input.serial_number().to_bytes_le().unwrap());
+                    serial_numbers.push(input.serial_number().clone());
                 }
-                joint_serial_numbers
+                serial_numbers
             };
 
             // Checkpoint the RNG and clone it.
@@ -137,31 +135,19 @@ mod tests {
             // Generate the expected output state.
             let expected_record = {
                 let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
-                Record::new_noop_output(
-                    account.address,
-                    Testnet2::NUM_INPUT_RECORDS as u8,
-                    &given_joint_serial_numbers,
-                    &mut expected_rng,
-                )
-                .unwrap()
+                Record::new_noop_output(account.address, given_serial_numbers[0], &mut expected_rng).unwrap()
             };
 
             // Generate the candidate output state.
-            let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_executable) = {
+            let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_program_id) = {
                 let output = Output::new_noop(&mut candidate_rng).unwrap();
-                let record = output
-                    .to_record(
-                        Testnet2::NUM_INPUT_RECORDS as u8,
-                        &given_joint_serial_numbers,
-                        &mut candidate_rng,
-                    )
-                    .unwrap();
+                let record = output.to_record(given_serial_numbers[0], &mut candidate_rng).unwrap();
                 (
                     record,
                     output.address(),
                     output.value(),
                     output.payload().clone(),
-                    output.executable().clone(),
+                    output.program_id(),
                 )
             };
 
@@ -169,7 +155,7 @@ mod tests {
             assert_eq!(expected_record.owner(), candidate_address);
             assert_eq!(expected_record.value(), candidate_value.0 as u64);
             assert_eq!(expected_record.payload(), &candidate_payload);
-            assert!(candidate_executable.is_noop());
+            assert_eq!(expected_record.program_id(), candidate_program_id);
         }
     }
 }

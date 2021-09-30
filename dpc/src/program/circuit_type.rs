@@ -14,5 +14,39 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod testnet1;
-pub mod testnet2;
+#[derive(Copy, Clone, Debug)]
+pub enum CircuitType {
+    Noop,
+    Add,
+    Update,
+    Remove,
+    Join,
+    Split,
+    JoinSplit,
+}
+
+impl CircuitType {
+    pub fn input_count(&self) -> u8 {
+        match self {
+            Self::Noop => 0,
+            Self::Add => 0,
+            Self::Update => 1,
+            Self::Remove => 1,
+            Self::Join => 2,
+            Self::Split => 1,
+            Self::JoinSplit => 2,
+        }
+    }
+
+    pub fn output_count(&self) -> u8 {
+        match self {
+            Self::Noop => 0,
+            Self::Add => 1,
+            Self::Update => 1,
+            Self::Remove => 0,
+            Self::Join => 1,
+            Self::Split => 2,
+            Self::JoinSplit => 2,
+        }
+    }
+}

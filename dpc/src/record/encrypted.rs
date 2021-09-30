@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, DPCError, Network, Payload, Record, RecordScheme, ViewKey};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, EncryptionScheme, CRH},
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
@@ -66,10 +63,6 @@ impl<N: Network> EncryptedRecord<N> {
         // Serialize the record into bytes
         let mut bytes = vec![];
 
-        // Program ID
-        let program_id = record.program_id();
-        bytes.extend_from_slice(&program_id.to_bytes_le()?);
-
         // Value
         let value = record.value();
         bytes.extend_from_slice(&value.to_bytes_le()?);
@@ -77,6 +70,10 @@ impl<N: Network> EncryptedRecord<N> {
         // Payload
         let payload = record.payload();
         bytes.extend_from_slice(&payload.to_bytes_le()?);
+
+        // Program ID
+        let program_id = record.program_id();
+        bytes.extend_from_slice(&program_id.to_bytes_le()?);
 
         // Serial number nonce
         let serial_number_nonce = record.serial_number_nonce();
@@ -108,17 +105,17 @@ impl<N: Network> EncryptedRecord<N> {
 
         let mut cursor = Cursor::new(plaintext);
 
-        // Program ID
-        let program_id: MerkleTreeDigest<N::ProgramCircuitTreeParameters> = FromBytes::read_le(&mut cursor)?;
-
         // Value
         let value = u64::read_le(&mut cursor)?;
 
         // Payload
         let payload = Payload::read_le(&mut cursor)?;
 
+        // Program ID
+        let program_id: N::ProgramID = FromBytes::read_le(&mut cursor)?;
+
         // Serial number nonce
-        let serial_number_nonce = N::SerialNumberNonce::read_le(&mut cursor)?;
+        let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
 
         // Commitment randomness
         let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
@@ -126,25 +123,19 @@ impl<N: Network> EncryptedRecord<N> {
         // Construct the record account address
         let owner = Address::from_view_key(&account_view_key)?;
 
-        // Determine if the record is a dummy
-        // TODO (raychu86) Establish `is_dummy` flag properly by checking that the value is 0 and the programs are equivalent to a global dummy
-        let dummy_program = program_id.clone();
-        let is_dummy = (value == 0) && (payload == Payload::default()) && (program_id == dummy_program);
-
         Ok(Record::from(
-            program_id,
             owner,
-            is_dummy,
             value,
             payload,
+            program_id,
             serial_number_nonce,
             commitment_randomness,
         )?)
     }
 
-    /// Returns the encrypted record hash.
+    /// Returns the encrypted record ID.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<<<N as Network>::EncryptedRecordCRH as CRH>::Output, DPCError> {
+    pub fn to_hash(&self) -> Result<N::EncryptedRecordID, DPCError> {
         Ok(N::encrypted_record_crh().hash(&self.ciphertext)?)
     }
 }

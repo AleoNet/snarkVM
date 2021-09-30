@@ -19,7 +19,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use std::io::{Read, Result as IoResult, Write};
+use std::io::{Read, Write};
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]

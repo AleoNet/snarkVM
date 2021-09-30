@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockScheme, InnerPublicVariables, NoopProgram, OuterPublicVariables, PoSWScheme, PublicVariables};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
+use crate::{BlockScheme, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, PublicVariables};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -45,15 +45,13 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     const NUM_INPUT_RECORDS: usize;
     const NUM_OUTPUT_RECORDS: usize;
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
-
+    
     const MEMO_SIZE_IN_BYTES: usize;
     
     const POSW_PROOF_SIZE_IN_BYTES: usize;
     const POSW_NUM_LEAVES: usize;
     const POSW_TREE_DEPTH: usize;
     
-    const BLOCK_COINBASE_TX_COUNT: usize;
-
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
     /// Inner curve type declarations.
@@ -107,8 +105,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     /// CRH schemes for the block hash. Invoked only over `Self::InnerScalarField`.
     type BlockHashCRH: CRH<Output = Self::BlockHash>;
     type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + PartialEq + Eq + Hash + Sync + Send;
-
-    /// Block scheme for the ledger.
     type Block: BlockScheme;
     
     /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
@@ -147,33 +143,22 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
-    /// Commitment scheme for committing to program IDs over `Self::InnerScalarField` and to decommit program IDs over `Self::OuterScalarField`.
-    type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>;
-    type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>
-        + CommitmentGadget<Self::ProgramCommitmentScheme, Self::OuterScalarField>;
-    type ProgramCommitment: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
     /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
     type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
     type ProgramCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramCircuitIDTreeCRH: CRH<Output = Self::ProgramID>;
-    type ProgramCircuitIDTreeCRHGadget: CRHGadget<Self::ProgramCircuitIDTreeCRH, Self::OuterScalarField>;
-    type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDTreeCRH>;
+    type ProgramCircuitsTreeCRH: CRH<Output = Self::ProgramID>;
+    type ProgramCircuitsTreeCRHGadget: CRHGadget<Self::ProgramCircuitsTreeCRH, Self::OuterScalarField>;
+    type ProgramCircuitsTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitsTreeCRH>;
     type ProgramID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
-    /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberNonceCRH: CRH<Output = Self::SerialNumberNonce>;
-    type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
-    type SerialNumberNonce: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     // TODO (howardwu): TEMPORARY - Revisit Vec<Self::SerialNumberNonce> after upgrading serial number construction.
-    type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumberNonce>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
+    type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumber>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
-    type SerialNumber: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    type SerialNumber: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + UniformRand + PartialEq + Eq + Hash + Sync + Send;
 
     /// Merkle tree scheme for the serial numbers root. Invoked only over `Self::InnerScalarField`.
     type SerialNumbersTreeCRH: CRH<Output = Self::SerialNumbersRoot>;
@@ -192,31 +177,27 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
-    fn block_header_tree_crh() -> &'static Self::BlockHeaderTreeCRH;
     fn block_header_tree_parameters() -> &'static Self::BlockHeaderTreeParameters;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
-    fn commitments_tree_crh() -> &'static Self::CommitmentsTreeCRH;
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
     fn local_data_crh() -> &'static Self::LocalDataCRH;
-    fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
-    fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
-    fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
-    fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
-    fn serial_numbers_tree_crh() -> &'static Self::SerialNumbersTreeCRH;
+    fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
+    fn program_circuits_tree_parameters() -> &'static Self::ProgramCircuitsTreeParameters;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
-    fn transactions_tree_crh() -> &'static Self::TransactionsTreeCRH;
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
     
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
-    fn noop_program() -> &'static NoopProgram<Self>;
+    fn noop_program() -> &'static Program<Self>;
+    fn noop_program_id() -> &'static Self::ProgramID;
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters>;
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
