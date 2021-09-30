@@ -114,14 +114,14 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         use ConstrainedValue::*;
 
         match self {
-            Address(_) => Err(anyhow!("the type `address` does not implement the to_bytes method")),
-            Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bytes method")),
-            Char(_) => Err(anyhow!("the type `char` does not implement the to_bytes method")),
-            Field(_) => Err(anyhow!("the type `field` does not implement the to_bytes method")),
-            Group(_) => Err(anyhow!("the type `group` does not implement the to_bytes method")),
+            Address(_) => Err(anyhow!("the type `address` does not implement the to_bits_le method")),
+            Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bits_le method")),
+            Char(_) => Err(anyhow!("the type `char` does not implement the to_bits_le method")),
+            Field(_) => Err(anyhow!("the type `field` does not implement the to_bits_le method")),
+            Group(_) => Err(anyhow!("the type `group` does not implement the to_bits_le method")),
             Integer(integer) => Ok(integer.to_bits_le()),
-            Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes method")),
-            Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bytes method")),
+            Array(_) => Err(anyhow!("the type `array` does not implement the to_bits_le method")),
+            Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bits_le method")),
         }
     }
 
@@ -129,14 +129,14 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         use ConstrainedValue::*;
 
         match self {
-            Address(_) => Err(anyhow!("the type `address` does not implement the to_bytes method")),
-            Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bytes method")),
-            Char(_) => Err(anyhow!("the type `char` does not implement the to_bytes method")),
-            Field(_) => Err(anyhow!("the type `field` does not implement the to_bytes method")),
-            Group(_) => Err(anyhow!("the type `group` does not implement the to_bytes method")),
-            Integer(_) => Err(anyhow!("the type `int` does not implement the to_bytes method")),
-            Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes method")),
-            Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bytes method")),
+            Address(_) => Err(anyhow!("the type `address` does not implement the to_bytes_le method")),
+            Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bytes_le method")),
+            Char(_) => Err(anyhow!("the type `char` does not implement the to_bytes_le method")),
+            Field(_) => Err(anyhow!("the type `field` does not implement the to_bytes_le method")),
+            Group(_) => Err(anyhow!("the type `group` does not implement the to_bytes_le method")),
+            Integer(_) => Err(anyhow!("the type `int` does not implement the to_bytes_le method")),
+            Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes_le method")),
+            Tuple(_) => Err(anyhow!("the type `tupple` does not implement the to_bytes_le method")),
         }
     }
 }
