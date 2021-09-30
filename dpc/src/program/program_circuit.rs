@@ -103,7 +103,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
     ) -> Result<(), SynthesisError> {
         match self {
             Self::Noop(public) => {
-                let _record_position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[0u8])?;
+                let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[0u8])?;
 
                 let _local_data_commitment_scheme = N::LocalDataCommitmentGadget::alloc_constant(
                     &mut cs.ns(|| "Declare the local data commitment scheme"),
@@ -121,7 +121,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
                 let synthesizer = Self::Assigned(logic.clone(), Default::default());
                 synthesizer.generate_constraints(cs)
             }
-            Self::Assigned(logic, public) => {
+            Self::Assigned(_logic, _public) => {
                 // TODO (howardwu): Add any DPC related safety checks around program executions.
                 unimplemented!()
                 // logic.synthesize::<CS>(cs, public)

@@ -147,32 +147,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
-
-    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
-    //     // Returns false if any transaction serial number previously existed in the ledger.
-    //     for sn in transaction.serial_numbers() {
-    //         if ledger.contains_serial_number(sn) {
-    //             eprintln!("Ledger already contains this transaction serial number.");
-    //             return false;
-    //         }
-    //     }
-    //
-    //     // Returns false if any transaction commitment previously existed in the ledger.
-    //     for cm in transaction.commitments() {
-    //         if ledger.contains_commitment(cm) {
-    //             eprintln!("Ledger already contains this transaction commitment.");
-    //             return false;
-    //         }
-    //     }
-    //
-    //     // Returns false if the ledger digest in the transaction is invalid.
-    //     if !ledger.is_valid_digest(&transaction.ledger_digest()) {
-    //         eprintln!("Ledger digest is invalid.");
-    //         return false;
-    //     }
-    //
-    //     true
-    // }
 }
 
 #[cfg(test)]

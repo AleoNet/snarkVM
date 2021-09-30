@@ -33,8 +33,9 @@ pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         &mut *N::program_srs(rng).borrow_mut(),
     )?;
 
-    // Compute the circuit ID.
-    let circuit_id = <N as Network>::program_circuit_id(&verifying_key)?;
+    // TODO (howardwu): Switch usage of checksums to circuit IDs.
+    // // Compute the circuit ID.
+    // let circuit_id = <N as Network>::program_circuit_id(&verifying_key)?;
 
     let noop_program_snark_pk = proving_key.to_bytes_le()?;
     let noop_program_snark_vk = verifying_key.to_bytes_le()?;
