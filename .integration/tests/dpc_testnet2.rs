@@ -119,7 +119,10 @@ fn test_testnet2_dpc_execute_constraints() {
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Execute the program circuit.
-    let execution = executable.execute(PublicVariables::new(local_data.root())).unwrap();
+    let execution = state
+        .executable()
+        .execute(PublicVariables::new(local_data.root()))
+        .unwrap();
 
     // Compute the program commitment.
     let (program_commitment, program_randomness) = authorization.to_program_commitment(&mut rng).unwrap();
