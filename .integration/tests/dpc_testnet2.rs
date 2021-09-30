@@ -124,9 +124,6 @@ fn test_testnet2_dpc_execute_constraints() {
         .execute(PublicVariables::new(local_data.root()))
         .unwrap();
 
-    // Compute the program commitment.
-    let (program_commitment, program_randomness) = authorization.to_program_commitment(&mut rng).unwrap();
-
     // Compute the encrypted records.
     let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
         authorization.to_encrypted_records(&mut rng).unwrap();
@@ -152,7 +149,7 @@ fn test_testnet2_dpc_execute_constraints() {
         &kernel,
         &ledger_digest,
         &encrypted_record_hashes,
-        Some(program_commitment),
+        Some(state.executable().program_id()),
         Some(local_data.root().clone()),
     )
     .unwrap();
@@ -163,7 +160,6 @@ fn test_testnet2_dpc_execute_constraints() {
         output_records.clone(),
         encrypted_record_randomizers,
         state.executable(),
-        program_randomness.clone(),
         local_data.leaf_randomizers().clone(),
     )
     .unwrap();
@@ -190,7 +186,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(277685, num_constraints);
+    assert_eq!(191073, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -212,14 +208,19 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_snark_proof =
         <Testnet2 as Network>::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, &mut rng).unwrap();
 
+    // Verify that the inner circuit proof passes.
+    assert!(
+        <Testnet2 as Network>::InnerSNARK::verify(&inner_snark_vk, &inner_public_variables, &inner_snark_proof)
+            .unwrap()
+    );
+
     // Construct the outer circuit public and private variables.
     let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
     let outer_private_variables = OuterPrivateVariables::new(
         inner_snark_vk.clone(),
         inner_snark_proof,
         execution,
-        program_commitment.clone(),
-        program_randomness,
+        state.executable().program_id(),
         local_data_root.clone(),
     );
 
@@ -247,7 +248,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(877318, num_constraints);
+    assert_eq!(287976, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

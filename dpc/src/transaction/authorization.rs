@@ -16,12 +16,11 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{
-    collections::HashSet,
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
@@ -29,8 +28,6 @@ use std::{
 
 type EncryptedRecordID<N> = <<N as Network>::EncryptedRecordCRH as CRH>::Output;
 type EncryptedRecordRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
-type ProgramCommitment<N> = <<N as Network>::ProgramCommitmentScheme as CommitmentScheme>::Output;
-type ProgramCommitmentRandomness<N> = <<N as Network>::ProgramCommitmentScheme as CommitmentScheme>::Randomness;
 
 /// The transaction authorization contains caller signatures and is required to
 /// produce the final transaction proof.
@@ -72,40 +69,6 @@ impl<N: Network> TransactionAuthorization<N> {
             &self.output_records,
             rng,
         )?)
-    }
-
-    #[inline]
-    pub fn to_program_commitment<R: Rng + CryptoRng>(
-        &self,
-        rng: &mut R,
-    ) -> Result<(ProgramCommitment<N>, ProgramCommitmentRandomness<N>)> {
-        let program_id = self
-            .input_records
-            .iter()
-            .chain(self.output_records.iter())
-            .take(N::NUM_TOTAL_RECORDS)
-            .map(|record| record.program_id())
-            .filter(|program_id| program_id != N::noop_program_id())
-            .collect::<HashSet<_>>();
-
-        // Ensure the number of unique programs is within the declared limit.
-        if program_id.len() > 1 {
-            return Err(anyhow!("Expected 1 program ID, found {} program IDs", program_id.len()));
-        }
-
-        //
-        // TODO (howardwu): This still does not correctly construct the program commitment.
-        //  There are 2 cases unaccounted for: 1) need to pad with noop program IDs, 2) when two executables are of the same program ID.
-
-        // Flatten and concatenate the program IDs into bytes.
-        let program_ids_bytes = program_id
-            .iter()
-            .flat_map(|program_id| program_id.to_bytes_le().expect("Failed to convert program ID to bytes"))
-            .collect::<Vec<u8>>();
-
-        let program_randomness = UniformRand::rand(rng);
-        let program_commitment = N::program_commitment_scheme().commit(&program_ids_bytes, &program_randomness)?;
-        Ok((program_commitment, program_randomness))
     }
 
     #[inline]

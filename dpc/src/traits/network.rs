@@ -145,12 +145,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
-    /// Commitment scheme for committing to program IDs over `Self::InnerScalarField` and to decommit program IDs over `Self::OuterScalarField`.
-    type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>;
-    type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>
-        + CommitmentGadget<Self::ProgramCommitmentScheme, Self::OuterScalarField>;
-    type ProgramCommitment: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
     /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
     type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
@@ -192,7 +186,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
     fn local_data_crh() -> &'static Self::LocalDataCRH;
-    fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;

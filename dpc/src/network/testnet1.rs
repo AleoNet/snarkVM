@@ -27,7 +27,7 @@ use crate::{
     PublicVariables,
 };
 use snarkvm_algorithms::{
-    commitment::{BHPCompressedCommitment, Blake2sCommitment},
+    commitment::BHPCompressedCommitment,
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
@@ -49,7 +49,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
+        commitment::BHPCompressedCommitmentGadget,
         crh::{BHPCompressedCRHGadget, PedersenCompressedCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -140,7 +140,7 @@ impl Network for Testnet1 {
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 2>;
+    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 3>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
     type CommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
@@ -166,10 +166,6 @@ impl Network for Testnet1 {
     type LocalDataCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
-    
-    type ProgramCommitmentScheme = Blake2sCommitment;
-    type ProgramCommitmentGadget = Blake2sCommitmentGadget;
-    type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
     type ProgramCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 237, 16>;
     type ProgramCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
@@ -205,7 +201,6 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet1, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
     dpc_setup!{Testnet1, local_data_crh, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{Testnet1, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
     dpc_setup!{Testnet1, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet1, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
     dpc_merkle!{Testnet1, program_circuit_tree_parameters, ProgramCircuitTreeParameters, program_circuit_id_tree_crh}

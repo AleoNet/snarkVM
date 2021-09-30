@@ -84,9 +84,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         // Execute the program circuit.
         let execution = executable.execute(PublicVariables::new(local_data.root()))?;
 
-        // Compute the program commitment.
-        let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
-
         // Compute the encrypted records.
         let (encrypted_records, encrypted_record_ids, encrypted_record_randomizers) =
             authorization.to_encrypted_records(rng)?;
@@ -103,7 +100,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             &kernel,
             &ledger_digest,
             &encrypted_record_ids,
-            Some(program_commitment.clone()),
+            Some(executable.program_id()),
             Some(local_data.root().clone()),
         )?;
         let inner_private_variables = InnerPrivateVariables::new(
@@ -113,7 +110,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             output_records.clone(),
             encrypted_record_randomizers,
             &executable,
-            program_randomness.clone(),
             local_data.leaf_randomizers().clone(),
         )?;
 
@@ -138,8 +134,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
                 N::inner_circuit_verifying_key().clone(),
                 inner_proof,
                 execution,
-                program_commitment.clone(),
-                program_randomness,
+                executable.program_id(),
                 local_data.root().clone(),
             );
 

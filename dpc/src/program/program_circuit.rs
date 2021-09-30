@@ -103,6 +103,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
     ) -> Result<(), SynthesisError> {
         match self {
             Self::Noop(public) => {
+                let _record_position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[0u8])?;
+
                 let _local_data_commitment_scheme = N::LocalDataCommitmentGadget::alloc_constant(
                     &mut cs.ns(|| "Declare the local data commitment scheme"),
                     || Ok(N::local_data_commitment_scheme().clone()),

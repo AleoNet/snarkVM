@@ -39,7 +39,7 @@ impl<N: Network> PublicVariables<N> {
 /// Converts the public variables into bytes and packs them into field elements.
 impl<N: Network> ToConstraintField<N::InnerScalarField> for PublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
-        let mut v = vec![];
+        let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }

@@ -21,15 +21,17 @@ use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
     bits::ToBytesGadget,
     traits::{
-        algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
+        algorithms::{CRHGadget, SNARKVerifierGadget},
         alloc::AllocGadget,
         eq::EqGadget,
     },
     MergeGadget,
     ToBitsLEGadget,
     ToMinimalBitsGadget,
+    UInt8,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
 
@@ -82,17 +84,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // In the outer circuit, these two variables must be allocated as witness,
     // as they are not included in the transaction.
-    debug_assert!(inner_public.program_commitment.is_none());
+    debug_assert!(inner_public.program_id.is_none());
     debug_assert!(inner_public.local_data_root.is_none());
 
     // ************************************************************************
     // Declare public parameters.
     // ************************************************************************
-
-    let program_id_commitment_parameters =
-        N::ProgramCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
-            Ok(N::program_commitment_scheme().clone())
-        })?;
 
     let program_circuit_id_crh = N::ProgramCircuitIDCRHGadget::alloc_constant(
         &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
@@ -175,8 +172,8 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         "value balance",
     )?;
 
-    let program_commitment_fe =
-        alloc_inner_snark_field_element::<N, _, _>(cs, &private.program_commitment, "program commitment")?;
+    let program_id_fe =
+        alloc_inner_snark_field_element::<N, _, _>(cs, &private.program_id.to_bytes_le()?[..], "program ID")?;
 
     let local_data_root_fe_inner_snark =
         alloc_inner_snark_field_element::<N, _, _>(cs, &private.local_data_root, "local data root inner snark")?;
@@ -201,7 +198,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             ledger_digest_fe,
             serial_number_fe,
             commitment_and_encrypted_record_hash_fe,
-            program_commitment_fe,
+            program_id_fe,
             memo_fe,
             network_id_fe,
             local_data_root_fe_inner_snark,
@@ -232,8 +229,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // ************************************************************************
     // Verify each circuit exist in declared program and verify their proofs.
     // ************************************************************************
-
-    let mut program_ids_bytes = Vec::new();
     {
         let cs = &mut cs.ns(|| "Check execution for program");
 
@@ -243,8 +238,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 || Ok(&private.program_execution.verifying_key),
             )?;
 
-        // Verify that the claimed circuit ID is a valid Merkle path in the program circuit tree.
+        // Check that the program ID is derived correctly.
         {
+            // Verify that the claimed circuit ID is a valid Merkle path in the program circuit tree.
             let program_circuit_verifying_key_bits = program_circuit_verifying_key
                 .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
@@ -268,12 +264,28 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             )?;
 
             let claimed_program_id_bytes =
-                claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
+                claimed_program_id.to_bytes(&mut cs.ns(|| "Convert claimed program ID to bytes"))?;
 
-            program_ids_bytes.extend_from_slice(&claimed_program_id_bytes);
+            let given_program_id = UInt8::alloc_vec(
+                &mut cs.ns(|| "Allocate given program ID"),
+                &private.program_id.to_bytes_le()?[..],
+            )?;
+            let given_program_id_bytes =
+                given_program_id.to_bytes(&mut cs.ns(|| "Convert given program ID to bytes"))?;
+
+            claimed_program_id_bytes.enforce_equal(
+                &mut cs.ns(|| "Check that declared and computed program IDs are equal"),
+                &given_program_id_bytes,
+            )?;
         }
 
-        let program_input = local_data_root_fe_program_snark;
+        // Verify the proof.
+
+        let position_fe = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
+            &mut cs.ns(|| "Allocate position"),
+            || Ok(vec![N::InnerScalarField::from(0u128)]),
+        )?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
@@ -285,38 +297,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             &program_circuit_verifying_key,
             &program_input,
             &program_circuit_proof,
-        )?;
-    }
-
-    // ********************************************************************
-
-    // ********************************************************************
-    // Check that the program commitment is derived correctly.
-    // ********************************************************************
-    {
-        let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
-
-        let given_commitment_randomness =
-            <N::ProgramCommitmentGadget as CommitmentGadget<_, N::OuterScalarField>>::RandomnessGadget::alloc(
-                &mut commitment_cs.ns(|| "Commitment randomness"),
-                || Ok(&private.program_randomness),
-            )?;
-
-        let given_commitment =
-            <N::ProgramCommitmentGadget as CommitmentGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
-                &mut commitment_cs.ns(|| "Commitment output"),
-                || Ok(&private.program_commitment),
-            )?;
-
-        let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(
-            &mut commitment_cs.ns(|| "Compute commitment"),
-            &program_ids_bytes,
-            &given_commitment_randomness,
-        )?;
-
-        candidate_commitment.enforce_equal(
-            &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
-            &given_commitment,
         )?;
     }
 
@@ -347,7 +327,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
 fn alloc_inner_snark_field_element<
     N: Network,
-    V: ToConstraintField<N::InnerScalarField>,
+    V: ToConstraintField<N::InnerScalarField> + ?Sized,
     CS: ConstraintSystem<N::OuterScalarField>,
 >(
     cs: &mut CS,

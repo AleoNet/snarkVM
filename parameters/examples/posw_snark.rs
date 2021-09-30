@@ -47,7 +47,7 @@ pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO: decide the size of the universal setup
-    let max_degree = AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+    let max_degree = AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
     let universal_srs = <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
     let srs_bytes = universal_srs.to_bytes_le()?;

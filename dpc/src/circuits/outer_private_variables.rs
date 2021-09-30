@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, Network};
-use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
+use snarkvm_algorithms::traits::SNARK;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
@@ -23,8 +23,7 @@ pub struct OuterPrivateVariables<N: Network> {
     pub(super) inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
     pub(super) inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
     pub(super) program_execution: Execution<N>,
-    pub(super) program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    pub(super) program_id: N::ProgramID,
     pub(super) local_data_root: N::LocalDataRoot,
 }
 
@@ -38,8 +37,7 @@ impl<N: Network> OuterPrivateVariables<N> {
             inner_snark_vk,
             inner_snark_proof,
             program_execution: execution,
-            program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output::default(),
-            program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
+            program_id: N::ProgramID::default(),
             local_data_root: N::LocalDataRoot::default(),
         }
     }
@@ -48,16 +46,14 @@ impl<N: Network> OuterPrivateVariables<N> {
         inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
         program_execution: Execution<N>,
-        program_commitment: <N::ProgramCommitmentScheme as CommitmentScheme>::Output,
-        program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+        program_id: N::ProgramID,
         local_data_root: N::LocalDataRoot,
     ) -> Self {
         Self {
             inner_snark_vk,
             inner_snark_proof,
             program_execution,
-            program_commitment,
-            program_randomness,
+            program_id,
             local_data_root,
         }
     }

@@ -236,14 +236,14 @@ mod test {
 
         let num_constraints = cs.num_constraints();
         println!("PoSW circuit num constraints: {:?}", num_constraints);
-        assert_eq!(26663, num_constraints);
+        assert_eq!(61535, num_constraints);
     }
 
     fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
         // Generate the proving and verifying key.
         let (proving_key, verifying_key) = {
             let max_degree =
-                snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+                snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
             let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
             <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(

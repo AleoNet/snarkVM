@@ -34,10 +34,8 @@ pub struct InnerPrivateVariables<N: Network> {
     // Encryption of output records.
     pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Executable.
-    pub(super) program_id: N::ProgramID,
     pub(super) circuit_type: CircuitType,
-    // Commitment to programs and local data.
-    pub(super) program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    // Commitment to local data.
     pub(super) local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 }
 
@@ -52,9 +50,7 @@ impl<N: Network> InnerPrivateVariables<N> {
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
-            program_id: *N::noop_program_id(),
             circuit_type: CircuitType::Noop,
-            program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
             local_data_leaf_randomizers: vec![
                 <N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
                 N::NUM_TOTAL_RECORDS
@@ -69,7 +65,6 @@ impl<N: Network> InnerPrivateVariables<N> {
         output_records: Vec<Record<N>>,
         encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
         executable: &Executable<N>,
-        program_randomness: <N::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Result<Self> {
         assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
@@ -85,9 +80,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             signatures,
             output_records,
             encrypted_record_randomizers,
-            program_id: executable.program_id(),
             circuit_type: executable.circuit_type(),
-            program_randomness,
             local_data_leaf_randomizers,
         })
     }
