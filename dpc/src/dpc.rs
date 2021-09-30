@@ -149,8 +149,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
 
-    //use rayon::prelude::*;
-
     // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
     //     let verify_time = start_timer!(|| "DPC::verify");
     //
@@ -189,17 +187,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     //     end_timer!(verify_time);
     //
     //     true
-    // }
-    //
-    // /// Returns true iff all the transactions in the block are valid according to the ledger.
-    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
-    //     transactions: &[Self::Transaction],
-    //     ledger: &L,
-    // ) -> bool {
-    //     transactions
-    //         .as_parallel_slice()
-    //         .par_iter()
-    //         .all(|tx| Self::verify(tx, ledger))
     // }
 }
 
