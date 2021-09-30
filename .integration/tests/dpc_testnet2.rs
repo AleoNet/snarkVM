@@ -27,8 +27,9 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        126, 111, 139, 25, 71, 200, 187, 91, 53, 148, 135, 104, 35, 224, 153, 158, 31, 65, 204, 37, 107, 242, 142, 41,
-        226, 82, 131, 66, 67, 140, 190, 114, 171, 251, 252, 230, 249, 206, 124, 159, 3, 72, 126, 95, 197, 250, 48, 0,
+        183, 231, 93, 139, 18, 197, 171, 64, 188, 62, 115, 243, 229, 150, 229, 91, 229, 157, 170, 202, 110, 28, 108,
+        181, 232, 206, 188, 146, 186, 92, 255, 158, 86, 94, 158, 227, 255, 196, 220, 85, 153, 195, 203, 133, 21, 49,
+        115, 1,
     ];
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
