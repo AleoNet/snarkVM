@@ -92,8 +92,8 @@ impl<N: Network> StateTransition<N> {
     }
 
     /// Returns a new instance of `StateBuilder`.
-    pub fn builder() -> StateBuilder<N> {
-        StateBuilder::new()
+    pub fn builder() -> TransitionBuilder<N> {
+        TransitionBuilder::new()
     }
 
     /// Returns a reference to the transaction kernel.

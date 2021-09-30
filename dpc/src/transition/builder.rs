@@ -21,7 +21,7 @@ use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 
 #[derive(Clone)]
-pub struct StateBuilder<N: Network> {
+pub struct TransitionBuilder<N: Network> {
     /// The executable for a state transition.
     executable: OnceCell<Executable<N>>,
     /// A list of given inputs for a state transition.
@@ -34,7 +34,7 @@ pub struct StateBuilder<N: Network> {
     errors: Vec<String>,
 }
 
-impl<N: Network> StateBuilder<N> {
+impl<N: Network> TransitionBuilder<N> {
     ///
     /// Initializes a new instance of `StateBuilder`.
     ///
@@ -315,7 +315,7 @@ mod tests {
             let (candidate_record, candidate_serial_number, candidate_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
-                let mut builder = StateBuilder::<Testnet2>::new();
+                let mut builder = TransitionBuilder::<Testnet2>::new();
                 builder = builder.add_input(Input::new_noop(rng).unwrap());
                 builder.build(rng).unwrap();
 
@@ -365,7 +365,7 @@ mod tests {
 
             // Generate the candidate output state.
             let (candidate_address, candidate_value, candidate_payload, candidate_program_id) = {
-                let mut builder = StateBuilder::new();
+                let mut builder = TransitionBuilder::new();
                 builder = builder.add_output(Output::new_noop(&mut candidate_rng).unwrap());
                 builder.build(&mut candidate_rng).unwrap();
                 (

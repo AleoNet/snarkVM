@@ -105,8 +105,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     /// CRH schemes for the block hash. Invoked only over `Self::InnerScalarField`.
     type BlockHashCRH: CRH<Output = Self::BlockHash>;
     type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + PartialEq + Eq + Hash + Sync + Send;
-
-    /// Block scheme for the ledger.
     type Block: BlockScheme;
     
     /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
@@ -151,9 +149,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type ProgramCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramCircuitIDTreeCRH: CRH<Output = Self::ProgramID>;
-    type ProgramCircuitIDTreeCRHGadget: CRHGadget<Self::ProgramCircuitIDTreeCRH, Self::OuterScalarField>;
-    type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDTreeCRH>;
+    type ProgramCircuitsTreeCRH: CRH<Output = Self::ProgramID>;
+    type ProgramCircuitsTreeCRHGadget: CRHGadget<Self::ProgramCircuitsTreeCRH, Self::OuterScalarField>;
+    type ProgramCircuitsTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitsTreeCRH>;
     type ProgramID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
@@ -187,8 +185,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
     fn local_data_crh() -> &'static Self::LocalDataCRH;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
-    fn program_circuit_id_tree_crh() -> &'static Self::ProgramCircuitIDTreeCRH;
-    fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
+    fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
+    fn program_circuits_tree_parameters() -> &'static Self::ProgramCircuitsTreeParameters;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
@@ -199,7 +197,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     fn noop_program() -> &'static Program<Self>;
     fn noop_program_id() -> &'static Self::ProgramID;
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitTreeParameters>;
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters>;
     fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;

@@ -23,7 +23,7 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct Execution<N: Network> {
-    pub program_path: MerklePath<N::ProgramCircuitTreeParameters>,
+    pub program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
     pub verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
     pub proof: <N::ProgramSNARK as SNARK>::Proof,
 }
@@ -35,7 +35,7 @@ pub enum Executable<N: Network> {
     Circuit(
         N::ProgramID,
         ProgramCircuit<N>,
-        MerklePath<N::ProgramCircuitTreeParameters>,
+        MerklePath<N::ProgramCircuitsTreeParameters>,
     ),
 }
 
@@ -43,7 +43,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
     fn new(
         program_id: N::ProgramID,
         circuit: ProgramCircuit<N>,
-        program_path: MerklePath<N::ProgramCircuitTreeParameters>,
+        program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
     ) -> Result<Self, ProgramError> {
         assert!(program_path.verify(&program_id, &circuit.circuit_id())?);
         Ok(Self::Circuit(program_id, circuit, program_path))

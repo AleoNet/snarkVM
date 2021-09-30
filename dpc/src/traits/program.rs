@@ -44,7 +44,7 @@ pub trait ProgramScheme<N: Network>: Send + Sync {
     fn to_program_path(
         &self,
         circuit_id: &N::ProgramCircuitID,
-    ) -> Result<MerklePath<N::ProgramCircuitTreeParameters>, ProgramError>;
+    ) -> Result<MerklePath<N::ProgramCircuitsTreeParameters>, ProgramError>;
 
     /// Returns an instance of an executable given the circuit ID, if it exists.
     fn to_executable(&self, circuit_id: &N::ProgramCircuitID) -> Result<Executable<N>, ProgramError>;
@@ -55,7 +55,7 @@ pub trait ProgramExecutable<N: Network>: Send + Sync {
     fn new(
         program_id: N::ProgramID,
         circuit: ProgramCircuit<N>,
-        program_path: MerklePath<N::ProgramCircuitTreeParameters>,
+        program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
     ) -> Result<Self, ProgramError>
     where
         Self: Sized;

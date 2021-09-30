@@ -29,7 +29,7 @@ use std::{collections::HashMap, sync::Arc};
 #[derivative(Debug(bound = "N: Network"))]
 pub struct Program<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<N::ProgramCircuitTreeParameters>,
+    tree: MerkleTree<N::ProgramCircuitsTreeParameters>,
     #[derivative(Debug = "ignore")]
     circuits: HashMap<N::ProgramCircuitID, (u8, ProgramCircuit<N>)>,
     last_circuit_index: u8,
@@ -40,8 +40,8 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     fn new(circuits: Vec<ProgramCircuit<N>>) -> Result<Self, ProgramError> {
         // Initialize a new circuits tree, and add all circuits to the tree.
         let mut program = Self {
-            tree: MerkleTree::<N::ProgramCircuitTreeParameters>::new::<N::ProgramCircuitID>(
-                Arc::new(N::program_circuit_tree_parameters().clone()),
+            tree: MerkleTree::<N::ProgramCircuitsTreeParameters>::new::<N::ProgramCircuitID>(
+                Arc::new(N::program_circuits_tree_parameters().clone()),
                 &vec![],
             )?,
             circuits: Default::default(),
@@ -56,8 +56,8 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     fn new_noop() -> Result<Self, ProgramError> {
         // Initialize a new circuits tree, and add all circuits to the tree.
         let mut program = Self {
-            tree: MerkleTree::<N::ProgramCircuitTreeParameters>::new::<N::ProgramCircuitID>(
-                Arc::new(N::program_circuit_tree_parameters().clone()),
+            tree: MerkleTree::<N::ProgramCircuitsTreeParameters>::new::<N::ProgramCircuitID>(
+                Arc::new(N::program_circuits_tree_parameters().clone()),
                 &vec![],
             )?,
             circuits: Default::default(),
@@ -87,7 +87,7 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     fn to_program_path(
         &self,
         circuit_id: &N::ProgramCircuitID,
-    ) -> Result<MerklePath<N::ProgramCircuitTreeParameters>, ProgramError> {
+    ) -> Result<MerklePath<N::ProgramCircuitsTreeParameters>, ProgramError> {
         match self.get_circuit_index(circuit_id) {
             Some(index) => Ok(self.tree.generate_proof(index as usize, circuit_id)?),
             _ => Err(MerkleError::MissingLeaf(format!("{}", circuit_id)).into()),

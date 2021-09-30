@@ -96,9 +96,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         || Ok(N::program_circuit_id_crh().clone()),
     )?;
 
-    let program_circuit_id_tree_crh = N::ProgramCircuitIDTreeCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_circuit_id_tree_crh_parameters"),
-        || Ok(N::program_circuit_id_tree_crh().clone()),
+    let program_circuits_tree_crh = N::ProgramCircuitsTreeCRHGadget::alloc_constant(
+        &mut cs.ns(|| "Declare program_circuits_tree_crh_parameters"),
+        || Ok(N::program_circuits_tree_crh().clone()),
     )?;
 
     let inner_circuit_id_crh =
@@ -252,14 +252,14 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             let claimed_circuit_id_bytes =
                 claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
-            let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitIDTreeCRHGadget, _>::alloc(
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitsTreeCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
                 || Ok(&private.program_execution.program_path),
             )?;
 
             let claimed_program_id = program_path_gadget.calculate_root(
                 &mut cs.ns(|| "calculate_program_id"),
-                &program_circuit_id_tree_crh,
+                &program_circuits_tree_crh,
                 claimed_circuit_id_bytes,
             )?;
 
