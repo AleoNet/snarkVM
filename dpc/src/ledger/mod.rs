@@ -14,5 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod blocks;
+pub use blocks::*;
+
+pub mod commitments_tree;
+pub use commitments_tree::*;
+
+pub mod ledger_proof;
+pub use ledger_proof::*;
+
 pub mod memory_pool;
 pub use memory_pool::*;
+
+pub mod serial_numbers_tree;
+pub use serial_numbers_tree::*;

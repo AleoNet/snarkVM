@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, CircuitLogic, CircuitType, Network, PublicVariables};
+use crate::{CircuitLogic, CircuitType, Network, ProgramError, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -35,7 +35,7 @@ pub enum ProgramCircuit<N: Network> {
 
 impl<N: Network> ProgramCircuit<N> {
     /// Initializes a new instance of the circuit.
-    pub fn new(logic: Arc<dyn CircuitLogic<N>>) -> Result<Self, CircuitError> {
+    pub fn new(logic: Arc<dyn CircuitLogic<N>>) -> Result<Self, ProgramError> {
         // Compute the proving key and verifying key.
         let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
             &SynthesizedCircuit::Blank(logic.clone()),

@@ -20,9 +20,6 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
-pub mod circuit;
-pub use circuit::*;
-
 pub mod dpc;
 pub use dpc::*;
 
