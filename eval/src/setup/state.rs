@@ -266,7 +266,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         self.call_depth += 1;
 
         if self.call_depth > self.program.header.inline_limit {
-            return Err(anyhow!("f#{}: max inline limit hit"));
+            return Err(anyhow!("f#{}: max inline limit hit", index));
         }
 
         let out = self.evaluate_block(0, &function.instructions[..], &mut result);
