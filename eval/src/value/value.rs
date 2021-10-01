@@ -45,6 +45,81 @@ pub enum ConstrainedValue<F: PrimeField, G: GroupType<F>> {
     Tuple(Vec<ConstrainedValue<F, G>>),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SimpleInt {
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+}
+
+impl fmt::Display for SimpleInt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use SimpleInt::*;
+
+        match self {
+            I8 => write!(f, "i8"),
+            I16 => write!(f, "i16"),
+            I32 => write!(f, "i32"),
+            I64 => write!(f, "i64"),
+            I128 => write!(f, "i128"),
+            U8 => write!(f, "u8"),
+            U16 => write!(f, "u16"),
+            U32 => write!(f, "u32"),
+            U64 => write!(f, "u64"),
+            U128 => write!(f, "u128"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SimpleType {
+    // Data types
+    Address,
+    Boolean,
+    Char,
+    Field,
+    Group,
+    Integer(SimpleInt),
+
+    // Arrays
+    Array(Box<SimpleType>, usize),
+
+    // Tuples
+    Tuple(Vec<SimpleType>),
+}
+
+impl fmt::Display for SimpleType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use SimpleType::*;
+
+        match self {
+            Address => write!(f, "address"),
+            Boolean => write!(f, "bool"),
+            Char => write!(f, "char"),
+            Field => write!(f, "field"),
+            Group => write!(f, "group"),
+            Integer(int) => write!(f, "{}", int),
+            Array(inner, size) => write!(f, "[{}; {}]", inner, size),
+            Tuple(values) => {
+                write!(f, "(")?;
+                write!(
+                    f,
+                    "{}",
+                    values.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",")
+                )?;
+                write!(f, ")")
+            }
+        }
+    }
+}
+
 impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
     pub fn extract_bool(&self) -> Result<&Boolean, &Self> {
         match self {
@@ -125,6 +200,30 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         }
     }
 
+    pub fn from_bits_le(type_: SimpleType, bits: &[Boolean]) -> Result<Self> {
+        use snarkvm_gadgets::{
+            integers::{int::*, uint::*},
+            Integer as IntegerTrait,
+        };
+
+        match type_ {
+            SimpleType::Integer(SimpleInt::I8) => Ok(Self::Integer(Integer::I8(Int8::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::I16) => Ok(Self::Integer(Integer::I16(Int16::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::I32) => Ok(Self::Integer(Integer::I32(Int32::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::I64) => Ok(Self::Integer(Integer::I64(Int64::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::I128) => Ok(Self::Integer(Integer::I128(Int128::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::U8) => Ok(Self::Integer(Integer::U8(UInt8::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::U16) => Ok(Self::Integer(Integer::U16(UInt16::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::U32) => Ok(Self::Integer(Integer::U32(UInt32::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::U64) => Ok(Self::Integer(Integer::U64(UInt64::from_bits_le(bits)))),
+            SimpleType::Integer(SimpleInt::U128) => Ok(Self::Integer(Integer::U128(UInt128::from_bits_le(bits)))),
+            _ => Err(anyhow!(
+                "the type `{}` does not implement the from_bits_le method",
+                type_
+            )),
+        }
+    }
+
     pub fn to_bytes_le(&self) -> Result<Vec<UInt8>> {
         use ConstrainedValue::*;
 
@@ -138,6 +237,13 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes_le method")),
             Tuple(_) => Err(anyhow!("the type `tuple` does not implement the to_bytes_le method")),
         }
+    }
+
+    pub fn from_bytes_le(type_: SimpleType, _bytes: &[UInt8]) -> Result<Self> {
+        Err(anyhow!(
+            "the type `{}` does not implement the from_bytes_le method",
+            type_
+        ))
     }
 }
 
