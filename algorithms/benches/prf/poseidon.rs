@@ -17,25 +17,26 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{prf::blake2s::Blake2s, traits::PRF};
+use snarkvm_algorithms::{prf::poseidon::PoseidonPRF, traits::PRF};
 
 use criterion::Criterion;
 use rand::{thread_rng, Rng};
 
-fn blake2s_prf_evaluation(c: &mut Criterion) {
+fn poseidon_prf(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let input: [u8; 32] = rng.gen();
-    let seed: [u8; 32] = rng.gen();
 
-    c.bench_function("Blake2s PRF evaluation", move |b| {
-        b.iter(|| Blake2s::evaluate(&seed, &input).unwrap())
+    c.bench_function("PoseidonPRF PRF evaluation", move |b| {
+        let input = rng.gen();
+        let seed = rng.gen();
+
+        b.iter(|| PoseidonPRF::evaluate(&seed, &input).unwrap())
     });
 }
 
 criterion_group! {
-    name = prf_evaluation;
+    name = prf;
     config = Criterion::default().sample_size(50);
-    targets = blake2s_prf_evaluation
+    targets = poseidon_prf
 }
 
-criterion_main!(prf_evaluation);
+criterion_main!(prf);

@@ -48,8 +48,8 @@ path = "benches/hash_to_curve/hash_to_curve.rs"
 harness = false
 
 [[bench]]
-name = "prf-blake2s"
-path = "benches/prf/blake2s.rs"
+name = "prf"
+path = "benches/prf/poseidon.rs"
 harness = false
 
 [[bench]]
@@ -196,15 +196,15 @@ wasm = [
   "signature",
   "snark"
 ]
-commitment = [ "blake2", "crh" ]
+commitment = [ "crh" ]
 crh = [ ]
-crypto_hash = [ ]
+crypto_hash = [ "blake2" ]
 encryption = [ "signature" ]
 fft = [ ]
 hash_to_curve = [ ]
 merkle_tree = [ ]
 msm = [ ]
-prf = [ "blake2" ]
+prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]

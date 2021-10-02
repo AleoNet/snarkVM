@@ -67,3 +67,55 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        algorithms::prf::*,
+        traits::{algorithms::PRFGadget, alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_algorithms::{prf::PoseidonPRF, traits::PRF};
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+
+    #[test]
+    fn test_prf() {
+        let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let seed = rng.gen();
+        let input = vec![rng.gen()];
+        let output = PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input).unwrap();
+
+        let seed_gadget =
+            <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Seed::alloc(&mut cs.ns(|| "seed"), || Ok(seed))
+                .unwrap();
+        let input_gadget =
+            <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Input::alloc(&mut cs.ns(|| "input"), || Ok(input))
+                .unwrap();
+
+        let expected_output_gadget =
+            <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Output::alloc(&mut cs.ns(|| "output"), || {
+                Ok(output)
+            })
+            .unwrap();
+        let candidate_output_gadget = PoseidonPRFGadget::<Fr, 4, false>::check_evaluation_gadget(
+            &mut cs.ns(|| "evaluate"),
+            &seed_gadget,
+            &input_gadget,
+        )
+        .unwrap();
+
+        candidate_output_gadget
+            .enforce_equal(&mut cs, &expected_output_gadget)
+            .unwrap();
+
+        if !cs.is_satisfied() {
+            println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
+        }
+        assert!(cs.is_satisfied());
+    }
+}
