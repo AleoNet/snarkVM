@@ -1628,7 +1628,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "smallvec",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-profiler",
