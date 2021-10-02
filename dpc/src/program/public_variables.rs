@@ -25,14 +25,12 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
     Default(bound = "N: Network")
 )]
 pub struct PublicVariables<N: Network> {
-    pub local_data_root: N::LocalDataRoot,
+    pub transaction_id: N::TransactionID,
 }
 
 impl<N: Network> PublicVariables<N> {
-    pub fn new(local_data_root: &N::LocalDataRoot) -> Self {
-        Self {
-            local_data_root: local_data_root.clone(),
-        }
+    pub fn new(transaction_id: N::TransactionID) -> Self {
+        Self { transaction_id }
     }
 }
 
@@ -40,7 +38,7 @@ impl<N: Network> PublicVariables<N> {
 impl<N: Network> ToConstraintField<N::InnerScalarField> for PublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
-        v.extend_from_slice(&self.local_data_root.to_field_elements()?);
+        v.extend_from_slice(&self.transaction_id.to_field_elements()?);
         Ok(v)
     }
 }

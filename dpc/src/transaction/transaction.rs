@@ -29,10 +29,7 @@ use crate::{
     TransactionScheme,
     DPC,
 };
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CRH, SNARK},
-};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -214,7 +211,7 @@ impl<N: Network> TransactionScheme<N> for Transaction<N> {
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
     fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        Ok(N::transaction_id_crh().hash(&self.kernel().to_bytes_le()?)?)
+        self.kernel.to_transaction_id()
     }
 }
 

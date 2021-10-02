@@ -61,17 +61,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let public = &self.public;
         let private = &self.private;
 
-        // In the inner circuit, these two variables must be allocated as public inputs.
+        // In the inner circuit, this variable must be allocated as public input.
         debug_assert!(public.program_id.is_some());
-        debug_assert!(public.local_data_root.is_some());
 
         let (
             account_encryption_parameters,
             account_signature_parameters,
             record_commitment_parameters,
             encrypted_record_crh,
-            local_data_crh,
-            local_data_commitment_parameters,
+            transaction_id_crh,
             commitments_tree_parameters,
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
@@ -96,14 +94,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 || Ok(N::encrypted_record_crh().clone()),
             )?;
 
-            let local_data_crh_parameters =
-                N::LocalDataCRHGadget::alloc_constant(&mut cs.ns(|| "Declare local data CRH parameters"), || {
-                    Ok(N::local_data_crh().clone())
-                })?;
-
-            let local_data_commitment_parameters = N::LocalDataCommitmentGadget::alloc_constant(
-                &mut cs.ns(|| "Declare local data commitment parameters"),
-                || Ok(N::local_data_commitment_scheme().clone()),
+            let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare transaction ID CRH parameters"),
+                || Ok(N::transaction_id_crh().clone()),
             )?;
 
             let commitments_tree_parameters = N::CommitmentsTreeCRHGadget::alloc_constant(
@@ -116,8 +109,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 account_signature_parameters,
                 record_commitment_parameters,
                 encrypted_record_crh_parameters,
-                local_data_crh_parameters,
-                local_data_commitment_parameters,
+                transaction_id_crh,
                 commitments_tree_parameters,
             )
         };
@@ -783,112 +775,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         }
         // ********************************************************************
 
-        // ********************************************************************
-        // Check that the local data root is valid.
-        // ********************************************************************
-        let (network_id, memo) = {
-            let mut cs = cs.ns(|| "Check that local data root is valid.");
-
-            let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &*public.kernel.memo())?;
-            let network_id = UInt8::alloc_input_vec_le(
-                cs.ns(|| "Allocate network id"),
-                &public.kernel.network_id().to_le_bytes(),
-            )?;
-
-            let mut local_data_input_commitment_bytes = vec![];
-            for i in 0..N::NUM_INPUT_RECORDS {
-                let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
-
-                let mut input_bytes = vec![];
-                input_bytes.extend_from_slice(&[UInt8::constant(i as u8)]);
-                input_bytes.extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes(&mut cs.ns(|| "serial_number"))?);
-                input_bytes
-                    .extend_from_slice(&old_record_commitments_gadgets[i].to_bytes(&mut cs.ns(|| "commitment"))?);
-                input_bytes.extend_from_slice(&memo);
-                input_bytes.extend_from_slice(&network_id);
-
-                let commitment_randomness = <N::LocalDataCommitmentGadget as CommitmentGadget<
-                    N::LocalDataCommitmentScheme,
-                    N::InnerScalarField,
-                >>::RandomnessGadget::alloc(
-                    cs.ns(|| format!("Allocate old record local data commitment randomness {}", i)),
-                    || Ok(&private.local_data_leaf_randomizers[i]),
-                )?;
-
-                let commitment = local_data_commitment_parameters.check_commitment_gadget(
-                    cs.ns(|| format!("Commit to old record local data {}", i)),
-                    &input_bytes,
-                    &commitment_randomness,
-                )?;
-
-                local_data_input_commitment_bytes
-                    .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "old_record_local_data"))?);
-            }
-
-            let mut local_data_output_commitment_bytes = Vec::new();
-            for j in 0..N::NUM_OUTPUT_RECORDS {
-                let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
-
-                let mut input_bytes = vec![];
-                input_bytes.extend_from_slice(&[UInt8::constant((N::NUM_INPUT_RECORDS + j) as u8)]);
-                input_bytes.extend_from_slice(&output_commitments[j].to_bytes(&mut cs.ns(|| "commitment"))?);
-                input_bytes.extend_from_slice(&memo);
-                input_bytes.extend_from_slice(&network_id);
-
-                let commitment_randomness = <N::LocalDataCommitmentGadget as CommitmentGadget<
-                    N::LocalDataCommitmentScheme,
-                    N::InnerScalarField,
-                >>::RandomnessGadget::alloc(
-                    cs.ns(|| format!("Allocate new record local data commitment randomness {}", j)),
-                    || Ok(&private.local_data_leaf_randomizers[N::NUM_INPUT_RECORDS + j]),
-                )?;
-
-                let commitment = local_data_commitment_parameters.check_commitment_gadget(
-                    cs.ns(|| format!("Commit to new record local data {}", j)),
-                    &input_bytes,
-                    &commitment_randomness,
-                )?;
-
-                local_data_output_commitment_bytes
-                    .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "new_record_local_data"))?);
-            }
-
-            let inner1_commitment_hash = local_data_crh.check_evaluation_gadget(
-                cs.ns(|| "Compute to local data commitment inner1 hash"),
-                local_data_input_commitment_bytes,
-            )?;
-
-            let inner2_commitment_hash = local_data_crh.check_evaluation_gadget(
-                cs.ns(|| "Compute to local data commitment inner2 hash"),
-                local_data_output_commitment_bytes,
-            )?;
-
-            let mut inner_commitment_hash_bytes = Vec::new();
-            inner_commitment_hash_bytes
-                .extend_from_slice(&inner1_commitment_hash.to_bytes(&mut cs.ns(|| "inner1_commitment_hash"))?);
-            inner_commitment_hash_bytes
-                .extend_from_slice(&inner2_commitment_hash.to_bytes(&mut cs.ns(|| "inner2_commitment_hash"))?);
-
-            let candidate_local_data_root = local_data_crh.check_evaluation_gadget(
-                cs.ns(|| "Compute to local data commitment root"),
-                inner_commitment_hash_bytes,
-            )?;
-
-            let given_local_data_root =
-                <N::LocalDataCRHGadget as CRHGadget<N::LocalDataCRH, N::InnerScalarField>>::OutputGadget::alloc_input(
-                    cs.ns(|| "Allocate local data root"),
-                    || Ok(public.local_data_root.unwrap()),
-                )?;
-
-            candidate_local_data_root.enforce_equal(
-                &mut cs.ns(|| "Check that local data root is valid"),
-                &given_local_data_root,
-            )?;
-
-            (network_id, memo)
-        };
-        // *******************************************************************
-
         // *******************************************************************
         // Check that the value balance is valid.
         // *******************************************************************
@@ -927,19 +813,50 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             given_value_balance
         };
 
+        // ********************************************************************
+        // Create the transaction kernel and check the transaction ID is valid.
+        // ********************************************************************
+        let signature_message = {
+            let mut cs = cs.ns(|| "Check that local data root is valid.");
+
+            let memo = UInt8::alloc_input_vec_le(&mut cs.ns(|| "Allocate memorandum"), &*public.kernel.memo())?;
+            let network_id = UInt8::alloc_input_vec_le(
+                &mut cs.ns(|| "Allocate network id"),
+                &public.kernel.network_id().to_le_bytes(),
+            )?;
+
+            // Encode the transaction kernel as the signature message, and preimage for the transaction ID.
+            let mut message = Vec::new();
+            message.extend_from_slice(&network_id);
+            message.extend_from_slice(&old_serial_numbers_bytes_gadgets);
+            message.extend_from_slice(&output_commitments_bytes);
+            message.extend_from_slice(&value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
+            message.extend_from_slice(&memo);
+
+            let candidate_transaction_id = transaction_id_crh
+                .check_evaluation_gadget(&mut cs.ns(|| "Compute the transaction ID"), message.clone())?;
+
+            let given_transaction_id = <N::TransactionIDCRHGadget as CRHGadget<
+                N::TransactionIDCRH,
+                N::InnerScalarField,
+            >>::OutputGadget::alloc_input(
+                &mut cs.ns(|| "Allocate given transaction ID"),
+                || Ok(public.kernel.to_transaction_id()?),
+            )?;
+
+            candidate_transaction_id.enforce_equal(
+                &mut cs.ns(|| "Check that transaction ID is valid"),
+                &given_transaction_id,
+            )?;
+
+            message
+        };
+
         // *******************************************************************
         // Check that the signatures are valid.
         // *******************************************************************
         {
             let signature_cs = &mut cs.ns(|| "Check that signature is valid");
-
-            // Encode the transaction kernel as the signature message.
-            let mut message = Vec::new();
-            message.extend_from_slice(&network_id);
-            message.extend_from_slice(&old_serial_numbers_bytes_gadgets);
-            message.extend_from_slice(&output_commitments_bytes);
-            message.extend_from_slice(&value_balance.to_bytes(&mut signature_cs.ns(|| "value_balance_bytes"))?);
-            message.extend_from_slice(&memo);
 
             // Verify each signature is valid.
             for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {
@@ -953,7 +870,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let verification = account_signature_parameters.verify(
                     signature_cs.ns(|| format!("verify_{}", i)),
                     &public_key,
-                    &message,
+                    &signature_message,
                     &signature_gadget,
                 )?;
 

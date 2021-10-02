@@ -62,13 +62,8 @@ impl<N: Network> TransactionAuthorization<N> {
     }
 
     #[inline]
-    pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<N>> {
-        Ok(LocalData::new(
-            &self.kernel,
-            &self.input_records,
-            &self.output_records,
-            rng,
-        )?)
+    pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
+        self.kernel.to_transaction_id()
     }
 
     #[inline]

@@ -82,10 +82,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         inner_circuit_id,
     } = public;
 
-    // In the outer circuit, these two variables must be allocated as witness,
-    // as they are not included in the transaction.
+    // In the outer circuit, thus variable must be allocated as private input,
+    // as it is not included in the transaction.
     debug_assert!(inner_public.program_id.is_none());
-    debug_assert!(inner_public.local_data_root.is_none());
 
     // ************************************************************************
     // Declare public parameters.
@@ -158,6 +157,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         )?
     };
 
+    let value_balance_fe = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &inner_public.kernel.value_balance().0.to_le_bytes(),
+        "value balance",
+    )?;
+
     let memo_fe = alloc_inner_snark_input_field_element::<N, _, _>(cs, inner_public.kernel.memo(), "memo")?;
 
     let network_id_fe = alloc_inner_snark_input_field_element::<N, _, _>(
@@ -166,33 +171,31 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         "network id",
     )?;
 
-    let value_balance_fe = alloc_inner_snark_input_field_element::<N, _, _>(
-        cs,
-        &inner_public.kernel.value_balance().0.to_le_bytes(),
-        "value balance",
-    )?;
-
     let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
         cs,
         &private.program_execution.program_id.to_bytes_le()?[..],
         "program ID",
     )?;
 
-    let local_data_root_fe_inner_snark =
-        alloc_inner_snark_field_element::<N, _, _>(cs, &private.local_data_root, "local data root inner snark")?;
-
-    let local_data_root_fe_program_snark =
-        alloc_program_snark_field_element::<N, _, _>(cs, &private.local_data_root, "local data root program snark")?;
-
+    let transaction_id_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &inner_public.kernel.to_transaction_id()?,
+        "transaction ID inner snark",
+    )?;
+    let transaction_id_fe_program_snark = alloc_program_snark_field_element::<N, _, _>(
+        cs,
+        &inner_public.kernel.to_transaction_id()?,
+        "transaction ID program snark",
+    )?;
     {
         // Construct inner snark input as bits
-        let local_data_root_input_inner_snark_bits =
-            local_data_root_fe_inner_snark.to_bits_le(cs.ns(|| "local data root inner snark to bits"))?;
-        let local_data_root_input_program_snark_bits =
-            local_data_root_fe_program_snark.to_bits_le(cs.ns(|| "local data root program snark to bits"))?;
-        local_data_root_input_inner_snark_bits.enforce_equal(
-            cs.ns(|| "local data root equality"),
-            &local_data_root_input_program_snark_bits,
+        let transaction_id_input_inner_snark_bits =
+            transaction_id_fe_inner_snark.to_bits_le(cs.ns(|| "transaction ID inner snark to bits"))?;
+        let transaction_id_input_program_snark_bits =
+            transaction_id_fe_program_snark.to_bits_le(cs.ns(|| "transaction ID program snark to bits"))?;
+        transaction_id_input_inner_snark_bits.enforce_equal(
+            cs.ns(|| "transaction ID equality"),
+            &transaction_id_input_program_snark_bits,
         )?;
     }
 
@@ -202,10 +205,10 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             serial_number_fe,
             commitment_and_encrypted_record_hash_fe,
             program_id_fe,
+            value_balance_fe,
             memo_fe,
             network_id_fe,
-            local_data_root_fe_inner_snark,
-            value_balance_fe,
+            transaction_id_fe_inner_snark,
         ])?;
 
     // ************************************************************************
@@ -223,7 +226,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     )?;
 
     N::InnerSNARKGadget::check_verify(
-        &mut cs.ns(|| "Check that proof is satisfied"),
+        &mut cs.ns(|| "Check that the inner circuit proof is satisfied"),
         &inner_snark_vk,
         &inner_snark_input,
         &inner_snark_proof,
@@ -288,7 +291,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             &mut cs.ns(|| "Allocate position"),
             || Ok(vec![N::InnerScalarField::from(0u128)]),
         )?;
-        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &transaction_id_fe_program_snark)?;
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
@@ -296,7 +299,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         )?;
 
         N::ProgramSNARKGadget::check_verify(
-            &mut cs.ns(|| "Check that proof is satisfied"),
+            &mut cs.ns(|| "Check that the program proof is satisfied"),
             &program_circuit_verifying_key,
             &program_input,
             &program_circuit_proof,

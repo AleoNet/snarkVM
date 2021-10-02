@@ -28,11 +28,11 @@ use rand::{CryptoRng, Rng};
 )]
 pub struct StateTransition<N: Network> {
     pub(super) kernel: TransactionKernel<N>,
+    #[derivative(PartialEq = "ignore", Debug = "ignore")]
+    pub(super) executable: Executable<N>,
     pub(super) input_records: Vec<Record<N>>,
     pub(super) output_records: Vec<Record<N>>,
     pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
-    #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub(super) executable: Executable<N>,
 }
 
 impl<N: Network> StateTransition<N> {
@@ -101,6 +101,11 @@ impl<N: Network> StateTransition<N> {
         &self.kernel
     }
 
+    /// Returns a reference to the executable.
+    pub fn executable(&self) -> &Executable<N> {
+        &self.executable
+    }
+
     /// Returns a reference to the input records.
     pub fn input_records(&self) -> &Vec<Record<N>> {
         &self.input_records
@@ -114,20 +119,5 @@ impl<N: Network> StateTransition<N> {
     /// Returns a reference to the noop private keys.
     pub fn noop_private_keys(&self) -> &Vec<Option<PrivateKey<N>>> {
         &self.noop_private_keys
-    }
-
-    /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<N> {
-        &self.executable
-    }
-
-    /// Returns the local data.
-    pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<N>> {
-        Ok(LocalData::new(
-            &self.kernel,
-            &self.input_records,
-            &self.output_records,
-            rng,
-        )?)
     }
 }

@@ -35,8 +35,6 @@ pub struct InnerPublicVariables<N: Network> {
     // However for verification in the outer circuit, these must be provided as witness.
     /// Program ID
     pub(super) program_id: Option<N::ProgramID>,
-    /// Local data root
-    pub(super) local_data_root: Option<N::LocalDataRoot>,
 }
 
 impl<N: Network> InnerPublicVariables<N> {
@@ -52,7 +50,6 @@ impl<N: Network> InnerPublicVariables<N> {
             ledger_digest: MerkleTreeDigest::<N::CommitmentsTreeParameters>::default(),
             encrypted_record_ids: vec![N::EncryptedRecordID::default(); N::NUM_OUTPUT_RECORDS],
             program_id: Some(N::ProgramID::default()),
-            local_data_root: Some(N::LocalDataRoot::default()),
         }
     }
 
@@ -61,7 +58,6 @@ impl<N: Network> InnerPublicVariables<N> {
         ledger_digest: &MerkleTreeDigest<N::CommitmentsTreeParameters>,
         encrypted_record_ids: &Vec<N::EncryptedRecordID>,
         program_id: Option<N::ProgramID>,
-        local_data_root: Option<N::LocalDataRoot>,
     ) -> Result<Self> {
         assert!(kernel.is_valid());
         assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_ids.len());
@@ -71,7 +67,6 @@ impl<N: Network> InnerPublicVariables<N> {
             ledger_digest: ledger_digest.clone(),
             encrypted_record_ids: encrypted_record_ids.clone(),
             program_id,
-            local_data_root,
         })
     }
 }
@@ -105,16 +100,14 @@ where
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         }
 
-        v.extend_from_slice(&self.kernel.memo().to_field_elements()?);
-        v.extend_from_slice(&self.kernel.network_id().to_le_bytes().to_field_elements()?);
-
-        if let Some(local_data_root) = &self.local_data_root {
-            v.extend_from_slice(&local_data_root.to_field_elements()?);
-        }
-
         v.extend_from_slice(&ToConstraintField::<N::InnerScalarField>::to_field_elements(
             &self.kernel.value_balance().0.to_le_bytes()[..],
         )?);
+
+        v.extend_from_slice(&self.kernel.memo().to_field_elements()?);
+        v.extend_from_slice(&self.kernel.network_id().to_le_bytes().to_field_elements()?);
+        v.extend_from_slice(&self.kernel.to_transaction_id()?.to_field_elements()?);
+
         Ok(v)
     }
 }

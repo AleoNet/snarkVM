@@ -18,7 +18,6 @@ use crate::{AccountError, ProgramError, RecordError, TransactionError};
 use snarkvm_algorithms::{
     CRHError,
     CommitmentError,
-    EncodingError,
     EncryptionError,
     MerkleError,
     PRFError,
@@ -47,9 +46,6 @@ pub enum DPCError {
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
-
-    #[error("{}", _0)]
-    EncodingError(#[from] EncodingError),
 
     #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),

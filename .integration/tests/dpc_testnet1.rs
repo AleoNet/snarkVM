@@ -27,8 +27,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        0, 53, 210, 158, 41, 167, 59, 130, 170, 153, 69, 255, 166, 30, 2, 247, 170, 254, 242, 141, 161, 210, 59, 2,
-        106, 185, 28, 244, 201, 55, 91, 241, 83, 143, 168, 36, 115, 144, 125, 30, 121, 240, 62, 206, 8, 157, 113, 1,
+        71, 211, 100, 34, 123, 194, 23, 227, 47, 170, 213, 199, 169, 234, 0, 63, 120, 12, 153, 10, 129, 180, 193, 203,
+        255, 244, 250, 69, 178, 106, 236, 246, 69, 128, 143, 176, 52, 162, 80, 64, 135, 119, 154, 19, 172, 142, 8, 0,
     ];
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -60,7 +60,7 @@ fn dpc_testnet1_integration_test() {
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
     let previous_hash = previous_block.to_block_hash().unwrap();
-    let block_height = previous_block.header.height() + 1;
+    let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
     // Construct the new block transactions.
@@ -82,7 +82,7 @@ fn dpc_testnet1_integration_test() {
     // Construct the new block header.
     let header = BlockHeader::new(
         block_height,
-        previous_block.header.difficulty_target(),
+        previous_block.header().difficulty_target(),
         transactions_root,
         serial_numbers_root,
         commitments_root,
@@ -91,11 +91,7 @@ fn dpc_testnet1_integration_test() {
     .unwrap();
 
     // Construct the new block.
-    let block = Block {
-        previous_hash,
-        header,
-        transactions,
-    };
+    let block = BlockScheme::from(previous_hash, header, transactions).unwrap();
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.block_height(), 1);
@@ -115,13 +111,13 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let authorization = DPC::<Testnet1>::authorize(&vec![], &state, &mut rng).unwrap();
 
-    // Generate the local data.
-    let local_data = authorization.to_local_data(&mut rng).unwrap();
+    // Generate the transaction ID.
+    let transaction_id = authorization.to_transaction_id().unwrap();
 
     // Execute the program circuit.
     let execution = state
         .executable()
-        .execute(PublicVariables::new(local_data.root()))
+        .execute(PublicVariables::new(transaction_id))
         .unwrap();
 
     // Compute the encrypted records.
@@ -134,8 +130,6 @@ fn test_testnet1_dpc_execute_constraints() {
         output_records,
         signatures,
     } = authorization;
-
-    let local_data_root = local_data.root();
 
     // Construct the ledger witnesses.
     let ledger_proof = LedgerProof::<Testnet1>::default();
@@ -150,7 +144,6 @@ fn test_testnet1_dpc_execute_constraints() {
         &ledger_digest,
         &encrypted_record_hashes,
         Some(state.executable().program_id()),
-        Some(local_data.root().clone()),
     )
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
@@ -160,7 +153,6 @@ fn test_testnet1_dpc_execute_constraints() {
         output_records.clone(),
         encrypted_record_randomizers,
         state.executable(),
-        local_data.leaf_randomizers().clone(),
     )
     .unwrap();
 
@@ -182,7 +174,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(191073, num_constraints);
+    assert_eq!(176812, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -212,12 +204,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     // Construct the outer circuit public and private variables.
     let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
-    let outer_private_variables = OuterPrivateVariables::new(
-        inner_snark_vk.clone(),
-        inner_snark_proof,
-        execution,
-        local_data_root.clone(),
-    );
+    let outer_private_variables = OuterPrivateVariables::new(inner_snark_vk.clone(), inner_snark_proof, execution);
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
@@ -243,7 +230,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(197515, num_constraints);
+    assert_eq!(197516, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

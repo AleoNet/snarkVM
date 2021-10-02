@@ -101,11 +101,11 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
 
     /// Returns the block given the block hash.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Self::Block> {
-        Ok(Self::Block {
-            previous_hash: self.get_previous_block_hash(block_hash)?,
-            header: self.get_block_header(block_hash)?,
-            transactions: self.get_block_transactions(block_hash)?,
-        })
+        BlockScheme::from(
+            self.get_previous_block_hash(block_hash)?,
+            self.get_block_header(block_hash)?,
+            self.get_block_transactions(block_hash)?,
+        )
     }
 
     /// Returns the block hash given a block number.
@@ -336,7 +336,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         }
 
         // Ensure there is no conflicting serial number or commitment in the block transactions.
-        if !block.transactions.is_valid() {
+        if !block.transactions().is_valid() {
             return Err(StorageError::ConflictingTransactions);
         }
 
@@ -351,7 +351,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
 
         let mut database_transaction = DatabaseTransaction::new();
 
-        for (index, transaction) in block.transactions.iter().enumerate() {
+        for (index, transaction) in block.transactions().iter().enumerate() {
             let transaction_location = TransactionLocation {
                 index: index as u32,
                 block_hash: block_hash_bytes,
@@ -366,23 +366,17 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_PREVIOUS_BLOCK_HASH,
             key: block_hash_bytes.to_vec(),
-            value: block.previous_hash.to_bytes_le()?,
+            value: block.previous_hash().to_bytes_le()?,
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_HEADER,
             key: block_hash_bytes.to_vec(),
-            value: to_bytes_le![block.header]?.to_vec(),
+            value: to_bytes_le![block.header()]?.to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
             key: block_hash_bytes.to_vec(),
-            value: to_bytes_le![block.transactions]?.to_vec(),
-        });
-
-        database_transaction.push(Op::Insert {
-            col: COL_BLOCK_TRANSACTIONS,
-            key: block_hash_bytes.to_vec(),
-            value: to_bytes_le![block.transactions]?.to_vec(),
+            value: to_bytes_le![block.transactions()]?.to_vec(),
         });
 
         self.storage.batch(database_transaction)?;
@@ -406,7 +400,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         }
 
         // Ensure there is no conflicting serial number or commitment in the block transactions.
-        if !block.transactions.is_valid() {
+        if !block.transactions().is_valid() {
             return Err(StorageError::ConflictingTransactions);
         }
 
@@ -420,7 +414,7 @@ impl<N: Network, S: Storage> Ledger<N, S> {
         let mut transaction_cms = vec![];
         let mut transaction_sns = vec![];
 
-        for transaction in block.transactions.iter() {
+        for transaction in block.transactions().iter() {
             let (tx_ops, cms, sns) = self.commit_transaction(&mut sn_index, &mut cm_index, transaction)?;
             database_transaction.push_vec(tx_ops);
             transaction_cms.extend(cms);

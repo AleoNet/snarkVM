@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{CircuitType, Executable, Network, ProgramExecutable, Record};
-use snarkvm_algorithms::{
-    merkle_tree::MerklePath,
-    traits::{CommitmentScheme, EncryptionScheme},
-};
+use snarkvm_algorithms::{merkle_tree::MerklePath, traits::EncryptionScheme};
 
 use anyhow::Result;
 
@@ -35,8 +32,6 @@ pub struct InnerPrivateVariables<N: Network> {
     pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Executable.
     pub(super) circuit_type: CircuitType,
-    // Commitment to local data.
-    pub(super) local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -51,10 +46,6 @@ impl<N: Network> InnerPrivateVariables<N> {
                 N::NUM_OUTPUT_RECORDS
             ],
             circuit_type: CircuitType::Noop,
-            local_data_leaf_randomizers: vec![
-                <N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
-                N::NUM_TOTAL_RECORDS
-            ],
         }
     }
 
@@ -65,14 +56,12 @@ impl<N: Network> InnerPrivateVariables<N> {
         output_records: Vec<Record<N>>,
         encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
         executable: &Executable<N>,
-        local_data_leaf_randomizers: Vec<<N::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Result<Self> {
         assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
         assert_eq!(N::NUM_INPUT_RECORDS, input_witnesses.len());
         assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
-        assert_eq!(N::NUM_TOTAL_RECORDS, local_data_leaf_randomizers.len());
 
         Ok(Self {
             input_records,
@@ -81,7 +70,6 @@ impl<N: Network> InnerPrivateVariables<N> {
             output_records,
             encrypted_record_randomizers,
             circuit_type: executable.circuit_type(),
-            local_data_leaf_randomizers,
         })
     }
 }

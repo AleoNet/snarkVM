@@ -105,14 +105,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
             Self::Noop(public) => {
                 let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[0u8])?;
 
-                let _local_data_commitment_scheme = N::LocalDataCommitmentGadget::alloc_constant(
-                    &mut cs.ns(|| "Declare the local data commitment scheme"),
-                    || Ok(N::local_data_commitment_scheme().clone()),
+                let _transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
+                    &mut cs.ns(|| "Declare the transaction ID CRH scheme"),
+                    || Ok(N::transaction_id_crh().clone()),
                 )?;
 
-                let _local_data_root = <N::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-                    cs.ns(|| "Alloc local data root"),
-                    || Ok(public.local_data_root),
+                let _transaction_id = <N::TransactionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+                    cs.ns(|| "Alloc the transaction ID"),
+                    || Ok(public.transaction_id),
                 )?;
 
                 Ok(())

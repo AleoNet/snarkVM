@@ -78,11 +78,11 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
 
-        // Generate the local data.
-        let local_data = authorization.to_local_data(rng)?;
+        // Generate the transaction ID.
+        let transaction_id = authorization.to_transaction_id()?;
 
         // Execute the program circuit.
-        let execution = executable.execute(PublicVariables::new(local_data.root()))?;
+        let execution = executable.execute(PublicVariables::new(transaction_id))?;
 
         // Compute the encrypted records.
         let (encrypted_records, encrypted_record_ids, encrypted_record_randomizers) =
@@ -101,7 +101,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             &ledger_digest,
             &encrypted_record_ids,
             Some(executable.program_id()),
-            Some(local_data.root().clone()),
         )?;
         let inner_private_variables = InnerPrivateVariables::new(
             input_records,
@@ -110,7 +109,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             output_records.clone(),
             encrypted_record_randomizers,
             &executable,
-            local_data.leaf_randomizers().clone(),
         )?;
 
         // Compute the inner circuit proof.
@@ -130,12 +128,8 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let transaction_proof = {
             // Construct the outer circuit public and private variables.
             let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, N::inner_circuit_id());
-            let outer_private_variables = OuterPrivateVariables::new(
-                N::inner_circuit_verifying_key().clone(),
-                inner_proof,
-                execution,
-                local_data.root().clone(),
-            );
+            let outer_private_variables =
+                OuterPrivateVariables::new(N::inner_circuit_verifying_key().clone(), inner_proof, execution);
 
             N::OuterSNARK::prove(
                 N::outer_circuit_proving_key(),
