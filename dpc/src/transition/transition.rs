@@ -32,7 +32,7 @@ pub struct StateTransition<N: Network> {
     pub(super) output_records: Vec<Record<N>>,
     pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub(super) executables: Vec<Executable<N>>,
+    pub(super) executable: Executable<N>,
 }
 
 impl<N: Network> StateTransition<N> {
@@ -92,8 +92,8 @@ impl<N: Network> StateTransition<N> {
     }
 
     /// Returns a new instance of `StateBuilder`.
-    pub fn builder() -> StateBuilder<N> {
-        StateBuilder::new()
+    pub fn builder() -> TransitionBuilder<N> {
+        TransitionBuilder::new()
     }
 
     /// Returns a reference to the transaction kernel.
@@ -116,9 +116,9 @@ impl<N: Network> StateTransition<N> {
         &self.noop_private_keys
     }
 
-    /// Returns a reference to the executables.
-    pub fn executables(&self) -> &Vec<Executable<N>> {
-        &self.executables
+    /// Returns a reference to the executable.
+    pub fn executable(&self) -> &Executable<N> {
+        &self.executable
     }
 
     /// Returns the local data.

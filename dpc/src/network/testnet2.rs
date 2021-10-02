@@ -27,7 +27,7 @@ use crate::{
     PublicVariables,
 };
 use snarkvm_algorithms::{
-    commitment::{BHPCompressedCommitment, Blake2sCommitment},
+    commitment::BHPCompressedCommitment,
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
@@ -49,7 +49,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
+        commitment::BHPCompressedCommitmentGadget,
         crh::{BHPCompressedCRHGadget, PedersenCompressedCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -87,13 +87,11 @@ impl Network for Testnet2 {
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
-    const NUM_EXECUTABLES: usize = 2;
-
     const MEMO_SIZE_IN_BYTES: usize = 64;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    const POSW_NUM_LEAVES: usize = 4;
-    const POSW_TREE_DEPTH: usize = 2;
+    const POSW_NUM_LEAVES: usize = 8;
+    const POSW_TREE_DEPTH: usize = 3;
     
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
@@ -155,12 +153,11 @@ impl Network for Testnet2 {
 
     type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
-
     type Block = Block<Self>;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 2>;
+    type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 3>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
     type CommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
@@ -187,18 +184,14 @@ impl Network for Testnet2 {
     type LocalDataCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
 
-    type ProgramCommitmentScheme = Blake2sCommitment;
-    type ProgramCommitmentGadget = Blake2sCommitmentGadget;
-    type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
-
     type ProgramCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 237, 16>;
     type ProgramCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
     type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
 
-    type ProgramCircuitIDTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
-    type ProgramCircuitIDTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
-    type ProgramCircuitTreeParameters = MerkleTreeParameters<Self::ProgramCircuitIDTreeCRH, 8>;
-    type ProgramID = <Self::ProgramCircuitIDTreeCRH as CRH>::Output;
+    type ProgramCircuitsTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
+    type ProgramCircuitsTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
+    type ProgramCircuitsTreeParameters = MerkleTreeParameters<Self::ProgramCircuitsTreeCRH, 8>;
+    type ProgramID = <Self::ProgramCircuitsTreeCRH as CRH>::Output;
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
@@ -225,10 +218,9 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet2, local_data_commitment_scheme, LocalDataCommitmentScheme, "AleoLocalDataCommitmentScheme0"}
     dpc_setup!{Testnet2, local_data_crh, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{Testnet2, program_commitment_scheme, ProgramCommitmentScheme, "AleoProgramCommitmentScheme0"}
     dpc_setup!{Testnet2, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
-    dpc_setup!{Testnet2, program_circuit_id_tree_crh, ProgramCircuitIDTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_merkle!{Testnet2, program_circuit_tree_parameters, ProgramCircuitTreeParameters, program_circuit_id_tree_crh}
+    dpc_setup!{Testnet2, program_circuits_tree_crh, ProgramCircuitsTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_merkle!{Testnet2, program_circuits_tree_parameters, ProgramCircuitsTreeParameters, program_circuits_tree_crh}
     dpc_setup!{Testnet2, serial_numbers_tree_parameters, SerialNumbersTreeParameters, "AleoSerialNumbersTreeCRH0"}
     dpc_setup!{Testnet2, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet2, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
@@ -259,8 +251,8 @@ impl Network for Testnet2 {
         NOOP_PROGRAM_ID.get_or_init(|| Testnet2::noop_program().program_id())
     }
 
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitTreeParameters> {
-        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet2 as Network>::ProgramCircuitTreeParameters>> = OnceCell::new();
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters> {
+        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet2 as Network>::ProgramCircuitsTreeParameters>> = OnceCell::new();
         NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_circuit_id()).expect("Failed to fetch the noop program path"))
     }
     
@@ -328,6 +320,7 @@ mod tests {
     #[test]
     fn test_posw_tree_sanity_check() {
         // Verify the PoSW tree depth matches the declared depth.
+        assert_eq!(Testnet2::POSW_TREE_DEPTH, 3); // Testnet2 has a tree depth of 3.
         assert_eq!(
             Testnet2::POSW_TREE_DEPTH,
             <<Testnet2 as Network>::BlockHeaderTreeParameters as MerkleParameters>::DEPTH

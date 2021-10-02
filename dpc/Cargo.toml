@@ -91,7 +91,7 @@ default-features = false
 version = "1.0.44"
 
 [dependencies.base58]
-version = "0.1"
+version = "0.2"
 
 [dependencies.bech32]
 version = "0.8"

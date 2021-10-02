@@ -59,6 +59,11 @@ impl<N: Network> Output<N> {
         })
     }
 
+    /// Returns `true` if the program ID is the noop program.
+    pub fn is_noop(&self) -> bool {
+        self.program_id == *N::noop_program_id()
+    }
+
     /// Returns the output record, given the previous serial number.
     pub fn to_record<R: Rng + CryptoRng>(
         &self,

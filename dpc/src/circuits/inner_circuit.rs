@@ -33,8 +33,6 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use itertools::Itertools;
-
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerCircuit<N: Network> {
@@ -64,7 +62,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let private = &self.private;
 
         // In the inner circuit, these two variables must be allocated as public inputs.
-        debug_assert!(public.program_commitment.is_some());
+        debug_assert!(public.program_id.is_some());
         debug_assert!(public.local_data_root.is_some());
 
         let (
@@ -72,7 +70,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             account_signature_parameters,
             record_commitment_parameters,
             encrypted_record_crh,
-            program_commitment_parameters,
             local_data_crh,
             local_data_commitment_parameters,
             commitments_tree_parameters,
@@ -99,11 +96,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 || Ok(N::encrypted_record_crh().clone()),
             )?;
 
-            let program_commitment_parameters = N::ProgramCommitmentGadget::alloc_constant(
-                &mut cs.ns(|| "Declare program commitment parameters"),
-                || Ok(N::program_commitment_scheme().clone()),
-            )?;
-
             let local_data_crh_parameters =
                 N::LocalDataCRHGadget::alloc_constant(&mut cs.ns(|| "Declare local data CRH parameters"), || {
                     Ok(N::local_data_crh().clone())
@@ -124,7 +116,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 account_signature_parameters,
                 record_commitment_parameters,
                 encrypted_record_crh_parameters,
-                program_commitment_parameters,
                 local_data_crh_parameters,
                 local_data_commitment_parameters,
                 commitments_tree_parameters,
@@ -156,7 +147,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
         let mut old_program_ids_bytes_gadgets = Vec::with_capacity(private.input_records.len());
         let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
-        let mut input_is_dummy_gadgets = Vec::with_capacity(private.input_records.len());
 
         for (i, (((record, witness), signature), given_serial_number)) in private
             .input_records
@@ -209,7 +199,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 }
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
-                input_is_dummy_gadgets.push(given_is_dummy.clone());
 
                 let given_value =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
@@ -400,7 +389,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
         let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
         let mut new_program_ids_bytes_gadgets = Vec::with_capacity(private.output_records.len());
-        let mut output_is_dummy_gadgets = Vec::with_capacity(private.output_records.len());
 
         for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
             .output_records
@@ -434,7 +422,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
-                output_is_dummy_gadgets.push(given_is_dummy.clone());
 
                 let given_value =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
@@ -661,12 +648,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // *******************************************************************
 
         // *******************************************************************
-        // Check that program commitment is well-formed.
+        // Check that program ID is declared by the input and output records.
         // *******************************************************************
         {
             let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
-
-            let mut executable_program_id_bytes_gadgets = Vec::with_capacity(N::NUM_EXECUTABLES);
 
             // Keep a counter to tally and increment the inputs.
             let mut inputs_counter = UInt8::constant(0);
@@ -674,121 +659,107 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Keep a counter to tally and increment the outputs.
             let mut outputs_counter = UInt8::constant(0);
 
-            for (index, (program_id, circuit_type)) in private
-                .program_ids
-                .iter()
-                .zip_eq(private.circuit_types.iter())
-                .take(N::NUM_EXECUTABLES)
-                .enumerate()
+            let index = 0;
+
+            // Declare the program ID as bytes.
+            let executable_program_id_bytes = UInt8::alloc_input_vec_le(
+                &mut commitment_cs.ns(|| "Allocate executable_program_id"),
+                &public.program_id.as_ref().unwrap().to_bytes_le()?,
+            )?;
+
+            let executable_program_id_field_elements = executable_program_id_bytes.to_constraint_field(
+                &mut commitment_cs.ns(|| format!("convert executable program ID {} to field elements", index)),
+            )?;
+
+            // Declare the required number of inputs for this circuit type.
+            let number_of_inputs = &UInt8::alloc_vec(
+                &mut commitment_cs.ns(|| format!("number_of_inputs for executable {}", index)),
+                &[private.circuit_type.input_count()],
+            )?[0];
+
+            // Declare the input start and end index.
+            let input_start_index = &inputs_counter;
+            let input_end_index = inputs_counter
+                .add(
+                    &mut commitment_cs.ns(|| format!("input_end_index for executable {}", index)),
+                    &number_of_inputs,
+                )
+                .map_err(|_| SynthesisError::Unsatisfiable)?;
+
+            for (i, input_program_id_field_elements) in
+                old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS).enumerate()
             {
-                // Declare the program ID as bytes.
-                let executable_program_id_bytes = UInt8::alloc_vec(
-                    &mut commitment_cs.ns(|| format!("executable_program_id {}", index)),
-                    &program_id.to_bytes_le()?,
+                let input_cs = &mut commitment_cs.ns(|| format!("Check input record {} on executable {}", i, index));
+
+                let input_index = UInt8::constant(i as u8);
+
+                let is_in_start_range = input_index.greater_than_or_equal(
+                    &mut input_cs.ns(|| format!("greater than or equal for input {}", i)),
+                    &input_start_index,
                 )?;
-                let executable_program_id_field_elements = executable_program_id_bytes.to_constraint_field(
-                    &mut commitment_cs.ns(|| format!("convert executable program ID {} to field elements", index)),
+                let is_in_end_range = input_index.less_than(
+                    &mut input_cs.ns(|| format!("less than for input {}", i)),
+                    &input_end_index,
                 )?;
-                executable_program_id_bytes_gadgets.push(executable_program_id_bytes);
+                let requires_check = Boolean::and(
+                    &mut input_cs.ns(|| format!("requires check for input {}", i)),
+                    &is_in_start_range,
+                    &is_in_end_range,
+                )?;
 
-                // Declare the required number of inputs for this circuit type.
-                let number_of_inputs = &UInt8::alloc_vec(
-                    &mut commitment_cs.ns(|| format!("number_of_inputs for executable {}", index)),
-                    &[circuit_type.input_count()],
-                )?[0];
-
-                // Declare the input start and end index.
-                let input_start_index = &inputs_counter;
-                let input_end_index = inputs_counter
-                    .add(
-                        &mut commitment_cs.ns(|| format!("input_end_index for executable {}", index)),
-                        &number_of_inputs,
-                    )
-                    .map_err(|_| SynthesisError::Unsatisfiable)?;
-
-                for (i, (input_program_id_field_elements, input_is_dummy)) in old_program_ids_gadgets
-                    .iter()
-                    .zip_eq(input_is_dummy_gadgets.iter())
-                    .take(N::NUM_INPUT_RECORDS)
-                    .enumerate()
-                {
-                    let input_cs =
-                        &mut commitment_cs.ns(|| format!("Check input record {} on executable {}", i, index));
-
-                    let input_index = UInt8::constant(i as u8);
-
-                    let is_in_start_range = input_index.greater_than_or_equal(
-                        &mut input_cs.ns(|| format!("greater than or equal for input {}", i)),
-                        &input_start_index,
-                    )?;
-                    let is_in_end_range = input_index.less_than(
-                        &mut input_cs.ns(|| format!("less than for input {}", i)),
-                        &input_end_index,
-                    )?;
-                    let requires_check = Boolean::and(
-                        &mut input_cs.ns(|| format!("requires check for input {}", i)),
-                        &is_in_start_range,
-                        &is_in_end_range,
-                    )?;
-
-                    input_program_id_field_elements.conditional_enforce_equal(
-                        &mut input_cs.ns(|| format!("Check input program ID, if not dummy - {}", i)),
-                        &executable_program_id_field_elements,
-                        &requires_check,
-                    )?;
-                }
-
-                inputs_counter = input_end_index;
-
-                // Declare the required number of outputs for this circuit type.
-                let number_of_outputs = &UInt8::alloc_vec(
-                    &mut commitment_cs.ns(|| format!("number_of_outputs for executable {}", index)),
-                    &[circuit_type.output_count()],
-                )?[0];
-
-                // Declare the output start and end index.
-                let output_start_index = &outputs_counter;
-                let output_end_index = outputs_counter
-                    .add(
-                        &mut commitment_cs.ns(|| format!("output_end_index for executable {}", index)),
-                        &number_of_outputs,
-                    )
-                    .map_err(|_| SynthesisError::Unsatisfiable)?;
-
-                for (j, (output_program_id_field_elements, output_is_dummy)) in new_program_ids_gadgets
-                    .iter()
-                    .zip_eq(output_is_dummy_gadgets.iter())
-                    .take(N::NUM_OUTPUT_RECORDS)
-                    .enumerate()
-                {
-                    let output_cs =
-                        &mut commitment_cs.ns(|| format!("Check output record {} on executable {}", j, index));
-
-                    let output_index = UInt8::constant(j as u8);
-
-                    let is_in_start_range = output_index.greater_than_or_equal(
-                        &mut output_cs.ns(|| format!("greater than or equal for output {}", j)),
-                        &output_start_index,
-                    )?;
-                    let is_in_end_range = output_index.less_than(
-                        &mut output_cs.ns(|| format!("less than for output {}", j)),
-                        &output_end_index,
-                    )?;
-                    let requires_check = Boolean::and(
-                        &mut output_cs.ns(|| format!("requires check for output {}", j)),
-                        &is_in_start_range,
-                        &is_in_end_range,
-                    )?;
-
-                    output_program_id_field_elements.conditional_enforce_equal(
-                        &mut output_cs.ns(|| format!("Check output program ID, if not dummy - {}", j)),
-                        &executable_program_id_field_elements,
-                        &requires_check,
-                    )?;
-                }
-
-                outputs_counter = output_end_index;
+                input_program_id_field_elements.conditional_enforce_equal(
+                    &mut input_cs.ns(|| format!("Check input program ID, if not dummy - {}", i)),
+                    &executable_program_id_field_elements,
+                    &requires_check,
+                )?;
             }
+
+            inputs_counter = input_end_index;
+
+            // Declare the required number of outputs for this circuit type.
+            let number_of_outputs = &UInt8::alloc_vec(
+                &mut commitment_cs.ns(|| format!("number_of_outputs for executable {}", index)),
+                &[private.circuit_type.output_count()],
+            )?[0];
+
+            // Declare the output start and end index.
+            let output_start_index = &outputs_counter;
+            let output_end_index = outputs_counter
+                .add(
+                    &mut commitment_cs.ns(|| format!("output_end_index for executable {}", index)),
+                    &number_of_outputs,
+                )
+                .map_err(|_| SynthesisError::Unsatisfiable)?;
+
+            for (j, output_program_id_field_elements) in
+                new_program_ids_gadgets.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
+            {
+                let output_cs = &mut commitment_cs.ns(|| format!("Check output record {} on executable {}", j, index));
+
+                let output_index = UInt8::constant(j as u8);
+
+                let is_in_start_range = output_index.greater_than_or_equal(
+                    &mut output_cs.ns(|| format!("greater than or equal for output {}", j)),
+                    &output_start_index,
+                )?;
+                let is_in_end_range = output_index.less_than(
+                    &mut output_cs.ns(|| format!("less than for output {}", j)),
+                    &output_end_index,
+                )?;
+                let requires_check = Boolean::and(
+                    &mut output_cs.ns(|| format!("requires check for output {}", j)),
+                    &is_in_start_range,
+                    &is_in_end_range,
+                )?;
+
+                output_program_id_field_elements.conditional_enforce_equal(
+                    &mut output_cs.ns(|| format!("Check output program ID, if not dummy - {}", j)),
+                    &executable_program_id_field_elements,
+                    &requires_check,
+                )?;
+            }
+
+            outputs_counter = output_end_index;
 
             let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
             let is_inputs_size_correct = inputs_counter.less_than_or_equal(
@@ -808,38 +779,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             is_outputs_size_correct.enforce_equal(
                 &mut commitment_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
                 &Boolean::constant(true),
-            )?;
-
-            // *******************************************************************
-
-            // Check that the program commitment is computed correctly.
-
-            let mut input = Vec::new();
-            for id_gadget in executable_program_id_bytes_gadgets.iter().take(N::NUM_EXECUTABLES) {
-                input.extend_from_slice(id_gadget);
-            }
-
-            let given_commitment_randomness =
-                <N::ProgramCommitmentGadget as CommitmentGadget<_, N::InnerScalarField>>::RandomnessGadget::alloc(
-                    &mut commitment_cs.ns(|| "given_commitment_randomness"),
-                    || Ok(&private.program_randomness),
-                )?;
-
-            let given_commitment =
-                <N::ProgramCommitmentGadget as CommitmentGadget<_, N::InnerScalarField>>::OutputGadget::alloc_input(
-                    &mut commitment_cs.ns(|| "given_commitment"),
-                    || Ok(public.program_commitment.as_ref().unwrap()),
-                )?;
-
-            let candidate_commitment = program_commitment_parameters.check_commitment_gadget(
-                &mut commitment_cs.ns(|| "candidate_commitment"),
-                &input,
-                &given_commitment_randomness,
-            )?;
-
-            candidate_commitment.enforce_equal(
-                &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
-                &given_commitment,
             )?;
         }
         // ********************************************************************

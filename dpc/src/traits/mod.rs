@@ -23,6 +23,9 @@ pub use block::*;
 pub mod dpc;
 pub use dpc::*;
 
+pub mod ledger;
+pub use ledger::*;
+
 pub mod network;
 pub use network::*;
 
@@ -34,9 +37,6 @@ pub use program::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod state;
-pub use state::*;
 
 pub mod transaction;
 pub use transaction::*;

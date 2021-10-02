@@ -210,6 +210,10 @@ impl<N: Network> BlockHeader<N> {
         leaves.push(transactions_root);
         leaves.push(serial_numbers_root);
         leaves.push(commitments_root);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
+        leaves.push([0u8; 32]);
         leaves.push(metadata);
         assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
 
@@ -368,7 +372,7 @@ mod tests {
         // Construct an instance of PoSW.
         let posw = {
             let max_degree =
-                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
             let universal_srs =
                 <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(

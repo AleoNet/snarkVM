@@ -97,6 +97,11 @@ impl<N: Network> Input<N> {
         })
     }
 
+    /// Returns `true` if the program ID is the noop program.
+    pub fn is_noop(&self) -> bool {
+        self.record.program_id() == *N::noop_program_id()
+    }
+
     /// Returns a reference to the input record.
     pub fn record(&self) -> &Record<N> {
         &self.record

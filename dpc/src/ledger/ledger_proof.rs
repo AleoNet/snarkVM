@@ -27,7 +27,7 @@ pub struct LedgerProof<N: Network> {
 }
 
 impl<N: Network> LedgerProof<N> {
-    fn new<L: CommitmentsTreeScheme<N>>(ledger: &L, input_records: Vec<Record<N>>) -> Result<Self> {
+    pub fn new<L: CommitmentsTreeScheme<N>>(ledger: &L, input_records: Vec<Record<N>>) -> Result<Self> {
         let commitments_root = *ledger.to_commitments_root();
 
         // Compute the ledger membership witnesses.

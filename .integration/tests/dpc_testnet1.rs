@@ -17,7 +17,7 @@
 use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
-use snarkvm_ledger::{ledger::*, prelude::*};
+use snarkvm_ledger::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
@@ -27,8 +27,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        123, 6, 80, 217, 13, 12, 1, 118, 127, 110, 166, 242, 79, 82, 176, 3, 221, 254, 176, 249, 47, 166, 141, 145,
-        222, 192, 155, 14, 232, 51, 252, 30, 60, 81, 8, 36, 1, 34, 211, 40, 213, 146, 178, 134, 151, 178, 44, 1,
+        0, 53, 210, 158, 41, 167, 59, 130, 170, 153, 69, 255, 166, 30, 2, 247, 170, 254, 242, 141, 161, 210, 59, 2,
+        106, 185, 28, 244, 201, 55, 91, 241, 83, 143, 168, 36, 115, 144, 125, 30, 121, 240, 62, 206, 8, 157, 113, 1,
     ];
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -118,14 +118,11 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
-    // Execute the programs.
-    let mut executions = Vec::with_capacity(Testnet1::NUM_EXECUTABLES);
-    for (i, executable) in state.executables().iter().enumerate() {
-        executions.push(executable.execute(i as u8, &local_data).unwrap());
-    }
-
-    // Compute the program commitment.
-    let (program_commitment, program_randomness) = authorization.to_program_commitment(&mut rng).unwrap();
+    // Execute the program circuit.
+    let execution = state
+        .executable()
+        .execute(PublicVariables::new(local_data.root()))
+        .unwrap();
 
     // Compute the encrypted records.
     let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
@@ -152,7 +149,7 @@ fn test_testnet1_dpc_execute_constraints() {
         &kernel,
         &ledger_digest,
         &encrypted_record_hashes,
-        Some(program_commitment),
+        Some(state.executable().program_id()),
         Some(local_data.root().clone()),
     )
     .unwrap();
@@ -162,8 +159,7 @@ fn test_testnet1_dpc_execute_constraints() {
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,
-        state.executables(),
-        program_randomness.clone(),
+        state.executable(),
         local_data.leaf_randomizers().clone(),
     )
     .unwrap();
@@ -186,7 +182,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(277685, num_constraints);
+    assert_eq!(191073, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -208,14 +204,18 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_proof =
         <Testnet1 as Network>::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, &mut rng).unwrap();
 
+    // Verify that the inner circuit proof passes.
+    assert!(
+        <Testnet1 as Network>::InnerSNARK::verify(&inner_snark_vk, &inner_public_variables, &inner_snark_proof)
+            .unwrap()
+    );
+
     // Construct the outer circuit public and private variables.
     let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
     let outer_private_variables = OuterPrivateVariables::new(
         inner_snark_vk.clone(),
         inner_snark_proof,
-        executions.to_vec(),
-        program_commitment.clone(),
-        program_randomness,
+        execution,
         local_data_root.clone(),
     );
 
@@ -243,7 +243,7 @@ fn test_testnet1_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(515990, num_constraints);
+    assert_eq!(197515, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

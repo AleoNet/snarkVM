@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, CircuitLogic, CircuitType, LocalData, Network, PublicVariables};
+use crate::{CircuitLogic, CircuitType, Network, ProgramError, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -35,7 +35,7 @@ pub enum ProgramCircuit<N: Network> {
 
 impl<N: Network> ProgramCircuit<N> {
     /// Initializes a new instance of the circuit.
-    pub fn new(logic: Arc<dyn CircuitLogic<N>>) -> Result<Self, CircuitError> {
+    pub fn new(logic: Arc<dyn CircuitLogic<N>>) -> Result<Self, ProgramError> {
         // Compute the proving key and verifying key.
         let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
             &SynthesizedCircuit::Blank(logic.clone()),
@@ -81,7 +81,7 @@ impl<N: Network> ProgramCircuit<N> {
     }
 
     /// Returns the assigned circuit.
-    pub(crate) fn synthesize(&self, public: PublicVariables<N>, _local_data: &LocalData<N>) -> SynthesizedCircuit<N> {
+    pub(crate) fn synthesize(&self, public: PublicVariables<N>) -> SynthesizedCircuit<N> {
         match self {
             Self::Noop => SynthesizedCircuit::Noop(public),
             Self::Circuit(_, logic, _, _) => SynthesizedCircuit::Assigned(logic.clone(), public),
@@ -89,7 +89,8 @@ impl<N: Network> ProgramCircuit<N> {
     }
 }
 
-pub(crate) enum SynthesizedCircuit<N: Network> {
+// TODO (howardwu): TEMPORARY - Guard access to this enum, to prevent abuse of it.
+pub enum SynthesizedCircuit<N: Network> {
     Noop(PublicVariables<N>),
     Blank(Arc<dyn CircuitLogic<N>>),
     Assigned(Arc<dyn CircuitLogic<N>>, PublicVariables<N>),
@@ -102,8 +103,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
     ) -> Result<(), SynthesisError> {
         match self {
             Self::Noop(public) => {
-                let _record_position =
-                    UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[public.record_position])?;
+                let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[0u8])?;
 
                 let _local_data_commitment_scheme = N::LocalDataCommitmentGadget::alloc_constant(
                     &mut cs.ns(|| "Declare the local data commitment scheme"),
@@ -121,7 +121,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
                 let synthesizer = Self::Assigned(logic.clone(), Default::default());
                 synthesizer.generate_constraints(cs)
             }
-            Self::Assigned(logic, public) => {
+            Self::Assigned(_logic, _public) => {
                 // TODO (howardwu): Add any DPC related safety checks around program executions.
                 unimplemented!()
                 // logic.synthesize::<CS>(cs, public)

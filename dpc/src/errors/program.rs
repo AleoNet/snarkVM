@@ -38,9 +38,6 @@ pub enum ProgramError {
     CannotVerifyCommitment,
 
     #[error("{}", _0)]
-    CircuitError(#[from] crate::CircuitError),
-
-    #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
 
     #[error("{}", _0)]

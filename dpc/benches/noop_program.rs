@@ -17,15 +17,26 @@
 #[macro_use]
 extern crate criterion;
 
+use snarkvm_algorithms::traits::*;
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
 use criterion::Criterion;
 use rand::thread_rng;
 
 fn noop_program_setup(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+
     c.bench_function("NoopProgram::setup", move |b| {
         b.iter(|| {
-            let _noop_program = NoopProgram::<Testnet2>::setup(&mut thread_rng()).unwrap();
+            // Compute the proving key and verifying key.
+            let (_proving_key, verifying_key) = <<Testnet2 as Network>::ProgramSNARK as SNARK>::setup(
+                &SynthesizedCircuit::<Testnet2>::Noop(Default::default()),
+                &mut *Testnet2::program_srs(rng).borrow_mut(),
+            )
+            .unwrap();
+
+            // Compute the circuit ID.
+            let _circuit_id = <Testnet2 as Network>::program_circuit_id(&verifying_key).unwrap();
         })
     });
 }
@@ -33,7 +44,7 @@ fn noop_program_setup(c: &mut Criterion) {
 fn noop_program_load(c: &mut Criterion) {
     c.bench_function("NoopProgram::load", move |b| {
         b.iter(|| {
-            let _noop_program = NoopProgram::<Testnet2>::load().unwrap();
+            let _noop_program = Testnet2::noop_program();
         })
     });
 }

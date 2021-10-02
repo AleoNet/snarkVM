@@ -15,8 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AleoAmount, Memo, Network, TransactionKernel};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, CommitmentScheme};
+use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 
@@ -32,8 +33,8 @@ pub struct InnerPublicVariables<N: Network> {
 
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
-    /// Program commitment
-    pub(super) program_commitment: Option<<N::ProgramCommitmentScheme as CommitmentScheme>::Output>,
+    /// Program ID
+    pub(super) program_id: Option<N::ProgramID>,
     /// Local data root
     pub(super) local_data_root: Option<N::LocalDataRoot>,
 }
@@ -50,7 +51,7 @@ impl<N: Network> InnerPublicVariables<N> {
             .expect("Failed to instantiate a blank transaction kernel"),
             ledger_digest: MerkleTreeDigest::<N::CommitmentsTreeParameters>::default(),
             encrypted_record_ids: vec![N::EncryptedRecordID::default(); N::NUM_OUTPUT_RECORDS],
-            program_commitment: Some(N::ProgramCommitment::default()),
+            program_id: Some(N::ProgramID::default()),
             local_data_root: Some(N::LocalDataRoot::default()),
         }
     }
@@ -59,7 +60,7 @@ impl<N: Network> InnerPublicVariables<N> {
         kernel: &TransactionKernel<N>,
         ledger_digest: &MerkleTreeDigest<N::CommitmentsTreeParameters>,
         encrypted_record_ids: &Vec<N::EncryptedRecordID>,
-        program_commitment: Option<<N::ProgramCommitmentScheme as CommitmentScheme>::Output>,
+        program_id: Option<N::ProgramID>,
         local_data_root: Option<N::LocalDataRoot>,
     ) -> Result<Self> {
         assert!(kernel.is_valid());
@@ -69,7 +70,7 @@ impl<N: Network> InnerPublicVariables<N> {
             kernel: kernel.clone(),
             ledger_digest: ledger_digest.clone(),
             encrypted_record_ids: encrypted_record_ids.clone(),
-            program_commitment,
+            program_id,
             local_data_root,
         })
     }
@@ -100,8 +101,8 @@ where
             v.extend_from_slice(&encrypted_record_hash.to_field_elements()?);
         }
 
-        if let Some(program_commitment) = &self.program_commitment {
-            v.extend_from_slice(&program_commitment.to_field_elements()?);
+        if let Some(program_id) = &self.program_id {
+            v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         }
 
         v.extend_from_slice(&self.kernel.memo().to_field_elements()?);

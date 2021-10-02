@@ -33,7 +33,7 @@ impl<N: Network> OuterPublicVariables<N> {
         // These inner circuit public variables are allocated as private variables in the outer circuit,
         // as they are not included in the transaction broadcast to the ledger.
         let mut inner_public_variables = InnerPublicVariables::blank();
-        inner_public_variables.program_commitment = None;
+        inner_public_variables.program_id = None;
         inner_public_variables.local_data_root = None;
 
         Self {
@@ -49,7 +49,7 @@ impl<N: Network> OuterPublicVariables<N> {
         // These inner circuit public variables are allocated as private variables in the outer circuit,
         // as they are not included in the transaction broadcast to the ledger.
         let mut inner_public_variables: InnerPublicVariables<N> = inner_public_variables.clone();
-        inner_public_variables.program_commitment = None;
+        inner_public_variables.program_id = None;
         inner_public_variables.local_data_root = None;
 
         Self {
@@ -68,7 +68,7 @@ impl<N: Network> OuterPublicVariables<N> {
                 encrypted_record_ids: encrypted_record_hashes,
                 // These inner circuit public variables are allocated as private variables in the outer circuit,
                 // as they are not included in the transaction broadcast to the ledger.
-                program_commitment: None,
+                program_id: None,
                 local_data_root: None,
             },
             inner_circuit_id: transaction.inner_circuit_id().clone(),
@@ -83,7 +83,7 @@ where
     fn to_field_elements(&self) -> Result<Vec<N::OuterScalarField>, ConstraintFieldError> {
         // In the outer circuit, these two variables must be allocated as witness,
         // as they are not included in the transaction.
-        debug_assert!(self.inner_public_variables.program_commitment.is_none());
+        debug_assert!(self.inner_public_variables.program_id.is_none());
         debug_assert!(self.inner_public_variables.local_data_root.is_none());
 
         let mut v = Vec::new();

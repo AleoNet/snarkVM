@@ -66,12 +66,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
-        executables: &Vec<Executable<N>>,
+        executable: &Executable<N>,
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(N::NUM_EXECUTABLES, executables.len());
-
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
@@ -83,17 +81,8 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         // Generate the local data.
         let local_data = authorization.to_local_data(rng)?;
 
-        // Execute the programs.
-        let mut executions = Vec::with_capacity(N::NUM_EXECUTABLES);
-        for (i, executable) in executables.iter().take(N::NUM_EXECUTABLES).enumerate() {
-            // Construct the public variables.
-            let public_variables = PublicVariables::new(i as u8, local_data.root());
-
-            executions.push(executable.execute(public_variables, &local_data)?);
-        }
-
-        // Compute the program commitment.
-        let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
+        // Execute the program circuit.
+        let execution = executable.execute(PublicVariables::new(local_data.root()))?;
 
         // Compute the encrypted records.
         let (encrypted_records, encrypted_record_ids, encrypted_record_randomizers) =
@@ -111,7 +100,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             &kernel,
             &ledger_digest,
             &encrypted_record_ids,
-            Some(program_commitment.clone()),
+            Some(executable.program_id()),
             Some(local_data.root().clone()),
         )?;
         let inner_private_variables = InnerPrivateVariables::new(
@@ -120,8 +109,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             signatures,
             output_records.clone(),
             encrypted_record_randomizers,
-            &executables,
-            program_randomness.clone(),
+            &executable,
             local_data.leaf_randomizers().clone(),
         )?;
 
@@ -145,9 +133,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             let outer_private_variables = OuterPrivateVariables::new(
                 N::inner_circuit_verifying_key().clone(),
                 inner_proof,
-                executions.to_vec(),
-                program_commitment.clone(),
-                program_randomness,
+                execution,
                 local_data.root().clone(),
             );
 
@@ -161,59 +147,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
-
-    //use rayon::prelude::*;
-
-    // fn verify<L: CommitmentsTree<N> + SerialNumbersTree<N>>(transaction: &Self::Transaction, ledger: &L) -> bool {
-    //     let verify_time = start_timer!(|| "DPC::verify");
-    //
-    //     // Returns `false` if the transaction is invalid.
-    //     if !transaction.is_valid() {
-    //         eprintln!("Transaction is invalid.");
-    //         return false;
-    //     }
-    //
-    //     let ledger_time = start_timer!(|| "Ledger checks");
-    //
-    //     // Returns false if any transaction serial number previously existed in the ledger.
-    //     for sn in transaction.serial_numbers() {
-    //         if ledger.contains_serial_number(sn) {
-    //             eprintln!("Ledger already contains this transaction serial number.");
-    //             return false;
-    //         }
-    //     }
-    //
-    //     // Returns false if any transaction commitment previously existed in the ledger.
-    //     for cm in transaction.commitments() {
-    //         if ledger.contains_commitment(cm) {
-    //             eprintln!("Ledger already contains this transaction commitment.");
-    //             return false;
-    //         }
-    //     }
-    //
-    //     // Returns false if the ledger digest in the transaction is invalid.
-    //     if !ledger.is_valid_digest(&transaction.ledger_digest()) {
-    //         eprintln!("Ledger digest is invalid.");
-    //         return false;
-    //     }
-    //
-    //     end_timer!(ledger_time);
-    //
-    //     end_timer!(verify_time);
-    //
-    //     true
-    // }
-    //
-    // /// Returns true iff all the transactions in the block are valid according to the ledger.
-    // fn verify_transactions<L: CommitmentsTree<N> + SerialNumbersTree<N> + Sync>(
-    //     transactions: &[Self::Transaction],
-    //     ledger: &L,
-    // ) -> bool {
-    //     transactions
-    //         .as_parallel_slice()
-    //         .par_iter()
-    //         .all(|tx| Self::verify(tx, ledger))
-    // }
 }
 
 #[cfg(test)]
