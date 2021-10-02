@@ -17,9 +17,6 @@
 pub mod bhp;
 pub use bhp::*;
 
-pub mod bhp_compressed;
-pub use bhp_compressed::*;
-
 pub mod pedersen;
 pub use pedersen::*;
 

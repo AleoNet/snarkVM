@@ -67,7 +67,13 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             ));
         }
 
-        let mut output = self.bhp_crh.hash(&input)?.into_projective();
+        // Convert input bytes to bits.
+        let bits = input
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+
+        let mut output = self.bhp_crh.hash_bits_inner(&bits)?;
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());

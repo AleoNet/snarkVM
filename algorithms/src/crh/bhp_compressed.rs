@@ -25,12 +25,12 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BHPCompressedCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bhp: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
-    for BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
     type Parameters = BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>;
@@ -53,7 +53,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>
-    for BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bhp: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self { bhp }
@@ -61,7 +61,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
-    for BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bases: Vec<Vec<G>>) -> Self {
         Self { bhp: bases.into() }
@@ -69,7 +69,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         self.bhp.write_le(writer)
@@ -77,7 +77,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToB
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
@@ -86,7 +86,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    ToConstraintField<F> for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

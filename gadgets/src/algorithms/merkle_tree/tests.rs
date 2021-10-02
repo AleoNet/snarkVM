@@ -20,7 +20,7 @@ use blake2::{digest::Digest, Blake2s};
 use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
-    crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH},
+    crh::{PedersenCRH, PedersenCompressedCRH, BHPCRH},
     merkle_tree::{MaskedMerkleTreeParameters, MerkleTree},
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
 };
@@ -31,7 +31,7 @@ use snarkvm_utilities::ToBytes;
 
 use crate::{
     algorithms::{
-        crh::{BHPCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
+        crh::{BHPCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
         merkle_tree::*,
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
@@ -368,11 +368,11 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
     }
 }
 
-mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
+mod merkle_tree_bowe_hopwood_pedersen_crh_on_projective {
     use super::*;
 
-    type H = BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type HG = BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type H = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type HG = BHPCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 

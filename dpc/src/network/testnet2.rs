@@ -28,7 +28,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
-    crh::{BHPCompressedCRH, PedersenCompressedCRH},
+    crh::{PedersenCompressedCRH, BHPCRH},
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
@@ -50,7 +50,7 @@ use snarkvm_curves::{
 use snarkvm_gadgets::{
     algorithms::{
         commitment::BHPCommitmentGadget,
-        crh::{BHPCompressedCRHGadget, PedersenCompressedCRHGadget},
+        crh::{BHPCRHGadget, PedersenCompressedCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
@@ -151,7 +151,7 @@ impl Network for Testnet2 {
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
-    type BlockHashCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 117, 63>;
+    type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
     type Block = Block<Self>;
 
@@ -164,25 +164,25 @@ impl Network for Testnet2 {
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
     type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
 
-    type CommitmentsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type CommitmentsTreeCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
+    type CommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type CommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 32>;
     type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 80, 32>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
+    type EncryptedRecordCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
+    type EncryptedRecordCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
     type EncryptedRecordID = <Self::EncryptedRecordCRH as CRH>::Output;
 
-    type InnerCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 296, 32>;
-    type InnerCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
+    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 296, 32>;
+    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
-    type ProgramCircuitIDCRH = BHPCompressedCRH<EdwardsBW6, 237, 16>;
-    type ProgramCircuitIDCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
+    type ProgramCircuitIDCRH = BHPCRH<EdwardsBW6, 237, 16>;
+    type ProgramCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
     type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
 
-    type ProgramCircuitsTreeCRH = BHPCompressedCRH<EdwardsBW6, 48, 16>;
-    type ProgramCircuitsTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
+    type ProgramCircuitsTreeCRH = BHPCRH<EdwardsBW6, 48, 16>;
+    type ProgramCircuitsTreeCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
     type ProgramCircuitsTreeParameters = MerkleTreeParameters<Self::ProgramCircuitsTreeCRH, 8>;
     type ProgramID = <Self::ProgramCircuitsTreeCRH as CRH>::Output;
     
@@ -190,15 +190,15 @@ impl Network for Testnet2 {
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
 
-    type SerialNumbersTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type SerialNumbersTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 32>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
-    type TransactionIDCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 26, 63>;
-    type TransactionIDCRHGadget = BHPCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 26, 63>;
+    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
+    type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 26, 63>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
-    type TransactionsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type TransactionsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsTreeParameters = MerkleTreeParameters<Self::TransactionsTreeCRH, 16>;
     type TransactionsRoot = <Self::TransactionsTreeCRH as CRH>::Output;
 

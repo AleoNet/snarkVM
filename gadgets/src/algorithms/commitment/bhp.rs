@@ -18,11 +18,12 @@ use crate::{
     algorithms::crh::BHPCRHGadget,
     integers::uint::UInt8,
     traits::{
-        algorithms::{CRHGadget, CommitmentGadget},
+        algorithms::CommitmentGadget,
         alloc::AllocGadget,
         curves::CompressedGroupGadget,
         integers::integer::Integer,
     },
+    ToBitsLEGadget,
     ToBytesGadget,
 };
 use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
@@ -144,9 +145,10 @@ impl<
         assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS));
 
         // Compute BHP CRH.
+        let input = input.to_vec().to_bits_le(cs.ns(|| "to_bits"))?;
         let mut result = self
             .bhp_crh_gadget
-            .check_evaluation_gadget(cs.ns(|| "BHP hash"), input.to_vec())?;
+            .check_evaluation_gadget_on_bits_inner(cs.ns(|| "BHP hash"), input)?;
 
         // Compute h^r.
         let rand_bits = randomness.0.iter().flat_map(|byte| byte.to_bits_le());
