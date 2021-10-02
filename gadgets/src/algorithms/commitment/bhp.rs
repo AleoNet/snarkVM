@@ -20,7 +20,7 @@ use crate::{
     traits::{
         algorithms::{CRHGadget, CommitmentGadget},
         alloc::AllocGadget,
-        curves::CurveGadget,
+        curves::CompressedGroupGadget,
         integers::integer::Integer,
     },
     ToBytesGadget,
@@ -68,7 +68,7 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget
 pub struct BHPCommitmentGadget<
     G: ProjectiveCurve,
     F: PrimeField,
-    GG: CurveGadget<G, F>,
+    GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
@@ -76,8 +76,13 @@ pub struct BHPCommitmentGadget<
     random_base: Vec<G>,
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<
+    G: ProjectiveCurve,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> AllocGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
@@ -118,11 +123,16 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CommitmentGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<
+    F: PrimeField,
+    G: ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CommitmentGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type OutputGadget = GG;
+    type OutputGadget = GG::BaseFieldGadget;
     type RandomnessGadget = BHPRandomnessGadget<G>;
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
@@ -142,6 +152,6 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
         let rand_bits = randomness.0.iter().flat_map(|byte| byte.to_bits_le());
         result.scalar_multiplication(cs.ns(|| "randomizer"), rand_bits.zip(&self.random_base))?;
 
-        Ok(result)
+        Ok(result.to_x_coordinate())
     }
 }

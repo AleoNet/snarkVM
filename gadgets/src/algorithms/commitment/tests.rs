@@ -21,7 +21,7 @@ use crate::{
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, FieldGadget},
 };
 use snarkvm_algorithms::{
-    commitment::{BHPCommitment, BHPCompressedCommitment, PedersenCommitment, PedersenCompressedCommitment},
+    commitment::{BHPCommitment, PedersenCommitment, PedersenCompressedCommitment},
     CommitmentScheme,
 };
 use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq};
@@ -72,19 +72,6 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 fn bhp_commitment_gadget_test() {
     type TestCommitment = BHPCommitment<EdwardsProjective, 32, 48>;
     type TestCommitmentGadget = BHPCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
-
-    for _ in 0..ITERATIONS {
-        let (native_output, gadget_output) =
-            native_and_gadget_equivalence_test::<TestCommitment, TestCommitmentGadget>();
-        assert_eq!(native_output.x, gadget_output.x.get_value().unwrap());
-        assert_eq!(native_output.y, gadget_output.y.get_value().unwrap());
-    }
-}
-
-#[test]
-fn bhp_compressed_commitment_gadget_test() {
-    type TestCommitment = BHPCompressedCommitment<EdwardsProjective, 32, 48>;
-    type TestCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
 
     for _ in 0..ITERATIONS {
         let (native_output, gadget_output) =

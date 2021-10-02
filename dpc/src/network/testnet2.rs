@@ -27,7 +27,7 @@ use crate::{
     PublicVariables,
 };
 use snarkvm_algorithms::{
-    commitment::BHPCompressedCommitment,
+    commitment::BHPCommitment,
     crh::{BHPCompressedCRH, PedersenCompressedCRH},
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
@@ -49,7 +49,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::BHPCompressedCommitmentGadget,
+        commitment::BHPCommitmentGadget,
         crh::{BHPCompressedCRHGadget, PedersenCompressedCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -160,8 +160,8 @@ impl Network for Testnet2 {
     type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 3>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
-    type CommitmentScheme = BHPCompressedCommitment<Self::ProgramProjectiveCurve, 48, 50>;
-    type CommitmentGadget = BHPCompressedCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
+    type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 48, 50>;
+    type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
     type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
 
     type CommitmentsTreeCRH = BHPCompressedCRH<Self::ProgramProjectiveCurve, 16, 32>;
