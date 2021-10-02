@@ -173,9 +173,7 @@ default = [
 ]
 full = [
   "commitment",
-  "commitment_tree",
   "crh",
-  "encoding",
   "encryption",
   "fft",
   "hash_to_curve",
@@ -187,10 +185,8 @@ full = [
 ]
 wasm = [
   "commitment",
-  "commitment_tree",
   "crh",
   "crypto_hash",
-  "encoding",
   "encryption",
   "fft",
   "hash_to_curve",
@@ -201,10 +197,8 @@ wasm = [
   "snark"
 ]
 commitment = [ "blake2", "crh" ]
-commitment_tree = [ ]
 crh = [ ]
 crypto_hash = [ ]
-encoding = [ ]
 encryption = [ "signature" ]
 fft = [ ]
 hash_to_curve = [ ]

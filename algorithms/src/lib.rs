@@ -37,9 +37,6 @@ pub mod macros;
 #[cfg(feature = "commitment")]
 pub mod commitment;
 
-#[cfg(feature = "commitment_tree")]
-pub mod commitment_tree;
-
 #[cfg(feature = "crh")]
 pub mod crh;
 

@@ -17,9 +17,7 @@
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms::{
     commitment::*,
-    commitment_tree::*,
     crh::*,
-    encoding::*,
     encryption::*,
     fft::*,
     merkle_tree::*,
