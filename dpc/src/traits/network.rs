@@ -134,15 +134,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// Commitment scheme for local data leaves. Invoked inside `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCommitmentScheme: CommitmentScheme;
-    type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
-
-    /// CRH scheme for computing the local data root. Invoked inside `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
-    type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-    
     /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
     type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
@@ -167,6 +158,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     
     /// CRH scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::TransactionID>;
+    type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField>;
     type TransactionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH scheme for computing the transactions root. Invoked only over `Self::InnerScalarField`.
@@ -182,8 +174,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-    fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
-    fn local_data_crh() -> &'static Self::LocalDataCRH;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
     fn program_circuits_tree_parameters() -> &'static Self::ProgramCircuitsTreeParameters;

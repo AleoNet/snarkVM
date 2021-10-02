@@ -23,20 +23,18 @@ pub struct OuterPrivateVariables<N: Network> {
     pub(super) inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
     pub(super) inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
     pub(super) program_execution: Execution<N>,
-    pub(super) local_data_root: N::LocalDataRoot,
 }
 
 impl<N: Network> OuterPrivateVariables<N> {
     pub fn blank(
         inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
-        execution: Execution<N>,
+        program_execution: Execution<N>,
     ) -> Self {
         Self {
             inner_snark_vk,
             inner_snark_proof,
-            program_execution: execution,
-            local_data_root: N::LocalDataRoot::default(),
+            program_execution,
         }
     }
 
@@ -44,13 +42,11 @@ impl<N: Network> OuterPrivateVariables<N> {
         inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
         program_execution: Execution<N>,
-        local_data_root: N::LocalDataRoot,
     ) -> Self {
         Self {
             inner_snark_vk,
             inner_snark_proof,
             program_execution,
-            local_data_root,
         }
     }
 }
