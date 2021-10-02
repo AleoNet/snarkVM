@@ -29,11 +29,11 @@ use std::{
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Block<N: Network> {
     /// Hash of the previous block - 32 bytes
-    pub previous_hash: N::BlockHash,
+    previous_hash: N::BlockHash,
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
-    pub header: BlockHeader<N>,
+    header: BlockHeader<N>,
     /// The block transactions.
-    pub transactions: Transactions<N>,
+    transactions: Transactions<N>,
 }
 
 impl<N: Network> BlockScheme for Block<N> {

@@ -27,9 +27,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        183, 231, 93, 139, 18, 197, 171, 64, 188, 62, 115, 243, 229, 150, 229, 91, 229, 157, 170, 202, 110, 28, 108,
-        181, 232, 206, 188, 146, 186, 92, 255, 158, 86, 94, 158, 227, 255, 196, 220, 85, 153, 195, 203, 133, 21, 49,
-        115, 1,
+        89, 1, 244, 55, 149, 169, 177, 28, 96, 248, 194, 168, 209, 8, 174, 157, 113, 203, 225, 172, 114, 208, 134, 97,
+        25, 157, 92, 117, 166, 178, 220, 98, 67, 222, 150, 75, 19, 76, 238, 108, 240, 70, 54, 89, 33, 207, 116, 0,
     ];
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -61,7 +60,7 @@ fn dpc_testnet2_integration_test() {
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
     let previous_hash = previous_block.to_block_hash().unwrap();
-    let block_height = previous_block.header.height() + 1;
+    let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
     // Construct the new block transactions.
@@ -83,7 +82,7 @@ fn dpc_testnet2_integration_test() {
     // Construct the new block header.
     let header = BlockHeader::new(
         block_height,
-        previous_block.header.difficulty_target(),
+        previous_block.header().difficulty_target(),
         transactions_root,
         serial_numbers_root,
         commitments_root,
@@ -92,11 +91,7 @@ fn dpc_testnet2_integration_test() {
     .unwrap();
 
     // Construct the new block.
-    let block = Block {
-        previous_hash,
-        header,
-        transactions,
-    };
+    let block = BlockScheme::from(previous_hash, header, transactions).unwrap();
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.block_height(), 1);

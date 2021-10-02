@@ -75,5 +75,5 @@ impl_params_local!(
     outer_snark_vk_test,
     "./",
     "outer_snark_vk",
-    3478
+    3671
 );
