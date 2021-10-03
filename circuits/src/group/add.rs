@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        // Constant variables
+        // Constant + Constant
         for i in 0..ITERATIONS {
             // Sample two random elements.
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
@@ -152,7 +152,7 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Constant {}", i), |scope| {
+            Circuit::scoped(&format!("Constant + Constant {}", i), |scope| {
                 let candidate = a + b;
                 assert_eq!(
                     (expected.to_x_coordinate(), expected.to_y_coordinate()),
@@ -166,7 +166,55 @@ mod tests {
             });
         }
 
-        // Public variables
+        // Constant + Public
+        for i in 0..ITERATIONS {
+            // Sample two random elements.
+            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let expected = a + b;
+
+            let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
+            let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+
+            Circuit::scoped(&format!("Constant + Public {}", i), |scope| {
+                let candidate = a + b;
+                assert_eq!(
+                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
+                    candidate.to_value()
+                );
+
+                assert_eq!(4, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(3, scope.num_private_in_scope());
+                assert_eq!(3, scope.num_constraints_in_scope());
+            });
+        }
+
+        // Public + Constant
+        for i in 0..ITERATIONS {
+            // Sample two random elements.
+            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let expected = a + b;
+
+            let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
+            let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+
+            Circuit::scoped(&format!("Public + Constant {}", i), |scope| {
+                let candidate = a + b;
+                assert_eq!(
+                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
+                    candidate.to_value()
+                );
+
+                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(3, scope.num_private_in_scope());
+                assert_eq!(3, scope.num_constraints_in_scope());
+            });
+        }
+
+        // Public + Public
         for i in 0..ITERATIONS {
             // Sample two random elements.
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
@@ -176,7 +224,7 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Public {}", i), |scope| {
+            Circuit::scoped(&format!("Public + Public {}", i), |scope| {
                 let candidate = a + b;
                 assert_eq!(
                     (expected.to_x_coordinate(), expected.to_y_coordinate()),
@@ -191,7 +239,7 @@ mod tests {
             });
         }
 
-        // Public and private variables
+        // Public + Private
         for i in 0..ITERATIONS {
             // Sample two random elements.
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
@@ -201,7 +249,7 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Public & Private {}", i), |scope| {
+            Circuit::scoped(&format!("Public + Private {}", i), |scope| {
                 let candidate = a + b;
                 assert_eq!(
                     (expected.to_x_coordinate(), expected.to_y_coordinate()),
@@ -216,7 +264,7 @@ mod tests {
             });
         }
 
-        // Private variables
+        // Private + Private
         for i in 0..ITERATIONS {
             // Sample two random elements.
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
@@ -226,7 +274,7 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Private {}", i), |scope| {
+            Circuit::scoped(&format!("Private + Private {}", i), |scope| {
                 let candidate = a + b;
                 assert_eq!(
                     (expected.to_x_coordinate(), expected.to_y_coordinate()),
