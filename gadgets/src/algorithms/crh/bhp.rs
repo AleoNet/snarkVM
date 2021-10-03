@@ -16,7 +16,7 @@
 
 use crate::{
     bits::Boolean,
-    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget},
+    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
 use snarkvm_algorithms::crh::{BHPCRH, BOWE_HOPWOOD_CHUNK_SIZE};
 use snarkvm_curves::ProjectiveCurve;
@@ -29,7 +29,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 pub struct BHPCRHGadget<
     G: ProjectiveCurve,
     F: PrimeField,
-    GG: CurveGadget<G, F>,
+    GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
@@ -38,8 +38,13 @@ pub struct BHPCRHGadget<
     _group: PhantomData<GG>,
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<
+    G: ProjectiveCurve,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -79,16 +84,39 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<
+    F: PrimeField,
+    G: ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type OutputGadget = GG;
+    type OutputGadget = GG::BaseFieldGadget;
 
     fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
         input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
+        let output = self.check_evaluation_gadget_on_bits_inner(cs, input)?;
+        Ok(output.to_x_coordinate())
+    }
+}
+
+impl<
+    F: PrimeField,
+    G: ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+{
+    pub(crate) fn check_evaluation_gadget_on_bits_inner<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        input: Vec<Boolean>,
+    ) -> Result<GG, SynthesisError> {
         assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS);
 
         // Pad the input bytes.
