@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::marker::PhantomData;
-
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsBEGadget},
@@ -36,6 +34,8 @@ use crate::fiat_shamir::{
     AlgebraicSponge,
     FiatShamirAlgebraicSpongeRng,
 };
+
+use crate::{PhantomData, Vec};
 
 /// Building the Fiat-Shamir sponge's gadget from any algebraic sponge's gadget.
 #[derive(Clone)]

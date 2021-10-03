@@ -25,14 +25,10 @@ use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
+use crate::{Read, Write};
 use derivative::Derivative;
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_r1cs::SynthesisError;
-use std::io::{
-    Read,
-    Write,
-    {self},
-};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Derivative)]
@@ -48,13 +44,13 @@ pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialComm
 }
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitVerifyingKey<F, CF, PC> {
-    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> crate::io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for CircuitVerifyingKey<F, CF, PC> {
-    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> crate::io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }

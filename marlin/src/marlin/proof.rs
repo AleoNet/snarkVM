@@ -19,12 +19,8 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
+use crate::{Read, Write};
 use derivative::Derivative;
-use std::io::{
-    Read,
-    Write,
-    {self},
-};
 
 /// A zkSNARK proof.
 #[derive(Derivative)]
@@ -119,13 +115,13 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF
 }
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for Proof<F, CF, PC> {
-    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> crate::io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for Proof<F, CF, PC> {
-    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> crate::io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
     }
 }

@@ -18,6 +18,9 @@ use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
     marlin::{compute_vk_hash, CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
+    String,
+    ToString,
+    Vec,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
@@ -25,6 +28,9 @@ use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
+
+#[cfg(not(feature = "std"))]
+use snarkvm_utilities::println;
 
 use crate::marlin::PreparedCircuitVerifyingKey;
 use core::marker::PhantomData;

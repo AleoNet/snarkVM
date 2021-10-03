@@ -53,6 +53,9 @@ use crate::{
     FiatShamirRng,
     FiatShamirRngVar,
     PolynomialCommitment,
+    String,
+    ToString,
+    Vec,
 };
 
 /// The Marlin verifier round state gadget used to output the state of each round.

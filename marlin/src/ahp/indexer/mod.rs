@@ -16,6 +16,8 @@
 
 #![allow(non_snake_case)]
 
+use crate::Vec;
+
 mod circuit;
 pub(crate) use circuit::*;
 

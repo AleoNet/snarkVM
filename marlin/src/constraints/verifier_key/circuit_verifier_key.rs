@@ -36,6 +36,7 @@ use crate::{
     FiatShamirRng,
     FiatShamirRngVar,
     PolynomialCommitment,
+    Vec,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, Prepare};
 use snarkvm_utilities::{marker::PhantomData, to_bytes_le, FromBytes, ToBytes};

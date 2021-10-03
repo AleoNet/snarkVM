@@ -42,19 +42,30 @@ extern crate alloc;
 #[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 use alloc::{
-    collections::BTreeMap,
-    marker::PhantomData,
+    collections::{BTreeSet, BTreeMap},
     string::{String, ToString},
     vec::Vec,
+};
+
+#[cfg(not(feature = "std"))]
+use core::marker::PhantomData;
+
+#[cfg(not(feature = "std"))]
+use snarkvm_utilities::io::{
+    Read,
+    Result as IoResult,
+    Write,
+    {self},
 };
 
 #[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeSet, BTreeMap},
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
+    io::{Read, Write, Result as IoResult, {self}},
 };
 use snarkvm_polycommit::PolynomialCommitment;
 

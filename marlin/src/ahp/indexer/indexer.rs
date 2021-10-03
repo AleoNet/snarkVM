@@ -29,6 +29,9 @@ use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use crate::{num_non_zero, sum_matrices};
 use core::marker::PhantomData;
 
+#[cfg(not(feature = "std"))]
+use snarkvm_utilities::println;
+
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Generate the index for this constraint system.
     pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F>, AHPError> {
