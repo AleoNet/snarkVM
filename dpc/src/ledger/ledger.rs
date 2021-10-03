@@ -27,29 +27,71 @@ pub struct Ledger<N: Network> {
     orphan_blocks: HashSet<Block<N>>,
     /// The pool of unconfirmed transactions.
     memory_pool: MemoryPool<N>,
-    /// The operating mode of this ledger.
-    is_full_node: bool,
 }
 
 impl<N: Network> Ledger<N> {
     /// Initializes a new instance of the ledger.
-    pub fn new(is_full_node: bool) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             canon_blocks: Blocks::new()?,
             orphan_blocks: Default::default(),
             memory_pool: MemoryPool::new(),
-            is_full_node,
         })
+    }
+
+    /// Returns the latest block height.
+    pub fn latest_block_height(&self) -> u32 {
+        self.canon_blocks.latest_block_height()
+    }
+
+    /// Returns the latest block hash.
+    pub fn latest_block_hash(&self) -> N::BlockHash {
+        self.canon_blocks.latest_block_hash()
+    }
+
+    /// Returns the latest block timestamp.
+    pub fn latest_block_timestamp(&self) -> Result<i64> {
+        self.canon_blocks.latest_block_timestamp()
+    }
+
+    /// Returns the latest block difficulty target.
+    pub fn latest_block_difficulty_target(&self) -> Result<u64> {
+        self.canon_blocks.latest_block_difficulty_target()
+    }
+
+    /// Returns the latest block transactions.
+    pub fn latest_block_transactions(&self) -> Result<&Transactions<N>> {
+        self.canon_blocks.latest_block_transactions()
+    }
+
+    /// Returns the latest block.
+    pub fn latest_block(&self) -> Result<Block<N>> {
+        self.canon_blocks.latest_block()
+    }
+
+    /// Returns `true` if the given block hash exists on the canon chain.
+    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
+        self.canon_blocks.contains_block_hash(block_hash)
+    }
+
+    /// Returns `true` if the given transaction exists on the canon chain.
+    pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
+        self.canon_blocks.contains_transaction(transaction)
+    }
+
+    /// Returns `true` if the given serial numbers root exists.
+    pub fn contains_serial_numbers_root(&self, serial_numbers_root: &N::SerialNumbersRoot) -> bool {
+        self.canon_blocks.contains_serial_numbers_root(serial_numbers_root)
+    }
+
+    /// Returns `true` if the given commitments root exists.
+    pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
+        self.canon_blocks.contains_commitments_root(commitments_root)
     }
 
     /// Adds the given canon block, if it is well-formed and does not already exist.
     /// Note: This method requires blocks to be added in order of canon block height.
     pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
-        // Noop if this node is not a full node.
-        if !self.is_full_node {
-            return Ok(());
-        }
-
         // Attempt to insert the block into canon.
         self.canon_blocks.add_next(block)?;
 
@@ -58,11 +100,6 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given orphan block, if it is well-formed and does not already exist.
     pub fn add_orphan_block(&mut self, block: &Block<N>) -> Result<()> {
-        // Noop if this node is not a full node.
-        if !self.is_full_node {
-            return Ok(());
-        }
-
         // Ensure the block does not exist in canon.
         if self.canon_blocks.contains_block_hash(&block.to_block_hash()?) {
             return Err(anyhow!("Orphan block already exists in canon chain"));
@@ -76,11 +113,6 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add_unconfirmed_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Noop if this node is not a full node.
-        if !self.is_full_node {
-            return Ok(());
-        }
-
         // Attempt to add the transaction into the memory pool.
         self.memory_pool.add(transaction)?;
 

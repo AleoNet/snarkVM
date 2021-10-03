@@ -17,7 +17,6 @@
 use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
-use snarkvm_ledger::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
@@ -38,24 +37,18 @@ fn test_testnet1_inner_circuit_id_sanity_check() {
 fn dpc_testnet1_integration_test() {
     let mut rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Create a genesis block.
-    let recipient = Account::new(rng).unwrap();
-    let genesis_block = Block::<Testnet1>::new_genesis(recipient.address(), rng).unwrap();
-    let coinbase_transaction = genesis_block.to_coinbase_transaction().unwrap();
-
-    let ledger = Ledger::<Testnet1, MemDb>::new(None, genesis_block).unwrap();
-
-    // Check that the coinbase transaction is serialized and deserialized correctly.
-    let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
-    let recovered_transaction = Transaction::<Testnet1>::read_le(&transaction_bytes[..]).unwrap();
-    assert_eq!(coinbase_transaction, recovered_transaction);
-
-    // Check that coinbase record can be decrypted from the transaction.
-    let encrypted_record = &coinbase_transaction.encrypted_records()[0];
-    let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
-    let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
-    assert_eq!(decrypted_record.owner(), recipient.address());
-    assert_eq!(decrypted_record.value() as i64, Block::<Testnet1>::block_reward(0).0);
+    let mut ledger = Ledger::<Testnet1>::new().unwrap();
+    assert_eq!(ledger.latest_block_height(), 0);
+    assert_eq!(
+        ledger.latest_block_hash(),
+        Testnet1::genesis_block().to_block_hash().unwrap()
+    );
+    assert_eq!(&ledger.latest_block().unwrap(), Testnet1::genesis_block());
+    assert_eq!((*ledger.latest_block_transactions().unwrap()).len(), 1);
+    assert_eq!(
+        ledger.latest_block().unwrap().to_coinbase_transaction().unwrap(),
+        (*ledger.latest_block_transactions().unwrap())[0]
+    );
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
@@ -64,20 +57,44 @@ fn dpc_testnet1_integration_test() {
     assert_eq!(block_height, 1);
 
     // Construct the new block transactions.
+    let recipient = Account::new(rng).unwrap();
     let amount = Block::<Testnet1>::block_reward(block_height);
-    let transaction = Transaction::<Testnet1>::new_coinbase(recipient.address(), amount, rng).unwrap();
-    let transactions = Transactions::from(&[transaction]).unwrap();
+    let coinbase_transaction = Transaction::<Testnet1>::new_coinbase(recipient.address(), amount, rng).unwrap();
+    {
+        // Check that the coinbase transaction is serialized and deserialized correctly.
+        let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
+        let recovered_transaction = Transaction::<Testnet1>::read_le(&transaction_bytes[..]).unwrap();
+        assert_eq!(coinbase_transaction, recovered_transaction);
+
+        // Check that coinbase record can be decrypted from the transaction.
+        let encrypted_record = &coinbase_transaction.encrypted_records()[0];
+        let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
+        let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
+        assert_eq!(decrypted_record.owner(), recipient.address());
+        assert_eq!(decrypted_record.value() as i64, Block::<Testnet1>::block_reward(0).0);
+    }
+    let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.to_transactions_root().unwrap();
 
     // Construct the new serial numbers root.
-    let transaction_serial_numbers = transactions.to_serial_numbers().unwrap();
-    let new_serial_numbers_tree = ledger.build_new_serial_number_tree(transaction_serial_numbers).unwrap();
-    let serial_numbers_root = *new_serial_numbers_tree.root();
+    let mut serial_numbers_tree = SerialNumbers::<Testnet1>::new().unwrap();
+    serial_numbers_tree
+        .add_all(previous_block.to_serial_numbers().unwrap())
+        .unwrap();
+    serial_numbers_tree
+        .add_all(transactions.to_serial_numbers().unwrap())
+        .unwrap();
+    let serial_numbers_root = serial_numbers_tree.root();
 
     // Construct the new commitments root.
-    let transaction_commitments = transactions.to_commitments().unwrap();
-    let new_commitments_tree = ledger.build_new_commitment_tree(transaction_commitments).unwrap();
-    let commitments_root = *new_commitments_tree.root();
+    let mut commitments_tree = Commitments::<Testnet1>::new().unwrap();
+    commitments_tree
+        .add_all(previous_block.to_commitments().unwrap())
+        .unwrap();
+    commitments_tree
+        .add_all(transactions.to_commitments().unwrap())
+        .unwrap();
+    let commitments_root = commitments_tree.root();
 
     // Construct the new block header.
     let header = BlockHeader::new(
@@ -93,8 +110,8 @@ fn dpc_testnet1_integration_test() {
     // Construct the new block.
     let block = Block::from(previous_hash, header, transactions).unwrap();
 
-    ledger.insert_and_commit(&block).unwrap();
-    assert_eq!(ledger.block_height(), 1);
+    ledger.add_next_block(&block).unwrap();
+    assert_eq!(ledger.latest_block_height(), 1);
 }
 
 #[test]

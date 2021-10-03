@@ -45,7 +45,7 @@ pub struct Blocks<N: Network> {
 }
 
 impl<N: Network> Blocks<N> {
-    /// Initializes a new instance of `Blocks`.
+    /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
         let genesis_block = N::genesis_block().clone();
         let height = genesis_block.height();
@@ -95,9 +95,14 @@ impl<N: Network> Blocks<N> {
         Ok(self.get_block_header(self.current_height)?.difficulty_target())
     }
 
+    /// Returns the latest block transactions.
+    pub fn latest_block_transactions(&self) -> Result<&Transactions<N>> {
+        self.get_block_transactions(self.current_height)
+    }
+
     /// Returns the latest block.
     pub fn latest_block(&self) -> Result<Block<N>> {
-        self.get_block(self.latest_block_height())
+        self.get_block(self.current_height)
     }
 
     /// Returns the previous block hash given the block height.
@@ -163,7 +168,7 @@ impl<N: Network> Blocks<N> {
         self.current_hash == *block_hash || self.previous_hashes.values().filter(|hash| *hash == block_hash).count() > 0
     }
 
-    /// Returns `true` if the given transaction ID exists.
+    /// Returns `true` if the given transaction exists.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
         self.transactions
             .values()
