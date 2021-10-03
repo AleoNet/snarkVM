@@ -19,14 +19,14 @@ use crate::prelude::*;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use rand::{CryptoRng, Rng};
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Ledger<N: Network> {
     /// The canonical chain of blocks.
     canon_blocks: Blocks<N>,
     /// The set of unknown orphan blocks.
-    orphan_blocks: HashSet<Block<N>>,
+    orphan_blocks: HashMap<u32, Block<N>>,
     /// The pool of unconfirmed transactions.
     memory_pool: MemoryPool<N>,
 }
@@ -108,7 +108,7 @@ impl<N: Network> Ledger<N> {
         }
 
         // Insert the block into the orphan blocks.
-        self.orphan_blocks.insert(block.clone());
+        self.orphan_blocks.insert(block.height(), block.clone());
 
         Ok(())
     }
@@ -174,12 +174,35 @@ mod tests {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2};
 
+    use rand::thread_rng;
+
     #[test]
-    fn test_ledger_new() {
+    fn test_new() {
         let ledger = Ledger::<Testnet1>::new().unwrap();
         assert_eq!(0, ledger.latest_block_height());
 
         let ledger = Ledger::<Testnet2>::new().unwrap();
         assert_eq!(0, ledger.latest_block_height());
+    }
+
+    #[test]
+    fn test_mine_next_block() {
+        let rng = &mut thread_rng();
+        {
+            let mut ledger = Ledger::<Testnet1>::new().unwrap();
+            let recipient = Account::<Testnet1>::new(rng).unwrap();
+
+            assert_eq!(0, ledger.latest_block_height());
+            ledger.mine_next_block(recipient.address(), rng).unwrap();
+            assert_eq!(1, ledger.latest_block_height());
+        }
+        {
+            let mut ledger = Ledger::<Testnet2>::new().unwrap();
+            let recipient = Account::<Testnet2>::new(rng).unwrap();
+
+            assert_eq!(0, ledger.latest_block_height());
+            ledger.mine_next_block(recipient.address(), rng).unwrap();
+            assert_eq!(1, ledger.latest_block_height());
+        }
     }
 }
