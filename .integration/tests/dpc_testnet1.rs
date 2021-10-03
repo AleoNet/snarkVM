@@ -20,6 +20,7 @@ use snarkvm_dpc::{prelude::*, testnet1::*};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
+use chrono::Utc;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 
@@ -71,34 +72,31 @@ fn dpc_testnet1_integration_test() {
         let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
-        assert_eq!(decrypted_record.value() as i64, Block::<Testnet1>::block_reward(0).0);
+        assert_eq!(decrypted_record.value() as i64, Block::<Testnet1>::block_reward(1).0);
     }
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.to_transactions_root().unwrap();
 
     // Construct the new serial numbers root.
-    let mut serial_numbers_tree = SerialNumbers::<Testnet1>::new().unwrap();
-    serial_numbers_tree
+    let mut serial_numbers = SerialNumbers::<Testnet1>::new().unwrap();
+    serial_numbers
         .add_all(previous_block.to_serial_numbers().unwrap())
         .unwrap();
-    serial_numbers_tree
+    serial_numbers
         .add_all(transactions.to_serial_numbers().unwrap())
         .unwrap();
-    let serial_numbers_root = serial_numbers_tree.root();
+    let serial_numbers_root = serial_numbers.root();
 
     // Construct the new commitments root.
-    let mut commitments_tree = Commitments::<Testnet1>::new().unwrap();
-    commitments_tree
-        .add_all(previous_block.to_commitments().unwrap())
-        .unwrap();
-    commitments_tree
-        .add_all(transactions.to_commitments().unwrap())
-        .unwrap();
-    let commitments_root = commitments_tree.root();
+    let mut commitments = Commitments::<Testnet1>::new().unwrap();
+    commitments.add_all(previous_block.to_commitments().unwrap()).unwrap();
+    commitments.add_all(transactions.to_commitments().unwrap()).unwrap();
+    let commitments_root = commitments.root();
 
     // Construct the new block header.
     let header = BlockHeader::new(
         block_height,
+        Utc::now().timestamp(),
         previous_block.header().difficulty_target(),
         transactions_root,
         serial_numbers_root,

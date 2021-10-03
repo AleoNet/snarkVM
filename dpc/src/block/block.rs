@@ -42,6 +42,7 @@ impl<N: Network> Block<N> {
     pub fn new<R: Rng + CryptoRng>(
         previous_block_hash: N::BlockHash,
         block_height: u32,
+        block_timestamp: i64,
         difficulty_target: u64,
         transactions: Transactions<N>,
         serial_numbers_root: N::SerialNumbersRoot,
@@ -53,6 +54,7 @@ impl<N: Network> Block<N> {
         // Compute the block header.
         let header = BlockHeader::new(
             block_height,
+            block_timestamp,
             difficulty_target,
             transactions.to_transactions_root()?,
             serial_numbers_root,
@@ -84,11 +86,13 @@ impl<N: Network> Block<N> {
 
         // Construct the genesis block header metadata.
         let block_height = 0u32;
+        let block_timestamp = 0i64;
         let difficulty_target = u64::MAX;
 
         // Compute the genesis block header.
         let header = BlockHeader::new(
             block_height,
+            block_timestamp,
             difficulty_target,
             transactions_root,
             *serial_numbers_tree.root(),

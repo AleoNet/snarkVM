@@ -295,7 +295,7 @@ impl<N: Network> Blocks<N> {
     }
 
     /// Returns the expected difficulty target given the previous block and expected next block details.
-    fn compute_difficulty_target(
+    pub(crate) fn compute_difficulty_target(
         &self,
         previous_timestamp: i64,
         previous_difficulty_target: u64,
@@ -335,5 +335,15 @@ impl<N: Network> Blocks<N> {
             TARGET_BLOCK_TIME_IN_SECS,
             previous_difficulty_target,
         )
+    }
+
+    /// Returns the latest serial numbers.
+    pub(crate) fn latest_serial_numbers(&self) -> SerialNumbers<N> {
+        self.serial_numbers.clone()
+    }
+
+    /// Returns the latest commitments.
+    pub(crate) fn latest_commitments(&self) -> Commitments<N> {
+        self.commitments.clone()
     }
 }

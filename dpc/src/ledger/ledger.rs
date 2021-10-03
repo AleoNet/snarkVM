@@ -17,6 +17,8 @@
 use crate::prelude::*;
 
 use anyhow::{anyhow, Result};
+use chrono::Utc;
+use rand::{CryptoRng, Rng};
 use std::collections::HashSet;
 
 #[derive(Clone, Debug)]
@@ -119,10 +121,65 @@ impl<N: Network> Ledger<N> {
         Ok(())
     }
 
-    // pub fn mine(&mut self) -> Result<()> {
-    //     // Noop if this node is not a full node.
-    //     if !self.is_full_node {
-    //         return Ok(());
-    //     }
-    // }
+    /// Mines a new block and adds it to the canon blocks.
+    pub fn mine_next_block<R: Rng + CryptoRng>(&mut self, recipient: Address<N>, rng: &mut R) -> Result<()> {
+        // Prepare the new block.
+        let previous_block_hash = self.latest_block_hash();
+        let block_height = self.latest_block_height() + 1;
+
+        // Compute the block difficulty target.
+        let previous_timestamp = self.latest_block_timestamp()?;
+        let previous_difficulty_target = self.latest_block_difficulty_target()?;
+        let block_timestamp = Utc::now().timestamp();
+        let difficulty_target = self.canon_blocks.compute_difficulty_target(
+            previous_timestamp,
+            previous_difficulty_target,
+            block_timestamp,
+        );
+
+        // Construct the new block transactions.
+        let amount = Block::<N>::block_reward(block_height);
+        let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
+        let transactions = Transactions::from(&[coinbase_transaction])?; // TODO (howardwu): TEMPORARY - Add mempool txs.
+
+        // Construct the new serial numbers root.
+        let mut serial_numbers = self.canon_blocks.latest_serial_numbers();
+        serial_numbers.add_all(transactions.to_serial_numbers()?)?;
+        let serial_numbers_root = serial_numbers.root();
+
+        // Construct the new commitments root.
+        let mut commitments = self.canon_blocks.latest_commitments();
+        commitments.add_all(transactions.to_commitments()?)?;
+        let commitments_root = commitments.root();
+
+        // Mine the next block.
+        let block = Block::new(
+            previous_block_hash,
+            block_height,
+            block_timestamp,
+            difficulty_target,
+            transactions,
+            serial_numbers_root,
+            commitments_root,
+            rng,
+        )?;
+
+        // Add the block to canon.
+        self.add_next_block(&block)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{testnet1::Testnet1, testnet2::Testnet2};
+
+    #[test]
+    fn test_ledger_new() {
+        let ledger = Ledger::<Testnet1>::new().unwrap();
+        assert_eq!(0, ledger.latest_block_height());
+
+        let ledger = Ledger::<Testnet2>::new().unwrap();
+        assert_eq!(0, ledger.latest_block_height());
+    }
 }
