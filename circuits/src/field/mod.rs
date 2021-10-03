@@ -24,6 +24,7 @@ pub mod neg;
 pub mod one;
 pub mod square;
 pub mod sub;
+pub mod ternary;
 pub mod zero;
 
 use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode};
@@ -38,6 +39,10 @@ pub struct Field<E: Environment>(LinearCombination<E::BaseField>);
 impl<E: Environment> Field<E> {
     pub fn new(mode: Mode, value: E::BaseField) -> Self {
         Self(E::new_variable(mode, value).into())
+    }
+
+    pub fn from(boolean: &Boolean<E>) -> Self {
+        Self((**boolean).clone())
     }
 
     pub fn is_constant(&self) -> bool {

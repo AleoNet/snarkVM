@@ -62,6 +62,14 @@ pub trait And<Rhs: ?Sized = Self> {
     fn and(&self, other: &Rhs) -> Self::Output;
 }
 
+/// Trait for ternary operations.
+pub trait Ternary {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    fn ternary(condition: &Self::Boolean, a: &Self, b: &Self) -> Self::Output;
+}
+
 /// Unary operator for retrieving the doubled value.
 pub trait Double {
     type Output;

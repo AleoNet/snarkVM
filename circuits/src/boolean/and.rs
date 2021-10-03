@@ -22,18 +22,18 @@ impl<E: Environment> And<Self> for Boolean<E> {
 
     fn and(&self, other: &Self) -> Self::Output {
         // Constant && Constant
-        if self.0.is_constant() && other.0.is_constant() {
+        if self.is_constant() && other.is_constant() {
             Boolean::<E>::new(Mode::Constant, self.to_value() && other.to_value())
         }
         // Constant && Variable
-        else if self.0.is_constant() {
+        else if self.is_constant() {
             match self.to_value() {
                 true => other.clone(),
                 false => !other,
             }
         }
         // Variable && Constant
-        else if other.0.is_constant() {
+        else if other.is_constant() {
             match other.to_value() {
                 true => self.clone(),
                 false => !self,

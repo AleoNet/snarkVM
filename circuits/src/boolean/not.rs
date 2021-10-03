@@ -36,7 +36,7 @@ impl<E: Environment> Not for &Boolean<E> {
         let one = E::BaseField::one();
         let boolean = self.to_value();
 
-        let output = if self.0.is_constant() {
+        let output = if self.is_constant() {
             // Constant case
             match boolean {
                 true => self.0.clone() - Variable::Constant(one),

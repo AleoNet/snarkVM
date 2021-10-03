@@ -23,7 +23,7 @@ pub use not::*;
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 
-use std::ops::Not;
+use std::ops::{Deref, Not};
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
@@ -42,6 +42,10 @@ impl<E: Environment> Boolean<E> {
         Self(variable.into())
     }
 
+    pub fn is_constant(&self) -> bool {
+        self.0.is_constant()
+    }
+
     pub fn to_value(&self) -> bool {
         let value = self.0.to_value();
         debug_assert!(value.is_zero() || value.is_one());
@@ -50,6 +54,14 @@ impl<E: Environment> Boolean<E> {
 }
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
+
+impl<E: Environment> Deref for Boolean<E> {
+    type Target = LinearCombination<E::BaseField>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl<E: Environment> From<Boolean<E>> for LinearCombination<E::BaseField> {
     fn from(boolean: Boolean<E>) -> Self {

@@ -23,7 +23,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 8 constraints.
     ///
     fn is_eq(&self, other: &Self) -> Self::Output {
         let is_x_eq = self.x.is_eq(&other.x);
@@ -37,7 +37,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
     /// This method constructs a boolean that indicates if
     /// `self` and `other ` are *not* equal to each other.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 8 constraints.
     ///
     fn is_neq(&self, other: &Self) -> Self::Output {
         !self.is_eq(other)
@@ -52,7 +52,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: usize = 500;
 
     #[test]
     fn test_is_eq() {
@@ -103,6 +103,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
 
             Circuit::scoped(&format!("Constant and Public Not Equals {}", i), |scope| {
@@ -113,6 +114,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
         }
 
@@ -133,6 +135,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
 
             Circuit::scoped(&format!("Public and Constant Not Equals {}", i), |scope| {
@@ -143,6 +146,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
         }
 
@@ -163,6 +167,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
 
             Circuit::scoped(&format!("Public Not Equals {}", i), |scope| {
@@ -173,6 +178,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
         }
 
@@ -193,6 +199,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
 
             Circuit::scoped(&format!("Private Not Equals {}", i), |scope| {
@@ -203,6 +210,7 @@ mod tests {
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(8, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
             });
         }
     }

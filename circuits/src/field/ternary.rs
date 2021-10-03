@@ -1,0 +1,319 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use super::*;
+
+impl<E: Environment> Ternary for Field<E> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    fn ternary(condition: &Self::Boolean, a: &Self, b: &Self) -> Self::Output {
+        // Constant Condition
+        if condition.is_constant() {
+            match condition.to_value() {
+                true => a.clone(),
+                false => b.clone(),
+            }
+        }
+        // Constant Variables
+        else if a.0.is_constant() && b.0.is_constant() {
+            let not_condition = Self::from(&!condition);
+            let condition = Self::from(&condition);
+            (condition * a) + (not_condition * b)
+        }
+        // Variables
+        else {
+            let witness = Field::new(Mode::Private, match condition.to_value() {
+                true => a.to_value(),
+                false => b.to_value(),
+            });
+
+            //
+            // Ternary Enforcement
+            // -------------------------------------------------------
+            //    witness = condition * a + (1 - condition) * b
+            // => witness = b + condition * (a - b)
+            // => condition * (a - b) = witness - b
+            //
+            //
+            // Assumption
+            // -------------------------------------------------------
+            // If a == b, either values suffices as a valid witness,
+            // and we may forgo the cases below. Else, we consider
+            // the following four cases.
+            //
+            //
+            // Case 1: condition = 0 AND witness = a (dishonest)
+            // -------------------------------------------------------
+            // 0 * (a - b) = a - b
+            //           0 = a - b
+            // => if a != b, as LHS != RHS, the witness is incorrect.
+            //
+            //
+            // Case 2: condition = 0 AND witness = b (honest)
+            // -------------------------------------------------------
+            // 0 * (a - b) = b - b
+            //           0 = 0
+            // => as LHS == RHS, the witness is correct.
+            //
+            //
+            // Case 3: condition = 1 AND witness = a (honest)
+            // -------------------------------------------------------
+            // 1 * (a - b) = a - b
+            //       a - b = a - b
+            // => as LHS == RHS, the witness is correct.
+            //
+            //
+            // Case 4: condition = 1 AND witness = b (dishonest)
+            // -------------------------------------------------------
+            // 1 * (a - b) = b - b
+            //       a - b = 0
+            // => if a != b, as LHS != RHS, the witness is incorrect.
+            //
+            E::enforce(|| (condition, (a.clone() - b), (witness.clone().0 - &b.0)));
+
+            witness
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Circuit;
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
+
+    #[test]
+    fn test_ternary() {
+        // Constant ? Constant : Constant
+        {
+            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Constant, true);
+            Circuit::scoped("Constant(true) ? Constant : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Constant, false);
+            Circuit::scoped("Constant(false) ? Constant : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+
+        // Constant ? Public : Private
+        {
+            let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Constant, true);
+            Circuit::scoped("Constant(true) ? Public : Private", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Constant, false);
+            Circuit::scoped("Constant(false) ? Public : Private", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+
+        // Public ? Constant : Constant
+        {
+            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Public, true);
+            Circuit::scoped("Public(true) ? Constant : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Public, false);
+            Circuit::scoped("Public(false) ? Constant : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+
+        // Private ? Constant : Constant
+        {
+            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Private, true);
+            Circuit::scoped("Private(true) ? Constant : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Private, false);
+            Circuit::scoped("Private(false) ? Constant : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+
+        // Private ? Public : Constant
+        {
+            let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Private, true);
+            Circuit::scoped("Private(true) ? Public : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(1, scope.num_private_in_scope());
+                assert_eq!(1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Private, false);
+            Circuit::scoped("Private(false) ? Public : Constant", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(1, scope.num_private_in_scope());
+                assert_eq!(1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+
+        // Private ? Constant : Public
+        {
+            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Private, true);
+            Circuit::scoped("Private(true) ? Constant : Public", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(1, scope.num_private_in_scope());
+                assert_eq!(1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Private, false);
+            Circuit::scoped("Private(false) ? Constant : Public", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(1, scope.num_private_in_scope());
+                assert_eq!(1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+
+        // Private ? Private : Public
+        {
+            let a = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let b = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+
+            let condition = Boolean::new(Mode::Private, true);
+            Circuit::scoped("Private(true) ? Private : Public", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(1, scope.num_private_in_scope());
+                assert_eq!(1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
+
+                assert!(output.is_eq(&a).to_value());
+                assert!(!output.is_eq(&b).to_value());
+            });
+
+            let condition = Boolean::new(Mode::Private, false);
+            Circuit::scoped("Private(false) ? Private : Public", |scope| {
+                let output = Field::ternary(&condition, &a, &b);
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(1, scope.num_private_in_scope());
+                assert_eq!(1, scope.num_constraints_in_scope());
+                assert!(scope.is_satisfied());
+
+                assert!(!output.is_eq(&a).to_value());
+                assert!(output.is_eq(&b).to_value());
+            });
+        }
+    }
+}
