@@ -50,7 +50,7 @@ pub struct BlockHeaderMetadata<N: Network> {
     timestamp: i64,
     /// Proof of work algorithm difficulty target for this block - 8 bytes
     difficulty_target: u64,
-    /// Nonce for solving the PoW puzzle - 4 bytes
+    /// Nonce for solving the PoW puzzle - 32 bytes
     nonce: N::InnerScalarField,
 }
 
@@ -89,7 +89,7 @@ pub struct BlockHeader<N: Network> {
     serial_numbers_root: N::SerialNumbersRoot,
     /// The Merkle root representing the ledger commitments - 32 bytes
     commitments_root: N::CommitmentsRoot,
-    /// The block header metadata - 24 bytes
+    /// The block header metadata - 52 bytes
     metadata: BlockHeaderMetadata<N>,
     /// Proof of Succinct Work - 771 bytes
     #[serde(with = "proof_serialization")]
@@ -222,7 +222,7 @@ impl<N: Network> BlockHeader<N> {
         &self.proof
     }
 
-    /// Returns the block header size in bytes - 891 bytes.
+    /// Returns the block header size in bytes - 919 bytes.
     pub fn size() -> usize {
         32 // TransactionsRoot
             + 32 // SerialNumbersRoot
@@ -242,10 +242,8 @@ impl<N: Network> BlockHeader<N> {
         let commitments_root = self.commitments_root.to_bytes_le()?;
         assert_eq!(commitments_root.len(), 32);
 
-        let mut metadata = self.metadata.to_bytes_le()?;
-        assert_eq!(metadata.len(), 24);
-        metadata.resize(32, 0u8);
-        assert_eq!(metadata.len(), 32);
+        let metadata = self.metadata.to_bytes_le()?;
+        assert_eq!(metadata.len(), 52);
 
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(N::POSW_NUM_LEAVES);
         leaves.push(transactions_root);

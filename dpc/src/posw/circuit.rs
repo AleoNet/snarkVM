@@ -171,7 +171,7 @@ mod test {
 
         let num_constraints = cs.num_constraints();
         println!("PoSW circuit num constraints: {:?}", num_constraints);
-        assert_eq!(61535, num_constraints);
+        assert_eq!(61781, num_constraints);
     }
 
     fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
