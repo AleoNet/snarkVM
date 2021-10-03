@@ -35,11 +35,9 @@ impl<E: Environment> Boolean<E> {
             false => E::BaseField::zero(),
         });
 
-        if !mode.is_constant() {
-            // Ensure `a` is either 0 or 1:
-            // (1 - a) * a = 0
-            E::enforce(|| (E::one() - variable, variable, E::zero()));
-        }
+        // Ensure `a` is either 0 or 1:
+        // (1 - a) * a = 0
+        E::enforce(|| (E::one() - variable, variable, E::zero()));
 
         Self(variable.into())
     }
@@ -143,7 +141,7 @@ mod tests {
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
-            assert!(!Circuit::is_satisfied());
+            assert_eq!(0, Circuit::num_constraints());
 
             Circuit::reset_circuit();
         }

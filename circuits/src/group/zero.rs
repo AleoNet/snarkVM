@@ -55,15 +55,15 @@ mod tests {
             let candidate = Affine::<Circuit>::zero();
             assert_eq!((zero, one), candidate.to_value());
 
-            assert_eq!(6, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(1, Circuit::num_private());
-            assert_eq!(2, Circuit::num_constraints());
-
-            assert_eq!(6, scope.num_constants_in_scope());
+            assert_eq!(7, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(1, scope.num_private_in_scope());
-            assert_eq!(2, scope.num_constraints_in_scope());
+            assert_eq!(0, scope.num_private_in_scope());
+            assert_eq!(0, scope.num_constraints_in_scope());
+
+            assert_eq!(7, Circuit::num_constants());
+            assert_eq!(1, Circuit::num_public());
+            assert_eq!(0, Circuit::num_private());
+            assert_eq!(0, Circuit::num_constraints());
         });
     }
 

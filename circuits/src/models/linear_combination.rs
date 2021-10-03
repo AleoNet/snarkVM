@@ -348,18 +348,23 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let zero = <Circuit as Environment>::BaseField::zero();
         let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = LinearCombination::one();
-        assert_eq!(zero, candidate.constant);
-        assert_eq!(1, candidate.terms.len());
+        assert_eq!(one, candidate.constant);
+        assert!(candidate.terms.is_empty());
         assert_eq!(one, candidate.to_value());
+    }
 
-        let (candidate_variable, candidate_coefficient) = candidate.terms.iter().next().unwrap();
-        assert!(candidate_variable.is_public());
-        assert_eq!(one, candidate_variable.value());
-        assert_eq!(one, *candidate_coefficient);
+    #[test]
+    fn test_two() {
+        let one = <Circuit as Environment>::BaseField::one();
+        let two = one + &one;
+
+        let candidate = LinearCombination::one() + LinearCombination::one();
+        assert_eq!(two, candidate.constant);
+        assert!(candidate.terms.is_empty());
+        assert_eq!(two, candidate.to_value());
     }
 
     #[test]
@@ -373,8 +378,8 @@ mod tests {
         assert_eq!(zero, candidate.to_value());
 
         let candidate = LinearCombination::one();
-        assert!(!candidate.is_constant());
-        assert_eq!(zero, candidate.constant);
+        assert!(candidate.is_constant());
+        assert_eq!(one, candidate.constant);
         assert_eq!(one, candidate.to_value());
     }
 
@@ -385,7 +390,7 @@ mod tests {
         let two = one + one;
         let four = two + two;
 
-        let start = LinearCombination::one();
+        let start = LinearCombination::from(Variable::Public(1, one));
         assert!(!start.is_constant());
         assert_eq!(one, start.to_value());
 

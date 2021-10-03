@@ -80,8 +80,8 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
 
-        // Constant variables
-        Circuit::scoped("Constant", |scope| {
+        // Constant * Constant
+        Circuit::scoped("Constant * Constant", |scope| {
             let mut expected_product = one;
             let mut candidate_product = Field::<Circuit>::one();
 
@@ -89,7 +89,7 @@ mod tests {
                 expected_product = expected_product * &two;
                 candidate_product = candidate_product * Field::new(Mode::Constant, two);
 
-                assert_eq!(i + 1, scope.num_constants_in_scope());
+                assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
@@ -98,17 +98,17 @@ mod tests {
             assert_eq!(expected_product, candidate_product.to_value());
         });
 
-        // Public variables
-        Circuit::scoped("Public", |scope| {
+        // Public * Public
+        Circuit::scoped("Public * Public", |scope| {
             let mut expected_product = one;
-            let mut candidate_product = Field::<Circuit>::one();
+            let mut candidate_product = Field::<Circuit>::new(Mode::Public, one);
 
             for i in 0..ITERATIONS {
                 expected_product = expected_product * &two;
                 candidate_product = candidate_product * Field::new(Mode::Public, two);
 
                 assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
+                assert_eq!(i + 2, scope.num_public_in_scope());
                 assert_eq!(i + 1, scope.num_private_in_scope());
                 assert_eq!(i + 1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
@@ -117,10 +117,10 @@ mod tests {
             assert_eq!(expected_product, candidate_product.to_value());
         });
 
-        // Private variables
-        Circuit::scoped("Private", |scope| {
+        // Private * Private
+        Circuit::scoped("Private * Private", |scope| {
             let mut expected_product = one;
-            let mut candidate_product = Field::<Circuit>::one();
+            let mut candidate_product = Field::<Circuit>::new(Mode::Private, one);
 
             for i in 0..ITERATIONS {
                 expected_product = expected_product * &two;
@@ -128,7 +128,7 @@ mod tests {
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!((i + 1) * 2, scope.num_private_in_scope());
+                assert_eq!(i * 2 + 3, scope.num_private_in_scope());
                 assert_eq!(i + 1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             }
