@@ -33,8 +33,6 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
 
-use itertools::Itertools;
-
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct OuterCircuit<N: Network> {
@@ -114,62 +112,25 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     let ledger_digest_fe =
         alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
 
-    let serial_number_fe = {
-        let mut serial_number_fe_vec = Vec::with_capacity(inner_public.kernel.serial_numbers().len());
-        for (index, sn) in inner_public.kernel.serial_numbers().iter().enumerate() {
-            let this_serial_number_fe =
-                alloc_inner_snark_input_field_element::<N, _, _>(cs, sn, &format!("serial number {}", index))?;
+    let encrypted_record_ids_fe = {
+        let mut encrypted_record_ids_fe_vec =
+            Vec::with_capacity(inner_public.encrypted_record_ids.len() * N::NUM_OUTPUT_RECORDS);
 
-            serial_number_fe_vec.push(this_serial_number_fe);
-        }
-
-        <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
-            cs.ns(|| "serial number"),
-            &serial_number_fe_vec,
-        )?
-    };
-
-    let commitment_and_encrypted_record_hash_fe = {
-        let mut commitment_and_encrypted_record_hash_fe_vec =
-            Vec::with_capacity(inner_public.kernel.commitments().len() * N::NUM_OUTPUT_RECORDS);
-        for (index, (cm, encrypted_record_hash)) in inner_public
-            .kernel
-            .commitments()
-            .iter()
-            .zip_eq(inner_public.encrypted_record_ids.iter())
-            .enumerate()
-        {
-            let commitment_fe =
-                alloc_inner_snark_input_field_element::<N, _, _>(cs, cm, &format!("commitment {}", index))?;
-            let encrypted_record_hash_fe = alloc_inner_snark_input_field_element::<N, _, _>(
+        for (index, encrypted_record_hash) in inner_public.encrypted_record_ids.iter().enumerate() {
+            let encrypted_record_id_fe = alloc_inner_snark_input_field_element::<N, _, _>(
                 cs,
                 encrypted_record_hash,
-                &format!("encrypted_record_hash {}", index),
+                &format!("encrypted_record_id {}", index),
             )?;
 
-            commitment_and_encrypted_record_hash_fe_vec.push(commitment_fe);
-            commitment_and_encrypted_record_hash_fe_vec.push(encrypted_record_hash_fe);
+            encrypted_record_ids_fe_vec.push(encrypted_record_id_fe);
         }
 
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
-            cs.ns(|| "commitment_and_encrypted_record_hash"),
-            &commitment_and_encrypted_record_hash_fe_vec,
+            cs.ns(|| "encrypted_record_ids_merge"),
+            &encrypted_record_ids_fe_vec,
         )?
     };
-
-    let value_balance_fe = alloc_inner_snark_input_field_element::<N, _, _>(
-        cs,
-        &inner_public.kernel.value_balance().0.to_le_bytes(),
-        "value balance",
-    )?;
-
-    let memo_fe = alloc_inner_snark_input_field_element::<N, _, _>(cs, inner_public.kernel.memo(), "memo")?;
-
-    let network_id_fe = alloc_inner_snark_input_field_element::<N, _, _>(
-        cs,
-        &inner_public.kernel.network_id().to_le_bytes(),
-        "network id",
-    )?;
 
     let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
         cs,
@@ -179,12 +140,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let transaction_id_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
         cs,
-        &inner_public.kernel.to_transaction_id()?,
+        &inner_public.transaction_id(),
         "transaction ID inner snark",
     )?;
     let transaction_id_fe_program_snark = alloc_program_snark_field_element::<N, _, _>(
         cs,
-        &inner_public.kernel.to_transaction_id()?,
+        &inner_public.transaction_id(),
         "transaction ID program snark",
     )?;
     {
@@ -202,12 +163,8 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
             ledger_digest_fe,
-            serial_number_fe,
-            commitment_and_encrypted_record_hash_fe,
+            encrypted_record_ids_fe,
             program_id_fe,
-            value_balance_fe,
-            memo_fe,
-            network_id_fe,
             transaction_id_fe_inner_snark,
         ])?;
 

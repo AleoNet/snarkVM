@@ -162,13 +162,14 @@ fn test_testnet2_dpc_execute_constraints() {
 
     // Construct the inner circuit public and private variables.
     let inner_public_variables = InnerPublicVariables::new(
-        &kernel,
+        kernel.to_transaction_id().unwrap(),
         &ledger_digest,
         &encrypted_record_hashes,
         Some(state.executable().program_id()),
     )
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
+        &kernel,
         input_records.clone(),
         input_witnesses,
         signatures,
@@ -200,7 +201,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = inner_circuit_cs.num_constraints();
     println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(176812, num_constraints);
+    assert_eq!(176324, num_constraints);
     println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
@@ -256,7 +257,7 @@ fn test_testnet2_dpc_execute_constraints() {
     println!("=========================================================");
     let num_constraints = outer_circuit_cs.num_constraints();
     println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(287977, num_constraints);
+    assert_eq!(252667, num_constraints);
     println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());

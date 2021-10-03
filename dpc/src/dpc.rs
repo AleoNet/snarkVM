@@ -97,12 +97,13 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
-            &kernel,
+            kernel.to_transaction_id().unwrap(),
             &ledger_digest,
             &encrypted_record_ids,
             Some(executable.program_id()),
         )?;
         let inner_private_variables = InnerPrivateVariables::new(
+            &kernel,
             input_records,
             input_witnesses,
             signatures,

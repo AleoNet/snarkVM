@@ -164,7 +164,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the encrypted record hashes.
-    pub fn to_encrypted_record_hashes(&self) -> Result<Vec<N::EncryptedRecordID>> {
+    pub fn to_encrypted_record_ids(&self) -> Result<Vec<N::EncryptedRecordID>> {
         Ok(self
             .encrypted_records
             .iter()

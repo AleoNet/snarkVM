@@ -145,7 +145,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             .iter()
             .zip(&private.input_witnesses)
             .zip(&private.signatures)
-            .zip(public.kernel.serial_numbers())
+            .zip(private.kernel().serial_numbers())
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
@@ -289,13 +289,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &given_serial_number_nonce,
                 )?;
 
-                let given_serial_number_gadget = <N::SerialNumberPRFGadget as PRFGadget<
-                    N::SerialNumberPRF,
-                    N::InnerScalarField,
-                >>::Output::alloc_input(
-                    &mut sn_cs.ns(|| "Declare given serial number"),
-                    || Ok(given_serial_number),
-                )?;
+                let given_serial_number_gadget =
+                    <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
+                        &mut sn_cs.ns(|| "Declare given serial number"),
+                        || Ok(given_serial_number),
+                    )?;
 
                 candidate_serial_number_gadget.enforce_equal(
                     &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),
@@ -382,10 +380,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
         let mut new_program_ids_bytes_gadgets = Vec::with_capacity(private.output_records.len());
 
-        for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
+        for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
             .output_records
             .iter()
-            .zip(public.kernel.commitments())
+            .zip(private.kernel().commitments())
             .zip(&private.encrypted_record_randomizers)
             .zip(&public.encrypted_record_ids)
             .enumerate()
@@ -447,7 +445,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     let public_commitment = <N::CommitmentGadget as CommitmentGadget<
                         N::CommitmentScheme,
                         N::InnerScalarField,
-                    >>::OutputGadget::alloc_input(
+                    >>::OutputGadget::alloc(
                         &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
                     )?;
 
@@ -616,24 +614,24 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 // *******************************************************************
-                // Check that the encrypted record hash is correct
+                // Check that the encrypted record ID is correct
 
-                let encrypted_record_hash_gadget = <N::EncryptedRecordCRHGadget as CRHGadget<
+                let encrypted_record_id_gadget = <N::EncryptedRecordCRHGadget as CRHGadget<
                     N::EncryptedRecordCRH,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
-                    &mut encryption_cs.ns(|| format!("output record {} encrypted record hash", j)),
-                    || Ok(encrypted_record_hash),
+                    &mut encryption_cs.ns(|| format!("output record {} encrypted record ID", j)),
+                    || Ok(encrypted_record_id),
                 )?;
 
-                let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget(
-                    &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
+                let candidate_encrypted_record_id = encrypted_record_crh.check_evaluation_gadget(
+                    &mut encryption_cs.ns(|| format!("Compute encrypted record ID {}", j)),
                     candidate_encrypted_record_gadget,
                 )?;
 
-                encrypted_record_hash_gadget.enforce_equal(
-                    encryption_cs.ns(|| format!("output record {} encrypted record hash is valid", j)),
-                    &candidate_encrypted_record_hash,
+                encrypted_record_id_gadget.enforce_equal(
+                    encryption_cs.ns(|| format!("output record {} encrypted record ID is valid", j)),
+                    &candidate_encrypted_record_id,
                 )?;
             }
         }
@@ -782,7 +780,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
             let given_value_balance =
-                Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance().0)?;
+                Int64::alloc_fe(cs.ns(|| "given_value_balance"), private.kernel().value_balance().0)?;
 
             let mut candidate_value_balance = Int64::zero();
 
@@ -819,10 +817,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let signature_message = {
             let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-            let memo = UInt8::alloc_input_vec_le(&mut cs.ns(|| "Allocate memorandum"), &*public.kernel.memo())?;
-            let network_id = UInt8::alloc_input_vec_le(
+            let memo = UInt8::alloc_vec(&mut cs.ns(|| "Allocate memorandum"), &*private.kernel().memo())?;
+            let network_id = UInt8::alloc_vec(
                 &mut cs.ns(|| "Allocate network id"),
-                &public.kernel.network_id().to_le_bytes(),
+                &private.kernel().network_id().to_le_bytes(),
             )?;
 
             // Encode the transaction kernel as the signature message, and preimage for the transaction ID.
@@ -841,7 +839,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 N::InnerScalarField,
             >>::OutputGadget::alloc_input(
                 &mut cs.ns(|| "Allocate given transaction ID"),
-                || Ok(public.kernel.to_transaction_id()?),
+                || Ok(public.transaction_id()),
             )?;
 
             candidate_transaction_id.enforce_equal(
