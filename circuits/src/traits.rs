@@ -83,3 +83,12 @@ pub trait Square {
 
     fn square(&self) -> Self::Output;
 }
+
+/// Unary operator for converting to bits.
+pub trait ToBits {
+    type Boolean: BooleanTrait;
+
+    fn to_bits_le(&self) -> Vec<Self::Boolean>;
+
+    fn to_bits_be(&self) -> Vec<Self::Boolean>;
+}

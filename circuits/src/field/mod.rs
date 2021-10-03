@@ -25,10 +25,12 @@ pub mod one;
 pub mod square;
 pub mod sub;
 pub mod ternary;
+pub mod to_bits;
 pub mod zero;
 
 use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
+use snarkvm_utilities::ToBits as TBits;
 
 use num_traits::Inv;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
