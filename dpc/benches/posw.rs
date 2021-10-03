@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet2::Testnet2, BlockScheme, Network, PoSWScheme};
+use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;

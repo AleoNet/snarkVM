@@ -18,7 +18,6 @@
 
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
@@ -133,11 +132,10 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         };
 
         // Construct the inputs.
-        let inputs = [
-            vec![block_header.nonce()],
-            block_header.to_header_root().unwrap().to_field_elements().unwrap(),
-        ]
-        .concat();
+        let inputs = vec![
+            N::InnerScalarField::read_le(&block_header.to_header_root().unwrap().to_bytes_le().unwrap()[..]).unwrap(),
+            block_header.nonce(),
+        ];
 
         // Ensure the proof is valid.
         if !<<N as Network>::PoswSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {

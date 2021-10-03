@@ -131,14 +131,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
         )?;
 
         // Enforce the input root is the same as the computed root.
-        let expected_root = <N::BlockHeaderTreeCRHGadget as CRHGadget<
-            <N::BlockHeaderTreeParameters as MerkleParameters>::H,
-            N::InnerScalarField,
-        >>::OutputGadget::alloc_input(
-            cs.ns(|| "alloc input expected block header root"),
-            || Ok(&self.block_header_root),
-        )?;
-        candidate_root.enforce_equal(cs.ns(|| "enforce equal"), &expected_root)?;
+        let candidate_root_bytes = candidate_root.to_bytes(cs.ns(|| "masked root to bytes"))?;
+        let expected_root_bytes = block_header_root.to_bytes(cs.ns(|| "block header root to bytes"))?;
+        candidate_root_bytes.enforce_equal(cs.ns(|| "enforce equal"), &expected_root_bytes)?;
 
         Ok(())
     }
@@ -171,7 +166,7 @@ mod test {
 
         let num_constraints = cs.num_constraints();
         println!("PoSW circuit num constraints: {:?}", num_constraints);
-        assert_eq!(61781, num_constraints);
+        assert_eq!(62550, num_constraints);
     }
 
     fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
@@ -201,10 +196,10 @@ mod test {
         assert_eq!(proof.to_bytes_le().unwrap().len(), N::POSW_PROOF_SIZE_IN_BYTES);
 
         // Verify the proof is valid on the public inputs.
-        let inputs = [vec![assigned_circuit.nonce], vec![
+        let inputs = vec![
             N::InnerScalarField::read_le(&assigned_circuit.block_header_root.to_bytes_le().unwrap()[..]).unwrap(),
-        ]]
-        .concat();
+            assigned_circuit.nonce,
+        ];
         assert_eq!(2, inputs.len());
         assert!(<<N as Network>::PoswSNARK as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap());
     }
