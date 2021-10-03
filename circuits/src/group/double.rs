@@ -80,7 +80,7 @@ impl<E: Environment> Double for &Affine<E> {
         let two_minus_ax2_minus_y2 = two - ax2_plus_y2;
         E::enforce(|| (&y3, two_minus_ax2_minus_y2, y2_minus_a_x2));
 
-        Affine::from(x3, y3)
+        Affine { x: x3, y: y3 }
     }
 }
 
@@ -134,10 +134,10 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(5, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(7, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(5, scope.num_private_in_scope());
+                assert_eq!(5, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
@@ -157,12 +157,35 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(5, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(7, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(5, scope.num_private_in_scope());
+                assert_eq!(5, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
+    }
+
+    #[test]
+    fn test_double_matches() {
+        // Sample two random elements.
+        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+        let expected = a + a;
+
+        // Constant
+        let candidate_a =
+            Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate())).double();
+        assert_eq!(
+            (expected.to_x_coordinate(), expected.to_y_coordinate()),
+            candidate_a.to_value()
+        );
+
+        // Private
+        let candidate_b =
+            Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate())).double();
+        assert_eq!(
+            (expected.to_x_coordinate(), expected.to_y_coordinate()),
+            candidate_b.to_value()
+        );
     }
 }

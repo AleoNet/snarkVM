@@ -106,7 +106,7 @@ impl<E: Environment> Add<&Self> for Affine<E> {
         let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
         E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));
 
-        Self::from(x3, y3)
+        Self { x: x3, y: y3 }
     }
 }
 
@@ -183,10 +183,10 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(6, scope.num_constants_in_scope());
+                assert_eq!(3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(8, scope.num_private_in_scope());
-                assert_eq!(9, scope.num_constraints_in_scope());
+                assert_eq!(6, scope.num_private_in_scope());
+                assert_eq!(6, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
@@ -208,10 +208,10 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(6, scope.num_constants_in_scope());
+                assert_eq!(3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(8, scope.num_private_in_scope());
-                assert_eq!(9, scope.num_constraints_in_scope());
+                assert_eq!(6, scope.num_private_in_scope());
+                assert_eq!(6, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
@@ -233,12 +233,38 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(6, scope.num_constants_in_scope());
+                assert_eq!(3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(8, scope.num_private_in_scope());
-                assert_eq!(9, scope.num_constraints_in_scope());
+                assert_eq!(6, scope.num_private_in_scope());
+                assert_eq!(6, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
+    }
+
+    #[test]
+    fn test_add_matches() {
+        // Sample two random elements.
+        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+        let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+        let expected = a + b;
+
+        // Constant
+        let first = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
+        let second = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+        let candidate_a = first + second;
+        assert_eq!(
+            (expected.to_x_coordinate(), expected.to_y_coordinate()),
+            candidate_a.to_value()
+        );
+
+        // Private
+        let first = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
+        let second = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+        let candidate_b = first + second;
+        assert_eq!(
+            (expected.to_x_coordinate(), expected.to_y_coordinate()),
+            candidate_b.to_value()
+        );
     }
 }
