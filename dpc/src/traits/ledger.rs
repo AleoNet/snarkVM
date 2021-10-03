@@ -62,14 +62,14 @@ pub trait CommitmentsTreeScheme<N: Network>: Sized {
     /// Returns the index for the given commitment, if it exists.
     fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u32>;
 
+    /// Returns the commitments root.
+    fn root(&self) -> N::CommitmentsRoot;
+
     /// Returns the Merkle path for a given commitment.
     fn to_commitment_inclusion_proof(
         &self,
         commitment: &N::Commitment,
     ) -> Result<MerklePath<N::CommitmentsTreeParameters>>;
-
-    /// Returns the commitments root.
-    fn to_commitments_root(&self) -> &N::CommitmentsRoot;
 }
 
 /// The ledger serial numbers tree is a core state tree of the ledger.
@@ -89,12 +89,12 @@ pub trait SerialNumbersTreeScheme<N: Network>: Sized {
     /// Returns the index for the given serial number, if it exists.
     fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u32>;
 
+    /// Returns the serial numbers root.
+    fn root(&self) -> N::SerialNumbersRoot;
+
     /// Returns the Merkle path for a given serial number.
     fn to_serial_number_inclusion_proof(
         &self,
         serial_number: &N::SerialNumber,
     ) -> Result<MerklePath<N::SerialNumbersTreeParameters>>;
-
-    /// Returns the serial numbers root.
-    fn to_serial_numbers_root(&self) -> &N::SerialNumbersRoot;
 }

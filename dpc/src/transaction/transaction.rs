@@ -36,6 +36,7 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
     fmt,
+    hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
 };
 
@@ -243,6 +244,14 @@ impl<N: Network> FromBytes for Transaction<N> {
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from(kernel, metadata, encrypted_records, proof).expect("Failed to deserialize a transaction"))
+    }
+}
+
+impl<N: Network> Hash for Transaction<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_transaction_id()
+            .expect("Failed to compute the transaction ID")
+            .hash(state);
     }
 }
 

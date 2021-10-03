@@ -21,6 +21,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
+    hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
     sync::Arc,
     time::Instant,
@@ -200,6 +201,16 @@ impl<N: Network> Block<N> {
         self.header.height()
     }
 
+    /// Returns the block timestamp.
+    pub fn timestamp(&self) -> i64 {
+        self.header.timestamp()
+    }
+
+    /// Returns the block difficulty target.
+    pub fn difficulty_target(&self) -> u64 {
+        self.header.difficulty_target()
+    }
+
     /// Returns the hash of this block.
     pub fn to_block_hash(&self) -> Result<N::BlockHash> {
         // Construct the preimage.
@@ -287,6 +298,14 @@ impl<N: Network> ToBytes for Block<N> {
         self.previous_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
         self.transactions.write_le(&mut writer)
+    }
+}
+
+impl<N: Network> Hash for Block<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_block_hash()
+            .expect("Failed to compute the block hash")
+            .hash(state);
     }
 }
 
