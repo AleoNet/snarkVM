@@ -43,40 +43,40 @@ pub mod proof_serialization {
 
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeaderMetadata {
+pub struct BlockHeaderMetadata<N: Network> {
     /// The height of this block - 4 bytes.
     height: u32,
     /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
     timestamp: i64,
     /// Proof of work algorithm difficulty target for this block - 8 bytes
     difficulty_target: u64,
-    /// Nonce for solving the PoW puzzle - 4 bytes
-    nonce: u32,
+    /// Nonce for solving the PoW puzzle - 32 bytes
+    nonce: N::InnerScalarField,
 }
 
-impl BlockHeaderMetadata {
+impl<N: Network> BlockHeaderMetadata<N> {
     /// Initializes a new instance of a genesis block header metadata.
     pub fn genesis() -> Self {
         Self {
             height: 0u32,
             timestamp: 0i64,
             difficulty_target: u64::MAX,
-            nonce: u32::MAX,
+            nonce: Default::default(),
         }
     }
 
     /// Returns the size (in bytes) of a block header's metadata.
-    pub const fn size() -> usize {
-        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u32>()
+    pub fn size() -> usize {
+        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + 32 // N::InnerScalarField
     }
 }
 
-impl ToBytes for BlockHeaderMetadata {
+impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.height.to_le_bytes().write_le(&mut writer)?;
         self.timestamp.to_le_bytes().write_le(&mut writer)?;
         self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.nonce.to_le_bytes().write_le(&mut writer)
+        self.nonce.write_le(&mut writer)
     }
 }
 
@@ -89,8 +89,8 @@ pub struct BlockHeader<N: Network> {
     serial_numbers_root: N::SerialNumbersRoot,
     /// The Merkle root representing the ledger commitments - 32 bytes
     commitments_root: N::CommitmentsRoot,
-    /// The block header metadata - 24 bytes
-    metadata: BlockHeaderMetadata,
+    /// The block header metadata - 52 bytes
+    metadata: BlockHeaderMetadata<N>,
     /// Proof of Succinct Work - 771 bytes
     #[serde(with = "proof_serialization")]
     proof: Option<ProofOfSuccinctWork<N>>,
@@ -113,7 +113,7 @@ impl<N: Network> BlockHeader<N> {
                 height: block_height,
                 timestamp: Utc::now().timestamp(),
                 difficulty_target,
-                nonce: u32::MAX,
+                nonce: Default::default(),
             },
         };
 
@@ -182,51 +182,19 @@ impl<N: Network> BlockHeader<N> {
             && N::posw().verify(&self)
     }
 
-    /// Returns the block header leaves.
-    pub fn to_header_leaves(&self) -> Result<Vec<[u8; 32]>> {
-        let transactions_root_bytes = self.transactions_root.to_bytes_le()?;
-        assert_eq!(transactions_root_bytes.len(), 32);
-        let mut transactions_root = [0u8; 32];
-        transactions_root.copy_from_slice(&transactions_root_bytes);
-
-        let serial_numbers_root_bytes = self.serial_numbers_root.to_bytes_le()?;
-        assert_eq!(serial_numbers_root_bytes.len(), 32);
-        let mut serial_numbers_root = [0u8; 32];
-        serial_numbers_root.copy_from_slice(&serial_numbers_root_bytes);
-
-        let commitments_root_bytes = self.commitments_root.to_bytes_le()?;
-        assert_eq!(commitments_root_bytes.len(), 32);
-        let mut commitments_root = [0u8; 32];
-        commitments_root.copy_from_slice(&commitments_root_bytes);
-
-        let mut metadata_bytes = self.metadata.to_bytes_le()?;
-        assert_eq!(metadata_bytes.len(), 24);
-        metadata_bytes.resize(32, 0u8);
-        assert_eq!(metadata_bytes.len(), 32);
-        let mut metadata = [0u8; 32];
-        metadata.copy_from_slice(&metadata_bytes);
-
-        let mut leaves: Vec<[u8; 32]> = Vec::with_capacity(N::POSW_NUM_LEAVES);
-        leaves.push(transactions_root);
-        leaves.push(serial_numbers_root);
-        leaves.push(commitments_root);
-        leaves.push([0u8; 32]);
-        leaves.push([0u8; 32]);
-        leaves.push([0u8; 32]);
-        leaves.push([0u8; 32]);
-        leaves.push(metadata);
-        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
-
-        Ok(leaves)
+    /// Returns the transactions root in the block header.
+    pub fn transactions_root(&self) -> N::TransactionsRoot {
+        self.transactions_root
     }
 
-    /// Returns the block header root.
-    pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
-        Ok(*MerkleTree::<N::BlockHeaderTreeParameters>::new(
-            Arc::new(N::block_header_tree_parameters().clone()),
-            &self.to_header_leaves()?,
-        )?
-        .root())
+    /// Returns the serial numbers root in the block header.
+    pub fn serial_numbers_root(&self) -> N::SerialNumbersRoot {
+        self.serial_numbers_root
+    }
+
+    /// Returns the commitments root in the block header.
+    pub fn commitments_root(&self) -> N::CommitmentsRoot {
+        self.commitments_root
     }
 
     /// Returns the block height.
@@ -245,7 +213,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns the block nonce.
-    pub fn nonce(&self) -> u32 {
+    pub fn nonce(&self) -> N::InnerScalarField {
         self.metadata.nonce
     }
 
@@ -254,18 +222,54 @@ impl<N: Network> BlockHeader<N> {
         &self.proof
     }
 
-    /// Returns the block header size in bytes - 891 bytes.
+    /// Returns the block header size in bytes - 919 bytes.
     pub fn size() -> usize {
         32 // TransactionsRoot
             + 32 // SerialNumbersRoot
             + 32 // CommitmentsRoot
-            + BlockHeaderMetadata::size()
+            + BlockHeaderMetadata::<N>::size()
             + N::POSW_PROOF_SIZE_IN_BYTES
+    }
+
+    /// Returns an instance of the block header tree.
+    pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderTreeParameters>> {
+        let transactions_root = self.transactions_root.to_bytes_le()?;
+        assert_eq!(transactions_root.len(), 32);
+
+        let serial_numbers_root = self.serial_numbers_root.to_bytes_le()?;
+        assert_eq!(serial_numbers_root.len(), 32);
+
+        let commitments_root = self.commitments_root.to_bytes_le()?;
+        assert_eq!(commitments_root.len(), 32);
+
+        let metadata = self.metadata.to_bytes_le()?;
+        assert_eq!(metadata.len(), 52);
+
+        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(N::POSW_NUM_LEAVES);
+        leaves.push(transactions_root);
+        leaves.push(serial_numbers_root);
+        leaves.push(commitments_root);
+        leaves.push(vec![0u8; 32]);
+        leaves.push(vec![0u8; 32]);
+        leaves.push(vec![0u8; 32]);
+        leaves.push(vec![0u8; 32]);
+        leaves.push(metadata);
+        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
+
+        Ok(MerkleTree::<N::BlockHeaderTreeParameters>::new(
+            Arc::new(N::block_header_tree_parameters().clone()),
+            &leaves,
+        )?)
+    }
+
+    /// Returns the block header root.
+    pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
+        Ok(*self.to_header_tree()?.root())
     }
 
     /// Sets the block header nonce to the given nonce.
     /// This method is used by PoSW to iterate over candidate block headers.
-    pub(crate) fn set_nonce(&mut self, nonce: u32) {
+    pub(crate) fn set_nonce(&mut self, nonce: N::InnerScalarField) {
         self.metadata.nonce = nonce;
     }
 
@@ -288,12 +292,13 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let nonce = <[u8; 4]>::read_le(&mut reader)?;
+        let nonce = FromBytes::read_le(&mut reader)?;
+
         let metadata = BlockHeaderMetadata {
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
-            nonce: u32::from_le_bytes(nonce),
+            nonce,
         };
 
         // Read the header proof.
@@ -334,7 +339,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         self.metadata.height.to_le_bytes().write_le(&mut writer)?;
         self.metadata.timestamp.to_le_bytes().write_le(&mut writer)?;
         self.metadata.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.metadata.nonce.to_le_bytes().write_le(&mut writer)?;
+        self.metadata.nonce.write_le(&mut writer)?;
 
         // Write the header proof.
         proof.write_le(&mut writer)
@@ -344,7 +349,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, BlockScheme, PoSWScheme};
+    use crate::{testnet2::Testnet2, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
 

@@ -17,9 +17,6 @@
 pub mod account;
 pub use account::*;
 
-pub mod block;
-pub use block::*;
-
 pub mod dpc;
 pub use dpc::*;
 

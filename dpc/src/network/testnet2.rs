@@ -138,7 +138,6 @@ impl Network for Testnet2 {
         Vec<Self::InnerScalarField>,
     >;
     type PoSWProof = <Self::PoswSNARK as SNARK>::Proof;
-    type PoSW = PoSW<Self, 32>;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
@@ -153,7 +152,6 @@ impl Network for Testnet2 {
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
-    type Block = Block<Self>;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
@@ -177,6 +175,10 @@ impl Network for Testnet2 {
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
+    type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
+    type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type PoSW = PoSW<Self>;
+    
     type ProgramCircuitIDCRH = BHPCRH<EdwardsBW6, 237, 16>;
     type ProgramCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
     type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
@@ -258,8 +260,8 @@ impl Network for Testnet2 {
         POSW.get_or_init(|| <Self::PoSW as PoSWScheme<Self>>::load(true).expect("Failed to load PoSW"))
     }
     
-    fn genesis_block() -> &'static Self::Block {
-        static BLOCK: OnceCell<<Testnet2 as Network>::Block> = OnceCell::new();
+    fn genesis_block() -> &'static Block<Self> {
+        static BLOCK: OnceCell<Block<Testnet2>> = OnceCell::new();
         BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load genesis block"))
     }
     

@@ -18,19 +18,18 @@
 
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
 };
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
 
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
-pub struct PoSW<N: Network, const MASK_NUM_BYTES: usize> {
+pub struct PoSW<N: Network> {
     /// The proving key. If not provided, PoSW will work in verify-only mode
     /// and the `mine` function will panic.
     proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
@@ -38,13 +37,13 @@ pub struct PoSW<N: Network, const MASK_NUM_BYTES: usize> {
     verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM_BYTES> {
+impl<N: Network> PoSWScheme<N> for PoSW<N> {
     /// Sets up an instance of PoSW using an SRS.
     fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoswSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError> {
         let (proving_key, verifying_key) =
-            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N, MASK_NUM_BYTES>::blank()?, srs)?;
+            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N>::blank()?, srs)?;
 
         Ok(Self {
             proving_key: Some(proving_key),
@@ -54,18 +53,16 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
 
     /// Loads an instance of PoSW using stored parameters.
     fn load(is_prover: bool) -> Result<Self, PoswError> {
-        let pk = match is_prover {
-            true => Some(<<N as Network>::PoswSNARK as SNARK>::ProvingKey::read_le(
-                &PoswSNARKPKParameters::load_bytes()?[..],
-            )?),
-            false => None,
-        };
-        let vk =
-            <<N as Network>::PoswSNARK as SNARK>::VerifyingKey::read_le(&PoswSNARKVKParameters::load_bytes()?[..])?;
-
         Ok(Self {
-            proving_key: pk,
-            verifying_key: vk.into(),
+            proving_key: match is_prover {
+                true => Some(<<N as Network>::PoswSNARK as SNARK>::ProvingKey::read_le(
+                    &PoswSNARKPKParameters::load_bytes()?[..],
+                )?),
+                false => None,
+            },
+            verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey::read_le(
+                &PoswSNARKVKParameters::load_bytes()?[..],
+            )?,
         })
     }
 
@@ -86,12 +83,10 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
 
         loop {
             // Sample a random nonce.
-            let nonce = rng.gen_range(0..u32::MAX);
-            block_header.set_nonce(nonce);
+            block_header.set_nonce(UniformRand::rand(rng));
 
             // Instantiate the circuit.
-            let leaves = block_header.to_header_leaves()?;
-            let circuit = PoSWCircuit::<N, MASK_NUM_BYTES>::new(nonce, &leaves)?;
+            let circuit = PoSWCircuit::<N>::new(&block_header)?;
 
             // Generate the proof.
             let timer = start_timer!(|| "PoSW proof");
@@ -136,24 +131,11 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
             }
         };
 
-        let inputs = |(nonce, root): (u32, &N::BlockHeaderRoot)| -> anyhow::Result<Vec<N::InnerScalarField>> {
-            // Commit to the nonce and root.
-            let mask = PoSWCircuit::<N, MASK_NUM_BYTES>::commit(nonce, root)?;
-
-            // get the mask and the root in public inputs format
-            let merkle_root = N::InnerScalarField::read_le(&root.to_bytes_le()?[..])?;
-            let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
-            Ok(inputs)
-        };
-
         // Construct the inputs.
-        let inputs = match inputs((block_header.nonce(), &block_header.to_header_root().unwrap())) {
-            Ok(inputs) => inputs,
-            Err(error) => {
-                eprintln!("{}", error);
-                return false;
-            }
-        };
+        let inputs = vec![
+            N::InnerScalarField::read_le(&block_header.to_header_root().unwrap().to_bytes_le().unwrap()[..]).unwrap(),
+            block_header.nonce(),
+        ];
 
         // Ensure the proof is valid.
         if !<<N as Network>::PoswSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
@@ -167,7 +149,7 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWScheme<N> for PoSW<N, MASK_NUM
 
 #[cfg(test)]
 mod tests {
-    use crate::{testnet2::Testnet2, BlockScheme, Network, PoSWScheme};
+    use crate::{testnet2::Testnet2, Network, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
     use snarkvm_utilities::ToBytes;

@@ -48,10 +48,8 @@ pub struct Ledger<N: Network, S: Storage> {
 }
 
 impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
-    type Block = Block<N>;
-
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: Option<&Path>, genesis_block: Self::Block) -> Result<Self> {
+    fn new(path: Option<&Path>, genesis_block: Block<N>) -> Result<Self> {
         // Ensure the given block is a genesis block.
         if !genesis_block.header().is_genesis() {
             return Err(LedgerError::InvalidGenesisBlockHeader.into());
@@ -94,14 +92,14 @@ impl<N: Network, S: Storage> LedgerScheme<N> for Ledger<N, S> {
     }
 
     /// Returns the latest block in the ledger.
-    fn latest_block(&self) -> Result<Self::Block> {
+    fn latest_block(&self) -> Result<Block<N>> {
         let block_hash = self.get_block_hash(self.block_height())?;
         Ok(self.get_block(&block_hash)?)
     }
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Self::Block> {
-        BlockScheme::from(
+    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Block<N>> {
+        Block::from(
             self.get_previous_block_hash(block_hash)?,
             self.get_block_header(block_hash)?,
             self.get_block_transactions(block_hash)?,
