@@ -26,7 +26,6 @@ members = [
   "dpc",
   "fields",
   "gadgets",
-  "ledger",
   "marlin", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
   "parameters",
   "polycommit", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
@@ -52,8 +51,8 @@ default = ["core"]
 #
 # If you need more granular control of members and/or member features,
 # please import the requisite crates directly and enable features as needed.
-core = ["dpc", "ledger", "utilities"]
-full = ["algorithms", "curves", "dpc", "fields", "gadgets", "ledger", "parameters", "r1cs", "utilities"]
+core = ["dpc", "utilities"]
+full = ["algorithms", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
@@ -61,7 +60,6 @@ curves = ["snarkvm-curves"]
 dpc = ["snarkvm-dpc"]
 fields = ["snarkvm-fields"]
 gadgets = ["snarkvm-gadgets"]
-ledger = ["snarkvm-ledger"]
 parameters = ["snarkvm-parameters"]
 r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
@@ -94,11 +92,6 @@ optional = true
 
 [dependencies.snarkvm-gadgets]
 path = "./gadgets"
-version = "0.7.5"
-optional = true
-
-[dependencies.snarkvm-ledger]
-path = "./ledger"
 version = "0.7.5"
 optional = true
 

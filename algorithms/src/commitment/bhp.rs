@@ -33,7 +33,7 @@ pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WIN
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G::Affine;
+    type Output = <G::Affine as AffineCurve>::BaseField;
     type Parameters = (Vec<Vec<G>>, Vec<G>);
     type Randomness = G::ScalarField;
 
@@ -67,7 +67,13 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             ));
         }
 
-        let mut output = self.bhp_crh.hash(&input)?.into_projective();
+        // Convert input bytes to bits.
+        let bits = input
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+
+        let mut output = self.bhp_crh.hash_bits_inner(&bits)?;
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
@@ -77,7 +83,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        Ok(output.into_affine())
+        let affine = output.into_affine();
+        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
+        Ok(affine.to_x_coordinate())
     }
 
     fn parameters(&self) -> Self::Parameters {

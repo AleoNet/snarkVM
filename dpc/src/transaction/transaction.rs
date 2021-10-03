@@ -29,16 +29,14 @@ use crate::{
     TransactionScheme,
     DPC,
 };
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CRH, SNARK},
-};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
     fmt,
+    hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
 };
 
@@ -214,7 +212,7 @@ impl<N: Network> TransactionScheme<N> for Transaction<N> {
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
     fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        Ok(N::transaction_id_crh().hash(&self.kernel().to_bytes_le()?)?)
+        self.kernel.to_transaction_id()
     }
 }
 
@@ -246,6 +244,14 @@ impl<N: Network> FromBytes for Transaction<N> {
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from(kernel, metadata, encrypted_records, proof).expect("Failed to deserialize a transaction"))
+    }
+}
+
+impl<N: Network> Hash for Transaction<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_transaction_id()
+            .expect("Failed to compute the transaction ID")
+            .hash(state);
     }
 }
 

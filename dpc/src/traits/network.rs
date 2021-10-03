@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockScheme, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, PublicVariables};
+use crate::{Block, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -85,7 +85,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     /// SNARK for PoSW.
     type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, Proof = Self::PoSWProof, UniversalSetupConfig = usize>;
     type PoSWProof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send;
-    type PoSW: PoSWScheme<Self>;
     
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
@@ -105,7 +104,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     /// CRH schemes for the block hash. Invoked only over `Self::InnerScalarField`.
     type BlockHashCRH: CRH<Output = Self::BlockHash>;
     type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + PartialEq + Eq + Hash + Sync + Send;
-    type Block: BlockScheme;
     
     /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderTreeCRH: CRH<Output = Self::BlockHeaderRoot>;
@@ -134,14 +132,10 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// Commitment scheme for local data leaves. Invoked inside `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCommitmentScheme: CommitmentScheme;
-    type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
-
-    /// CRH scheme for computing the local data root. Invoked inside `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
-    type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
+    type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::BlockHeaderRoot, Output = Self::InnerScalarField>;
+    type PoSWMaskPRFGadget: PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>;
+    type PoSW: PoSWScheme<Self>;
     
     /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
@@ -167,6 +161,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     
     /// CRH scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::TransactionID>;
+    type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField>;
     type TransactionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH scheme for computing the transactions root. Invoked only over `Self::InnerScalarField`.
@@ -182,8 +177,6 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-    fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
-    fn local_data_crh() -> &'static Self::LocalDataCRH;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
     fn program_circuits_tree_parameters() -> &'static Self::ProgramCircuitsTreeParameters;
@@ -206,8 +199,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
     
     fn posw() -> &'static Self::PoSW;
-    
-    fn genesis_block() -> &'static Self::Block;
+
+    fn genesis_block() -> &'static Block<Self>;
 
     /// Returns the program circuit ID given a program circuit verifying key.
     fn program_circuit_id(

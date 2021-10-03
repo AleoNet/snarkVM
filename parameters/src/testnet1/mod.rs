@@ -24,7 +24,7 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "posw_snark_pk",
-    138984209
+    139217169
 );
 impl_params_local!(PoswSNARKVKParameters, posw_snark_vk_test, "./", "posw_snark_vk", 400278);
 
@@ -51,7 +51,7 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "inner_snark_pk",
-    124156537
+    117260021
 );
 impl_params_local!(
     InnerSNARKVKParameters,
@@ -68,12 +68,12 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "outer_snark_pk",
-    203109557
+    203110329
 );
 impl_params_local!(
     OuterSNARKVKParameters,
     outer_snark_vk_test,
     "./",
     "outer_snark_vk",
-    3478
+    3671
 );

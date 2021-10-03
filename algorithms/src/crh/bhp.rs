@@ -45,7 +45,7 @@ pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZ
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G::Affine;
+    type Output = <G::Affine as AffineCurve>::BaseField;
     type Parameters = Vec<Vec<G>>;
 
     const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
@@ -88,67 +88,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        let eval_time = start_timer!(|| "BoweHopwoodPedersenCRH::hash");
-
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
-        }
-        debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
-        debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
-
-        // overzealous but stack allocation
-        let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buf_slice[..input.len()].copy_from_slice(input);
-
-        let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
-        if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
-            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
-        }
-
-        debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
-
-        debug_assert_eq!(
-            self.bases.len(),
-            NUM_WINDOWS,
-            "Incorrect number of windows ({:?}) for BHP of {:?}x{:?}x{}",
-            self.bases.len(),
-            WINDOW_SIZE,
-            NUM_WINDOWS,
-            BOWE_HOPWOOD_CHUNK_SIZE,
-        );
-        debug_assert_eq!(self.bases.len(), NUM_WINDOWS);
-        for bases in self.bases.iter() {
-            debug_assert_eq!(bases.len(), WINDOW_SIZE);
-        }
-        let base_lookup = self.base_lookup(&self.bases);
-        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
-        for bases in base_lookup.iter() {
-            debug_assert_eq!(bases.len(), WINDOW_SIZE);
-        }
-        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
-
-        // Compute sum of h_i^{sum of
-        // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
-        // for all i. Described in section 5.4.1.7 in the Zcash protocol
-        // specification.
-        let result = buf_slice[..bit_len]
-            .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-            .zip(base_lookup)
-            .map(|(segment_bits, segment_generators)| {
-                segment_bits
-                    .chunks(BOWE_HOPWOOD_CHUNK_SIZE)
-                    .zip(segment_generators)
-                    .map(|(chunk_bits, generator)| {
-                        &generator
-                            [(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
-                    })
-                    .fold(G::zero(), |a, b| a + b)
-            })
-            .fold(G::zero(), |a, b| a + b);
-
-        end_timer!(eval_time);
-
-        Ok(result.into_affine())
+        let affine = self.hash_bits_inner(input)?.into_affine();
+        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
+        Ok(affine.to_x_coordinate())
     }
 
     fn parameters(&self) -> &Self::Parameters {
@@ -205,6 +147,66 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
                     .collect())
             })
             .expect("failed to init BoweHopwoodPedersenCRHParameters")
+    }
+
+    pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
+            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
+        }
+        debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
+        debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
+
+        // overzealous but stack allocation
+        let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        buf_slice[..input.len()].copy_from_slice(input);
+
+        let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
+        if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
+            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
+        }
+
+        debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
+
+        debug_assert_eq!(
+            self.bases.len(),
+            NUM_WINDOWS,
+            "Incorrect number of windows ({:?}) for BHP of {:?}x{:?}x{}",
+            self.bases.len(),
+            WINDOW_SIZE,
+            NUM_WINDOWS,
+            BOWE_HOPWOOD_CHUNK_SIZE,
+        );
+        debug_assert_eq!(self.bases.len(), NUM_WINDOWS);
+        for bases in self.bases.iter() {
+            debug_assert_eq!(bases.len(), WINDOW_SIZE);
+        }
+        let base_lookup = self.base_lookup(&self.bases);
+        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
+        for bases in base_lookup.iter() {
+            debug_assert_eq!(bases.len(), WINDOW_SIZE);
+        }
+        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
+
+        // Compute sum of h_i^{sum of
+        // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
+        // for all i. Described in section 5.4.1.7 in the Zcash protocol
+        // specification.
+        let output = buf_slice[..bit_len]
+            .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
+            .zip(base_lookup)
+            .map(|(segment_bits, segment_generators)| {
+                segment_bits
+                    .chunks(BOWE_HOPWOOD_CHUNK_SIZE)
+                    .zip(segment_generators)
+                    .map(|(chunk_bits, generator)| {
+                        &generator
+                            [(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
+                    })
+                    .fold(G::zero(), |a, b| a + b)
+            })
+            .fold(G::zero(), |a, b| a + b);
+
+        Ok(output)
     }
 }
 
@@ -285,7 +287,7 @@ mod tests {
         let output = crh.hash(&input).unwrap();
         assert_eq!(
             &*output.to_string(),
-            "Affine(x=2591648422993904809826711498838675948697848925001720514073745852367402669969, y=3090936323959984371620829350469190013004970213099218155955516230575434312314)"
+            "2591648422993904809826711498838675948697848925001720514073745852367402669969"
         );
     }
 }

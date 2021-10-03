@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{prelude::*, Network};
+use snarkvm_algorithms::traits::CRH;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -107,6 +108,11 @@ impl<N: Network> TransactionKernel<N> {
     /// Returns a reference to the memo.
     pub fn memo(&self) -> &Memo<N> {
         &self.memo
+    }
+
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
+        Ok(N::transaction_id_crh().hash(&self.to_bytes_le()?)?)
     }
 
     #[inline]

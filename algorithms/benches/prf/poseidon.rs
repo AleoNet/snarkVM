@@ -14,8 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod merkle_path;
-pub use merkle_path::*;
+#[macro_use]
+extern crate criterion;
 
-#[cfg(test)]
-pub mod tests;
+use snarkvm_algorithms::{prf::PoseidonPRF, traits::PRF};
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_utilities::UniformRand;
+
+use criterion::Criterion;
+use rand::{thread_rng, Rng};
+
+fn poseidon_prf(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+
+    c.bench_function("PoseidonPRF PRF evaluation", move |b| {
+        let input: Vec<_> = vec![UniformRand::rand(rng)];
+        let seed = UniformRand::rand(rng);
+
+        b.iter(|| PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input).unwrap())
+    });
+}
+
+criterion_group! {
+    name = prf;
+    config = Criterion::default().sample_size(50);
+    targets = poseidon_prf
+}
+
+criterion_main!(prf);

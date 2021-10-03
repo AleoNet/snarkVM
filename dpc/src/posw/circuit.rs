@@ -18,50 +18,34 @@
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 
-use crate::Network;
-use snarkvm_algorithms::{merkle_tree::MerkleTree, prelude::*};
+use crate::{BlockHeader, Network};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_root,
-    integers::uint::UInt8,
-    traits::{AllocGadget, CRHGadget, MaskedCRHGadget},
+    traits::{AllocGadget, CRHGadget, MaskedCRHGadget, PRFGadget},
     EqGadget,
+    ToBytesGadget,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use snarkvm_utilities::ToBytes;
 
-use anyhow::{anyhow, Result};
-use blake2::{digest::Digest, Blake2s};
-use std::sync::Arc;
+use anyhow::Result;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PoSWCircuit<N: Network, const MASK_NUM_BYTES: usize> {
-    hashed_leaves: Vec<<<N::BlockHeaderTreeParameters as MerkleParameters>::H as CRH>::Output>,
-    mask: Vec<u8>,
+pub struct PoSWCircuit<N: Network> {
     block_header_root: N::BlockHeaderRoot,
+    nonce: N::InnerScalarField,
+    hashed_leaves: Vec<<<N::BlockHeaderTreeParameters as MerkleParameters>::H as CRH>::Output>,
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
+impl<N: Network> PoSWCircuit<N> {
     /// Creates a PoSW circuit from the provided transaction ids and nonce.
-    pub fn new(nonce: u32, leaves: &[[u8; 32]]) -> Result<Self> {
-        // Ensure the number of leaves is correct.
-        if leaves.len() != N::POSW_NUM_LEAVES {
-            return Err(anyhow!("PoSW number of leaves length is incorrect: {}", leaves.len()));
-        }
-
-        // Compute the Merkle root on hashed leaves.
-        let tree = MerkleTree::<N::BlockHeaderTreeParameters>::new(
-            Arc::new(N::block_header_tree_parameters().clone()),
-            leaves,
-        )?;
-        let root = *tree.root();
-
-        // Generate the mask by committing to the nonce and root.
-        let mask = Self::commit(nonce, &root)?;
+    pub fn new(block_header: &BlockHeader<N>) -> Result<Self> {
+        let tree = block_header.to_header_tree()?;
 
         Ok(Self {
+            block_header_root: *tree.root(),
+            nonce: block_header.nonce(),
             hashed_leaves: tree.hashed_leaves().to_vec(),
-            mask,
-            block_header_root: root,
         })
     }
 
@@ -72,50 +56,19 @@ impl<N: Network, const MASK_NUM_BYTES: usize> PoSWCircuit<N, MASK_NUM_BYTES> {
             .map_err(|_| SynthesisError::Unsatisfiable)?;
 
         Ok(Self {
-            hashed_leaves: vec![empty_hash; N::POSW_NUM_LEAVES],
-            mask: vec![0; MASK_NUM_BYTES],
             block_header_root: Default::default(),
+            nonce: Default::default(),
+            hashed_leaves: vec![empty_hash; N::POSW_NUM_LEAVES],
         })
-    }
-
-    /// Returns a reference to the PoSW hashed leaves.
-    pub fn hashed_leaves(&self) -> &Vec<<<N::BlockHeaderTreeParameters as MerkleParameters>::H as CRH>::Output> {
-        &self.hashed_leaves
-    }
-
-    /// Returns a reference to the PoSW mask.
-    pub fn mask(&self) -> &Vec<u8> {
-        &self.mask
-    }
-
-    /// Returns a reference to the block header root.
-    pub fn block_header_root(&self) -> &N::BlockHeaderRoot {
-        &self.block_header_root
-    }
-
-    /// Commits to the given nonce and root.
-    pub(super) fn commit(nonce: u32, root: &N::BlockHeaderRoot) -> Result<Vec<u8>> {
-        let mut h = Blake2s::new();
-        h.update(&nonce.to_le_bytes());
-        h.update(&root.to_bytes_le()?);
-        let mask = h.finalize().to_vec();
-
-        match mask.len() == MASK_NUM_BYTES {
-            true => Ok(mask),
-            false => Err(anyhow!("PoSW mask length is incorrect: {}", mask.len())),
-        }
     }
 }
 
-impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScalarField>
-    for PoSWCircuit<N, MASK_NUM_BYTES>
-{
+impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
     fn generate_constraints<CS: ConstraintSystem<N::InnerScalarField>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
         assert_eq!(self.hashed_leaves.len(), N::POSW_NUM_LEAVES);
-        assert_eq!(self.mask.len(), MASK_NUM_BYTES);
 
         let crh_parameters = N::BlockHeaderTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
             Ok(N::block_header_tree_parameters().crh().clone())
@@ -130,7 +83,24 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
                 Ok(crh_parameters)
             })?;
 
-        let mask_bytes = UInt8::alloc_input_vec_le(&mut cs.ns(|| "mask"), &self.mask)?;
+        let block_header_root =
+            <N::PoSWMaskPRFGadget as PRFGadget<N::PoSWMaskPRF, N::InnerScalarField>>::Seed::alloc_input(
+                &mut cs.ns(|| "Declare block header root"),
+                || Ok(self.block_header_root),
+            )?;
+
+        let nonce = <N::PoSWMaskPRFGadget as PRFGadget<N::PoSWMaskPRF, N::InnerScalarField>>::Input::alloc_input(
+            &mut cs.ns(|| "Declare given nonce"),
+            || Ok(vec![self.nonce]),
+        )?;
+
+        let mask = <N::PoSWMaskPRFGadget as PRFGadget<N::PoSWMaskPRF, N::InnerScalarField>>::check_evaluation_gadget(
+            &mut cs.ns(|| "Compute mask"),
+            &block_header_root,
+            &nonce,
+        )?;
+
+        let mask_bytes = mask.to_bytes(&mut cs.ns(|| "mask to bytes"))?;
 
         // Allocate the hashed leaves.
         let hashed_leaf_gadgets = self
@@ -161,14 +131,9 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
         )?;
 
         // Enforce the input root is the same as the computed root.
-        let expected_root = <N::BlockHeaderTreeCRHGadget as CRHGadget<
-            <N::BlockHeaderTreeParameters as MerkleParameters>::H,
-            N::InnerScalarField,
-        >>::OutputGadget::alloc_input(
-            cs.ns(|| "alloc input expected block header root"),
-            || Ok(&self.block_header_root),
-        )?;
-        candidate_root.enforce_equal(cs.ns(|| "enforce equal"), &expected_root)?;
+        let candidate_root_bytes = candidate_root.to_bytes(cs.ns(|| "masked root to bytes"))?;
+        let expected_root_bytes = block_header_root.to_bytes(cs.ns(|| "block header root to bytes"))?;
+        candidate_root_bytes.enforce_equal(cs.ns(|| "enforce equal"), &expected_root_bytes)?;
 
         Ok(())
     }
@@ -178,57 +143,22 @@ impl<N: Network, const MASK_NUM_BYTES: usize> ConstraintSynthesizer<N::InnerScal
 mod test {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2};
-    use snarkvm_fields::ToConstraintField;
     use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::FromBytes;
+    use snarkvm_utilities::{FromBytes, ToBytes};
 
-    use blake2::{digest::Digest, Blake2s};
     use rand::{rngs::ThreadRng, thread_rng, CryptoRng, Rng};
-    use std::{sync::Arc, time::Instant};
-
-    fn posw_public_inputs_test<N: Network>() {
-        // Setup the given parameters.
-        let nonce = 1u32;
-        let leaves = vec![[3u8; 32]; N::POSW_NUM_LEAVES];
-
-        // Generate the expected inputs.
-        let (expected_hashed_leaves, expected_mask, expected_root) = {
-            let tree = MerkleTree::<N::BlockHeaderTreeParameters>::new(
-                Arc::new(N::block_header_tree_parameters().clone()),
-                &leaves[..],
-            )
-            .unwrap();
-            let root = tree.root();
-
-            let mut h = Blake2s::new();
-            h.update(&nonce.to_le_bytes());
-            h.update(root.to_bytes_le().unwrap());
-            let mask = h.finalize().to_vec();
-
-            let hashed_leaves = tree.hashed_leaves().to_vec();
-
-            (hashed_leaves, mask, root.clone())
-        };
-
-        // Generate the candidate inputs.
-        let candidate_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
-        assert_eq!(expected_hashed_leaves, candidate_circuit.hashed_leaves);
-        assert_eq!(expected_mask, candidate_circuit.mask);
-        assert_eq!(expected_root, candidate_circuit.block_header_root);
-    }
+    use std::time::Instant;
 
     fn posw_constraints_test<N: Network>() {
-        // Construct an assigned circuit.
-        let nonce = 1u32;
-        let leaves = vec![[3u8; 32]; N::POSW_NUM_LEAVES];
-        let assigned_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
-
-        // Check that the constraint system was satisfied.
         let mut cs = TestConstraintSystem::<N::InnerScalarField>::new();
-        assigned_circuit
+
+        // Synthesize the PoSW circuit.
+        PoSWCircuit::<N>::blank()
+            .unwrap()
             .generate_constraints(&mut cs.ns(|| "PoSW circuit"))
             .unwrap();
 
+        // Check that the constraint system was satisfied.
         if !cs.is_satisfied() {
             println!("Unsatisfied constraints:");
             println!("{}", cs.which_is_unsatisfied().unwrap());
@@ -236,7 +166,7 @@ mod test {
 
         let num_constraints = cs.num_constraints();
         println!("PoSW circuit num constraints: {:?}", num_constraints);
-        assert_eq!(61535, num_constraints);
+        assert_eq!(62550, num_constraints);
     }
 
     fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
@@ -247,16 +177,14 @@ mod test {
             let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
             <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(
-                &PoSWCircuit::<N, 32>::blank().unwrap(),
+                &PoSWCircuit::<N>::blank().unwrap(),
                 &mut SRS::<R, _>::Universal(&universal_srs),
             )
             .unwrap()
         };
 
         // Construct an assigned circuit.
-        let nonce = 1u32;
-        let leaves = vec![[3u8; 32]; N::POSW_NUM_LEAVES];
-        let assigned_circuit = PoSWCircuit::<N, 32>::new(nonce, &leaves).unwrap();
+        let assigned_circuit = PoSWCircuit::<N>::new(N::genesis_block().header()).unwrap();
 
         // Compute the proof.
         let proof = {
@@ -268,20 +196,12 @@ mod test {
         assert_eq!(proof.to_bytes_le().unwrap().len(), N::POSW_PROOF_SIZE_IN_BYTES);
 
         // Verify the proof is valid on the public inputs.
-        let inputs = [
-            ToConstraintField::<<N as Network>::InnerScalarField>::to_field_elements(&assigned_circuit.mask[..])
-                .unwrap(),
-            vec![N::InnerScalarField::read_le(&assigned_circuit.block_header_root.to_bytes_le().unwrap()[..]).unwrap()],
-        ]
-        .concat();
-        assert_eq!(3, inputs.len());
+        let inputs = vec![
+            N::InnerScalarField::read_le(&assigned_circuit.block_header_root.to_bytes_le().unwrap()[..]).unwrap(),
+            assigned_circuit.nonce,
+        ];
+        assert_eq!(2, inputs.len());
         assert!(<<N as Network>::PoswSNARK as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap());
-    }
-
-    #[test]
-    fn test_posw_public_inputs() {
-        posw_public_inputs_test::<Testnet1>();
-        posw_public_inputs_test::<Testnet2>();
     }
 
     #[test]

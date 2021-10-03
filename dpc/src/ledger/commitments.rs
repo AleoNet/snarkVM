@@ -26,22 +26,22 @@ use std::{collections::HashMap, sync::Arc};
 
 /// A commitments tree contains all commitments on the ledger.
 #[derive(Derivative)]
-#[derivative(Debug(bound = "N: Network"))]
-pub struct CommitmentsTree<N: Network> {
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+pub struct Commitments<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<N::CommitmentsTreeParameters>,
+    tree: Arc<MerkleTree<N::CommitmentsTreeParameters>>,
     commitments: HashMap<N::Commitment, u32>,
     current_index: u32,
 }
 
-impl<N: Network> CommitmentsTreeScheme<N> for CommitmentsTree<N> {
+impl<N: Network> CommitmentsTreeScheme<N> for Commitments<N> {
     /// Initializes an empty commitments tree.
     fn new() -> Result<Self> {
         Ok(Self {
-            tree: MerkleTree::<N::CommitmentsTreeParameters>::new::<N::Commitment>(
+            tree: Arc::new(MerkleTree::<N::CommitmentsTreeParameters>::new::<N::Commitment>(
                 Arc::new(N::commitments_tree_parameters().clone()),
                 &vec![],
-            )?,
+            )?),
             commitments: Default::default(),
             current_index: 0,
         })
@@ -55,7 +55,7 @@ impl<N: Network> CommitmentsTreeScheme<N> for CommitmentsTree<N> {
             return Err(MerkleError::Message(format!("{} already exists in the commitments tree", commitment)).into());
         }
 
-        self.tree = self.tree.rebuild(self.current_index as usize, &[commitment])?;
+        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &[commitment])?);
 
         self.commitments.insert(*commitment, self.current_index);
 
@@ -82,7 +82,7 @@ impl<N: Network> CommitmentsTreeScheme<N> for CommitmentsTree<N> {
             return Err(anyhow!("The list of given commitments contains double spends"));
         }
 
-        self.tree = self.tree.rebuild(self.current_index as usize, &commitments)?;
+        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &commitments)?);
 
         let start_index = self.current_index;
         let num_commitments = commitments.len();
@@ -110,6 +110,11 @@ impl<N: Network> CommitmentsTreeScheme<N> for CommitmentsTree<N> {
         self.commitments.get(commitment)
     }
 
+    /// Returns the commitments root.
+    fn root(&self) -> N::CommitmentsRoot {
+        *self.tree.root()
+    }
+
     /// Returns the Merkle path for a given commitment.
     fn to_commitment_inclusion_proof(
         &self,
@@ -120,14 +125,9 @@ impl<N: Network> CommitmentsTreeScheme<N> for CommitmentsTree<N> {
             _ => Err(MerkleError::MissingLeaf(format!("{}", commitment)).into()),
         }
     }
-
-    /// Returns the commitments root.
-    fn to_commitments_root(&self) -> &N::CommitmentsRoot {
-        self.tree.root()
-    }
 }
 
-impl<N: Network> Default for CommitmentsTree<N> {
+impl<N: Network> Default for Commitments<N> {
     fn default() -> Self {
         Self::new().unwrap()
     }

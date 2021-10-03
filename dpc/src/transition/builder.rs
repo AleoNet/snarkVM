@@ -233,10 +233,10 @@ impl<N: Network> TransitionBuilder<N> {
 
         Ok(StateTransition {
             kernel,
+            executable,
             input_records,
             output_records,
             noop_private_keys,
-            executable,
         })
     }
 
