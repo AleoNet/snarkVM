@@ -19,8 +19,8 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
+use crate::{IoResult, Read, Write};
 use derivative::Derivative;
-use std::io::{Read, Result as IoResult, Write};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Derivative)]

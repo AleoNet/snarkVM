@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::String;
+
 /// Describes the failure modes of the AHP scheme.
 #[derive(Debug)]
 pub enum AHPError {

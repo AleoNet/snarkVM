@@ -41,6 +41,9 @@ use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand_core::RngCore;
 
+#[cfg(not(feature = "std"))]
+use snarkvm_utilities::println;
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use snarkvm_algorithms::fft::DensePolynomial;

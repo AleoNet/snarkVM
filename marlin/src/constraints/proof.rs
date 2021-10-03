@@ -23,7 +23,7 @@ use snarkvm_gadgets::{nonnative::NonNativeFieldVar, traits::alloc::AllocGadget, 
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use crate::{marlin::Proof, PolynomialCommitment};
+use crate::{marlin::Proof, PolynomialCommitment, String, ToString, Vec};
 use snarkvm_utilities::FromBytes;
 
 /// The prover message gadget
