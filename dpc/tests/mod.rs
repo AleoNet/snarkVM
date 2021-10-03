@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet2::Testnet2, BlockScheme, Network, PoSWScheme};
+use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme};
 use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};

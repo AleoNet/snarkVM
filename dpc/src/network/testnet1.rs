@@ -58,13 +58,15 @@ use snarkvm_gadgets::{
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
+use snarkvm_marlin::{
+    constraints::snark::MarlinSNARK,
+    marlin::MarlinTestnet1Mode,
+    FiatShamirAlgebraicSpongeRng,
+    PoseidonSponge,
+};
 use snarkvm_parameters::{testnet1::*, Genesis, Parameter};
-use snarkvm_utilities::{FromBytes, ToMinimalBits};
-
-// TODO (howardwu): TEMPORARY - Remove me.
-use blake2::Blake2s;
-use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
+use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
@@ -110,17 +112,16 @@ impl Network for Testnet1 {
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    
+
     type PoswSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
         SonicKZG10<Self::InnerCurve>,
-        FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>,
+        FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet1Mode,
         Vec<Self::InnerScalarField>,
     >;
     type PoSWProof = <Self::PoswSNARK as SNARK>::Proof;
-    type PoSW = PoSW<Self, 32>;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
@@ -135,7 +136,6 @@ impl Network for Testnet1 {
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
-    type Block = Block<Self>;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderTreeCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
@@ -158,6 +158,10 @@ impl Network for Testnet1 {
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 296, 32>;
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
+
+    type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
+    type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type PoSW = PoSW<Self>;
 
     type ProgramCircuitIDCRH = BHPCRH<EdwardsBW6, 237, 16>;
     type ProgramCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
@@ -240,8 +244,8 @@ impl Network for Testnet1 {
         POSW.get_or_init(|| <Self::PoSW as PoSWScheme<Self>>::load(true).expect("Failed to load PoSW"))        
     }
 
-    fn genesis_block() -> &'static Self::Block {
-        static BLOCK: OnceCell<<Testnet1 as Network>::Block> = OnceCell::new();
+    fn genesis_block() -> &'static Block<Self> {
+        static BLOCK: OnceCell<Block<Testnet1>> = OnceCell::new();
         BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load genesis block"))
     }
 

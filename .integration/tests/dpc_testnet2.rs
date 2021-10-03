@@ -91,7 +91,7 @@ fn dpc_testnet2_integration_test() {
     .unwrap();
 
     // Construct the new block.
-    let block = BlockScheme::from(previous_hash, header, transactions).unwrap();
+    let block = Block::from(previous_hash, header, transactions).unwrap();
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.block_height(), 1);

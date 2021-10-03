@@ -233,7 +233,7 @@ impl<N: Network> Deref for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, BlockScheme};
+    use crate::testnet2::Testnet2;
 
     #[test]
     fn test_duplicate_transactions() {

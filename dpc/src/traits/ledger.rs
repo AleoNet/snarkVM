@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockScheme, Network};
+use crate::{Block, Network};
 use snarkvm_algorithms::merkle_tree::MerklePath;
 
 use anyhow::Result;
 use std::path::Path;
 
 pub trait LedgerScheme<N: Network>: Sized {
-    type Block: BlockScheme;
-
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: Option<&Path>, genesis_block: Self::Block) -> Result<Self>;
+    fn new(path: Option<&Path>, genesis_block: Block<N>) -> Result<Self>;
 
     /// Returns the latest number of blocks in the ledger.
     /// A block height of 0 indicates the ledger is uninitialized.
@@ -32,10 +30,10 @@ pub trait LedgerScheme<N: Network>: Sized {
     fn block_height(&self) -> u32;
 
     /// Returns the latest block in the ledger.
-    fn latest_block(&self) -> Result<Self::Block>;
+    fn latest_block(&self) -> Result<Block<N>>;
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Self::Block>;
+    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Block<N>>;
 
     /// Returns the block hash given a block number.
     fn get_block_hash(&self, block_number: u32) -> Result<N::BlockHash>;

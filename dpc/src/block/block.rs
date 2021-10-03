@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, BlockHeader, BlockScheme, Network, Transaction, TransactionScheme, Transactions};
+use crate::{Address, AleoAmount, BlockHeader, Network, Transaction, TransactionScheme, Transactions};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -36,25 +36,15 @@ pub struct Block<N: Network> {
     transactions: Transactions<N>,
 }
 
-impl<N: Network> BlockScheme for Block<N> {
-    type Address = Address<N>;
-    type BlockHash = N::BlockHash;
-    type Commitment = N::Commitment;
-    type CommitmentsRoot = N::CommitmentsRoot;
-    type Header = BlockHeader<N>;
-    type SerialNumber = N::SerialNumber;
-    type SerialNumbersRoot = N::SerialNumbersRoot;
-    type Transaction = Transaction<N>;
-    type Transactions = Transactions<N>;
-
+impl<N: Network> Block<N> {
     /// Initializes a new block.
-    fn new<R: Rng + CryptoRng>(
-        previous_block_hash: Self::BlockHash,
+    pub fn new<R: Rng + CryptoRng>(
+        previous_block_hash: N::BlockHash,
         block_height: u32,
         difficulty_target: u64,
-        transactions: Self::Transactions,
-        serial_numbers_root: Self::SerialNumbersRoot,
-        commitments_root: Self::CommitmentsRoot,
+        transactions: Transactions<N>,
+        serial_numbers_root: N::SerialNumbersRoot,
+        commitments_root: N::CommitmentsRoot,
         rng: &mut R,
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
@@ -69,11 +59,11 @@ impl<N: Network> BlockScheme for Block<N> {
             rng,
         )?;
 
-        <Self as BlockScheme>::from(previous_block_hash, header, transactions)
+        Self::from(previous_block_hash, header, transactions)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.
-    fn new_genesis<R: Rng + CryptoRng>(recipient: Self::Address, rng: &mut R) -> Result<Self> {
+    pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
         let transactions = Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), rng)?])?;
@@ -120,7 +110,7 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 
     /// Initializes a new block from a given previous hash, header, and transactions list.
-    fn from(previous_hash: Self::BlockHash, header: Self::Header, transactions: Self::Transactions) -> Result<Self> {
+    pub fn from(previous_hash: N::BlockHash, header: BlockHeader<N>, transactions: Transactions<N>) -> Result<Self> {
         // Construct the block.
         let block = Self {
             previous_hash,
@@ -136,7 +126,7 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 
     /// Returns `true` if the block is well-formed.
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         // Ensure the previous block hash is well-formed.
         if self.height() == 0u32 {
             if self.previous_hash != Default::default() {
@@ -185,33 +175,33 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 
     /// Returns `true` if the block is a genesis block.
-    fn is_genesis(&self) -> bool {
+    pub fn is_genesis(&self) -> bool {
         // Ensure the header is a genesis block header.
         self.header.is_genesis()
     }
 
     /// Returns the previous block hash.
-    fn previous_hash(&self) -> &Self::BlockHash {
+    pub fn previous_hash(&self) -> &N::BlockHash {
         &self.previous_hash
     }
 
     /// Returns the header.
-    fn header(&self) -> &Self::Header {
+    pub fn header(&self) -> &BlockHeader<N> {
         &self.header
     }
 
     /// Returns the transactions.
-    fn transactions(&self) -> &Self::Transactions {
+    pub fn transactions(&self) -> &Transactions<N> {
         &self.transactions
     }
 
     /// Returns the block height.
-    fn height(&self) -> u32 {
+    pub fn height(&self) -> u32 {
         self.header.height()
     }
 
     /// Returns the hash of this block.
-    fn to_block_hash(&self) -> Result<Self::BlockHash> {
+    pub fn to_block_hash(&self) -> Result<N::BlockHash> {
         // Construct the preimage.
         let mut preimage = self.previous_hash.to_bytes_le()?;
         preimage.extend_from_slice(&self.header.to_header_root()?.to_bytes_le()?);
@@ -220,17 +210,17 @@ impl<N: Network> BlockScheme for Block<N> {
     }
 
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
-    fn to_serial_numbers(&self) -> Result<Vec<Self::SerialNumber>> {
+    pub fn to_serial_numbers(&self) -> Result<Vec<N::SerialNumber>> {
         self.transactions.to_serial_numbers()
     }
 
     /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
-    fn to_commitments(&self) -> Result<Vec<Self::Commitment>> {
+    pub fn to_commitments(&self) -> Result<Vec<N::Commitment>> {
         self.transactions.to_commitments()
     }
 
     /// Returns the coinbase transaction for the block.
-    fn to_coinbase_transaction(&self) -> Result<Self::Transaction> {
+    pub fn to_coinbase_transaction(&self) -> Result<Transaction<N>> {
         // Filter out all transactions with a positive value balance.
         let coinbase_transaction: Vec<_> = self
             .transactions
@@ -248,9 +238,7 @@ impl<N: Network> BlockScheme for Block<N> {
             )),
         }
     }
-}
 
-impl<N: Network> Block<N> {
     ///
     /// Returns the block reward for the given block height.
     ///
