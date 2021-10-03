@@ -32,6 +32,8 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use crate::fiat_shamir::{fiat_shamir_poseidon_sponge::PoseidonSponge, traits::AlgebraicSpongeVar};
 use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 
+use crate::Vec;
+
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
 pub struct PoseidonSpongeVar<F: PrimeField + PoseidonDefaultParametersField> {

@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use rand::{CryptoRng, Rng};
-use std::marker::PhantomData;
 
 use crate::{
     constraints::UniversalSRS,
@@ -28,6 +27,7 @@ use crate::{
         PreparedCircuitVerifyingKey,
         Proof,
     },
+    PhantomData,
     PolynomialCommitment,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};

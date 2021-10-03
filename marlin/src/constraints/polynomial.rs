@@ -18,7 +18,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{nonnative::NonNativeFieldVar, traits::fields::FieldGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use std::marker::PhantomData;
+use crate::PhantomData;
 
 /// A struct with methods to compute vanishing polynomial equations.
 pub struct AlgebraForAHP<F: PrimeField, CF: PrimeField> {

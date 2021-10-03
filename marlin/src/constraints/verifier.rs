@@ -31,6 +31,8 @@ use crate::{
     PolynomialCommitment,
     PoseidonSponge,
     PoseidonSpongeVar,
+    String,
+    Vec,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
 use snarkvm_fields::PrimeField;

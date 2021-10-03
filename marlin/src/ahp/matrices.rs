@@ -30,6 +30,8 @@ use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use derivative::Derivative;
+
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 // This function converts a matrix output by Zexe's constraint infrastructure

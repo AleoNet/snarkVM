@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use core::borrow::Borrow;
-use std::marker::PhantomData;
 
 use snarkvm_algorithms::Prepare;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -29,7 +28,9 @@ use crate::{
     marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey},
     FiatShamirRng,
     FiatShamirRngVar,
+    PhantomData,
     PolynomialCommitment,
+    Vec,
 };
 use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 
