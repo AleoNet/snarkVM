@@ -14,36 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Block, Network};
+use crate::Network;
 use snarkvm_algorithms::merkle_tree::MerklePath;
 
 use anyhow::Result;
-use std::path::Path;
-
-pub trait LedgerScheme<N: Network>: Sized {
-    /// Instantiates a new ledger with a genesis block.
-    fn new(path: Option<&Path>, genesis_block: Block<N>) -> Result<Self>;
-
-    /// Returns the latest number of blocks in the ledger.
-    /// A block height of 0 indicates the ledger is uninitialized.
-    /// A block height of 1 indicates the ledger is initialized with a genesis block.
-    fn block_height(&self) -> u32;
-
-    /// Returns the latest block in the ledger.
-    fn latest_block(&self) -> Result<Block<N>>;
-
-    /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Block<N>>;
-
-    /// Returns the block hash given a block number.
-    fn get_block_hash(&self, block_number: u32) -> Result<N::BlockHash>;
-
-    /// Returns the block number given a block hash.
-    fn get_block_number(&self, block_hash: &N::BlockHash) -> Result<u32>;
-
-    /// Returns true if the given block hash exists in the ledger.
-    fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool;
-}
 
 /// The state commitments tree is a core state tree of the ledger.
 pub trait CommitmentsTreeScheme<N: Network>: Sized {
@@ -62,14 +36,14 @@ pub trait CommitmentsTreeScheme<N: Network>: Sized {
     /// Returns the index for the given commitment, if it exists.
     fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u32>;
 
+    /// Returns the commitments root.
+    fn root(&self) -> N::CommitmentsRoot;
+
     /// Returns the Merkle path for a given commitment.
     fn to_commitment_inclusion_proof(
         &self,
         commitment: &N::Commitment,
     ) -> Result<MerklePath<N::CommitmentsTreeParameters>>;
-
-    /// Returns the commitments root.
-    fn to_commitments_root(&self) -> &N::CommitmentsRoot;
 }
 
 /// The ledger serial numbers tree is a core state tree of the ledger.
@@ -89,12 +63,12 @@ pub trait SerialNumbersTreeScheme<N: Network>: Sized {
     /// Returns the index for the given serial number, if it exists.
     fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u32>;
 
+    /// Returns the serial numbers root.
+    fn root(&self) -> N::SerialNumbersRoot;
+
     /// Returns the Merkle path for a given serial number.
     fn to_serial_number_inclusion_proof(
         &self,
         serial_number: &N::SerialNumber,
     ) -> Result<MerklePath<N::SerialNumbersTreeParameters>>;
-
-    /// Returns the serial numbers root.
-    fn to_serial_numbers_root(&self) -> &N::SerialNumbersRoot;
 }

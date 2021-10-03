@@ -19,7 +19,6 @@ use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
-use chrono::Utc;
 use rand::{CryptoRng, Rng};
 use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -100,6 +99,7 @@ impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
     pub fn new<R: Rng + CryptoRng>(
         block_height: u32,
+        block_timestamp: i64,
         difficulty_target: u64,
         transactions_root: N::TransactionsRoot,
         serial_numbers_root: N::SerialNumbersRoot,
@@ -111,7 +111,7 @@ impl<N: Network> BlockHeader<N> {
             true => BlockHeaderMetadata::genesis(),
             false => BlockHeaderMetadata {
                 height: block_height,
-                timestamp: Utc::now().timestamp(),
+                timestamp: block_timestamp,
                 difficulty_target,
                 nonce: Default::default(),
             },

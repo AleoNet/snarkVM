@@ -56,10 +56,6 @@ default-features = false
 path = "../polycommit"
 default-features = false
 
-[dev-dependencies.snarkvm-ledger]
-path = "../ledger"
-default-features = false
-
 [dev-dependencies.blake2]
 version = "0.9"
 default-features = false

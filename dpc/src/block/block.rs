@@ -21,12 +21,13 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
+    hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
     sync::Arc,
     time::Instant,
 };
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Block<N: Network> {
     /// Hash of the previous block - 32 bytes
     previous_hash: N::BlockHash,
@@ -41,6 +42,7 @@ impl<N: Network> Block<N> {
     pub fn new<R: Rng + CryptoRng>(
         previous_block_hash: N::BlockHash,
         block_height: u32,
+        block_timestamp: i64,
         difficulty_target: u64,
         transactions: Transactions<N>,
         serial_numbers_root: N::SerialNumbersRoot,
@@ -52,6 +54,7 @@ impl<N: Network> Block<N> {
         // Compute the block header.
         let header = BlockHeader::new(
             block_height,
+            block_timestamp,
             difficulty_target,
             transactions.to_transactions_root()?,
             serial_numbers_root,
@@ -83,11 +86,13 @@ impl<N: Network> Block<N> {
 
         // Construct the genesis block header metadata.
         let block_height = 0u32;
+        let block_timestamp = 0i64;
         let difficulty_target = u64::MAX;
 
         // Compute the genesis block header.
         let header = BlockHeader::new(
             block_height,
+            block_timestamp,
             difficulty_target,
             transactions_root,
             *serial_numbers_tree.root(),
@@ -138,6 +143,33 @@ impl<N: Network> Block<N> {
             return false;
         }
 
+        // Ensure the header are valid.
+        if !self.header.is_valid() {
+            eprintln!("Invalid block header");
+            return false;
+        }
+
+        // Ensure the transactions are valid.
+        if !self.transactions.is_valid() {
+            eprintln!("Invalid block transactions");
+            return false;
+        }
+
+        // Fetch the transactions root.
+        let transactions_root = match self.transactions.to_transactions_root() {
+            Ok(transactions_root) => transactions_root,
+            Err(error) => {
+                eprintln!("{}", error);
+                return false;
+            }
+        };
+
+        // Ensure the transactions root matches the computed root from the transactions list.
+        if self.header.transactions_root() != transactions_root {
+            eprintln!("Invalid block transactions does not match transactions root in header");
+            return false;
+        }
+
         // Retrieve the coinbase transaction.
         let coinbase_transaction = match self.to_coinbase_transaction() {
             Ok(coinbase_transaction) => coinbase_transaction,
@@ -170,8 +202,7 @@ impl<N: Network> Block<N> {
             }
         };
 
-        // Ensure the header and transactions are valid.
-        self.header.is_valid() && self.transactions.is_valid()
+        true
     }
 
     /// Returns `true` if the block is a genesis block.
@@ -198,6 +229,16 @@ impl<N: Network> Block<N> {
     /// Returns the block height.
     pub fn height(&self) -> u32 {
         self.header.height()
+    }
+
+    /// Returns the block timestamp.
+    pub fn timestamp(&self) -> i64 {
+        self.header.timestamp()
+    }
+
+    /// Returns the block difficulty target.
+    pub fn difficulty_target(&self) -> u64 {
+        self.header.difficulty_target()
     }
 
     /// Returns the hash of this block.
@@ -289,6 +330,24 @@ impl<N: Network> ToBytes for Block<N> {
         self.transactions.write_le(&mut writer)
     }
 }
+
+impl<N: Network> Hash for Block<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_block_hash()
+            .expect("Failed to compute the block hash")
+            .hash(state);
+    }
+}
+
+impl<N: Network> PartialEq for Block<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.previous_hash == other.previous_hash
+            && self.header == other.header
+            && self.transactions == other.transactions
+    }
+}
+
+impl<N: Network> Eq for Block<N> {}
 
 #[cfg(test)]
 mod tests {

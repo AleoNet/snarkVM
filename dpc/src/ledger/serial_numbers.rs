@@ -26,22 +26,22 @@ use std::{collections::HashMap, sync::Arc};
 
 /// A serial numbers tree contains all serial numbers on the ledger.
 #[derive(Derivative)]
-#[derivative(Debug(bound = "N: Network"))]
-pub struct SerialNumbersTree<N: Network> {
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+pub struct SerialNumbers<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<N::SerialNumbersTreeParameters>,
+    tree: Arc<MerkleTree<N::SerialNumbersTreeParameters>>,
     serial_numbers: HashMap<N::SerialNumber, u32>,
     current_index: u32,
 }
 
-impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbersTree<N> {
+impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
     /// Initializes an empty serial numbers tree.
     fn new() -> Result<Self> {
         Ok(Self {
-            tree: MerkleTree::<N::SerialNumbersTreeParameters>::new::<N::SerialNumber>(
+            tree: Arc::new(MerkleTree::<N::SerialNumbersTreeParameters>::new::<N::SerialNumber>(
                 Arc::new(N::serial_numbers_tree_parameters().clone()),
                 &vec![],
-            )?,
+            )?),
             serial_numbers: Default::default(),
             current_index: 0,
         })
@@ -57,7 +57,7 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbersTree<N> {
             );
         }
 
-        self.tree = self.tree.rebuild(self.current_index as usize, &[serial_number])?;
+        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &[serial_number])?);
 
         self.serial_numbers.insert(*serial_number, self.current_index);
 
@@ -87,7 +87,7 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbersTree<N> {
             return Err(anyhow!("The list of given serial numbers contains double spends"));
         }
 
-        self.tree = self.tree.rebuild(self.current_index as usize, &serial_numbers)?;
+        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &serial_numbers)?);
 
         let start_index = self.current_index;
         let num_serial_numbers = serial_numbers.len();
@@ -115,6 +115,11 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbersTree<N> {
         self.serial_numbers.get(serial_number)
     }
 
+    /// Returns the serial numbers root.
+    fn root(&self) -> N::SerialNumbersRoot {
+        *self.tree.root()
+    }
+
     /// Returns the Merkle path for a given serial number.
     fn to_serial_number_inclusion_proof(
         &self,
@@ -125,14 +130,9 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbersTree<N> {
             _ => Err(MerkleError::MissingLeaf(format!("{}", serial_number)).into()),
         }
     }
-
-    /// Returns the serial numbers root.
-    fn to_serial_numbers_root(&self) -> &N::SerialNumbersRoot {
-        self.tree.root()
-    }
 }
 
-impl<N: Network> Default for SerialNumbersTree<N> {
+impl<N: Network> Default for SerialNumbers<N> {
     fn default() -> Self {
         Self::new().unwrap()
     }

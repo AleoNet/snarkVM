@@ -36,16 +36,28 @@ impl<N: Network> MemoryPool<N> {
         }
     }
 
+    /// Returns `true` if the given transaction exists in the memory pool.
+    pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
+        match transaction.to_transaction_id() {
+            Ok(id) => self.transactions.contains_key(&id),
+            Err(error) => {
+                eprintln!("Failed to lookup transaction ID: {}", error);
+                return false;
+            }
+        }
+    }
+
+    /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add(&mut self, transaction: &Transaction<N>) -> Result<()> {
+        // Ensure the unconfirmed transaction itself is valid.
+        if !transaction.is_valid() {
+            return Err(anyhow!("The unconfirmed transaction is invalid"));
+        }
+
         // Ensure the transaction does not already exist in the memory pool.
         let transaction_id = transaction.to_transaction_id()?;
         if self.transactions.contains_key(&transaction_id) {
             return Err(anyhow!("Transaction already exists in memory pool"));
-        }
-
-        // Ensure the transaction itself is valid.
-        if !transaction.is_valid() {
-            return Err(anyhow!("Transaction failed to verify"));
         }
 
         // Ensure the memory pool does not already contain a given serial numbers.
