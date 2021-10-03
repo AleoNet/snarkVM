@@ -93,11 +93,18 @@ fn dpc_testnet1_integration_test() {
     commitments.add_all(transactions.to_commitments().unwrap()).unwrap();
     let commitments_root = commitments.root();
 
+    let timestamp = Utc::now().timestamp();
+    let difficulty_target = Blocks::<Testnet1>::compute_difficulty_target(
+        previous_block.timestamp(),
+        previous_block.difficulty_target(),
+        timestamp,
+    );
+
     // Construct the new block header.
     let header = BlockHeader::new(
         block_height,
-        Utc::now().timestamp(),
-        previous_block.header().difficulty_target(),
+        timestamp,
+        difficulty_target,
         transactions_root,
         serial_numbers_root,
         commitments_root,

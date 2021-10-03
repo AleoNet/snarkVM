@@ -131,11 +131,8 @@ impl<N: Network> Ledger<N> {
         let previous_timestamp = self.latest_block_timestamp()?;
         let previous_difficulty_target = self.latest_block_difficulty_target()?;
         let block_timestamp = Utc::now().timestamp();
-        let difficulty_target = self.canon_blocks.compute_difficulty_target(
-            previous_timestamp,
-            previous_difficulty_target,
-            block_timestamp,
-        );
+        let difficulty_target =
+            Blocks::<N>::compute_difficulty_target(previous_timestamp, previous_difficulty_target, block_timestamp);
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);

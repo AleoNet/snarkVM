@@ -238,7 +238,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the expected difficulty target is met.
-        let expected_difficulty_target = self.compute_difficulty_target(
+        let expected_difficulty_target = Blocks::<N>::compute_difficulty_target(
             current_block.timestamp(),
             current_block.difficulty_target(),
             block.timestamp(),
@@ -295,12 +295,7 @@ impl<N: Network> Blocks<N> {
     }
 
     /// Returns the expected difficulty target given the previous block and expected next block details.
-    pub(crate) fn compute_difficulty_target(
-        &self,
-        previous_timestamp: i64,
-        previous_difficulty_target: u64,
-        timestamp: i64,
-    ) -> u64 {
+    pub fn compute_difficulty_target(previous_timestamp: i64, previous_difficulty_target: u64, timestamp: i64) -> u64 {
         const TARGET_BLOCK_TIME_IN_SECS: i64 = 20i64;
 
         /// Bitcoin difficulty retarget algorithm.
