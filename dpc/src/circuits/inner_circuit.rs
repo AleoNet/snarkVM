@@ -166,27 +166,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // are trusted, and so when we recompute these, the newly computed
                 // values will always be in correct subgroup. If the input cm, pk
                 // or hash is incorrect, then it will not match the computed equivalent.
-                let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
+
+                let given_owner = <N::AccountSignatureGadget as SignatureGadget<
+                    N::AccountSignatureScheme,
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut declare_cs.ns(|| "given_record_owner"),
                     || Ok(record.owner().encryption_key()),
                 )?;
-
-                // TODO (howardwu): TEMPORARY - Unify this with `given_owner` above!
-                // Save the given_owner for signature verification at the end.
-                {
-                    let owner = record.owner().encryption_key();
-                    let public_key = FromBytes::read_le(&owner.to_bytes_le()?[..])?;
-                    let public_key_gadget = <N::AccountSignatureGadget as SignatureGadget<
-                        N::AccountSignatureScheme,
-                        N::InnerScalarField,
-                    >>::PublicKeyGadget::alloc(
-                        declare_cs.ns(|| format!("alloc_public_key{}", i)), || Ok(&public_key)
-                    )?;
-                    signature_public_keys.push(public_key_gadget);
-                }
+                signature_public_keys.push(given_owner.clone());
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
