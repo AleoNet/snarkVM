@@ -58,7 +58,6 @@ fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
 fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
     file.write_all(&bytes)?;
-    drop(file);
     Ok(())
 }
 
