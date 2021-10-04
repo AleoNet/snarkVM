@@ -37,11 +37,11 @@ pub struct Blocks<N: Network> {
     /// The tree of serial numbers.
     serial_numbers: SerialNumbers<N>,
     /// The roots of serial numbers trees.
-    serial_numbers_roots: HashMap<u32, N::SerialNumbersRoot>,
+    serial_numbers_roots: HashMap<N::SerialNumbersRoot, u32>,
     /// The tree of commitments.
     commitments: Commitments<N>,
     /// The roots of commitments trees.
-    commitments_roots: HashMap<u32, N::CommitmentsRoot>,
+    commitments_roots: HashMap<N::CommitmentsRoot, u32>,
 }
 
 impl<N: Network> Blocks<N> {
@@ -68,9 +68,9 @@ impl<N: Network> Blocks<N> {
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
         blocks.serial_numbers.add_all(serial_numbers)?;
-        blocks.serial_numbers_roots.insert(height, blocks.serial_numbers.root());
+        blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
         blocks.commitments.add_all(commitments)?;
-        blocks.commitments_roots.insert(height, blocks.commitments.root());
+        blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
         Ok(blocks)
     }
@@ -180,20 +180,12 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given serial numbers root exists.
     pub fn contains_serial_numbers_root(&self, serial_numbers_root: &N::SerialNumbersRoot) -> bool {
-        self.serial_numbers_roots
-            .values()
-            .filter(|root| *root == serial_numbers_root)
-            .count()
-            > 0
+        self.serial_numbers_roots.contains_key(serial_numbers_root)
     }
 
     /// Returns `true` if the given commitments root exists.
     pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
-        self.commitments_roots
-            .values()
-            .filter(|root| *root == commitments_root)
-            .count()
-            > 0
+        self.commitments_roots.contains_key(commitments_root)
     }
 
     /// Adds the given block as the next block in the chain.
@@ -284,14 +276,41 @@ impl<N: Network> Blocks<N> {
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
             blocks.serial_numbers.add_all(serial_numbers)?;
-            blocks.serial_numbers_roots.insert(height, blocks.serial_numbers.root());
+            blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
             blocks.commitments.add_all(commitments)?;
-            blocks.commitments_roots.insert(height, blocks.commitments.root());
+            blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
             *self = blocks;
         }
 
         Ok(())
+    }
+
+    /// Returns the commitments inclusion proof up to the corresponding block hash.
+    pub fn to_commitments_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
+        assert_eq!(commitments.len(), N::NUM_INPUT_RECORDS);
+
+        let commitment_inclusion_proofs = commitments
+            .iter()
+            .map(|commitment| Ok(self.commitments.to_commitment_inclusion_proof(commitment)?))
+            .collect::<Result<Vec<_>>>()?;
+        let commitments_root = self.commitments.root();
+
+        let header = self.get_block_header(self.current_height)?;
+        let header_inclusion_proof = header.to_header_inclusion_proof(2, commitments_root)?;
+        let header_root = header.to_header_root()?;
+
+        let previous_hash = self.get_previous_block_hash(self.current_height)?;
+        let current_hash = self.current_hash;
+
+        Ok(LedgerProof {
+            block_hash: current_hash,
+            previous_block_hash: previous_hash,
+            header_root,
+            header_inclusion_proof,
+            commitments_root,
+            commitment_inclusion_proofs,
+        })
     }
 
     /// Returns the expected difficulty target given the previous block and expected next block details.
