@@ -51,7 +51,6 @@ fn versioned_filename(filename: &str, checksum: &str) -> String {
 fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(&versioned_filename(filename, version)))?);
     file.write_all(&bytes)?;
-    drop(file);
     Ok(())
 }
 
