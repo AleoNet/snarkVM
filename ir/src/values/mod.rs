@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 
 use crate::{ir, Type};
 
@@ -39,6 +39,28 @@ pub enum Integer {
     I32(i32),
     I64(i64),
     I128(i128),
+}
+
+// Used to natively convert array range index values in Leo only.
+// Do not attempt to call this function from another context.
+// https://github.com/AleoHQ/leo/blob/ir/compiler/src/statement/assign/assignee/array_range_index.rs
+impl TryFrom<Integer> for u32 {
+    type Error = anyhow::Error;
+
+    fn try_from(int: Integer) -> Result<Self, Self::Error> {
+        match int {
+            Integer::U8(n) => Ok(n as u32),
+            Integer::U16(n) => Ok(n as u32),
+            Integer::U32(n) => Ok(n),
+            Integer::U64(n) => {
+                u32::try_from(n).map_err(|e| anyhow!("failed to get u32 from u64 int value `{}`: `{}`", n, e))
+            }
+            Integer::U128(n) => {
+                u32::try_from(n).map_err(|e| anyhow!("failed to get u32 from u128 int value `{}`: `{}`", n, e))
+            }
+            _ => Err(anyhow!("cant get u32 from signed int value `{}`", int)),
+        }
+    }
 }
 
 impl fmt::Display for Integer {
@@ -131,7 +153,11 @@ impl Value {
             | (Value::Integer(Integer::U64(_)), Type::U64)
             | (Value::Integer(Integer::U128(_)), Type::U128) => true,
             (Value::Array(inner), Type::Array(inner_type, len)) => {
-                inner.len() == *len as usize && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
+                let len_match = match len {
+                    Some(l) => inner.len() == *l as usize,
+                    None => true,
+                };
+                len_match && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
             }
             (Value::Tuple(values), Type::Tuple(types)) => values
                 .iter()

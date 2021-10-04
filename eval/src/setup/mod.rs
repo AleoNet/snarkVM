@@ -45,6 +45,7 @@ use im::HashMap;
 mod instruction;
 mod state;
 
+pub use instruction::*;
 use state::*;
 
 /// An evaluator for filling out a R1CS while also producing an expected output.
