@@ -31,3 +31,6 @@ pub use outer_private_variables::*;
 
 pub mod outer_public_variables;
 pub use outer_public_variables::*;
+
+#[cfg(test)]
+mod tests;

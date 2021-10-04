@@ -42,7 +42,6 @@ impl<N: Network> OuterPublicVariables<N> {
     }
 
     pub fn new(inner_public_variables: &InnerPublicVariables<N>, inner_circuit_id: &N::InnerCircuitID) -> Self {
-        assert_eq!(N::NUM_OUTPUT_RECORDS, inner_public_variables.kernel.commitments().len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, inner_public_variables.encrypted_record_ids.len());
 
         // This inner circuit public variable is allocated as a private variable in the outer circuit,
@@ -57,13 +56,11 @@ impl<N: Network> OuterPublicVariables<N> {
     }
 
     pub fn from(transaction: &Transaction<N>) -> Result<Self> {
-        let encrypted_record_hashes = transaction.to_encrypted_record_hashes()?;
-
         Ok(Self {
             inner_public_variables: InnerPublicVariables {
-                kernel: transaction.kernel().clone(),
+                transaction_id: transaction.to_transaction_id()?,
                 ledger_digest: transaction.ledger_digest().clone(),
-                encrypted_record_ids: encrypted_record_hashes,
+                encrypted_record_ids: transaction.to_encrypted_record_ids()?,
                 // This inner circuit public variable is allocated as a private variable in the outer circuit,
                 // as it is not included in the transaction broadcast to the ledger.
                 program_id: None,

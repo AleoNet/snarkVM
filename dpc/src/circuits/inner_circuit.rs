@@ -145,7 +145,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             .iter()
             .zip(&private.input_witnesses)
             .zip(&private.signatures)
-            .zip(public.kernel.serial_numbers())
+            .zip(private.kernel().serial_numbers())
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
@@ -289,13 +289,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &given_serial_number_nonce,
                 )?;
 
-                let given_serial_number_gadget = <N::SerialNumberPRFGadget as PRFGadget<
-                    N::SerialNumberPRF,
-                    N::InnerScalarField,
-                >>::Output::alloc_input(
-                    &mut sn_cs.ns(|| "Declare given serial number"),
-                    || Ok(given_serial_number),
-                )?;
+                let given_serial_number_gadget =
+                    <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
+                        &mut sn_cs.ns(|| "Declare given serial number"),
+                        || Ok(given_serial_number),
+                    )?;
 
                 candidate_serial_number_gadget.enforce_equal(
                     &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),
@@ -382,10 +380,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
         let mut new_program_ids_bytes_gadgets = Vec::with_capacity(private.output_records.len());
 
-        for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
+        for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
             .output_records
             .iter()
-            .zip(public.kernel.commitments())
+            .zip(private.kernel().commitments())
             .zip(&private.encrypted_record_randomizers)
             .zip(&public.encrypted_record_ids)
             .enumerate()
@@ -447,7 +445,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     let public_commitment = <N::CommitmentGadget as CommitmentGadget<
                         N::CommitmentScheme,
                         N::InnerScalarField,
-                    >>::OutputGadget::alloc_input(
+                    >>::OutputGadget::alloc(
                         &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
                     )?;
 
@@ -616,24 +614,24 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 // *******************************************************************
-                // Check that the encrypted record hash is correct
+                // Check that the encrypted record ID is correct
 
-                let encrypted_record_hash_gadget = <N::EncryptedRecordCRHGadget as CRHGadget<
+                let encrypted_record_id_gadget = <N::EncryptedRecordCRHGadget as CRHGadget<
                     N::EncryptedRecordCRH,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
-                    &mut encryption_cs.ns(|| format!("output record {} encrypted record hash", j)),
-                    || Ok(encrypted_record_hash),
+                    &mut encryption_cs.ns(|| format!("output record {} encrypted record ID", j)),
+                    || Ok(encrypted_record_id),
                 )?;
 
-                let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget(
-                    &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
+                let candidate_encrypted_record_id = encrypted_record_crh.check_evaluation_gadget(
+                    &mut encryption_cs.ns(|| format!("Compute encrypted record ID {}", j)),
                     candidate_encrypted_record_gadget,
                 )?;
 
-                encrypted_record_hash_gadget.enforce_equal(
-                    encryption_cs.ns(|| format!("output record {} encrypted record hash is valid", j)),
-                    &candidate_encrypted_record_hash,
+                encrypted_record_id_gadget.enforce_equal(
+                    encryption_cs.ns(|| format!("output record {} encrypted record ID is valid", j)),
+                    &candidate_encrypted_record_id,
                 )?;
             }
         }
@@ -645,58 +643,60 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
-            // Keep a counter to tally and increment the inputs.
-            let mut inputs_counter = UInt8::constant(0);
-
-            // Keep a counter to tally and increment the outputs.
-            let mut outputs_counter = UInt8::constant(0);
-
-            let index = 0;
-
-            // Declare the program ID as bytes.
-            let executable_program_id_bytes = UInt8::alloc_input_vec_le(
-                &mut commitment_cs.ns(|| "Allocate executable_program_id"),
-                &public.program_id.as_ref().unwrap().to_bytes_le()?,
-            )?;
-
-            let executable_program_id_field_elements = executable_program_id_bytes.to_constraint_field(
-                &mut commitment_cs.ns(|| format!("convert executable program ID {} to field elements", index)),
-            )?;
+            // Allocate the program ID.
+            let executable_program_id_field_elements = {
+                let executable_program_id_bytes = UInt8::alloc_input_vec_le(
+                    &mut commitment_cs.ns(|| "Allocate executable_program_id"),
+                    &public.program_id.as_ref().unwrap().to_bytes_le()?,
+                )?;
+                executable_program_id_bytes
+                    .to_constraint_field(&mut commitment_cs.ns(|| "convert executable program ID to field elements"))?
+            };
 
             // Declare the required number of inputs for this circuit type.
-            let number_of_inputs = &UInt8::alloc_vec(
-                &mut commitment_cs.ns(|| format!("number_of_inputs for executable {}", index)),
-                &[private.circuit_type.input_count()],
-            )?[0];
+            let number_of_inputs =
+                &UInt8::alloc_vec(&mut commitment_cs.ns(|| "number_of_inputs for executable"), &[private
+                    .circuit_type
+                    .input_count()])?[0];
+            {
+                let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
+                let is_inputs_size_correct = number_of_inputs.less_than_or_equal(
+                    &mut commitment_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
+                    &number_of_input_records,
+                )?;
+                is_inputs_size_correct.enforce_equal(
+                    &mut commitment_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
+                    &Boolean::constant(true),
+                )?;
+            }
 
-            // Declare the input start and end index.
-            let input_start_index = &inputs_counter;
-            let input_end_index = inputs_counter
-                .add(
-                    &mut commitment_cs.ns(|| format!("input_end_index for executable {}", index)),
-                    &number_of_inputs,
-                )
-                .map_err(|_| SynthesisError::Unsatisfiable)?;
+            // Declare the required number of outputs for this circuit type.
+            let number_of_outputs =
+                &UInt8::alloc_vec(&mut commitment_cs.ns(|| "number_of_outputs for executable"), &[private
+                    .circuit_type
+                    .output_count()])?[0];
+            {
+                let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);
+                let is_outputs_size_correct = number_of_outputs.less_than_or_equal(
+                    &mut commitment_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
+                    &number_of_output_records,
+                )?;
+                is_outputs_size_correct.enforce_equal(
+                    &mut commitment_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
+                    &Boolean::constant(true),
+                )?;
+            }
 
             for (i, input_program_id_field_elements) in
                 old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS).enumerate()
             {
-                let input_cs = &mut commitment_cs.ns(|| format!("Check input record {} on executable {}", i, index));
+                let input_cs = &mut commitment_cs.ns(|| format!("Check input record {} on executable", i));
 
                 let input_index = UInt8::constant(i as u8);
 
-                let is_in_start_range = input_index.greater_than_or_equal(
-                    &mut input_cs.ns(|| format!("greater than or equal for input {}", i)),
-                    &input_start_index,
-                )?;
-                let is_in_end_range = input_index.less_than(
+                let requires_check = input_index.less_than(
                     &mut input_cs.ns(|| format!("less than for input {}", i)),
-                    &input_end_index,
-                )?;
-                let requires_check = Boolean::and(
-                    &mut input_cs.ns(|| format!("requires check for input {}", i)),
-                    &is_in_start_range,
-                    &is_in_end_range,
+                    &number_of_inputs,
                 )?;
 
                 input_program_id_field_elements.conditional_enforce_equal(
@@ -704,44 +704,25 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &executable_program_id_field_elements,
                     &requires_check,
                 )?;
+
+                input_program_id_field_elements.conditional_enforce_equal(
+                    &mut input_cs
+                        .ns(|| format!("If the input record {} is beyond, enforce it has a noop program ID", i)),
+                    &noop_program_id_field_elements,
+                    &requires_check.not(),
+                )?;
             }
-
-            inputs_counter = input_end_index;
-
-            // Declare the required number of outputs for this circuit type.
-            let number_of_outputs = &UInt8::alloc_vec(
-                &mut commitment_cs.ns(|| format!("number_of_outputs for executable {}", index)),
-                &[private.circuit_type.output_count()],
-            )?[0];
-
-            // Declare the output start and end index.
-            let output_start_index = &outputs_counter;
-            let output_end_index = outputs_counter
-                .add(
-                    &mut commitment_cs.ns(|| format!("output_end_index for executable {}", index)),
-                    &number_of_outputs,
-                )
-                .map_err(|_| SynthesisError::Unsatisfiable)?;
 
             for (j, output_program_id_field_elements) in
                 new_program_ids_gadgets.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
             {
-                let output_cs = &mut commitment_cs.ns(|| format!("Check output record {} on executable {}", j, index));
+                let output_cs = &mut commitment_cs.ns(|| format!("Check output record {} on executable", j));
 
                 let output_index = UInt8::constant(j as u8);
 
-                let is_in_start_range = output_index.greater_than_or_equal(
-                    &mut output_cs.ns(|| format!("greater than or equal for output {}", j)),
-                    &output_start_index,
-                )?;
-                let is_in_end_range = output_index.less_than(
+                let requires_check = output_index.less_than(
                     &mut output_cs.ns(|| format!("less than for output {}", j)),
-                    &output_end_index,
-                )?;
-                let requires_check = Boolean::and(
-                    &mut output_cs.ns(|| format!("requires check for output {}", j)),
-                    &is_in_start_range,
-                    &is_in_end_range,
+                    &number_of_outputs,
                 )?;
 
                 output_program_id_field_elements.conditional_enforce_equal(
@@ -749,29 +730,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &executable_program_id_field_elements,
                     &requires_check,
                 )?;
+
+                output_program_id_field_elements.conditional_enforce_equal(
+                    &mut output_cs
+                        .ns(|| format!("If the output record {} is beyond, enforce it has a noop program ID", j)),
+                    &noop_program_id_field_elements,
+                    &requires_check.not(),
+                )?;
             }
-
-            outputs_counter = output_end_index;
-
-            let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
-            let is_inputs_size_correct = inputs_counter.less_than_or_equal(
-                &mut commitment_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
-                &number_of_input_records,
-            )?;
-            is_inputs_size_correct.enforce_equal(
-                &mut commitment_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
-                &Boolean::constant(true),
-            )?;
-
-            let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);
-            let is_outputs_size_correct = outputs_counter.less_than_or_equal(
-                &mut commitment_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
-                &number_of_output_records,
-            )?;
-            is_outputs_size_correct.enforce_equal(
-                &mut commitment_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
-                &Boolean::constant(true),
-            )?;
         }
         // ********************************************************************
 
@@ -782,7 +748,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
             let given_value_balance =
-                Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance().0)?;
+                Int64::alloc_fe(cs.ns(|| "given_value_balance"), private.kernel().value_balance().0)?;
 
             let mut candidate_value_balance = Int64::zero();
 
@@ -819,10 +785,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let signature_message = {
             let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-            let memo = UInt8::alloc_input_vec_le(&mut cs.ns(|| "Allocate memorandum"), &*public.kernel.memo())?;
-            let network_id = UInt8::alloc_input_vec_le(
+            let memo = UInt8::alloc_vec(&mut cs.ns(|| "Allocate memorandum"), &*private.kernel().memo())?;
+            let network_id = UInt8::alloc_vec(
                 &mut cs.ns(|| "Allocate network id"),
-                &public.kernel.network_id().to_le_bytes(),
+                &private.kernel().network_id().to_le_bytes(),
             )?;
 
             // Encode the transaction kernel as the signature message, and preimage for the transaction ID.
@@ -841,7 +807,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 N::InnerScalarField,
             >>::OutputGadget::alloc_input(
                 &mut cs.ns(|| "Allocate given transaction ID"),
-                || Ok(public.kernel.to_transaction_id()?),
+                || Ok(public.transaction_id()),
             )?;
 
             candidate_transaction_id.enforce_equal(
