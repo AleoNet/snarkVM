@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPublicVariables, Network, Transaction, TransactionScheme};
+use crate::{InnerPublicVariables, Network, Transaction};
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;

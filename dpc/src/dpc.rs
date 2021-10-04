@@ -28,7 +28,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     type Authorization = TransactionAuthorization<N>;
     type LedgerProof = LedgerProof<N>;
     type StateTransition = StateTransition<N>;
-    type Transaction = Transaction<N>;
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
@@ -69,7 +68,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         executable: &Executable<N>,
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
-    ) -> Result<Self::Transaction> {
+    ) -> Result<Transaction<N>> {
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
@@ -140,7 +139,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         };
         end_timer!(execution_timer);
 
-        Self::Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
+        Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
     }
 }
 
