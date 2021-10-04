@@ -133,9 +133,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             || Ok(public.ledger_digest),
         )?;
 
-        let mut old_serial_numbers_gadgets = Vec::with_capacity(private.input_records.len());
-        let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
-        let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
+        let mut input_serial_numbers = Vec::with_capacity(private.input_records.len());
+        let mut input_serial_numbers_bytes = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
+        let mut input_program_ids = Vec::with_capacity(private.input_records.len());
         let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
         for (i, (((record, witness), signature), given_serial_number)) in private
@@ -285,12 +285,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 // Convert input serial numbers to bytes.
-                old_serial_numbers_bytes_gadgets.extend_from_slice(
+                input_serial_numbers_bytes.extend_from_slice(
                     &candidate_serial_number_gadget
                         .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?,
                 );
 
-                old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
+                input_serial_numbers.push(candidate_serial_number_gadget);
             };
             // ********************************************************************
 
@@ -328,7 +328,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         &given_is_dummy,
                     )?;
 
-                    old_program_ids_gadgets.push(given_program_id_field_elements);
+                    input_program_ids.push(given_program_id_field_elements);
                 }
 
                 // Compute the record commitment and check that it matches the declared commitment.
@@ -360,7 +360,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         }
 
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
-        let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
+        let mut output_program_ids = Vec::with_capacity(private.output_records.len());
 
         for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
             .output_records
@@ -468,7 +468,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             {
                 let sn_cs = &mut cs.ns(|| "Check that serial number nonce is correct");
 
-                let candidate_serial_number_nonce = &old_serial_numbers_gadgets[j];
+                let candidate_serial_number_nonce = &input_serial_numbers[j];
 
                 candidate_serial_number_nonce.enforce_equal(
                     &mut sn_cs.ns(|| "Check that computed nonce matches provided nonce"),
@@ -511,7 +511,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         &given_is_dummy,
                     )?;
 
-                    new_program_ids_gadgets.push(given_program_id_field_elements);
+                    output_program_ids.push(given_program_id_field_elements);
                 }
 
                 // Compute the record commitment and check that it matches the declared commitment.
@@ -667,8 +667,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
             }
 
-            for (i, input_program_id_field_elements) in
-                old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS).enumerate()
+            for (i, input_program_id_field_elements) in input_program_ids.iter().take(N::NUM_INPUT_RECORDS).enumerate()
             {
                 let input_cs = &mut commitment_cs.ns(|| format!("Check input record {} on executable", i));
 
@@ -694,7 +693,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             }
 
             for (j, output_program_id_field_elements) in
-                new_program_ids_gadgets.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
+                output_program_ids.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
             {
                 let output_cs = &mut commitment_cs.ns(|| format!("Check output record {} on executable", j));
 
@@ -774,7 +773,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Encode the transaction kernel as the signature message, and preimage for the transaction ID.
             let mut message = Vec::new();
             message.extend_from_slice(&network_id);
-            message.extend_from_slice(&old_serial_numbers_bytes_gadgets);
+            message.extend_from_slice(&input_serial_numbers_bytes);
             message.extend_from_slice(&output_commitments_bytes);
             message.extend_from_slice(&value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
             message.extend_from_slice(&memo);
