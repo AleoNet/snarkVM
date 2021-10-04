@@ -22,7 +22,7 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::has_duplicates;
 
 use anyhow::{anyhow, Result};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 /// A program defines all possible state transitions for a record.
 #[derive(Derivative)]
@@ -41,7 +41,7 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
         // Initialize a new circuits tree, and add all circuits to the tree.
         let mut program = Self {
             tree: MerkleTree::<N::ProgramCircuitsTreeParameters>::new::<N::ProgramCircuitID>(
-                Arc::new(N::program_circuits_tree_parameters().clone()),
+                N::program_circuits_tree_parameters().clone(),
                 &vec![],
             )?,
             circuits: Default::default(),
@@ -57,7 +57,7 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
         // Initialize a new circuits tree, and add all circuits to the tree.
         let mut program = Self {
             tree: MerkleTree::<N::ProgramCircuitsTreeParameters>::new::<N::ProgramCircuitID>(
-                Arc::new(N::program_circuits_tree_parameters().clone()),
+                N::program_circuits_tree_parameters().clone(),
                 &vec![],
             )?,
             circuits: Default::default(),

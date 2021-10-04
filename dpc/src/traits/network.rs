@@ -27,6 +27,7 @@ use snarkvm_gadgets::{
 use snarkvm_utilities::{
     fmt::{Debug, Display},
     hash::Hash,
+    sync::Arc,
     FromBytes,
     ToBytes,
     ToMinimalBits,
@@ -179,7 +180,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
     fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
-    fn program_circuits_tree_parameters() -> &'static Self::ProgramCircuitsTreeParameters;
+    fn program_circuits_tree_parameters() -> &'static Arc<Self::ProgramCircuitsTreeParameters>;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;

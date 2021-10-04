@@ -39,12 +39,13 @@ macro_rules! dpc_snark_setup {
     };
 }
 
+#[rustfmt::skip]
 macro_rules! dpc_merkle {
     ($network: ident, $fn_name: ident, $type_name: ident, $merkle_tree_crh: ident) => {
         #[inline]
-        fn $fn_name() -> &'static Self::$type_name {
-            static PARAMETER: OnceCell<<$network as Network>::$type_name> = OnceCell::new();
-            PARAMETER.get_or_init(|| Self::$type_name::from(Self::$merkle_tree_crh().clone()))
+        fn $fn_name() -> &'static snarkvm_utilities::sync::Arc<Self::$type_name> {
+            static PARAMETER: OnceCell<snarkvm_utilities::sync::Arc<<$network as Network>::$type_name>> = OnceCell::new();
+            PARAMETER.get_or_init(|| snarkvm_utilities::sync::Arc::new(Self::$type_name::from(Self::$merkle_tree_crh().clone())))
         }
     };
 }
