@@ -135,9 +135,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
         let mut old_serial_numbers_gadgets = Vec::with_capacity(private.input_records.len());
         let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
-        let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
         let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
-        let mut old_program_ids_bytes_gadgets = Vec::with_capacity(private.input_records.len());
         let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
         for (i, (((record, witness), signature), given_serial_number)) in private
@@ -202,7 +200,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_program_id"),
                     &record.program_id().to_bytes_le()?,
                 )?;
-                old_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Input::alloc(
@@ -216,7 +213,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 >>::OutputGadget::alloc(
                     &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
                 )?;
-                old_record_commitments_gadgets.push(given_commitment.clone());
 
                 let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
                     N::CommitmentScheme,
@@ -375,10 +371,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             }
         }
 
-        let mut output_commitments = Vec::with_capacity(private.output_records.len());
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
         let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
-        let mut new_program_ids_bytes_gadgets = Vec::with_capacity(private.output_records.len());
 
         for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
             .output_records
@@ -423,7 +417,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_program_id"),
                     &record.program_id().to_bytes_le()?,
                 )?;
-                new_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
@@ -456,7 +449,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                     record_commitment
                 };
-                output_commitments.push(given_commitment.clone());
                 output_commitments_bytes
                     .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 

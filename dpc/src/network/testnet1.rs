@@ -149,7 +149,7 @@ impl Network for Testnet1 {
 
     type CommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type CommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 32>;
+    type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 42>;
     type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
 
     type EncryptedRecordCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
@@ -178,7 +178,7 @@ impl Network for Testnet1 {
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
 
     type SerialNumbersTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 32>;
+    type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 42>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
