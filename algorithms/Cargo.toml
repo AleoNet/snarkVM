@@ -126,6 +126,10 @@ version = "1.8"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.getrandom]
+version = "0.2"
+default-features = false
+
 [dependencies.rand_chacha]
 version = "0.3"
 default-features = false
@@ -191,7 +195,9 @@ wasm = [
   "msm",
   "prf",
   "signature",
-  "snark"
+  "snark",
+  "getrandom/js",
+  "getrandom/wasm-bindgen"
 ]
 commitment = [ "crh" ]
 crh = [ ]

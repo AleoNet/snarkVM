@@ -80,3 +80,4 @@ version = "0.8"
 [features]
 default = [ "remote", "snarkvm-algorithms/default" ]
 remote = [ "curl" ]
+wasm = [ "snarkvm-algorithms/wasm" ]

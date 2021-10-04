@@ -1616,6 +1616,7 @@ dependencies = [
  "cuda-oxide",
  "derivative",
  "digest",
+ "getrandom",
  "hex",
  "itertools",
  "lazy_static",
