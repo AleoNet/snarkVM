@@ -41,6 +41,9 @@ pub enum Integer {
     I128(i128),
 }
 
+// Used to natively convert array range index values in Leo only.
+// Do not attempt to call this function from another context.
+// https://github.com/AleoHQ/leo/blob/ir/compiler/src/statement/assign/assignee/array_range_index.rs
 impl TryFrom<Integer> for u32 {
     type Error = anyhow::Error;
 
