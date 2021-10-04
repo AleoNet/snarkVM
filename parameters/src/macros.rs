@@ -29,38 +29,6 @@ macro_rules! checksum_error {
 }
 
 #[macro_export]
-macro_rules! impl_params_local {
-    ($name: ident, $test_name: ident, $local_dir: expr, $fname: tt, $size: tt) => {
-        #[derive(Clone, Debug, PartialEq, Eq)]
-        pub struct $name;
-
-        impl crate::traits::Parameter for $name {
-            const CHECKSUM: &'static str = include_str!(concat!($local_dir, $fname, ".checksum"));
-            const SIZE: u64 = $size;
-
-            fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                let buffer = include_bytes!(concat!($local_dir, $fname, ".params"));
-                let checksum = checksum!(buffer);
-
-                match Self::CHECKSUM == checksum {
-                    true => Ok(buffer.to_vec()),
-                    false => checksum_error!(Self::CHECKSUM.into(), checksum),
-                }
-            }
-        }
-
-        #[cfg(test)]
-        #[test]
-        fn $test_name() {
-            use crate::traits::Parameter;
-
-            let parameters = $name::load_bytes().expect("failed to load parameters");
-            assert_eq!($name::SIZE, parameters.len() as u64);
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! impl_local {
     ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt) => {
         #[derive(Clone, Debug, PartialEq, Eq)]
@@ -104,7 +72,7 @@ macro_rules! impl_local {
         paste::item! {
             #[cfg(test)]
             #[test]
-            fn [< test_ $name >]() {
+            fn [< test_ $fname _ $ftype >]() {
                 assert!($name::load_bytes().is_ok());
             }
         }
@@ -255,7 +223,7 @@ macro_rules! impl_remote {
         paste::item! {
             #[cfg(test)]
             #[test]
-            fn [< test_ $name >]() {
+            fn [< test_ $fname _ $ftype >]() {
                 assert!($name::load_bytes().is_ok());
             }
         }
