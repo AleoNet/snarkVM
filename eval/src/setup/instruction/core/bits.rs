@@ -20,6 +20,7 @@ use snarkvm_gadgets::{
     Integer as IntegerTrait,
 };
 
+// This macro can be more efficient once concat_idents is merged in.
 macro_rules! to_bits_impl {
     ($function_name:ident, $constant_name:ident, $constant_value:literal) => {
         pub const $constant_name: &str = $constant_value;
@@ -49,7 +50,7 @@ to_bits_impl!(call_core_char_to_bits_le, CHAR_TO_BITS_LE_CORE, "char_to_bits_le"
 to_bits_impl!(call_core_field_to_bits_le, FIELD_TO_BITS_LE_CORE, "field_to_bits_le");
 to_bits_impl!(call_core_group_to_bits_le, GROUP_TO_BITS_LE_CORE, "group_to_bits_le");
 to_bits_impl!(call_core_i8_to_bits_le, I8_TO_BITS_LE_CORE, "i8_to_bits_le");
-to_bits_impl!(call_core_i16_to_bits_le, I16_TO_BITS_LE_CORE, "I16_to_bits_le");
+to_bits_impl!(call_core_i16_to_bits_le, I16_TO_BITS_LE_CORE, "i16_to_bits_le");
 to_bits_impl!(call_core_i32_to_bits_le, I32_TO_BITS_LE_CORE, "i32_to_bits_le");
 to_bits_impl!(call_core_i64_to_bits_le, I64_TO_BITS_LE_CORE, "i64_to_bits_le");
 to_bits_impl!(call_core_i128_to_bits_le, I128_TO_BITS_LE_CORE, "i128_to_bits_le");
@@ -59,6 +60,7 @@ to_bits_impl!(call_core_u32_to_bits_le, U32_TO_BITS_LE_CORE, "u32_to_bits_le");
 to_bits_impl!(call_core_u64_to_bits_le, U64_TO_BITS_LE_CORE, "u64_to_bits_le");
 to_bits_impl!(call_core_u128_to_bits_le, U128_TO_BITS_LE_CORE, "u128_to_bits_le");
 
+// This macro can be more efficient once concat_idents is merged in.
 macro_rules! from_bits_impl {
     ($function_name:ident, $constant_name:ident, $constant_value:literal, $num_of_expected_bits:literal, $call:expr) => {
         pub const $constant_name: &str = $constant_value;

@@ -16,6 +16,7 @@
 
 use super::*;
 
+// This macro can be more efficient once concat_idents is merged in.
 macro_rules! to_bytes_impl {
     ($function_name:ident, $constant_name:ident, $constant_value:literal) => {
         pub const $constant_name: &str = $constant_value;
@@ -59,6 +60,7 @@ to_bytes_impl!(call_core_u32_to_bytes_le, U32_TO_BYTES_LE_CORE, "u32_to_bytes_le
 to_bytes_impl!(call_core_u64_to_bytes_le, U64_TO_BYTES_LE_CORE, "u64_to_bytes_le");
 to_bytes_impl!(call_core_u128_to_bytes_le, U128_TO_BYTES_LE_CORE, "u128_to_bytes_le");
 
+// This macro can be more efficient once concat_idents is merged in.
 macro_rules! from_bytes_impl {
     ($function_name:ident, $constant_name:ident, $constant_value:literal, $num_of_expected_bytes:literal, $call:expr) => {
         pub const $constant_name: &str = $constant_value;
