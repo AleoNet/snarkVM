@@ -15,57 +15,201 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{SimpleInt, SimpleType};
+use snarkvm_gadgets::{
+    integers::{int::*, uint::*},
+    Integer as IntegerTrait,
+};
 
-pub const TO_BITS_LE_CORE: &str = "to_bits_le";
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub fn call_core_to_bits_le(&mut self, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
-        let bits = match arguments.get(0) {
-            None => Err(anyhow!("illegal `to_bits_le` call, expected call on target")),
-            Some(value) => value.to_bits_le(),
-        }?;
+macro_rules! to_bits_impl {
+    ($function_name:ident, $constant_name:ident, $constant_value:literal) => {
+        pub const $constant_name: &str = $constant_value;
 
-        Ok(ConstrainedValue::Array(
-            bits.into_iter().map(ConstrainedValue::Boolean).collect(),
-        ))
-    }
+        impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
+            pub fn $function_name(&mut self, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
+                let bits = match arguments.get(0) {
+                    None => Err(anyhow!("illegal `to_bits_le` call, expected call on target")),
+                    Some(value) => value.to_bits_le(),
+                }?;
+
+                Ok(ConstrainedValue::Array(
+                    bits.into_iter().map(ConstrainedValue::Boolean).collect(),
+                ))
+            }
+        }
+    };
 }
 
-pub const FROM_BITS_LE_CORE: &str = "_from_bits_le";
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub fn call_core_from_bits_le(
-        &mut self,
-        call: &str,
-        arguments: &[ConstrainedValue<F, G>],
-    ) -> Result<ConstrainedValue<F, G>> {
-        let arg = match arguments.get(0) {
-            None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
-            Some(value) => Ok(value),
-        }?;
+to_bits_impl!(
+    call_core_address_to_bits_le,
+    ADDRESS_TO_BITS_LE_CORE,
+    "address_to_bits_le"
+);
+to_bits_impl!(call_core_bool_to_bits_le, BOOL_TO_BITS_LE_CORE, "bool_to_bits_le");
+to_bits_impl!(call_core_char_to_bits_le, CHAR_TO_BITS_LE_CORE, "char_to_bits_le");
+to_bits_impl!(call_core_field_to_bits_le, FIELD_TO_BITS_LE_CORE, "field_to_bits_le");
+to_bits_impl!(call_core_group_to_bits_le, GROUP_TO_BITS_LE_CORE, "group_to_bits_le");
+to_bits_impl!(call_core_i8_to_bits_le, I8_TO_BITS_LE_CORE, "i8_to_bits_le");
+to_bits_impl!(call_core_i16_to_bits_le, I16_TO_BITS_LE_CORE, "I16_to_bits_le");
+to_bits_impl!(call_core_i32_to_bits_le, I32_TO_BITS_LE_CORE, "i32_to_bits_le");
+to_bits_impl!(call_core_i64_to_bits_le, I64_TO_BITS_LE_CORE, "i64_to_bits_le");
+to_bits_impl!(call_core_i128_to_bits_le, I128_TO_BITS_LE_CORE, "i128_to_bits_le");
+to_bits_impl!(call_core_u8_to_bits_le, U8_TO_BITS_LE_CORE, "u8_to_bits_le");
+to_bits_impl!(call_core_u16_to_bits_le, U16_TO_BITS_LE_CORE, "u16_to_bits_le");
+to_bits_impl!(call_core_u32_to_bits_le, U32_TO_BITS_LE_CORE, "u32_to_bits_le");
+to_bits_impl!(call_core_u64_to_bits_le, U64_TO_BITS_LE_CORE, "u64_to_bits_le");
+to_bits_impl!(call_core_u128_to_bits_le, U128_TO_BITS_LE_CORE, "u128_to_bits_le");
 
-        let (type_, num_of_expected_bits) = match call {
-            // TODO update non integer types with correct number of
-            // bits in future when known.
-            "address_from_bits_le" => (SimpleType::Address, 8),
-            "bool_from_bits_le" => (SimpleType::Boolean, 8),
-            "char_from_bits_le" => (SimpleType::Char, 8),
-            "field_from_bits_le" => (SimpleType::Field, 8),
-            "group_from_bits_le" => (SimpleType::Group, 8),
-            "i8_from_bits_le" => (SimpleType::Integer(SimpleInt::I8), 8),
-            "i16_from_bits_le" => (SimpleType::Integer(SimpleInt::I16), 16),
-            "i32_from_bits_le" => (SimpleType::Integer(SimpleInt::I32), 32),
-            "i64_from_bits_le" => (SimpleType::Integer(SimpleInt::I64), 64),
-            "i128_from_bits_le" => (SimpleType::Integer(SimpleInt::I128), 128),
-            "u8_from_bits_le" => (SimpleType::Integer(SimpleInt::U8), 8),
-            "u16_from_bits_le" => (SimpleType::Integer(SimpleInt::U16), 16),
-            "u32_from_bits_le" => (SimpleType::Integer(SimpleInt::U32), 32),
-            "u64_from_bits_le" => (SimpleType::Integer(SimpleInt::U64), 64),
-            "u128_from_bits_le" => (SimpleType::Integer(SimpleInt::U128), 128),
-            _ => return Err(anyhow!("the type `unknown` does not implement the from_bits_le method")),
-        };
+macro_rules! from_bits_impl {
+    ($function_name:ident, $constant_name:ident, $constant_value:literal, $num_of_expected_bits:literal, $call:expr) => {
+        pub const $constant_name: &str = $constant_value;
 
-        let bits = unwrap_boolean_array_argument(arg, num_of_expected_bits, "from_bits")?;
+        impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
+            pub fn $function_name(&mut self, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
+                let arg = match arguments.get(0) {
+                    None => Err(anyhow!("illegal `from_bits` call, expected 1 argument")),
+                    Some(value) => Ok(value),
+                }?;
 
-        ConstrainedValue::from_bits_le(type_, &bits)
-    }
+                let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits")?;
+
+                $call(&bits)
+            }
+        }
+    };
 }
+
+from_bits_impl!(
+    call_core_address_from_bits_le,
+    ADDRESS_FROM_BITS_LE_CORE,
+    "address_from_bits_le",
+    8,
+    |_bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `address` does not implement the from_bits_le method"))
+    }
+);
+from_bits_impl!(
+    call_core_bool_from_bits_le,
+    BOOL_FROM_BITS_LE_CORE,
+    "bool_from_bits_le",
+    8,
+    |_bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `bool` does not implement the from_bits_le method"))
+    }
+);
+from_bits_impl!(
+    call_core_char_from_bits_le,
+    CHAR_FROM_BITS_LE_CORE,
+    "char_from_bits_le",
+    8,
+    |_bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `char` does not implement the from_bits_le method"))
+    }
+);
+from_bits_impl!(
+    call_core_field_from_bits_le,
+    FIELD_FROM_BITS_LE_CORE,
+    "field_from_bits_le",
+    8,
+    |_bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `field` does not implement the from_bits_le method"))
+    }
+);
+from_bits_impl!(
+    call_core_group_from_bits_le,
+    GROUP_FROM_BITS_LE_CORE,
+    "group_from_bits_le",
+    8,
+    |_bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `group` does not implement the from_bits_le method"))
+    }
+);
+from_bits_impl!(
+    call_core_i8_from_bits_le,
+    I8_FROM_BITS_LE_CORE,
+    "i8_from_bits_le",
+    8,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::I8(Int8::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_i16_from_bits_le,
+    I16_FROM_BITS_LE_CORE,
+    "I16_from_bits_le",
+    16,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_i32_from_bits_le,
+    I32_FROM_BITS_LE_CORE,
+    "i32_from_bits_le",
+    32,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::I32(Int32::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_i64_from_bits_le,
+    I64_FROM_BITS_LE_CORE,
+    "i64_from_bits_le",
+    64,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::I64(Int64::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_i128_from_bits_le,
+    I128_FROM_BITS_LE_CORE,
+    "i128_from_bits_le",
+    128,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::I128(Int128::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_u8_from_bits_le,
+    U8_FROM_BITS_LE_CORE,
+    "u8_from_bits_le",
+    8,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::U8(UInt8::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_u16_from_bits_le,
+    U16_FROM_BITS_LE_CORE,
+    "u16_from_bits_le",
+    16,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::U16(UInt16::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_u32_from_bits_le,
+    U32_FROM_BITS_LE_CORE,
+    "u32_from_bits_le",
+    32,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::U32(UInt32::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_u64_from_bits_le,
+    U64_FROM_BITS_LE_CORE,
+    "u64_from_bits_le",
+    64,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::U64(UInt64::from_bits_le(bits))))
+    }
+);
+from_bits_impl!(
+    call_core_u128_from_bits_le,
+    U128_FROM_BITS_LE_CORE,
+    "u128_from_bits_le",
+    128,
+    |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
+        Ok(ConstrainedValue::Integer(Integer::U128(UInt128::from_bits_le(bits))))
+    }
+);
