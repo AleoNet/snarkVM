@@ -212,9 +212,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 program_circuit_verifying_key_bits,
             )?;
 
-            let claimed_circuit_id_bytes =
-                claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
-
             let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitsTreeCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
                 || Ok(&private.program_execution.program_path),
@@ -223,7 +220,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             let claimed_program_id = program_path_gadget.calculate_root(
                 &mut cs.ns(|| "calculate_program_id"),
                 &program_circuits_tree_crh,
-                claimed_circuit_id_bytes,
+                claimed_circuit_id,
             )?;
 
             let claimed_program_id_bytes =
