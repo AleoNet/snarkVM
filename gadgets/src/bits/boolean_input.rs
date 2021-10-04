@@ -95,19 +95,48 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
     ) -> Result<Self, SynthesisError> {
         let obj = value_gen()?;
 
-        // convert the elements into booleans (little-endian)
-        let mut res = Vec::<Vec<Boolean>>::new();
-        for (i, elem) in obj.borrow().iter().enumerate() {
+        // Step 1: obtain the bits of the F field elements
+        let mut src_bits = Vec::<bool>::new();
+        for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
+            for _ in bits.len()..F::size_in_bits() {
+                bits.push(false);
+            }
+            src_bits.append(&mut bits);
+        }
 
-            let mut booleans = Vec::<Boolean>::new();
-            for (j, bit) in bits.iter().enumerate() {
-                booleans.push(Boolean::alloc(cs.ns(|| format!("alloc_bit_{}_{}", i, j)), || Ok(*bit))?);
+        // Step 2: repack the bits as CF field elements
+        let capacity = <CF::Parameters as FieldParameters>::CAPACITY;
+
+        // Step 3: allocate the CF field elements as input
+        let mut src_booleans = Vec::<Boolean>::with_capacity(src_bits.len());
+        for (i, chunk) in src_bits.chunks(capacity as usize).enumerate() {
+            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
+
+            let elem_gadget = FpGadget::<CF>::alloc(cs.ns(|| format!("alloc_elem_{}", i)), || Ok(elem))?;
+
+            let mut lc = LinearCombination::zero();
+            let mut coeff = CF::one();
+
+            for (j, bit) in chunk.iter().enumerate() {
+                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(bit))?;
+
+                lc = &lc + boolean.lc(CS::one(), CF::one()) * coeff;
+                coeff.double_in_place();
+
+                src_booleans.push(boolean);
             }
 
-            res.push(booleans);
+            lc = &elem_gadget.get_variable().clone().neg() + lc;
+            cs.enforce(|| format!("bit_decomposition_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
+
+        // Step 4: unpack them back to bits
+        let res = src_booleans
+            .chunks(F::size_in_bits())
+            .map(|f| f.to_vec())
+            .collect::<Vec<Vec<Boolean>>>();
 
         Ok(Self {
             val: res,

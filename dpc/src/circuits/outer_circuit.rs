@@ -19,7 +19,6 @@ use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
-    bits::ToBytesGadget,
     traits::{
         algorithms::{CRHGadget, SNARKVerifierGadget},
         alloc::AllocGadget,
@@ -28,7 +27,6 @@ use snarkvm_gadgets::{
     MergeGadget,
     ToBitsLEGadget,
     ToMinimalBitsGadget,
-    UInt8,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
@@ -164,7 +162,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
             ledger_digest_fe,
             encrypted_record_ids_fe,
-            program_id_fe,
+            program_id_fe.clone(),
             transaction_id_fe_inner_snark,
         ])?;
 
@@ -203,7 +201,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         // Check that the program ID is derived correctly.
         {
-            // Verify that the claimed circuit ID is a valid Merkle path in the program circuit tree.
+            // Verify that the claimed circuit ID is a valid Merkle path in the program circuits tree.
             let program_circuit_verifying_key_bits = program_circuit_verifying_key
                 .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
@@ -223,19 +221,15 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 claimed_circuit_id,
             )?;
 
-            let claimed_program_id_bytes =
-                claimed_program_id.to_bytes(&mut cs.ns(|| "Convert claimed program ID to bytes"))?;
+            let given_program_id =
+                <N::ProgramCircuitsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
+                    &mut cs.ns(|| "Given program ID"),
+                    || Ok(&private.program_execution.program_id),
+                )?;
 
-            let given_program_id = UInt8::alloc_vec(
-                &mut cs.ns(|| "Allocate given program ID"),
-                &private.program_execution.program_id.to_bytes_le()?[..],
-            )?;
-            let given_program_id_bytes =
-                given_program_id.to_bytes(&mut cs.ns(|| "Convert given program ID to bytes"))?;
-
-            claimed_program_id_bytes.enforce_equal(
+            claimed_program_id.enforce_equal(
                 &mut cs.ns(|| "Check that declared and computed program IDs are equal"),
-                &given_program_id_bytes,
+                &given_program_id,
             )?;
         }
 
