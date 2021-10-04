@@ -64,7 +64,7 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
-use snarkvm_parameters::{testnet2::*, Genesis, Parameter};
+use snarkvm_parameters::{testnet2::*, Genesis};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
@@ -83,6 +83,7 @@ pub struct Testnet2;
 #[rustfmt::skip]
 impl Network for Testnet2 {
     const NETWORK_ID: u16 = 2u16;
+    const NETWORK_NAME: &'static str = "testnet2";
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
@@ -219,14 +220,14 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet2, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
 
-    dpc_snark_setup!{Testnet2, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet2, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+    dpc_snark_setup!{Testnet2, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet2, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
 
-    dpc_snark_setup!{Testnet2, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet2, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+    dpc_snark_setup!{Testnet2, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterProvingKeyBytes, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet2, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterVerifyingKeyBytes, "outer circuit verifying key"}
 
-    dpc_snark_setup!{Testnet2, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
-    dpc_snark_setup!{Testnet2, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
+    dpc_snark_setup!{Testnet2, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
+    dpc_snark_setup!{Testnet2, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InnerCircuitID> = OnceCell::new();
@@ -269,7 +270,7 @@ impl Network for Testnet2 {
     fn program_srs<R: Rng + CryptoRng>(_rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
         static UNIVERSAL_SRS: OnceCell<<<Testnet2 as Network>::ProgramSNARK as SNARK>::UniversalSetupParameters> = OnceCell::new();
         let universal_srs = UNIVERSAL_SRS.get_or_init(|| <Self::ProgramSNARK as SNARK>::UniversalSetupParameters::from_bytes_le(
-            &UniversalSRSParameters::load_bytes().expect("Failed to load universal SRS bytes"),
+            &UniversalSRSBytes::load_bytes().expect("Failed to load universal SRS bytes"),
         ).unwrap());
         Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
     }
@@ -278,6 +279,11 @@ impl Network for Testnet2 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_network_name_sanity_check() {
+        assert_eq!(Testnet2::NETWORK_NAME, "testnet2");
+    }
 
     #[test]
     fn test_inner_circuit_sanity_check() {

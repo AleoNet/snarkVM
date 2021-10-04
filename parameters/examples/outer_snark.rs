@@ -17,7 +17,7 @@
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
 use snarkvm_dpc::{DPCError, InnerCircuit, Network, OuterCircuit, ProgramExecutable, ProgramScheme};
 use snarkvm_parameters::{
-    testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
+    testnet1::{InnerProvingKeyBytes, InnerVerifyingKeyBytes},
     traits::Parameter,
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -31,20 +31,20 @@ use utils::store;
 pub fn setup<N: Network>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let inner_snark_pk: <N::InnerSNARK as SNARK>::ProvingKey =
-        <N::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
+    let inner_proving_key: <N::InnerSNARK as SNARK>::ProvingKey =
+        <N::InnerSNARK as SNARK>::ProvingKey::read_le(InnerProvingKeyBytes::load_bytes()?.as_slice())?;
 
-    let inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey =
-        <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+    let inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey =
+        <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
 
-    let inner_snark_proof = N::InnerSNARK::prove(&inner_snark_pk, &InnerCircuit::<N>::blank(), rng)?;
+    let inner_snark_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), rng)?;
 
     let noop_program = N::noop_program();
     let noop_executable = noop_program.to_executable(N::noop_circuit_id())?;
 
     let outer_snark_parameters = N::OuterSNARK::setup(
         &OuterCircuit::<N>::blank(
-            inner_snark_vk,
+            inner_verifying_key,
             inner_snark_proof,
             noop_executable.execute(Default::default())?,
         ),

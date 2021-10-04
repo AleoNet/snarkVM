@@ -45,7 +45,7 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for Groth16<E
     type Proof = Proof<E>;
     type ProvingKey = ProvingKey<E>;
     type ScalarField = E::Fr;
-    type UniversalSetupConfig = ();
+    type UniversalSetupConfig = usize;
     type UniversalSetupParameters = ();
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
