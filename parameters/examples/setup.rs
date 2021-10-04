@@ -65,7 +65,6 @@ fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
 fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
     file.write_all(&serde_json::to_vec_pretty(metadata)?)?;
-    drop(file);
     Ok(())
 }
 
