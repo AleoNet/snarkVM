@@ -18,7 +18,7 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
-    bits::{Boolean, ToBitsLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget},
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::integers::Integer,
 };
@@ -80,10 +80,6 @@ macro_rules! int_impl {
                 self.bits.iter().all(|bit| matches!(bit, Boolean::Constant(_)))
             }
 
-            // fn to_bits_le(&self) -> Vec<Boolean> {
-            //     self.bits.clone()
-            // }
-
             fn from_bits_le(bits: &[Boolean]) -> Self {
                 assert_eq!(bits.len(), $size);
 
@@ -127,7 +123,8 @@ macro_rules! int_impl {
             }
         }
 
-        to_bits_le_impl!($name);
+        to_bits_le_int_impl!($name);
+        to_bits_be_int_impl!($name);
     };
 }
 

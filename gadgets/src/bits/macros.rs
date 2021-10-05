@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! to_bits_le_impl {
+macro_rules! to_bits_le_int_impl {
     ($name: ident) => {
         impl<F: Field> ToBitsLEGadget<F> for $name {
             fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
@@ -23,6 +23,20 @@ macro_rules! to_bits_le_impl {
 
             fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
                 self.bits.to_bits_le(cs)
+            }
+        }
+    };
+}
+
+macro_rules! to_bits_be_int_impl {
+    ($name: ident) => {
+        impl<F: Field> ToBitsBEGadget<F> for $name {
+            fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                self.bits.to_bits_be(cs)
+            }
+
+            fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                self.bits.to_bits_be(cs)
             }
         }
     };

@@ -181,10 +181,6 @@ macro_rules! uint_impl_common {
                 constant
             }
 
-            // fn to_bits_le(&self) -> Vec<Boolean> {
-            //     self.bits.clone()
-            // }
-
             fn from_bits_le(bits: &[Boolean]) -> Self {
                 assert_eq!(bits.len(), $size);
 
@@ -229,7 +225,8 @@ macro_rules! uint_impl_common {
             }
         }
 
-        to_bits_le_impl!($name);
+        to_bits_le_int_impl!($name);
+        to_bits_be_int_impl!($name);
         cond_select_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $_type, $size);
     };

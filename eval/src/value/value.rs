@@ -21,6 +21,8 @@ use snarkvm_gadgets::{
     bits::Boolean,
     integers::uint::UInt8,
     traits::{eq::ConditionalEqGadget, select::CondSelectGadget},
+    ToBitsBEGadget,
+    ToBitsLEGadget,
 };
 use snarkvm_ir::Type;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -110,6 +112,7 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         }
     }
 
+    // todo (@gluax): deprecate this function in favor of `ToBitsLEGadget::to_bits_le()`
     pub fn to_bits_le(&self) -> Result<Vec<Boolean>> {
         use ConstrainedValue::*;
 
@@ -138,6 +141,27 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes_le method")),
             Tuple(_) => Err(anyhow!("the type `tuple` does not implement the to_bytes_le method")),
         }
+    }
+}
+
+// todo (@gluax) implement these functions
+impl<F: PrimeField, G: GroupType<F>> ToBitsLEGadget<F> for ConstrainedValue<F, G> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        todo!()
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        todo!()
+    }
+}
+
+impl<F: PrimeField, G: GroupType<F>> ToBitsBEGadget<F> for ConstrainedValue<F, G> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        todo!()
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        todo!()
     }
 }
 
