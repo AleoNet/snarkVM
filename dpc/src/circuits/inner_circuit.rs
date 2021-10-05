@@ -845,7 +845,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // ********************************************************************
         // Create the transaction kernel and check the transaction ID is valid.
         // ********************************************************************
-        let signature_message = {
+        let transaction_id = {
             let mut cs = cs.ns(|| "Check that local data root is valid.");
 
             let memo = UInt8::alloc_vec(&mut cs.ns(|| "Allocate memorandum"), &*private.kernel().memo())?;
@@ -878,7 +878,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 &given_transaction_id,
             )?;
 
-            message
+            candidate_transaction_id
         };
 
         // *******************************************************************
@@ -886,6 +886,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // *******************************************************************
         {
             let signature_cs = &mut cs.ns(|| "Check that signature is valid");
+
+            let signature_message = transaction_id.to_bytes(signature_cs.ns(|| "Create the signature message"))?;
 
             // Verify each signature is valid.
             for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {

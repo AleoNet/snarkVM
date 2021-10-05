@@ -111,18 +111,9 @@ impl<N: Network> TransactionKernel<N> {
     }
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         Ok(N::transaction_id_crh().hash(&self.to_bytes_le()?)?)
-    }
-
-    #[inline]
-    pub fn to_signature_message(&self) -> Result<Vec<u8>> {
-        match self.is_valid() {
-            true => self.to_bytes_le(),
-            false => {
-                Err(DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into())
-            }
-        }
     }
 }
 

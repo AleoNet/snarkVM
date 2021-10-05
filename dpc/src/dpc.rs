@@ -16,6 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::prelude::*;
+use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -39,7 +40,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let mut index = 0;
 
         // Construct the signature message.
-        let signature_message = transition.kernel().to_signature_message()?;
+        let signature_message = transition.kernel().to_transaction_id()?.to_bytes_le()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
