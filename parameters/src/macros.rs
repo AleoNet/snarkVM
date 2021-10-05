@@ -252,11 +252,11 @@ macro_rules! impl_remote {
                         .await
                         .unwrap();
 
+                    let buffer = buffer.upgrade().unwrap();
                     buffer
-                        .upgrade()
-                        .unwrap()
                         .write()
                         .extend_from_slice(content.as_bytes());
+                    drop(buffer);
                 });
                 Ok(())
             }
