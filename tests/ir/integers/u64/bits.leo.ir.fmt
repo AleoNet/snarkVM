@@ -1,8 +1,8 @@
 decl f0: <0>
   store &v1, ((v0), (), (), ())
-  ccall &v3, 'to_bits_le', 1
+  ccall &v3, 'u64_to_bits_le', 1
   store &v4, v3
-  ccall &v5, 'to_bits_le', v2
+  ccall &v5, 'u64_to_bits_le', v2
   store &v6, v5
   ccall &v7, 'u64_from_bits_le', v4
   store &v8, v7
