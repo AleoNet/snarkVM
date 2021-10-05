@@ -151,13 +151,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut signature_public_keys = Vec::with_capacity(N::NUM_INPUT_RECORDS);
 
-        for (i, ((record, signature), given_serial_number)) in private
-            .input_records
-            .iter()
-            .zip_eq(&private.signatures)
-            .zip_eq(private.kernel().serial_numbers())
-            .enumerate()
-        {
+        for (i, (record, signature)) in private.input_records.iter().zip_eq(&private.signatures).enumerate() {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
             // Declare record contents
@@ -261,17 +255,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut sn_cs.ns(|| "Compute serial number"),
                     &sk_prf,
                     &given_serial_number_nonce,
-                )?;
-
-                let given_serial_number_gadget =
-                    <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
-                        &mut sn_cs.ns(|| "Declare given serial number"),
-                        || Ok(given_serial_number),
-                    )?;
-
-                candidate_serial_number_gadget.enforce_equal(
-                    &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),
-                    &given_serial_number_gadget,
                 )?;
 
                 // Convert input serial numbers to bytes.
@@ -446,10 +429,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
         let mut output_program_ids = Vec::with_capacity(private.output_records.len());
 
-        for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
+        for (j, ((record, encryption_randomness), encrypted_record_id)) in private
             .output_records
             .iter()
-            .zip_eq(private.kernel().commitments())
             .zip_eq(&private.encrypted_record_randomizers)
             .zip_eq(&public.encrypted_record_ids)
             .enumerate()
@@ -499,28 +481,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_serial_number_nonce_bytes =
                     given_serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
 
-                let given_commitment = {
-                    let record_commitment = <N::CommitmentGadget as CommitmentGadget<
-                        N::CommitmentScheme,
-                        N::InnerScalarField,
-                    >>::OutputGadget::alloc(
-                        &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
-                    )?;
-
-                    let public_commitment = <N::CommitmentGadget as CommitmentGadget<
-                        N::CommitmentScheme,
-                        N::InnerScalarField,
-                    >>::OutputGadget::alloc(
-                        &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
-                    )?;
-
-                    record_commitment.enforce_equal(
-                        &mut declare_cs.ns(|| "Check that record commitment matches the public commitment"),
-                        &public_commitment,
-                    )?;
-
-                    record_commitment
-                };
+                let given_commitment = <N::CommitmentGadget as CommitmentGadget<
+                    N::CommitmentScheme,
+                    N::InnerScalarField,
+                >>::OutputGadget::alloc(
+                    &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
+                )?;
                 output_commitments_bytes
                     .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 
@@ -807,11 +773,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // *******************************************************************
         // Check that the value balance is valid.
         // *******************************************************************
-        let value_balance = {
+        let candidate_value_balance = {
             let mut cs = cs.ns(|| "Check that the value balance is valid.");
-
-            let given_value_balance =
-                Int64::alloc_fe(cs.ns(|| "given_value_balance"), private.kernel().value_balance().0)?;
 
             let mut candidate_value_balance = Int64::zero();
 
@@ -833,13 +796,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .unwrap();
             }
 
-            // Enforce that given_value_balance is equivalent to candidate_value_balance
-            given_value_balance.enforce_equal(
-                cs.ns(|| "given_value_balance == candidate_value_balance"),
-                &candidate_value_balance,
-            )?;
-
-            given_value_balance
+            candidate_value_balance
         };
 
         // ********************************************************************
@@ -859,7 +816,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             message.extend_from_slice(&network_id);
             message.extend_from_slice(&input_serial_numbers_bytes);
             message.extend_from_slice(&output_commitments_bytes);
-            message.extend_from_slice(&value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
+            message.extend_from_slice(&candidate_value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
             message.extend_from_slice(&memo);
 
             let candidate_transaction_id = transaction_id_crh
