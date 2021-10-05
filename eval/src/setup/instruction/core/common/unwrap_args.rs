@@ -21,59 +21,51 @@ use snarkvm_gadgets::{bits::Boolean, integers::uint::UInt8};
 
 use anyhow::*;
 
-// TODO figure out how to make this function generic?
-pub fn unwrap_boolean_array_argument<F: PrimeField, G: GroupType<F>>(
-    arg: &ConstrainedValue<F, G>,
-    expected_len: usize,
-    fn_call: &str,
-) -> Result<Vec<Boolean>> {
-    if let ConstrainedValue::Array(args) = arg {
-        if args.len() != expected_len {
-            return Err(anyhow!(
-                "illegal `{}` parameter length, expected `{}`",
-                fn_call,
-                expected_len
-            ));
-        }
-
-        args.into_iter()
-            .map(|item| {
-                if let ConstrainedValue::Boolean(boolean) = item {
-                    Ok(boolean.clone())
-                } else {
-                    Err(anyhow!("illegal non-boolean type in `{}` call", fn_call))
+macro_rules! unwrap_constrained_array {
+    ($function_name:ident, $return_type:ty, $call:expr) => {
+        pub fn $function_name<F: PrimeField, G: GroupType<F>>(
+            arg: &ConstrainedValue<F, G>,
+            expected_len: usize,
+            fn_call: &str,
+        ) -> Result<Vec<$return_type>> {
+            if let ConstrainedValue::Array(args) = arg {
+                if args.len() != expected_len {
+                    return Err(anyhow!(
+                        "illegal `{}` parameter length, expected `{}`",
+                        fn_call,
+                        expected_len
+                    ));
                 }
-            })
-            .collect::<Result<Vec<_>>>()
-    } else {
-        Err(anyhow!("illegal non-array type in `{}` call", fn_call))
-    }
+
+                args.into_iter()
+                    .map(|item| $call(item, fn_call))
+                    .collect::<Result<Vec<_>>>()
+            } else {
+                Err(anyhow!("illegal non-array type in `{}` call", fn_call))
+            }
+        }
+    };
 }
 
-pub fn unwrap_u8_array_argument<F: PrimeField, G: GroupType<F>>(
-    arg: &ConstrainedValue<F, G>,
-    expected_len: usize,
-    fn_call: &str,
-) -> Result<Vec<UInt8>> {
-    if let ConstrainedValue::Array(args) = arg {
-        if args.len() != expected_len {
-            return Err(anyhow!(
-                "illegal `{}` parameter length, expected `{}`",
-                fn_call,
-                expected_len
-            ));
-        }
-
-        args.into_iter()
-            .map(|item| {
-                if let ConstrainedValue::Integer(Integer::U8(u8int)) = item {
-                    Ok(u8int.clone())
-                } else {
-                    Err(anyhow!("illegal non-u8 type in `{}` call", fn_call))
-                }
-            })
-            .collect::<Result<Vec<_>>>()
+unwrap_constrained_array!(unwrap_boolean_array_argument, Boolean, |item: &ConstrainedValue<
+    F,
+    G,
+>,
+                                                                   fn_call: &str|
+ -> Result<Boolean> {
+    if let ConstrainedValue::Boolean(boolean) = item {
+        Ok(boolean.clone())
     } else {
-        Err(anyhow!("illegal non-array type in `{}` call", fn_call))
+        Err(anyhow!("illegal non-boolean type in `{}` call", fn_call))
     }
-}
+});
+
+unwrap_constrained_array!(unwrap_u8_array_argument, UInt8, |item: &ConstrainedValue<F, G>,
+                                                            fn_call: &str|
+ -> Result<UInt8> {
+    if let ConstrainedValue::Integer(Integer::U8(u8int)) = item {
+        Ok(u8int.clone())
+    } else {
+        Err(anyhow!("illegal non-boolean type in `{}` call", fn_call))
+    }
+});

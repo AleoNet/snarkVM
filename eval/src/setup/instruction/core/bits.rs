@@ -137,7 +137,7 @@ from_bits_impl!(
 from_bits_impl!(
     call_core_i16_from_bits_le,
     I16_FROM_BITS_LE_CORE,
-    "I16_from_bits_le",
+    "i16_from_bits_le",
     16,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_le(bits))))
