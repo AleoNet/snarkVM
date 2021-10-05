@@ -17,7 +17,7 @@
 use crate::{ahp::indexer::*, marlin::CircuitVerifyingKey, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
 use crate::{IoResult, Read, Write};
 use derivative::Derivative;
@@ -25,7 +25,7 @@ use derivative::Derivative;
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug)]
 pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// The circuit verifying key.
     pub circuit_verifying_key: CircuitVerifyingKey<F, CF, PC>,
