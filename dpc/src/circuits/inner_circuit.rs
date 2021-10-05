@@ -147,7 +147,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_serial_numbers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32); // Serial numbers are 32 bytes
         let mut input_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        let mut input_is_dummy = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_is_dummies = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut signature_public_keys = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -334,7 +334,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 input_commitments.push(candidate_commitment);
-                input_is_dummy.push(given_is_dummy);
+                input_is_dummies.push(given_is_dummy);
                 input_values.push(given_value);
             }
         }
@@ -355,7 +355,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Ensure the commitment inclusion proofs are valid.
             for (i, (commitment, is_dummy)) in input_commitments
                 .iter()
-                .zip_eq(input_is_dummy.iter())
+                .zip_eq(input_is_dummies.iter())
                 .take(N::NUM_INPUT_RECORDS)
                 .enumerate()
             {
@@ -376,8 +376,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             }
 
             // Determine if the transaction inputs are both dummies.
-            let is_without_inputs =
-                Boolean::kary_and(&mut ledger_cs.ns(|| "Determine if is without inputs"), &input_is_dummy)?;
+            let is_without_inputs = Boolean::kary_and(
+                &mut ledger_cs.ns(|| "Determine if is without inputs"),
+                &input_is_dummies,
+            )?;
 
             // Declare the block header root.
             let header_root = <N::BlockHeaderTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
@@ -491,8 +493,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 >>::OutputGadget::alloc(
                     &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
                 )?;
-                output_commitments_bytes
-                    .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 
                 let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
                     N::CommitmentScheme,
@@ -595,6 +595,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &given_commitment,
                 )?;
 
+                output_commitments_bytes
+                    .extend_from_slice(&candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "commitment_bytes"))?);
                 output_values.push(given_value);
 
                 given_value_bytes
@@ -673,55 +675,55 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // Check that program ID is declared by the input and output records.
         // *******************************************************************
         {
-            let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
+            let program_cs = &mut cs.ns(|| "Check that program ID is well-formed");
 
             // Allocate the program ID.
             let executable_program_id_field_elements = {
                 let executable_program_id_bytes = UInt8::alloc_input_vec_le(
-                    &mut commitment_cs.ns(|| "Allocate executable_program_id"),
+                    &mut program_cs.ns(|| "Allocate executable_program_id"),
                     &public.program_id.as_ref().unwrap().to_bytes_le()?,
                 )?;
                 executable_program_id_bytes
-                    .to_constraint_field(&mut commitment_cs.ns(|| "convert executable program ID to field elements"))?
+                    .to_constraint_field(&mut program_cs.ns(|| "convert executable program ID to field elements"))?
             };
 
             // Declare the required number of inputs for this circuit type.
             let number_of_inputs =
-                &UInt8::alloc_vec(&mut commitment_cs.ns(|| "number_of_inputs for executable"), &[private
+                &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_inputs for executable"), &[private
                     .circuit_type
                     .input_count()])?[0];
             {
                 let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
                 let is_inputs_size_correct = number_of_inputs.less_than_or_equal(
-                    &mut commitment_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
+                    &mut program_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
                     &number_of_input_records,
                 )?;
                 is_inputs_size_correct.enforce_equal(
-                    &mut commitment_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
+                    &mut program_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
                     &Boolean::constant(true),
                 )?;
             }
 
             // Declare the required number of outputs for this circuit type.
             let number_of_outputs =
-                &UInt8::alloc_vec(&mut commitment_cs.ns(|| "number_of_outputs for executable"), &[private
+                &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_outputs for executable"), &[private
                     .circuit_type
                     .output_count()])?[0];
             {
                 let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);
                 let is_outputs_size_correct = number_of_outputs.less_than_or_equal(
-                    &mut commitment_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
+                    &mut program_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
                     &number_of_output_records,
                 )?;
                 is_outputs_size_correct.enforce_equal(
-                    &mut commitment_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
+                    &mut program_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
                     &Boolean::constant(true),
                 )?;
             }
 
             for (i, input_program_id_field_elements) in input_program_ids.iter().take(N::NUM_INPUT_RECORDS).enumerate()
             {
-                let input_cs = &mut commitment_cs.ns(|| format!("Check input record {} on executable", i));
+                let input_cs = &mut program_cs.ns(|| format!("Check input record {} on executable", i));
 
                 let input_index = UInt8::constant(i as u8);
 
@@ -747,7 +749,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             for (j, output_program_id_field_elements) in
                 output_program_ids.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
             {
-                let output_cs = &mut commitment_cs.ns(|| format!("Check output record {} on executable", j));
+                let output_cs = &mut program_cs.ns(|| format!("Check output record {} on executable", j));
 
                 let output_index = UInt8::constant(j as u8);
 
@@ -798,7 +800,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // ********************************************************************
         // Create the transaction kernel and check the transaction ID is valid.
         // ********************************************************************
-        let transaction_id = {
+        let candidate_transaction_id = {
             let mut cs = cs.ns(|| "Check that local data root is valid.");
 
             let memo = UInt8::alloc_vec(&mut cs.ns(|| "Allocate memorandum"), &*private.kernel().memo())?;
@@ -840,7 +842,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let signature_cs = &mut cs.ns(|| "Check that signature is valid");
 
-            let signature_message = transaction_id.to_bytes(signature_cs.ns(|| "Create the signature message"))?;
+            let signature_message =
+                candidate_transaction_id.to_bytes(signature_cs.ns(|| "Create the signature message"))?;
 
             // Verify each signature is valid.
             for (i, (signature, public_key)) in private.signatures.iter().zip(signature_public_keys).enumerate() {
