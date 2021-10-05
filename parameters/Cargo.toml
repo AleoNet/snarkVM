@@ -33,7 +33,7 @@ version = "1"
 [dependencies.cfg-if]
 version = "1.0"
 
-[dependencies.curl]
+[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
 version = "0.4.39"
 optional = true
 
@@ -49,12 +49,23 @@ version = "1"
 [dependencies.thiserror]
 version = "1.0"
 
+[target.'cfg(target_family = "wasm")'.dependencies.reqwest]
+version = "0.11"
+
+[target.'cfg(target_family = "wasm")'.dependencies.wasm-bindgen-futures]
+version = "0.4"
+
+[target.'cfg(target_family = "wasm")'.dependencies.parking_lot]
+version = "0.11"
+features = [ "wasm-bindgen" ]
+
 [dev-dependencies.snarkvm-curves]
 path = "../curves"
 default-features = false
 
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
+default-features = false
 
 [dev-dependencies.snarkvm-fields]
 path = "../fields"
@@ -78,6 +89,6 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "remote", "snarkvm-algorithms/default" ]
+std = [ "remote", "snarkvm-algorithms/default" ]
 remote = [ "curl" ]
 wasm = [ "snarkvm-algorithms/wasm" ]
