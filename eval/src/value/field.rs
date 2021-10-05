@@ -27,6 +27,7 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
         select::CondSelectGadget,
     },
+    ToBitsLEGadget,
 };
 use snarkvm_ir::{Field, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -243,13 +244,23 @@ impl<F: PrimeField> CondSelectGadget<F> for FieldType<F> {
     }
 }
 
+impl<F: PrimeField> ToBitsLEGadget<F> for FieldType<F> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le(cs)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le_strict()
+    }
+}
+
 impl<F: PrimeField> ToBitsBEGadget<F> for FieldType<F> {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.0.to_bits_be(cs)
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        self.0.to_bits_be(cs)
+        self.0.to_bits_be_strict(cs)
     }
 }
 
