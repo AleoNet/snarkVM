@@ -24,6 +24,7 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         select::CondSelectGadget,
     },
+    ToBitsLEGadget,
 };
 use snarkvm_ir::Group;
 use snarkvm_r1cs::ConstraintSystem;
@@ -44,6 +45,7 @@ pub trait GroupType<F: Field>:
     + ConditionalEqGadget<F>
     + AllocGadget<Group, F>
     + CondSelectGadget<F>
+    + ToBitsLEGadget<F>
     + ToBitsBEGadget<F>
     + ToBytesGadget<F>
 {

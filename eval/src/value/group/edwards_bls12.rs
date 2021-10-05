@@ -37,6 +37,7 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
     },
     CondSelectGadget,
+    ToBitsLEGadget,
 };
 use snarkvm_ir::{Field, Group, GroupCoordinate};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -446,6 +447,18 @@ impl CondSelectGadget<Fq> for EdwardsGroupType {
 
     fn cost() -> usize {
         2 * <EdwardsBls12Gadget as CondSelectGadget<Fq>>::cost()
+    }
+}
+
+impl ToBitsLEGadget<Fq> for EdwardsGroupType {
+    fn to_bits_le<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let self_gadget = self.allocated(&mut cs)?;
+        self_gadget.to_bits_le(cs)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let self_gadget = self.allocated(&mut cs)?;
+        self_gadget.to_bits_le_strict(cs)
     }
 }
 

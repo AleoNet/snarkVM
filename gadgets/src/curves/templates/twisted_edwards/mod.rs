@@ -34,6 +34,7 @@ use crate::{
         fields::FieldGadget,
         select::CondSelectGadget,
     },
+    ToBitsLEGadget,
 };
 
 #[cfg(test)]
@@ -1300,6 +1301,26 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NE
     }
 }
 
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsLEGadget<F>
+    for AffineGadget<P, F, FG>
+{
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut x_bits = self.x.to_bits_le(cs.ns(|| "X Coordinate To Bits"))?;
+        let y_bits = self.y.to_bits_le(cs.ns(|| "Y Coordinate To Bits"))?;
+        x_bits.extend_from_slice(&y_bits);
+
+        Ok(x_bits)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut x_bits = self.x.to_bits_le_strict(cs.ns(|| "X Coordinate To Bits"))?;
+        let y_bits = self.y.to_bits_le_strict(cs.ns(|| "Y Coordinate To Bits"))?;
+        x_bits.extend_from_slice(&y_bits);
+
+        Ok(x_bits)
+    }
+}
+
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsBEGadget<F>
     for AffineGadget<P, F, FG>
 {
@@ -1307,6 +1328,7 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> To
         let mut x_bits = self.x.to_bits_be(cs.ns(|| "X Coordinate To Bits"))?;
         let y_bits = self.y.to_bits_be(cs.ns(|| "Y Coordinate To Bits"))?;
         x_bits.extend_from_slice(&y_bits);
+
         Ok(x_bits)
     }
 
