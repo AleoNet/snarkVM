@@ -62,7 +62,7 @@ impl<N: Network> Transaction<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let transition = StateTransition::new_coinbase(recipient, amount, rng)?;
         let authorization = DPC::<N>::authorize(&vec![], &transition, rng)?;
-        DPC::<N>::execute(authorization, transition.executable(), &LedgerProof::default(), rng)
+        DPC::<N>::execute(authorization, transition.executable(), LedgerProof::default(), rng)
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.

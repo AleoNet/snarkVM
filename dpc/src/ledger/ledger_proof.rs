@@ -21,8 +21,10 @@ use snarkvm_utilities::ToBytes;
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 
-#[allow(unused)]
 /// A ledger proof of inclusion.
+#[allow(unused)]
+#[derive(Derivative)]
+#[derivative(Clone(bound = "N: Network"))]
 pub struct LedgerProof<N: Network> {
     block_hash: N::BlockHash,
     previous_block_hash: N::BlockHash,
@@ -125,8 +127,9 @@ impl<N: Network> LedgerProof<N> {
         self.commitments_root
     }
 
-    pub fn commitment_inclusion_proofs(&self) -> Vec<MerklePath<N::CommitmentsTreeParameters>> {
-        self.commitment_inclusion_proofs.clone()
+    /// Returns a reference to the commitment inclusion proofs.
+    pub fn commitment_inclusion_proofs(&self) -> &Vec<MerklePath<N::CommitmentsTreeParameters>> {
+        &self.commitment_inclusion_proofs
     }
 }
 
@@ -138,7 +141,7 @@ impl<N: Network> Default for LedgerProof<N> {
             header_root: Default::default(),
             header_inclusion_proof: MerklePath::default(),
             commitments_root: Default::default(),
-            commitment_inclusion_proofs: vec![MerklePath::default(); N::NUM_INPUT_RECORDS].into(),
+            commitment_inclusion_proofs: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
             commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
         }
     }

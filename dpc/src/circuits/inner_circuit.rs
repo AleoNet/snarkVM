@@ -33,6 +33,8 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use itertools::Itertools;
+
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerCircuit<N: Network> {
@@ -128,22 +130,18 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let noop_program_id_field_elements =
             noop_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert noop program ID to field elements"))?;
 
-        let digest_gadget = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-            &mut cs.ns(|| "Declare ledger digest"),
-            || Ok(public.ledger_digest),
-        )?;
+        let mut input_serial_numbers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32); // Serial numbers are 32 bytes
+        let mut input_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_is_dummy = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut signature_public_keys = Vec::with_capacity(N::NUM_INPUT_RECORDS);
 
-        let mut input_serial_numbers = Vec::with_capacity(private.input_records.len());
-        let mut input_serial_numbers_bytes = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
-        let mut input_program_ids = Vec::with_capacity(private.input_records.len());
-        let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
-
-        for (i, (((record, witness), signature), given_serial_number)) in private
+        for (i, ((record, signature), given_serial_number)) in private
             .input_records
             .iter()
-            .zip(&private.input_witnesses)
-            .zip(&private.signatures)
-            .zip(private.kernel().serial_numbers())
+            .zip_eq(&private.signatures)
+            .zip_eq(private.kernel().serial_numbers())
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
@@ -221,28 +219,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_commitment_randomness,
                 )
             };
-
-            // **********************************************************************************
-            // Check that the commitment appears on the ledger,
-            // i.e., the membership witness is valid with respect to the record commitment root.
-            // **********************************************************************************
-            {
-                let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
-
-                let witness_gadget = MerklePathGadget::<_, N::CommitmentsTreeCRHGadget, _>::alloc(
-                    &mut witness_cs.ns(|| "Declare membership witness"),
-                    || Ok(witness),
-                )?;
-
-                witness_gadget.conditionally_check_membership(
-                    &mut witness_cs.ns(|| "Perform ledger membership witness check"),
-                    &commitments_tree_parameters,
-                    &digest_gadget,
-                    &given_commitment,
-                    &given_is_dummy.not(),
-                )?;
-            }
-            // ********************************************************************
 
             // ********************************************************************
             // Check that the serial number is derived correctly.
@@ -356,8 +332,47 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
                     &given_commitment,
                 )?;
+
+                input_commitments.push(candidate_commitment);
+                input_is_dummy.push(given_is_dummy);
             }
         }
+
+        // **********************************************************************************
+        // Check that the commitment appears on the ledger,
+        // i.e., the membership witness is valid with respect to the record commitment root.
+        // **********************************************************************************
+        {
+            let ledger_cs = &mut cs.ns(|| "Check ledger proof");
+
+            let commitments_root = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+                &mut ledger_cs.ns(|| "Declare commitments root"),
+                || Ok(public.commitments_root),
+            )?;
+
+            for (i, (commitment, is_dummy)) in input_commitments
+                .iter()
+                .zip_eq(input_is_dummy.iter())
+                .take(N::NUM_INPUT_RECORDS)
+                .enumerate()
+            {
+                let inclusion_cs = &mut ledger_cs.ns(|| format!("Check commitment inclusion proof {}", i));
+
+                let commitment_inclusion_proof_gadget = MerklePathGadget::<_, N::CommitmentsTreeCRHGadget, _>::alloc(
+                    &mut inclusion_cs.ns(|| "Declare commitment inclusion proof"),
+                    || Ok(&private.ledger_proof.commitment_inclusion_proofs()[i]),
+                )?;
+
+                commitment_inclusion_proof_gadget.conditionally_check_membership(
+                    &mut inclusion_cs.ns(|| "Perform commitment inclusion proof check"),
+                    &commitments_tree_parameters,
+                    &commitments_root,
+                    &commitment,
+                    &is_dummy.not(),
+                )?;
+            }
+        }
+        // ********************************************************************
 
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
         let mut output_program_ids = Vec::with_capacity(private.output_records.len());
@@ -365,9 +380,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
             .output_records
             .iter()
-            .zip(private.kernel().commitments())
-            .zip(&private.encrypted_record_randomizers)
-            .zip(&public.encrypted_record_ids)
+            .zip_eq(private.kernel().commitments())
+            .zip_eq(&private.encrypted_record_randomizers)
+            .zip_eq(&public.encrypted_record_ids)
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));

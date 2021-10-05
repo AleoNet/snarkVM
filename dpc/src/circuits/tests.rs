@@ -56,7 +56,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     // Construct the ledger witnesses.
     let ledger_proof = LedgerProof::<N>::default();
     let ledger_digest = ledger_proof.commitments_root();
-    let ledger_inclusion_proofs = ledger_proof.commitment_inclusion_proofs();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -71,7 +70,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_private_variables = InnerPrivateVariables::new(
         &kernel,
         input_records.clone(),
-        ledger_inclusion_proofs,
+        ledger_proof,
         signatures,
         output_records.clone(),
         encrypted_record_randomizers,

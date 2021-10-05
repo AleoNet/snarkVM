@@ -108,7 +108,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // Declare inner circuit public variables as inner circuit field elements
 
     let ledger_digest_fe =
-        alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.commitments_root, "ledger digest")?;
 
     let encrypted_record_ids_fe = {
         let mut encrypted_record_ids_fe_vec =

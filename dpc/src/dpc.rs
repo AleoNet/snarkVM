@@ -66,14 +66,13 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executable: &Executable<N>,
-        ledger_proof: &Self::LedgerProof,
+        ledger_proof: Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
         let ledger_digest = ledger_proof.commitments_root();
-        let input_witnesses = ledger_proof.commitment_inclusion_proofs();
 
         // Generate the transaction ID.
         let transaction_id = authorization.to_transaction_id()?;
@@ -102,7 +101,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let inner_private_variables = InnerPrivateVariables::new(
             &kernel,
             input_records,
-            input_witnesses,
+            ledger_proof,
             signatures,
             output_records.clone(),
             encrypted_record_randomizers,

@@ -14,8 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, CircuitType, Executable, Memo, Network, ProgramExecutable, Record, TransactionKernel};
-use snarkvm_algorithms::{merkle_tree::MerklePath, traits::EncryptionScheme};
+use crate::{
+    AleoAmount,
+    CircuitType,
+    Executable,
+    LedgerProof,
+    Memo,
+    Network,
+    ProgramExecutable,
+    Record,
+    TransactionKernel,
+};
+use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
 
@@ -26,7 +36,7 @@ pub struct InnerPrivateVariables<N: Network> {
     kernel: TransactionKernel<N>,
     // Inputs records.
     pub(super) input_records: Vec<Record<N>>,
-    pub(super) input_witnesses: Vec<MerklePath<N::CommitmentsTreeParameters>>,
+    pub(super) ledger_proof: LedgerProof<N>,
     pub(super) signatures: Vec<N::AccountSignature>,
     // Output records.
     pub(super) output_records: Vec<Record<N>>,
@@ -47,7 +57,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             )
             .expect("Failed to instantiate a blank transaction kernel"),
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
-            input_witnesses: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
+            ledger_proof: Default::default(),
             signatures: vec![N::AccountSignature::default(); N::NUM_INPUT_RECORDS],
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             encrypted_record_randomizers: vec![
@@ -61,7 +71,7 @@ impl<N: Network> InnerPrivateVariables<N> {
     pub fn new(
         kernel: &TransactionKernel<N>,
         input_records: Vec<Record<N>>,
-        input_witnesses: Vec<MerklePath<N::CommitmentsTreeParameters>>,
+        ledger_proof: LedgerProof<N>,
         signatures: Vec<N::AccountSignature>,
         output_records: Vec<Record<N>>,
         encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
@@ -69,7 +79,6 @@ impl<N: Network> InnerPrivateVariables<N> {
     ) -> Result<Self> {
         assert!(kernel.is_valid());
         assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
-        assert_eq!(N::NUM_INPUT_RECORDS, input_witnesses.len());
         assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
         assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
@@ -77,7 +86,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         Ok(Self {
             kernel: kernel.clone(),
             input_records,
-            input_witnesses,
+            ledger_proof,
             signatures,
             output_records,
             encrypted_record_randomizers,
