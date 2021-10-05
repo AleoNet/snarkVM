@@ -164,8 +164,10 @@ mod tests {
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
         assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
-        // assert_eq!(ledger_proof.commitment_inclusion_proofs[0], expected_block.header().to_header_inclusion_proof(2, expected_commitments[0])?);
-        // assert_eq!(ledger_proof.commitment_inclusion_proofs[1], expected_block.header().to_header_inclusion_proof(2, expected_commitments[1])?);
+        assert!(ledger_proof.commitment_inclusion_proofs[0].verify(&ledger_proof.commitments_root, &expected_commitments[0])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[0].verify(&ledger_proof.commitments_root, &expected_commitments[1])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[1].verify(&ledger_proof.commitments_root, &expected_commitments[0])?);
+        assert!(ledger_proof.commitment_inclusion_proofs[1].verify(&ledger_proof.commitments_root, &expected_commitments[1])?);
         assert_eq!(ledger_proof.commitments, expected_commitments);
 
         // Create a ledger proof for one commitment and one noop.
@@ -174,9 +176,24 @@ mod tests {
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
         assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
-        // assert_eq!(ledger_proof.commitment_inclusion_proofs[0], expected_block.header().to_header_inclusion_proof(2, expected_commitments[0])?);
-        // assert_eq!(ledger_proof.commitment_inclusion_proofs[1], Default::default());
+        assert!(ledger_proof.commitment_inclusion_proofs[0].verify(&ledger_proof.commitments_root, &expected_commitments[0])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[0].verify(&ledger_proof.commitments_root, &expected_commitments[1])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[1].verify(&ledger_proof.commitments_root, &expected_commitments[0])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[1].verify(&ledger_proof.commitments_root, &expected_commitments[1])?);
         assert_eq!(ledger_proof.commitments[0], expected_commitments[0]);
+        assert_eq!(ledger_proof.commitments[1], Default::default());
+
+        // Create a ledger proof for two noops.
+        let ledger_proof = ledger.to_ledger_inclusion_proof(&[])?;
+        assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
+        assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
+        assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
+        assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
+        assert!(!ledger_proof.commitment_inclusion_proofs[0].verify(&ledger_proof.commitments_root, &expected_commitments[0])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[0].verify(&ledger_proof.commitments_root, &expected_commitments[1])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[1].verify(&ledger_proof.commitments_root, &expected_commitments[0])?);
+        assert!(!ledger_proof.commitment_inclusion_proofs[1].verify(&ledger_proof.commitments_root, &expected_commitments[1])?);
+        assert_eq!(ledger_proof.commitments[0], Default::default());
         assert_eq!(ledger_proof.commitments[1], Default::default());
 
         Ok(())
