@@ -245,10 +245,14 @@ impl<N: Network> Blocks<N> {
             ));
         }
 
-        // Ensure the transactions in the block do not already exist.
         for transaction in block.transactions().iter() {
+            // Ensure the transaction in the block do not already exist.
             if self.contains_transaction(transaction) {
                 return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
+            }
+            // Ensure the transaction in the block references a valid past or current block hash.
+            if !self.contains_block_hash(&transaction.block_hash()) {
+                return Err(anyhow!("The given transaction references a non-existent block hash"));
             }
         }
 

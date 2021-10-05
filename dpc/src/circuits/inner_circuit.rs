@@ -360,9 +360,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let ledger_cs = &mut cs.ns(|| "Check ledger proof");
 
             // Declare the commitments root.
-            let commitments_root = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            let commitments_root = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
                 &mut ledger_cs.ns(|| "Declare commitments root"),
-                || Ok(public.commitments_root),
+                || Ok(private.ledger_proof.commitments_root()),
             )?;
 
             // Ensure the commitment inclusion proofs are valid.

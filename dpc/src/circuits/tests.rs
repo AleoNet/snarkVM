@@ -55,7 +55,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Construct the ledger witnesses.
     let ledger_proof = LedgerProof::<N>::default();
-    let ledger_digest = ledger_proof.commitments_root();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -63,7 +62,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_public_variables = InnerPublicVariables::new(
         transaction_id,
         ledger_proof.block_hash(),
-        &ledger_digest,
         &encrypted_record_hashes,
         Some(state.executable().program_id()),
     )
@@ -154,7 +152,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(224910, 164980);
+        dpc_execute_circuits_test::<Testnet1>(224910, 161057);
     }
 }
 
@@ -164,6 +162,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(224910, 257108);
+        dpc_execute_circuits_test::<Testnet2>(224910, 253185);
     }
 }
