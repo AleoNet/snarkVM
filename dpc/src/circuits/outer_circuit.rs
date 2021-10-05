@@ -107,8 +107,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // Declare inner circuit public variables as inner circuit field elements
 
-    let ledger_digest_fe =
-        alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
+    let block_hash_fe = alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.block_hash, "block hash")?;
 
     let encrypted_record_ids_fe = {
         let mut encrypted_record_ids_fe_vec =
@@ -160,7 +159,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
-            ledger_digest_fe,
+            block_hash_fe,
             encrypted_record_ids_fe,
             program_id_fe.clone(),
             transaction_id_fe_inner_snark,

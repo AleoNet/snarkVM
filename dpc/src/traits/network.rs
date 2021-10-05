@@ -105,6 +105,7 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     /// CRH schemes for the block hash. Invoked only over `Self::InnerScalarField`.
     type BlockHashCRH: CRH<Output = Self::BlockHash>;
+    type BlockHashCRHGadget: CRHGadget<Self::BlockHashCRH, Self::InnerScalarField>;
     type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + PartialEq + Eq + Hash + Sync + Send;
     
     /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.

@@ -28,7 +28,7 @@ use crate::{
     TransactionMetadata,
     DPC,
 };
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use snarkvm_algorithms::traits::SNARK;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -62,7 +62,7 @@ impl<N: Network> Transaction<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let transition = StateTransition::new_coinbase(recipient, amount, rng)?;
         let authorization = DPC::<N>::authorize(&vec![], &transition, rng)?;
-        DPC::<N>::execute(authorization, transition.executable(), &LedgerProof::default(), rng)
+        DPC::<N>::execute(authorization, transition.executable(), LedgerProof::default(), rng)
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
@@ -172,9 +172,9 @@ impl<N: Network> Transaction<N> {
         self.kernel.memo()
     }
 
-    /// Returns the ledger digest.
-    pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::CommitmentsTreeParameters> {
-        self.metadata.ledger_digest()
+    /// Returns the block hash.
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.metadata.block_hash()
     }
 
     /// Returns the inner circuit ID.
@@ -262,13 +262,13 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
             self.network_id(),
             self.serial_numbers(),
             self.commitments(),
             self.value_balance(),
             self.memo(),
-            self.ledger_digest(),
+            self.block_hash(),
             self.inner_circuit_id(),
             self.proof(),
         )

@@ -64,7 +64,9 @@ impl<N: Network> Blocks<N> {
             commitments_roots: Default::default(),
         };
 
-        blocks.previous_hashes.insert(height, *genesis_block.previous_hash());
+        blocks
+            .previous_hashes
+            .insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
         blocks.serial_numbers.add_all(serial_numbers)?;
@@ -207,7 +209,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the previous block hash is correct.
-        if self.current_hash != *block.previous_hash() {
+        if self.current_hash != block.previous_block_hash() {
             return Err(anyhow!("The given block has an incorrect previous block hash"));
         }
 
@@ -243,10 +245,14 @@ impl<N: Network> Blocks<N> {
             ));
         }
 
-        // Ensure the transactions in the block do not already exist.
         for transaction in block.transactions().iter() {
+            // Ensure the transaction in the block do not already exist.
             if self.contains_transaction(transaction) {
                 return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
+            }
+            // Ensure the transaction in the block references a valid past or current block hash.
+            if !self.contains_block_hash(&transaction.block_hash()) {
+                return Err(anyhow!("The given transaction references a non-existent block hash"));
             }
         }
 
@@ -272,7 +278,7 @@ impl<N: Network> Blocks<N> {
 
             blocks.current_height = height;
             blocks.current_hash = block_hash;
-            blocks.previous_hashes.insert(height, *block.previous_hash());
+            blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
             blocks.serial_numbers.add_all(serial_numbers)?;
@@ -286,9 +292,21 @@ impl<N: Network> Blocks<N> {
         Ok(())
     }
 
-    /// Returns the commitments inclusion proof up to the corresponding block hash.
-    pub fn to_commitments_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        assert_eq!(commitments.len(), N::NUM_INPUT_RECORDS);
+    ///
+    /// Returns the ledger proof for the given commitments with the current block hash.
+    ///
+    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
+    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
+    ///
+    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
+        // Ensure the correct number of commitments is given.
+        if commitments.len() > N::NUM_INPUT_RECORDS {
+            return Err(anyhow!(
+                "Incorrect number of given commitments. Expected up to {}, found {}",
+                N::NUM_INPUT_RECORDS,
+                commitments.len(),
+            ));
+        }
 
         let commitment_inclusion_proofs = commitments
             .iter()
@@ -300,17 +318,18 @@ impl<N: Network> Blocks<N> {
         let header_inclusion_proof = header.to_header_inclusion_proof(2, commitments_root)?;
         let header_root = header.to_header_root()?;
 
-        let previous_hash = self.get_previous_block_hash(self.current_height)?;
-        let current_hash = self.current_hash;
+        let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
+        let current_block_hash = self.current_hash;
 
-        Ok(LedgerProof {
-            block_hash: current_hash,
-            previous_block_hash: previous_hash,
+        LedgerProof::new(
+            current_block_hash,
+            previous_block_hash,
             header_root,
             header_inclusion_proof,
             commitments_root,
             commitment_inclusion_proofs,
-        })
+            commitments.to_vec(),
+        )
     }
 
     /// Returns the expected difficulty target given the previous block and expected next block details.

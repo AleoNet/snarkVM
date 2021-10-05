@@ -91,11 +91,6 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.contains_commitments_root(commitments_root)
     }
 
-    /// Returns the commitments inclusion proof up to the corresponding block hash.
-    pub fn to_commitments_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        self.canon_blocks.to_commitments_inclusion_proof(commitments)
-    }
-
     /// Adds the given canon block, if it is well-formed and does not already exist.
     /// Note: This method requires blocks to be added in order of canon block height.
     pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
@@ -168,6 +163,16 @@ impl<N: Network> Ledger<N> {
 
         // Add the block to canon.
         self.add_next_block(&block)
+    }
+
+    ///
+    /// Returns the ledger proof for the given commitments with the current block hash.
+    ///
+    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
+    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
+    ///
+    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
+        self.canon_blocks.to_ledger_inclusion_proof(commitments)
     }
 }
 

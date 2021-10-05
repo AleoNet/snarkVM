@@ -29,8 +29,8 @@ use std::io::{Read, Result as IoResult, Write};
     Eq(bound = "N: Network")
 )]
 pub struct TransactionMetadata<N: Network> {
-    /// The root of the ledger commitment tree.
-    ledger_digest: N::CommitmentsRoot,
+    /// The block hash used for the ledger inclusion proof.
+    block_hash: N::BlockHash,
     /// The ID of the inner circuit used to execute this transaction.
     inner_circuit_id: N::InnerCircuitID,
 }
@@ -38,17 +38,17 @@ pub struct TransactionMetadata<N: Network> {
 impl<N: Network> TransactionMetadata<N> {
     /// Initializes a new instance of transaction metadata.
     #[inline]
-    pub fn new(ledger_digest: N::CommitmentsRoot, inner_circuit_id: N::InnerCircuitID) -> Self {
+    pub fn new(block_hash: N::BlockHash, inner_circuit_id: N::InnerCircuitID) -> Self {
         Self {
-            ledger_digest,
+            block_hash,
             inner_circuit_id,
         }
     }
 
-    /// Returns a reference to the ledger digest.
+    /// Returns the block hash.
     #[inline]
-    pub fn ledger_digest(&self) -> &N::CommitmentsRoot {
-        &self.ledger_digest
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.block_hash
     }
 
     /// Returns a reference to the inner circuit ID.
@@ -61,7 +61,7 @@ impl<N: Network> TransactionMetadata<N> {
 impl<N: Network> ToBytes for TransactionMetadata<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.ledger_digest.write_le(&mut writer)?;
+        self.block_hash.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)
     }
 }
@@ -69,9 +69,9 @@ impl<N: Network> ToBytes for TransactionMetadata<N> {
 impl<N: Network> FromBytes for TransactionMetadata<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let ledger_digest = FromBytes::read_le(&mut reader)?;
+        let block_hash = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::new(ledger_digest, inner_circuit_id))
+        Ok(Self::new(block_hash, inner_circuit_id))
     }
 }

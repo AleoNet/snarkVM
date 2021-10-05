@@ -40,7 +40,7 @@ pub trait DPCScheme<N: Network>: Sized {
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
         executable: &Executable<N>,
-        ledger_proof: &Self::LedgerProof,
+        ledger_proof: Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Transaction<N>>;
 }
