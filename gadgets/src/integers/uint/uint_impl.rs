@@ -24,6 +24,7 @@ use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
         ToBitsBEGadget,
+        ToBitsLEGadget,
         ToBytesGadget,
     },
     fields::FpGadget,
@@ -113,5 +114,11 @@ impl UInt8 {
             .chunks(8)
             .map(Self::from_bits_le)
             .collect())
+    }
+
+    /// Returns a vector of `Boolean` gadget bits in little-endian order.
+    /// Gadget implementations and Leo functions should call `ToBitsLEGadget` instead.
+    pub fn to_bits_le_u8(&self) -> Vec<Boolean> {
+        self.bits.clone()
     }
 }

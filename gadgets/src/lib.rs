@@ -49,6 +49,7 @@ extern crate thiserror;
 #[cfg(feature = "algorithms")]
 pub mod algorithms;
 
+#[macro_use]
 pub mod bits;
 pub use bits::*;
 

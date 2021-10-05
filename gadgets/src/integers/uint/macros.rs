@@ -18,9 +18,7 @@ macro_rules! to_bytes_int_impl {
     ($name: ident, $_type: ty, $size: expr) => {
         impl<F: Field> ToBytesGadget<F> for $name {
             #[inline]
-            fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                use crate::traits::integers::Integer;
-
+            fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
                 const BYTES_SIZE: usize = if $size == 128 { 16 } else { 8 };
 
                 let value_chunks = match self.value.map(|val| {
@@ -31,7 +29,7 @@ macro_rules! to_bytes_int_impl {
                     Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
                     None => [None, None, None, None],
                 };
-                let bits = self.to_bits_le();
+                let bits = self.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
                 let mut bytes = Vec::with_capacity(bits.len() / 8);
                 for (chunk8, value) in bits.chunks(8).into_iter().zip(value_chunks.iter()) {
                     let byte = UInt8 {
@@ -61,8 +59,6 @@ macro_rules! cond_select_int_impl {
                 first: &Self,
                 second: &Self,
             ) -> Result<Self, SynthesisError> {
-                use crate::traits::integers::Integer;
-
                 if let Boolean::Constant(cond) = *cond {
                     if cond {
                         Ok(first.clone())
@@ -86,8 +82,9 @@ macro_rules! cond_select_int_impl {
 
                     result.negated = is_negated;
 
-                    for (i, (actual, (bit1, bit2))) in result
-                        .to_bits_le()
+                    let result_bits = result.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
+
+                    for (i, (actual, (bit1, bit2))) in result_bits
                         .iter()
                         .zip(first.bits.iter().zip(&second.bits))
                         .enumerate()
@@ -184,9 +181,9 @@ macro_rules! uint_impl_common {
                 constant
             }
 
-            fn to_bits_le(&self) -> Vec<Boolean> {
-                self.bits.clone()
-            }
+            // fn to_bits_le(&self) -> Vec<Boolean> {
+            //     self.bits.clone()
+            // }
 
             fn from_bits_le(bits: &[Boolean]) -> Self {
                 assert_eq!(bits.len(), $size);
@@ -232,6 +229,7 @@ macro_rules! uint_impl_common {
             }
         }
 
+        to_bits_le_impl!($name);
         cond_select_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $_type, $size);
     };

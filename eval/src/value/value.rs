@@ -114,7 +114,7 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         use ConstrainedValue::*;
 
         match self {
-            Address(_) => Err(anyhow!("the type `address` does not implement the to_bits_le method")),
+            Address(address) => Err(anyhow!("the type `address` does not implement the to_bits_le method")),
             Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bits_le method")),
             Char(_) => Err(anyhow!("the type `char` does not implement the to_bits_le method")),
             Field(_) => Err(anyhow!("the type `field` does not implement the to_bits_le method")),

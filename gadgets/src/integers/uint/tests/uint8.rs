@@ -73,7 +73,7 @@ fn test_uint8_alloc_input_vec() {
     let byte_vals = (64u8..128u8).collect::<Vec<_>>();
     let bytes = UInt8::alloc_input_vec_le(cs.ns(|| "alloc value"), &byte_vals).unwrap();
     for (native_byte, gadget_byte) in byte_vals.into_iter().zip(bytes) {
-        let bits = gadget_byte.to_bits_le();
+        let bits = gadget_byte.to_bits_le_u8();
         for (i, bit) in bits.iter().enumerate() {
             assert_eq!(bit.get_value().unwrap(), (native_byte >> i) & 1 == 1)
         }
@@ -98,7 +98,7 @@ fn test_uint8_from_bits() {
             }
         }
 
-        let expected_to_be_same = b.to_bits_le();
+        let expected_to_be_same = b.to_bits_le_u8();
 
         for x in v.iter().zip(expected_to_be_same.iter()) {
             match x {

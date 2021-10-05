@@ -46,7 +46,6 @@ use crate::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
-        integers::Integer,
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
@@ -579,7 +578,7 @@ impl<F: PrimeField> ToBytesGadget<F> for AllocatedFp<F> {
             &mut cs,
             &bytes
                 .iter()
-                .flat_map(|byte_gadget| byte_gadget.to_bits_le())
+                .flat_map(|byte_gadget| byte_gadget.to_bits_le_u8())
                 // This reverse maps the bits into big-endian form, as required by `enforce_in_field`.
                 .rev()
                 .collect::<Vec<_>>(),

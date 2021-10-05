@@ -320,7 +320,7 @@ where
     for input_bytes in inner_snark_input_bytes {
         let input_bits = input_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le())
+            .flat_map(|byte| byte.to_bits_le_u8())
             .collect::<Vec<_>>();
         inner_snark_input_bits.push(input_bits);
     }
@@ -364,7 +364,7 @@ where
     for input_bytes in program_input_bytes {
         let input_bits = input_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le())
+            .flat_map(|byte| byte.to_bits_le_u8())
             .collect::<Vec<_>>();
         if !input_bits.is_empty() {
             program_input_bits.push(input_bits);

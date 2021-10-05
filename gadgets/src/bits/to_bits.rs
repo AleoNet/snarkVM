@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{bits::Boolean, integers::uint::UInt8, traits::integers::Integer};
+use crate::{bits::Boolean, integers::uint::UInt8};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -96,7 +96,7 @@ impl<F: Field> ToBitsLEGadget<F> for [UInt8] {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let mut result = Vec::with_capacity(&self.len() * 8);
         for byte in self {
-            result.extend_from_slice(&byte.to_bits_le());
+            result.extend_from_slice(&byte.to_bits_le_u8());
         }
         Ok(result)
     }

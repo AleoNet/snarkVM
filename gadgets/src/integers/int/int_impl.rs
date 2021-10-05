@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
 use crate::{
-    bits::Boolean,
+    bits::{Boolean, ToBitsLEGadget},
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::integers::Integer,
 };
@@ -77,9 +80,9 @@ macro_rules! int_impl {
                 self.bits.iter().all(|bit| matches!(bit, Boolean::Constant(_)))
             }
 
-            fn to_bits_le(&self) -> Vec<Boolean> {
-                self.bits.clone()
-            }
+            // fn to_bits_le(&self) -> Vec<Boolean> {
+            //     self.bits.clone()
+            // }
 
             fn from_bits_le(bits: &[Boolean]) -> Self {
                 assert_eq!(bits.len(), $size);
@@ -123,6 +126,8 @@ macro_rules! int_impl {
                 self.value.map(|num| num.to_string())
             }
         }
+
+        to_bits_le_impl!($name);
     };
 }
 
