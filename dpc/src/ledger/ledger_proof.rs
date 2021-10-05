@@ -34,6 +34,12 @@ pub struct LedgerProof<N: Network> {
 }
 
 impl<N: Network> LedgerProof<N> {
+    ///
+    /// Initializes a new instance of `LedgerProof`, automatically padding inputs as needed.
+    ///
+    /// This method allows the number of `commitments` and `commitment_inclusion_proofs`
+    /// to be less than `N::NUM_INPUT_RECORDS`, as the method will pad up to `N::NUM_INPUT_RECORDS`.
+    ///
     pub fn new(
         block_hash: N::BlockHash,
         previous_block_hash: N::BlockHash,
@@ -44,19 +50,19 @@ impl<N: Network> LedgerProof<N> {
         commitments: Vec<N::Commitment>,
     ) -> Result<Self> {
         // Ensure the correct number of commitments is given.
-        if commitments.len() != N::NUM_INPUT_RECORDS {
+        if commitments.len() > N::NUM_INPUT_RECORDS {
             return Err(anyhow!(
-                "Incorrect number of given commitments. Expected {}, found {}",
+                "Incorrect number of given commitments. Expected up to {}, found {}",
                 N::NUM_INPUT_RECORDS,
                 commitments.len(),
             ));
         }
 
         // Ensure the correct number of commitment inclusion proofs is given.
-        if commitment_inclusion_proofs.len() != N::NUM_INPUT_RECORDS {
+        if commitment_inclusion_proofs.len() != commitments.len() {
             return Err(anyhow!(
                 "Incorrect number of given commitment inclusion proofs. Expected {}, found {}",
-                N::NUM_INPUT_RECORDS,
+                commitments.len(),
                 commitment_inclusion_proofs.len(),
             ));
         }
@@ -74,6 +80,14 @@ impl<N: Network> LedgerProof<N> {
                     commitments_root
                 ));
             }
+        }
+
+        // Pad the commitments and commitment inclusion proofs, if necessary.
+        let mut commitments = commitments;
+        let mut commitment_inclusion_proofs = commitment_inclusion_proofs;
+        while commitments.len() < N::NUM_INPUT_RECORDS {
+            commitments.push(Default::default());
+            commitment_inclusion_proofs.push(Default::default());
         }
 
         // Ensure the header inclusion proof is valid.
@@ -134,15 +148,36 @@ impl<N: Network> Default for LedgerProof<N> {
 mod tests {
     use super::*;
 
+    #[rustfmt::skip]
     fn ledger_proof_new_test<N: Network>() -> Result<()> {
         let ledger = Ledger::<N>::new()?;
         assert_eq!(ledger.latest_block_height(), 0);
         assert_eq!(ledger.latest_block_transactions()?.len(), 1);
 
-        let block = ledger.latest_block()?;
-        let coinbase_transaction = block.to_coinbase_transaction()?;
-        let commitments = coinbase_transaction.commitments();
-        assert!(ledger.to_ledger_inclusion_proof(commitments).is_ok());
+        let expected_block = ledger.latest_block()?;
+        let coinbase_transaction = expected_block.to_coinbase_transaction()?;
+        let expected_commitments = coinbase_transaction.commitments();
+
+        // Create a ledger proof for two commitments.
+        let ledger_proof = ledger.to_ledger_inclusion_proof(expected_commitments)?;
+        assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
+        assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
+        assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
+        assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
+        // assert_eq!(ledger_proof.commitment_inclusion_proofs[0], expected_block.header().to_header_inclusion_proof(2, expected_commitments[0])?);
+        // assert_eq!(ledger_proof.commitment_inclusion_proofs[1], expected_block.header().to_header_inclusion_proof(2, expected_commitments[1])?);
+        assert_eq!(ledger_proof.commitments, expected_commitments);
+
+        // Create a ledger proof for one commitment and one noop.
+        let ledger_proof = ledger.to_ledger_inclusion_proof(&[expected_commitments[0]])?;
+        assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
+        assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
+        assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
+        assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
+        // assert_eq!(ledger_proof.commitment_inclusion_proofs[0], expected_block.header().to_header_inclusion_proof(2, expected_commitments[0])?);
+        // assert_eq!(ledger_proof.commitment_inclusion_proofs[1], Default::default());
+        assert_eq!(ledger_proof.commitments[0], expected_commitments[0]);
+        assert_eq!(ledger_proof.commitments[1], Default::default());
 
         Ok(())
     }

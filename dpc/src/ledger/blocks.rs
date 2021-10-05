@@ -64,7 +64,9 @@ impl<N: Network> Blocks<N> {
             commitments_roots: Default::default(),
         };
 
-        blocks.previous_hashes.insert(height, *genesis_block.previous_hash());
+        blocks
+            .previous_hashes
+            .insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
         blocks.serial_numbers.add_all(serial_numbers)?;
@@ -207,7 +209,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the previous block hash is correct.
-        if self.current_hash != *block.previous_hash() {
+        if self.current_hash != block.previous_block_hash() {
             return Err(anyhow!("The given block has an incorrect previous block hash"));
         }
 
@@ -272,7 +274,7 @@ impl<N: Network> Blocks<N> {
 
             blocks.current_height = height;
             blocks.current_hash = block_hash;
-            blocks.previous_hashes.insert(height, *block.previous_hash());
+            blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
             blocks.serial_numbers.add_all(serial_numbers)?;
@@ -286,9 +288,21 @@ impl<N: Network> Blocks<N> {
         Ok(())
     }
 
+    ///
     /// Returns the ledger proof for the given commitments with the current block hash.
+    ///
+    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
+    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
+    ///
     pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        assert_eq!(commitments.len(), N::NUM_INPUT_RECORDS);
+        // Ensure the correct number of commitments is given.
+        if commitments.len() > N::NUM_INPUT_RECORDS {
+            return Err(anyhow!(
+                "Incorrect number of given commitments. Expected up to {}, found {}",
+                N::NUM_INPUT_RECORDS,
+                commitments.len(),
+            ));
+        }
 
         let commitment_inclusion_proofs = commitments
             .iter()

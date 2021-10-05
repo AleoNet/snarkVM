@@ -165,7 +165,12 @@ impl<N: Network> Ledger<N> {
         self.add_next_block(&block)
     }
 
+    ///
     /// Returns the ledger proof for the given commitments with the current block hash.
+    ///
+    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
+    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
+    ///
     pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
         self.canon_blocks.to_ledger_inclusion_proof(commitments)
     }

@@ -30,7 +30,7 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct Block<N: Network> {
     /// Hash of the previous block - 32 bytes
-    previous_hash: N::BlockHash,
+    previous_block_hash: N::BlockHash,
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     header: BlockHeader<N>,
     /// The block transactions.
@@ -102,7 +102,7 @@ impl<N: Network> Block<N> {
 
         // Construct the genesis block.
         let block = Self {
-            previous_hash: Default::default(),
+            previous_block_hash: Default::default(),
             header,
             transactions,
         };
@@ -118,7 +118,7 @@ impl<N: Network> Block<N> {
     pub fn from(previous_hash: N::BlockHash, header: BlockHeader<N>, transactions: Transactions<N>) -> Result<Self> {
         // Construct the block.
         let block = Self {
-            previous_hash,
+            previous_block_hash: previous_hash,
             header,
             transactions,
         };
@@ -134,11 +134,11 @@ impl<N: Network> Block<N> {
     pub fn is_valid(&self) -> bool {
         // Ensure the previous block hash is well-formed.
         if self.height() == 0u32 {
-            if self.previous_hash != Default::default() {
+            if self.previous_block_hash != Default::default() {
                 eprintln!("Genesis block must have an empty previous block hash");
                 return false;
             }
-        } else if self.previous_hash == Default::default() {
+        } else if self.previous_block_hash == Default::default() {
             eprintln!("Block must have a non-empty previous block hash");
             return false;
         }
@@ -212,8 +212,8 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the previous block hash.
-    pub fn previous_hash(&self) -> &N::BlockHash {
-        &self.previous_hash
+    pub fn previous_block_hash(&self) -> N::BlockHash {
+        self.previous_block_hash
     }
 
     /// Returns the header.
@@ -244,7 +244,7 @@ impl<N: Network> Block<N> {
     /// Returns the hash of this block.
     pub fn to_block_hash(&self) -> Result<N::BlockHash> {
         // Construct the preimage.
-        let mut preimage = self.previous_hash.to_bytes_le()?;
+        let mut preimage = self.previous_block_hash.to_bytes_le()?;
         preimage.extend_from_slice(&self.header.to_header_root()?.to_bytes_le()?);
 
         Ok(N::block_hash_crh().hash(&preimage)?)
@@ -315,7 +315,7 @@ impl<N: Network> FromBytes for Block<N> {
         let transactions = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
-            previous_hash,
+            previous_block_hash: previous_hash,
             header,
             transactions,
         })
@@ -325,7 +325,7 @@ impl<N: Network> FromBytes for Block<N> {
 impl<N: Network> ToBytes for Block<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.previous_hash.write_le(&mut writer)?;
+        self.previous_block_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
         self.transactions.write_le(&mut writer)
     }
@@ -341,7 +341,7 @@ impl<N: Network> Hash for Block<N> {
 
 impl<N: Network> PartialEq for Block<N> {
     fn eq(&self, other: &Self) -> bool {
-        self.previous_hash == other.previous_hash
+        self.previous_block_hash == other.previous_block_hash
             && self.header == other.header
             && self.transactions == other.transactions
     }
