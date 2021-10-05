@@ -44,7 +44,6 @@ impl<P: MerkleParameters> MerklePath<P> {
             let mut index = self.leaf_index;
 
             let mut curr_path_node = claimed_leaf_hash;
-            let mut buffer = vec![0u8; hash_input_size_in_bytes];
 
             // Check levels between leaf level and root.
             for level in 0..self.path.len() {
