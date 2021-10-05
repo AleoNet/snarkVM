@@ -1131,11 +1131,31 @@ impl<E: PairingEngine> SonicKZG10<E> {
 mod tests {
     #![allow(non_camel_case_types)]
 
-    use super::SonicKZG10;
+    use super::{CommitterKey, PolynomialCommitment, SonicKZG10};
     use snarkvm_curves::bls12_377::Bls12_377;
+
+    use rand::distributions::Distribution;
+    use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
 
     type PC<E> = SonicKZG10<E>;
     type PC_Bls12_377 = PC<Bls12_377>;
+
+    #[test]
+    fn committer_key_serialization_test() {
+        let rng = &mut test_rng();
+        let max_degree = rand::distributions::Uniform::from(8..=64).sample(rng);
+        let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
+
+        let pp = PC_Bls12_377::setup(max_degree, rng).unwrap();
+
+        let (ck, _vk) = PC_Bls12_377::trim(&pp, supported_degree, 0, None).unwrap();
+
+        let ck_bytes = ck.to_bytes_le().unwrap();
+        let ck_recovered: CommitterKey<Bls12_377> = FromBytes::read_le(&ck_bytes[..]).unwrap();
+        let ck_recovered_bytes = ck_recovered.to_bytes_le().unwrap();
+
+        assert_eq!(&ck_bytes, &ck_recovered_bytes);
+    }
 
     #[test]
     fn single_poly_test() {
