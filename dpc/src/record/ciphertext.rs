@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, DPCError, Network, Payload, Record, ViewKey};
+use crate::{Address, Network, Payload, Record, ViewKey};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
@@ -36,12 +36,12 @@ use rand::{thread_rng, CryptoRng, Rng};
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
-pub struct EncryptedRecord<N: Network> {
+pub struct RecordCiphertext<N: Network> {
     ciphertext: Vec<u8>,
     phantom: PhantomData<N>,
 }
 
-impl<N: Network> EncryptedRecord<N> {
+impl<N: Network> RecordCiphertext<N> {
     pub fn new(ciphertext: Vec<u8>) -> Self {
         Self {
             ciphertext,
@@ -80,30 +80,22 @@ impl<N: Network> EncryptedRecord<N> {
         Ok((Self::new(ciphertext), randomizer))
     }
 
-    /// Decrypt and reconstruct the encrypted record.
-    pub fn decrypt(&self, account_view_key: &ViewKey<N>) -> Result<Record<N>, DPCError> {
-        // Decrypt the encrypted record
-        let plaintext = N::account_encryption_scheme().decrypt(&*account_view_key, &self.ciphertext)?;
+    /// Decrypt the record ciphertext using the view key of the recipient.
+    pub fn decrypt(&self, recipient_view_key: &ViewKey<N>) -> Result<Record<N>> {
+        // Decrypt the record ciphertext.
+        let plaintext = N::account_encryption_scheme().decrypt(&*recipient_view_key, &self.ciphertext)?;
 
         let mut cursor = Cursor::new(plaintext);
 
-        // Value
+        // Deserialize the plaintext bytes.
         let value = u64::read_le(&mut cursor)?;
-
-        // Payload
         let payload = Payload::read_le(&mut cursor)?;
-
-        // Program ID
-        let program_id: N::ProgramID = FromBytes::read_le(&mut cursor)?;
-
-        // Serial number nonce
+        let program_id = N::ProgramID::read_le(&mut cursor)?;
         let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
-
-        // Commitment randomness
         let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
-        // Construct the record account address
-        let owner = Address::from_view_key(&account_view_key)?;
+        // Derive the record owner.
+        let owner = Address::from_view_key(&recipient_view_key)?;
 
         Ok(Record::from(
             owner,
@@ -117,19 +109,19 @@ impl<N: Network> EncryptedRecord<N> {
 
     /// Returns the encrypted record ID.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<N::EncryptedRecordID, DPCError> {
+    pub fn to_hash(&self) -> Result<N::EncryptedRecordID> {
         Ok(N::encrypted_record_crh().hash(&self.ciphertext)?)
     }
 }
 
-impl<N: Network> Default for EncryptedRecord<N> {
+impl<N: Network> Default for RecordCiphertext<N> {
     fn default() -> Self {
         let (record, _randomness) = Self::encrypt(&Record::default(), &mut thread_rng()).unwrap();
         record
     }
 }
 
-impl<N: Network> ToBytes for EncryptedRecord<N> {
+impl<N: Network> ToBytes for RecordCiphertext<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.ciphertext.len() as u16).write_le(&mut writer)?;
@@ -137,7 +129,7 @@ impl<N: Network> ToBytes for EncryptedRecord<N> {
     }
 }
 
-impl<N: Network> FromBytes for EncryptedRecord<N> {
+impl<N: Network> FromBytes for RecordCiphertext<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let ciphertext_len = u16::read_le(&mut reader)?;

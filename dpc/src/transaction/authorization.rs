@@ -71,7 +71,7 @@ impl<N: Network> TransactionAuthorization<N> {
         &self,
         rng: &mut R,
     ) -> Result<(
-        Vec<EncryptedRecord<N>>,
+        Vec<RecordCiphertext<N>>,
         Vec<EncryptedRecordID<N>>,
         Vec<EncryptedRecordRandomizer<N>>,
     )> {
@@ -80,7 +80,7 @@ impl<N: Network> TransactionAuthorization<N> {
         let mut encrypted_record_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
         for record in self.output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
-            let (encrypted_record, encrypted_record_randomizer) = EncryptedRecord::encrypt(record, rng)?;
+            let (encrypted_record, encrypted_record_randomizer) = RecordCiphertext::encrypt(record, rng)?;
             encrypted_record_ids.push(encrypted_record.to_hash()?);
             encrypted_records.push(encrypted_record);
             encrypted_record_randomizers.push(encrypted_record_randomizer);

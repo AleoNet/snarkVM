@@ -51,7 +51,7 @@ pub struct Transaction<N: Network> {
     /// The transaction metadata.
     metadata: TransactionMetadata<N>,
     /// The encrypted output records.
-    encrypted_records: Vec<EncryptedRecord<N>>,
+    encrypted_records: Vec<RecordCiphertext<N>>,
     #[derivative(PartialEq = "ignore")]
     /// Zero-knowledge proof attesting to the validity of the transaction.
     proof: <N::OuterSNARK as SNARK>::Proof,
@@ -69,7 +69,7 @@ impl<N: Network> Transaction<N> {
     pub fn from(
         kernel: TransactionKernel<N>,
         metadata: TransactionMetadata<N>,
-        encrypted_records: Vec<EncryptedRecord<N>>,
+        encrypted_records: Vec<RecordCiphertext<N>>,
         proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
         assert!(kernel.is_valid());
@@ -183,7 +183,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the encrypted records.
-    pub fn encrypted_records(&self) -> &[EncryptedRecord<N>] {
+    pub fn encrypted_records(&self) -> &[RecordCiphertext<N>] {
         &self.encrypted_records
     }
 
