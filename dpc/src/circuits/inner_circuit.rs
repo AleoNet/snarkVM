@@ -178,8 +178,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::AccountSignatureScheme,
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
-                    &mut declare_cs.ns(|| "given_record_owner"),
-                    || Ok(record.owner().encryption_key()),
+                    &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
                 )?;
                 signature_public_keys.push(given_owner.clone());
 
@@ -462,8 +461,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
-                    &mut declare_cs.ns(|| "given_record_owner"),
-                    || Ok(record.owner().encryption_key()),
+                    &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
                 )?;
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;

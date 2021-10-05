@@ -61,11 +61,6 @@ impl<N: Network> Address<N> {
     pub fn verify_signature(&self, message: &[u8], signature: &N::AccountSignature) -> Result<bool, AccountError> {
         Ok(N::account_signature_scheme().verify(&self.0, message, signature)?)
     }
-
-    /// Returns the address as an encryption public key.
-    pub fn encryption_key(&self) -> <N::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
-        self.0
-    }
 }
 
 impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {

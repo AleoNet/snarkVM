@@ -19,12 +19,14 @@ use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
+    to_bytes_le,
     FromBytes,
     Read,
     ToBytes,
     Write,
 };
 
+use anyhow::{anyhow, Result};
 use rand::{thread_rng, CryptoRng, Rng};
 
 #[derive(Derivative)]
@@ -53,33 +55,29 @@ impl<N: Network> EncryptedRecord<N> {
     pub fn encrypt<R: Rng + CryptoRng>(
         record: &Record<N>,
         rng: &mut R,
-    ) -> Result<
-        (
-            Self,
-            <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
-        ),
-        DPCError,
-    > {
+    ) -> Result<(
+        Self,
+        <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
+    )> {
         // Convert the record into bytes.
-        let mut record_bytes = vec![];
-        record_bytes.extend_from_slice(&record.value().to_bytes_le()?);
-        record_bytes.extend_from_slice(&record.payload().to_bytes_le()?);
-        record_bytes.extend_from_slice(&record.program_id().to_bytes_le()?);
-        record_bytes.extend_from_slice(&record.serial_number_nonce().to_bytes_le()?);
-        record_bytes.extend_from_slice(&record.commitment_randomness().to_bytes_le()?);
-        assert!(
-            record_bytes.len() <= u16::MAX as usize,
-            "Aleo requires records to be less than 65535 bytes."
-        );
+        let buffer = to_bytes_le![
+            record.value(),
+            record.payload(),
+            record.program_id(),
+            record.serial_number_nonce(),
+            record.commitment_randomness()
+        ]?;
 
-        // Encrypt the record plaintext.
-        let encryption_randomness = N::account_encryption_scheme().generate_randomness(rng)?;
-        let encryption_key = record.owner().encryption_key();
-        let encrypted_record =
-            N::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &record_bytes)?;
-        let encrypted_record = Self::new(encrypted_record);
+        // Ensure the record bytes are within the permitted size.
+        if buffer.len() > u16::MAX as usize {
+            return Err(anyhow!("Records must be <= 65535 bytes, found {} bytes", buffer.len()));
+        }
 
-        Ok((encrypted_record, encryption_randomness))
+        // Encrypt the record bytes.
+        let randomizer = N::account_encryption_scheme().generate_randomness(rng)?;
+        let ciphertext = N::account_encryption_scheme().encrypt(&*record.owner(), &randomizer, &buffer)?;
+
+        Ok((Self::new(ciphertext), randomizer))
     }
 
     /// Decrypt and reconstruct the encrypted record.
