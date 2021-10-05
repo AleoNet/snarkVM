@@ -16,6 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 use snarkvm_ir::{InputData, Program};
+use snarkvm_r1cs::ConstraintSystem;
 
 use crate::GroupType;
 

@@ -39,14 +39,18 @@ fn unwrap_argument<F: PrimeField, G: GroupType<F>>(arg: &ConstrainedValue<F, G>)
     }
 }
 
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub fn call_core_blake2s(&mut self, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
+impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+    pub fn call_core_blake2s<CS: ConstraintSystem<F>>(
+        &mut self,
+        arguments: &[ConstrainedValue<F, G>],
+        cs: &mut CS,
+    ) -> Result<ConstrainedValue<F, G>> {
         if arguments.len() != 2 {
             return Err(anyhow!("illegal blake2s call, expected 2 arguments"));
         }
         let input = unwrap_argument(&arguments[1])?;
         let seed = unwrap_argument(&arguments[0])?;
-        let mut cs = self.cs();
+        let mut cs = self.cs(cs);
         let digest = Blake2sGadget::check_evaluation_gadget(cs.ns(|| "blake2s hash"), &seed[..], &input[..])
             .map_err(|e| ValueError::cannot_enforce("Blake2s check evaluation gadget", e))?;
 

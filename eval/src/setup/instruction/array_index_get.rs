@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub(super) fn array_bounds_check<CS2: ConstraintSystem<F>>(
-        cs: &mut CS2,
+impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+    pub(super) fn array_bounds_check<CS: ConstraintSystem<F>>(
+        cs: &mut CS,
         index_resolved: &Integer,
         array_len: u32,
     ) -> Result<()> {
@@ -54,15 +54,19 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         Ok(())
     }
 
-    pub(super) fn evaluate_array_index_get(&mut self, instruction: &Instruction) -> Result<()> {
+    pub(super) fn evaluate_array_index_get<CS: ConstraintSystem<F>>(
+        &mut self,
+        instruction: &Instruction,
+        cs: &mut CS,
+    ) -> Result<()> {
         let (destination, values) = if let Instruction::ArrayIndexGet(QueryData { destination, values }) = instruction {
             (destination, values)
         } else {
             unimplemented!("unsupported instruction in evaluate_array_index_get");
         };
 
-        let index = self.resolve(values.get(1).unwrap())?.into_owned();
-        let array = self.resolve(values.get(0).unwrap())?.into_owned();
+        let index = self.resolve(values.get(1).unwrap(), cs)?.into_owned();
+        let array = self.resolve(values.get(0).unwrap(), cs)?.into_owned();
         let index_resolved = index
             .extract_integer()
             .map_err(|value| anyhow!("invalid value for array index: {}", value))?;
@@ -77,7 +81,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         } else if array.is_empty() {
             return Err(ArrayError::array_index_out_of_bounds(0, 0).into());
         } else {
-            let mut cs = self.cs();
+            let mut cs = self.cs(cs);
             {
                 let array_len: u32 = array
                     .len()
