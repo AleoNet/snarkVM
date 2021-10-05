@@ -34,7 +34,7 @@ mod ecies {
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-        let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
+        let randomness = encryption_scheme.generate_randomness(rng).unwrap();
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
 
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
@@ -69,7 +69,7 @@ mod ecies {
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-        let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
+        let randomness = encryption_scheme.generate_randomness(rng).unwrap();
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
 
         let mut ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();

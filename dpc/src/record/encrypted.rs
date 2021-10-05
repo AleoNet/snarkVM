@@ -60,39 +60,23 @@ impl<N: Network> EncryptedRecord<N> {
         ),
         DPCError,
     > {
-        // Serialize the record into bytes
-        let mut bytes = vec![];
-
-        // Value
-        let value = record.value();
-        bytes.extend_from_slice(&value.to_bytes_le()?);
-
-        // Payload
-        let payload = record.payload();
-        bytes.extend_from_slice(&payload.to_bytes_le()?);
-
-        // Program ID
-        let program_id = record.program_id();
-        bytes.extend_from_slice(&program_id.to_bytes_le()?);
-
-        // Serial number nonce
-        let serial_number_nonce = record.serial_number_nonce();
-        bytes.extend_from_slice(&serial_number_nonce.to_bytes_le()?);
-
-        // Commitment randomness
-        let commitment_randomness = record.commitment_randomness();
-        bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
-
+        // Convert the record into bytes.
+        let mut record_bytes = vec![];
+        record_bytes.extend_from_slice(&record.value().to_bytes_le()?);
+        record_bytes.extend_from_slice(&record.payload().to_bytes_le()?);
+        record_bytes.extend_from_slice(&record.program_id().to_bytes_le()?);
+        record_bytes.extend_from_slice(&record.serial_number_nonce().to_bytes_le()?);
+        record_bytes.extend_from_slice(&record.commitment_randomness().to_bytes_le()?);
         assert!(
-            bytes.len() <= u16::MAX as usize,
-            "The DPC assumes that the record is less than 65535 bytes."
+            record_bytes.len() <= u16::MAX as usize,
+            "Aleo requires records to be less than 65535 bytes."
         );
 
         // Encrypt the record plaintext.
+        let encryption_randomness = N::account_encryption_scheme().generate_randomness(rng)?;
         let encryption_key = record.owner().encryption_key();
-        let encryption_randomness = N::account_encryption_scheme().generate_randomness(&encryption_key, rng)?;
         let encrypted_record =
-            N::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &bytes)?;
+            N::account_encryption_scheme().encrypt(&encryption_key, &encryption_randomness, &record_bytes)?;
         let encrypted_record = Self::new(encrypted_record);
 
         Ok((encrypted_record, encryption_randomness))
