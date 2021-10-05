@@ -75,8 +75,6 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let ledger_digest = ledger_proof.commitments_root();
         let input_witnesses = ledger_proof.commitment_inclusion_proofs();
 
-        let metadata = TransactionMetadata::new(ledger_digest, N::inner_circuit_id().clone());
-
         // Generate the transaction ID.
         let transaction_id = authorization.to_transaction_id()?;
 
@@ -96,7 +94,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
-            kernel.to_transaction_id().unwrap(),
+            transaction_id,
             &ledger_digest,
             &encrypted_record_ids,
             Some(executable.program_id()),
@@ -125,18 +123,18 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             &inner_proof
         )?);
 
-        let transaction_proof = {
-            // Construct the outer circuit public and private variables.
-            let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, N::inner_circuit_id());
-            let outer_private_variables =
-                OuterPrivateVariables::new(N::inner_circuit_verifying_key().clone(), inner_proof, execution);
+        // Construct the outer circuit public and private variables.
+        let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, *N::inner_circuit_id());
+        let outer_private_variables =
+            OuterPrivateVariables::new(N::inner_circuit_verifying_key().clone(), inner_proof, execution);
 
-            N::OuterSNARK::prove(
-                N::outer_circuit_proving_key(),
-                &OuterCircuit::<N>::new(outer_public_variables, outer_private_variables),
-                rng,
-            )?
-        };
+        let transaction_proof = N::OuterSNARK::prove(
+            N::outer_circuit_proving_key(),
+            &OuterCircuit::<N>::new(outer_public_variables, outer_private_variables),
+            rng,
+        )?;
+
+        let metadata = TransactionMetadata::new(ledger_digest, *N::inner_circuit_id());
         end_timer!(execution_timer);
 
         Transaction::from(kernel, metadata, encrypted_records, transaction_proof)

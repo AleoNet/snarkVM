@@ -34,11 +34,12 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
         .unwrap();
 
     let authorization = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
+    let transaction_id = authorization.to_transaction_id().unwrap();
 
     // Execute the program circuit.
     let execution = state
         .executable()
-        .execute(PublicVariables::new(authorization.to_transaction_id().unwrap()))
+        .execute(PublicVariables::new(transaction_id))
         .unwrap();
 
     // Compute the encrypted records.
@@ -61,7 +62,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Construct the inner circuit public and private variables.
     let inner_public_variables = InnerPublicVariables::new(
-        kernel.to_transaction_id().unwrap(),
+        transaction_id,
         &ledger_digest,
         &encrypted_record_hashes,
         Some(state.executable().program_id()),
@@ -117,7 +118,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public_variables, &inner_proof).unwrap());
 
     // Construct the outer circuit public and private variables.
-    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
+    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, inner_circuit_id);
     let outer_private_variables = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
 
     // Check that the proof check constraint system was satisfied.
