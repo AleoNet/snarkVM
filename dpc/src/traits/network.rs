@@ -188,8 +188,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
     
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
-    fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
-    fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
+    fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
+    fn inner_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
     fn noop_program() -> &'static Program<Self>;
     fn noop_program_id() -> &'static Self::ProgramID;
@@ -198,8 +198,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
 
-    fn outer_circuit_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
-    fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
+    fn outer_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
+    fn outer_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
     
     fn posw() -> &'static Self::PoSW;
 

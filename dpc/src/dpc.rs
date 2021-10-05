@@ -40,7 +40,8 @@ impl<N: Network> DPC<N> {
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for noop_signature in transition.noop_signatures().iter().take(N::NUM_INPUT_RECORDS) {
-            let signature = match noop_signature {
+            // Sign the signature message.
+            signatures.push(match noop_signature {
                 Some(noop_signature) => noop_signature.clone(),
                 None => {
                     // Fetch the correct private key.
@@ -49,13 +50,9 @@ impl<N: Network> DPC<N> {
 
                     private_key.sign(&signature_message, rng)?
                 }
-            };
-
-            // Sign the signature message.
-            signatures.push(signature);
+            });
         }
 
-        // Return the transaction authorization.
         Ok(signatures)
     }
 
@@ -82,32 +79,22 @@ impl<N: Network> DPC<N> {
         // Construct the inner circuit public and private variables.
         let inner_public = InnerPublicVariables::new(transaction_id, block_hash, Some(execution.program_id))?;
         let inner_private = InnerPrivateVariables::new(transition, ledger_proof, signatures)?;
+        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
 
-        // Compute the inner circuit proof.
-        let inner_proof = N::InnerSNARK::prove(
-            N::inner_circuit_proving_key(),
-            &InnerCircuit::<N>::new(inner_public.clone(), inner_private),
-            rng,
-        )?;
-
-        // Verify that the inner circuit proof passes.
+        // Compute the inner circuit proof, and verify that the inner proof passes.
+        let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
         assert!(N::InnerSNARK::verify(
-            N::inner_circuit_verifying_key(),
+            N::inner_verifying_key(),
             &inner_public,
             &inner_proof
         )?);
 
         // Construct the outer circuit public and private variables.
         let outer_public = OuterPublicVariables::new(&inner_public, *N::inner_circuit_id());
-        let outer_private =
-            OuterPrivateVariables::new(N::inner_circuit_verifying_key().clone(), inner_proof, execution);
+        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
+        let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
 
-        let transaction_proof = N::OuterSNARK::prove(
-            N::outer_circuit_proving_key(),
-            &OuterCircuit::<N>::new(outer_public, outer_private),
-            rng,
-        )?;
-
+        let transaction_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
         let metadata = TransactionMetadata::new(block_hash, *N::inner_circuit_id());
         end_timer!(execution_timer);
 

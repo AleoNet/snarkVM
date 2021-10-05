@@ -122,7 +122,7 @@ impl<N: Network> Transaction<N> {
 
         // Returns `false` if the transaction proof is invalid.
         match N::OuterSNARK::verify(
-            N::outer_circuit_verifying_key(),
+            N::outer_verifying_key(),
             &match OuterPublicVariables::from(&self) {
                 Ok(outer_public_variables) => outer_public_variables,
                 Err(error) => {

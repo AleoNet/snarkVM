@@ -205,11 +205,11 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet1, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
 
-    dpc_snark_setup!{Testnet1, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet1, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
+    dpc_snark_setup!{Testnet1, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner proving key"}
+    dpc_snark_setup!{Testnet1, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner verifying key"}
 
-    dpc_snark_setup!{Testnet1, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterProvingKeyBytes, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet1, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterVerifyingKeyBytes, "outer circuit verifying key"}
+    dpc_snark_setup!{Testnet1, outer_proving_key, OuterSNARK, ProvingKey, OuterProvingKeyBytes, "outer proving key"}
+    dpc_snark_setup!{Testnet1, outer_verifying_key, OuterSNARK, VerifyingKey, OuterVerifyingKeyBytes, "outer verifying key"}
 
     dpc_snark_setup!{Testnet1, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
     dpc_snark_setup!{Testnet1, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
@@ -217,7 +217,7 @@ impl Network for Testnet1 {
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
-            .hash_bits(&Self::inner_circuit_verifying_key().to_minimal_bits())
+            .hash_bits(&Self::inner_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements"))
     }
 
@@ -270,8 +270,8 @@ mod tests {
     fn test_inner_circuit_sanity_check() {
         // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
         assert_eq!(
-            Testnet1::inner_circuit_verifying_key(),
-            &Testnet1::inner_circuit_proving_key().vk,
+            Testnet1::inner_verifying_key(),
+            &Testnet1::inner_proving_key().vk,
             "The inner circuit verifying key does not correspond to the inner circuit proving key"
         );
     }
@@ -282,7 +282,7 @@ mod tests {
         assert_eq!(
             Testnet1::inner_circuit_id(),
             &Testnet1::inner_circuit_id_crh()
-                .hash_bits(&Testnet1::inner_circuit_verifying_key().to_minimal_bits())
+                .hash_bits(&Testnet1::inner_verifying_key().to_minimal_bits())
                 .expect("Failed to hash inner circuit ID"),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
         );
@@ -292,8 +292,8 @@ mod tests {
     fn test_outer_circuit_sanity_check() {
         // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
         assert_eq!(
-            Testnet1::outer_circuit_verifying_key(),
-            &Testnet1::outer_circuit_proving_key().vk,
+            Testnet1::outer_verifying_key(),
+            &Testnet1::outer_proving_key().vk,
             "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }
