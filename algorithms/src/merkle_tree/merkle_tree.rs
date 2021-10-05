@@ -145,7 +145,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Compute the starting index (on the left) for each level of the tree.
         let mut index = 0;
-        let mut level_indices = Vec::with_capacity(tree_depth);
+        let mut level_indices = Vec::with_capacity(tree_depth + 1);
         for _ in 0..=tree_depth {
             level_indices.push(index);
             index = left_child(index);
