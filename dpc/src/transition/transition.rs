@@ -33,8 +33,8 @@ pub struct StateTransition<N: Network> {
     pub(super) input_records: Vec<Record<N>>,
     pub(super) output_records: Vec<Record<N>>,
     pub(crate) ciphertexts: Vec<RecordCiphertext<N>>,
-    pub(crate) ciphertext_randomizers: Vec<EncryptedRecordRandomizer<N>>,
-    pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
+    pub(crate) ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
+    pub(super) noop_signatures: Vec<Option<N::AccountSignature>>,
 }
 
 impl<N: Network> StateTransition<N> {
@@ -118,8 +118,8 @@ impl<N: Network> StateTransition<N> {
         &self.output_records
     }
 
-    /// Returns a reference to the noop private keys.
-    pub fn noop_private_keys(&self) -> &Vec<Option<PrivateKey<N>>> {
-        &self.noop_private_keys
+    /// Returns a reference to the noop signatures.
+    pub fn noop_signatures(&self) -> &Vec<Option<N::AccountSignature>> {
+        &self.noop_signatures
     }
 }

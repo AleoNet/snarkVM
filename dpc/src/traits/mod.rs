@@ -17,9 +17,6 @@
 pub mod account;
 pub use account::*;
 
-pub mod dpc;
-pub use dpc::*;
-
 pub mod ledger;
 pub use ledger::*;
 

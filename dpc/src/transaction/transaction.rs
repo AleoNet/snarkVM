@@ -18,7 +18,6 @@ use crate::{
     record::*,
     Address,
     AleoAmount,
-    DPCScheme,
     LedgerProof,
     Memo,
     Network,

@@ -24,15 +24,11 @@ use std::marker::PhantomData;
 
 pub struct DPC<N: Network>(PhantomData<N>);
 
-impl<N: Network> DPCScheme<N> for DPC<N> {
-    type Account = Account<N>;
-    type LedgerProof = LedgerProof<N>;
-    type StateTransition = StateTransition<N>;
-
+impl<N: Network> DPC<N> {
     /// Returns an authorization to execute a state transition.
-    fn authorize<R: Rng + CryptoRng>(
-        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        transition: &Self::StateTransition,
+    pub fn authorize<R: Rng + CryptoRng>(
+        private_keys: &Vec<PrivateKey<N>>,
+        transition: &StateTransition<N>,
         rng: &mut R,
     ) -> Result<Vec<N::AccountSignature>> {
         // Keep a cursor for the private keys.
@@ -43,19 +39,20 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for noop_private_key in transition.noop_private_keys().iter().take(N::NUM_INPUT_RECORDS) {
-            // Fetch the correct private key.
-            let private_key = match noop_private_key {
-                Some(noop_private_key) => noop_private_key,
+        for noop_signature in transition.noop_signatures().iter().take(N::NUM_INPUT_RECORDS) {
+            let signature = match noop_signature {
+                Some(noop_signature) => noop_signature.clone(),
                 None => {
+                    // Fetch the correct private key.
                     let private_key = &private_keys[index];
                     index += 1;
-                    private_key
+
+                    private_key.sign(&signature_message, rng)?
                 }
             };
 
             // Sign the signature message.
-            signatures.push(private_key.sign(&signature_message, rng)?);
+            signatures.push(signature);
         }
 
         // Return the transaction authorization.
@@ -63,10 +60,10 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     }
 
     /// Returns a transaction by executing an authorized state transition.
-    fn execute<R: Rng + CryptoRng>(
+    pub fn execute<R: Rng + CryptoRng>(
         signatures: Vec<N::AccountSignature>,
-        transition: &Self::StateTransition,
-        ledger_proof: Self::LedgerProof,
+        transition: &StateTransition<N>,
+        ledger_proof: LedgerProof<N>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         debug_assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());

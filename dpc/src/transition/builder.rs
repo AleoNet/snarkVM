@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use snarkvm_utilities::ToBytes;
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
@@ -22,7 +23,7 @@ use rand::{CryptoRng, Rng};
 
 // TODO (howardwu): TEMPORARY - Merge this into the Network trait.
 use snarkvm_algorithms::traits::*;
-pub type EncryptedRecordRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
+pub type CiphertextRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
 
 #[derive(Clone)]
 pub struct TransitionBuilder<N: Network> {
@@ -149,6 +150,12 @@ impl<N: Network> TransitionBuilder<N> {
         // Prepare the inputs and outputs for constructing state.
         let (inputs, outputs) = self.prepare_inputs_and_outputs(rng)?;
 
+        // Fetch the executable.
+        let executable = match self.executable.get() {
+            Some(executable) => executable.clone(),
+            None => return Err(anyhow!("Failed to get the executable during build phase")),
+        };
+
         // Compute the input records.
         let input_records: Vec<_> = inputs
             .iter()
@@ -161,13 +168,6 @@ impl<N: Network> TransitionBuilder<N> {
             .iter()
             .take(N::NUM_INPUT_RECORDS)
             .map(|input| input.serial_number().clone())
-            .collect();
-
-        // Compute the noop private keys.
-        let noop_private_keys: Vec<_> = inputs
-            .iter()
-            .take(N::NUM_INPUT_RECORDS)
-            .map(|input| input.noop_private_key().clone())
             .collect();
 
         // Compute the output records.
@@ -184,12 +184,6 @@ impl<N: Network> TransitionBuilder<N> {
             .take(N::NUM_OUTPUT_RECORDS)
             .map(|output| output.commitment())
             .collect();
-
-        // Fetch the executable.
-        let executable = match self.executable.get() {
-            Some(executable) => executable.clone(),
-            None => return Err(anyhow!("Failed to get the executable during build phase")),
-        };
 
         // Ensure the executable input and output size requirements matches the records.
         {
@@ -232,7 +226,18 @@ impl<N: Network> TransitionBuilder<N> {
         let memo = Memo::new(&memo_bytes)?;
 
         // Construct the transaction kernel.
-        let kernel = TransactionKernel::new(serial_numbers, commitments, ciphertext_ids, value_balance, memo)?;
+        let kernel = TransactionKernel::<N>::new(serial_numbers, commitments, ciphertext_ids, value_balance, memo)?;
+
+        // Compute the noop signatures.
+        let signature_message = kernel.to_transaction_id()?.to_bytes_le()?;
+        let noop_signatures = inputs
+            .iter()
+            .take(N::NUM_INPUT_RECORDS)
+            .map(|input| match input.noop_private_key() {
+                Some(noop_private_key) => Ok(Some(noop_private_key.sign(&signature_message, rng)?)),
+                None => Ok(None),
+            })
+            .collect::<Result<Vec<Option<_>>>>()?;
 
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;
@@ -245,7 +250,7 @@ impl<N: Network> TransitionBuilder<N> {
             output_records,
             ciphertexts,
             ciphertext_randomizers,
-            noop_private_keys,
+            noop_signatures,
         })
     }
 
@@ -296,7 +301,7 @@ impl<N: Network> TransitionBuilder<N> {
     ) -> Result<(
         Vec<RecordCiphertext<N>>,
         Vec<N::CiphertextID>,
-        Vec<EncryptedRecordRandomizer<N>>,
+        Vec<CiphertextRandomizer<N>>,
     )> {
         let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut encrypted_record_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
