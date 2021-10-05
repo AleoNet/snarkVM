@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, ComputeKey, Network, Payload, RecordError, RecordScheme};
+use crate::{Address, ComputeKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{CommitmentScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
@@ -147,6 +147,46 @@ impl<N: Network> Record<N> {
         })
     }
 
+    /// Returns `true` if the record is a dummy.
+    pub fn is_dummy(&self) -> bool {
+        self.value == 0 && self.payload.is_empty() && self.program_id == *N::noop_program_id()
+    }
+
+    /// Returns the record owner.
+    pub fn owner(&self) -> Address<N> {
+        self.owner
+    }
+
+    /// Returns the record value.
+    pub fn value(&self) -> u64 {
+        self.value
+    }
+
+    /// Returns the record payload.
+    pub fn payload(&self) -> &Payload {
+        &self.payload
+    }
+
+    /// Returns the program id of this record.
+    pub fn program_id(&self) -> N::ProgramID {
+        self.program_id
+    }
+
+    /// Returns the nonce used for the serial number.
+    pub fn serial_number_nonce(&self) -> N::SerialNumber {
+        self.serial_number_nonce
+    }
+
+    /// Returns the randomness used for the commitment.
+    pub fn commitment_randomness(&self) -> <N::CommitmentScheme as CommitmentScheme>::Randomness {
+        self.commitment_randomness.clone()
+    }
+
+    /// Returns the commitment of this record.
+    pub fn commitment(&self) -> N::Commitment {
+        self.commitment
+    }
+
     pub fn to_serial_number(&self, compute_key: &ComputeKey<N>) -> Result<N::SerialNumber, RecordError> {
         // Check that the compute key corresponds with the owner of the record.
         if self.owner != Address::<N>::from_compute_key(compute_key)? {
@@ -160,47 +200,6 @@ impl<N: Network> Record<N> {
         let serial_number = N::SerialNumberPRF::evaluate(&seed, input)?;
 
         Ok(serial_number)
-    }
-}
-
-impl<N: Network> RecordScheme for Record<N> {
-    type Commitment = N::Commitment;
-    type CommitmentRandomness = <N::CommitmentScheme as CommitmentScheme>::Randomness;
-    type Owner = Address<N>;
-    type Payload = Payload;
-    type ProgramID = N::ProgramID;
-    type SerialNumberNonce = N::SerialNumber;
-
-    fn is_dummy(&self) -> bool {
-        self.value == 0 && self.payload.is_empty() && self.program_id == *N::noop_program_id()
-    }
-
-    fn owner(&self) -> Self::Owner {
-        self.owner
-    }
-
-    fn value(&self) -> u64 {
-        self.value
-    }
-
-    fn payload(&self) -> &Self::Payload {
-        &self.payload
-    }
-
-    fn program_id(&self) -> Self::ProgramID {
-        self.program_id
-    }
-
-    fn serial_number_nonce(&self) -> &Self::SerialNumberNonce {
-        &self.serial_number_nonce
-    }
-
-    fn commitment_randomness(&self) -> Self::CommitmentRandomness {
-        self.commitment_randomness.clone()
-    }
-
-    fn commitment(&self) -> Self::Commitment {
-        self.commitment.clone()
     }
 }
 
