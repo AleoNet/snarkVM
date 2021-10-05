@@ -142,7 +142,7 @@ default = [
   "snarkvm-fields/default",
   "snarkvm-gadgets/default",
   "snarkvm-marlin/default",
-  "snarkvm-parameters/std",
+  "snarkvm-parameters/default",
   "snarkvm-utilities/default"
 ]
 wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full", "snarkvm-parameters/wasm" ]

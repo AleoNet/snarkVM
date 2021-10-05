@@ -35,7 +35,6 @@ version = "1.0"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
 version = "0.4.39"
-optional = true
 
 [dependencies.hex]
 version = "0.4.3"
@@ -65,7 +64,6 @@ default-features = false
 
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
-default-features = false
 
 [dev-dependencies.snarkvm-fields]
 path = "../fields"
@@ -89,6 +87,5 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-std = [ "remote", "snarkvm-algorithms/default" ]
-remote = [ "curl" ]
+default = [ "snarkvm-algorithms/default" ]
 wasm = [ "snarkvm-algorithms/wasm" ]
