@@ -48,27 +48,18 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the inner circuit public and private variables.
-    let inner_public_variables = InnerPublicVariables::new(
+    let inner_public = InnerPublicVariables::new(
         transaction_id,
         ledger_proof.block_hash(),
         Some(transition.executable().program_id()),
     )
     .unwrap();
-    let inner_private_variables = InnerPrivateVariables::new(
-        transition.kernel(),
-        transition.input_records().clone(),
-        ledger_proof,
-        signatures,
-        transition.output_records().clone(),
-        transition.ciphertext_randomizers.clone(),
-        transition.executable(),
-    )
-    .unwrap();
+    let inner_private = InnerPrivateVariables::new(&transition, ledger_proof, signatures).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
-    let inner_circuit = InnerCircuit::new(inner_public_variables.clone(), inner_private_variables);
+    let inner_circuit = InnerCircuit::new(inner_public.clone(), inner_private);
     inner_circuit
         .generate_constraints(&mut inner_cs.ns(|| "Inner circuit"))
         .unwrap();
@@ -101,21 +92,16 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, &mut rng).unwrap();
 
     // Verify that the inner circuit proof passes.
-    assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public_variables, &inner_proof).unwrap());
+    assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
 
     // Construct the outer circuit public and private variables.
-    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, inner_circuit_id);
-    let outer_private_variables = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
+    let outer_public = OuterPublicVariables::new(&inner_public, inner_circuit_id);
+    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
 
-    execute_outer_circuit::<N, _>(
-        &mut outer_cs.ns(|| "Outer circuit"),
-        &outer_public_variables,
-        &outer_private_variables,
-    )
-    .unwrap();
+    execute_outer_circuit::<N, _>(&mut outer_cs.ns(|| "Outer circuit"), &outer_public, &outer_private).unwrap();
 
     let candidate_outer_num_constraints = outer_cs.num_constraints();
 

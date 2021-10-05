@@ -17,12 +17,12 @@
 use crate::{
     AleoAmount,
     CircuitType,
-    Executable,
     LedgerProof,
     Memo,
     Network,
     ProgramExecutable,
     Record,
+    StateTransition,
     TransactionKernel,
 };
 use snarkvm_algorithms::traits::EncryptionScheme;
@@ -70,28 +70,18 @@ impl<N: Network> InnerPrivateVariables<N> {
     }
 
     pub fn new(
-        kernel: &TransactionKernel<N>,
-        input_records: Vec<Record<N>>,
+        transition: &StateTransition<N>,
         ledger_proof: LedgerProof<N>,
         signatures: Vec<N::AccountSignature>,
-        output_records: Vec<Record<N>>,
-        encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-        executable: &Executable<N>,
     ) -> Result<Self> {
-        assert!(kernel.is_valid());
-        assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
-        assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
-        assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
-        assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
-
         Ok(Self {
-            kernel: kernel.clone(),
-            input_records,
+            kernel: transition.kernel().clone(),
+            input_records: transition.input_records().clone(),
             ledger_proof,
             signatures,
-            output_records,
-            encrypted_record_randomizers,
-            circuit_type: executable.circuit_type(),
+            output_records: transition.output_records().clone(),
+            encrypted_record_randomizers: transition.ciphertext_randomizers.clone(),
+            circuit_type: transition.executable().circuit_type(),
         })
     }
 

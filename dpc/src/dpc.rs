@@ -80,40 +80,31 @@ impl<N: Network> DPC<N> {
         let execution = transition.executable().execute(PublicVariables::new(transaction_id))?;
 
         // Construct the inner circuit public and private variables.
-        let inner_public_variables =
-            InnerPublicVariables::new(transaction_id, block_hash, Some(transition.executable().program_id()))?;
-        let inner_private_variables = InnerPrivateVariables::new(
-            transition.kernel(),
-            transition.input_records().clone(),
-            ledger_proof,
-            signatures,
-            transition.output_records().clone(),
-            transition.ciphertext_randomizers.clone(),
-            &transition.executable(),
-        )?;
+        let inner_public = InnerPublicVariables::new(transaction_id, block_hash, Some(execution.program_id))?;
+        let inner_private = InnerPrivateVariables::new(transition, ledger_proof, signatures)?;
 
         // Compute the inner circuit proof.
         let inner_proof = N::InnerSNARK::prove(
             N::inner_circuit_proving_key(),
-            &InnerCircuit::<N>::new(inner_public_variables.clone(), inner_private_variables),
+            &InnerCircuit::<N>::new(inner_public.clone(), inner_private),
             rng,
         )?;
 
         // Verify that the inner circuit proof passes.
         assert!(N::InnerSNARK::verify(
             N::inner_circuit_verifying_key(),
-            &inner_public_variables,
+            &inner_public,
             &inner_proof
         )?);
 
         // Construct the outer circuit public and private variables.
-        let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, *N::inner_circuit_id());
-        let outer_private_variables =
+        let outer_public = OuterPublicVariables::new(&inner_public, *N::inner_circuit_id());
+        let outer_private =
             OuterPrivateVariables::new(N::inner_circuit_verifying_key().clone(), inner_proof, execution);
 
         let transaction_proof = N::OuterSNARK::prove(
             N::outer_circuit_proving_key(),
-            &OuterCircuit::<N>::new(outer_public_variables, outer_private_variables),
+            &OuterCircuit::<N>::new(outer_public, outer_private),
             rng,
         )?;
 

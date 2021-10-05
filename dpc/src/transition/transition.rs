@@ -123,3 +123,10 @@ impl<N: Network> StateTransition<N> {
         &self.noop_signatures
     }
 }
+
+// TODO (howardwu): TEMPORARY - Add an is_valid method, call it in InnerPrivateVariables.
+// assert!(kernel.is_valid());
+// assert_eq!(N::NUM_INPUT_RECORDS, input_records.len());
+// assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
+// assert_eq!(N::NUM_OUTPUT_RECORDS, output_records.len());
+// assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_randomizers.len());
