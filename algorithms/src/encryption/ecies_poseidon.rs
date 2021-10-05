@@ -42,6 +42,8 @@ use snarkvm_utilities::{
     Write,
 };
 
+use itertools::Itertools;
+
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Copy(bound = "TE: TwistedEdwardsParameters"),
@@ -136,66 +138,75 @@ where
         randomness: &Self::Randomness,
         message: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
-        // Compute the ECDH value.
-        let ecdh_value = public_key.into_projective().mul((*randomness).clone()).into_affine();
+        // Compute the randomizer := G^r
+        let randomizer = self
+            .generator
+            .into_projective()
+            .mul(*randomness)
+            .into_affine()
+            .to_x_coordinate();
+
+        // Compute the ECDH value := public_key^r.
+        // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is on the curve.
+        let ecdh_value = public_key
+            .into_projective()
+            .mul(*randomness)
+            .into_affine()
+            .to_x_coordinate();
 
         // Prepare the Poseidon sponge.
-        let params =
+        let poseidon_parameters =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
-        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-        sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
+        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&poseidon_parameters);
+        sponge.absorb(&[ecdh_value]);
 
         // Squeeze one element for the commitment randomness.
         let commitment_randomness = sponge.squeeze_field_elements(1)[0];
 
         // Add a commitment to the public key.
         let public_key_commitment = {
-            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
+            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&poseidon_parameters);
             sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
 
         // Convert the message into bits.
-        let mut bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
+        let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
             let mut byte = byte.clone();
             for _ in 0..8 {
-                bits.push(byte & 1 == 1);
+                plaintext_bits.push(byte & 1 == 1);
                 byte >>= 1;
             }
         }
-        bits.push(true);
-        // The last bit indicates the end of the actual data, which is used in decoding to
-        // make sure that the length is correct.
+        // The final bit serves as a terminus indicator,
+        // and is used during decryption to ensure the length is correct.
+        plaintext_bits.push(true);
 
-        // Pack the bits into field elements.
+        // Determine the number of ciphertext elements.
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
-        for chunk in bits.chunks(capacity) {
-            res.push(TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap());
-        }
+        let num_ciphertext_elements = (plaintext_bits.len() + capacity - 1) / capacity;
 
         // Obtain random field elements from Poseidon.
-        let sponge_field_elements = sponge.squeeze_field_elements(res.len());
+        let sponge_randomizers = sponge.squeeze_field_elements(num_ciphertext_elements);
+        assert_eq!(sponge_randomizers.len(), num_ciphertext_elements);
 
-        // Add the random field elements to the packed bits.
-        for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
-            res[i] = res[i] + sponge_field_element;
-        }
+        // Pack the bits into field elements and add the random field elements to the packed bits.
+        let ciphertext = plaintext_bits
+            .chunks(capacity)
+            .zip_eq(sponge_randomizers.iter())
+            .flat_map(|(chunk, sponge_randomizer)| {
+                let plaintext_element =
+                    TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
+                (plaintext_element + sponge_randomizer).to_bytes_le().unwrap()
+            })
+            .collect();
 
-        // Put the bytes of the x coordinate of the randomness group element
-        // into the beginning of the ciphertext.
-        let random_element = self
-            .generator
-            .into_projective()
-            .mul((*randomness).clone())
-            .into_affine()
-            .to_x_coordinate();
-
+        // Combine the randomizer, public key commitment, and ciphertext elements.
         Ok([
-            random_element.to_bytes_le()?,
+            randomizer.to_bytes_le()?,
             public_key_commitment.to_bytes_le()?,
-            res.to_bytes_le()?,
+            ciphertext,
         ]
         .concat())
     }
