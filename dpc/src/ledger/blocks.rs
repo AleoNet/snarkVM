@@ -286,8 +286,8 @@ impl<N: Network> Blocks<N> {
         Ok(())
     }
 
-    /// Returns the commitments inclusion proof up to the corresponding block hash.
-    pub fn to_commitments_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
+    /// Returns the ledger proof for the given commitments with the current block hash.
+    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
         assert_eq!(commitments.len(), N::NUM_INPUT_RECORDS);
 
         let commitment_inclusion_proofs = commitments
@@ -300,17 +300,18 @@ impl<N: Network> Blocks<N> {
         let header_inclusion_proof = header.to_header_inclusion_proof(2, commitments_root)?;
         let header_root = header.to_header_root()?;
 
-        let previous_hash = self.get_previous_block_hash(self.current_height)?;
-        let current_hash = self.current_hash;
+        let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
+        let current_block_hash = self.current_hash;
 
-        Ok(LedgerProof {
-            block_hash: current_hash,
-            previous_block_hash: previous_hash,
+        LedgerProof::new(
+            current_block_hash,
+            previous_block_hash,
             header_root,
             header_inclusion_proof,
             commitments_root,
             commitment_inclusion_proofs,
-        })
+            commitments.to_vec(),
+        )
     }
 
     /// Returns the expected difficulty target given the previous block and expected next block details.
