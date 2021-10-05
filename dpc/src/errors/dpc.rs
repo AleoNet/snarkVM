@@ -51,12 +51,13 @@ pub enum DPCError {
     EncryptionError(#[from] EncryptionError),
 
     #[error(
-        "Invalid transaction kernel: network = {}, |serial numbers| = {}, |commitments| = {}",
+        "Invalid transaction kernel: network = {}, |serial numbers| = {}, |commitments| = {}, |ciphertext_ids| = {}",
         _0,
         _1,
-        _2
+        _2,
+        _3
     )]
-    InvalidKernel(u16, usize, usize),
+    InvalidKernel(u16, usize, usize, usize),
 
     #[error("Invalid number of inputs - (current: {}, max: {})", _0, _1)]
     InvalidNumberOfInputs(usize, usize),

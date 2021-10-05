@@ -109,7 +109,7 @@ impl<N: Network> RecordCiphertext<N> {
 
     /// Returns the encrypted record ID.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<N::EncryptedRecordID> {
+    pub fn to_hash(&self) -> Result<N::CiphertextID> {
         Ok(N::encrypted_record_crh().hash(&self.ciphertext)?)
     }
 }

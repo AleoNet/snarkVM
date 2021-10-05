@@ -62,7 +62,13 @@ impl<N: Network> Transaction<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let transition = StateTransition::new_coinbase(recipient, amount, rng)?;
         let authorization = DPC::<N>::authorize(&vec![], &transition, rng)?;
-        DPC::<N>::execute(authorization, transition.executable(), LedgerProof::default(), rng)
+        DPC::<N>::execute(
+            authorization,
+            &transition,
+            transition.executable(),
+            LedgerProof::default(),
+            rng,
+        )
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
@@ -162,6 +168,11 @@ impl<N: Network> Transaction<N> {
         self.kernel.commitments()
     }
 
+    /// Returns the ciphertext IDs.
+    pub fn ciphertext_ids(&self) -> &[N::CiphertextID] {
+        self.kernel.ciphertext_ids()
+    }
+
     /// Returns the value balance.
     pub fn value_balance(&self) -> &AleoAmount {
         self.kernel.value_balance()
@@ -202,19 +213,9 @@ impl<N: Network> Transaction<N> {
         &self.proof
     }
 
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance || memo)
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         self.kernel.to_transaction_id()
-    }
-
-    /// Returns the encrypted record hashes.
-    pub fn to_encrypted_record_ids(&self) -> Result<Vec<N::EncryptedRecordID>> {
-        Ok(self
-            .encrypted_records
-            .iter()
-            .take(N::NUM_OUTPUT_RECORDS)
-            .map(|e| Ok(e.to_hash()?))
-            .collect::<Result<Vec<_>>>()?)
     }
 }
 

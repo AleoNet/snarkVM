@@ -434,12 +434,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS * 32); // Commitments are 32 bytes
         let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut ciphertext_ids_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS * 32);
 
-        for (j, ((record, encryption_randomness), encrypted_record_id)) in private
+        for (j, (record, encryption_randomness)) in private
             .output_records
             .iter()
             .zip_eq(&private.encrypted_record_randomizers)
-            .zip_eq(&public.encrypted_record_ids)
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
@@ -628,7 +628,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 };
 
                 // *******************************************************************
-                // Construct the record encryption
+                // Compute the record ciphertext and ciphertext ID.
 
                 let encryption_randomness_gadget = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -645,26 +645,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &plaintext_bytes,
                 )?;
 
-                // *******************************************************************
-                // Check that the encrypted record ID is correct
-
-                let encrypted_record_id_gadget = <N::EncryptedRecordCRHGadget as CRHGadget<
-                    N::EncryptedRecordCRH,
-                    N::InnerScalarField,
-                >>::OutputGadget::alloc_input(
-                    &mut encryption_cs.ns(|| format!("output record {} encrypted record ID", j)),
-                    || Ok(encrypted_record_id),
-                )?;
-
                 let candidate_encrypted_record_id = encrypted_record_crh.check_evaluation_gadget(
                     &mut encryption_cs.ns(|| format!("Compute encrypted record ID {}", j)),
                     candidate_encrypted_record_gadget,
                 )?;
 
-                encrypted_record_id_gadget.enforce_equal(
-                    encryption_cs.ns(|| format!("output record {} encrypted record ID is valid", j)),
-                    &candidate_encrypted_record_id,
-                )?;
+                ciphertext_ids_bytes.extend_from_slice(
+                    &candidate_encrypted_record_id
+                        .to_bytes(&mut encryption_cs.ns(|| "Convert ciphertext ID to bytes"))?,
+                );
             }
         }
         // *******************************************************************
@@ -812,6 +801,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             message.extend_from_slice(&network_id);
             message.extend_from_slice(&input_serial_numbers_bytes);
             message.extend_from_slice(&output_commitments_bytes);
+            message.extend_from_slice(&ciphertext_ids_bytes);
             message.extend_from_slice(&candidate_value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
             message.extend_from_slice(&memo);
 

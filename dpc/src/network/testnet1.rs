@@ -155,7 +155,7 @@ impl Network for Testnet1 {
 
     type EncryptedRecordCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
     type EncryptedRecordCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
-    type EncryptedRecordID = <Self::EncryptedRecordCRH as CRH>::Output;
+    type CiphertextID = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 296, 32>;
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
@@ -182,8 +182,8 @@ impl Network for Testnet1 {
     type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 42>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
-    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
-    type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 26, 63>;
+    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 34, 63>;
+    type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
     type TransactionsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;

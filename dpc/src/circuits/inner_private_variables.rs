@@ -52,6 +52,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             kernel: TransactionKernel::new(
                 vec![N::SerialNumber::default(); N::NUM_INPUT_RECORDS],
                 vec![N::Commitment::default(); N::NUM_OUTPUT_RECORDS],
+                vec![N::CiphertextID::default(); N::NUM_OUTPUT_RECORDS],
                 AleoAmount::ZERO,
                 Memo::default(),
             )

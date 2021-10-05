@@ -67,26 +67,26 @@ mod coinbase {
             };
 
             // Generate the candidate state transition.
-            let (candidate_account, candidate_state, candidate_serial_numbers) = {
+            let (candidate_account, candidate_transition, candidate_serial_numbers) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
-                let state =
+                let transition =
                     StateTransition::new_coinbase(account.address, AleoAmount::from_bytes(123456), rng).unwrap();
-                let serial_numbers = state.kernel().serial_numbers().clone();
+                let serial_numbers = transition.kernel().serial_numbers().clone();
 
-                (account, state, serial_numbers)
+                (account, transition, serial_numbers)
             };
 
             assert_eq!(expected_account.address, candidate_account.address);
             for i in 0..Testnet2::NUM_INPUT_RECORDS {
-                assert!(candidate_state.input_records()[i].is_dummy());
+                assert!(candidate_transition.input_records()[i].is_dummy());
             }
             for j in 1..Testnet2::NUM_OUTPUT_RECORDS {
-                assert!(candidate_state.output_records()[j].is_dummy());
+                assert!(candidate_transition.output_records()[j].is_dummy());
             }
             assert_eq!(expected_serial_numbers, candidate_serial_numbers);
-            assert_eq!(expected_record, candidate_state.output_records()[0].clone());
+            assert_eq!(expected_record, candidate_transition.output_records()[0].clone());
         }
     }
 }
@@ -160,11 +160,11 @@ mod transfer {
         };
 
         // Generate the candidate state transition.
-        let (candidate_recipient, candidate_state, candidate_serial_numbers) = {
+        let (candidate_recipient, candidate_transition, candidate_serial_numbers) = {
             let rng = &mut ChaChaRng::seed_from_u64(seed);
             let recipient = Account::new(rng).unwrap();
 
-            let state = StateTransition::new_transfer(
+            let transition = StateTransition::new_transfer(
                 sender.private_key(),
                 &vec![coinbase_record],
                 recipient.address,
@@ -173,14 +173,17 @@ mod transfer {
                 rng,
             )
             .unwrap();
-            let serial_numbers = state.kernel().serial_numbers().clone();
+            let serial_numbers = transition.kernel().serial_numbers().clone();
 
-            (recipient, state, serial_numbers)
+            (recipient, transition, serial_numbers)
         };
 
         assert_eq!(expected_recipient.address, candidate_recipient.address);
         assert_eq!(expected_serial_numbers, candidate_serial_numbers);
-        assert_eq!(expected_sender_record, candidate_state.output_records()[0].clone());
-        assert_eq!(expected_recipient_record, candidate_state.output_records()[1].clone());
+        assert_eq!(expected_sender_record, candidate_transition.output_records()[0].clone());
+        assert_eq!(
+            expected_recipient_record,
+            candidate_transition.output_records()[1].clone()
+        );
     }
 }

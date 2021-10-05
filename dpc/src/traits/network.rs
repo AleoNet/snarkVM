@@ -126,9 +126,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type CommitmentsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
-    type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordID>;
+    type EncryptedRecordCRH: CRH<Output = Self::CiphertextID>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
-    type EncryptedRecordID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    type CiphertextID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;

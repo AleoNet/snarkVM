@@ -38,6 +38,8 @@ pub struct TransactionKernel<N: Network> {
     serial_numbers: Vec<N::SerialNumber>,
     /// The commitments of the output records.
     commitments: Vec<N::Commitment>,
+    /// The ciphertext IDs of the output records.
+    ciphertext_ids: Vec<N::CiphertextID>,
     /// A value balance is the difference between the input and output record values.
     /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
     /// may possess a negative value balance representing tokens being minted.
@@ -52,6 +54,7 @@ impl<N: Network> TransactionKernel<N> {
     pub fn new(
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
+        ciphertext_ids: Vec<N::CiphertextID>,
         value_balance: AleoAmount,
         memo: Memo<N>,
     ) -> Result<Self> {
@@ -60,6 +63,7 @@ impl<N: Network> TransactionKernel<N> {
             network_id: N::NETWORK_ID,
             serial_numbers,
             commitments,
+            ciphertext_ids,
             value_balance,
             memo,
         };
@@ -67,9 +71,13 @@ impl<N: Network> TransactionKernel<N> {
         // Ensure the transaction kernel is well-formed.
         match kernel.is_valid() {
             true => Ok(kernel),
-            false => Err(
-                DPCError::InvalidKernel(N::NETWORK_ID, kernel.serial_numbers.len(), kernel.commitments.len()).into(),
-            ),
+            false => Err(DPCError::InvalidKernel(
+                N::NETWORK_ID,
+                kernel.serial_numbers.len(),
+                kernel.commitments.len(),
+                kernel.ciphertext_ids.len(),
+            )
+            .into()),
         }
     }
 
@@ -79,6 +87,7 @@ impl<N: Network> TransactionKernel<N> {
         self.network_id == N::NETWORK_ID
             && self.serial_numbers.len() == N::NUM_INPUT_RECORDS
             && self.commitments.len() == N::NUM_OUTPUT_RECORDS
+            && self.ciphertext_ids.len() == N::NUM_OUTPUT_RECORDS
     }
 
     /// Returns the network ID.
@@ -99,6 +108,12 @@ impl<N: Network> TransactionKernel<N> {
         &self.commitments
     }
 
+    /// Returns a reference to the ciphertext IDs.
+    #[inline]
+    pub fn ciphertext_ids(&self) -> &Vec<N::CiphertextID> {
+        &self.ciphertext_ids
+    }
+
     /// Returns a reference to the value balance.
     #[inline]
     pub fn value_balance(&self) -> &AleoAmount {
@@ -110,7 +125,7 @@ impl<N: Network> TransactionKernel<N> {
         &self.memo
     }
 
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance || memo)
     #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         Ok(N::transaction_id_crh().hash(&self.to_bytes_le()?)?)
@@ -122,14 +137,19 @@ impl<N: Network> ToBytes for TransactionKernel<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the correct number of serial numbers and commitments are provided.
         if !self.is_valid() {
-            return Err(
-                DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into(),
-            );
+            return Err(DPCError::InvalidKernel(
+                self.network_id,
+                self.serial_numbers.len(),
+                self.commitments.len(),
+                self.ciphertext_ids.len(),
+            )
+            .into());
         }
 
         self.network_id.write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
+        self.ciphertext_ids.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         self.memo.write_le(&mut writer)
     }
@@ -142,7 +162,13 @@ impl<N: Network> FromBytes for TransactionKernel<N> {
 
         // Ensure the correct network ID is read in.
         if network_id != N::NETWORK_ID {
-            return Err(DPCError::InvalidKernel(network_id, N::NUM_INPUT_RECORDS, N::NUM_OUTPUT_RECORDS).into());
+            return Err(DPCError::InvalidKernel(
+                network_id,
+                N::NUM_INPUT_RECORDS,
+                N::NUM_OUTPUT_RECORDS,
+                N::NUM_OUTPUT_RECORDS,
+            )
+            .into());
         }
 
         let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
@@ -155,10 +181,17 @@ impl<N: Network> FromBytes for TransactionKernel<N> {
             commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
+        let mut ciphertext_ids = Vec::<N::CiphertextID>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
+            ciphertext_ids.push(FromBytes::read_le(&mut reader)?);
+        }
+
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
         let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::new(serial_numbers, commitments, value_balance, memo)
-            .expect("Failed to initialize a transaction kernel"))
+        Ok(
+            Self::new(serial_numbers, commitments, ciphertext_ids, value_balance, memo)
+                .expect("Failed to initialize a transaction kernel"),
+        )
     }
 }

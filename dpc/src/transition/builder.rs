@@ -20,6 +20,10 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 
+// TODO (howardwu): TEMPORARY - Merge this into the Network trait.
+use snarkvm_algorithms::traits::*;
+pub type EncryptedRecordRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
+
 #[derive(Clone)]
 pub struct TransitionBuilder<N: Network> {
     /// The executable for a state transition.
@@ -207,6 +211,9 @@ impl<N: Network> TransitionBuilder<N> {
             }
         }
 
+        // Compute the encrypted records.
+        let (ciphertexts, ciphertext_ids, ciphertext_randomizers) = Self::encrypt_records(&output_records, rng)?;
+
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
@@ -225,7 +232,7 @@ impl<N: Network> TransitionBuilder<N> {
         let memo = Memo::new(&memo_bytes)?;
 
         // Construct the transaction kernel.
-        let kernel = TransactionKernel::new(serial_numbers, commitments, value_balance, memo)?;
+        let kernel = TransactionKernel::new(serial_numbers, commitments, ciphertext_ids, value_balance, memo)?;
 
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;
@@ -236,6 +243,8 @@ impl<N: Network> TransitionBuilder<N> {
             executable,
             input_records,
             output_records,
+            ciphertexts,
+            ciphertext_randomizers,
             noop_private_keys,
         })
     }
@@ -278,6 +287,29 @@ impl<N: Network> TransitionBuilder<N> {
         }
 
         Ok((inputs, outputs))
+    }
+
+    #[inline]
+    fn encrypt_records<R: Rng + CryptoRng>(
+        output_records: &Vec<Record<N>>,
+        rng: &mut R,
+    ) -> Result<(
+        Vec<RecordCiphertext<N>>,
+        Vec<N::CiphertextID>,
+        Vec<EncryptedRecordRandomizer<N>>,
+    )> {
+        let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+
+        for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
+            let (encrypted_record, encrypted_record_randomizer) = RecordCiphertext::encrypt(record, rng)?;
+            encrypted_record_ids.push(encrypted_record.to_hash()?);
+            encrypted_records.push(encrypted_record);
+            encrypted_record_randomizers.push(encrypted_record_randomizer);
+        }
+
+        Ok((encrypted_records, encrypted_record_ids, encrypted_record_randomizers))
     }
 }
 

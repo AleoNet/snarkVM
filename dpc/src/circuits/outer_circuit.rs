@@ -109,26 +109,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let block_hash_fe = alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.block_hash, "block hash")?;
 
-    let encrypted_record_ids_fe = {
-        let mut encrypted_record_ids_fe_vec =
-            Vec::with_capacity(inner_public.encrypted_record_ids.len() * N::NUM_OUTPUT_RECORDS);
-
-        for (index, encrypted_record_hash) in inner_public.encrypted_record_ids.iter().enumerate() {
-            let encrypted_record_id_fe = alloc_inner_snark_input_field_element::<N, _, _>(
-                cs,
-                encrypted_record_hash,
-                &format!("encrypted_record_id {}", index),
-            )?;
-
-            encrypted_record_ids_fe_vec.push(encrypted_record_id_fe);
-        }
-
-        <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
-            cs.ns(|| "encrypted_record_ids_merge"),
-            &encrypted_record_ids_fe_vec,
-        )?
-    };
-
     let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
         cs,
         &private.program_execution.program_id.to_bytes_le()?[..],
@@ -160,8 +140,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
             block_hash_fe,
-            encrypted_record_ids_fe,
-            program_id_fe.clone(),
+            program_id_fe,
             transaction_id_fe_inner_snark,
         ])?;
 

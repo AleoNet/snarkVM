@@ -32,6 +32,8 @@ pub struct StateTransition<N: Network> {
     pub(super) executable: Executable<N>,
     pub(super) input_records: Vec<Record<N>>,
     pub(super) output_records: Vec<Record<N>>,
+    pub(crate) ciphertexts: Vec<RecordCiphertext<N>>,
+    pub(crate) ciphertext_randomizers: Vec<EncryptedRecordRandomizer<N>>,
     pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
 }
 

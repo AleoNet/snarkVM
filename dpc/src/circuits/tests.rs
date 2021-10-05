@@ -27,31 +27,22 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10);
-    let state = StateTransition::builder()
+    let transition = StateTransition::builder()
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
 
-    let authorization = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
+    let authorization = DPC::<N>::authorize(&vec![], &transition, &mut rng).unwrap();
     let transaction_id = authorization.to_transaction_id().unwrap();
 
     // Execute the program circuit.
-    let execution = state
+    let execution = transition
         .executable()
         .execute(PublicVariables::new(transaction_id))
         .unwrap();
 
-    // Compute the encrypted records.
-    let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
-        authorization.to_encrypted_records(&mut rng).unwrap();
-
-    let TransactionAuthorization {
-        kernel,
-        input_records,
-        output_records,
-        signatures,
-    } = authorization;
+    let TransactionAuthorization { kernel, signatures } = authorization;
 
     // Construct the ledger witnesses.
     let ledger_proof = LedgerProof::<N>::default();
@@ -62,18 +53,17 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_public_variables = InnerPublicVariables::new(
         transaction_id,
         ledger_proof.block_hash(),
-        &encrypted_record_hashes,
-        Some(state.executable().program_id()),
+        Some(transition.executable().program_id()),
     )
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
         &kernel,
-        input_records.clone(),
+        transition.input_records().clone(),
         ledger_proof,
         signatures,
-        output_records.clone(),
-        encrypted_record_randomizers,
-        state.executable(),
+        transition.output_records().clone(),
+        transition.ciphertext_randomizers.clone(),
+        transition.executable(),
     )
     .unwrap();
 
@@ -152,7 +142,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(223411, 161057);
+        dpc_execute_circuits_test::<Testnet1>(224780, 153210);
     }
 }
 
@@ -162,6 +152,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(223411, 253185);
+        dpc_execute_circuits_test::<Testnet2>(224780, 245338);
     }
 }

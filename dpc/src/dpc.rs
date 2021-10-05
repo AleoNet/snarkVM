@@ -66,6 +66,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
         authorization: Self::Authorization,
+        transition: &Self::StateTransition,
         executable: &Executable<N>,
         ledger_proof: Self::LedgerProof,
         rng: &mut R,
@@ -81,31 +82,18 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         // Execute the program circuit.
         let execution = executable.execute(PublicVariables::new(transaction_id))?;
 
-        // Compute the encrypted records.
-        let (encrypted_records, encrypted_record_ids, encrypted_record_randomizers) =
-            authorization.to_encrypted_records(rng)?;
-
-        let TransactionAuthorization {
-            kernel,
-            input_records,
-            output_records,
-            signatures,
-        } = authorization;
+        let TransactionAuthorization { kernel, signatures } = authorization;
 
         // Construct the inner circuit public and private variables.
-        let inner_public_variables = InnerPublicVariables::new(
-            transaction_id,
-            block_hash,
-            &encrypted_record_ids,
-            Some(executable.program_id()),
-        )?;
+        let inner_public_variables =
+            InnerPublicVariables::new(transaction_id, block_hash, Some(executable.program_id()))?;
         let inner_private_variables = InnerPrivateVariables::new(
             &kernel,
-            input_records,
+            transition.input_records().clone(),
             ledger_proof,
             signatures,
-            output_records.clone(),
-            encrypted_record_randomizers,
+            transition.output_records().clone(),
+            transition.ciphertext_randomizers.clone(),
             &executable,
         )?;
 
@@ -137,7 +125,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let metadata = TransactionMetadata::new(block_hash, *N::inner_circuit_id());
         end_timer!(execution_timer);
 
-        Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
+        Transaction::from(kernel, metadata, transition.ciphertexts.clone(), transaction_proof)
     }
 }
 
