@@ -148,6 +148,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32); // Serial numbers are 32 bytes
         let mut input_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_is_dummy = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut signature_public_keys = Vec::with_capacity(N::NUM_INPUT_RECORDS);
 
@@ -184,8 +185,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-                let given_value =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
+                let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value() as i64))?;
 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
@@ -273,9 +273,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             {
                 let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
+                let given_value_bytes =
+                    given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
+
                 // Perform noop safety checks.
                 {
-                    let given_value_field_elements = given_value
+                    let given_value_field_elements = given_value_bytes
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
                     let given_payload_field_elements = given_payload
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
@@ -314,7 +317,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let mut commitment_input = Vec::new();
                 commitment_input.extend_from_slice(&record_owner_bytes);
                 commitment_input.extend_from_slice(&is_dummy_bytes);
-                commitment_input.extend_from_slice(&given_value);
+                commitment_input.extend_from_slice(&given_value_bytes);
                 commitment_input.extend_from_slice(&given_payload);
                 commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&serial_number_nonce_bytes);
@@ -332,6 +335,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 input_commitments.push(candidate_commitment);
                 input_is_dummy.push(given_is_dummy);
+                input_values.push(given_value);
             }
         }
 
@@ -426,8 +430,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         }
         // ********************************************************************
 
-        let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
-        let mut output_program_ids = Vec::with_capacity(private.output_records.len());
+        let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS * 32); // Commitments are 32 bytes
+        let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
         for (j, ((record, encryption_randomness), encrypted_record_id)) in private
             .output_records
@@ -461,8 +466,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-                let given_value =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
+                let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value() as i64))?;
 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
@@ -530,12 +534,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // *******************************************************************
             // Check that the record is well-formed.
             // *******************************************************************
-            {
+            let given_value_bytes = {
                 let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
+
+                let given_value_bytes =
+                    given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
 
                 // Perform noop safety checks.
                 {
-                    let given_value_field_elements = given_value
+                    let given_value_field_elements = given_value_bytes
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
                     let given_payload_field_elements = given_payload
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
@@ -573,7 +580,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let mut commitment_input = Vec::new();
                 commitment_input.extend_from_slice(&given_owner_bytes);
                 commitment_input.extend_from_slice(&given_is_dummy_bytes);
-                commitment_input.extend_from_slice(&given_value);
+                commitment_input.extend_from_slice(&given_value_bytes);
                 commitment_input.extend_from_slice(&given_payload);
                 commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
@@ -587,7 +594,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut commitment_cs.ns(|| "Check that computed commitment matches public input"),
                     &given_commitment,
                 )?;
-            }
+
+                output_values.push(given_value);
+
+                given_value_bytes
+            };
 
             // *******************************************************************
 
@@ -603,25 +614,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Convert program id, value, payload, serial number nonce, and commitment randomness into bits.
 
                 let plaintext_bytes = {
-                    let mut res = vec![];
-
-                    // Value
-                    res.extend_from_slice(&given_value);
-
-                    // Payload
-                    res.extend_from_slice(&given_payload);
-
-                    // Program ID
-                    res.extend_from_slice(&given_program_id);
-
-                    // Serial number nonce
-                    res.extend_from_slice(&given_serial_number_nonce_bytes);
-
                     // Commitment randomness
                     let given_commitment_randomness_bytes = given_commitment_randomness
                         .to_bytes(&mut encryption_cs.ns(|| "Convert commitment randomness to bytes"))?;
-                    res.extend_from_slice(&given_commitment_randomness_bytes);
 
+                    let mut res = vec![];
+                    res.extend_from_slice(&given_value_bytes);
+                    res.extend_from_slice(&given_payload);
+                    res.extend_from_slice(&given_program_id);
+                    res.extend_from_slice(&given_serial_number_nonce_bytes);
+                    res.extend_from_slice(&given_commitment_randomness_bytes);
                     res
                 };
 
@@ -778,21 +780,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             let mut candidate_value_balance = Int64::zero();
 
-            for (i, old_record) in private.input_records.iter().enumerate() {
-                let value = old_record.value() as i64;
-                let record_value = Int64::alloc(cs.ns(|| format!("old record {} value", i)), || Ok(value))?;
-
+            for (i, input_value) in input_values.iter().enumerate() {
                 candidate_value_balance = candidate_value_balance
-                    .add(cs.ns(|| format!("add old record {} value", i)), &record_value)
+                    .add(cs.ns(|| format!("add input record {} value", i)), &input_value)
                     .unwrap();
             }
 
-            for (j, new_record) in private.output_records.iter().enumerate() {
-                let value = new_record.value() as i64;
-                let record_value = Int64::alloc(cs.ns(|| format!("new record {} value", j)), || Ok(value))?;
-
+            for (j, output_value) in output_values.iter().enumerate() {
                 candidate_value_balance = candidate_value_balance
-                    .sub(cs.ns(|| format!("sub new record {} value", j)), &record_value)
+                    .sub(cs.ns(|| format!("sub output record {} value", j)), &output_value)
                     .unwrap();
             }
 
