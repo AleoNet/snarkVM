@@ -26,7 +26,6 @@ pub struct DPC<N: Network>(PhantomData<N>);
 
 impl<N: Network> DPCScheme<N> for DPC<N> {
     type Account = Account<N>;
-    type Authorization = TransactionAuthorization<N>;
     type LedgerProof = LedgerProof<N>;
     type StateTransition = StateTransition<N>;
 
@@ -35,7 +34,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transition: &Self::StateTransition,
         rng: &mut R,
-    ) -> Result<Self::Authorization> {
+    ) -> Result<Vec<N::AccountSignature>> {
         // Keep a cursor for the private keys.
         let mut index = 0;
 
@@ -60,41 +59,40 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         }
 
         // Return the transaction authorization.
-        Ok(TransactionAuthorization::from(transition, signatures))
+        Ok(signatures)
     }
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
-        authorization: Self::Authorization,
+        signatures: Vec<N::AccountSignature>,
         transition: &Self::StateTransition,
-        executable: &Executable<N>,
         ledger_proof: Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
+        debug_assert_eq!(N::NUM_INPUT_RECORDS, signatures.len());
+
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
         let block_hash = ledger_proof.block_hash();
 
         // Generate the transaction ID.
-        let transaction_id = authorization.to_transaction_id()?;
+        let transaction_id = transition.kernel().to_transaction_id()?;
 
         // Execute the program circuit.
-        let execution = executable.execute(PublicVariables::new(transaction_id))?;
-
-        let TransactionAuthorization { kernel, signatures } = authorization;
+        let execution = transition.executable().execute(PublicVariables::new(transaction_id))?;
 
         // Construct the inner circuit public and private variables.
         let inner_public_variables =
-            InnerPublicVariables::new(transaction_id, block_hash, Some(executable.program_id()))?;
+            InnerPublicVariables::new(transaction_id, block_hash, Some(transition.executable().program_id()))?;
         let inner_private_variables = InnerPrivateVariables::new(
-            &kernel,
+            transition.kernel(),
             transition.input_records().clone(),
             ledger_proof,
             signatures,
             transition.output_records().clone(),
             transition.ciphertext_randomizers.clone(),
-            &executable,
+            &transition.executable(),
         )?;
 
         // Compute the inner circuit proof.
@@ -125,34 +123,11 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let metadata = TransactionMetadata::new(block_hash, *N::inner_circuit_id());
         end_timer!(execution_timer);
 
-        Transaction::from(kernel, metadata, transition.ciphertexts.clone(), transaction_proof)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_utilities::{FromBytes, ToBytes};
-
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
-
-    fn transaction_authorization_serialization_test<N: Network>() {
-        let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-        let recipient = Account::new(&mut rng).unwrap();
-        let amount = AleoAmount::from_bytes(10);
-        let state = StateTransition::new_coinbase(recipient.address, amount, &mut rng).unwrap();
-        let authorization = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
-
-        // Serialize and deserialize the transaction authorization.
-        let deserialized_authorization = FromBytes::read_le(&authorization.to_bytes_le().unwrap()[..]).unwrap();
-        assert_eq!(authorization, deserialized_authorization);
-    }
-
-    #[test]
-    fn test_transaction_authorization_serialization() {
-        transaction_authorization_serialization_test::<crate::testnet1::Testnet1>();
-        transaction_authorization_serialization_test::<crate::testnet2::Testnet2>();
+        Transaction::from(
+            transition.kernel().clone(),
+            metadata,
+            transition.ciphertexts.clone(),
+            transaction_proof,
+        )
     }
 }

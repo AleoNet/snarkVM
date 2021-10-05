@@ -16,7 +16,6 @@
 
 use crate::{
     traits::{AccountScheme, Network},
-    Executable,
     Transaction,
 };
 
@@ -25,7 +24,6 @@ use rand::{CryptoRng, Rng};
 
 pub trait DPCScheme<N: Network>: Sized {
     type Account: AccountScheme;
-    type Authorization;
     type LedgerProof;
     type StateTransition;
 
@@ -34,13 +32,12 @@ pub trait DPCScheme<N: Network>: Sized {
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transition: &Self::StateTransition,
         rng: &mut R,
-    ) -> Result<Self::Authorization>;
+    ) -> Result<Vec<N::AccountSignature>>;
 
     /// Returns a transaction by executing an authorized state transition.
     fn execute<R: Rng + CryptoRng>(
-        authorization: Self::Authorization,
+        signatures: Vec<N::AccountSignature>,
         transition: &Self::StateTransition,
-        executable: &Executable<N>,
         ledger_proof: Self::LedgerProof,
         rng: &mut R,
     ) -> Result<Transaction<N>>;

@@ -33,16 +33,14 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
         .build(&mut rng)
         .unwrap();
 
-    let authorization = DPC::<N>::authorize(&vec![], &transition, &mut rng).unwrap();
-    let transaction_id = authorization.to_transaction_id().unwrap();
+    let signatures = DPC::<N>::authorize(&vec![], &transition, &mut rng).unwrap();
+    let transaction_id = transition.kernel().to_transaction_id().unwrap();
 
     // Execute the program circuit.
     let execution = transition
         .executable()
         .execute(PublicVariables::new(transaction_id))
         .unwrap();
-
-    let TransactionAuthorization { kernel, signatures } = authorization;
 
     // Construct the ledger witnesses.
     let ledger_proof = LedgerProof::<N>::default();
@@ -57,7 +55,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     )
     .unwrap();
     let inner_private_variables = InnerPrivateVariables::new(
-        &kernel,
+        transition.kernel(),
         transition.input_records().clone(),
         ledger_proof,
         signatures,
