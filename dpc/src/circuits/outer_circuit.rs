@@ -19,7 +19,6 @@ use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
-    bits::ToBytesGadget,
     traits::{
         algorithms::{CRHGadget, SNARKVerifierGadget},
         alloc::AllocGadget,
@@ -28,7 +27,6 @@ use snarkvm_gadgets::{
     MergeGadget,
     ToBitsLEGadget,
     ToMinimalBitsGadget,
-    UInt8,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
@@ -42,13 +40,13 @@ pub struct OuterCircuit<N: Network> {
 
 impl<N: Network> OuterCircuit<N> {
     pub fn blank(
-        inner_snark_vk: <N::InnerSNARK as SNARK>::VerifyingKey,
+        inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
         execution: Execution<N>,
     ) -> Self {
         Self {
             public: OuterPublicVariables::blank(),
-            private: OuterPrivateVariables::blank(inner_snark_vk, inner_snark_proof, execution),
+            private: OuterPrivateVariables::blank(inner_verifying_key, inner_snark_proof, execution),
         }
     }
 
@@ -164,7 +162,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
             ledger_digest_fe,
             encrypted_record_ids_fe,
-            program_id_fe,
+            program_id_fe.clone(),
             transaction_id_fe_inner_snark,
         ])?;
 
@@ -172,9 +170,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // Verify the inner circuit proof.
     // ************************************************************************
 
-    let inner_snark_vk = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+    let inner_verifying_key = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit verifying key"),
-        || Ok(&private.inner_snark_vk),
+        || Ok(&private.inner_verifying_key),
     )?;
 
     let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
@@ -184,7 +182,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     N::InnerSNARKGadget::check_verify(
         &mut cs.ns(|| "Check that the inner circuit proof is satisfied"),
-        &inner_snark_vk,
+        &inner_verifying_key,
         &inner_snark_input,
         &inner_snark_proof,
     )?;
@@ -203,7 +201,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         // Check that the program ID is derived correctly.
         {
-            // Verify that the claimed circuit ID is a valid Merkle path in the program circuit tree.
+            // Verify that the claimed circuit ID is a valid Merkle path in the program circuits tree.
             let program_circuit_verifying_key_bits = program_circuit_verifying_key
                 .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
@@ -211,9 +209,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 &mut cs.ns(|| "Compute circuit ID"),
                 program_circuit_verifying_key_bits,
             )?;
-
-            let claimed_circuit_id_bytes =
-                claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
             let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitsTreeCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
@@ -223,22 +218,18 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             let claimed_program_id = program_path_gadget.calculate_root(
                 &mut cs.ns(|| "calculate_program_id"),
                 &program_circuits_tree_crh,
-                claimed_circuit_id_bytes,
+                claimed_circuit_id,
             )?;
 
-            let claimed_program_id_bytes =
-                claimed_program_id.to_bytes(&mut cs.ns(|| "Convert claimed program ID to bytes"))?;
+            let given_program_id =
+                <N::ProgramCircuitsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
+                    &mut cs.ns(|| "Given program ID"),
+                    || Ok(&private.program_execution.program_id),
+                )?;
 
-            let given_program_id = UInt8::alloc_vec(
-                &mut cs.ns(|| "Allocate given program ID"),
-                &private.program_execution.program_id.to_bytes_le()?[..],
-            )?;
-            let given_program_id_bytes =
-                given_program_id.to_bytes(&mut cs.ns(|| "Convert given program ID to bytes"))?;
-
-            claimed_program_id_bytes.enforce_equal(
+            claimed_program_id.enforce_equal(
                 &mut cs.ns(|| "Check that declared and computed program IDs are equal"),
-                &given_program_id_bytes,
+                &given_program_id,
             )?;
         }
 
@@ -269,7 +260,8 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_bits = inner_snark_vk.to_minimal_bits(&mut cs.ns(|| "Convert inner snark vk to bits"))?;
+    let inner_verifying_key_bits =
+        inner_verifying_key.to_minimal_bits(&mut cs.ns(|| "Convert inner snark vk to bits"))?;
 
     let given_inner_circuit_id =
         <N::InnerCircuitIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc_input(
@@ -278,7 +270,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         )?;
 
     let candidate_inner_circuit_id = inner_circuit_id_crh
-        .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute inner circuit ID"), inner_snark_vk_bits)?;
+        .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute inner circuit ID"), inner_verifying_key_bits)?;
 
     candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),

@@ -64,7 +64,7 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
-use snarkvm_parameters::{testnet1::*, Genesis, Parameter};
+use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
@@ -79,6 +79,7 @@ pub struct Testnet1;
 #[rustfmt::skip]
 impl Network for Testnet1 {
     const NETWORK_ID: u16 = 1u16;
+    const NETWORK_NAME: &'static str = "testnet1";
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
@@ -148,7 +149,7 @@ impl Network for Testnet1 {
 
     type CommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type CommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 32>;
+    type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 42>;
     type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
 
     type EncryptedRecordCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
@@ -177,7 +178,7 @@ impl Network for Testnet1 {
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
 
     type SerialNumbersTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
-    type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 32>;
+    type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 42>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
@@ -203,14 +204,14 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet1, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
 
-    dpc_snark_setup!{Testnet1, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet1, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+    dpc_snark_setup!{Testnet1, inner_circuit_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet1, inner_circuit_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
 
-    dpc_snark_setup!{Testnet1, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet1, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+    dpc_snark_setup!{Testnet1, outer_circuit_proving_key, OuterSNARK, ProvingKey, OuterProvingKeyBytes, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet1, outer_circuit_verifying_key, OuterSNARK, VerifyingKey, OuterVerifyingKeyBytes, "outer circuit verifying key"}
 
-    dpc_snark_setup!{Testnet1, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
-    dpc_snark_setup!{Testnet1, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
+    dpc_snark_setup!{Testnet1, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
+    dpc_snark_setup!{Testnet1, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::InnerCircuitID> = OnceCell::new();
@@ -258,6 +259,11 @@ impl Network for Testnet1 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_network_name_sanity_check() {
+        assert_eq!(Testnet1::NETWORK_NAME, "testnet1");
+    }
 
     #[test]
     fn test_inner_circuit_sanity_check() {

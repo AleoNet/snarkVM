@@ -1786,10 +1786,13 @@ dependencies = [
 name = "snarkvm-parameters"
 version = "0.7.5"
 dependencies = [
- "blake2",
+ "anyhow",
+ "cfg-if 1.0.0",
  "curl",
  "hex",
+ "paste",
  "rand",
+ "serde_json",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",

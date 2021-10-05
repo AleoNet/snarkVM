@@ -3,8 +3,7 @@
 **/target
 **/.DS_Store
 **storage_db
-**inner_snark_pk*.params
-**outer_snark_pk*.params
-**posw_snark_pk*.params
-**universal_srs*.params
-**testnet2_program_vk_crh*.params
+**inner.proving*
+**outer.proving*
+**posw.proving*
+**universal.srs*

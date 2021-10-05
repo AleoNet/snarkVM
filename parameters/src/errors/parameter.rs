@@ -29,6 +29,9 @@ pub enum ParameterError {
 
     #[error("Remote fetch is disabled, enable compiler flag for feature")]
     RemoteFetchDisabled,
+
+    #[error("Expected size of {}, found size of {}", _0, _1)]
+    SizeMismatch(usize, usize),
 }
 
 #[cfg(any(test, feature = "remote"))]

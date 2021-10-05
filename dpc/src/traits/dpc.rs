@@ -15,8 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{AccountScheme, Network, TransactionScheme},
+    traits::{AccountScheme, Network},
     Executable,
+    Transaction,
 };
 
 use anyhow::Result;
@@ -27,7 +28,6 @@ pub trait DPCScheme<N: Network>: Sized {
     type Authorization;
     type LedgerProof;
     type StateTransition;
-    type Transaction: TransactionScheme<N>;
 
     /// Returns an authorization to execute a state transition.
     fn authorize<R: Rng + CryptoRng>(
@@ -42,5 +42,5 @@ pub trait DPCScheme<N: Network>: Sized {
         executable: &Executable<N>,
         ledger_proof: &Self::LedgerProof,
         rng: &mut R,
-    ) -> Result<Self::Transaction>;
+    ) -> Result<Transaction<N>>;
 }

@@ -17,72 +17,23 @@
 pub mod genesis;
 pub use genesis::*;
 
-// POSW SNARK
-impl_params_remote!(
-    PoswSNARKPKParameters,
-    posw_snark_pk_test,
-    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
-    "./",
-    "posw_snark_pk",
-    139217169
-);
-impl_params_local!(PoswSNARKVKParameters, posw_snark_vk_test, "./", "posw_snark_vk", 400278);
+const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
 
-// Program SNARK
-impl_params_local!(
-    NoopProgramSNARKPKParameters,
-    noop_program_snark_pk_test,
-    "./",
-    "noop_program_snark_pk",
-    904998
-);
-impl_params_local!(
-    NoopProgramSNARKVKParameters,
-    noop_program_snark_vk_test,
-    "./",
-    "noop_program_snark_vk",
-    340395
-);
+// Universal SRS
+impl_remote!(UniversalSRSBytes, REMOTE_URL, "./resources/", "universal", "srs");
 
-// Inner SNARK
-impl_params_remote!(
-    InnerSNARKPKParameters,
-    inner_snark_pk_test,
-    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
-    "./",
-    "inner_snark_pk",
-    117015117
-);
-impl_params_local!(
-    InnerSNARKVKParameters,
-    inner_snark_vk_test,
-    "./",
-    "inner_snark_vk",
-    1359
-);
+// Noop Circuit
+impl_local!(NoopProvingKeyBytes, "./resources/", "noop", "proving");
+impl_local!(NoopVerifyingKeyBytes, "./resources/", "noop", "verifying");
 
-// Outer SNARK
-impl_params_remote!(
-    OuterSNARKPKParameters,
-    outer_snark_pk_test,
-    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
-    "./",
-    "outer_snark_pk",
-    269027549
-);
-impl_params_local!(
-    OuterSNARKVKParameters,
-    outer_snark_vk_test,
-    "./",
-    "outer_snark_vk",
-    1934
-);
+// Inner Circuit
+impl_remote!(InnerProvingKeyBytes, REMOTE_URL, "./resources/", "inner", "proving");
+impl_local!(InnerVerifyingKeyBytes, "./resources/", "inner", "verifying");
 
-impl_params_remote!(
-    UniversalSRSParameters,
-    universal_srs_parameters_test,
-    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
-    "./",
-    "universal_srs",
-    5154378
-);
+// Outer Circuit
+impl_remote!(OuterProvingKeyBytes, REMOTE_URL, "./resources/", "outer", "proving");
+impl_local!(OuterVerifyingKeyBytes, "./resources/", "outer", "verifying");
+
+// PoSW Circuit
+impl_remote!(PoSWProvingKeyBytes, REMOTE_URL, "./resources/", "posw", "proving");
+impl_local!(PoSWVerifyingKeyBytes, "./resources/", "posw", "verifying");

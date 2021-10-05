@@ -133,11 +133,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             || Ok(public.ledger_digest),
         )?;
 
-        let mut old_serial_numbers_gadgets = Vec::with_capacity(private.input_records.len());
-        let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
-        let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
-        let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
-        let mut old_program_ids_bytes_gadgets = Vec::with_capacity(private.input_records.len());
+        let mut input_serial_numbers = Vec::with_capacity(private.input_records.len());
+        let mut input_serial_numbers_bytes = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
+        let mut input_program_ids = Vec::with_capacity(private.input_records.len());
         let mut signature_public_keys = Vec::with_capacity(private.input_records.len());
 
         for (i, (((record, witness), signature), given_serial_number)) in private
@@ -168,27 +166,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // are trusted, and so when we recompute these, the newly computed
                 // values will always be in correct subgroup. If the input cm, pk
                 // or hash is incorrect, then it will not match the computed equivalent.
-                let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
+
+                let given_owner = <N::AccountSignatureGadget as SignatureGadget<
+                    N::AccountSignatureScheme,
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut declare_cs.ns(|| "given_record_owner"),
                     || Ok(record.owner().encryption_key()),
                 )?;
-
-                // TODO (howardwu): TEMPORARY - Unify this with `given_owner` above!
-                // Save the given_owner for signature verification at the end.
-                {
-                    let owner = record.owner().encryption_key();
-                    let public_key = FromBytes::read_le(&owner.to_bytes_le()?[..])?;
-                    let public_key_gadget = <N::AccountSignatureGadget as SignatureGadget<
-                        N::AccountSignatureScheme,
-                        N::InnerScalarField,
-                    >>::PublicKeyGadget::alloc(
-                        declare_cs.ns(|| format!("alloc_public_key{}", i)), || Ok(&public_key)
-                    )?;
-                    signature_public_keys.push(public_key_gadget);
-                }
+                signature_public_keys.push(given_owner.clone());
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
@@ -202,7 +188,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_program_id"),
                     &record.program_id().to_bytes_le()?,
                 )?;
-                old_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Input::alloc(
@@ -216,7 +201,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 >>::OutputGadget::alloc(
                     &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
                 )?;
-                old_record_commitments_gadgets.push(given_commitment.clone());
 
                 let given_commitment_randomness = <N::CommitmentGadget as CommitmentGadget<
                     N::CommitmentScheme,
@@ -301,12 +285,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 // Convert input serial numbers to bytes.
-                old_serial_numbers_bytes_gadgets.extend_from_slice(
+                input_serial_numbers_bytes.extend_from_slice(
                     &candidate_serial_number_gadget
                         .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?,
                 );
 
-                old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
+                input_serial_numbers.push(candidate_serial_number_gadget);
             };
             // ********************************************************************
 
@@ -344,7 +328,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         &given_is_dummy,
                     )?;
 
-                    old_program_ids_gadgets.push(given_program_id_field_elements);
+                    input_program_ids.push(given_program_id_field_elements);
                 }
 
                 // Compute the record commitment and check that it matches the declared commitment.
@@ -375,10 +359,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             }
         }
 
-        let mut output_commitments = Vec::with_capacity(private.output_records.len());
         let mut output_commitments_bytes = Vec::with_capacity(private.output_records.len() * 32); // Commitments are 32 bytes
-        let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
-        let mut new_program_ids_bytes_gadgets = Vec::with_capacity(private.output_records.len());
+        let mut output_program_ids = Vec::with_capacity(private.output_records.len());
 
         for (j, (((record, commitment), encryption_randomness), encrypted_record_id)) in private
             .output_records
@@ -423,7 +405,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_program_id"),
                     &record.program_id().to_bytes_le()?,
                 )?;
-                new_program_ids_bytes_gadgets.push(given_program_id.clone());
 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Output::alloc(
@@ -456,7 +437,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                     record_commitment
                 };
-                output_commitments.push(given_commitment.clone());
                 output_commitments_bytes
                     .extend_from_slice(&given_commitment.to_bytes(&mut declare_cs.ns(|| "commitment_bytes"))?);
 
@@ -488,7 +468,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             {
                 let sn_cs = &mut cs.ns(|| "Check that serial number nonce is correct");
 
-                let candidate_serial_number_nonce = &old_serial_numbers_gadgets[j];
+                let candidate_serial_number_nonce = &input_serial_numbers[j];
 
                 candidate_serial_number_nonce.enforce_equal(
                     &mut sn_cs.ns(|| "Check that computed nonce matches provided nonce"),
@@ -531,7 +511,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         &given_is_dummy,
                     )?;
 
-                    new_program_ids_gadgets.push(given_program_id_field_elements);
+                    output_program_ids.push(given_program_id_field_elements);
                 }
 
                 // Compute the record commitment and check that it matches the declared commitment.
@@ -687,8 +667,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
             }
 
-            for (i, input_program_id_field_elements) in
-                old_program_ids_gadgets.iter().take(N::NUM_INPUT_RECORDS).enumerate()
+            for (i, input_program_id_field_elements) in input_program_ids.iter().take(N::NUM_INPUT_RECORDS).enumerate()
             {
                 let input_cs = &mut commitment_cs.ns(|| format!("Check input record {} on executable", i));
 
@@ -714,7 +693,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             }
 
             for (j, output_program_id_field_elements) in
-                new_program_ids_gadgets.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
+                output_program_ids.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
             {
                 let output_cs = &mut commitment_cs.ns(|| format!("Check output record {} on executable", j));
 
@@ -794,7 +773,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Encode the transaction kernel as the signature message, and preimage for the transaction ID.
             let mut message = Vec::new();
             message.extend_from_slice(&network_id);
-            message.extend_from_slice(&old_serial_numbers_bytes_gadgets);
+            message.extend_from_slice(&input_serial_numbers_bytes);
             message.extend_from_slice(&output_commitments_bytes);
             message.extend_from_slice(&value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
             message.extend_from_slice(&memo);

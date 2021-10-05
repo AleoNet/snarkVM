@@ -18,14 +18,8 @@ use std::fmt::Debug;
 
 #[derive(Debug, Error)]
 pub enum TransactionError {
-    #[error("UTXO has already been spent {:?} index: {:?}", _0, _1)]
-    AlreadySpent(Vec<u8>, u32),
-
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
-
-    #[error("there is a double spend occuring with this transaction {}", _0)]
-    DoubleSpend(String),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
@@ -44,9 +38,6 @@ pub enum TransactionError {
 
     #[error("{}", _0)]
     Message(String),
-
-    #[error("missing outpoint script public key")]
-    MissingOutpointScriptPublicKey,
 
     #[error("the block has multiple coinbase transactions: {:?}", _0)]
     MultipleCoinbaseTransactions(u32),

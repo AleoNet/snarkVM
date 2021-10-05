@@ -18,10 +18,7 @@
 
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_parameters::{
-    testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
-    traits::Parameter,
-};
+use snarkvm_parameters::testnet1::{PoSWProvingKeyBytes, PoSWVerifyingKeyBytes};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
@@ -56,12 +53,12 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         Ok(Self {
             proving_key: match is_prover {
                 true => Some(<<N as Network>::PoswSNARK as SNARK>::ProvingKey::read_le(
-                    &PoswSNARKPKParameters::load_bytes()?[..],
+                    &PoSWProvingKeyBytes::load_bytes()?[..],
                 )?),
                 false => None,
             },
             verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey::read_le(
-                &PoswSNARKVKParameters::load_bytes()?[..],
+                &PoSWVerifyingKeyBytes::load_bytes()?[..],
             )?,
         })
     }

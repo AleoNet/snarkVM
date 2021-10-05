@@ -26,7 +26,6 @@ use crate::{
     StateTransition,
     TransactionKernel,
     TransactionMetadata,
-    TransactionScheme,
     DPC,
 };
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
@@ -148,6 +147,46 @@ impl<N: Network> Transaction<N> {
         }
     }
 
+    /// Returns the network ID.
+    pub fn network_id(&self) -> u16 {
+        self.kernel.network_id()
+    }
+
+    /// Returns the serial numbers.
+    pub fn serial_numbers(&self) -> &[N::SerialNumber] {
+        self.kernel.serial_numbers()
+    }
+
+    /// Returns the commitments.
+    pub fn commitments(&self) -> &[N::Commitment] {
+        self.kernel.commitments()
+    }
+
+    /// Returns the value balance.
+    pub fn value_balance(&self) -> &AleoAmount {
+        self.kernel.value_balance()
+    }
+
+    /// Returns the memo.
+    pub fn memo(&self) -> &Memo<N> {
+        self.kernel.memo()
+    }
+
+    /// Returns the ledger digest.
+    pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::CommitmentsTreeParameters> {
+        self.metadata.ledger_digest()
+    }
+
+    /// Returns the inner circuit ID.
+    pub fn inner_circuit_id(&self) -> &N::InnerCircuitID {
+        self.metadata.inner_circuit_id()
+    }
+
+    /// Returns the encrypted records.
+    pub fn encrypted_records(&self) -> &[EncryptedRecord<N>] {
+        &self.encrypted_records
+    }
+
     /// Returns a reference to the kernel of the transaction.
     pub fn kernel(&self) -> &TransactionKernel<N> {
         &self.kernel
@@ -163,6 +202,11 @@ impl<N: Network> Transaction<N> {
         &self.proof
     }
 
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
+    pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
+        self.kernel.to_transaction_id()
+    }
+
     /// Returns the encrypted record hashes.
     pub fn to_encrypted_record_ids(&self) -> Result<Vec<N::EncryptedRecordID>> {
         Ok(self
@@ -171,48 +215,6 @@ impl<N: Network> Transaction<N> {
             .take(N::NUM_OUTPUT_RECORDS)
             .map(|e| Ok(e.to_hash()?))
             .collect::<Result<Vec<_>>>()?)
-    }
-}
-
-impl<N: Network> TransactionScheme<N> for Transaction<N> {
-    type Digest = MerkleTreeDigest<N::CommitmentsTreeParameters>;
-    type EncryptedRecord = EncryptedRecord<N>;
-
-    fn network_id(&self) -> u16 {
-        self.kernel.network_id()
-    }
-
-    fn serial_numbers(&self) -> &[N::SerialNumber] {
-        self.kernel.serial_numbers()
-    }
-
-    fn commitments(&self) -> &[N::Commitment] {
-        self.kernel.commitments()
-    }
-
-    fn value_balance(&self) -> &AleoAmount {
-        self.kernel.value_balance()
-    }
-
-    fn memo(&self) -> &Memo<N> {
-        self.kernel.memo()
-    }
-
-    fn ledger_digest(&self) -> &Self::Digest {
-        self.metadata.ledger_digest()
-    }
-
-    fn inner_circuit_id(&self) -> &N::InnerCircuitID {
-        self.metadata.inner_circuit_id()
-    }
-
-    fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
-        &self.encrypted_records
-    }
-
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
-    fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        self.kernel.to_transaction_id()
     }
 }
 
