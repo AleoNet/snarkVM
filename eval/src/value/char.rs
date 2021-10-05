@@ -22,6 +22,8 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget, NEqGadget},
         select::CondSelectGadget,
     },
+    ToBitsBEGadget,
+    ToBitsLEGadget,
 };
 use snarkvm_ir::{Field, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -146,6 +148,26 @@ impl<F: PrimeField> CondSelectGadget<F> for Char<F> {
 
     fn cost() -> usize {
         <FieldType<F> as CondSelectGadget<F>>::cost()
+    }
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for Char<F> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.field.to_bits_le(cs)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.field.to_bits_le_strict(cs)
+    }
+}
+
+impl<F: PrimeField> ToBitsBEGadget<F> for Char<F> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.field.to_bits_be(cs)
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.field.to_bits_be_strict(cs)
     }
 }
 
