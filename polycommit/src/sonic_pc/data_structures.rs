@@ -77,7 +77,131 @@ pub struct CommitterKey<E: PairingEngine> {
     /// The maximum degree supported by the `UniversalParams` from which `self` was derived
     pub max_degree: usize,
 }
-impl_bytes!(CommitterKey);
+
+impl<E: PairingEngine> FromBytes for CommitterKey<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        let powers_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut powers = Vec::with_capacity(powers_len as usize);
+        for _ in 0..powers_len {
+            let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            powers.push(power);
+        }
+
+        let powers_of_gamma_g_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut powers_of_gamma_g = Vec::with_capacity(powers_of_gamma_g_len as usize);
+        for _ in 0..powers_of_gamma_g_len {
+            let powers_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            powers_of_gamma_g.push(powers_of_g);
+        }
+
+        let has_shifted_powers: bool = FromBytes::read_le(&mut reader)?;
+        let shifted_powers = match has_shifted_powers {
+            true => {
+                let shifted_powers_len: u32 = FromBytes::read_le(&mut reader)?;
+                let mut shifted_powers = Vec::with_capacity(shifted_powers_len as usize);
+                for _ in 0..shifted_powers_len {
+                    let shifted_power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+                    shifted_powers.push(shifted_power);
+                }
+
+                Some(shifted_powers)
+            }
+            false => None,
+        };
+
+        let has_shifted_powers_of_gamma_g: bool = FromBytes::read_le(&mut reader)?;
+        let shifted_powers_of_gamma_g = match has_shifted_powers_of_gamma_g {
+            true => {
+                let mut shifted_powers_of_gamma_g = BTreeMap::new();
+                let shifted_powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+                for _ in 0..shifted_powers_of_gamma_g_num_elements {
+                    let key: u32 = FromBytes::read_le(&mut reader)?;
+
+                    let valu_len: u32 = FromBytes::read_le(&mut reader)?;
+                    let mut value = Vec::with_capacity(valu_len as usize);
+                    for _ in 0..valu_len {
+                        let val: E::G1Affine = FromBytes::read_le(&mut reader)?;
+                        value.push(val);
+                    }
+
+                    shifted_powers_of_gamma_g.insert(key as usize, value);
+                }
+
+                Some(shifted_powers_of_gamma_g)
+            }
+            false => None,
+        };
+
+        let has_enforced_degree_bounds: bool = FromBytes::read_le(&mut reader)?;
+        let enforced_degree_bounds = match has_enforced_degree_bounds {
+            true => {
+                let enforced_degree_bounds_len: u32 = FromBytes::read_le(&mut reader)?;
+                let mut enforced_degree_bounds = Vec::with_capacity(enforced_degree_bounds_len as usize);
+                for _ in 0..enforced_degree_bounds_len {
+                    let enforced_degree_bound: u32 = FromBytes::read_le(&mut reader)?;
+                    enforced_degree_bounds.push(enforced_degree_bound as usize);
+                }
+
+                Some(enforced_degree_bounds)
+            }
+            false => None,
+        };
+
+        let max_degree: u32 = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self {
+            powers,
+            powers_of_gamma_g,
+            shifted_powers,
+            shifted_powers_of_gamma_g,
+            enforced_degree_bounds,
+            max_degree: max_degree as usize,
+        })
+    }
+}
+
+impl<E: PairingEngine> ToBytes for CommitterKey<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        (self.powers.len() as u32).write_le(&mut writer)?;
+        for power in &self.powers {
+            power.write_le(&mut writer)?;
+        }
+
+        (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
+        for power_of_gamma_g in &self.powers_of_gamma_g {
+            power_of_gamma_g.write_le(&mut writer)?;
+        }
+
+        self.shifted_powers.is_some().write_le(&mut writer)?;
+        if let Some(shifted_powers) = &self.shifted_powers {
+            (shifted_powers.len() as u32).write_le(&mut writer)?;
+            for shifted_power in shifted_powers {
+                shifted_power.write_le(&mut writer)?;
+            }
+        }
+
+        self.shifted_powers_of_gamma_g.is_some().write_le(&mut writer)?;
+        if let Some(shifted_powers_of_gamma_g) = &self.shifted_powers_of_gamma_g {
+            (shifted_powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
+            for (key, shifted_powers) in shifted_powers_of_gamma_g {
+                (*key as u32).write_le(&mut writer)?;
+                (shifted_powers.len() as u32).write_le(&mut writer)?;
+                for shifted_power in shifted_powers {
+                    shifted_power.write_le(&mut writer)?;
+                }
+            }
+        }
+        self.enforced_degree_bounds.is_some().write_le(&mut writer)?;
+        if let Some(enforced_degree_bounds) = &self.enforced_degree_bounds {
+            (enforced_degree_bounds.len() as u32).write_le(&mut writer)?;
+            for enforced_degree_bound in enforced_degree_bounds {
+                (*enforced_degree_bound as u32).write_le(&mut writer)?;
+            }
+        }
+
+        (self.max_degree as u32).write_le(&mut writer)
+    }
+}
 
 impl<E: PairingEngine> CommitterKey<E> {
     /// Obtain powers for the underlying KZG10 construction
