@@ -152,6 +152,7 @@ impl Network for Testnet2 {
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 117, 63>;
+    type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 117, 63>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;

@@ -172,6 +172,11 @@ impl<N: Network> Transaction<N> {
         self.kernel.memo()
     }
 
+    /// Returns the block hash.
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.metadata.block_hash()
+    }
+
     /// Returns the ledger digest.
     pub fn ledger_digest(&self) -> &MerkleTreeDigest<N::CommitmentsTreeParameters> {
         self.metadata.ledger_digest()

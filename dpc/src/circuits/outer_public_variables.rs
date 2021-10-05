@@ -59,7 +59,8 @@ impl<N: Network> OuterPublicVariables<N> {
         Ok(Self {
             inner_public_variables: InnerPublicVariables {
                 transaction_id: transaction.to_transaction_id()?,
-                commitments_root: transaction.ledger_digest().clone(),
+                block_hash: transaction.block_hash(),
+                commitments_root: *transaction.ledger_digest(),
                 encrypted_record_ids: transaction.to_encrypted_record_ids()?,
                 // This inner circuit public variable is allocated as a private variable in the outer circuit,
                 // as it is not included in the transaction broadcast to the ledger.

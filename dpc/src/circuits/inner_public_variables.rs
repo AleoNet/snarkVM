@@ -27,6 +27,7 @@ pub struct InnerPublicVariables<N: Network> {
     /// Transaction ID
     pub(super) transaction_id: N::TransactionID,
     /// Ledger digest
+    pub(super) block_hash: N::BlockHash,
     pub(super) commitments_root: MerkleTreeDigest<N::CommitmentsTreeParameters>,
     /// Output encrypted record hashes
     pub(super) encrypted_record_ids: Vec<N::EncryptedRecordID>,
@@ -41,6 +42,7 @@ impl<N: Network> InnerPublicVariables<N> {
     pub fn blank() -> Self {
         Self {
             transaction_id: Default::default(),
+            block_hash: Default::default(),
             commitments_root: MerkleTreeDigest::<N::CommitmentsTreeParameters>::default(),
             encrypted_record_ids: vec![N::EncryptedRecordID::default(); N::NUM_OUTPUT_RECORDS],
             program_id: Some(N::ProgramID::default()),
@@ -49,6 +51,7 @@ impl<N: Network> InnerPublicVariables<N> {
 
     pub fn new(
         transaction_id: N::TransactionID,
+        block_hash: N::BlockHash,
         ledger_digest: &MerkleTreeDigest<N::CommitmentsTreeParameters>,
         encrypted_record_ids: &Vec<N::EncryptedRecordID>,
         program_id: Option<N::ProgramID>,
@@ -57,10 +60,16 @@ impl<N: Network> InnerPublicVariables<N> {
 
         Ok(Self {
             transaction_id,
+            block_hash,
             commitments_root: ledger_digest.clone(),
             encrypted_record_ids: encrypted_record_ids.clone(),
             program_id,
         })
+    }
+
+    /// Returns the block hash.
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.block_hash
     }
 
     /// Returns the transaction ID.
@@ -76,6 +85,7 @@ where
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
         v.extend_from_slice(&self.commitments_root.to_field_elements()?);
+        v.extend_from_slice(&self.block_hash.to_field_elements()?);
 
         for encrypted_record_id in self.encrypted_record_ids.iter().take(N::NUM_OUTPUT_RECORDS) {
             v.extend_from_slice(&encrypted_record_id.to_field_elements()?);

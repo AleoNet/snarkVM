@@ -29,6 +29,7 @@ use std::io::{Read, Result as IoResult, Write};
     Eq(bound = "N: Network")
 )]
 pub struct TransactionMetadata<N: Network> {
+    block_hash: N::BlockHash,
     /// The root of the ledger commitment tree.
     ledger_digest: N::CommitmentsRoot,
     /// The ID of the inner circuit used to execute this transaction.
@@ -38,11 +39,22 @@ pub struct TransactionMetadata<N: Network> {
 impl<N: Network> TransactionMetadata<N> {
     /// Initializes a new instance of transaction metadata.
     #[inline]
-    pub fn new(ledger_digest: N::CommitmentsRoot, inner_circuit_id: N::InnerCircuitID) -> Self {
+    pub fn new(
+        block_hash: N::BlockHash,
+        ledger_digest: N::CommitmentsRoot,
+        inner_circuit_id: N::InnerCircuitID,
+    ) -> Self {
         Self {
+            block_hash,
             ledger_digest,
             inner_circuit_id,
         }
+    }
+
+    /// Returns the block hash.
+    #[inline]
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.block_hash
     }
 
     /// Returns a reference to the ledger digest.
@@ -61,6 +73,7 @@ impl<N: Network> TransactionMetadata<N> {
 impl<N: Network> ToBytes for TransactionMetadata<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.block_hash.write_le(&mut writer)?;
         self.ledger_digest.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)
     }
@@ -69,9 +82,10 @@ impl<N: Network> ToBytes for TransactionMetadata<N> {
 impl<N: Network> FromBytes for TransactionMetadata<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let block_hash = FromBytes::read_le(&mut reader)?;
         let ledger_digest = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::new(ledger_digest, inner_circuit_id))
+        Ok(Self::new(block_hash, ledger_digest, inner_circuit_id))
     }
 }

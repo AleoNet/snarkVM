@@ -62,6 +62,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     // Construct the inner circuit public and private variables.
     let inner_public_variables = InnerPublicVariables::new(
         transaction_id,
+        ledger_proof.block_hash(),
         &ledger_digest,
         &encrypted_record_hashes,
         Some(state.executable().program_id()),
@@ -153,7 +154,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(204206, 161057);
+        dpc_execute_circuits_test::<Testnet1>(224910, 164980);
     }
 }
 
@@ -163,6 +164,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(204206, 253185);
+        dpc_execute_circuits_test::<Testnet2>(224910, 257108);
     }
 }

@@ -123,6 +123,27 @@ impl<N: Network> LedgerProof<N> {
         })
     }
 
+    /// Returns the block hash.
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.block_hash
+    }
+
+    /// Returns the previous block hash.
+    pub fn previous_block_hash(&self) -> N::BlockHash {
+        self.previous_block_hash
+    }
+
+    /// Returns the block header root.
+    pub fn header_root(&self) -> N::BlockHeaderRoot {
+        self.header_root
+    }
+
+    /// Returns the block header inclusion proof.
+    pub fn header_inclusion_proof(&self) -> &MerklePath<N::BlockHeaderTreeParameters> {
+        &self.header_inclusion_proof
+    }
+
+    /// Returns the commitments root.
     pub fn commitments_root(&self) -> N::CommitmentsRoot {
         self.commitments_root
     }

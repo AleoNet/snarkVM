@@ -72,6 +72,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         let execution_timer = start_timer!(|| "DPC::execute");
 
         // Construct the ledger witnesses.
+        let block_hash = ledger_proof.block_hash();
         let ledger_digest = ledger_proof.commitments_root();
 
         // Generate the transaction ID.
@@ -94,6 +95,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
         // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables::new(
             transaction_id,
+            block_hash,
             &ledger_digest,
             &encrypted_record_ids,
             Some(executable.program_id()),
@@ -133,7 +135,7 @@ impl<N: Network> DPCScheme<N> for DPC<N> {
             rng,
         )?;
 
-        let metadata = TransactionMetadata::new(ledger_digest, *N::inner_circuit_id());
+        let metadata = TransactionMetadata::new(block_hash, ledger_digest, *N::inner_circuit_id());
         end_timer!(execution_timer);
 
         Transaction::from(kernel, metadata, encrypted_records, transaction_proof)
