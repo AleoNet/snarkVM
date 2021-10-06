@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
-use snarkvm_algorithms::Prepare;
+use snarkvm_algorithms::{crh::sha256::sha256, Prepare};
 use snarkvm_curves::{
-    traits::{PairingCurve, PairingEngine},
+    traits::{AffineCurve, PairingCurve, PairingEngine},
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, to_bytes_le, FromBytes, ToBytes};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
@@ -87,12 +87,15 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
             powers.push(power);
         }
 
+        let mut hash_input = to_bytes_le![powers].unwrap();
+
         let powers_of_gamma_g_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut powers_of_gamma_g = Vec::with_capacity(powers_of_gamma_g_len as usize);
         for _ in 0..powers_of_gamma_g_len {
             let powers_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
             powers_of_gamma_g.push(powers_of_g);
         }
+        hash_input.extend_from_slice(&to_bytes_le![powers_of_gamma_g].unwrap());
 
         let has_shifted_powers: bool = FromBytes::read_le(&mut reader)?;
         let shifted_powers = match has_shifted_powers {
@@ -103,6 +106,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
                     let shifted_power: E::G1Affine = FromBytes::read_le(&mut reader)?;
                     shifted_powers.push(shifted_power);
                 }
+                hash_input.extend_from_slice(&to_bytes_le![shifted_powers].unwrap());
 
                 Some(shifted_powers)
             }
@@ -123,6 +127,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
                         let val: E::G1Affine = FromBytes::read_le(&mut reader)?;
                         value.push(val);
                     }
+                    hash_input.extend_from_slice(&to_bytes_le![value].unwrap());
 
                     shifted_powers_of_gamma_g.insert(key as usize, value);
                 }
@@ -149,6 +154,12 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 
         let max_degree: u32 = FromBytes::read_le(&mut reader)?;
 
+        let hash = sha256(&hash_input);
+        let expected_hash: [u8; 32] = FromBytes::read_le(&mut reader)?;
+        if expected_hash != hash {
+            return Err(error("Mismatching group elements"));
+        }
+
         Ok(Self {
             powers,
             powers_of_gamma_g,
@@ -162,22 +173,35 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 
 impl<E: PairingEngine> ToBytes for CommitterKey<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        let mut hash_input = to_bytes_le![self.powers]?;
+
         (self.powers.len() as u32).write_le(&mut writer)?;
         for power in &self.powers {
+            if !power.is_in_correct_subgroup_assuming_on_curve() {
+                return Err(error("invalid data"));
+            }
             power.write_le(&mut writer)?;
         }
 
         (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
         for power_of_gamma_g in &self.powers_of_gamma_g {
+            if !power_of_gamma_g.is_in_correct_subgroup_assuming_on_curve() {
+                return Err(error("invalid data"));
+            }
             power_of_gamma_g.write_le(&mut writer)?;
         }
+        hash_input.extend_from_slice(&to_bytes_le![self.powers_of_gamma_g].unwrap());
 
         self.shifted_powers.is_some().write_le(&mut writer)?;
         if let Some(shifted_powers) = &self.shifted_powers {
             (shifted_powers.len() as u32).write_le(&mut writer)?;
             for shifted_power in shifted_powers {
+                if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
+                    return Err(error("invalid data"));
+                }
                 shifted_power.write_le(&mut writer)?;
             }
+            hash_input.extend_from_slice(&to_bytes_le![shifted_powers].unwrap());
         }
 
         self.shifted_powers_of_gamma_g.is_some().write_le(&mut writer)?;
@@ -187,8 +211,12 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
                 (*key as u32).write_le(&mut writer)?;
                 (shifted_powers.len() as u32).write_le(&mut writer)?;
                 for shifted_power in shifted_powers {
+                    if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
+                        return Err(error("invalid data"));
+                    }
                     shifted_power.write_le(&mut writer)?;
                 }
+                hash_input.extend_from_slice(&to_bytes_le![shifted_powers].unwrap());
             }
         }
         self.enforced_degree_bounds.is_some().write_le(&mut writer)?;
@@ -199,7 +227,10 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
             }
         }
 
-        (self.max_degree as u32).write_le(&mut writer)
+        (self.max_degree as u32).write_le(&mut writer)?;
+
+        let hash = sha256(&hash_input);
+        hash.write_le(&mut writer)
     }
 }
 

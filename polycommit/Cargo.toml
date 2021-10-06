@@ -67,6 +67,9 @@ path = "../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.blake2]
+version = "0.9"
+
 [dependencies.derivative]
 version = "2"
 features = [ "use_core" ]
