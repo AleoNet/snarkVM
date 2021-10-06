@@ -145,14 +145,14 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Compute the starting index (on the left) for each level of the tree.
         let mut index = 0;
-        let mut level_indices = Vec::with_capacity(tree_depth);
+        let mut level_indices = Vec::with_capacity(tree_depth + 1);
         for _ in 0..=tree_depth {
             level_indices.push(index);
             index = left_child(index);
         }
 
         // Track the indices of newly added leaves.
-        let new_indices = (start_index..start_index + new_leaves.len()).collect::<Vec<_>>();
+        let new_indices = || start_index..start_index + new_leaves.len();
 
         // Compute and store the hash values for each leaf.
         let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
@@ -180,12 +180,10 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
                 let right_index = right_child(current_index);
 
                 // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
-                if new_indices.contains(&current_index)
+                if new_indices().contains(&current_index)
                     || self.tree.get(left_index) != tree.get(left_index)
                     || self.tree.get(right_index) != tree.get(right_index)
-                    || new_indices
-                        .iter()
-                        .any(|&idx| Ancestors(idx).into_iter().find(|&i| i == current_index).is_some())
+                    || new_indices().any(|idx| Ancestors(idx).into_iter().find(|&i| i == current_index).is_some())
                 {
                     // Compute Hash(left || right).
                     tree[current_index] =

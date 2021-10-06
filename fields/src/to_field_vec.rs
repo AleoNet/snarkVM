@@ -84,9 +84,9 @@ impl<F: PrimeField> ToConstraintField<F> for [u8] {
             .chunks(floored_field_size_in_bytes)
             .map(|chunk| {
                 // Before packing, pad the chunk to the next power of two.
-                let mut chunk = chunk.to_vec();
-                chunk.resize(floored_field_size_in_bytes.next_power_of_two(), 0u8);
-                F::read_le(chunk.as_slice())
+                let mut chunk_vec = vec![0u8; floored_field_size_in_bytes.next_power_of_two()];
+                chunk_vec[..chunk.len()].copy_from_slice(chunk);
+                F::read_le(&*chunk_vec)
             })
             .collect::<Result<Vec<_>, _>>()?)
     }

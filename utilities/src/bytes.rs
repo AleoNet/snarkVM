@@ -30,22 +30,30 @@ pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + Do
 
 #[inline]
 pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
-    // Pad the bits if it not a correct size
-    let mut bits = std::borrow::Cow::from(bits);
-    if bits.len() % 8 != 0 {
-        let current_length = bits.len();
-        bits.to_mut().resize(current_length + 8 - (current_length % 8), false);
-    }
+    let desired_size = if bits.len() % 8 == 0 {
+        bits.len() / 8
+    } else {
+        bits.len() / 8 + 1
+    };
 
-    let mut bytes = Vec::with_capacity(bits.len() / 8);
+    let mut bytes = Vec::with_capacity(desired_size);
     for bits in bits.chunks(8) {
         let mut result = 0u8;
         for (i, bit) in bits.iter().enumerate() {
             let bit_value = *bit as u8;
             result += bit_value << i as u8;
         }
+
+        // Pad the bits if their number doesn't correspond to full bytes
+        if bits.len() < 8 {
+            for i in bits.len()..8 {
+                let bit_value = false as u8;
+                result += bit_value << i as u8;
+            }
+        }
         bytes.push(result);
     }
+
     bytes
 }
 
