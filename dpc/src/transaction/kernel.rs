@@ -41,8 +41,6 @@ pub struct TransactionKernel<N: Network> {
     /// The ciphertext IDs of the output records.
     ciphertext_ids: Vec<N::CiphertextID>,
     /// A value balance is the difference between the input and output record values.
-    /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
-    /// may possess a negative value balance representing tokens being minted.
     value_balance: AleoAmount,
     /// Publicly-visible data associated with the transaction.
     memo: Memo<N>,

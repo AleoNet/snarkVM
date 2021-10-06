@@ -31,6 +31,7 @@ use snarkvm_algorithms::traits::SNARK;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::{
     fmt,
@@ -49,8 +50,8 @@ pub struct Transaction<N: Network> {
     kernel: TransactionKernel<N>,
     /// The transaction metadata.
     metadata: TransactionMetadata<N>,
-    /// The encrypted output records.
-    encrypted_records: Vec<RecordCiphertext<N>>,
+    /// The ciphertexts of the output records.
+    ciphertexts: Vec<RecordCiphertext<N>>,
     #[derivative(PartialEq = "ignore")]
     /// Zero-knowledge proof attesting to the validity of the transaction.
     proof: <N::OuterSNARK as SNARK>::Proof,
@@ -68,16 +69,16 @@ impl<N: Network> Transaction<N> {
     pub fn from(
         kernel: TransactionKernel<N>,
         metadata: TransactionMetadata<N>,
-        encrypted_records: Vec<RecordCiphertext<N>>,
+        ciphertexts: Vec<RecordCiphertext<N>>,
         proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
         assert!(kernel.is_valid());
-        assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_records.len());
+        assert_eq!(N::NUM_OUTPUT_RECORDS, ciphertexts.len());
 
         let transaction = Self {
             kernel,
             metadata,
-            encrypted_records,
+            ciphertexts,
             proof,
         };
 
@@ -114,10 +115,26 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
-        // Returns `false` if the number of encrypted records in the transaction is incorrect.
-        if self.encrypted_records().len() != N::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of encrypted records");
+        // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
+        if self.ciphertext_ids().len() != N::NUM_OUTPUT_RECORDS || self.ciphertexts().len() != N::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
+        }
+
+        // Returns `false` if the record ciphertexts do not match their corresponding ids.
+        for (ciphertext_id, ciphertext) in self.ciphertext_ids().iter().zip_eq(self.ciphertexts().iter()) {
+            match ciphertext.to_hash() {
+                Ok(id) => {
+                    if id != *ciphertext_id {
+                        eprintln!("Transaction contains mismatching ciphertext and ciphertext ID");
+                        return false;
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Unable to construct the record ciphertext ID - {}", error);
+                    return false;
+                }
+            }
         }
 
         // Returns `false` if the transaction proof is invalid.
@@ -186,11 +203,6 @@ impl<N: Network> Transaction<N> {
         self.metadata.inner_circuit_id()
     }
 
-    /// Returns the encrypted records.
-    pub fn encrypted_records(&self) -> &[RecordCiphertext<N>] {
-        &self.encrypted_records
-    }
-
     /// Returns a reference to the kernel of the transaction.
     pub fn kernel(&self) -> &TransactionKernel<N> {
         &self.kernel
@@ -199,6 +211,11 @@ impl<N: Network> Transaction<N> {
     /// Returns a reference to the metadata of the transaction.
     pub fn metadata(&self) -> &TransactionMetadata<N> {
         &self.metadata
+    }
+
+    /// Returns the output record ciphertexts.
+    pub fn ciphertexts(&self) -> &[RecordCiphertext<N>] {
+        &self.ciphertexts
     }
 
     /// Returns a reference to the proof of the transaction.
@@ -217,7 +234,7 @@ impl<N: Network> ToBytes for Transaction<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.kernel().write_le(&mut writer)?;
         self.metadata().write_le(&mut writer)?;
-        for encrypted_record in &self.encrypted_records {
+        for encrypted_record in &self.ciphertexts {
             encrypted_record.write_le(&mut writer)?;
         }
         self.proof.write_le(&mut writer)
@@ -256,10 +273,11 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, memo: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
             self.network_id(),
             self.serial_numbers(),
             self.commitments(),
+            self.ciphertext_ids(),
             self.value_balance(),
             self.memo(),
             self.block_hash(),
