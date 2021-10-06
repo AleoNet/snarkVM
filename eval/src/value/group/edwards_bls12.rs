@@ -37,6 +37,8 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
     },
     CondSelectGadget,
+    FromBitsBEGadget,
+    FromBitsLEGadget,
     ToBitsLEGadget,
 };
 use snarkvm_ir::{Field, Group, GroupCoordinate};
@@ -461,6 +463,22 @@ impl ToBitsLEGadget<Fq> for EdwardsGroupType {
         self_gadget.to_bits_le_strict(cs)
     }
 }
+
+/*
+impl FromBitsLEGadget<Fq> for EdwardsGroupType {
+    fn from_bits_be(&self, bits: Vec<Boolean>) -> Result<EdwardsGroupType, SynthesisError> {
+
+    }
+
+    /// Additionally checks if the produced list of booleans is 'valid'.
+    fn from_bits_be_strict(&self, bits: Vec<Boolean>) -> Result<EdwardsGroupType, SynthesisError> {
+        /* if bits.len() !=  {
+            return Err(SynthesisError::Unsatisfiable);
+        } */
+
+
+    }
+} */
 
 impl ToBitsBEGadget<Fq> for EdwardsGroupType {
     fn to_bits_be<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {

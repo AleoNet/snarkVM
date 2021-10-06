@@ -18,7 +18,7 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget},
+    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget},
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::integers::Integer,
 };
@@ -80,51 +80,15 @@ macro_rules! int_impl {
                 self.bits.iter().all(|bit| matches!(bit, Boolean::Constant(_)))
             }
 
-            fn from_bits_le(bits: &[Boolean]) -> Self {
-                assert_eq!(bits.len(), $size);
-
-                let bits = bits.to_vec();
-
-                let mut value = Some(0 as $utype_);
-                for b in bits.iter().rev() {
-                    value.as_mut().map(|v| *v <<= 1);
-
-                    match *b {
-                        Boolean::Constant(b) => {
-                            if b {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                        }
-                        Boolean::Is(ref b) => match b.get_value() {
-                            Some(true) => {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                            Some(false) => {}
-                            None => value = None,
-                        },
-                        Boolean::Not(ref b) => match b.get_value() {
-                            Some(false) => {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                            Some(true) => {}
-                            None => value = None,
-                        },
-                    }
-                }
-
-                Self {
-                    value: value.map(|x| x as $type_),
-                    bits,
-                }
-            }
-
             fn get_value(&self) -> Option<String> {
                 self.value.map(|num| num.to_string())
             }
         }
 
         to_bits_le_int_impl!($name);
+        from_bits_le_int_impl!($name, $type_, $utype_, $size);
         to_bits_be_int_impl!($name);
+        from_bits_be_int_impl!($name, $type_, $utype_, $size);
     };
 }
 

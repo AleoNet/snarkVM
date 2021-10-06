@@ -17,6 +17,7 @@
 use super::*;
 use snarkvm_gadgets::{
     integers::{int::*, uint::*},
+    FromBitsLEGadget,
     Integer as IntegerTrait,
     ToBitsBEGadget,
     ToBitsLEGadget,

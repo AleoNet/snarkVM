@@ -24,6 +24,9 @@ pub use boolean::*;
 pub mod boolean_input;
 pub use boolean_input::*;
 
+pub mod from_bits;
+pub use from_bits::*;
+
 pub mod to_bits;
 pub use to_bits::*;
 
