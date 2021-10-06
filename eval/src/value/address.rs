@@ -29,6 +29,7 @@ use snarkvm_gadgets::{
     Integer,
     ToBitsBEGadget,
     ToBitsLEGadget,
+    ToBytesGadget,
 };
 use snarkvm_ir::Value;
 use snarkvm_r1cs::{Assignment, ConstraintSystem, SynthesisError};
@@ -300,6 +301,16 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Address {
             .into_iter()
             .flatten()
             .collect())
+    }
+}
+
+impl<F: PrimeField> ToBytesGadget<F> for Address {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.bytes.to_bytes(cs)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.bytes.to_bytes_strict(cs)
     }
 }
 
