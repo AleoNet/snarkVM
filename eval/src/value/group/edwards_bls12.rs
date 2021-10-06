@@ -456,7 +456,7 @@ impl ToBitsLEGadget<Fq> for EdwardsGroupType {
         self_gadget.to_bits_le(cs)
     }
 
-    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_le_strict<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let self_gadget = self.allocated(&mut cs)?;
         self_gadget.to_bits_le_strict(cs)
     }

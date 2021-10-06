@@ -31,6 +31,8 @@ use snarkvm_gadgets::{
         select::CondSelectGadget,
     },
     Integer as IntegerGadget,
+    ToBitsBEGadget,
+    ToBitsLEGadget,
 };
 use snarkvm_ir::{Integer as IrInteger, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -128,16 +130,16 @@ impl Integer {
         }
     }
 
-    pub fn to_bits_le(&self) -> Vec<Boolean> {
-        let integer = self;
-        match_integer!(integer => integer.to_bits_le_u8())
-    }
+    // pub fn to_bits_le(&self) -> Vec<Boolean> {
+    //     let integer = self;
+    //     match_integer!(integer => integer.to_bits_le_u8())
+    // }
 
-    pub fn is_allocated(&self) -> bool {
-        self.to_bits_le()
-            .into_iter()
-            .any(|b| matches!(b, Boolean::Is(_) | Boolean::Not(_)))
-    }
+    // pub fn is_allocated(&self) -> bool {
+    //     self.to_bits_le()
+    //         .into_iter()
+    //         .any(|b| matches!(b, Boolean::Is(_) | Boolean::Not(_)))
+    // }
 
     pub fn get_value(&self) -> Option<String> {
         let integer = self;
@@ -159,10 +161,11 @@ impl Integer {
         }
     }
 
+    // todo: deprecate this function
     pub fn to_usize(&self) -> Option<usize> {
-        if self.is_allocated() {
-            return None;
-        }
+        // if self.is_allocated() {
+        //     return None;
+        // }
         let unsigned_integer = self;
         match_unsigned_integer!(unsigned_integer => unsigned_integer.value.map(|num| num.try_into().ok()).flatten())
     }
@@ -355,5 +358,29 @@ impl<F: PrimeField> CondSelectGadget<F> for Integer {
 
     fn cost() -> usize {
         unimplemented!() // cannot determine which integer we are enforcing
+    }
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for Integer {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let a = self;
+        match_integer!(a => a.to_bits_le(cs))
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let a = self;
+        match_integer!(a => a.to_bits_le_strict(cs))
+    }
+}
+
+impl<F: PrimeField> ToBitsBEGadget<F> for Integer {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let a = self;
+        match_integer!(a => a.to_bits_be(cs))
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let a = self;
+        match_integer!(a => a.to_bits_be_strict(cs))
     }
 }

@@ -250,7 +250,7 @@ impl<F: PrimeField> ToBitsLEGadget<F> for FieldType<F> {
     }
 
     fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        self.0.to_bits_le_strict()
+        self.0.to_bits_le_strict(cs)
     }
 }
 

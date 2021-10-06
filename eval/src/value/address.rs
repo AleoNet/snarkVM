@@ -27,6 +27,8 @@ use snarkvm_gadgets::{
         select::CondSelectGadget,
     },
     Integer,
+    ToBitsBEGadget,
+    ToBitsLEGadget,
 };
 use snarkvm_ir::Value;
 use snarkvm_r1cs::{Assignment, ConstraintSystem, SynthesisError};
@@ -246,6 +248,58 @@ impl<F: PrimeField> CondSelectGadget<F> for Address {
 
     fn cost() -> usize {
         <UInt8 as CondSelectGadget<F>>::cost() * 32
+    }
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for Address {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self
+            .bytes
+            .iter()
+            .enumerate()
+            .map(|(i, byte)| byte.to_bits_le(cs.ns(|| format!("to_bits_le_{}", i))))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self
+            .bytes
+            .iter()
+            .enumerate()
+            .map(|(i, byte)| byte.to_bits_le_strict(cs.ns(|| format!("to_bits_le_{}", i))))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect())
+    }
+}
+
+impl<F: PrimeField> ToBitsBEGadget<F> for Address {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self
+            .bytes
+            .iter()
+            .enumerate()
+            .map(|(i, byte)| byte.to_bits_be(cs.ns(|| format!("to_bits_be_{}", i))))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect())
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self
+            .bytes
+            .iter()
+            .enumerate()
+            .map(|(i, byte)| byte.to_bits_be_strict(cs.ns(|| format!("to_bits_be_{}", i))))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect())
     }
 }
 
