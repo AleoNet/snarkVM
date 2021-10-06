@@ -30,6 +30,10 @@ pub trait FromBitsLEGadget<F: Field> {
 
 impl<F: Field> FromBitsLEGadget<F> for Boolean {
     fn from_bits_le(&self, bits: Vec<Boolean>) -> Result<Boolean, SynthesisError> {
+        if bits.len() != 1 {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
         bits.get(0).copied().ok_or_else(|| SynthesisError::Unsatisfiable)
     }
 
@@ -55,6 +59,10 @@ pub trait FromBitsBEGadget<F: Field> {
 
 impl<F: Field> FromBitsBEGadget<F> for Boolean {
     fn from_bits_be(&self, bits: Vec<Boolean>) -> Result<Boolean, SynthesisError> {
+        if bits.len() != 1 {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
         bits.get(0).copied().ok_or_else(|| SynthesisError::Unsatisfiable)
     }
 

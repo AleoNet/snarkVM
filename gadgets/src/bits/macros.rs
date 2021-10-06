@@ -46,6 +46,10 @@ macro_rules! from_bits_le_int_impl {
     ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
         impl<F: Field> FromBitsLEGadget<F> for $name {
             fn from_bits_le(&self, bits: Vec<Boolean>) -> Result<$name, SynthesisError> {
+                if bits.len() != $size {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
                 let mut value = Some(0 as $utype_);
                 for b in bits.iter().rev() {
                     value.as_mut().map(|v| *v <<= 1);
@@ -98,7 +102,37 @@ macro_rules! from_bits_be_int_impl {
                     return Err(SynthesisError::Unsatisfiable);
                 }
 
-                todo!()
+                let mut value = Some(0 as $utype_);
+                for b in bits.iter() {
+                    value.as_mut().map(|v| *v <<= 1);
+
+                    match *b {
+                        Boolean::Constant(b) => {
+                            if b {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                        }
+                        Boolean::Is(ref b) => match b.get_value() {
+                            Some(true) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(false) => {}
+                            None => value = None,
+                        },
+                        Boolean::Not(ref b) => match b.get_value() {
+                            Some(false) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(true) => {}
+                            None => value = None,
+                        },
+                    }
+                }
+
+                Ok(Self {
+                    value: value.map(|x| x as $type_),
+                    bits,
+                })
             }
 
             fn from_bits_be_strict(&self, bits: Vec<Boolean>) -> Result<$name, SynthesisError> {
