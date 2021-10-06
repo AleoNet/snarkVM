@@ -24,7 +24,6 @@ use crate::{
     OuterPublicVariables,
     StateTransition,
     TransactionKernel,
-    TransactionMetadata,
     DPC,
 };
 use snarkvm_algorithms::traits::SNARK;
@@ -48,8 +47,10 @@ use std::{
 pub struct Transaction<N: Network> {
     /// The transaction kernel.
     kernel: TransactionKernel<N>,
-    /// The transaction metadata.
-    metadata: TransactionMetadata<N>,
+    /// The block hash used for the ledger inclusion proof.
+    block_hash: N::BlockHash,
+    /// The ID of the inner circuit used to execute this transaction.
+    inner_circuit_id: N::InnerCircuitID,
     /// The ciphertexts of the output records.
     ciphertexts: Vec<RecordCiphertext<N>>,
     #[derivative(PartialEq = "ignore")]
@@ -68,7 +69,8 @@ impl<N: Network> Transaction<N> {
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<N>,
-        metadata: TransactionMetadata<N>,
+        block_hash: N::BlockHash,
+        inner_circuit_id: N::InnerCircuitID,
         ciphertexts: Vec<RecordCiphertext<N>>,
         proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
@@ -77,7 +79,8 @@ impl<N: Network> Transaction<N> {
 
         let transaction = Self {
             kernel,
-            metadata,
+            block_hash,
+            inner_circuit_id,
             ciphertexts,
             proof,
         };
@@ -89,7 +92,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the transaction is well-formed, meaning it contains
-    /// the correct network ID, unique serial numbers, unique commitments, and a valid proof.
+    /// the correct network ID, unique serial numbers, unique commitments,
+    /// correct ciphertext IDs, and a valid proof.
     pub fn is_valid(&self) -> bool {
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
         if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
@@ -195,22 +199,17 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the block hash.
     pub fn block_hash(&self) -> N::BlockHash {
-        self.metadata.block_hash()
+        self.block_hash
     }
 
     /// Returns the inner circuit ID.
-    pub fn inner_circuit_id(&self) -> &N::InnerCircuitID {
-        self.metadata.inner_circuit_id()
+    pub fn inner_circuit_id(&self) -> N::InnerCircuitID {
+        self.inner_circuit_id
     }
 
     /// Returns a reference to the kernel of the transaction.
     pub fn kernel(&self) -> &TransactionKernel<N> {
         &self.kernel
-    }
-
-    /// Returns a reference to the metadata of the transaction.
-    pub fn metadata(&self) -> &TransactionMetadata<N> {
-        &self.metadata
     }
 
     /// Returns the output record ciphertexts.
@@ -233,7 +232,8 @@ impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.kernel().write_le(&mut writer)?;
-        self.metadata().write_le(&mut writer)?;
+        self.block_hash.write_le(&mut writer)?;
+        self.inner_circuit_id.write_le(&mut writer)?;
         for encrypted_record in &self.ciphertexts {
             encrypted_record.write_le(&mut writer)?;
         }
@@ -247,7 +247,8 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the transaction kernel.
         let kernel = FromBytes::read_le(&mut reader)?;
         // Read the transaction metadata.
-        let metadata = FromBytes::read_le(&mut reader)?;
+        let block_hash = FromBytes::read_le(&mut reader)?;
+        let inner_circuit_id = FromBytes::read_le(&mut reader)?;
         // Read the encrypted records.
         let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         for _ in 0..N::NUM_OUTPUT_RECORDS {
@@ -256,7 +257,10 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the transaction proof.
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(kernel, metadata, encrypted_records, proof).expect("Failed to deserialize a transaction"))
+        Ok(
+            Self::from(kernel, block_hash, inner_circuit_id, encrypted_records, proof)
+                .expect("Failed to deserialize a transaction"),
+        )
     }
 }
 

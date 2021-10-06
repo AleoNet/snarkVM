@@ -95,12 +95,12 @@ impl<N: Network> DPC<N> {
         let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
 
         let transaction_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
-        let metadata = TransactionMetadata::new(block_hash, *N::inner_circuit_id());
         end_timer!(execution_timer);
 
         Transaction::from(
             transition.kernel().clone(),
-            metadata,
+            block_hash,
+            *N::inner_circuit_id(),
             transition.ciphertexts.clone(),
             transaction_proof,
         )

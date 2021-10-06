@@ -23,8 +23,5 @@ pub use kernel::*;
 pub mod memo;
 pub use memo::*;
 
-pub mod metadata;
-pub use metadata::*;
-
 pub mod transaction;
 pub use transaction::*;
