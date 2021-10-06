@@ -40,6 +40,8 @@ pub enum SynthesisError {
     MalformedVerifyingKey,
     /// During CRS generation, we observed an unconstrained auxiliary variable
     UnconstrainedVariable,
+    /// For when a method does not exist on a Constrained Value Type.
+    UnknownMethod,
 }
 
 impl From<io::Error> for SynthesisError {
@@ -60,6 +62,7 @@ impl Error for SynthesisError {
             SynthesisError::IoError(_) => "encountered an I/O error",
             SynthesisError::MalformedVerifyingKey => "malformed verifying key",
             SynthesisError::UnconstrainedVariable => "auxiliary variable was unconstrained",
+            SynthesisError::UnknownMethod => "The method you called does not exist on the current type",
         }
     }
 }

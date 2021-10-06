@@ -112,22 +112,6 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         }
     }
 
-    // todo (@gluax): deprecate this function in favor of `ToBitsLEGadget::to_bits_le()`
-    pub fn to_bits_le(&self) -> Result<Vec<Boolean>> {
-        use ConstrainedValue::*;
-
-        match self {
-            Address(address) => Err(anyhow!("the type `address` does not implement the to_bits_le method")),
-            Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bits_le method")),
-            Char(_) => Err(anyhow!("the type `char` does not implement the to_bits_le method")),
-            Field(_) => Err(anyhow!("the type `field` does not implement the to_bits_le method")),
-            Group(_) => Err(anyhow!("the type `group` does not implement the to_bits_le method")),
-            Integer(integer) => unimplemented!(), // Ok(integer.to_bits_le()),
-            Array(_) => Err(anyhow!("the type `array` does not implement the to_bits_le method")),
-            Tuple(_) => Err(anyhow!("the type `tuple` does not implement the to_bits_le method")),
-        }
-    }
-
     pub fn to_bytes_le(&self) -> Result<Vec<UInt8>> {
         use ConstrainedValue::*;
 
@@ -144,24 +128,63 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
     }
 }
 
-// todo (@gluax) implement these functions
 impl<F: PrimeField, G: GroupType<F>> ToBitsLEGadget<F> for ConstrainedValue<F, G> {
-    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        todo!()
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bits_le(cs),
+            Boolean(boolean) => boolean.to_bits_le(cs),
+            Char(character) => character.to_bits_le(cs),
+            Field(field) => field.to_bits_le(cs),
+            Group(group) => group.to_bits_le(cs),
+            Integer(integer) => integer.to_bits_le(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
     }
 
-    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        todo!()
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bits_le_strict(cs),
+            Boolean(boolean) => boolean.to_bits_le_strict(cs),
+            Char(character) => character.to_bits_le_strict(cs),
+            Field(field) => field.to_bits_le_strict(cs),
+            Group(group) => group.to_bits_le_strict(cs),
+            Integer(integer) => integer.to_bits_le_strict(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
     }
 }
 
 impl<F: PrimeField, G: GroupType<F>> ToBitsBEGadget<F> for ConstrainedValue<F, G> {
-    fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        todo!()
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bits_be(cs),
+            Boolean(boolean) => boolean.to_bits_be(cs),
+            Char(character) => character.to_bits_be(cs),
+            Field(field) => field.to_bits_be(cs),
+            Group(group) => group.to_bits_be(cs),
+            Integer(integer) => integer.to_bits_be(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
     }
 
-    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        todo!()
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bits_be_strict(cs),
+            Boolean(boolean) => boolean.to_bits_be_strict(cs),
+            Char(character) => character.to_bits_be_strict(cs),
+            Field(field) => field.to_bits_be_strict(cs),
+            Group(group) => group.to_bits_be_strict(cs),
+            Integer(integer) => integer.to_bits_be_strict(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
     }
 }
 
