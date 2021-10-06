@@ -74,7 +74,7 @@ fn test_uint32_from_bits() {
             }
         }
 
-        let expected_to_be_same = b.to_bits_le();
+        let expected_to_be_same = b.bits;
 
         for x in v.iter().zip(expected_to_be_same.iter()) {
             match x {

@@ -27,7 +27,7 @@ use snarkvm_gadgets::{
         NonNativeFieldVar,
     },
     overhead,
-    traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
+    traits::{alloc::AllocGadget, fields::FieldGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 

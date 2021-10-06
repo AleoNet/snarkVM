@@ -61,7 +61,7 @@ fn test_uint8_from_bits_to_bits() {
     let mut cs = TestConstraintSystem::<Fr>::new();
     let byte_val = 0b01110001;
     let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
-    let bits = byte.to_bits_le();
+    let bits = byte.to_bits_le_u8();
     for (i, bit) in bits.iter().enumerate() {
         assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
     }

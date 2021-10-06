@@ -27,7 +27,8 @@ use crate::{
     algorithms::prf::*,
     bits::boolean::{AllocatedBit, Boolean},
     integers::uint::UInt8,
-    traits::{algorithms::PRFGadget, alloc::AllocGadget, eq::EqGadget, integers::integer::Integer},
+    traits::{algorithms::PRFGadget, alloc::AllocGadget, eq::EqGadget},
+    ToBitsLEGadget,
 };
 
 #[test]
@@ -139,8 +140,8 @@ fn test_blake2s() {
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
 
-        for chunk in r {
-            for b in chunk.to_bits_le() {
+        for (i, chunk) in r.into_iter().enumerate() {
+            for b in chunk.to_bits_le(cs.ns(|| format!("to_bits_le_{}", i))).unwrap() {
                 match b {
                     Boolean::Is(b) => {
                         assert!(s.next().unwrap() == b.get_value().unwrap());

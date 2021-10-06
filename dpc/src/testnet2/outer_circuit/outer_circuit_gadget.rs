@@ -32,7 +32,6 @@ use snarkvm_gadgets::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
         alloc::{AllocBytesGadget, AllocGadget},
         eq::EqGadget,
-        integers::integer::Integer,
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
