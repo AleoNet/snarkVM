@@ -16,9 +16,10 @@
 
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_utilities::ToBytes;
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::integers::Integer,
 };
@@ -125,6 +126,7 @@ macro_rules! int_impl {
 
         to_bits_le_int_impl!($name);
         to_bits_be_int_impl!($name);
+        to_bytes_int_impl!($name, $size);
     };
 }
 

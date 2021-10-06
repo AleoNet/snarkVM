@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! to_bytes_int_impl {
+macro_rules! to_bytes_uint_impl {
     ($name: ident, $_type: ty, $size: expr) => {
         impl<F: Field> ToBytesGadget<F> for $name {
             #[inline]
@@ -228,7 +228,7 @@ macro_rules! uint_impl_common {
         to_bits_le_int_impl!($name);
         to_bits_be_int_impl!($name);
         cond_select_int_impl!($name, $_type, $size);
-        to_bytes_int_impl!($name, $_type, $size);
+        to_bytes_uint_impl!($name, $_type, $size);
     };
 }
 
