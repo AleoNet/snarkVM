@@ -72,7 +72,7 @@ mod coinbase {
 
                 let account = Account::new(rng).unwrap();
                 let transition = State::new_coinbase(account.address, AleoAmount::from_bytes(123456), rng).unwrap();
-                let serial_numbers = transition.kernel().serial_numbers().clone();
+                let serial_numbers = transition.transition().serial_numbers().clone();
 
                 (account, transition, serial_numbers)
             };
@@ -172,7 +172,7 @@ mod transfer {
                 rng,
             )
             .unwrap();
-            let serial_numbers = state.kernel().serial_numbers().clone();
+            let serial_numbers = state.transition().serial_numbers().clone();
 
             (recipient, state, serial_numbers)
         };

@@ -17,9 +17,6 @@
 pub mod amount;
 pub use amount::*;
 
-pub mod kernel;
-pub use kernel::*;
-
 pub mod memo;
 pub use memo::*;
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, CircuitType, LedgerProof, Network, ProgramExecutable, Record, State, TransactionKernel};
+use crate::{AleoAmount, CircuitType, LedgerProof, Network, ProgramExecutable, Record, State, Transition};
 use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
@@ -22,8 +22,8 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerPrivateVariables<N: Network> {
-    /// Transaction kernel
-    kernel: TransactionKernel<N>,
+    /// The state transition.
+    transition: Transition<N>,
     // Inputs records.
     pub(super) input_records: Vec<Record<N>>,
     pub(super) ledger_proof: LedgerProof<N>,
@@ -39,7 +39,7 @@ pub struct InnerPrivateVariables<N: Network> {
 impl<N: Network> InnerPrivateVariables<N> {
     pub fn blank() -> Self {
         Self {
-            kernel: TransactionKernel::new(
+            transition: Transition::new(
                 vec![N::SerialNumber::default(); N::NUM_INPUT_RECORDS],
                 vec![N::Commitment::default(); N::NUM_OUTPUT_RECORDS],
                 vec![N::CiphertextID::default(); N::NUM_OUTPUT_RECORDS],
@@ -60,7 +60,7 @@ impl<N: Network> InnerPrivateVariables<N> {
 
     pub fn new(state: &State<N>, ledger_proof: LedgerProof<N>, signatures: Vec<N::AccountSignature>) -> Result<Self> {
         Ok(Self {
-            kernel: state.kernel().clone(),
+            transition: state.transition().clone(),
             input_records: state.input_records().clone(),
             ledger_proof,
             signatures,
@@ -71,7 +71,7 @@ impl<N: Network> InnerPrivateVariables<N> {
     }
 
     /// Returns a reference to the transaction kernel.
-    pub fn kernel(&self) -> &TransactionKernel<N> {
-        &self.kernel
+    pub fn kernel(&self) -> &Transition<N> {
+        &self.transition
     }
 }

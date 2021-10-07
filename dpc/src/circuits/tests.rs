@@ -34,7 +34,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
         .unwrap();
 
     let signatures = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
-    let transaction_id = state.kernel().to_transaction_id().unwrap();
+    let transaction_id = state.transition().to_transaction_id().unwrap();
 
     // Execute the program circuit.
     let execution = state

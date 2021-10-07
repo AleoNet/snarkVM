@@ -35,7 +35,7 @@ impl<N: Network> DPC<N> {
         let mut index = 0;
 
         // Construct the signature message.
-        let signature_message = state.kernel().to_transaction_id()?.to_bytes_le()?;
+        let signature_message = state.transition().to_transaction_id()?.to_bytes_le()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -71,7 +71,7 @@ impl<N: Network> DPC<N> {
         let block_hash = ledger_proof.block_hash();
 
         // Generate the transaction ID.
-        let transaction_id = state.kernel().to_transaction_id()?;
+        let transaction_id = state.transition().to_transaction_id()?;
 
         // Execute the program circuit.
         let execution = state.executable().execute(PublicVariables::new(transaction_id))?;
@@ -98,7 +98,7 @@ impl<N: Network> DPC<N> {
         end_timer!(execution_timer);
 
         Transaction::from(
-            state.kernel().clone(),
+            state.transition().clone(),
             block_hash,
             *N::inner_circuit_id(),
             state.ciphertexts.clone(),

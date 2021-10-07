@@ -21,9 +21,9 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
 
-/// The transaction kernel contains core (public) transaction components,
-/// A signed transaction kernel implies the caller has authorized the execution
-/// of the transaction, and implies these values are admissible by the ledger.
+/// The transition contains core (public) transaction components,
+/// A signed transition implies the caller has authorized the execution
+/// of the transition, and implies these values are admissible by the ledger.
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
@@ -31,7 +31,7 @@ use std::io::{Read, Result as IoResult, Write};
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
-pub struct TransactionKernel<N: Network> {
+pub struct Transition<N: Network> {
     /// The network ID.
     network_id: u16,
     /// The serial numbers of the input records.
@@ -44,8 +44,8 @@ pub struct TransactionKernel<N: Network> {
     value_balance: AleoAmount,
 }
 
-impl<N: Network> TransactionKernel<N> {
-    /// Initializes a new instance of a transaction kernel.
+impl<N: Network> Transition<N> {
+    /// Initializes a new instance of a transition.
     #[inline]
     pub fn new(
         serial_numbers: Vec<N::SerialNumber>,
@@ -53,7 +53,7 @@ impl<N: Network> TransactionKernel<N> {
         ciphertext_ids: Vec<N::CiphertextID>,
         value_balance: AleoAmount,
     ) -> Result<Self> {
-        // Construct the transaction kernel.
+        // Construct the transition.
         let kernel = Self {
             network_id: N::NETWORK_ID,
             serial_numbers,
@@ -62,7 +62,7 @@ impl<N: Network> TransactionKernel<N> {
             value_balance,
         };
 
-        // Ensure the transaction kernel is well-formed.
+        // Ensure the transition is well-formed.
         match kernel.is_valid() {
             true => Ok(kernel),
             false => Err(DPCError::InvalidKernel(
@@ -75,7 +75,7 @@ impl<N: Network> TransactionKernel<N> {
         }
     }
 
-    /// Returns `true` if the transaction kernel is well-formed.
+    /// Returns `true` if the transition is well-formed.
     #[inline]
     pub fn is_valid(&self) -> bool {
         self.network_id == N::NETWORK_ID
@@ -121,7 +121,7 @@ impl<N: Network> TransactionKernel<N> {
     }
 }
 
-impl<N: Network> ToBytes for TransactionKernel<N> {
+impl<N: Network> ToBytes for Transition<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the correct number of serial numbers and commitments are provided.
@@ -143,7 +143,7 @@ impl<N: Network> ToBytes for TransactionKernel<N> {
     }
 }
 
-impl<N: Network> FromBytes for TransactionKernel<N> {
+impl<N: Network> FromBytes for Transition<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let network_id: u16 = FromBytes::read_le(&mut reader)?;
@@ -177,6 +177,6 @@ impl<N: Network> FromBytes for TransactionKernel<N> {
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::new(serial_numbers, commitments, ciphertext_ids, value_balance)
-            .expect("Failed to initialize a transaction kernel"))
+            .expect("Failed to initialize a transition"))
     }
 }

@@ -14,18 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    record::*,
-    Address,
-    AleoAmount,
-    LedgerProof,
-    Memo,
-    Network,
-    OuterPublicVariables,
-    State,
-    TransactionKernel,
-    DPC,
-};
+use crate::{record::*, Address, AleoAmount, LedgerProof, Memo, Network, OuterPublicVariables, State, Transition, DPC};
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
@@ -45,8 +34,8 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Transaction<N: Network> {
-    /// The transaction kernel.
-    kernel: TransactionKernel<N>,
+    /// The state transition.
+    transition: Transition<N>,
     /// The block hash used for the ledger inclusion proof.
     block_hash: N::BlockHash,
     /// The ID of the inner circuit used to execute this transaction.
@@ -70,18 +59,18 @@ impl<N: Network> Transaction<N> {
 
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
-        kernel: TransactionKernel<N>,
+        transition: Transition<N>,
         block_hash: N::BlockHash,
         inner_circuit_id: N::InnerCircuitID,
         ciphertexts: Vec<RecordCiphertext<N>>,
         memo: Memo<N>,
         proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
-        assert!(kernel.is_valid());
+        assert!(transition.is_valid());
         assert_eq!(N::NUM_OUTPUT_RECORDS, ciphertexts.len());
 
         let transaction = Self {
-            kernel,
+            transition,
             block_hash,
             inner_circuit_id,
             ciphertexts,
@@ -173,27 +162,27 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the network ID.
     pub fn network_id(&self) -> u16 {
-        self.kernel.network_id()
+        self.transition.network_id()
     }
 
     /// Returns the serial numbers.
     pub fn serial_numbers(&self) -> &[N::SerialNumber] {
-        self.kernel.serial_numbers()
+        self.transition.serial_numbers()
     }
 
     /// Returns the commitments.
     pub fn commitments(&self) -> &[N::Commitment] {
-        self.kernel.commitments()
+        self.transition.commitments()
     }
 
     /// Returns the ciphertext IDs.
     pub fn ciphertext_ids(&self) -> &[N::CiphertextID] {
-        self.kernel.ciphertext_ids()
+        self.transition.ciphertext_ids()
     }
 
     /// Returns the value balance.
     pub fn value_balance(&self) -> &AleoAmount {
-        self.kernel.value_balance()
+        self.transition.value_balance()
     }
 
     /// Returns the block hash.
@@ -206,9 +195,9 @@ impl<N: Network> Transaction<N> {
         self.inner_circuit_id
     }
 
-    /// Returns a reference to the kernel of the transaction.
-    pub fn kernel(&self) -> &TransactionKernel<N> {
-        &self.kernel
+    /// Returns a reference to the state transition.
+    pub fn transition(&self) -> &Transition<N> {
+        &self.transition
     }
 
     /// Returns the output record ciphertexts.
@@ -228,14 +217,14 @@ impl<N: Network> Transaction<N> {
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance)
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        self.kernel.to_transaction_id()
+        self.transition.to_transaction_id()
     }
 }
 
 impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.kernel().write_le(&mut writer)?;
+        self.transition.write_le(&mut writer)?;
         self.block_hash.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
         for encrypted_record in &self.ciphertexts {
@@ -249,8 +238,8 @@ impl<N: Network> ToBytes for Transaction<N> {
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the transaction kernel.
-        let kernel = FromBytes::read_le(&mut reader)?;
+        // Read the transition.
+        let transition = FromBytes::read_le(&mut reader)?;
         // Read the transaction metadata.
         let block_hash = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
@@ -265,7 +254,7 @@ impl<N: Network> FromBytes for Transaction<N> {
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
         Ok(
-            Self::from(kernel, block_hash, inner_circuit_id, ciphertexts, memo, proof)
+            Self::from(transition, block_hash, inner_circuit_id, ciphertexts, memo, proof)
                 .expect("Failed to deserialize a transaction"),
         )
     }
@@ -284,7 +273,7 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, block_hash: {:?}, inner_circuit_id: {:?},  memo: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, memo: {:?}, proof: {:?} }}",
             self.network_id(),
             self.serial_numbers(),
             self.commitments(),

@@ -27,7 +27,7 @@ use rand::{CryptoRng, Rng};
     Eq(bound = "N: Network")
 )]
 pub struct State<N: Network> {
-    pub(super) kernel: TransactionKernel<N>,
+    pub(super) transition: Transition<N>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub(super) executable: Executable<N>,
     pub(super) input_records: Vec<Record<N>>,
@@ -99,9 +99,9 @@ impl<N: Network> State<N> {
         TransitionBuilder::new()
     }
 
-    /// Returns a reference to the transaction kernel.
-    pub fn kernel(&self) -> &TransactionKernel<N> {
-        &self.kernel
+    /// Returns a reference to the transition.
+    pub fn transition(&self) -> &Transition<N> {
+        &self.transition
     }
 
     /// Returns a reference to the executable.

@@ -26,5 +26,8 @@ pub use output::*;
 pub mod state;
 pub use state::*;
 
+pub mod transition;
+pub use transition::*;
+
 #[cfg(test)]
 mod tests;
