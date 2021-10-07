@@ -51,7 +51,7 @@ pub enum DPCError {
     EncryptionError(#[from] EncryptionError),
 
     #[error(
-        "Invalid transaction kernel: |serial numbers| = {}, |commitments| = {}, |ciphertext_ids| = {}",
+        "Invalid transaction kernel: |serial numbers| = {}, |commitments| = {}, |ciphertexts| = {}",
         _0,
         _1,
         _2

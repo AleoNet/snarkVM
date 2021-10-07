@@ -16,7 +16,7 @@
 
 use crate::{prelude::*, Network};
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
@@ -36,8 +36,8 @@ pub struct Transition<N: Network> {
     serial_numbers: Vec<N::SerialNumber>,
     /// The commitments of the output records.
     commitments: Vec<N::Commitment>,
-    /// The ciphertext IDs of the output records.
-    ciphertext_ids: Vec<N::CiphertextID>,
+    /// The ciphertexts of the output records.
+    ciphertexts: Vec<RecordCiphertext<N>>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
 }
@@ -48,14 +48,14 @@ impl<N: Network> Transition<N> {
     pub fn new(
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
-        ciphertext_ids: Vec<N::CiphertextID>,
+        ciphertexts: Vec<RecordCiphertext<N>>,
         value_balance: AleoAmount,
     ) -> Result<Self> {
         // Construct the transition.
         let kernel = Self {
             serial_numbers,
             commitments,
-            ciphertext_ids,
+            ciphertexts,
             value_balance,
         };
 
@@ -65,7 +65,7 @@ impl<N: Network> Transition<N> {
             false => Err(DPCError::InvalidTransition(
                 kernel.serial_numbers.len(),
                 kernel.commitments.len(),
-                kernel.ciphertext_ids.len(),
+                kernel.ciphertexts.len(),
             )
             .into()),
         }
@@ -76,7 +76,7 @@ impl<N: Network> Transition<N> {
     pub fn is_valid(&self) -> bool {
         self.serial_numbers.len() == N::NUM_INPUT_RECORDS
             && self.commitments.len() == N::NUM_OUTPUT_RECORDS
-            && self.ciphertext_ids.len() == N::NUM_OUTPUT_RECORDS
+            && self.ciphertexts.len() == N::NUM_OUTPUT_RECORDS
     }
 
     /// Returns a reference to the serial numbers.
@@ -91,10 +91,10 @@ impl<N: Network> Transition<N> {
         &self.commitments
     }
 
-    /// Returns a reference to the ciphertext IDs.
+    /// Returns a reference to the ciphertexts.
     #[inline]
-    pub fn ciphertext_ids(&self) -> &Vec<N::CiphertextID> {
-        &self.ciphertext_ids
+    pub fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
+        &self.ciphertexts
     }
 
     /// Returns a reference to the value balance.
@@ -103,10 +103,23 @@ impl<N: Network> Transition<N> {
         &self.value_balance
     }
 
+    /// Returns the ciphertext IDs.
+    #[inline]
+    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
+        self.ciphertexts().iter().map(|c| Ok(c.to_hash()?)).collect()
+    }
+
     /// Transaction ID = Hash(serial numbers || commitments || ciphertext_ids || value balance)
     #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        Ok(N::transaction_id_crh().hash(&self.to_bytes_le()?)?)
+        let preimage = to_bytes_le![
+            self.serial_numbers,
+            self.commitments,
+            self.to_ciphertext_ids()?,
+            self.value_balance
+        ]?;
+
+        Ok(N::transaction_id_crh().hash(&preimage)?)
     }
 }
 
@@ -118,14 +131,14 @@ impl<N: Network> ToBytes for Transition<N> {
             return Err(DPCError::InvalidTransition(
                 self.serial_numbers.len(),
                 self.commitments.len(),
-                self.ciphertext_ids.len(),
+                self.ciphertexts.len(),
             )
             .into());
         }
 
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
-        self.ciphertext_ids.write_le(&mut writer)?;
+        self.ciphertexts.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)
     }
 }
@@ -143,14 +156,14 @@ impl<N: Network> FromBytes for Transition<N> {
             commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut ciphertext_ids = Vec::<N::CiphertextID>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut ciphertexts = Vec::<RecordCiphertext<N>>::with_capacity(N::NUM_OUTPUT_RECORDS);
         for _ in 0..N::NUM_OUTPUT_RECORDS {
-            ciphertext_ids.push(FromBytes::read_le(&mut reader)?);
+            ciphertexts.push(FromBytes::read_le(&mut reader)?);
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::new(serial_numbers, commitments, ciphertext_ids, value_balance)
+        Ok(Self::new(serial_numbers, commitments, ciphertexts, value_balance)
             .expect("Failed to initialize a transition"))
     }
 }

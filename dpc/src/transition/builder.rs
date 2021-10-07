@@ -206,7 +206,7 @@ impl<N: Network> TransitionBuilder<N> {
         }
 
         // Compute the encrypted records.
-        let (ciphertexts, ciphertext_ids, ciphertext_randomizers) = Self::encrypt_records(&output_records, rng)?;
+        let (ciphertexts, ciphertext_randomizers) = Self::encrypt_records(&output_records, rng)?;
 
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
@@ -226,7 +226,7 @@ impl<N: Network> TransitionBuilder<N> {
         let memo = Memo::new(&memo_bytes)?;
 
         // Construct the transition.
-        let transition = Transition::<N>::new(serial_numbers, commitments, ciphertext_ids, value_balance)?;
+        let transition = Transition::<N>::new(serial_numbers, commitments, ciphertexts, value_balance)?;
 
         // Compute the noop signatures.
         let signature_message = transition.to_transaction_id()?.to_bytes_le()?;
@@ -248,7 +248,6 @@ impl<N: Network> TransitionBuilder<N> {
             executable,
             input_records,
             output_records,
-            ciphertexts,
             ciphertext_randomizers,
             noop_signatures,
             memo,
@@ -299,23 +298,17 @@ impl<N: Network> TransitionBuilder<N> {
     fn encrypt_records<R: Rng + CryptoRng>(
         output_records: &Vec<Record<N>>,
         rng: &mut R,
-    ) -> Result<(
-        Vec<RecordCiphertext<N>>,
-        Vec<N::CiphertextID>,
-        Vec<CiphertextRandomizer<N>>,
-    )> {
+    ) -> Result<(Vec<RecordCiphertext<N>>, Vec<CiphertextRandomizer<N>>)> {
         let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut encrypted_record_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut encrypted_record_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
         for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
             let (encrypted_record, encrypted_record_randomizer) = RecordCiphertext::encrypt(record, rng)?;
-            encrypted_record_ids.push(encrypted_record.to_hash()?);
             encrypted_records.push(encrypted_record);
             encrypted_record_randomizers.push(encrypted_record_randomizer);
         }
 
-        Ok((encrypted_records, encrypted_record_ids, encrypted_record_randomizers))
+        Ok((encrypted_records, encrypted_record_randomizers))
     }
 }
 

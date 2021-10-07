@@ -32,7 +32,6 @@ pub struct State<N: Network> {
     pub(super) executable: Executable<N>,
     pub(super) input_records: Vec<Record<N>>,
     pub(super) output_records: Vec<Record<N>>,
-    pub(crate) ciphertexts: Vec<RecordCiphertext<N>>,
     pub(crate) ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
     pub(super) noop_signatures: Vec<Option<N::AccountSignature>>,
     pub(super) memo: Memo<N>,

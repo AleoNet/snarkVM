@@ -19,7 +19,6 @@ use snarkvm_algorithms::traits::SNARK;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
-use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::{
     fmt,
@@ -42,8 +41,6 @@ pub struct Transaction<N: Network> {
     block_hash: N::BlockHash,
     /// The ID of the inner circuit used to execute this transaction.
     inner_circuit_id: N::InnerCircuitID,
-    /// The ciphertexts of the output records.
-    ciphertexts: Vec<RecordCiphertext<N>>,
     /// Publicly-visible data associated with the transaction.
     memo: Memo<N>,
     #[derivative(PartialEq = "ignore")]
@@ -65,19 +62,16 @@ impl<N: Network> Transaction<N> {
         transition: Transition<N>,
         block_hash: N::BlockHash,
         inner_circuit_id: N::InnerCircuitID,
-        ciphertexts: Vec<RecordCiphertext<N>>,
         memo: Memo<N>,
         proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
         assert!(transition.is_valid());
-        assert_eq!(N::NUM_OUTPUT_RECORDS, ciphertexts.len());
 
         let transaction = Self {
             network_id,
             transition,
             block_hash,
             inner_circuit_id,
-            ciphertexts,
             memo,
             proof,
         };
@@ -123,25 +117,9 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertext_ids().len() != N::NUM_OUTPUT_RECORDS || self.ciphertexts().len() != N::NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().len() != N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
-        }
-
-        // Returns `false` if the record ciphertexts do not match their corresponding ids.
-        for (ciphertext_id, ciphertext) in self.ciphertext_ids().iter().zip_eq(self.ciphertexts().iter()) {
-            match ciphertext.to_hash() {
-                Ok(id) => {
-                    if id != *ciphertext_id {
-                        eprintln!("Transaction contains mismatching ciphertext and ciphertext ID");
-                        return false;
-                    }
-                }
-                Err(error) => {
-                    eprintln!("Unable to construct the record ciphertext ID - {}", error);
-                    return false;
-                }
-            }
         }
 
         // Returns `false` if the transaction proof is invalid.
@@ -185,9 +163,9 @@ impl<N: Network> Transaction<N> {
         self.transition.commitments()
     }
 
-    /// Returns the ciphertext IDs.
-    pub fn ciphertext_ids(&self) -> &[N::CiphertextID] {
-        self.transition.ciphertext_ids()
+    /// Returns the output record ciphertexts.
+    pub fn ciphertexts(&self) -> &[RecordCiphertext<N>] {
+        &self.transition.ciphertexts()
     }
 
     /// Returns the value balance.
@@ -210,11 +188,6 @@ impl<N: Network> Transaction<N> {
         &self.transition
     }
 
-    /// Returns the output record ciphertexts.
-    pub fn ciphertexts(&self) -> &[RecordCiphertext<N>] {
-        &self.ciphertexts
-    }
-
     /// Returns a reference to the memo.
     pub fn memo(&self) -> &Memo<N> {
         &self.memo
@@ -223,6 +196,11 @@ impl<N: Network> Transaction<N> {
     /// Returns a reference to the proof of the transaction.
     pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
         &self.proof
+    }
+
+    /// Returns the ciphertext IDs.
+    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
+        self.transition.to_ciphertext_ids()
     }
 
     /// Transaction ID = Hash(serial numbers || commitments || ciphertext_ids || value balance)
@@ -238,9 +216,6 @@ impl<N: Network> ToBytes for Transaction<N> {
         self.transition.write_le(&mut writer)?;
         self.block_hash.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
-        for encrypted_record in &self.ciphertexts {
-            encrypted_record.write_le(&mut writer)?;
-        }
         self.memo.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
     }
@@ -256,26 +231,15 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the transaction metadata.
         let block_hash = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
-        // Read the encrypted records.
-        let mut ciphertexts = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        for _ in 0..N::NUM_OUTPUT_RECORDS {
-            ciphertexts.push(FromBytes::read_le(&mut reader)?);
-        }
         // Read the transaction memo.
         let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
         // Read the transaction proof.
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
-            network_id,
-            transition,
-            block_hash,
-            inner_circuit_id,
-            ciphertexts,
-            memo,
-            proof,
+        Ok(
+            Self::from(network_id, transition, block_hash, inner_circuit_id, memo, proof)
+                .expect("Failed to deserialize a transaction"),
         )
-        .expect("Failed to deserialize a transaction"))
     }
 }
 
@@ -292,14 +256,14 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, memo: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, memo: {:?}, proof: {:?} }}",
             self.network_id(),
-            self.serial_numbers(),
-            self.commitments(),
-            self.ciphertext_ids(),
-            self.value_balance(),
             self.block_hash(),
             self.inner_circuit_id(),
+            self.serial_numbers(),
+            self.commitments(),
+            self.to_ciphertext_ids().unwrap(),
+            self.value_balance(),
             self.memo(),
             self.proof(),
         )
