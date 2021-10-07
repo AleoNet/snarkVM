@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_utilities::ToBytes;
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
@@ -29,8 +28,6 @@ pub type CiphertextRandomizer<N> = <<N as Network>::AccountEncryptionScheme as E
 pub struct TransitionBuilder<N: Network> {
     /// The executable for a state transition.
     executable: OnceCell<Executable<N>>,
-    /// A list of requests for a state transition.
-    requests: Vec<Request<N>>,
     /// A list of given inputs for a state transition.
     inputs: Vec<Input<N>>,
     /// A list of expected outputs for a state transition.
@@ -48,7 +45,6 @@ impl<N: Network> TransitionBuilder<N> {
     pub fn new() -> Self {
         Self {
             executable: OnceCell::new(),
-            requests: Vec::with_capacity(N::NUM_INPUT_RECORDS),
             inputs: Vec::with_capacity(N::NUM_INPUT_RECORDS),
             outputs: Vec::with_capacity(N::NUM_OUTPUT_RECORDS),
             memo: Vec::with_capacity(N::MEMO_SIZE_IN_BYTES),
@@ -65,27 +61,6 @@ impl<N: Network> TransitionBuilder<N> {
         } else if self.executable.set(executable).is_err() {
             self.errors.push("Builder failed to set an executable".into());
         }
-        self
-    }
-
-    ///
-    /// Adds the given request into the builder.
-    ///
-    pub fn add_request(mut self, request: Request<N>) -> Self {
-        // Ensure there are no inputs assigned yet.
-        if !self.inputs.is_empty() {
-            self.errors.push("Builder cannot add new requests after inputs".into());
-        }
-
-        // Ensure there are no outputs assigned yet.
-        if !self.outputs.is_empty() {
-            self.errors.push("Builder cannot add new requests after outputs".into());
-        }
-
-        match self.requests.len() < N::NUM_INPUT_RECORDS {
-            true => self.requests.push(request),
-            false => self.errors.push("Builder exceeded maximum requests".into()),
-        };
         self
     }
 
@@ -194,6 +169,13 @@ impl<N: Network> TransitionBuilder<N> {
             .map(|input| input.serial_number().clone())
             .collect();
 
+        // Compute the signatures.
+        let signatures = inputs
+            .iter()
+            .take(N::NUM_INPUT_RECORDS)
+            .map(|input| input.signature().clone())
+            .collect();
+
         // Compute the output records.
         let output_records = outputs
             .iter()
@@ -252,28 +234,17 @@ impl<N: Network> TransitionBuilder<N> {
         // Construct the transition.
         let transition = Transition::<N>::new(serial_numbers, commitments, ciphertexts, value_balance)?;
 
-        // Compute the noop signatures.
-        let signature_message = transition.to_transaction_id()?.to_bytes_le()?;
-        let noop_signatures = inputs
-            .iter()
-            .take(N::NUM_INPUT_RECORDS)
-            .map(|input| match input.noop_private_key() {
-                Some(noop_private_key) => Ok(Some(noop_private_key.sign(&signature_message, rng)?)),
-                None => Ok(None),
-            })
-            .collect::<Result<Vec<Option<_>>>>()?;
-
         // Update the builder with the new inputs and outputs, now that all operations have succeeded.
         self.inputs = inputs;
         self.outputs = outputs;
 
         Ok(State {
             transition,
+            signatures,
             executable,
             input_records,
             output_records,
             ciphertext_randomizers,
-            noop_signatures,
             memo,
         })
     }

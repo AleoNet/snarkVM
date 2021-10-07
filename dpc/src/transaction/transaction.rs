@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, Address, AleoAmount, LedgerProof, Memo, Network, OuterPublicVariables, State, Transition, DPC};
+use crate::{record::*, Address, AleoAmount, LedgerProof, Memo, Network, OuterPublicVariables, State, Transition};
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -51,9 +51,7 @@ pub struct Transaction<N: Network> {
 impl<N: Network> Transaction<N> {
     /// Initializes a new coinbase transaction.
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
-        let state = State::new_coinbase(recipient, amount, rng)?;
-        let signatures = DPC::<N>::authorize(&vec![], &state, rng)?;
-        DPC::<N>::execute(signatures, &state, LedgerProof::default(), rng)
+        State::new_coinbase(recipient, amount, rng)?.execute(LedgerProof::default(), rng)
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.

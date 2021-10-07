@@ -117,8 +117,15 @@ mod transfer {
             let recipient = Account::new(rng).unwrap();
 
             // Generate sender input
-            let sender_input =
-                Input::new(&sender.private_key().to_compute_key().unwrap(), coinbase_record.clone()).unwrap();
+            let sender_input = Input::new(
+                &sender.private_key(),
+                coinbase_record.clone(),
+                *Testnet2::noop_circuit_id(),
+                Default::default(),
+                100,
+                rng,
+            )
+            .unwrap();
 
             let mut inputs = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
             let mut serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);

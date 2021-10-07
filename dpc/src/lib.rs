@@ -72,9 +72,6 @@ pub use block::*;
 pub mod circuits;
 pub use circuits::*;
 
-pub mod dpc;
-pub use dpc::*;
-
 pub mod errors;
 pub use errors::*;
 
@@ -107,7 +104,6 @@ pub mod prelude {
         account::*,
         block::*,
         circuits::*,
-        dpc::*,
         errors::*,
         ledger::*,
         program::*,
