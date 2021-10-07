@@ -790,7 +790,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let candidate_transaction_id = {
             let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-            let memo = UInt8::alloc_vec(&mut cs.ns(|| "Allocate memorandum"), &*private.kernel().memo())?;
             let network_id = UInt8::alloc_vec(
                 &mut cs.ns(|| "Allocate network id"),
                 &private.kernel().network_id().to_le_bytes(),
@@ -803,7 +802,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             message.extend_from_slice(&output_commitments_bytes);
             message.extend_from_slice(&ciphertext_ids_bytes);
             message.extend_from_slice(&candidate_value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
-            message.extend_from_slice(&memo);
 
             let candidate_transaction_id = transaction_id_crh
                 .check_evaluation_gadget(&mut cs.ns(|| "Compute the transaction ID"), message.clone())?;

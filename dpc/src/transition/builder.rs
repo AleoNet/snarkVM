@@ -226,7 +226,7 @@ impl<N: Network> TransitionBuilder<N> {
         let memo = Memo::new(&memo_bytes)?;
 
         // Construct the transaction kernel.
-        let kernel = TransactionKernel::<N>::new(serial_numbers, commitments, ciphertext_ids, value_balance, memo)?;
+        let kernel = TransactionKernel::<N>::new(serial_numbers, commitments, ciphertext_ids, value_balance)?;
 
         // Compute the noop signatures.
         let signature_message = kernel.to_transaction_id()?.to_bytes_le()?;
@@ -251,6 +251,7 @@ impl<N: Network> TransitionBuilder<N> {
             ciphertexts,
             ciphertext_randomizers,
             noop_signatures,
+            memo,
         })
     }
 

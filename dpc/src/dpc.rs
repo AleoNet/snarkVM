@@ -102,6 +102,7 @@ impl<N: Network> DPC<N> {
             block_hash,
             *N::inner_circuit_id(),
             transition.ciphertexts.clone(),
+            transition.memo().clone(),
             transaction_proof,
         )
     }

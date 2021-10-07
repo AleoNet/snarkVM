@@ -53,6 +53,8 @@ pub struct Transaction<N: Network> {
     inner_circuit_id: N::InnerCircuitID,
     /// The ciphertexts of the output records.
     ciphertexts: Vec<RecordCiphertext<N>>,
+    /// Publicly-visible data associated with the transaction.
+    memo: Memo<N>,
     #[derivative(PartialEq = "ignore")]
     /// Zero-knowledge proof attesting to the validity of the transaction.
     proof: <N::OuterSNARK as SNARK>::Proof,
@@ -72,6 +74,7 @@ impl<N: Network> Transaction<N> {
         block_hash: N::BlockHash,
         inner_circuit_id: N::InnerCircuitID,
         ciphertexts: Vec<RecordCiphertext<N>>,
+        memo: Memo<N>,
         proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
         assert!(kernel.is_valid());
@@ -82,6 +85,7 @@ impl<N: Network> Transaction<N> {
             block_hash,
             inner_circuit_id,
             ciphertexts,
+            memo,
             proof,
         };
 
@@ -192,11 +196,6 @@ impl<N: Network> Transaction<N> {
         self.kernel.value_balance()
     }
 
-    /// Returns the memo.
-    pub fn memo(&self) -> &Memo<N> {
-        self.kernel.memo()
-    }
-
     /// Returns the block hash.
     pub fn block_hash(&self) -> N::BlockHash {
         self.block_hash
@@ -217,12 +216,17 @@ impl<N: Network> Transaction<N> {
         &self.ciphertexts
     }
 
+    /// Returns a reference to the memo.
+    pub fn memo(&self) -> &Memo<N> {
+        &self.memo
+    }
+
     /// Returns a reference to the proof of the transaction.
     pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
         &self.proof
     }
 
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance || memo)
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance)
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         self.kernel.to_transaction_id()
     }
@@ -237,6 +241,7 @@ impl<N: Network> ToBytes for Transaction<N> {
         for encrypted_record in &self.ciphertexts {
             encrypted_record.write_le(&mut writer)?;
         }
+        self.memo.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
     }
 }
@@ -250,15 +255,17 @@ impl<N: Network> FromBytes for Transaction<N> {
         let block_hash = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
         // Read the encrypted records.
-        let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut ciphertexts = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         for _ in 0..N::NUM_OUTPUT_RECORDS {
-            encrypted_records.push(FromBytes::read_le(&mut reader)?);
+            ciphertexts.push(FromBytes::read_le(&mut reader)?);
         }
+        // Read the transaction memo.
+        let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
         // Read the transaction proof.
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
         Ok(
-            Self::from(kernel, block_hash, inner_circuit_id, encrypted_records, proof)
+            Self::from(kernel, block_hash, inner_circuit_id, ciphertexts, memo, proof)
                 .expect("Failed to deserialize a transaction"),
         )
     }
@@ -277,15 +284,15 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, memo: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, block_hash: {:?}, inner_circuit_id: {:?},  memo: {:?}, proof: {:?} }}",
             self.network_id(),
             self.serial_numbers(),
             self.commitments(),
             self.ciphertext_ids(),
             self.value_balance(),
-            self.memo(),
             self.block_hash(),
             self.inner_circuit_id(),
+            self.memo(),
             self.proof(),
         )
     }

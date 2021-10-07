@@ -42,8 +42,6 @@ pub struct TransactionKernel<N: Network> {
     ciphertext_ids: Vec<N::CiphertextID>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
-    /// Publicly-visible data associated with the transaction.
-    memo: Memo<N>,
 }
 
 impl<N: Network> TransactionKernel<N> {
@@ -54,7 +52,6 @@ impl<N: Network> TransactionKernel<N> {
         commitments: Vec<N::Commitment>,
         ciphertext_ids: Vec<N::CiphertextID>,
         value_balance: AleoAmount,
-        memo: Memo<N>,
     ) -> Result<Self> {
         // Construct the transaction kernel.
         let kernel = Self {
@@ -63,7 +60,6 @@ impl<N: Network> TransactionKernel<N> {
             commitments,
             ciphertext_ids,
             value_balance,
-            memo,
         };
 
         // Ensure the transaction kernel is well-formed.
@@ -118,12 +114,7 @@ impl<N: Network> TransactionKernel<N> {
         &self.value_balance
     }
 
-    /// Returns a reference to the memo.
-    pub fn memo(&self) -> &Memo<N> {
-        &self.memo
-    }
-
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance || memo)
+    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance)
     #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         Ok(N::transaction_id_crh().hash(&self.to_bytes_le()?)?)
@@ -148,8 +139,7 @@ impl<N: Network> ToBytes for TransactionKernel<N> {
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
         self.ciphertext_ids.write_le(&mut writer)?;
-        self.value_balance.write_le(&mut writer)?;
-        self.memo.write_le(&mut writer)
+        self.value_balance.write_le(&mut writer)
     }
 }
 
@@ -185,11 +175,8 @@ impl<N: Network> FromBytes for TransactionKernel<N> {
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::new(serial_numbers, commitments, ciphertext_ids, value_balance, memo)
-                .expect("Failed to initialize a transaction kernel"),
-        )
+        Ok(Self::new(serial_numbers, commitments, ciphertext_ids, value_balance)
+            .expect("Failed to initialize a transaction kernel"))
     }
 }

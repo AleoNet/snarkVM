@@ -35,6 +35,7 @@ pub struct StateTransition<N: Network> {
     pub(crate) ciphertexts: Vec<RecordCiphertext<N>>,
     pub(crate) ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
     pub(super) noop_signatures: Vec<Option<N::AccountSignature>>,
+    pub(super) memo: Memo<N>,
 }
 
 impl<N: Network> StateTransition<N> {
@@ -121,6 +122,11 @@ impl<N: Network> StateTransition<N> {
     /// Returns a reference to the noop signatures.
     pub fn noop_signatures(&self) -> &Vec<Option<N::AccountSignature>> {
         &self.noop_signatures
+    }
+
+    /// Returns a reference to the memo.
+    pub fn memo(&self) -> &Memo<N> {
+        &self.memo
     }
 }
 

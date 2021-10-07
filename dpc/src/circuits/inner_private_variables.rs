@@ -18,7 +18,6 @@ use crate::{
     AleoAmount,
     CircuitType,
     LedgerProof,
-    Memo,
     Network,
     ProgramExecutable,
     Record,
@@ -54,7 +53,6 @@ impl<N: Network> InnerPrivateVariables<N> {
                 vec![N::Commitment::default(); N::NUM_OUTPUT_RECORDS],
                 vec![N::CiphertextID::default(); N::NUM_OUTPUT_RECORDS],
                 AleoAmount::ZERO,
-                Memo::default(),
             )
             .expect("Failed to instantiate a blank transaction kernel"),
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
