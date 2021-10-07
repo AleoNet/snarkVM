@@ -25,7 +25,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{Fp256, One, PrimeField, Zero};
 use snarkvm_gadgets::{
-    bits::{ToBitsBEGadget, ToBytesGadget},
+    bits::{ToBitsBEGadget, ToBytesLEGadget},
     boolean::Boolean,
     curves::edwards_bls12::EdwardsBls12Gadget,
     fields::{AllocatedFp, FpGadget},
@@ -504,15 +504,15 @@ impl FromBitsBEGadget for EdwardsGroupType {
     }
 }
 
-impl ToBytesGadget<Fq> for EdwardsGroupType {
-    fn to_bytes<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+impl ToBytesLEGadget<Fq> for EdwardsGroupType {
+    fn to_bytes_le<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let self_gadget = self.allocated(&mut cs)?;
-        self_gadget.to_bytes(cs)
+        self_gadget.to_bytes_le(cs)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le_strict<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let self_gadget = self.allocated(&mut cs)?;
-        self_gadget.to_bytes_strict(cs)
+        self_gadget.to_bytes_le_strict(cs)
     }
 }
 

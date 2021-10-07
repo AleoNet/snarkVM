@@ -51,9 +51,9 @@ pub fn group_test<F: Field, G: Group, GG: GroupGadget<G, F>, CS: ConstraintSyste
     let b_b = b.add(cs.ns(|| "b + b"), &b).unwrap();
     assert_eq!(b2, b_b);
 
-    let _ = a.to_bytes(&mut cs.ns(|| "ToBytes")).unwrap();
-    let _ = a.to_bytes_strict(&mut cs.ns(|| "ToBytes Strict")).unwrap();
+    let _ = a.to_bytes_le(&mut cs.ns(|| "ToBytes")).unwrap();
+    let _ = a.to_bytes_le_strict(&mut cs.ns(|| "ToBytes Strict")).unwrap();
 
-    let _ = b.to_bytes(&mut cs.ns(|| "b ToBytes")).unwrap();
-    let _ = b.to_bytes_strict(&mut cs.ns(|| "b ToBytes Strict")).unwrap();
+    let _ = b.to_bytes_le(&mut cs.ns(|| "b ToBytes")).unwrap();
+    let _ = b.to_bytes_le_strict(&mut cs.ns(|| "b ToBytes Strict")).unwrap();
 }

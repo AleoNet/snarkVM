@@ -33,7 +33,7 @@ use snarkvm_gadgets::{
     Integer as IntegerGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
-    ToBytesGadget,
+    ToBytesLEGadget,
 };
 use snarkvm_ir::{Integer as IrInteger, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -386,14 +386,14 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Integer {
     }
 }
 
-impl<F: PrimeField> ToBytesGadget<F> for Integer {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+impl<F: PrimeField> ToBytesLEGadget<F> for Integer {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let a = self;
-        match_integer!(a => a.to_bytes(cs))
+        match_integer!(a => a.to_bytes_le(cs))
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let a = self;
-        match_integer!(a => a.to_bytes_strict(cs))
+        match_integer!(a => a.to_bytes_le_strict(cs))
     }
 }

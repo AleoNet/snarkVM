@@ -44,9 +44,9 @@ macro_rules! to_bits_be_int_impl {
 
 macro_rules! to_bytes_int_impl {
     ($name: ident, $size: expr) => {
-        impl<F: Field> ToBytesGadget<F> for $name {
+        impl<F: Field> ToBytesLEGadget<F> for $name {
             #[inline]
-            fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+            fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
                 // 128 / 8 = 16, 64 / 8 = 8, 32 / 8 = 4, 16 / 8 = 2, 8 / 8 = 1
                 const BYTES_SIZE: usize = $size / 8;
 
@@ -55,13 +55,13 @@ macro_rules! to_bytes_int_impl {
                     val.write_le(bytes.as_mut()).unwrap();
                     bytes
                 }) {
-                    Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
-                    None => [None, None, None, None],
+                    Some(chunks) => chunks.to_vec().iter().map(|item| Some(item.clone())).collect::<Vec<Option<u8>>>(),
+                    None => vec![None, None, None, None],
                 };
 
                 let bits = self.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
                 let bytes = bits
-                    .chunks(8)
+                    .chunks(8) // Does this need to be BYTES_SIZE?
                     .into_iter()
                     .zip(value_chunks.iter())
                     .map(|(chunk8, value)| UInt8 {
@@ -75,8 +75,8 @@ macro_rules! to_bytes_int_impl {
                 Ok(bytes)
             }
 
-            fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                self.to_bytes(cs)
+            fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                self.to_bytes_le(cs)
             }
         }
     };

@@ -21,13 +21,13 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBytesLEGadget},
     traits::alloc::{AllocBytesGadget, AllocGadget},
     FromFieldElementsGadget,
 };
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
-    type VerificationKeyGadget: AllocGadget<N::VerifyingKey, F> + AllocBytesGadget<Vec<u8>, F> + ToBytesGadget<F>;
+    type VerificationKeyGadget: AllocGadget<N::VerifyingKey, F> + AllocBytesGadget<Vec<u8>, F> + ToBytesLEGadget<F>;
     type ProofGadget: AllocGadget<N::Proof, F> + AllocBytesGadget<Vec<u8>, F>;
     type Input: ToBitsBEGadget<F> + Clone + ?Sized;
 
@@ -44,7 +44,7 @@ pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, CF> + Clone;
-    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + ToBytesGadget<CF> + Clone;
+    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + ToBytesLEGadget<CF> + Clone;
     type InputVar: AllocGadget<Vec<F>, CF> + Clone + FromFieldElementsGadget<F, CF>;
     type ProofVar: AllocGadget<S::Proof, CF> + Clone;
 

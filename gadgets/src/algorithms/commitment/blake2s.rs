@@ -22,9 +22,9 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
     algorithms::prf::{blake2s_gadget, Blake2sOutputGadget},
-    bits::ToBytesGadget,
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget},
+    ToBytesLEGadget,
 };
 
 #[derive(Clone)]
@@ -51,7 +51,7 @@ impl<F: PrimeField> CommitmentGadget<Blake2sCommitment, F> for Blake2sCommitment
             .into_iter()
             .enumerate()
         {
-            result.extend_from_slice(&int.to_bytes(&mut cs.ns(|| format!("to_bytes_{}", i)))?);
+            result.extend_from_slice(&int.to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?);
         }
         Ok(Blake2sOutputGadget(result))
     }

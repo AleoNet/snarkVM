@@ -21,7 +21,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBytesGadget},
+    bits::{Boolean, FromBitsLEGadget, ToBytesLEGadget},
     integers::uint::{UInt, UInt32, UInt8},
     traits::{
         algorithms::PRFGadget,
@@ -420,15 +420,15 @@ impl<F: PrimeField> CondSelectGadget<F> for Blake2sOutputGadget {
     }
 }
 
-impl<F: PrimeField> ToBytesGadget<F> for Blake2sOutputGadget {
+impl<F: PrimeField> ToBytesLEGadget<F> for Blake2sOutputGadget {
     #[inline]
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         Ok(self.0.clone())
     }
 
     #[inline]
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_le(cs)
     }
 }
 
@@ -482,7 +482,7 @@ impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
             .into_iter()
             .enumerate()
         {
-            let chunk = int.to_bytes(&mut cs.ns(|| format!("to_bytes_{}", i)))?;
+            let chunk = int.to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?;
             result.extend_from_slice(&chunk);
         }
         Ok(Blake2sOutputGadget(result))

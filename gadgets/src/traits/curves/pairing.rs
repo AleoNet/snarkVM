@@ -21,15 +21,15 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::ToBytesGadget,
+    bits::ToBytesLEGadget,
     traits::{alloc::AllocGadget, curves::GroupGadget, fields::FieldGadget},
 };
 
 pub trait PairingGadget<Pairing: PairingEngine, F: Field> {
     type G1Gadget: GroupGadget<Pairing::G1Projective, F>;
     type G2Gadget: GroupGadget<Pairing::G2Projective, F>;
-    type G1PreparedGadget: ToBytesGadget<F> + Clone + Debug;
-    type G2PreparedGadget: ToBytesGadget<F>
+    type G1PreparedGadget: ToBytesLEGadget<F> + Clone + Debug;
+    type G2PreparedGadget: ToBytesLEGadget<F>
         + AllocGadget<<Pairing::G2Affine as PairingCurve>::Prepared, F>
         + Clone
         + Debug;

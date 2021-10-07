@@ -25,7 +25,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
@@ -1341,19 +1341,19 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> To
     }
 }
 
-impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBytesGadget<F>
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBytesLEGadget<F>
     for AffineGadget<P, F, FG>
 {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut x_bytes = self.x.to_bytes(cs.ns(|| "x"))?;
-        let y_bytes = self.y.to_bytes(cs.ns(|| "y"))?;
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut x_bytes = self.x.to_bytes_le(cs.ns(|| "x"))?;
+        let y_bytes = self.y.to_bytes_le(cs.ns(|| "y"))?;
         x_bytes.extend_from_slice(&y_bytes);
         Ok(x_bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut x_bytes = self.x.to_bytes_strict(cs.ns(|| "x"))?;
-        let y_bytes = self.y.to_bytes_strict(cs.ns(|| "y"))?;
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut x_bytes = self.x.to_bytes_le_strict(cs.ns(|| "x"))?;
+        let y_bytes = self.y.to_bytes_le_strict(cs.ns(|| "y"))?;
         x_bytes.extend_from_slice(&y_bytes);
 
         Ok(x_bytes)

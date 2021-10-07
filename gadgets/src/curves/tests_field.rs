@@ -181,8 +181,8 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     let negone: NativeF = UniformRand::rand(&mut thread_rng());
 
     let n = FG::alloc(&mut cs.ns(|| "alloc new var"), || Ok(negone)).unwrap();
-    let _ = n.to_bytes(&mut cs.ns(|| "ToBytes")).unwrap();
-    let _ = n.to_bytes_strict(&mut cs.ns(|| "ToBytes Strict")).unwrap();
+    let _ = n.to_bytes_le(&mut cs.ns(|| "ToBytes")).unwrap();
+    let _ = n.to_bytes_le_strict(&mut cs.ns(|| "ToBytes Strict")).unwrap();
 
     let ab_false = a
         .conditionally_add_constant(

@@ -18,7 +18,6 @@ use super::*;
 use snarkvm_gadgets::{
     integers::{int::*, uint::*},
     FromBitsLEGadget,
-    Integer as IntegerTrait,
     ToBitsBEGadget,
     ToBitsLEGadget,
 };
@@ -260,7 +259,7 @@ from_bits_impl!(
     "i8_from_bits_le",
     8,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::I8(Int8::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::I8(Int8::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -269,7 +268,7 @@ from_bits_impl!(
     "i16_from_bits_le",
     16,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -278,7 +277,7 @@ from_bits_impl!(
     "i32_from_bits_le",
     32,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::I32(Int32::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::I32(Int32::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -287,7 +286,7 @@ from_bits_impl!(
     "i64_from_bits_le",
     64,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::I64(Int64::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::I64(Int64::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -296,7 +295,7 @@ from_bits_impl!(
     "i128_from_bits_le",
     128,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::I128(Int128::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::I128(Int128::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -305,7 +304,7 @@ from_bits_impl!(
     "u8_from_bits_le",
     8,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::U8(UInt8::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::U8(UInt8::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -314,7 +313,7 @@ from_bits_impl!(
     "u16_from_bits_le",
     16,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::U16(UInt16::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::U16(UInt16::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -323,7 +322,7 @@ from_bits_impl!(
     "u32_from_bits_le",
     32,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::U32(UInt32::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::U32(UInt32::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -332,7 +331,7 @@ from_bits_impl!(
     "u64_from_bits_le",
     64,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::U64(UInt64::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::U64(UInt64::from_bits_le(bits)?)))
     }
 );
 from_bits_impl!(
@@ -341,6 +340,6 @@ from_bits_impl!(
     "u128_from_bits_le",
     128,
     |bits: &[Boolean]| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Integer(Integer::U128(UInt128::from_bits_le(bits))))
+        Ok(ConstrainedValue::Integer(Integer::U128(UInt128::from_bits_le(bits)?)))
     }
 );

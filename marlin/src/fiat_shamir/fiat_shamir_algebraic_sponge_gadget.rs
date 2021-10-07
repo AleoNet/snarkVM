@@ -27,9 +27,9 @@ use snarkvm_gadgets::{
         NonNativeFieldVar,
     },
     overhead,
-    traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
+    traits::{alloc::AllocGadget, fields::FieldGadget},
 };
-use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 
 use crate::fiat_shamir::{
     traits::{AlgebraicSpongeVar, FiatShamirRngVar},
@@ -540,8 +540,11 @@ mod tests {
         let mut absorbed_rand_byte_elems_gadgets = Vec::<Vec<UInt8>>::new();
         for absorbed_rand_byte_elem in absorbed_rand_byte_elems.iter() {
             let mut byte_gadget = Vec::<UInt8>::new();
-            for byte in absorbed_rand_byte_elem.iter() {
-                byte_gadget.push(UInt8::constant(*byte));
+            for (i, byte) in absorbed_rand_byte_elem.iter().enumerate() {
+                let byte: Option<u8> = Into::into(*byte);
+                let alloc_byte =
+                    UInt8::alloc(&mut cs.ns(|| format!("byte_{}", i)), || byte.get()).expect("failed to alloc byte");
+                byte_gadget.push(alloc_byte);
             }
             absorbed_rand_byte_elems_gadgets.push(byte_gadget);
         }

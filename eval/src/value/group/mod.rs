@@ -18,7 +18,7 @@ use crate::errors::GroupError;
 
 use snarkvm_fields::{Field, One};
 use snarkvm_gadgets::{
-    bits::{ToBitsBEGadget, ToBytesGadget},
+    bits::{ToBitsBEGadget, ToBytesLEGadget},
     traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
@@ -49,7 +49,7 @@ pub trait GroupType<F: Field>:
     + CondSelectGadget<F>
     + ToBitsLEGadget<F>
     + ToBitsBEGadget<F>
-    + ToBytesGadget<F>
+    + ToBytesLEGadget<F>
     + FromBitsBEGadget
     + FromBitsLEGadget
 {

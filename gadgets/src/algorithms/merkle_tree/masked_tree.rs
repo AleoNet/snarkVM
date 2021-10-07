@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{bits::ToBytesGadget, integers::uint::UInt8, traits::algorithms::MaskedCRHGadget};
+use crate::{bits::ToBytesLEGadget, integers::uint::UInt8, traits::algorithms::MaskedCRHGadget};
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -22,7 +22,13 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 /// Computes a root given `leaves`. Uses a nonce to mask the computation,
 /// to ensure amortization resistance. Assumes the number of leaves is
 /// for a full tree, so it hashes the leaves until there is only one element.
-pub fn compute_root<H: CRH, HG: MaskedCRHGadget<H, F>, F: PrimeField, TB: ToBytesGadget<F>, CS: ConstraintSystem<F>>(
+pub fn compute_root<
+    H: CRH,
+    HG: MaskedCRHGadget<H, F>,
+    F: PrimeField,
+    TB: ToBytesLEGadget<F>,
+    CS: ConstraintSystem<F>,
+>(
     mut cs: CS,
     parameters: &HG::ParametersGadget,
     mask_parameters: &HG::ParametersGadget,
@@ -31,7 +37,7 @@ pub fn compute_root<H: CRH, HG: MaskedCRHGadget<H, F>, F: PrimeField, TB: ToByte
 ) -> Result<HG::OutputGadget, SynthesisError> {
     // Mask is assumed to be derived from the nonce and the root, which will be checked by the
     // verifier.
-    let mask_bytes = mask.to_bytes(cs.ns(|| "mask to bytes"))?;
+    let mask_bytes = mask.to_bytes_le(cs.ns(|| "mask to bytes"))?;
 
     // Assume the leaves are already hashed.
     let mut current_leaves = leaves.to_vec();
@@ -74,10 +80,10 @@ where
     CS: ConstraintSystem<F>,
     H: CRH,
     HG: MaskedCRHGadget<H, F>,
-    TB: ToBytesGadget<F>,
+    TB: ToBytesLEGadget<F>,
 {
-    let left_bytes = left_child.to_bytes(&mut cs.ns(|| "left_to_bytes"))?;
-    let right_bytes = right_child.to_bytes(&mut cs.ns(|| "right_to_bytes"))?;
+    let left_bytes = left_child.to_bytes_le(&mut cs.ns(|| "left_to_bytes"))?;
+    let right_bytes = right_child.to_bytes_le(&mut cs.ns(|| "right_to_bytes"))?;
     let bytes = [left_bytes, right_bytes].concat();
 
     HG::check_evaluation_gadget_masked(cs, parameters, bytes, mask_parameters, mask)

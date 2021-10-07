@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::{algorithms::prf::Blake2sGadget, PRFGadget, ToBytesGadget};
+use snarkvm_gadgets::{algorithms::prf::Blake2sGadget, PRFGadget, ToBytesLEGadget};
 
 use super::*;
 
@@ -33,7 +33,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
 
         Ok(ConstrainedValue::Array(
             digest
-                .to_bytes(&mut cs)
+                .to_bytes_le(&mut cs)
                 .map_err(|e| ValueError::cannot_enforce("Vec<UInt8> ToBytes", e))?
                 .into_iter()
                 .map(Integer::U8)

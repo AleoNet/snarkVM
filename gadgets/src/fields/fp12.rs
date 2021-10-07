@@ -29,7 +29,7 @@ use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -706,21 +706,21 @@ where
     }
 }
 
-impl<P, F: PrimeField> ToBytesGadget<F> for Fp12Gadget<P, F>
+impl<P, F: PrimeField> ToBytesLEGadget<F> for Fp12Gadget<P, F>
 where
     P: Fp12Parameters,
     <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
 {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut c0 = self.c0.to_bytes(cs.ns(|| "c0"))?;
-        let mut c1 = self.c1.to_bytes(cs.ns(|| "c1"))?;
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut c0 = self.c0.to_bytes_le(cs.ns(|| "c0"))?;
+        let mut c1 = self.c1.to_bytes_le(cs.ns(|| "c1"))?;
         c0.append(&mut c1);
         Ok(c0)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut c0 = self.c0.to_bytes_strict(cs.ns(|| "c0"))?;
-        let mut c1 = self.c1.to_bytes_strict(cs.ns(|| "c1"))?;
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut c0 = self.c0.to_bytes_le_strict(cs.ns(|| "c0"))?;
+        let mut c1 = self.c1.to_bytes_le_strict(cs.ns(|| "c1"))?;
         c0.append(&mut c1);
         Ok(c0)
     }

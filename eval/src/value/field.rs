@@ -16,7 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
-    bits::{FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBytesGadget},
+    bits::{FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBytesLEGadget},
     boolean::Boolean,
     fields::FpGadget,
     integers::uint::UInt8,
@@ -291,13 +291,13 @@ impl<F: PrimeField> FromBitsBEGadget for FieldType<F> {
     }
 }
 
-impl<F: PrimeField> ToBytesGadget<F> for FieldType<F> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes(cs)
+impl<F: PrimeField> ToBytesLEGadget<F> for FieldType<F> {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_le(cs)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes_strict(cs)
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_le_strict(cs)
     }
 }
 

@@ -19,7 +19,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
 
 use crate::{
-    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::integers::Integer,
 };

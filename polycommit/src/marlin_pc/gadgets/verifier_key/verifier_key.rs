@@ -19,7 +19,7 @@ use core::borrow::Borrow;
 use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    bits::{Boolean, ToBytesGadget},
+    bits::{Boolean, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -302,39 +302,39 @@ where
     }
 }
 
-impl<TargetCurve, BaseCurve, PG> ToBytesGadget<<BaseCurve as PairingEngine>::Fr>
+impl<TargetCurve, BaseCurve, PG> ToBytesLEGadget<<BaseCurve as PairingEngine>::Fr>
     for VerifierKeyVar<TargetCurve, BaseCurve, PG>
 where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
-    fn to_bytes<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+    fn to_bytes_le<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
         mut cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
         let mut bytes = Vec::new();
 
-        bytes.extend_from_slice(&self.g.to_bytes(cs.ns(|| "g_to_bytes"))?);
-        bytes.extend_from_slice(&self.h.to_bytes(cs.ns(|| "h_to_bytes"))?);
-        bytes.extend_from_slice(&self.beta_h.to_bytes(cs.ns(|| "beta_h_to_bytes"))?);
+        bytes.extend_from_slice(&self.g.to_bytes_le(cs.ns(|| "g_to_bytes"))?);
+        bytes.extend_from_slice(&self.h.to_bytes_le(cs.ns(|| "h_to_bytes"))?);
+        bytes.extend_from_slice(&self.beta_h.to_bytes_le(cs.ns(|| "beta_h_to_bytes"))?);
 
         if self.degree_bounds_and_shift_powers.is_some() {
             let degree_bounds_and_shift_powers = self.degree_bounds_and_shift_powers.as_ref().unwrap();
             for (i, (_, degree_bound, shift_power)) in degree_bounds_and_shift_powers.iter().enumerate() {
-                bytes.extend_from_slice(&degree_bound.to_bytes(cs.ns(|| format!("degree_bound_to_bytes_{}", i)))?);
-                bytes.extend_from_slice(&shift_power.to_bytes(cs.ns(|| format!("shift_power_to_bytes_{}", i)))?);
+                bytes.extend_from_slice(&degree_bound.to_bytes_le(cs.ns(|| format!("degree_bound_to_bytes_{}", i)))?);
+                bytes.extend_from_slice(&shift_power.to_bytes_le(cs.ns(|| format!("shift_power_to_bytes_{}", i)))?);
             }
         }
 
         Ok(bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+    fn to_bytes_le_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
         cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+        self.to_bytes_le(cs)
     }
 }
 
