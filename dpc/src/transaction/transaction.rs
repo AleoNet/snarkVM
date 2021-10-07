@@ -219,7 +219,8 @@ impl<N: Network> Transaction<N> {
             .map(|e| Ok(e.to_hash()?))
             .collect::<Result<Vec<_>>>()?)
     }
-/// Returns the records that can be decrypted with the given account view key.
+
+    /// Returns the records that can be decrypted with the given account view key.
     pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Option<Vec<Record<N>>> {
         self.encrypted_records
             .iter()
