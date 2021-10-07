@@ -22,7 +22,7 @@ use crate::{
     Memo,
     Network,
     OuterPublicVariables,
-    StateTransition,
+    State,
     TransactionKernel,
     DPC,
 };
@@ -63,9 +63,9 @@ pub struct Transaction<N: Network> {
 impl<N: Network> Transaction<N> {
     /// Initializes a new coinbase transaction.
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
-        let transition = StateTransition::new_coinbase(recipient, amount, rng)?;
-        let signatures = DPC::<N>::authorize(&vec![], &transition, rng)?;
-        DPC::<N>::execute(signatures, &transition, LedgerProof::default(), rng)
+        let state = State::new_coinbase(recipient, amount, rng)?;
+        let signatures = DPC::<N>::authorize(&vec![], &state, rng)?;
+        DPC::<N>::execute(signatures, &state, LedgerProof::default(), rng)
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.

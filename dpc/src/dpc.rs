@@ -28,18 +28,18 @@ impl<N: Network> DPC<N> {
     /// Returns an authorization to execute a state transition.
     pub fn authorize<R: Rng + CryptoRng>(
         private_keys: &Vec<PrivateKey<N>>,
-        transition: &StateTransition<N>,
+        state: &State<N>,
         rng: &mut R,
     ) -> Result<Vec<N::AccountSignature>> {
         // Keep a cursor for the private keys.
         let mut index = 0;
 
         // Construct the signature message.
-        let signature_message = transition.kernel().to_transaction_id()?.to_bytes_le()?;
+        let signature_message = state.kernel().to_transaction_id()?.to_bytes_le()?;
 
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for noop_signature in transition.noop_signatures().iter().take(N::NUM_INPUT_RECORDS) {
+        for noop_signature in state.noop_signatures().iter().take(N::NUM_INPUT_RECORDS) {
             // Sign the signature message.
             signatures.push(match noop_signature {
                 Some(noop_signature) => noop_signature.clone(),
@@ -59,7 +59,7 @@ impl<N: Network> DPC<N> {
     /// Returns a transaction by executing an authorized state transition.
     pub fn execute<R: Rng + CryptoRng>(
         signatures: Vec<N::AccountSignature>,
-        transition: &StateTransition<N>,
+        state: &State<N>,
         ledger_proof: LedgerProof<N>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
@@ -71,14 +71,14 @@ impl<N: Network> DPC<N> {
         let block_hash = ledger_proof.block_hash();
 
         // Generate the transaction ID.
-        let transaction_id = transition.kernel().to_transaction_id()?;
+        let transaction_id = state.kernel().to_transaction_id()?;
 
         // Execute the program circuit.
-        let execution = transition.executable().execute(PublicVariables::new(transaction_id))?;
+        let execution = state.executable().execute(PublicVariables::new(transaction_id))?;
 
         // Construct the inner circuit public and private variables.
         let inner_public = InnerPublicVariables::new(transaction_id, block_hash, Some(execution.program_id))?;
-        let inner_private = InnerPrivateVariables::new(transition, ledger_proof, signatures)?;
+        let inner_private = InnerPrivateVariables::new(state, ledger_proof, signatures)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
@@ -98,11 +98,11 @@ impl<N: Network> DPC<N> {
         end_timer!(execution_timer);
 
         Transaction::from(
-            transition.kernel().clone(),
+            state.kernel().clone(),
             block_hash,
             *N::inner_circuit_id(),
-            transition.ciphertexts.clone(),
-            transition.memo().clone(),
+            state.ciphertexts.clone(),
+            state.memo().clone(),
             transaction_proof,
         )
     }

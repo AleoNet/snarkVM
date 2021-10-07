@@ -138,7 +138,7 @@ impl<N: Network> TransitionBuilder<N> {
     ///
     /// Finalizes the builder and returns a new instance of `State`.
     ///
-    pub fn build<R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<StateTransition<N>> {
+    pub fn build<R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<State<N>> {
         // Ensure there are no errors in the build process yet.
         if !self.errors.is_empty() {
             for error in &self.errors {
@@ -243,7 +243,7 @@ impl<N: Network> TransitionBuilder<N> {
         self.inputs = inputs;
         self.outputs = outputs;
 
-        Ok(StateTransition {
+        Ok(State {
             kernel,
             executable,
             input_records,

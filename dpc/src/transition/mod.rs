@@ -23,8 +23,8 @@ pub use input::*;
 pub mod output;
 pub use output::*;
 
-pub mod transition;
-pub use transition::*;
+pub mod state;
+pub use state::*;
 
 #[cfg(test)]
 mod tests;

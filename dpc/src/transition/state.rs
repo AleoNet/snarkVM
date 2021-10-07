@@ -26,7 +26,7 @@ use rand::{CryptoRng, Rng};
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
-pub struct StateTransition<N: Network> {
+pub struct State<N: Network> {
     pub(super) kernel: TransactionKernel<N>,
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub(super) executable: Executable<N>,
@@ -38,7 +38,7 @@ pub struct StateTransition<N: Network> {
     pub(super) memo: Memo<N>,
 }
 
-impl<N: Network> StateTransition<N> {
+impl<N: Network> State<N> {
     /// Returns a new state transition with no operations performed.
     pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         Ok(Self::builder().build(rng)?)

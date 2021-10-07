@@ -14,16 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    AleoAmount,
-    CircuitType,
-    LedgerProof,
-    Network,
-    ProgramExecutable,
-    Record,
-    StateTransition,
-    TransactionKernel,
-};
+use crate::{AleoAmount, CircuitType, LedgerProof, Network, ProgramExecutable, Record, State, TransactionKernel};
 use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
@@ -67,19 +58,15 @@ impl<N: Network> InnerPrivateVariables<N> {
         }
     }
 
-    pub fn new(
-        transition: &StateTransition<N>,
-        ledger_proof: LedgerProof<N>,
-        signatures: Vec<N::AccountSignature>,
-    ) -> Result<Self> {
+    pub fn new(state: &State<N>, ledger_proof: LedgerProof<N>, signatures: Vec<N::AccountSignature>) -> Result<Self> {
         Ok(Self {
-            kernel: transition.kernel().clone(),
-            input_records: transition.input_records().clone(),
+            kernel: state.kernel().clone(),
+            input_records: state.input_records().clone(),
             ledger_proof,
             signatures,
-            output_records: transition.output_records().clone(),
-            encrypted_record_randomizers: transition.ciphertext_randomizers.clone(),
-            circuit_type: transition.executable().circuit_type(),
+            output_records: state.output_records().clone(),
+            encrypted_record_randomizers: state.ciphertext_randomizers.clone(),
+            circuit_type: state.executable().circuit_type(),
         })
     }
 

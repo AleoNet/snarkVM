@@ -27,17 +27,17 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10);
-    let transition = StateTransition::builder()
+    let state = State::builder()
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
 
-    let signatures = DPC::<N>::authorize(&vec![], &transition, &mut rng).unwrap();
-    let transaction_id = transition.kernel().to_transaction_id().unwrap();
+    let signatures = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
+    let transaction_id = state.kernel().to_transaction_id().unwrap();
 
     // Execute the program circuit.
-    let execution = transition
+    let execution = state
         .executable()
         .execute(PublicVariables::new(transaction_id))
         .unwrap();
@@ -51,10 +51,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_public = InnerPublicVariables::new(
         transaction_id,
         ledger_proof.block_hash(),
-        Some(transition.executable().program_id()),
+        Some(state.executable().program_id()),
     )
     .unwrap();
-    let inner_private = InnerPrivateVariables::new(&transition, ledger_proof, signatures).unwrap();
+    let inner_private = InnerPrivateVariables::new(&state, ledger_proof, signatures).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();

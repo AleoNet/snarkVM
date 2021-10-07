@@ -71,8 +71,7 @@ mod coinbase {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 let account = Account::new(rng).unwrap();
-                let transition =
-                    StateTransition::new_coinbase(account.address, AleoAmount::from_bytes(123456), rng).unwrap();
+                let transition = State::new_coinbase(account.address, AleoAmount::from_bytes(123456), rng).unwrap();
                 let serial_numbers = transition.kernel().serial_numbers().clone();
 
                 (account, transition, serial_numbers)
@@ -103,8 +102,8 @@ mod transfer {
         let sender = Account::<Testnet2>::new(&mut thread_rng()).unwrap();
         let amount = AleoAmount::from_bytes(123456);
         let coinbase_record = {
-            let state_transition = StateTransition::new_coinbase(sender.address, amount, &mut thread_rng()).unwrap();
-            state_transition.output_records()[0].clone()
+            let state = State::new_coinbase(sender.address, amount, &mut thread_rng()).unwrap();
+            state.output_records()[0].clone()
         };
         assert_eq!(coinbase_record.owner(), sender.address);
         assert_eq!(coinbase_record.value() as i64, amount.0);
@@ -164,7 +163,7 @@ mod transfer {
             let rng = &mut ChaChaRng::seed_from_u64(seed);
             let recipient = Account::new(rng).unwrap();
 
-            let transition = StateTransition::new_transfer(
+            let state = State::new_transfer(
                 sender.private_key(),
                 &vec![coinbase_record],
                 recipient.address,
@@ -173,9 +172,9 @@ mod transfer {
                 rng,
             )
             .unwrap();
-            let serial_numbers = transition.kernel().serial_numbers().clone();
+            let serial_numbers = state.kernel().serial_numbers().clone();
 
-            (recipient, transition, serial_numbers)
+            (recipient, state, serial_numbers)
         };
 
         assert_eq!(expected_recipient.address, candidate_recipient.address);
