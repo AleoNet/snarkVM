@@ -47,7 +47,8 @@ macro_rules! to_bytes_int_impl {
         impl<F: Field> ToBytesGadget<F> for $name {
             #[inline]
             fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                const BYTES_SIZE: usize = if $size == 128 { 16 } else { 8 };
+                // 128 / 8 = 16, 64 / 8 = 8, 32 / 8 = 4, 16 / 8 = 2, 8 / 8 = 1
+                const BYTES_SIZE: usize = $size / 8;
 
                 let value_chunks = match self.value.map(|val| {
                     let mut bytes = [0u8; BYTES_SIZE];
@@ -57,16 +58,19 @@ macro_rules! to_bytes_int_impl {
                     Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
                     None => [None, None, None, None],
                 };
+
                 let bits = self.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
-                let mut bytes = Vec::with_capacity(bits.len() / 8);
-                for (chunk8, value) in bits.chunks(8).into_iter().zip(value_chunks.iter()) {
-                    let byte = UInt8 {
+                let bytes = bits
+                    .chunks(8)
+                    .into_iter()
+                    .zip(value_chunks.iter())
+                    .map(|(chunk8, value)| UInt8 {
                         bits: chunk8.to_vec(),
                         negated: false,
                         value: *value,
-                    };
-                    bytes.push(byte);
-                }
+                    })
+                    .collect::<Vec<UInt8>>();
+                assert_eq!(bytes.capacity(), 8);
 
                 Ok(bytes)
             }
@@ -80,8 +84,8 @@ macro_rules! to_bytes_int_impl {
 
 macro_rules! from_bits_le_int_impl {
     ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
-        impl<F: Field> FromBitsLEGadget<F> for $name {
-            fn from_bits_le(&self, bits: Vec<Boolean>) -> Result<$name, SynthesisError> {
+        impl FromBitsLEGadget for $name {
+            fn from_bits_le(bits: &[Boolean]) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
@@ -115,16 +119,58 @@ macro_rules! from_bits_le_int_impl {
 
                 Ok(Self {
                     value: value.map(|x| x as $type_),
-                    bits,
+                    bits: bits.to_vec(),
                 })
             }
 
-            fn from_bits_le_strict(&self, bits: Vec<Boolean>) -> Result<$name, SynthesisError> {
+            fn from_bits_le_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget>::from_bits_le(bits)
+            }
+        }
+    };
+    ($name: ident, $type_: ty, $size: expr) => {
+        impl FromBitsLEGadget for $name {
+            fn from_bits_le(bits: &[Boolean]) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
 
-                todo!()
+                let mut value = Some(0 as $type_);
+                for b in bits.iter().rev() {
+                    value.as_mut().map(|v| *v <<= 1);
+
+                    match *b {
+                        Boolean::Constant(b) => {
+                            if b {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                        }
+                        Boolean::Is(ref b) => match b.get_value() {
+                            Some(true) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(false) => {}
+                            None => value = None,
+                        },
+                        Boolean::Not(ref b) => match b.get_value() {
+                            Some(false) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(true) => {}
+                            None => value = None,
+                        },
+                    }
+                }
+
+                Ok(Self {
+                    value: value.map(|x| x as $type_),
+                    negated: false,
+                    bits: bits.to_vec(),
+                })
+            }
+
+            fn from_bits_le_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget>::from_bits_le(bits)
             }
         }
     };
@@ -132,8 +178,8 @@ macro_rules! from_bits_le_int_impl {
 
 macro_rules! from_bits_be_int_impl {
     ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
-        impl<F: Field> FromBitsBEGadget<F> for $name {
-            fn from_bits_be(&self, bits: Vec<Boolean>) -> Result<$name, SynthesisError> {
+        impl FromBitsBEGadget for $name {
+            fn from_bits_be(bits: &[Boolean]) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
@@ -167,16 +213,58 @@ macro_rules! from_bits_be_int_impl {
 
                 Ok(Self {
                     value: value.map(|x| x as $type_),
-                    bits,
+                    bits: bits.to_vec(),
                 })
             }
 
-            fn from_bits_be_strict(&self, bits: Vec<Boolean>) -> Result<$name, SynthesisError> {
+            fn from_bits_be_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+                <Self as FromBitsBEGadget>::from_bits_be(bits)
+            }
+        }
+    };
+    ($name: ident, $type_: ty, $size: expr) => {
+        impl FromBitsBEGadget for $name {
+            fn from_bits_be(bits: &[Boolean]) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
 
-                todo!()
+                let mut value = Some(0 as $type_);
+                for b in bits.iter() {
+                    value.as_mut().map(|v| *v <<= 1);
+
+                    match *b {
+                        Boolean::Constant(b) => {
+                            if b {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                        }
+                        Boolean::Is(ref b) => match b.get_value() {
+                            Some(true) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(false) => {}
+                            None => value = None,
+                        },
+                        Boolean::Not(ref b) => match b.get_value() {
+                            Some(false) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(true) => {}
+                            None => value = None,
+                        },
+                    }
+                }
+
+                Ok(Self {
+                    value: value.map(|x| x as $type_),
+                    negated: false,
+                    bits: bits.to_vec(),
+                })
+            }
+
+            fn from_bits_be_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+                <Self as FromBitsBEGadget>::from_bits_be(bits)
             }
         }
     };

@@ -24,6 +24,8 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         select::CondSelectGadget,
     },
+    FromBitsBEGadget,
+    FromBitsLEGadget,
     ToBitsLEGadget,
 };
 use snarkvm_ir::Group;
@@ -48,6 +50,8 @@ pub trait GroupType<F: Field>:
     + ToBitsLEGadget<F>
     + ToBitsBEGadget<F>
     + ToBytesGadget<F>
+    + FromBitsBEGadget
+    + FromBitsLEGadget
 {
     fn constant(value: &Group) -> Result<Self, GroupError>;
 

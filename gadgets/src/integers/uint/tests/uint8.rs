@@ -21,7 +21,7 @@ use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
 use crate::{
-    bits::Boolean,
+    bits::{Boolean, FromBitsLEGadget},
     integers::uint::{Sub, UInt, UInt8},
     traits::{alloc::AllocGadget, bits::Xor, integers::*},
 };
@@ -87,7 +87,7 @@ fn test_uint8_from_bits() {
     for _ in 0..1000 {
         let v = (0..8).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
 
-        let b = UInt8::from_bits_le(&v);
+        let b = UInt8::from_bits_le(&v).expect("failed to create UInt8 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().enumerate() {
             match *bit_gadget {

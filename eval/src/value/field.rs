@@ -16,7 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
-    bits::{ToBitsBEGadget, ToBytesGadget},
+    bits::{FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBytesGadget},
     boolean::Boolean,
     fields::FpGadget,
     integers::uint::UInt8,
@@ -261,6 +261,33 @@ impl<F: PrimeField> ToBitsBEGadget<F> for FieldType<F> {
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.0.to_bits_be_strict(cs)
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget for FieldType<F> {
+    fn from_bits_le(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
+        /* let big_int = BigInteger::from_bits(bits);
+
+        FieldType()*/
+        todo!()
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
+        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget for FieldType<F> {
+    fn from_bits_be(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
+        /* if bits.len() !=  {
+            return Err(SynthesisError::Unsatisfiable);
+        } */
+
+        todo!()
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
+        <Self as FromBitsBEGadget>::from_bits_be(bits)
     }
 }
 

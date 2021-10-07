@@ -37,6 +37,8 @@ use snarkvm_utilities::{
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
+        FromBitsBEGadget,
+        FromBitsLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
         ToBytesGadget,
@@ -533,6 +535,34 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
 
         Boolean::enforce_in_field_le::<F, _>(&mut cs, &bits)?;
         Ok(bits)
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget for AllocatedFp<F> {
+    fn from_bits_le(bits: &[Boolean]) -> Result<AllocatedFp<F>, SynthesisError> {
+        if bits.len() != F::Parameters::MODULUS_BITS as usize {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        todo!()
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<AllocatedFp<F>, SynthesisError> {
+        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget for AllocatedFp<F> {
+    fn from_bits_be(bits: &[Boolean]) -> Result<AllocatedFp<F>, SynthesisError> {
+        if bits.len() != F::Parameters::MODULUS_BITS as usize {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        todo!()
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<AllocatedFp<F>, SynthesisError> {
+        <Self as FromBitsBEGadget>::from_bits_be(bits)
     }
 }
 
@@ -1149,6 +1179,26 @@ impl<F: PrimeField> ToBitsLEGadget<F> for FpGadget<F> {
                 .collect::<Vec<_>>()),
             Self::Variable(v) => v.to_bits_le_strict(cs),
         }
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget for FpGadget<F> {
+    fn from_bits_le(bits: &[Boolean]) -> Result<FpGadget<F>, SynthesisError> {
+        todo!()
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<FpGadget<F>, SynthesisError> {
+        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget for FpGadget<F> {
+    fn from_bits_be(bits: &[Boolean]) -> Result<FpGadget<F>, SynthesisError> {
+        todo!()
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<FpGadget<F>, SynthesisError> {
+        <Self as FromBitsBEGadget>::from_bits_be(bits)
     }
 }
 
