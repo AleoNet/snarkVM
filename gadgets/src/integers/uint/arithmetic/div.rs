@@ -18,7 +18,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
-    bits::boolean::Boolean,
+    bits::{boolean::Boolean, FromBitsLEGadget},
     errors::UnsignedIntegerError,
     integers::uint::*,
     traits::{
@@ -136,7 +136,7 @@ macro_rules! div_int_impl {
 
                 quotient_bits.reverse();
 
-                let quotient = Self::from_bits_le(&quotient_bits);
+                let quotient = Self::from_bits_le(&quotient_bits)?;
                 Ok(quotient)
             }
         }

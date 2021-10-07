@@ -24,6 +24,8 @@ use snarkvm_utilities::{
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
+        FromBitsBEGadget,
+        FromBitsLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
         ToBytesGadget,

@@ -22,6 +22,8 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget, NEqGadget},
         select::CondSelectGadget,
     },
+    FromBitsBEGadget,
+    FromBitsLEGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
 };
@@ -168,6 +170,34 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Char<F> {
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.field.to_bits_be_strict(cs)
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget for Char<F> {
+    fn from_bits_le(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsLEGadget>::from_bits_le(bits)?;
+
+        Ok(Self { character: 0, field })
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsLEGadget>::from_bits_le_strict(bits)?;
+
+        Ok(Self { character: 0, field })
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget for Char<F> {
+    fn from_bits_be(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsBEGadget>::from_bits_be(bits)?;
+
+        Ok(Self { character: 0, field })
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsBEGadget>::from_bits_be_strict(bits)?;
+
+        Ok(Self { character: 0, field })
     }
 }
 

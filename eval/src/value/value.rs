@@ -21,6 +21,8 @@ use snarkvm_gadgets::{
     bits::Boolean,
     integers::uint::UInt8,
     traits::{eq::ConditionalEqGadget, select::CondSelectGadget},
+    FromBitsBEGadget,
+    FromBitsLEGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
 };
@@ -185,6 +187,32 @@ impl<F: PrimeField, G: GroupType<F>> ToBitsBEGadget<F> for ConstrainedValue<F, G
             Integer(integer) => integer.to_bits_be_strict(cs),
             _ => Err(SynthesisError::UnknownMethod),
         }
+    }
+}
+
+impl<F: PrimeField, G: GroupType<F>> FromBitsLEGadget for ConstrainedValue<F, G> {
+    fn from_bits_le(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
+        // not sure how to call the correct from_bits
+        // Probably cannot implement this gadget for constrained value
+        // rather the core function will be the one to appropiately handle this
+        todo!()
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
+        // not sure how to call the correct from_bits
+        todo!()
+    }
+}
+
+impl<F: PrimeField, G: GroupType<F>> FromBitsBEGadget for ConstrainedValue<F, G> {
+    fn from_bits_be(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
+        // not sure how to call the correct from_bits
+        todo!()
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
+        // not sure how to call the correct from_bits
+        todo!()
     }
 }
 

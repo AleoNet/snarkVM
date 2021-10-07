@@ -464,22 +464,6 @@ impl ToBitsLEGadget<Fq> for EdwardsGroupType {
     }
 }
 
-/*
-impl FromBitsLEGadget<Fq> for EdwardsGroupType {
-    fn from_bits_be(&self, bits: Vec<Boolean>) -> Result<EdwardsGroupType, SynthesisError> {
-
-    }
-
-    /// Additionally checks if the produced list of booleans is 'valid'.
-    fn from_bits_be_strict(&self, bits: Vec<Boolean>) -> Result<EdwardsGroupType, SynthesisError> {
-        /* if bits.len() !=  {
-            return Err(SynthesisError::Unsatisfiable);
-        } */
-
-
-    }
-} */
-
 impl ToBitsBEGadget<Fq> for EdwardsGroupType {
     fn to_bits_be<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let self_gadget = self.allocated(&mut cs)?;
@@ -489,6 +473,34 @@ impl ToBitsBEGadget<Fq> for EdwardsGroupType {
     fn to_bits_be_strict<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let self_gadget = self.allocated(&mut cs)?;
         self_gadget.to_bits_be_strict(cs)
+    }
+}
+
+impl FromBitsLEGadget for EdwardsGroupType {
+    fn from_bits_le(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
+        /* if bits.len() !=  {
+            return Err(SynthesisError::Unsatisfiable);
+        } */
+
+        todo!()
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
+        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    }
+}
+
+impl FromBitsBEGadget for EdwardsGroupType {
+    fn from_bits_be(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
+        /* if bits.len() !=  {
+            return Err(SynthesisError::Unsatisfiable);
+        } */
+
+        todo!()
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
+        <Self as FromBitsBEGadget>::from_bits_be(bits)
     }
 }
 

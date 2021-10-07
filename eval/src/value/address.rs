@@ -26,6 +26,8 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         select::CondSelectGadget,
     },
+    FromBitsBEGadget,
+    FromBitsLEGadget,
     Integer,
     ToBitsBEGadget,
     ToBitsLEGadget,
@@ -300,6 +302,34 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Address {
             .into_iter()
             .flatten()
             .collect())
+    }
+}
+
+impl FromBitsLEGadget for Address {
+    fn from_bits_le(bits: &[Boolean]) -> Result<Address, SynthesisError> {
+        /* if bits.len() !=  {
+            return Err(SynthesisError::Unsatisfiable);
+        } */
+
+        todo!()
+    }
+
+    fn from_bits_le_strict(bits: &[Boolean]) -> Result<Address, SynthesisError> {
+        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    }
+}
+
+impl FromBitsBEGadget for Address {
+    fn from_bits_be(bits: &[Boolean]) -> Result<Address, SynthesisError> {
+        /* if bits.len() !=  {
+            return Err(SynthesisError::Unsatisfiable);
+        } */
+
+        todo!()
+    }
+
+    fn from_bits_be_strict(bits: &[Boolean]) -> Result<Address, SynthesisError> {
+        <Self as FromBitsBEGadget>::from_bits_be(bits)
     }
 }
 

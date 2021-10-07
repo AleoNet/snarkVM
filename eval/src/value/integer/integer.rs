@@ -30,8 +30,6 @@ use snarkvm_gadgets::{
         integers::{Add, Div, Mul, Neg, Pow, Sub},
         select::CondSelectGadget,
     },
-    FromBitsBEGadget,
-    FromBitsLEGadget,
     Integer as IntegerGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
@@ -375,18 +373,6 @@ impl<F: PrimeField> ToBitsLEGadget<F> for Integer {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F> for Integer {
-    fn from_bits_le(&self, bits: Vec<Boolean>) -> Result<Integer, SynthesisError> {
-        let int = self;
-        match_integer!(int => int.from_bits_le(bits))
-    }
-
-    fn from_bits_le_strict(&self, bits: Vec<Boolean>) -> Result<Integer, SynthesisError> {
-        let int = self;
-        match_integer!(int => int.from_bits_le(bits))
-    }
-}
-
 impl<F: PrimeField> ToBitsBEGadget<F> for Integer {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let a = self;
@@ -396,17 +382,5 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Integer {
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let a = self;
         match_integer!(a => a.to_bits_be_strict(cs))
-    }
-}
-
-impl<F: PrimeField> FromBitsBEGadget<F> for Integer {
-    fn from_bits_be(&self, bits: Vec<Boolean>) -> Result<Integer, SynthesisError> {
-        let int = self;
-        match_integer!(int => int.from_bits_be(bits))
-    }
-
-    fn from_bits_be_strict(&self, bits: Vec<Boolean>) -> Result<Integer, SynthesisError> {
-        let int = self;
-        match_integer!(int => int.from_bits_be(bits))
     }
 }

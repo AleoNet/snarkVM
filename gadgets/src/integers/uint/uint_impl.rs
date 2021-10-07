@@ -23,6 +23,8 @@ use snarkvm_utilities::ToBytes;
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
+        FromBitsBEGadget,
+        FromBitsLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
         ToBytesGadget,
@@ -113,6 +115,7 @@ impl UInt8 {
         Ok(allocated_bits[0..8 * values_len]
             .chunks(8)
             .map(Self::from_bits_le)
+            .flatten()
             .collect())
     }
 
