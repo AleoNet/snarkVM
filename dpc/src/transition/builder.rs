@@ -29,6 +29,8 @@ pub type CiphertextRandomizer<N> = <<N as Network>::AccountEncryptionScheme as E
 pub struct TransitionBuilder<N: Network> {
     /// The executable for a state transition.
     executable: OnceCell<Executable<N>>,
+    /// A list of requests for a state transition.
+    requests: Vec<Request<N>>,
     /// A list of given inputs for a state transition.
     inputs: Vec<Input<N>>,
     /// A list of expected outputs for a state transition.
@@ -41,11 +43,12 @@ pub struct TransitionBuilder<N: Network> {
 
 impl<N: Network> TransitionBuilder<N> {
     ///
-    /// Initializes a new instance of `StateBuilder`.
+    /// Initializes a new instance of `TransitionBuilder`.
     ///
     pub fn new() -> Self {
         Self {
             executable: OnceCell::new(),
+            requests: Vec::with_capacity(N::NUM_INPUT_RECORDS),
             inputs: Vec::with_capacity(N::NUM_INPUT_RECORDS),
             outputs: Vec::with_capacity(N::NUM_OUTPUT_RECORDS),
             memo: Vec::with_capacity(N::MEMO_SIZE_IN_BYTES),
@@ -66,10 +69,31 @@ impl<N: Network> TransitionBuilder<N> {
     }
 
     ///
+    /// Adds the given request into the builder.
+    ///
+    pub fn add_request(mut self, request: Request<N>) -> Self {
+        // Ensure there are no inputs assigned yet.
+        if !self.inputs.is_empty() {
+            self.errors.push("Builder cannot add new requests after inputs".into());
+        }
+
+        // Ensure there are no outputs assigned yet.
+        if !self.outputs.is_empty() {
+            self.errors.push("Builder cannot add new requests after outputs".into());
+        }
+
+        match self.requests.len() < N::NUM_INPUT_RECORDS {
+            true => self.requests.push(request),
+            false => self.errors.push("Builder exceeded maximum requests".into()),
+        };
+        self
+    }
+
+    ///
     /// Adds the given input into the builder.
     ///
     pub fn add_input(mut self, input: Input<N>) -> Self {
-        // Ensure the executable is already set, or the input is a noop.
+        // Ensure the executable is already set, or the given input is a noop.
         if self.executable.get().is_none() && !input.is_noop() {
             self.errors
                 .push("Builder cannot add new inputs before adding an executable".into());
@@ -101,7 +125,7 @@ impl<N: Network> TransitionBuilder<N> {
     /// Adds the given output into the builder.
     ///
     pub fn add_output(mut self, output: Output<N>) -> Self {
-        // Ensure the executable is already set, or the output is a noop.
+        // Ensure the executable is already set, or the given output is a noop.
         if self.executable.get().is_none() && !output.is_noop() {
             self.errors
                 .push("Builder cannot add new outputs before adding an executable".into());
