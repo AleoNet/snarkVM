@@ -215,7 +215,7 @@ macro_rules! impl_remote {
                 Ok(())
             }
 
-            #[cfg(not(feature = "wasm"))]
+            #[cfg(not(target_family = "wasm"))]
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
@@ -240,7 +240,7 @@ macro_rules! impl_remote {
                 Ok(transfer.perform()?)
             }
 
-            #[cfg(feature = "wasm")]
+            #[cfg(target_family = "wasm")]
             fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), crate::errors::ParameterError> {
                 // NOTE(julesdesmit): We spawn a local thread here in order to be
                 // able to accommodate the async syntax from reqwest.
