@@ -266,10 +266,9 @@ impl<F: PrimeField> ToBitsBEGadget<F> for FieldType<F> {
 
 impl<F: PrimeField> FromBitsLEGadget for FieldType<F> {
     fn from_bits_le(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
-        /* if bits.len() !=  {
-            return Err(SynthesisError::Unsatisfiable);
-        } */
+        /* let big_int = BigInteger::from_bits(bits);
 
+        FieldType()*/
         todo!()
     }
 
