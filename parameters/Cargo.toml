@@ -35,6 +35,7 @@ version = "1.0"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
 version = "0.4.39"
+optional = true
 
 [dependencies.hex]
 version = "0.4.3"
@@ -87,5 +88,6 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "snarkvm-algorithms/default" ]
+default = [ "remote", "snarkvm-algorithms/default" ]
+remote = [ "curl" ]
 wasm = [ "snarkvm-algorithms/wasm" ]
