@@ -98,6 +98,7 @@ impl<N: Network> DPC<N> {
         end_timer!(execution_timer);
 
         Transaction::from(
+            N::NETWORK_ID,
             state.transition().clone(),
             block_hash,
             *N::inner_circuit_id(),

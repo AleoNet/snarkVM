@@ -439,7 +439,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         for (j, (record, encryption_randomness)) in private
             .output_records
             .iter()
-            .zip_eq(&private.encrypted_record_randomizers)
+            .zip_eq(&private.ciphertext_randomizers)
             .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
@@ -607,8 +607,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // *******************************************************************
             {
                 let encryption_cs = &mut cs.ns(|| "Check that record encryption is well-formed");
-
-                // Check serialization
 
                 // *******************************************************************
                 // Convert program id, value, payload, serial number nonce, and commitment randomness into bits.
@@ -790,14 +788,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let candidate_transaction_id = {
             let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-            let network_id = UInt8::alloc_vec(
-                &mut cs.ns(|| "Allocate network id"),
-                &private.kernel().network_id().to_le_bytes(),
-            )?;
-
             // Encode the transaction kernel as the signature message, and preimage for the transaction ID.
             let mut message = Vec::new();
-            message.extend_from_slice(&network_id);
             message.extend_from_slice(&input_serial_numbers_bytes);
             message.extend_from_slice(&output_commitments_bytes);
             message.extend_from_slice(&ciphertext_ids_bytes);

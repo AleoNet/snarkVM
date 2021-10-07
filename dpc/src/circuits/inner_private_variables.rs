@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, CircuitType, LedgerProof, Network, ProgramExecutable, Record, State, Transition};
+use crate::{CircuitType, LedgerProof, Network, ProgramExecutable, Record, State};
 use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
@@ -22,8 +22,6 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerPrivateVariables<N: Network> {
-    /// The state transition.
-    transition: Transition<N>,
     // Inputs records.
     pub(super) input_records: Vec<Record<N>>,
     pub(super) ledger_proof: LedgerProof<N>,
@@ -31,7 +29,7 @@ pub struct InnerPrivateVariables<N: Network> {
     // Output records.
     pub(super) output_records: Vec<Record<N>>,
     // Encryption of output records.
-    pub(super) encrypted_record_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+    pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Executable.
     pub(super) circuit_type: CircuitType,
 }
@@ -39,18 +37,11 @@ pub struct InnerPrivateVariables<N: Network> {
 impl<N: Network> InnerPrivateVariables<N> {
     pub fn blank() -> Self {
         Self {
-            transition: Transition::new(
-                vec![N::SerialNumber::default(); N::NUM_INPUT_RECORDS],
-                vec![N::Commitment::default(); N::NUM_OUTPUT_RECORDS],
-                vec![N::CiphertextID::default(); N::NUM_OUTPUT_RECORDS],
-                AleoAmount::ZERO,
-            )
-            .expect("Failed to instantiate a blank transaction kernel"),
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proof: Default::default(),
             signatures: vec![N::AccountSignature::default(); N::NUM_INPUT_RECORDS],
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
-            encrypted_record_randomizers: vec![
+            ciphertext_randomizers: vec![
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
@@ -60,18 +51,12 @@ impl<N: Network> InnerPrivateVariables<N> {
 
     pub fn new(state: &State<N>, ledger_proof: LedgerProof<N>, signatures: Vec<N::AccountSignature>) -> Result<Self> {
         Ok(Self {
-            transition: state.transition().clone(),
             input_records: state.input_records().clone(),
             ledger_proof,
             signatures,
             output_records: state.output_records().clone(),
-            encrypted_record_randomizers: state.ciphertext_randomizers.clone(),
+            ciphertext_randomizers: state.ciphertext_randomizers.clone(),
             circuit_type: state.executable().circuit_type(),
         })
-    }
-
-    /// Returns a reference to the transaction kernel.
-    pub fn kernel(&self) -> &Transition<N> {
-        &self.transition
     }
 }

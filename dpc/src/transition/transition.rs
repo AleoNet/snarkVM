@@ -32,8 +32,6 @@ use std::io::{Read, Result as IoResult, Write};
     Eq(bound = "N: Network")
 )]
 pub struct Transition<N: Network> {
-    /// The network ID.
-    network_id: u16,
     /// The serial numbers of the input records.
     serial_numbers: Vec<N::SerialNumber>,
     /// The commitments of the output records.
@@ -55,7 +53,6 @@ impl<N: Network> Transition<N> {
     ) -> Result<Self> {
         // Construct the transition.
         let kernel = Self {
-            network_id: N::NETWORK_ID,
             serial_numbers,
             commitments,
             ciphertext_ids,
@@ -65,8 +62,7 @@ impl<N: Network> Transition<N> {
         // Ensure the transition is well-formed.
         match kernel.is_valid() {
             true => Ok(kernel),
-            false => Err(DPCError::InvalidKernel(
-                N::NETWORK_ID,
+            false => Err(DPCError::InvalidTransition(
                 kernel.serial_numbers.len(),
                 kernel.commitments.len(),
                 kernel.ciphertext_ids.len(),
@@ -78,16 +74,9 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if the transition is well-formed.
     #[inline]
     pub fn is_valid(&self) -> bool {
-        self.network_id == N::NETWORK_ID
-            && self.serial_numbers.len() == N::NUM_INPUT_RECORDS
+        self.serial_numbers.len() == N::NUM_INPUT_RECORDS
             && self.commitments.len() == N::NUM_OUTPUT_RECORDS
             && self.ciphertext_ids.len() == N::NUM_OUTPUT_RECORDS
-    }
-
-    /// Returns the network ID.
-    #[inline]
-    pub fn network_id(&self) -> u16 {
-        self.network_id
     }
 
     /// Returns a reference to the serial numbers.
@@ -114,7 +103,7 @@ impl<N: Network> Transition<N> {
         &self.value_balance
     }
 
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance)
+    /// Transaction ID = Hash(serial numbers || commitments || ciphertext_ids || value balance)
     #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         Ok(N::transaction_id_crh().hash(&self.to_bytes_le()?)?)
@@ -126,8 +115,7 @@ impl<N: Network> ToBytes for Transition<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the correct number of serial numbers and commitments are provided.
         if !self.is_valid() {
-            return Err(DPCError::InvalidKernel(
-                self.network_id,
+            return Err(DPCError::InvalidTransition(
                 self.serial_numbers.len(),
                 self.commitments.len(),
                 self.ciphertext_ids.len(),
@@ -135,7 +123,6 @@ impl<N: Network> ToBytes for Transition<N> {
             .into());
         }
 
-        self.network_id.write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
         self.ciphertext_ids.write_le(&mut writer)?;
@@ -146,19 +133,6 @@ impl<N: Network> ToBytes for Transition<N> {
 impl<N: Network> FromBytes for Transition<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let network_id: u16 = FromBytes::read_le(&mut reader)?;
-
-        // Ensure the correct network ID is read in.
-        if network_id != N::NETWORK_ID {
-            return Err(DPCError::InvalidKernel(
-                network_id,
-                N::NUM_INPUT_RECORDS,
-                N::NUM_OUTPUT_RECORDS,
-                N::NUM_OUTPUT_RECORDS,
-            )
-            .into());
-        }
-
         let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);

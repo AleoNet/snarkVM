@@ -34,6 +34,8 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Transaction<N: Network> {
+    /// The network ID.
+    network_id: u16,
     /// The state transition.
     transition: Transition<N>,
     /// The block hash used for the ledger inclusion proof.
@@ -59,6 +61,7 @@ impl<N: Network> Transaction<N> {
 
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
+        network_id: u16,
         transition: Transition<N>,
         block_hash: N::BlockHash,
         inner_circuit_id: N::InnerCircuitID,
@@ -70,6 +73,7 @@ impl<N: Network> Transaction<N> {
         assert_eq!(N::NUM_OUTPUT_RECORDS, ciphertexts.len());
 
         let transaction = Self {
+            network_id,
             transition,
             block_hash,
             inner_circuit_id,
@@ -88,6 +92,12 @@ impl<N: Network> Transaction<N> {
     /// the correct network ID, unique serial numbers, unique commitments,
     /// correct ciphertext IDs, and a valid proof.
     pub fn is_valid(&self) -> bool {
+        // Returns `false` if the network ID is incorrect.
+        if self.network_id != N::NETWORK_ID {
+            eprintln!("Transaction contains an incorrect network ID");
+            return false;
+        }
+
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
         if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
@@ -162,7 +172,7 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the network ID.
     pub fn network_id(&self) -> u16 {
-        self.transition.network_id()
+        self.network_id
     }
 
     /// Returns the serial numbers.
@@ -215,7 +225,7 @@ impl<N: Network> Transaction<N> {
         &self.proof
     }
 
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || ciphertext_ids || value balance)
+    /// Transaction ID = Hash(serial numbers || commitments || ciphertext_ids || value balance)
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
         self.transition.to_transaction_id()
     }
@@ -224,6 +234,7 @@ impl<N: Network> Transaction<N> {
 impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.network_id.write_le(&mut writer)?;
         self.transition.write_le(&mut writer)?;
         self.block_hash.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
@@ -238,6 +249,8 @@ impl<N: Network> ToBytes for Transaction<N> {
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the network ID.
+        let network_id: u16 = FromBytes::read_le(&mut reader)?;
         // Read the transition.
         let transition = FromBytes::read_le(&mut reader)?;
         // Read the transaction metadata.
@@ -253,10 +266,16 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the transaction proof.
         let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::from(transition, block_hash, inner_circuit_id, ciphertexts, memo, proof)
-                .expect("Failed to deserialize a transaction"),
+        Ok(Self::from(
+            network_id,
+            transition,
+            block_hash,
+            inner_circuit_id,
+            ciphertexts,
+            memo,
+            proof,
         )
+        .expect("Failed to deserialize a transaction"))
     }
 }
 
