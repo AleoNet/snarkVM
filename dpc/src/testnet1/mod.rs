@@ -625,25 +625,21 @@ where
 
         // Returns false if the number of serial numbers in the transaction is incorrect.
         if transaction.old_serial_numbers().len() != C::NUM_INPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
 
         // Returns false if there are duplicate serial numbers in the transaction.
         if has_duplicates(transaction.old_serial_numbers().iter()) {
-            eprintln!("Transaction contains duplicate serial numbers");
             return false;
         }
 
         // Returns false if the number of commitments in the transaction is incorrect.
         if transaction.new_commitments().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
 
         // Returns false if there are duplicate commitments numbers in the transaction.
         if has_duplicates(transaction.new_commitments().iter()) {
-            eprintln!("Transaction contains duplicate commitments");
             return false;
         }
 
@@ -651,14 +647,12 @@ where
 
         // Returns false if the transaction memo previously existed in the ledger.
         if ledger.contains_memo(transaction.memorandum()) {
-            eprintln!("Ledger already contains this transaction memo.");
             return false;
         }
 
         // Returns false if any transaction serial number previously existed in the ledger.
         for sn in transaction.old_serial_numbers() {
             if ledger.contains_sn(sn) {
-                eprintln!("Ledger already contains this transaction serial number.");
                 return false;
             }
         }
@@ -666,14 +660,12 @@ where
         // Returns false if any transaction commitment previously existed in the ledger.
         for cm in transaction.new_commitments() {
             if ledger.contains_cm(cm) {
-                eprintln!("Ledger already contains this transaction commitment.");
                 return false;
             }
         }
 
         // Returns false if the ledger digest in the transaction is invalid.
         if !ledger.validate_digest(&transaction.ledger_digest) {
-            eprintln!("Ledger digest is invalid.");
             return false;
         }
 
@@ -683,7 +675,6 @@ where
 
         // Returns false if the number of signatures in the transaction is incorrect.
         if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
 
@@ -699,7 +690,6 @@ where
         ] {
             Ok(message) => message,
             _ => {
-                eprintln!("Unable to construct signature message.");
                 return false;
             }
         };
@@ -709,12 +699,10 @@ where
             match C::AccountSignature::verify(account_signature, pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
-                        eprintln!("Signature failed to verify.");
                         return false;
                     }
                 }
                 _ => {
-                    eprintln!("Unable to verify signature.");
                     return false;
                 }
             }
@@ -726,7 +714,6 @@ where
 
         // Returns false if the number of encrypted records in the transaction is incorrect.
         if transaction.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of encrypted records");
             return false;
         }
 
@@ -735,7 +722,6 @@ where
             match encrypted_record.to_hash(&self.system_parameters) {
                 Ok(hash) => new_encrypted_record_hashes.push(hash),
                 _ => {
-                    eprintln!("Unable to hash encrypted record.");
                     return false;
                 }
             }
@@ -761,7 +747,6 @@ where
         let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
             Ok(bytes) => bytes,
             _ => {
-                eprintln!("Unable to convert inner snark vk into bytes.");
                 return false;
             }
         };
@@ -774,7 +759,6 @@ where
             ) {
                 Ok(hash) => hash,
                 _ => {
-                    eprintln!("Unable to hash inner snark vk.");
                     return false;
                 }
             },
@@ -787,12 +771,10 @@ where
         ) {
             Ok(is_valid) => {
                 if !is_valid {
-                    eprintln!("Transaction proof failed to verify.");
                     return false;
                 }
             }
             _ => {
-                eprintln!("Unable to verify transaction proof.");
                 return false;
             }
         }
