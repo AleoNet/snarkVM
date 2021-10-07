@@ -16,7 +16,7 @@
 
 use crate::{record::*, Address, AleoAmount, LedgerProof, Memo, Network, OuterPublicVariables, State, Transition, DPC};
 use snarkvm_algorithms::traits::SNARK;
-use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -92,33 +92,9 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
-        // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of serial numbers");
-            return false;
-        }
-
-        // Returns `false` if there are duplicate serial numbers in the transaction.
-        if has_duplicates(self.serial_numbers().iter()) {
-            eprintln!("Transaction contains duplicate serial numbers");
-            return false;
-        }
-
-        // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().len() != N::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
-            return false;
-        }
-
-        // Returns `false` if there are duplicate commitments numbers in the transaction.
-        if has_duplicates(self.commitments().iter()) {
-            eprintln!("Transaction contains duplicate commitments");
-            return false;
-        }
-
-        // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().len() != N::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of record ciphertexts");
+        // Returns `false` if the transition is not well-formed.
+        if !self.transition.is_valid() {
+            eprintln!("Transition contains a transition that is not well-formed");
             return false;
         }
 

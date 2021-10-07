@@ -16,7 +16,7 @@
 
 use crate::{prelude::*, Network};
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
@@ -52,7 +52,7 @@ impl<N: Network> Transition<N> {
         value_balance: AleoAmount,
     ) -> Result<Self> {
         // Construct the transition.
-        let kernel = Self {
+        let transition = Self {
             serial_numbers,
             commitments,
             ciphertexts,
@@ -60,12 +60,12 @@ impl<N: Network> Transition<N> {
         };
 
         // Ensure the transition is well-formed.
-        match kernel.is_valid() {
-            true => Ok(kernel),
+        match transition.is_valid() {
+            true => Ok(transition),
             false => Err(DPCError::InvalidTransition(
-                kernel.serial_numbers.len(),
-                kernel.commitments.len(),
-                kernel.ciphertexts.len(),
+                transition.serial_numbers.len(),
+                transition.commitments.len(),
+                transition.ciphertexts.len(),
             )
             .into()),
         }
@@ -74,9 +74,37 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if the transition is well-formed.
     #[inline]
     pub fn is_valid(&self) -> bool {
-        self.serial_numbers.len() == N::NUM_INPUT_RECORDS
-            && self.commitments.len() == N::NUM_OUTPUT_RECORDS
-            && self.ciphertexts.len() == N::NUM_OUTPUT_RECORDS
+        // Returns `false` if the number of serial numbers in the transition is incorrect.
+        if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
+            eprintln!("Transition contains incorrect number of serial numbers");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate serial numbers in the transition.
+        if has_duplicates(self.serial_numbers().iter()) {
+            eprintln!("Transition contains duplicate serial numbers");
+            return false;
+        }
+
+        // Returns `false` if the number of commitments in the transition is incorrect.
+        if self.commitments().len() != N::NUM_OUTPUT_RECORDS {
+            eprintln!("Transition contains incorrect number of commitments");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate commitments numbers in the transition.
+        if has_duplicates(self.commitments().iter()) {
+            eprintln!("Transition contains duplicate commitments");
+            return false;
+        }
+
+        // Returns `false` if the number of record ciphertexts in the transition is incorrect.
+        if self.ciphertexts().len() != N::NUM_OUTPUT_RECORDS {
+            eprintln!("Transition contains incorrect number of record ciphertexts");
+            return false;
+        }
+
+        true
     }
 
     /// Returns a reference to the serial numbers.
