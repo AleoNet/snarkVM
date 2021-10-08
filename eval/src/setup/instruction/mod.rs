@@ -22,8 +22,8 @@ use snarkvm_gadgets::{
     Boolean, CondSelectGadget, EqGadget, EvaluateEqGadget, Integer as IntegerTrait,
 };
 use snarkvm_ir::{
-    ArrayInitRepeatData, CallCoreData, Instruction, Integer as IrInteger, LogData, LogLevel, PredicateData,
-    QueryData, Value, VarData,
+    ArrayInitRepeatData, CallCoreData, Instruction, Integer as IrInteger, LogData, LogLevel, PredicateData, QueryData,
+    Value, VarData,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -44,11 +44,6 @@ mod core;
 
 pub use self::core::*;
 
-pub enum InstructionReturn<'a, F: PrimeField, G: GroupType<F>> {
-    Value(Option<ConstrainedValue<F, G>>),
-    Recurse(&'a Instruction),
-}
-
 impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
     fn resolve_binary<CS: ConstraintSystem<F>>(
         &mut self,
@@ -65,7 +60,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
         &mut self,
         instruction: &'b Instruction,
         cs: &mut CS,
-    ) -> Result<InstructionReturn<'b, F, G>> {
+    ) -> Result<Option<ConstrainedValue<F, G>>> {
         match instruction {
             Instruction::Add(data) => {
                 let (left, right) = self.resolve_binary(data, cs)?;
@@ -267,15 +262,17 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
             Instruction::Repeat(_) => {
                 panic!("cannot eval repeat instructions directly");
             }
+            Instruction::Call(_) => {
+                panic!("cannot eval call instructions directly");
+            }
             Instruction::Store(QueryData { destination, values }) => {
                 let value = self.resolve(values.get(0).unwrap(), cs)?.into_owned();
                 self.store(*destination, value);
             }
-            i @ Instruction::Call(_) => return Ok(InstructionReturn::Recurse(i)),
             Instruction::Return(PredicateData { values }) => {
                 let value = values.get(0).unwrap();
                 let value = self.resolve(value, cs)?.into_owned();
-                return Ok(InstructionReturn::Value(Some(value)));
+                return Ok(Some(value));
             }
             Instruction::Assert(PredicateData { values }) => {
                 let value = values.get(0).unwrap();
@@ -323,6 +320,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                 self.store(*destination, out);
             }
         }
-        Ok(InstructionReturn::Value(None))
+        Ok(None)
     }
 }
