@@ -21,10 +21,9 @@ use snarkvm_gadgets::{
     bits::Boolean,
     integers::uint::UInt8,
     traits::{eq::ConditionalEqGadget, select::CondSelectGadget},
-    FromBitsBEGadget,
-    FromBitsLEGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
+    ToBytesLEGadget,
 };
 use snarkvm_ir::Type;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -113,21 +112,6 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
             (_, _) => false,
         }
     }
-
-    pub fn to_bytes_le(&self) -> Result<Vec<UInt8>> {
-        use ConstrainedValue::*;
-
-        match self {
-            Address(_) => Err(anyhow!("the type `address` does not implement the to_bytes_le method")),
-            Boolean(_) => Err(anyhow!("the type `bool` does not implement the to_bytes_le method")),
-            Char(_) => Err(anyhow!("the type `char` does not implement the to_bytes_le method")),
-            Field(_) => Err(anyhow!("the type `field` does not implement the to_bytes_le method")),
-            Group(_) => Err(anyhow!("the type `group` does not implement the to_bytes_le method")),
-            Integer(_) => Err(anyhow!("the type `int` does not implement the to_bytes_le method")),
-            Array(_) => Err(anyhow!("the type `array` does not implement the to_bytes_le method")),
-            Tuple(_) => Err(anyhow!("the type `tuple` does not implement the to_bytes_le method")),
-        }
-    }
 }
 
 impl<F: PrimeField, G: GroupType<F>> ToBitsLEGadget<F> for ConstrainedValue<F, G> {
@@ -190,29 +174,33 @@ impl<F: PrimeField, G: GroupType<F>> ToBitsBEGadget<F> for ConstrainedValue<F, G
     }
 }
 
-impl<F: PrimeField, G: GroupType<F>> FromBitsLEGadget for ConstrainedValue<F, G> {
-    fn from_bits_le(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
-        // not sure how to call the correct from_bits
-        // Probably cannot implement this gadget for constrained value
-        // rather the core function will be the one to appropiately handle this
-        todo!()
+impl<F: PrimeField, G: GroupType<F>> ToBytesLEGadget<F> for ConstrainedValue<F, G> {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bytes_le(cs),
+            Boolean(boolean) => boolean.to_bytes_le(cs),
+            Char(character) => character.to_bytes_le(cs),
+            Field(field) => field.to_bytes_le(cs),
+            Group(group) => group.to_bytes_le(cs),
+            Integer(integer) => integer.to_bytes_le(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
     }
 
-    fn from_bits_le_strict(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
-        // not sure how to call the correct from_bits
-        todo!()
-    }
-}
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        use ConstrainedValue::*;
 
-impl<F: PrimeField, G: GroupType<F>> FromBitsBEGadget for ConstrainedValue<F, G> {
-    fn from_bits_be(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
-        // not sure how to call the correct from_bits
-        todo!()
-    }
-
-    fn from_bits_be_strict(bits: &[Boolean]) -> Result<ConstrainedValue<F, G>, SynthesisError> {
-        // not sure how to call the correct from_bits
-        todo!()
+        match self {
+            Address(address) => address.to_bytes_le_strict(cs),
+            Boolean(boolean) => boolean.to_bytes_le_strict(cs),
+            Char(character) => character.to_bytes_le_strict(cs),
+            Field(field) => field.to_bytes_le_strict(cs),
+            Group(group) => group.to_bytes_le_strict(cs),
+            Integer(integer) => integer.to_bytes_le_strict(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
     }
 }
 
