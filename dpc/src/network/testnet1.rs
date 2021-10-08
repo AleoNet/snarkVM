@@ -29,6 +29,7 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
     crh::{PedersenCompressedCRH, BHPCRH},
+    crypto_hash::PoseidonCryptoHash,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
@@ -51,6 +52,7 @@ use snarkvm_gadgets::{
     algorithms::{
         commitment::BHPCommitmentGadget,
         crh::{BHPCRHGadget, PedersenCompressedCRHGadget},
+        crypto_hash::PoseidonCryptoHashGadget,
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
@@ -157,6 +159,10 @@ impl Network for Testnet1 {
     type EncryptedRecordCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
     type CiphertextID = <Self::EncryptedRecordCRH as CRH>::Output;
 
+    type FunctionInputsCRH = PoseidonCryptoHash::<Self::InnerScalarField, 4, false>;
+    type FunctionInputsCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
+    type FunctionInputsDigest= <Self::FunctionInputsCRH as CryptoHash>::Output;
+
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 296, 32>;
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
@@ -173,7 +179,7 @@ impl Network for Testnet1 {
     type ProgramCircuitsTreeCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
     type ProgramCircuitsTreeParameters = MerkleTreeParameters<Self::ProgramCircuitsTreeCRH, 8>;
     type ProgramID = <Self::ProgramCircuitsTreeCRH as CRH>::Output;
-    
+
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;

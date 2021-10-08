@@ -38,7 +38,7 @@ pub struct Input<N: Network> {
     /// The program function being called.
     circuit_id: N::ProgramCircuitID,
     /// The digest of the inputs from this caller.
-    inputs_digest: N::InnerScalarField,
+    inputs_digest: N::FunctionInputsDigest,
     /// The fee amount this caller is contributing.
     fee: u64,
     /// The signature for this input.
@@ -51,7 +51,7 @@ impl<N: Network> Input<N> {
         caller: &PrivateKey<N>,
         record: Record<N>,
         circuit_id: N::ProgramCircuitID,
-        inputs_digest: N::InnerScalarField,
+        inputs_digest: N::FunctionInputsDigest,
         fee: u64,
         rng: &mut R,
     ) -> Result<Self> {
@@ -78,7 +78,7 @@ impl<N: Network> Input<N> {
         let record = Record::new_noop_input(noop_address, rng)?;
         let serial_number = record.to_serial_number(&noop_compute_key)?;
         let circuit_id = *N::noop_circuit_id();
-        let inputs_digest = N::InnerScalarField::default();
+        let inputs_digest = N::FunctionInputsDigest::default();
         let fee = 0;
 
         // Construct and sign the input.
@@ -92,7 +92,7 @@ impl<N: Network> Input<N> {
         record: Record<N>,
         serial_number: N::SerialNumber,
         circuit_id: N::ProgramCircuitID,
-        inputs_digest: N::InnerScalarField,
+        inputs_digest: N::FunctionInputsDigest,
         fee: u64,
         signature: N::AccountSignature,
     ) -> Result<Self> {
