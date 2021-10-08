@@ -174,6 +174,10 @@ impl Network for Testnet2 {
     type EncryptedRecordCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
     type EncryptedRecordCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
     type CiphertextID = <Self::EncryptedRecordCRH as CRH>::Output;
+
+    type FunctionIDCRH = BHPCRH<EdwardsBW6, 237, 16>;
+    type FunctionIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
+    type FunctionID = <Self::FunctionIDCRH as CRH>::Output;
     
     type FunctionInputsCRH = PoseidonCryptoHash::<Self::InnerScalarField, 4, false>;
     type FunctionInputsCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
@@ -186,15 +190,11 @@ impl Network for Testnet2 {
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type PoSW = PoSW<Self>;
-    
-    type ProgramCircuitIDCRH = BHPCRH<EdwardsBW6, 237, 16>;
-    type ProgramCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
-    type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
 
-    type ProgramCircuitsTreeCRH = BHPCRH<EdwardsBW6, 48, 16>;
-    type ProgramCircuitsTreeCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
-    type ProgramCircuitsTreeParameters = MerkleTreeParameters<Self::ProgramCircuitsTreeCRH, 8>;
-    type ProgramID = <Self::ProgramCircuitsTreeCRH as CRH>::Output;
+    type ProgramFunctionsTreeCRH = BHPCRH<EdwardsBW6, 48, 16>;
+    type ProgramFunctionsTreeCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
+    type ProgramFunctionsTreeParameters = MerkleTreeParameters<Self::ProgramFunctionsTreeCRH, 8>;
+    type ProgramID = <Self::ProgramFunctionsTreeCRH as CRH>::Output;
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
@@ -219,10 +219,10 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
     dpc_setup!{Testnet2, commitments_tree_parameters, CommitmentsTreeParameters, "AleoCommitmentsTreeCRH0"}
     dpc_setup!{Testnet2, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
+    dpc_setup!{Testnet2, function_id_crh, FunctionIDCRH, "AleoProgramCircuitIDCRH0"}
     dpc_setup!{Testnet2, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{Testnet2, program_circuit_id_crh, ProgramCircuitIDCRH, "AleoProgramCircuitIDCRH0"}
-    dpc_setup!{Testnet2, program_circuits_tree_crh, ProgramCircuitsTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_merkle!{Testnet2, program_circuits_tree_parameters, ProgramCircuitsTreeParameters, program_circuits_tree_crh}
+    dpc_setup!{Testnet2, program_functions_tree_crh, ProgramFunctionsTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
+    dpc_merkle!{Testnet2, program_functions_tree_parameters, ProgramFunctionsTreeParameters, program_functions_tree_crh}
     dpc_setup!{Testnet2, serial_numbers_tree_parameters, SerialNumbersTreeParameters, "AleoSerialNumbersTreeCRH0"}
     dpc_setup!{Testnet2, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet2, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
@@ -253,14 +253,14 @@ impl Network for Testnet2 {
         NOOP_PROGRAM_ID.get_or_init(|| Testnet2::noop_program().program_id())
     }
 
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters> {
-        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet2 as Network>::ProgramCircuitsTreeParameters>> = OnceCell::new();
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramFunctionsTreeParameters> {
+        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet2 as Network>::ProgramFunctionsTreeParameters>> = OnceCell::new();
         NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_circuit_id()).expect("Failed to fetch the noop program path"))
     }
     
-    fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
-        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::ProgramCircuitID> = OnceCell::new();
-        NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
+    fn noop_circuit_id() -> &'static Self::FunctionID {
+        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::FunctionID> = OnceCell::new();
+        NOOP_CIRCUIT_ID.get_or_init(|| Self::function_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
 
     fn posw() -> &'static Self::PoSW {

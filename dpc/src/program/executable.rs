@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitType, Network, ProgramCircuit, ProgramError, ProgramExecutable, PublicVariables};
+use crate::{Function, FunctionType, Network, ProgramError, ProgramExecutable, PublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::Result;
@@ -24,7 +24,7 @@ use anyhow::Result;
 #[derivative(Clone(bound = "N: Network"))]
 pub struct Execution<N: Network> {
     pub program_id: N::ProgramID,
-    pub program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
+    pub program_path: MerklePath<N::ProgramFunctionsTreeParameters>,
     pub verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
     pub proof: <N::ProgramSNARK as SNARK>::Proof,
 }
@@ -33,20 +33,16 @@ pub struct Execution<N: Network> {
 #[derivative(Clone(bound = "N: Network"))]
 pub enum Executable<N: Network> {
     Noop,
-    Circuit(
-        N::ProgramID,
-        ProgramCircuit<N>,
-        MerklePath<N::ProgramCircuitsTreeParameters>,
-    ),
+    Circuit(N::ProgramID, Function<N>, MerklePath<N::ProgramFunctionsTreeParameters>),
 }
 
 impl<N: Network> ProgramExecutable<N> for Executable<N> {
     fn new(
         program_id: N::ProgramID,
-        circuit: ProgramCircuit<N>,
-        program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
+        circuit: Function<N>,
+        program_path: MerklePath<N::ProgramFunctionsTreeParameters>,
     ) -> Result<Self, ProgramError> {
-        assert!(program_path.verify(&program_id, &circuit.circuit_id())?);
+        assert!(program_path.verify(&program_id, &circuit.function_id())?);
         Ok(Self::Circuit(program_id, circuit, program_path))
     }
 
@@ -58,19 +54,11 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
         }
     }
 
-    /// Returns the circuit ID of the executable.
-    fn circuit_id(&self) -> N::ProgramCircuitID {
-        match self {
-            Self::Noop => *N::noop_circuit_id(),
-            Self::Circuit(_, circuit, _) => circuit.circuit_id(),
-        }
-    }
-
     /// Returns the circuit type of the executable.
-    fn circuit_type(&self) -> CircuitType {
+    fn function_type(&self) -> FunctionType {
         match self {
-            Self::Noop => CircuitType::Noop,
-            Self::Circuit(_, circuit, _) => circuit.circuit_type(),
+            Self::Noop => FunctionType::Noop,
+            Self::Circuit(_, circuit, _) => circuit.function_type(),
         }
     }
 
@@ -78,7 +66,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
     fn execute(&self, public: PublicVariables<N>) -> Result<Execution<N>, ProgramError> {
         let (circuit, verifying_key, program_path) = match self {
             Self::Noop => (
-                &ProgramCircuit::Noop,
+                &Function::Noop,
                 N::noop_circuit_verifying_key().clone(),
                 N::noop_program_path().clone(),
             ),
@@ -91,7 +79,7 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
             &circuit.synthesize(public.clone()),
             &mut rand::thread_rng(),
         )?;
-        assert!(self.verify(public, &proof));
+        assert!(circuit.verify(public, &proof));
 
         Ok(Execution {
             program_id: self.program_id(),
@@ -99,17 +87,5 @@ impl<N: Network> ProgramExecutable<N> for Executable<N> {
             verifying_key,
             proof,
         })
-    }
-
-    /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool {
-        // Fetch the verifying key.
-        let verifying_key = match self {
-            Self::Noop => ProgramCircuit::<N>::Noop.verifying_key(),
-            Self::Circuit(_, circuit, _) => circuit.verifying_key(),
-        };
-
-        <N::ProgramSNARK as SNARK>::verify(&verifying_key, &public, proof)
-            .expect("Failed to verify program execution proof")
     }
 }

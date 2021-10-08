@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitLogic, CircuitType, Network, ProgramError, PublicVariables};
+use crate::{CircuitLogic, FunctionType, Network, ProgramError, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -23,18 +23,18 @@ use std::sync::Arc;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
-pub enum ProgramCircuit<N: Network> {
+pub enum Function<N: Network> {
     Noop,
     Circuit(
-        N::ProgramCircuitID,
+        N::FunctionID,
         Arc<dyn CircuitLogic<N>>,
         <N::ProgramSNARK as SNARK>::ProvingKey,
         <N::ProgramSNARK as SNARK>::VerifyingKey,
     ),
 }
 
-impl<N: Network> ProgramCircuit<N> {
-    /// Initializes a new instance of the circuit.
+impl<N: Network> Function<N> {
+    /// Initializes a new instance of the function.
     pub fn new(logic: Arc<dyn CircuitLogic<N>>) -> Result<Self, ProgramError> {
         // Compute the proving key and verifying key.
         let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
@@ -43,28 +43,28 @@ impl<N: Network> ProgramCircuit<N> {
         )?;
 
         // Compute the circuit ID.
-        let circuit_id = <N as Network>::program_circuit_id(&verifying_key)?;
+        let circuit_id = <N as Network>::function_id(&verifying_key)?;
 
         Ok(Self::Circuit(circuit_id, logic, proving_key, verifying_key))
     }
 
-    /// Returns the circuit ID.
-    pub fn circuit_id(&self) -> N::ProgramCircuitID {
+    /// Returns the function ID.
+    pub fn function_id(&self) -> N::FunctionID {
         match self {
             Self::Noop => *N::noop_circuit_id(),
             Self::Circuit(circuit_id, _, _, _) => *circuit_id,
         }
     }
 
-    /// Returns the circuit type.
-    pub fn circuit_type(&self) -> CircuitType {
+    /// Returns the function type.
+    pub fn function_type(&self) -> FunctionType {
         match self {
-            Self::Noop => CircuitType::Noop,
-            Self::Circuit(_, logic, _, _) => logic.circuit_type(),
+            Self::Noop => FunctionType::Noop,
+            Self::Circuit(_, logic, _, _) => logic.function_type(),
         }
     }
 
-    /// Returns the circuit proving key.
+    /// Returns the function proving key.
     pub fn proving_key(&self) -> &<N::ProgramSNARK as SNARK>::ProvingKey {
         match self {
             Self::Noop => N::noop_circuit_proving_key(),
@@ -72,12 +72,23 @@ impl<N: Network> ProgramCircuit<N> {
         }
     }
 
-    /// Returns the circuit verifying key.
+    /// Returns the function verifying key.
     pub fn verifying_key(&self) -> &<N::ProgramSNARK as SNARK>::VerifyingKey {
         match self {
             Self::Noop => N::noop_circuit_verifying_key(),
             Self::Circuit(_, _, _, verifying_key) => &verifying_key,
         }
+    }
+
+    /// Returns the native evaluation of the function on given public and private variables.
+    fn evaluate(&self, _public: PublicVariables<N>) -> bool {
+        unimplemented!("The native evaluation of this function is unimplemented")
+    }
+
+    /// Returns true if the execution of the function is valid.
+    pub fn verify(&self, public: PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool {
+        <N::ProgramSNARK as SNARK>::verify(self.verifying_key(), &public, proof)
+            .expect("Failed to verify function execution proof")
     }
 
     /// Returns the assigned circuit.

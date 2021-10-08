@@ -86,14 +86,14 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // Declare public parameters.
     // ************************************************************************
 
-    let program_circuit_id_crh = N::ProgramCircuitIDCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
-        || Ok(N::program_circuit_id_crh().clone()),
-    )?;
+    let function_id_crh =
+        N::FunctionIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare function_id_crh_parameters"), || {
+            Ok(N::function_id_crh().clone())
+        })?;
 
-    let program_circuits_tree_crh = N::ProgramCircuitsTreeCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_circuits_tree_crh_parameters"),
-        || Ok(N::program_circuits_tree_crh().clone()),
+    let program_functions_tree_crh = N::ProgramFunctionsTreeCRHGadget::alloc_constant(
+        &mut cs.ns(|| "Declare program_functions_tree_crh_parameters"),
+        || Ok(N::program_functions_tree_crh().clone()),
     )?;
 
     let inner_circuit_id_crh =
@@ -183,24 +183,24 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             let program_circuit_verifying_key_bits = program_circuit_verifying_key
                 .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
-            let claimed_circuit_id = program_circuit_id_crh.check_evaluation_gadget_on_bits(
+            let claimed_circuit_id = function_id_crh.check_evaluation_gadget_on_bits(
                 &mut cs.ns(|| "Compute circuit ID"),
                 program_circuit_verifying_key_bits,
             )?;
 
-            let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitsTreeCRHGadget, _>::alloc(
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramFunctionsTreeCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
                 || Ok(&private.program_execution.program_path),
             )?;
 
             let claimed_program_id = program_path_gadget.calculate_root(
                 &mut cs.ns(|| "calculate_program_id"),
-                &program_circuits_tree_crh,
+                &program_functions_tree_crh,
                 claimed_circuit_id,
             )?;
 
             let given_program_id =
-                <N::ProgramCircuitsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
+                <N::ProgramFunctionsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
                     &mut cs.ns(|| "Given program ID"),
                     || Ok(&private.program_execution.program_id),
                 )?;

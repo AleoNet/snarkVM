@@ -14,17 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod executable;
-pub use executable::*;
-
-pub mod program;
-pub use program::*;
-
-pub mod function;
-pub use function::*;
-
-pub mod function_type;
-pub use function_type::*;
-
-pub mod public_variables;
-pub use public_variables::*;
+// pub mod request;
+// pub use request::*;

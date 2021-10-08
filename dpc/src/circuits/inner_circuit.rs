@@ -700,10 +700,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .to_constraint_field(&mut program_cs.ns(|| "convert executable program ID to field elements"))?
             };
 
-            // Declare the required number of inputs for this circuit type.
+            // Declare the required number of inputs for this function type.
             let number_of_inputs =
                 &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_inputs for executable"), &[private
-                    .circuit_type
+                    .function_type
                     .input_count()])?[0];
             {
                 let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
@@ -717,10 +717,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
             }
 
-            // Declare the required number of outputs for this circuit type.
+            // Declare the required number of outputs for this function type.
             let number_of_outputs =
                 &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_outputs for executable"), &[private
-                    .circuit_type
+                    .function_type
                     .output_count()])?[0];
             {
                 let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);

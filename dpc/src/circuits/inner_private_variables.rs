@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitType, LedgerProof, Network, ProgramExecutable, Record, State};
+use crate::{FunctionType, LedgerProof, Network, ProgramExecutable, Record, State};
 use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
@@ -31,7 +31,7 @@ pub struct InnerPrivateVariables<N: Network> {
     // Encryption of output records.
     pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Executable.
-    pub(super) circuit_type: CircuitType,
+    pub(super) function_type: FunctionType,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -45,7 +45,7 @@ impl<N: Network> InnerPrivateVariables<N> {
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
-            circuit_type: CircuitType::Noop,
+            function_type: FunctionType::Noop,
         }
     }
 
@@ -56,7 +56,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             signatures,
             output_records: state.output_records().clone(),
             ciphertext_randomizers: state.ciphertext_randomizers.clone(),
-            circuit_type: state.executable().circuit_type(),
+            function_type: state.executable().function_type(),
         })
     }
 }

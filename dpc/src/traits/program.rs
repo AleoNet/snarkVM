@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitType, Executable, Execution, Network, ProgramCircuit, ProgramError, PublicVariables};
-use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
+use crate::{Executable, Execution, Function, FunctionType, Network, ProgramError, PublicVariables};
+use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use anyhow::Result;
 
 pub trait ProgramScheme<N: Network>: Send + Sync {
     /// Initializes an instance of the program with the given circuits.
-    fn new(circuits: Vec<ProgramCircuit<N>>) -> Result<Self, ProgramError>
+    fn new(circuits: Vec<Function<N>>) -> Result<Self, ProgramError>
     where
         Self: Sized;
 
@@ -34,28 +34,28 @@ pub trait ProgramScheme<N: Network>: Send + Sync {
     /// Returns the program ID.
     fn program_id(&self) -> N::ProgramID;
 
-    /// Returns `true` if the given circuit ID exists in the program.
-    fn contains_circuit(&self, circuit_id: &N::ProgramCircuitID) -> bool;
+    /// Returns `true` if the given function ID exists in the program.
+    fn contains_function(&self, function_id: &N::FunctionID) -> bool;
 
-    /// Returns the circuit given the circuit ID, if it exists.
-    fn to_circuit(&self, circuit_id: &N::ProgramCircuitID) -> Option<&ProgramCircuit<N>>;
+    /// Returns the circuit given the function ID, if it exists.
+    fn to_function(&self, function_id: &N::FunctionID) -> Option<&Function<N>>;
 
-    /// Returns the program path (the Merkle path for a given circuit ID).
+    /// Returns the program path (the Merkle path for a given function ID).
     fn to_program_path(
         &self,
-        circuit_id: &N::ProgramCircuitID,
-    ) -> Result<MerklePath<N::ProgramCircuitsTreeParameters>, ProgramError>;
+        function_id: &N::FunctionID,
+    ) -> Result<MerklePath<N::ProgramFunctionsTreeParameters>, ProgramError>;
 
-    /// Returns an instance of an executable given the circuit ID, if it exists.
-    fn to_executable(&self, circuit_id: &N::ProgramCircuitID) -> Result<Executable<N>, ProgramError>;
+    /// Returns an instance of an executable given the function ID, if it exists.
+    fn to_executable(&self, function_id: &N::FunctionID) -> Result<Executable<N>, ProgramError>;
 }
 
 pub trait ProgramExecutable<N: Network>: Send + Sync {
     /// Initializes a new instance of an executable.
     fn new(
         program_id: N::ProgramID,
-        circuit: ProgramCircuit<N>,
-        program_path: MerklePath<N::ProgramCircuitsTreeParameters>,
+        circuit: Function<N>,
+        program_path: MerklePath<N::ProgramFunctionsTreeParameters>,
     ) -> Result<Self, ProgramError>
     where
         Self: Sized;
@@ -63,22 +63,11 @@ pub trait ProgramExecutable<N: Network>: Send + Sync {
     /// Returns the program ID of the executable.
     fn program_id(&self) -> N::ProgramID;
 
-    /// Returns the circuit ID of the executable.
-    fn circuit_id(&self) -> N::ProgramCircuitID;
-
     /// Returns the circuit type of the executable.
-    fn circuit_type(&self) -> CircuitType;
-
-    /// Returns the native evaluation of the executable on given public and private variables.
-    fn evaluate(&self, _public: PublicVariables<N>) -> bool {
-        unimplemented!("The native evaluation of this executable is unimplemented")
-    }
+    fn function_type(&self) -> FunctionType;
 
     /// Executes the circuit, returning an proof.
     fn execute(&self, public: PublicVariables<N>) -> Result<Execution<N>, ProgramError>;
-
-    /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: PublicVariables<N>, proof: &<N::ProgramSNARK as SNARK>::Proof) -> bool;
 }
 
 pub trait PrivateVariables<N: Network>: Send + Sync {
@@ -92,7 +81,7 @@ pub trait PrivateVariables<N: Network>: Send + Sync {
 
 pub trait CircuitLogic<N: Network>: Send + Sync {
     /// Returns the circuit type.
-    fn circuit_type(&self) -> CircuitType;
+    fn function_type(&self) -> FunctionType;
 
     /// Synthesizes the circuit inside the given constraint system.
     fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(

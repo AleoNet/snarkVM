@@ -193,18 +193,18 @@ impl<N: Network> TransitionBuilder<N> {
 
         // Ensure the executable input and output size requirements matches the records.
         {
-            // Fetch the circuit type and program ID.
-            let (circuit_type, program_id) = (executable.circuit_type(), executable.program_id());
+            // Fetch the function type and program ID.
+            let (function_type, program_id) = (executable.function_type(), executable.program_id());
 
             // Ensure the input records have the correct program ID.
-            for i in 0..(circuit_type.input_count() as usize) {
+            for i in 0..(function_type.input_count() as usize) {
                 if input_records[i].program_id() != program_id {
                     return Err(anyhow!("Program ID in input record {} does not match executable", i));
                 }
             }
 
             // Ensure the output records have the correct program ID.
-            for j in 0..(circuit_type.output_count() as usize) {
+            for j in 0..(function_type.output_count() as usize) {
                 if output_records[j].program_id() != program_id {
                     return Err(anyhow!("Program ID in output record {} does not match executable", j));
                 }

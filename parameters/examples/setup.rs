@@ -79,7 +79,7 @@ pub fn noop_setup<N: Network>() -> Result<()> {
         &mut *N::program_srs(&mut thread_rng()).borrow_mut(),
     )?;
 
-    let noop_circuit_id = hex::encode(<N as Network>::program_circuit_id(&verifying_key)?.to_bytes_le()?);
+    let noop_circuit_id = hex::encode(<N as Network>::function_id(&verifying_key)?.to_bytes_le()?);
     let noop_proving_key = proving_key.to_bytes_le()?;
     let noop_verifying_key = verifying_key.to_bytes_le()?;
 

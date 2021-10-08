@@ -22,35 +22,49 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
     fmt::{
-        Display,
-        Formatter,
-        {self},
+        Display, Formatter, {self},
     },
     io::{Read, Result as IoResult, Write},
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Input<N: Network> {
-    /// The record being consumed.
-    record: Record<N>,
-    /// The serial number of the record being consumed.
-    serial_number: N::SerialNumber,
-    /// The program function being called.
+pub struct Request<N: Network> {
+    /// The program being invoked.
+    program_id: N::ProgramID,
+    /// The program records being invoked.
+    program_records: Vec<Record<N>>,
+    /// The function being called.
     function_id: N::FunctionID,
-    /// The digest of the inputs from this caller.
-    inputs_digest: N::FunctionInputsDigest,
-    /// The fee amount this caller is contributing.
-    fee: u64,
-    /// The signature for this input.
-    signature: N::AccountSignature,
+    /// The function inputs.
+    function_inputs: Vec<N::InnerScalarField>,
+    /// The prover requested for the execution.
+    prover: Address<N>,
+    /// The prover fee for the execution.
+    prover_fee: u64,
+    /// The signatures for the request.
+    signatures: Vec<N::AccountSignature>,
 }
 
-impl<N: Network> Input<N> {
+impl<N: Network> Request<N> {
+    // /// Returns the
+    // pub fn to_serial_numbers(&self) -> Result<Vec<N::SerialNumber>> {
+    //     self.records.to_serial_number(&caller.to_compute_key()?)?;
+    //
+    // }
+
+    // /// The serial number of the record being consumed.
+    // serial_number: N::SerialNumber,
+
+    // /// The digest of the inputs from this caller.
+    // inputs_digest: N::FunctionInputsDigest,
+
     /// Signs and returns a new instance of an input.
     pub fn new<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
+        program_id: N::ProgramID,
+        function_id: N::FunctionID,
+        inputs: Vec<N::InnerScalarField>,
         record: Record<N>,
-        circuit_id: N::FunctionID,
         inputs_digest: N::FunctionInputsDigest,
         fee: u64,
         rng: &mut R,
@@ -62,9 +76,17 @@ impl<N: Network> Input<N> {
 
         // Construct and sign the input.
         let serial_number = record.to_serial_number(&caller.to_compute_key()?)?;
-        let message = to_bytes_le![serial_number, circuit_id, inputs_digest, fee]?;
+        let message = to_bytes_le![serial_number, program_id, function_id, inputs_digest, fee]?;
         let signature = caller.sign(&message, rng)?;
-        Self::from(record, serial_number, circuit_id, inputs_digest, fee, signature)
+        Self::from(
+            record,
+            serial_number,
+            program_id,
+            function_id,
+            inputs_digest,
+            fee,
+            signature,
+        )
     }
 
     /// Returns a new instance of a noop input.
@@ -77,31 +99,43 @@ impl<N: Network> Input<N> {
         // Construct the noop input parameters.
         let record = Record::new_noop_input(noop_address, rng)?;
         let serial_number = record.to_serial_number(&noop_compute_key)?;
-        let function_id = *N::noop_circuit_id();
+        let program_id = *N::noop_program_id();
+        let circuit_id = *N::noop_circuit_id();
         let inputs_digest = N::FunctionInputsDigest::default();
         let fee = 0;
 
         // Construct and sign the input.
-        let message = to_bytes_le![serial_number, function_id, inputs_digest, fee]?;
+        let message = to_bytes_le![serial_number, program_id, circuit_id, inputs_digest, fee]?;
         let signature = noop_private_key.sign(&message, rng)?;
-        Self::from(record, serial_number, function_id, inputs_digest, fee, signature)
+        Self::from(
+            record,
+            serial_number,
+            program_id,
+            circuit_id,
+            inputs_digest,
+            fee,
+            signature,
+        )
     }
 
     /// Returns a new instance of an input.
     pub fn from(
         record: Record<N>,
         serial_number: N::SerialNumber,
+        program_id: N::ProgramID,
         function_id: N::FunctionID,
+        inputs: Vec<N::InnerScalarField>,
         inputs_digest: N::FunctionInputsDigest,
         fee: u64,
         signature: N::AccountSignature,
     ) -> Result<Self> {
         let input = Self {
-            record,
-            serial_number,
+            program_id,
             function_id,
+            program_records: record,
+            serial_number,
             inputs_digest,
-            fee,
+            prover_fee: fee,
             signature,
         };
 
@@ -113,7 +147,13 @@ impl<N: Network> Input<N> {
 
     /// Returns `true` if the input signature is valid.
     pub fn is_valid(&self) -> bool {
-        let message = match to_bytes_le![self.serial_number, self.function_id, self.inputs_digest, self.fee] {
+        let message = match to_bytes_le![
+            self.serial_number,
+            self.program_id,
+            self.function_id,
+            self.inputs_digest,
+            self.prover_fee
+        ] {
             Ok(signature_message) => signature_message,
             Err(error) => {
                 eprintln!("Failed to construct input signature message: {}", error);
@@ -121,7 +161,7 @@ impl<N: Network> Input<N> {
             }
         };
 
-        match N::account_signature_scheme().verify(&self.record.owner(), &message, &self.signature) {
+        match N::account_signature_scheme().verify(&self.program_records.owner(), &message, &self.signature) {
             Ok(is_valid) => is_valid,
             Err(error) => {
                 eprintln!("Failed to verify input signature: {}", error);
@@ -132,17 +172,17 @@ impl<N: Network> Input<N> {
 
     /// Returns `true` if the program ID is the noop program.
     pub fn is_noop(&self) -> bool {
-        self.record.program_id() == *N::noop_program_id() && self.function_id == *N::noop_circuit_id()
+        self.program_records.program_id() == *N::noop_program_id() && self.function_id == *N::noop_circuit_id()
     }
 
     /// Returns a reference to the input record.
     pub fn record(&self) -> &Record<N> {
-        &self.record
+        &self.program_records
     }
 
     /// Returns the program ID.
     pub fn program_id(&self) -> N::ProgramID {
-        self.record.program_id()
+        self.program_id
     }
 
     /// Returns the function ID.
@@ -157,7 +197,7 @@ impl<N: Network> Input<N> {
 
     /// Returns the fee.
     pub fn fee(&self) -> u64 {
-        self.fee
+        self.prover_fee
     }
 
     /// Returns a reference to the signature.
@@ -166,36 +206,44 @@ impl<N: Network> Input<N> {
     }
 }
 
-impl<N: Network> FromBytes for Input<N> {
+impl<N: Network> FromBytes for Request<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let program_id = FromBytes::read_le(&mut reader)?;
+        let function_id = FromBytes::read_le(&mut reader)?;
         let record = FromBytes::read_le(&mut reader)?;
         let serial_number = FromBytes::read_le(&mut reader)?;
-        let function_id = FromBytes::read_le(&mut reader)?;
         let inputs_digest = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::from(record, serial_number, function_id, inputs_digest, fee, signature)
-                .expect("Failed to deserialize an input"),
+        Ok(Self::from(
+            record,
+            serial_number,
+            program_id,
+            function_id,
+            inputs_digest,
+            fee,
+            signature,
         )
+        .expect("Failed to deserialize an input"))
     }
 }
 
-impl<N: Network> ToBytes for Input<N> {
+impl<N: Network> ToBytes for Request<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.record.write_le(&mut writer)?;
-        self.serial_number.write_le(&mut writer)?;
+        self.program_id.write_le(&mut writer)?;
         self.function_id.write_le(&mut writer)?;
+        self.program_records.write_le(&mut writer)?;
+        self.serial_number.write_le(&mut writer)?;
         self.inputs_digest.write_le(&mut writer)?;
-        self.fee.write_le(&mut writer)?;
+        self.prover_fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)
     }
 }
 
-impl<N: Network> Display for Input<N> {
+impl<N: Network> Display for Request<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -217,7 +265,7 @@ mod tests {
             // Sample a random seed for the RNG.
             let seed: u64 = thread_rng().gen();
 
-            // Generate the expected input state.
+            // Generate the expected request state.
             let (expected_record, expected_serial_number, expected_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
@@ -231,10 +279,10 @@ mod tests {
                 (input_record, serial_number, program_id)
             };
 
-            // Generate the candidate input state.
+            // Generate the candidate request state.
             let (candidate_record, candidate_serial_number, candidate_program_id) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
-                let input = Input::<Testnet2>::new_noop(rng).unwrap();
+                let input = Request::<Testnet2>::new_noop(rng).unwrap();
                 (
                     input.record().clone(),
                     input.serial_number().clone(),

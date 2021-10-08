@@ -131,6 +131,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
     type CiphertextID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
+    /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
+    type FunctionIDCRH: CRH<Output = Self::FunctionID>;
+    type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::OuterScalarField>;
+    type FunctionID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
     /// Crypto hash for deriving the function inputs digest. Invoked only over `Self::InnerScalarField`.
     type FunctionInputsCRH: CryptoHash;
     type FunctionInputsCRHGadget: CryptoHashGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
@@ -146,15 +151,10 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type PoSWMaskPRFGadget: PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>;
     type PoSW: PoSWScheme<Self>;
     
-    /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
-    type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
-    type ProgramCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramCircuitsTreeCRH: CRH<Output = Self::ProgramID>;
-    type ProgramCircuitsTreeCRHGadget: CRHGadget<Self::ProgramCircuitsTreeCRH, Self::OuterScalarField>;
-    type ProgramCircuitsTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitsTreeCRH>;
+    type ProgramFunctionsTreeCRH: CRH<Output = Self::ProgramID>;
+    type ProgramFunctionsTreeCRHGadget: CRHGadget<Self::ProgramFunctionsTreeCRH, Self::OuterScalarField>;
+    type ProgramFunctionsTreeParameters: LoadableMerkleParameters<H = Self::ProgramFunctionsTreeCRH>;
     type ProgramID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
@@ -186,9 +186,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-    fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
-    fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
-    fn program_circuits_tree_parameters() -> &'static Arc<Self::ProgramCircuitsTreeParameters>;
+    fn function_id_crh() -> &'static Self::FunctionIDCRH;
+    fn program_functions_tree_crh() -> &'static Self::ProgramFunctionsTreeCRH;
+    fn program_functions_tree_parameters() -> &'static Arc<Self::ProgramFunctionsTreeParameters>;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
@@ -199,8 +199,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     fn noop_program() -> &'static Program<Self>;
     fn noop_program_id() -> &'static Self::ProgramID;
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters>;
-    fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramFunctionsTreeParameters>;
+    fn noop_circuit_id() -> &'static Self::FunctionID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
 
@@ -211,11 +211,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     fn genesis_block() -> &'static Block<Self>;
 
-    /// Returns the program circuit ID given a program circuit verifying key.
-    fn program_circuit_id(
+    /// Returns the function ID given a program function verifying key.
+    fn function_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
-    ) -> Result<Self::ProgramCircuitID> {
-        Ok(Self::program_circuit_id_crh().hash_bits(&verifying_key.to_minimal_bits())?)
+    ) -> Result<Self::FunctionID> {
+        Ok(Self::function_id_crh().hash_bits(&verifying_key.to_minimal_bits())?)
     }
 
     /// Returns the program SRS for Aleo applications.

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[derive(Copy, Clone, Debug)]
-pub enum CircuitType {
+pub enum FunctionType {
     Noop,
     Add,
     Update,
@@ -25,7 +25,7 @@ pub enum CircuitType {
     JoinSplit,
 }
 
-impl CircuitType {
+impl FunctionType {
     pub fn input_count(&self) -> u8 {
         match self {
             Self::Noop => 0,
