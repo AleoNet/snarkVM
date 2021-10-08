@@ -24,7 +24,6 @@ use crate::{
     algorithms::prf::{blake2s_gadget, Blake2sOutputGadget},
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget},
-    ToBytesLEGadget,
 };
 
 #[derive(Clone)]
@@ -43,7 +42,7 @@ impl<F: PrimeField> CommitmentGadget<Blake2sCommitment, F> for Blake2sCommitment
     ) -> Result<Self::OutputGadget, SynthesisError> {
         let mut input_bits = vec![];
         for byte in input.iter().chain(r.0.iter()) {
-            input_bits.extend_from_slice(&byte.to_bits_le_u8());
+            input_bits.extend_from_slice(&byte.u8_to_bits_le());
         }
 
         let mut result = vec![];
@@ -51,7 +50,7 @@ impl<F: PrimeField> CommitmentGadget<Blake2sCommitment, F> for Blake2sCommitment
             .into_iter()
             .enumerate()
         {
-            result.extend_from_slice(&int.to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?);
+            result.extend_from_slice(&int.u32_to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?);
         }
         Ok(Blake2sOutputGadget(result))
     }

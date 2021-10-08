@@ -363,7 +363,7 @@ impl<
         let capacity = BaseField::size_in_bits() - 1;
         let mut bits = Vec::<Boolean>::new();
         for elem in elems.iter() {
-            let mut bits_le = elem.to_bits_le_u8(); // UInt8's to_bits is le, which is an exception in Zexe.
+            let mut bits_le = elem.u8_to_bits_le(); // UInt8's to_bits is le, which is an exception in Zexe.
             bits_le.reverse();
             bits.extend_from_slice(&bits_le);
         }

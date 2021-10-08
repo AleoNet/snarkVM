@@ -133,7 +133,7 @@ impl Integer {
 
     // pub fn to_bits_le(&self) -> Vec<Boolean> {
     //     let integer = self;
-    //     match_integer!(integer => integer.to_bits_le_u8())
+    //     match_integer!(integer => integer.u8_to_bits_le())
     // }
 
     // pub fn is_allocated(&self) -> bool {

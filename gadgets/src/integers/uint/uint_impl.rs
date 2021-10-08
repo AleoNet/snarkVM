@@ -121,7 +121,37 @@ impl UInt8 {
 
     /// Returns a vector of `Boolean` gadget bits in little-endian order.
     /// Gadget implementations and Leo functions should call `ToBitsLEGadget` instead.
-    pub fn to_bits_le_u8(&self) -> Vec<Boolean> {
+    pub fn u8_to_bits_le(&self) -> Vec<Boolean> {
         self.bits.clone()
+    }
+}
+
+impl UInt32 {
+    /// Returns a eight `UInt8` gadget bits in little-endian order from a `UInt32`.
+    /// Gadget implementations and Leo functions should call `FromBitsLEGadget` instead.
+    pub fn u32_to_bytes_le<F: Field, CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        const BYTES_SIZE: usize = 8; // Fix bytes size to 8 for blake2s
+
+        let value_chunks = match self.value.map(|val| {
+            let mut bytes = [0u8; BYTES_SIZE];
+            val.write_le(bytes.as_mut()).unwrap();
+            bytes
+        }) {
+            Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
+            None => [None, None, None, None],
+        };
+
+        let bits = self.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
+        let mut bytes = Vec::with_capacity(bits.len() / 8);
+        for (chunk8, value) in bits.chunks(8).into_iter().zip(value_chunks.iter()) {
+            let byte = UInt8 {
+                bits: chunk8.to_vec(),
+                negated: false,
+                value: *value,
+            };
+            bytes.push(byte);
+        }
+
+        Ok(bytes)
     }
 }

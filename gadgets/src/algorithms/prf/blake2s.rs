@@ -475,14 +475,14 @@ impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
         // assert_eq!(input.len(), 32);
         let mut gadget_input = vec![];
         for byte in seed.iter().chain(input) {
-            gadget_input.extend_from_slice(&byte.to_bits_le_u8());
+            gadget_input.extend_from_slice(&byte.u8_to_bits_le());
         }
         let mut result = vec![];
         for (i, int) in blake2s_gadget(cs.ns(|| "blake2s_prf"), &gadget_input)?
             .into_iter()
             .enumerate()
         {
-            let chunk = int.to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?;
+            let chunk = int.u32_to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?;
             result.extend_from_slice(&chunk);
         }
         Ok(Blake2sOutputGadget(result))

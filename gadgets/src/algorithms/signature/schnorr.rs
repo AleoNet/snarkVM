@@ -298,7 +298,7 @@ impl<
         public_key: &Self::PublicKeyGadget,
         randomness: &[UInt8],
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let randomness = randomness.iter().flat_map(|b| b.to_bits_le_u8()).collect::<Vec<_>>();
+        let randomness = randomness.iter().flat_map(|b| b.u8_to_bits_le()).collect::<Vec<_>>();
         let mut rand_pk = public_key.public_key.clone();
         rand_pk.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
@@ -328,7 +328,7 @@ impl<
 
         let prover_response_bits = prover_response_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect::<Vec<_>>();
         let verifier_challenge_bits = signature
             .verifier_challenge
@@ -388,9 +388,9 @@ impl<
         // Check all the bits up to the bit size of the Field gadget.
         for (i, (expected_byte, found_byte)) in verifier_challenge_bytes.iter().zip_eq(&hash_bytes).enumerate() {
             for (j, (expected_bit, found_bit)) in expected_byte
-                .to_bits_le_u8()
+                .u8_to_bits_le()
                 .iter()
-                .zip_eq(found_byte.to_bits_le_u8())
+                .zip_eq(found_byte.u8_to_bits_le())
                 .enumerate()
             {
                 if (i * 8 + j) < total_bits {

@@ -57,7 +57,7 @@ impl<F: Field, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const 
         // Pad the input bits if it is not the current length.
         let mut input_in_bits: Vec<_> = padded_input_bytes
             .into_iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect();
         if (input_in_bits.len()) % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
             let current_length = input_in_bits.len();

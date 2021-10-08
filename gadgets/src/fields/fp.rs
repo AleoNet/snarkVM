@@ -608,7 +608,7 @@ impl<F: PrimeField> ToBytesLEGadget<F> for AllocatedFp<F> {
             &mut cs,
             &bytes
                 .iter()
-                .flat_map(|byte_gadget| byte_gadget.to_bits_le_u8())
+                .flat_map(|byte_gadget| byte_gadget.u8_to_bits_le())
                 // This reverse maps the bits into big-endian form, as required by `enforce_in_field`.
                 .rev()
                 .collect::<Vec<_>>(),

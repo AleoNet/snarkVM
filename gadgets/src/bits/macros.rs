@@ -55,13 +55,17 @@ macro_rules! to_bytes_int_impl {
                     val.write_le(bytes.as_mut()).unwrap();
                     bytes
                 }) {
-                    Some(chunks) => chunks.to_vec().iter().map(|item| Some(item.clone())).collect::<Vec<Option<u8>>>(),
-                    None => vec![None, None, None, None],
+                    Some(chunks) => chunks
+                        .to_vec()
+                        .iter()
+                        .map(|item| Some(item.clone()))
+                        .collect::<Vec<Option<u8>>>(),
+                    None => vec![None; BYTES_SIZE],
                 };
 
                 let bits = self.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
                 let bytes = bits
-                    .chunks(8) // Does this need to be BYTES_SIZE?
+                    .chunks(BYTES_SIZE)
                     .into_iter()
                     .zip(value_chunks.iter())
                     .map(|(chunk8, value)| UInt8 {
@@ -70,7 +74,7 @@ macro_rules! to_bytes_int_impl {
                         value: *value,
                     })
                     .collect::<Vec<UInt8>>();
-                assert_eq!(bytes.capacity(), 8);
+                assert_eq!(bytes.capacity(), BYTES_SIZE);
 
                 Ok(bytes)
             }

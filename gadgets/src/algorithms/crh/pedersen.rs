@@ -110,7 +110,7 @@ fn pad_input_and_bitify<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(inpu
     let mut padded_input = input;
     padded_input.resize(WINDOW_SIZE * NUM_WINDOWS / 8, UInt8::constant(0u8));
     assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
-    padded_input.into_iter().flat_map(|byte| byte.to_bits_le_u8()).collect()
+    padded_input.into_iter().flat_map(|byte| byte.u8_to_bits_le()).collect()
 }
 
 impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>

@@ -54,7 +54,7 @@ pub trait MaskedCRHGadget<H: CRH, F: PrimeField>: CRHGadget<H, F> {
         let extended_mask = mask
             .iter()
             .flat_map(|m| {
-                m.to_bits_le_u8()
+                m.u8_to_bits_le()
                     .chunks(4)
                     .map(|c| {
                         let new_byte = c.iter().flat_map(|b| vec![*b, b.not()]).collect::<Vec<_>>();

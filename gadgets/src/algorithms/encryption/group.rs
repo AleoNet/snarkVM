@@ -503,7 +503,7 @@ impl<
         parameters: &Self::ParametersGadget,
         private_key: &Self::PrivateKeyGadget,
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let private_key_bits = private_key.0.iter().flat_map(|b| b.to_bits_le_u8()).collect::<Vec<_>>();
+        let private_key_bits = private_key.0.iter().flat_map(|b| b.u8_to_bits_le()).collect::<Vec<_>>();
         let mut public_key = GG::zero(&mut cs.ns(|| "zero"))?;
         public_key.scalar_multiplication(
             cs.ns(|| "check_public_key_gadget"),
@@ -527,7 +527,7 @@ impl<
     ) -> Result<Self::CiphertextGadget, SynthesisError> {
         let zero = GG::zero(&mut cs.ns(|| "zero")).unwrap();
 
-        let randomness_bits: Vec<_> = randomness.0.iter().flat_map(|byte| byte.to_bits_le_u8()).collect();
+        let randomness_bits: Vec<_> = randomness.0.iter().flat_map(|byte| byte.u8_to_bits_le()).collect();
 
         let mut c_0 = zero.clone();
         c_0.scalar_multiplication(
@@ -542,7 +542,7 @@ impl<
 
         let z = record_view_key_gadget.to_x_coordinate();
         let z_bytes = z.to_bytes_le(&mut cs.ns(|| "z_to_bytes"))?;
-        let z_bits: Vec<_> = z_bytes.into_iter().flat_map(|byte| byte.to_bits_le_u8()).collect();
+        let z_bits: Vec<_> = z_bytes.into_iter().flat_map(|byte| byte.u8_to_bits_le()).collect();
 
         let mut ciphertext = vec![c_0];
 
@@ -551,7 +551,7 @@ impl<
 
             let cs = &mut cs.ns(|| format!("c_{}", j));
 
-            let blinding_exponent_bits = blinding_exponent.iter().flat_map(|byte| byte.to_bits_le_u8());
+            let blinding_exponent_bits = blinding_exponent.iter().flat_map(|byte| byte.u8_to_bits_le());
 
             let h = record_view_key_gadget.mul_bits(cs.ns(|| "h"), &zero, blinding_exponent_bits)?;
 

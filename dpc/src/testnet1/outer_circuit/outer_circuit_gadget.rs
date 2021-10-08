@@ -303,7 +303,7 @@ where
     for input_bytes in inner_snark_input_bytes {
         let input_bits = input_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect::<Vec<_>>();
         inner_snark_input_bits.push(input_bits);
     }
@@ -347,7 +347,7 @@ where
     for input_bytes in program_input_bytes {
         let input_bits = input_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect::<Vec<_>>();
         if !input_bits.is_empty() {
             program_input_bits.push(input_bits);
@@ -386,7 +386,7 @@ where
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
-        let position = UInt8::constant(i as u8).to_bits_le_u8();
+        let position = UInt8::constant(i as u8).u8_to_bits_le();
 
         C::NoopProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
@@ -428,7 +428,7 @@ where
 
         new_birth_program_ids.push(claimed_birth_program_id_bytes);
 
-        let position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8).to_bits_le_u8();
+        let position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8).u8_to_bits_le();
 
         C::NoopProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),

@@ -96,7 +96,7 @@ impl<F: Field> ToBitsLEGadget<F> for [UInt8] {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let mut result = Vec::with_capacity(&self.len() * 8);
         for byte in self {
-            result.extend_from_slice(&byte.to_bits_le_u8());
+            result.extend_from_slice(&byte.u8_to_bits_le());
         }
         Ok(result)
     }

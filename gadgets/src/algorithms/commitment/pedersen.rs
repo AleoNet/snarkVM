@@ -138,12 +138,12 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, c
         assert_eq!(parameters.parameters.bases.len(), NUM_WINDOWS);
 
         // Allocate new variable for commitment output.
-        let input_in_bits: Vec<_> = padded_input.iter().flat_map(|byte| byte.to_bits_le_u8()).collect();
+        let input_in_bits: Vec<_> = padded_input.iter().flat_map(|byte| byte.u8_to_bits_le()).collect();
         let input_in_bits = input_in_bits.chunks(WINDOW_SIZE);
         let mut result = GG::multi_scalar_multiplication(cs.ns(|| "msm"), &parameters.parameters.bases, input_in_bits)?;
 
         // Compute h^r
-        let rand_bits = randomness.0.iter().flat_map(|byte| byte.to_bits_le_u8());
+        let rand_bits = randomness.0.iter().flat_map(|byte| byte.u8_to_bits_le());
         result.scalar_multiplication(
             cs.ns(|| "randomizer"),
             rand_bits.zip(&parameters.parameters.random_base),
