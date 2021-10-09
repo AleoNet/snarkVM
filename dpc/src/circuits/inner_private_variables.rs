@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, LedgerProof, Network, ProgramExecutable, Record, State};
+use crate::{FunctionType, LedgerProof, Network, Record, Request, Response};
 use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
@@ -25,12 +25,12 @@ pub struct InnerPrivateVariables<N: Network> {
     // Inputs records.
     pub(super) input_records: Vec<Record<N>>,
     pub(super) ledger_proof: LedgerProof<N>,
-    pub(super) signatures: Vec<N::AccountSignature>,
+    pub(super) signature: N::AccountSignature,
     // Output records.
     pub(super) output_records: Vec<Record<N>>,
     // Encryption of output records.
     pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-    // Executable.
+    // Function.
     pub(super) function_type: FunctionType,
 }
 
@@ -39,7 +39,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         Self {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proof: Default::default(),
-            signatures: vec![N::AccountSignature::default(); N::NUM_INPUT_RECORDS],
+            signature: N::AccountSignature::default(),
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             ciphertext_randomizers: vec![
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
@@ -49,14 +49,14 @@ impl<N: Network> InnerPrivateVariables<N> {
         }
     }
 
-    pub fn new(state: &State<N>, ledger_proof: LedgerProof<N>, signatures: Vec<N::AccountSignature>) -> Result<Self> {
+    pub fn new(request: &Request<N>, response: &Response<N>) -> Result<Self> {
         Ok(Self {
-            input_records: state.input_records().clone(),
-            ledger_proof,
-            signatures,
-            output_records: state.output_records().clone(),
-            ciphertext_randomizers: state.ciphertext_randomizers.clone(),
-            function_type: state.executable().function_type(),
+            input_records: request.records().clone(),
+            output_records: response.records().clone(),
+            signature: request.signature().clone(),
+            ledger_proof: request.ledger_proof().clone(),
+            ciphertext_randomizers: response.ciphertext_randomizers().clone(),
+            function_type: request.function_type(),
         })
     }
 }

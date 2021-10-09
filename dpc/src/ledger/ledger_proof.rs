@@ -16,16 +16,17 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
+use std::io::{Read, Result as IoResult, Write};
 
 /// A ledger proof of inclusion.
-#[allow(unused)]
 #[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct LedgerProof<N: Network> {
+    /// The block hash used to prove inclusion of ledger-consumed records.
     block_hash: N::BlockHash,
     previous_block_hash: N::BlockHash,
     header_root: N::BlockHeaderRoot,
@@ -123,7 +124,7 @@ impl<N: Network> LedgerProof<N> {
         })
     }
 
-    /// Returns the block hash.
+    /// Returns the block hash used to prove inclusion of ledger-consumed records.
     pub fn block_hash(&self) -> N::BlockHash {
         self.block_hash
     }
@@ -151,6 +152,51 @@ impl<N: Network> LedgerProof<N> {
     /// Returns a reference to the commitment inclusion proofs.
     pub fn commitment_inclusion_proofs(&self) -> &Vec<MerklePath<N::CommitmentsTreeParameters>> {
         &self.commitment_inclusion_proofs
+    }
+}
+
+impl<N: Network> FromBytes for LedgerProof<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let block_hash = FromBytes::read_le(&mut reader)?;
+        let previous_block_hash = FromBytes::read_le(&mut reader)?;
+        let header_root = FromBytes::read_le(&mut reader)?;
+        let header_inclusion_proof = FromBytes::read_le(&mut reader)?;
+        let commitments_root = FromBytes::read_le(&mut reader)?;
+
+        let mut commitment_inclusion_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            commitment_inclusion_proofs.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        Ok(Self::new(
+            block_hash,
+            previous_block_hash,
+            header_root,
+            header_inclusion_proof,
+            commitments_root,
+            commitment_inclusion_proofs,
+            commitments,
+        )
+        .expect("Failed to deserialize a ledger inclusion proof"))
+    }
+}
+
+impl<N: Network> ToBytes for LedgerProof<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.block_hash.write_le(&mut writer)?;
+        self.previous_block_hash.write_le(&mut writer)?;
+        self.header_root.write_le(&mut writer)?;
+        self.header_inclusion_proof.write_le(&mut writer)?;
+        self.commitments_root.write_le(&mut writer)?;
+        self.commitment_inclusion_proofs.write_le(&mut writer)?;
+        self.commitments.write_le(&mut writer)
     }
 }
 

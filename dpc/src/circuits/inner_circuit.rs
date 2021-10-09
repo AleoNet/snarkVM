@@ -71,7 +71,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             account_signature_parameters,
             record_commitment_parameters,
             encrypted_record_crh,
-            transaction_id_crh,
+            transition_id_crh,
             commitments_tree_parameters,
             block_header_tree_parameters,
             block_hash_crh,
@@ -98,9 +98,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 || Ok(N::encrypted_record_crh().clone()),
             )?;
 
-            let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
+            let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare transaction ID CRH parameters"),
-                || Ok(N::transaction_id_crh().clone()),
+                || Ok(N::transition_id_crh().clone()),
             )?;
 
             let commitments_tree_parameters = N::CommitmentsTreeCRHGadget::alloc_constant(
@@ -123,7 +123,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 account_signature_parameters,
                 record_commitment_parameters,
                 encrypted_record_crh_parameters,
-                transaction_id_crh,
+                transition_id_crh,
                 commitments_tree_parameters,
                 block_header_tree_parameters,
                 block_hash_crh,
@@ -151,7 +151,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
 
-        for (i, (record, signature)) in private.input_records.iter().zip_eq(&private.signatures).enumerate() {
+        for (i, record) in private.input_records.iter().enumerate() {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
             // Declare record contents
@@ -234,7 +234,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
                 // Allocate sk_prf.
                 let sk_prf = {
-                    let compute_key = ComputeKey::<N>::from_signature(&signature)
+                    let compute_key = ComputeKey::<N>::from_signature(&private.signature)
                         .expect("Failed to derive the compute key from signature");
                     FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?
                 };
@@ -263,36 +263,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 candidate_serial_number_bytes
             };
-
-            // *******************************************************************
-            // Check that the signatures are valid.
-            // *******************************************************************
-            {
-                let signature_cs = &mut cs.ns(|| "Check that the signature is valid");
-
-                let signature_gadget = <N::AccountSignatureGadget as SignatureGadget<
-                    N::AccountSignatureScheme,
-                    N::InnerScalarField,
-                >>::SignatureGadget::alloc(
-                    signature_cs.ns(|| "alloc_signature"), || Ok(signature)
-                )?;
-
-                let mut signature_message = Vec::new();
-                signature_message.extend_from_slice(&candidate_serial_number_bytes);
-                // signature_message.extend_from_slice(&circuit_id);
-                // signature_message.extend_from_slice(&inputs_digest);
-                // signature_message.extend_from_slice(&fee);
-
-                let signature_verification = account_signature_parameters.verify(
-                    signature_cs.ns(|| "signature_verify"),
-                    &given_owner,
-                    &signature_message,
-                    &signature_gadget,
-                )?;
-
-                signature_verification
-                    .enforce_equal(signature_cs.ns(|| "check_verification"), &Boolean::constant(true))?;
-            }
 
             // *******************************************************************
             // Check that the record is well-formed.
@@ -364,6 +334,35 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 input_is_dummies.push(given_is_dummy);
                 input_values.push(given_value);
             }
+        }
+
+        // *******************************************************************
+        // Check that the signature is valid.
+        // *******************************************************************
+        {
+            let signature_cs = &mut cs.ns(|| "Check that the signature is valid");
+
+            let signature_gadget = <N::AccountSignatureGadget as SignatureGadget<
+                N::AccountSignatureScheme,
+                N::InnerScalarField,
+            >>::SignatureGadget::alloc(
+                signature_cs.ns(|| "alloc_signature"), || Ok(private.signature)
+            )?;
+
+            let mut signature_message = Vec::new();
+            // signature_message.extend_from_slice(&candidate_serial_number_bytes);
+            // signature_message.extend_from_slice(&circuit_id);
+            // signature_message.extend_from_slice(&inputs_digest);
+            // signature_message.extend_from_slice(&fee);
+
+            let signature_verification = account_signature_parameters.verify(
+                signature_cs.ns(|| "signature_verify"),
+                &given_owner,
+                &signature_message,
+                &signature_gadget,
+            )?;
+
+            signature_verification.enforce_equal(signature_cs.ns(|| "check_verification"), &Boolean::constant(true))?;
         }
 
         // **********************************************************************************
@@ -823,15 +822,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             message.extend_from_slice(&ciphertext_ids_bytes);
             message.extend_from_slice(&candidate_value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
 
-            let candidate_transaction_id = transaction_id_crh
+            let candidate_transaction_id = transition_id_crh
                 .check_evaluation_gadget(&mut cs.ns(|| "Compute the transaction ID"), message.clone())?;
 
-            let given_transaction_id = <N::TransactionIDCRHGadget as CRHGadget<
-                N::TransactionIDCRH,
+            let given_transaction_id = <N::TransitionIDCRHGadget as CRHGadget<
+                N::TransitionIDCRH,
                 N::InnerScalarField,
             >>::OutputGadget::alloc_input(
                 &mut cs.ns(|| "Allocate given transaction ID"),
-                || Ok(public.transaction_id()),
+                || Ok(public.transition_id()),
             )?;
 
             candidate_transaction_id.enforce_equal(

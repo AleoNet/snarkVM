@@ -34,7 +34,8 @@ use std::{
     Copy(bound = "N: Network"),
     Clone(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
+    Eq(bound = "N: Network"),
+    Hash(bound = "N: Network")
 )]
 pub struct Address<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
 

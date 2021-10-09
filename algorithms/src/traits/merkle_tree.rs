@@ -17,15 +17,24 @@
 use crate::{errors::MerkleError, CRH};
 use snarkvm_utilities::ToBytes;
 
-use std::io::Cursor;
+use std::{fmt::Debug, io::Cursor};
 
-pub trait MerkleParameters: Send + Sync + Clone {
+pub trait MerkleParameters: Clone + Debug + Send + Sync {
     type H: CRH;
 
     const DEPTH: usize;
 
     /// Setup the MerkleParameters
     fn setup(message: &str) -> Self;
+
+    // TODO (howardwu): TEMPORARY - This is a temporary fix to support ToBytes/FromBytes for
+    //  LedgerProof and LocalProof. While it is "safe", it is not performant to deserialize
+    //  in such a manual fashion. However, given the extent to which modifying the architecture
+    //  of Merkle trees in snarkVM impacts many APIs downstream, this forward-compatible change
+    //  is being introduced until a proper refactor can be discussed and implemented.
+    //  If you are seeing this message, please be proactive in bringing it up :)
+    /// Returns the saved `message` from calling the `MerkleParameters::setup()` function.
+    fn setup_message(&self) -> &str;
 
     /// Returns the collision-resistant hash function used by the Merkle tree.
     fn crh(&self) -> &Self::H;
@@ -65,9 +74,6 @@ pub trait MerkleParameters: Send + Sync + Clone {
         Ok(self.crh().hash(&empty_buffer)?)
     }
 }
-
-// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-pub trait LoadableMerkleParameters: MerkleParameters + From<<Self as MerkleParameters>::H> {}
 
 pub trait MaskedMerkleParameters: MerkleParameters {
     /// Returns the collision-resistant hash function masking parameters used by the Merkle tree.

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPublicVariables, Network, Transaction};
+use crate::{InnerPublicVariables, Network, Transition};
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
@@ -53,16 +53,16 @@ impl<N: Network> OuterPublicVariables<N> {
         }
     }
 
-    pub fn from(transaction: &Transaction<N>) -> Result<Self> {
+    pub fn from(transition: &Transition<N>, inner_circuit_id: N::InnerCircuitID) -> Result<Self> {
         Ok(Self {
             inner_public_variables: InnerPublicVariables {
-                transaction_id: transaction.to_transaction_id()?,
-                block_hash: transaction.block_hash(),
+                transition_id: transition.to_transition_id()?,
+                block_hash: transition.block_hash(),
                 // This inner circuit public variable is allocated as a private variable in the outer circuit,
                 // as it is not included in the transaction broadcast to the ledger.
                 program_id: None,
             },
-            inner_circuit_id: transaction.inner_circuit_id().clone(),
+            inner_circuit_id,
         })
     }
 }

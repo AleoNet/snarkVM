@@ -34,7 +34,8 @@ use rand::{thread_rng, CryptoRng, Rng};
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
+    Eq(bound = "N: Network"),
+    Hash(bound = "N: Network")
 )]
 pub struct RecordCiphertext<N: Network> {
     ciphertext: Vec<u8>,
@@ -107,9 +108,8 @@ impl<N: Network> RecordCiphertext<N> {
         )?)
     }
 
-    /// Returns the encrypted record ID.
-    /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<N::CiphertextID> {
+    /// Returns the record ciphertext ID. The preimage is the ciphertext x-coordinates appended with the selector bits.
+    pub fn to_ciphertext_id(&self) -> Result<N::CiphertextID> {
         Ok(N::encrypted_record_crh().hash(&self.ciphertext)?)
     }
 }

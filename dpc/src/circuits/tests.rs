@@ -36,10 +36,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let transaction_id = state.transition().to_transaction_id().unwrap();
 
     // Execute the program circuit.
-    let execution = state
-        .executable()
-        .execute(PublicVariables::new(transaction_id))
-        .unwrap();
+    let execution = state.function().execute(PublicVariables::new(transaction_id)).unwrap();
 
     // Construct the ledger witnesses.
     let ledger_proof = LedgerProof::<N>::default();
@@ -50,10 +47,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_public = InnerPublicVariables::new(
         transaction_id,
         ledger_proof.block_hash(),
-        Some(state.executable().program_id()),
+        Some(state.function().program_id()),
     )
     .unwrap();
-    let inner_private = InnerPrivateVariables::new(&state, ledger_proof, state.signatures().clone()).unwrap();
+    let inner_private = InnerPrivateVariables::new(&state, ledger_proof).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();

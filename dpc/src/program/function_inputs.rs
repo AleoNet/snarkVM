@@ -16,6 +16,12 @@
 
 use crate::Network;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+use snarkvm_utilities::{FromBytes, ToBytes};
+
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 #[derive(Derivative)]
 #[derivative(
@@ -24,21 +30,33 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
     Debug(bound = "N: Network"),
     Default(bound = "N: Network")
 )]
-pub struct PublicVariables<N: Network> {
-    pub transition_id: N::TransitionID,
+pub struct FunctionInputs<N: Network> {
+    _unused: PhantomData<N>,
 }
 
-impl<N: Network> PublicVariables<N> {
-    pub fn new(transition_id: N::TransitionID) -> Self {
-        Self { transition_id }
+impl<N: Network> FunctionInputs<N> {
+    pub fn new() -> Self {
+        Self { _unused: PhantomData }
     }
 }
 
-/// Converts the public variables into bytes and packs them into field elements.
-impl<N: Network> ToConstraintField<N::InnerScalarField> for PublicVariables<N> {
+impl<N: Network> FromBytes for FunctionInputs<N> {
+    #[inline]
+    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
+        Ok(Self::new())
+    }
+}
+
+impl<N: Network> ToBytes for FunctionInputs<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
+        Ok(())
+    }
+}
+
+impl<N: Network> ToConstraintField<N::InnerScalarField> for FunctionInputs<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
-        v.extend_from_slice(&self.transition_id.to_field_elements()?);
         Ok(v)
     }
 }

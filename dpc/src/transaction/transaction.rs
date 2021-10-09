@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, Address, AleoAmount, LedgerProof, Memo, Network, OuterPublicVariables, State, Transition};
-use snarkvm_algorithms::traits::SNARK;
-use snarkvm_utilities::{FromBytes, ToBytes};
+use crate::{record::*, Address, AleoAmount, LedgerProof, Memo, Network, Transition};
+use snarkvm_algorithms::CRH;
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
@@ -37,15 +38,10 @@ pub struct Transaction<N: Network> {
     network_id: u16,
     /// The state transition.
     transition: Transition<N>,
-    /// The block hash used for the ledger inclusion proof.
-    block_hash: N::BlockHash,
     /// The ID of the inner circuit used to execute this transaction.
     inner_circuit_id: N::InnerCircuitID,
     /// Publicly-visible data associated with the transaction.
     memo: Memo<N>,
-    #[derivative(PartialEq = "ignore")]
-    /// Zero-knowledge proof attesting to the validity of the transaction.
-    proof: <N::OuterSNARK as SNARK>::Proof,
 }
 
 impl<N: Network> Transaction<N> {
@@ -58,20 +54,14 @@ impl<N: Network> Transaction<N> {
     pub fn from(
         network_id: u16,
         transition: Transition<N>,
-        block_hash: N::BlockHash,
         inner_circuit_id: N::InnerCircuitID,
         memo: Memo<N>,
-        proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
-        assert!(transition.is_valid());
-
         let transaction = Self {
             network_id,
             transition,
-            block_hash,
             inner_circuit_id,
             memo,
-            proof,
         };
 
         match transaction.is_valid() {
@@ -91,35 +81,12 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the transition is not well-formed.
-        if !self.transition.is_valid() {
+        if !self.transition.is_valid(self.inner_circuit_id) {
             eprintln!("Transition contains a transition that is not well-formed");
             return false;
         }
 
-        // Returns `false` if the transaction proof is invalid.
-        match N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &match OuterPublicVariables::from(&self) {
-                Ok(outer_public_variables) => outer_public_variables,
-                Err(error) => {
-                    eprintln!("Unable to construct outer public variables - {}", error);
-                    return false;
-                }
-            },
-            self.proof(),
-        ) {
-            Ok(is_valid) => match is_valid {
-                true => true,
-                false => {
-                    eprintln!("Transaction proof failed to verify");
-                    false
-                }
-            },
-            Err(error) => {
-                eprintln!("Failed to validate transaction proof: {:?}", error);
-                false
-            }
-        }
+        true
     }
 
     /// Returns the network ID.
@@ -147,11 +114,6 @@ impl<N: Network> Transaction<N> {
         self.transition.value_balance()
     }
 
-    /// Returns the block hash.
-    pub fn block_hash(&self) -> N::BlockHash {
-        self.block_hash
-    }
-
     /// Returns the inner circuit ID.
     pub fn inner_circuit_id(&self) -> N::InnerCircuitID {
         self.inner_circuit_id
@@ -167,9 +129,9 @@ impl<N: Network> Transaction<N> {
         &self.memo
     }
 
-    /// Returns a reference to the proof of the transaction.
-    pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
-        &self.proof
+    /// Returns the block hashes used to execute the transitions.
+    pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
+        [self.transition.block_hash()].iter().cloned().collect()
     }
 
     /// Returns the ciphertext IDs.
@@ -177,9 +139,9 @@ impl<N: Network> Transaction<N> {
         self.transition.to_ciphertext_ids()
     }
 
-    /// Transaction ID = Hash(serial numbers || commitments || ciphertext_ids || value balance)
+    /// Returns the transaction ID.
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        self.transition.to_transaction_id()
+        Ok(N::transaction_id_crh().hash(&to_bytes_le![self.transition.to_transition_id()?]?)?)
     }
 }
 
@@ -188,10 +150,8 @@ impl<N: Network> ToBytes for Transaction<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.network_id.write_le(&mut writer)?;
         self.transition.write_le(&mut writer)?;
-        self.block_hash.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
-        self.memo.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
+        self.memo.write_le(&mut writer)
     }
 }
 
@@ -203,17 +163,11 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the transition.
         let transition = FromBytes::read_le(&mut reader)?;
         // Read the transaction metadata.
-        let block_hash = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
         // Read the transaction memo.
         let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
-        // Read the transaction proof.
-        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::from(network_id, transition, block_hash, inner_circuit_id, memo, proof)
-                .expect("Failed to deserialize a transaction"),
-        )
+        Ok(Self::from(network_id, transition, inner_circuit_id, memo).expect("Failed to deserialize a transaction"))
     }
 }
 
@@ -230,16 +184,11 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, block_hash: {:?}, inner_circuit_id: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, memo: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transition: {:?}, memo: {:?} }}",
             self.network_id(),
-            self.block_hash(),
             self.inner_circuit_id(),
-            self.serial_numbers(),
-            self.commitments(),
-            self.to_ciphertext_ids().unwrap(),
-            self.value_balance(),
+            self.transition(),
             self.memo(),
-            self.proof(),
         )
     }
 }

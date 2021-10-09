@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, Network, OuterPrivateVariables, OuterPublicVariables};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{MerkleParameters, SNARK},
+};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
@@ -93,7 +96,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let program_functions_tree_crh = N::ProgramFunctionsTreeCRHGadget::alloc_constant(
         &mut cs.ns(|| "Declare program_functions_tree_crh_parameters"),
-        || Ok(N::program_functions_tree_crh().clone()),
+        || Ok(N::program_functions_tree_parameters().crh().clone()),
     )?;
 
     let inner_circuit_id_crh =
@@ -117,12 +120,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let transaction_id_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
         cs,
-        &inner_public.transaction_id(),
+        &inner_public.transition_id(),
         "transaction ID inner snark",
     )?;
     let transaction_id_fe_program_snark = alloc_program_snark_field_element::<N, _, _>(
         cs,
-        &inner_public.transaction_id(),
+        &inner_public.transition_id(),
         "transaction ID program snark",
     )?;
     {

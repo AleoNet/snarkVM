@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{LoadableMerkleParameters, MerkleParameters, CRH};
+use crate::{MerkleParameters, CRH};
 
 /// Defines a Merkle tree using the provided hash and depth.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct MerkleTreeParameters<H: CRH, const DEPTH: usize>(H);
+pub struct MerkleTreeParameters<H: CRH, const DEPTH: usize>(H, String);
 
 impl<H: CRH, const DEPTH: usize> MerkleParameters for MerkleTreeParameters<H, DEPTH> {
     type H = H;
@@ -26,18 +26,21 @@ impl<H: CRH, const DEPTH: usize> MerkleParameters for MerkleTreeParameters<H, DE
     const DEPTH: usize = DEPTH;
 
     fn setup(message: &str) -> Self {
-        Self(Self::H::setup(message))
+        Self(Self::H::setup(message), message.into())
+    }
+
+    // TODO (howardwu): TEMPORARY - This is a temporary fix to support ToBytes/FromBytes for
+    //  LedgerProof and LocalProof. While it is "safe", it is not performant to deserialize
+    //  in such a manual fashion. However, given the extent to which modifying the architecture
+    //  of Merkle trees in snarkVM impacts many APIs downstream, this forward-compatible change
+    //  is being introduced until a proper refactor can be discussed and implemented.
+    //  If you are seeing this message, please be proactive in bringing it up :)
+    /// Returns the saved `message` from calling the `MerkleParameters::setup()` function.
+    fn setup_message(&self) -> &str {
+        &self.1
     }
 
     fn crh(&self) -> &Self::H {
         &self.0
     }
 }
-
-impl<H: CRH, const DEPTH: usize> From<H> for MerkleTreeParameters<H, DEPTH> {
-    fn from(crh: H) -> Self {
-        Self(crh)
-    }
-}
-
-impl<H: CRH, const DEPTH: usize> LoadableMerkleParameters for MerkleTreeParameters<H, DEPTH> {}

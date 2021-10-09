@@ -24,8 +24,8 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerPublicVariables<N: Network> {
-    /// Transaction ID
-    pub(super) transaction_id: N::TransactionID,
+    /// Transition ID
+    pub(super) transition_id: N::TransitionID,
     /// Ledger digest
     pub(super) block_hash: N::BlockHash,
 
@@ -38,19 +38,19 @@ pub struct InnerPublicVariables<N: Network> {
 impl<N: Network> InnerPublicVariables<N> {
     pub fn blank() -> Self {
         Self {
-            transaction_id: Default::default(),
+            transition_id: Default::default(),
             block_hash: Default::default(),
             program_id: Some(N::ProgramID::default()),
         }
     }
 
     pub fn new(
-        transaction_id: N::TransactionID,
+        transition_id: N::TransitionID,
         block_hash: N::BlockHash,
         program_id: Option<N::ProgramID>,
     ) -> Result<Self> {
         Ok(Self {
-            transaction_id,
+            transition_id,
             block_hash,
             program_id,
         })
@@ -62,8 +62,8 @@ impl<N: Network> InnerPublicVariables<N> {
     }
 
     /// Returns the transaction ID.
-    pub fn transaction_id(&self) -> N::TransactionID {
-        self.transaction_id
+    pub fn transition_id(&self) -> N::TransitionID {
+        self.transition_id
     }
 }
 
@@ -79,7 +79,7 @@ where
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         }
 
-        v.extend_from_slice(&self.transaction_id.to_field_elements()?);
+        v.extend_from_slice(&self.transition_id.to_field_elements()?);
 
         Ok(v)
     }

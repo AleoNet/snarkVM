@@ -115,15 +115,11 @@ impl Network for Testnet1 {
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+    type FunctionProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
+    type FunctionVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
+    type ProgramProof = <Self::ProgramSNARK as SNARK>::Proof;
 
-    type PoswSNARK = MarlinSNARK<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        SonicKZG10<Self::InnerCurve>,
-        FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
-        MarlinTestnet1Mode,
-        Vec<Self::InnerScalarField>,
-    >;
+    type PoswSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
     type PoSWProof = <Self::PoswSNARK as SNARK>::Proof;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
@@ -171,6 +167,11 @@ impl Network for Testnet1 {
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
+    type LocalCommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type LocalCommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
+    type LocalCommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 8>;
+    type LocalCommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
+
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type PoSW = PoSW<Self>;
@@ -188,13 +189,16 @@ impl Network for Testnet1 {
     type SerialNumbersTreeParameters = MerkleTreeParameters<Self::SerialNumbersTreeCRH, 42>;
     type SerialNumbersRoot = <Self::SerialNumbersTreeCRH as CRH>::Output;
 
-    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
-    type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 26, 63>;
+    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 66, 63>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
     type TransactionsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsTreeParameters = MerkleTreeParameters<Self::TransactionsTreeCRH, 16>;
     type TransactionsRoot = <Self::TransactionsTreeCRH as CRH>::Output;
+
+    type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
+    type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 26, 63>;
+    type TransitionID = <Self::TransitionIDCRH as CRH>::Output;
 
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
@@ -203,13 +207,14 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
     dpc_setup!{Testnet1, commitments_tree_parameters, CommitmentsTreeParameters, "AleoCommitmentsTreeCRH0"}
     dpc_setup!{Testnet1, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
-    dpc_setup!{Testnet1, function_id_crh, FunctionIDCRH, "AleoProgramCircuitIDCRH0"}
+    dpc_setup!{Testnet1, function_id_crh, FunctionIDCRH, "AleoFunctionIDCRH0"}
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{Testnet1, program_functions_tree_crh, ProgramFunctionsTreeCRH, "AleoProgramCircuitIDTreeCRH0"}
-    dpc_merkle!{Testnet1, program_functions_tree_parameters, ProgramFunctionsTreeParameters, program_functions_tree_crh}
+    dpc_setup!{Testnet1, local_commitments_tree_parameters, LocalCommitmentsTreeParameters, "AleoLocalCommitmentsTreeCRH0"}
+    dpc_setup!{Testnet1, program_functions_tree_parameters, ProgramFunctionsTreeParameters, "AleoProgramFunctionsTreeCRH0"}
     dpc_setup!{Testnet1, serial_numbers_tree_parameters, SerialNumbersTreeParameters, "AleoSerialNumbersTreeCRH0"}
     dpc_setup!{Testnet1, transaction_id_crh, TransactionIDCRH, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet1, transactions_tree_parameters, TransactionsTreeParameters, "AleoTransactionsTreeCRH0"}
+    dpc_setup!{Testnet1, transition_id_crh, TransitionIDCRH, "AleoTransitionIDCRH0"}
 
     dpc_snark_setup!{Testnet1, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner proving key"}
     dpc_snark_setup!{Testnet1, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner verifying key"}

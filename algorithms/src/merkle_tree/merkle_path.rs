@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use crate::{
     errors::MerkleError,
     traits::{MerkleParameters, CRH},
 };
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{FromBytes, ToBytes};
+
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 
@@ -30,7 +33,7 @@ pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 pub struct MerklePath<P: MerkleParameters> {
     pub parameters: Arc<P>,
     pub path: Vec<MerkleTreeDigest<P>>,
-    pub leaf_index: usize,
+    pub leaf_index: u32,
 }
 
 impl<P: MerkleParameters> MerklePath<P> {
@@ -77,7 +80,7 @@ impl<P: MerkleParameters> MerklePath<P> {
     ///
     /// Returns: (left, right)
     fn select_left_right_bytes(
-        index: usize,
+        index: u32,
         computed_hash: &<P::H as CRH>::Output,
         sibling_hash: &<P::H as CRH>::Output,
     ) -> Result<(<P::H as CRH>::Output, <P::H as CRH>::Output), MerkleError> {
@@ -96,6 +99,58 @@ impl<P: MerkleParameters> MerklePath<P> {
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
     pub fn position_list(&self) -> impl Iterator<Item = bool> + '_ {
         (0..self.path.len()).map(move |i| ((self.leaf_index >> i) & 1) != 0)
+    }
+}
+
+impl<P: MerkleParameters> FromBytes for MerklePath<P> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // TODO (howardwu): TEMPORARY - This is a temporary fix to support ToBytes/FromBytes for
+        //  LedgerProof and LocalProof. While it is "safe", it is not performant to deserialize
+        //  in such a manual fashion. However, given the extent to which modifying the architecture
+        //  of Merkle trees in snarkVM impacts many APIs downstream, this forward-compatible change
+        //  is being introduced until a proper refactor can be discussed and implemented.
+        //  If you are seeing this message, please be proactive in bringing it up :)
+        let parameters = {
+            let setup_message_length: u64 = FromBytes::read_le(&mut reader)?;
+
+            let mut setup_message_bytes = vec![0u8; setup_message_length as usize];
+            reader.read_exact(&mut setup_message_bytes)?;
+            let setup_message =
+                String::from_utf8(setup_message_bytes).expect("Failed to parse setup message for Merkle parameters");
+
+            Arc::new(P::setup(&setup_message))
+        };
+
+        let path_length: u64 = FromBytes::read_le(&mut reader)?;
+        let mut path = Vec::with_capacity(path_length as usize);
+        for _ in 0..path_length {
+            path.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let leaf_index: u32 = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self {
+            parameters,
+            path,
+            leaf_index,
+        })
+    }
+}
+
+impl<P: MerkleParameters> ToBytes for MerklePath<P> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        let setup_message_bytes: &[u8] = self.parameters.setup_message().as_bytes();
+        let setup_message_length: u64 = setup_message_bytes.len() as u64;
+
+        setup_message_length.write_le(&mut writer)?;
+        setup_message_bytes.write_le(&mut writer)?;
+
+        (self.path.len() as u64).write_le(&mut writer)?;
+        self.path.write_le(&mut writer)?;
+
+        self.leaf_index.write_le(&mut writer)
     }
 }
 

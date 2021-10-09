@@ -22,7 +22,7 @@ pub enum FunctionType {
     Remove,
     Join,
     Split,
-    JoinSplit,
+    Full,
 }
 
 impl FunctionType {
@@ -34,7 +34,7 @@ impl FunctionType {
             Self::Remove => 1,
             Self::Join => 2,
             Self::Split => 1,
-            Self::JoinSplit => 2,
+            Self::Full => 2,
         }
     }
 
@@ -46,7 +46,7 @@ impl FunctionType {
             Self::Remove => 0,
             Self::Join => 1,
             Self::Split => 2,
-            Self::JoinSplit => 2,
+            Self::Full => 2,
         }
     }
 }

@@ -14,5 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod request;
-// pub use request::*;
+pub mod request;
+pub use request::*;
+
+pub mod response;
+pub use response::*;
