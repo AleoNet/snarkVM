@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, ProgramError, RecordError, TransactionError};
 use snarkvm_algorithms::{
     CRHError,
     CommitmentError,
@@ -28,12 +27,24 @@ use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
-pub enum DPCError {
+pub enum VMError {
     #[error("{}", _0)]
-    AccountError(#[from] AccountError),
+    AccountError(#[from] crate::AccountError),
 
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
+
+    #[error("Insufficient balance")]
+    BalanceInsufficient,
+
+    #[error("Balance overflowed")]
+    BalanceOverflow,
+
+    #[error("Balance overwritten")]
+    BalanceOverwritten,
+
+    #[error("Cannot verify the provided record commitment")]
+    CannotVerifyCommitment,
 
     #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
@@ -41,80 +52,48 @@ pub enum DPCError {
     #[error("{}", _0)]
     ConstraintFieldError(#[from] ConstraintFieldError),
 
-    #[error("{}", _0)]
-    CRHError(#[from] CRHError),
-
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
+    CRHError(#[from] CRHError),
+
+    #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
-
-    #[error(
-        "Invalid transaction kernel: |serial numbers| = {}, |commitments| = {}, |ciphertexts| = {}",
-        _0,
-        _1,
-        _2
-    )]
-    InvalidTransition(usize, usize, usize),
-
-    #[error("Invalid number of inputs - (current: {}, max: {})", _0, _1)]
-    InvalidNumberOfInputs(usize, usize),
-
-    #[error("Invalid number of outputs - (current: {}, max: {})", _0, _1)]
-    InvalidNumberOfOutputs(usize, usize),
 
     #[error("{}", _0)]
     FromHexError(#[from] hex::FromHexError),
 
+    #[error("Given private key does not correspond to the record owner")]
+    IncorrectPrivateKey,
+
     #[error("{}", _0)]
     MerkleError(#[from] MerkleError),
 
-    #[error("{}", _0)]
-    Message(String),
-
-    #[error("missing inner circuit proving key")]
-    MissingInnerProvingKey,
-
-    #[error("Missing circuit - {}", _0)]
-    MissingCircuit(&'static str),
-
-    #[error("missing noop circuit")]
-    MissingNoopCircuit,
-
-    #[error("missing outer circuit proving key")]
-    MissingOuterProvingKey,
+    #[error("Missing caller {}", _0)]
+    MissingCaller(String),
 
     #[error("{}", _0)]
     ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
-    ProgramError(#[from] ProgramError),
-
-    #[error("{}", _0)]
     PRFError(#[from] PRFError),
-
-    #[error("{}", _0)]
-    RecordError(#[from] RecordError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),
 
     #[error("{}", _0)]
     SNARKError(#[from] SNARKError),
-
-    #[error("{}", _0)]
-    TransactionError(#[from] TransactionError),
 }
 
-impl From<std::io::Error> for DPCError {
+impl From<std::io::Error> for VMError {
     fn from(error: std::io::Error) -> Self {
-        DPCError::Crate("std::io", format!("{:?}", error))
+        VMError::Crate("std::io", format!("{:?}", error))
     }
 }
 
-impl From<DPCError> for std::io::Error {
-    fn from(error: DPCError) -> Self {
+impl From<VMError> for std::io::Error {
+    fn from(error: VMError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

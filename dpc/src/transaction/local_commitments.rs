@@ -24,7 +24,7 @@ use std::{collections::HashMap, sync::Arc};
 /// A local commitments tree contains all commitments in one transaction.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
-pub struct LocalCommitments<N: Network> {
+pub(crate) struct LocalCommitments<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: Arc<MerkleTree<N::LocalCommitmentsTreeParameters>>,
     commitments: HashMap<N::Commitment, u8>,
@@ -33,7 +33,7 @@ pub struct LocalCommitments<N: Network> {
 
 impl<N: Network> LocalCommitments<N> {
     /// Initializes an empty local commitments tree.
-    fn new() -> Result<Self> {
+    pub(crate) fn new() -> Result<Self> {
         Ok(Self {
             tree: Arc::new(MerkleTree::<N::LocalCommitmentsTreeParameters>::new::<N::Commitment>(
                 Arc::new(N::local_commitments_tree_parameters().clone()),
@@ -46,7 +46,7 @@ impl<N: Network> LocalCommitments<N> {
 
     /// TODO (howardwu): Add safety checks for u8 (max 2^8).
     /// Adds the given commitment to the tree, returning its index in the tree.
-    fn add(&mut self, commitment: &N::Commitment) -> Result<u8> {
+    pub(crate) fn add(&mut self, commitment: &N::Commitment) -> Result<u8> {
         // Ensure the commitment does not already exist in the tree.
         if self.contains_commitment(commitment) {
             return Err(
@@ -64,7 +64,7 @@ impl<N: Network> LocalCommitments<N> {
 
     /// TODO (howardwu): Add safety checks for u8 (max 2^8).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u8, u8)> {
+    pub(crate) fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u8, u8)> {
         // Ensure the list of given commitments is non-empty.
         if commitments.is_empty() {
             return Err(anyhow!("The list of given commitments must be non-empty"));
@@ -100,22 +100,22 @@ impl<N: Network> LocalCommitments<N> {
     }
 
     /// Returns `true` if the given commitment exists.
-    fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+    pub(crate) fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
         self.commitments.contains_key(commitment)
     }
 
     /// Returns the index for the given commitment, if it exists.
-    fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u8> {
+    pub(crate) fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u8> {
         self.commitments.get(commitment)
     }
 
     /// Returns the local commitments root.
-    fn root(&self) -> N::LocalCommitmentsRoot {
+    pub(crate) fn root(&self) -> N::LocalCommitmentsRoot {
         *self.tree.root()
     }
 
     /// Returns the local Merkle path for a given commitment.
-    fn to_local_proof(&self, commitments: &[N::Commitment]) -> Result<LocalProof<N>> {
+    pub(crate) fn to_local_proof(&self, commitments: &[N::Commitment]) -> Result<LocalProof<N>> {
         let mut commitment_inclusion_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for commitment in commitments {
             match self.get_commitment_index(commitment) {

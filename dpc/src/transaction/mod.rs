@@ -17,11 +17,14 @@
 pub mod amount;
 pub use amount::*;
 
+pub(crate) mod local_commitments;
+pub(crate) use local_commitments::*;
+
+pub mod local_proof;
+pub use local_proof::*;
+
 pub mod memo;
 pub use memo::*;
 
 pub mod transaction;
 pub use transaction::*;
-
-pub(crate) mod transition;
-pub(crate) use transition::*;

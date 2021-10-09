@@ -23,8 +23,8 @@ use crate::{
     OuterPublicVariables,
     PoSWScheme,
     Program,
+    ProgramPublicVariables,
     ProgramScheme,
-    PublicVariables,
 };
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
@@ -113,10 +113,10 @@ impl Network for Testnet1 {
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1>>;
 
-    type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type FunctionProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
-    type FunctionVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
+    type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
+    type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = <Self::ProgramSNARK as SNARK>::Proof;
 
     type PoswSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
@@ -142,6 +142,10 @@ impl Network for Testnet1 {
     type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 3>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
+    type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
+    type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
+    type CiphertextID = <Self::CiphertextIDCRH as CRH>::Output;
+
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 48, 50>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
     type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
@@ -150,10 +154,6 @@ impl Network for Testnet1 {
     type CommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 42>;
     type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
-
-    type EncryptedRecordCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
-    type EncryptedRecordCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
-    type CiphertextID = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type FunctionIDCRH = BHPCRH<EdwardsBW6, 237, 16>;
     type FunctionIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 237, 16>;
@@ -196,17 +196,17 @@ impl Network for Testnet1 {
     type TransactionsTreeParameters = MerkleTreeParameters<Self::TransactionsTreeCRH, 16>;
     type TransactionsRoot = <Self::TransactionsTreeCRH as CRH>::Output;
 
-    type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 26, 63>;
-    type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 26, 63>;
+    type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 34, 63>;
+    type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
     type TransitionID = <Self::TransitionIDCRH as CRH>::Output;
 
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet1, block_header_tree_parameters, BlockHeaderTreeParameters, "AleoBlockHeaderTreeCRH0"}
+    dpc_setup!{Testnet1, ciphertext_id_crh, CiphertextIDCRH, "AleoCiphertextIDCRH0"}
     dpc_setup!{Testnet1, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
     dpc_setup!{Testnet1, commitments_tree_parameters, CommitmentsTreeParameters, "AleoCommitmentsTreeCRH0"}
-    dpc_setup!{Testnet1, encrypted_record_crh, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{Testnet1, function_id_crh, FunctionIDCRH, "AleoFunctionIDCRH0"}
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet1, local_commitments_tree_parameters, LocalCommitmentsTreeParameters, "AleoLocalCommitmentsTreeCRH0"}
@@ -244,12 +244,12 @@ impl Network for Testnet1 {
     
     fn noop_program_path() -> &'static MerklePath<Self::ProgramFunctionsTreeParameters> {
         static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet1 as Network>::ProgramFunctionsTreeParameters>> = OnceCell::new();
-        NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_circuit_id()).expect("Failed to fetch the noop program path"))
+        NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_function_id()).expect("Failed to fetch the noop program path"))
     }
     
-    fn noop_circuit_id() -> &'static Self::FunctionID {
-        static NOOP_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::FunctionID> = OnceCell::new();
-        NOOP_CIRCUIT_ID.get_or_init(|| Self::function_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
+    fn noop_function_id() -> &'static Self::FunctionID {
+        static NOOP_FUNCTION_ID: OnceCell<<Testnet1 as Network>::FunctionID> = OnceCell::new();
+        NOOP_FUNCTION_ID.get_or_init(|| Self::function_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
 
     fn posw() -> &'static Self::PoSW {

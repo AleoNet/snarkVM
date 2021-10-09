@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, ComputeKey, FunctionType, LedgerProof, LocalProof, Network, Operation, PrivateKey, Record};
+use crate::{Address, AleoAmount, ComputeKey, FunctionType, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -35,8 +35,6 @@ pub struct Request<N: Network> {
     operation: Operation<N>,
     /// The inclusion proof of ledger-consumed records.
     ledger_proof: LedgerProof<N>,
-    /// The inclusion proof of locally-consumed records.
-    local_proof: LocalProof<N>,
     /// The network fee being paid.
     fee: u64,
     /// The signature for the request.
@@ -44,6 +42,25 @@ pub struct Request<N: Network> {
 }
 
 impl<N: Network> Request<N> {
+    /// Initializes a new coinbase generation.
+    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
+        let burner = PrivateKey::new(rng);
+        let operation = Operation::Coinbase(recipient, amount);
+        Self::new(&burner, vec![], operation, Default::default(), 0, rng)
+    }
+
+    /// Initializes a new transfer request.
+    pub fn new_transfer<R: Rng + CryptoRng>(
+        caller: &PrivateKey<N>,
+        records: Vec<Record<N>>,
+        recipient: Address<N>,
+        amount: AleoAmount,
+        rng: &mut R,
+    ) -> Result<Self> {
+        let operation = Operation::Transfer(recipient, amount);
+        Self::new(caller, records, operation, Default::default(), 0, rng)
+    }
+
     /// Signs and returns a new instance of a request.
     pub fn new<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
@@ -53,13 +70,18 @@ impl<N: Network> Request<N> {
         fee: u64,
         rng: &mut R,
     ) -> Result<Self> {
-        // Pad the records if there is less than required.
-        {}
+        let caller_address = Address::from_private_key(caller)?;
+
+        // Pad the records with noops if there is less than required.
+        let mut records = records;
+        while records.len() < N::NUM_INPUT_RECORDS {
+            records.push(Record::new_noop_input(caller_address, rng)?);
+        }
 
         let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for record in records.iter().take(N::NUM_INPUT_RECORDS) {
             // Ensure the caller and record owner match.
-            if Address::from_private_key(caller)? != record.owner() {
+            if caller_address != record.owner() {
                 return Err(anyhow!("Address from caller private key does not match record owner"));
             }
             commitments.push(record.commitment());
@@ -67,12 +89,10 @@ impl<N: Network> Request<N> {
 
         let function_id = operation.function_id();
         let operation_id = operation.to_operation_id()?;
-        let message = to_bytes_le![commitments, function_id, operation_id, fee]?;
+        let message = to_bytes_le![commitments /*function_id, operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        let local_proof = LocalProof::default();
-
-        Self::from(records, operation, ledger_proof, local_proof, fee, signature)
+        Self::from(records, operation, ledger_proof, fee, signature)
     }
 
     /// Returns a new instance of a noop request.
@@ -100,7 +120,6 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         operation: Operation<N>,
         ledger_proof: LedgerProof<N>,
-        local_proof: LocalProof<N>,
         fee: u64,
         signature: N::AccountSignature,
     ) -> Result<Self> {
@@ -108,7 +127,6 @@ impl<N: Network> Request<N> {
             records,
             operation,
             ledger_proof,
-            local_proof,
             fee,
             signature,
         };
@@ -135,7 +153,7 @@ impl<N: Network> Request<N> {
         let caller = {
             let owners: HashSet<Address<N>> = self.records.iter().map(|record| record.owner()).collect();
             if owners.len() == 1 {
-                owners.iter().next().expect("Failed to fetch request caller")
+                *owners.iter().next().expect("Failed to fetch request caller")
             } else {
                 eprintln!("Request records do not contain the same owner");
                 return false;
@@ -143,8 +161,8 @@ impl<N: Network> Request<N> {
         };
 
         // Ensure the records contains a total value that is at least the fee amount.
-        let value: u64 = self.records.iter().map(|record| record.value()).sum();
-        if value < self.fee {
+        let balance: u64 = self.records.iter().map(|record| record.value()).sum();
+        if balance < self.fee {
             eprintln!("Request records do not contain sufficient value for fee");
             return false;
         }
@@ -164,12 +182,15 @@ impl<N: Network> Request<N> {
         };
 
         // If the program ID is the noop program ID, ensure the function ID is the noop function ID.
-        if program_id == *N::noop_program_id() && self.function_id() != *N::noop_circuit_id() {
+        if program_id == *N::noop_program_id() && self.function_id() != *N::noop_function_id() {
             eprintln!("Request contains mismatching program ID and function ID");
             return false;
         }
 
         // Ensure the function ID is in the specified program.
+        {}
+
+        // Ensure the given record commitments are in the specified ledger proof.
         {}
 
         // Prepare for signature verification.
@@ -181,7 +202,7 @@ impl<N: Network> Request<N> {
                 return false;
             }
         };
-        let message = match to_bytes_le![commitments, self.function_id(), operation_id, self.fee] {
+        let message = match to_bytes_le![commitments /*self.function_id(), operation_id, self.fee*/] {
             Ok(signature_message) => signature_message,
             Err(error) => {
                 eprintln!("Failed to construct request signature message: {}", error);
@@ -190,7 +211,7 @@ impl<N: Network> Request<N> {
         };
 
         // Ensure the signature is valid.
-        match N::account_signature_scheme().verify(caller, &message, &self.signature) {
+        match N::account_signature_scheme().verify(&caller, &message, &self.signature) {
             Ok(is_valid) => is_valid,
             Err(error) => {
                 eprintln!("Failed to verify request signature: {}", error);
@@ -201,7 +222,7 @@ impl<N: Network> Request<N> {
 
     /// Returns `true` if the request calls the noop program and function.
     pub fn is_noop(&self) -> bool {
-        self.to_program_id().unwrap() == *N::noop_program_id() && self.function_id() == *N::noop_circuit_id()
+        self.to_program_id().unwrap() == *N::noop_program_id() && self.function_id() == *N::noop_function_id()
     }
 
     /// Returns a reference to the records.
@@ -229,19 +250,9 @@ impl<N: Network> Request<N> {
         self.ledger_proof.block_hash()
     }
 
-    /// Returns the local commitments root used to prove inclusion of locally-consumed records.
-    pub fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
-        self.local_proof.local_commitments_root()
-    }
-
     /// Returns a reference to the ledger proof.
     pub fn ledger_proof(&self) -> &LedgerProof<N> {
         &self.ledger_proof
-    }
-
-    /// Returns a reference to the local proof.
-    pub fn local_proof(&self) -> &LocalProof<N> {
-        &self.local_proof
     }
 
     /// Returns the fee.
@@ -254,7 +265,7 @@ impl<N: Network> Request<N> {
         &self.signature
     }
 
-    /// Returns the request caller.
+    /// Returns the caller of the request.
     pub fn to_caller(&self) -> Result<Address<N>> {
         let owners: HashSet<Address<N>> = self.records.iter().map(|record| record.owner()).collect();
         match owners.len() == 1 {
@@ -264,6 +275,11 @@ impl<N: Network> Request<N> {
                 .ok_or(anyhow!("Failed to retrieve the request caller")),
             false => Err(anyhow!("Request records do not contain the same owner")),
         }
+    }
+
+    /// Returns the balance of the caller.
+    pub fn to_balance(&self) -> u64 {
+        self.records.iter().map(|record| record.value()).sum()
     }
 
     /// Returns the program ID.
@@ -298,14 +314,10 @@ impl<N: Network> FromBytes for Request<N> {
 
         let operation = FromBytes::read_le(&mut reader)?;
         let ledger_proof = FromBytes::read_le(&mut reader)?;
-        let local_proof = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::from(records, operation, ledger_proof, local_proof, fee, signature)
-                .expect("Failed to deserialize a request"),
-        )
+        Ok(Self::from(records, operation, ledger_proof, fee, signature).expect("Failed to deserialize a request"))
     }
 }
 
@@ -315,7 +327,6 @@ impl<N: Network> ToBytes for Request<N> {
         self.records.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
         self.ledger_proof.write_le(&mut writer)?;
-        self.local_proof.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)
     }

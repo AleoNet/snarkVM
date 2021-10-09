@@ -104,7 +104,7 @@ impl<N: Network> Input<N> {
     /// Returns `true` if the program ID is the noop program.
     pub fn is_noop(&self) -> bool {
         self.program_id() == *N::noop_program_id()
-        // && self.function_id() == *N::noop_circuit_id()
+        // && self.function_id() == *N::noop_function_id()
     }
 
     /// Returns the program ID.

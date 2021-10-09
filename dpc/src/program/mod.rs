@@ -20,26 +20,14 @@ pub use function_inputs::*;
 pub mod function_type;
 pub use function_type::*;
 
-pub mod local_commitments;
-pub use local_commitments::*;
-
-pub mod local_proof;
-pub use local_proof::*;
-
-pub mod operation;
-pub use operation::*;
-
 pub mod program;
 pub use program::*;
 
-pub mod public_variables;
-pub use public_variables::*;
+pub mod program_circuit;
+pub use program_circuit::*;
 
-pub mod request;
-pub use request::*;
-
-pub mod response;
-pub use response::*;
+pub mod program_public_variables;
+pub use program_public_variables::*;
 
 use crate::Network;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
@@ -50,6 +38,6 @@ use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 pub struct Execution<N: Network> {
     pub program_id: N::ProgramID,
     pub program_path: MerklePath<N::ProgramFunctionsTreeParameters>,
-    pub verifying_key: N::FunctionVerifyingKey,
+    pub verifying_key: N::ProgramVerifyingKey,
     pub proof: <N::ProgramSNARK as SNARK>::Proof,
 }

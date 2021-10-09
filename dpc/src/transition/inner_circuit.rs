@@ -70,7 +70,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             account_encryption_parameters,
             account_signature_parameters,
             record_commitment_parameters,
-            encrypted_record_crh,
+            ciphertext_id_crh,
             transition_id_crh,
             commitments_tree_parameters,
             block_header_tree_parameters,
@@ -93,9 +93,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     Ok(N::commitment_scheme().clone())
                 })?;
 
-            let encrypted_record_crh_parameters = N::EncryptedRecordCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare record ciphertext CRH parameters"),
-                || Ok(N::encrypted_record_crh().clone()),
+            let ciphertext_id_crh_parameters = N::CiphertextIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare record ciphertext ID CRH parameters"),
+                || Ok(N::ciphertext_id_crh().clone()),
             )?;
 
             let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
@@ -122,7 +122,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 account_encryption_parameters,
                 account_signature_parameters,
                 record_commitment_parameters,
-                encrypted_record_crh_parameters,
+                ciphertext_id_crh_parameters,
                 transition_id_crh,
                 commitments_tree_parameters,
                 block_header_tree_parameters,
@@ -147,6 +147,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_serial_numbers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32); // Serial numbers are 32 bytes
         let mut input_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_owners = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_is_dummies = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -228,7 +230,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // ********************************************************************
             // Check that the serial number is derived correctly.
             // ********************************************************************
-            let candidate_serial_number_bytes = {
+            {
                 let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
                 // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
@@ -260,8 +262,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 input_serial_numbers.push(candidate_serial_number);
                 input_serial_numbers_bytes.extend_from_slice(&candidate_serial_number_bytes);
-
-                candidate_serial_number_bytes
             };
 
             // *******************************************************************
@@ -330,7 +330,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &given_commitment,
                 )?;
 
+                let candidate_commitment_bytes =
+                    candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
+
+                input_owners.push(given_owner);
                 input_commitments.push(candidate_commitment);
+                input_commitments_bytes.extend_from_slice(&candidate_commitment_bytes);
                 input_is_dummies.push(given_is_dummy);
                 input_values.push(given_value);
             }
@@ -342,22 +347,24 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let signature_cs = &mut cs.ns(|| "Check that the signature is valid");
 
+            // TODO (howardwu): TEMPORARY - Enforce that the input owners are the same address.
+
             let signature_gadget = <N::AccountSignatureGadget as SignatureGadget<
                 N::AccountSignatureScheme,
                 N::InnerScalarField,
             >>::SignatureGadget::alloc(
-                signature_cs.ns(|| "alloc_signature"), || Ok(private.signature)
+                signature_cs.ns(|| "alloc_signature"), || Ok(&private.signature)
             )?;
 
             let mut signature_message = Vec::new();
-            // signature_message.extend_from_slice(&candidate_serial_number_bytes);
-            // signature_message.extend_from_slice(&circuit_id);
+            signature_message.extend_from_slice(&input_commitments_bytes);
+            // signature_message.extend_from_slice(&function_id);
             // signature_message.extend_from_slice(&inputs_digest);
             // signature_message.extend_from_slice(&fee);
 
             let signature_verification = account_signature_parameters.verify(
                 signature_cs.ns(|| "signature_verify"),
-                &given_owner,
+                &input_owners[0],
                 &signature_message,
                 &signature_gadget,
             )?;
@@ -446,7 +453,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
                     &mut ledger_cs.ns(|| "Allocate given block hash"),
-                    || Ok(public.block_hash()),
+                    || Ok(private.ledger_proof.block_hash()),
                 )?;
 
                 candidate_block_hash.conditional_enforce_equal(
@@ -670,7 +677,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &plaintext_bytes,
                 )?;
 
-                let candidate_encrypted_record_id = encrypted_record_crh.check_evaluation_gadget(
+                let candidate_encrypted_record_id = ciphertext_id_crh.check_evaluation_gadget(
                     &mut encryption_cs.ns(|| format!("Compute encrypted record ID {}", j)),
                     candidate_encrypted_record_gadget,
                 )?;

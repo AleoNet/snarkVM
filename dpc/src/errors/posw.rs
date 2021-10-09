@@ -47,3 +47,9 @@ pub enum PoswError {
     #[error(transparent)]
     SnarkError(#[from] SNARKError),
 }
+
+impl From<PoswError> for std::io::Error {
+    fn from(error: PoswError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
+}

@@ -44,12 +44,12 @@ pub struct OuterCircuit<N: Network> {
 impl<N: Network> OuterCircuit<N> {
     pub fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: <N::InnerSNARK as SNARK>::Proof,
         execution: Execution<N>,
     ) -> Self {
         Self {
             public: OuterPublicVariables::blank(),
-            private: OuterPrivateVariables::blank(inner_verifying_key, inner_snark_proof, execution),
+            private: OuterPrivateVariables::blank(inner_verifying_key, inner_proof, execution),
         }
     }
 
@@ -110,8 +110,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // Declare inner circuit public variables as inner circuit field elements
 
-    let block_hash_fe = alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.block_hash, "block hash")?;
-
     let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
         cs,
         &private.program_execution.program_id.to_bytes_le()?[..],
@@ -142,7 +140,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
-            block_hash_fe,
             program_id_fe,
             transaction_id_fe_inner_snark,
         ])?;
@@ -158,7 +155,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(&private.inner_snark_proof),
+        || Ok(&private.inner_proof),
     )?;
 
     N::InnerSNARKGadget::check_verify(

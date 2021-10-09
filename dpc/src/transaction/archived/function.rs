@@ -56,7 +56,7 @@ impl<N: Network> Function<N> {
     /// Returns the function ID.
     pub fn function_id(&self) -> N::FunctionID {
         match self {
-            Self::Noop => *N::noop_circuit_id(),
+            Self::Noop => *N::noop_function_id(),
             Self::Function(circuit_id, _, _, _) => *circuit_id,
         }
     }

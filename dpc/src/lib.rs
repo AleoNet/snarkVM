@@ -66,9 +66,6 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
-pub mod circuits;
-pub use circuits::*;
-
 pub mod errors;
 pub use errors::*;
 
@@ -93,16 +90,23 @@ pub use traits::*;
 pub mod transaction;
 pub use transaction::*;
 
+pub mod transition;
+pub use transition::*;
+
+pub mod virtual_machine;
+pub use virtual_machine::*;
+
 pub mod prelude {
     pub use crate::{
         account::*,
         block::*,
-        circuits::*,
         errors::*,
         ledger::*,
         program::*,
         record::*,
         traits::*,
         transaction::*,
+        transition::*,
+        virtual_machine::*,
     };
 }

@@ -56,7 +56,7 @@ impl<N: Network> ToBytes for FunctionInputs<N> {
 
 impl<N: Network> ToConstraintField<N::InnerScalarField> for FunctionInputs<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
+        let v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
         Ok(v)
     }
 }

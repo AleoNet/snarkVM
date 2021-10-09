@@ -120,7 +120,7 @@ mod transfer {
             let sender_input = Input::new(
                 &sender.private_key(),
                 coinbase_record.clone(),
-                *Testnet2::noop_circuit_id(),
+                *Testnet2::noop_function_id(),
                 Default::default(),
                 100,
                 rng,

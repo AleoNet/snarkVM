@@ -96,62 +96,6 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
             _ => Err(MerkleError::MissingLeaf(format!("{}", function_id)).into()),
         }
     }
-
-    /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
-        // Ensure the program ID matches.
-        if self.program_id() != request.to_program_id()? {
-            return Err(anyhow!("Program ID does not match with the request"));
-        }
-
-        // match request.operation() {
-        //     Operation::Noop => ,
-        //     Operation::Transfer => ,
-        //     Operation::Function => ,
-        //
-        // }
-
-        unimplemented!()
-    }
-
-    // fn execute(&self, ledger_proof: LedgerProof<N>, request: &Request<N>, response: &Response<N>) -> Result<Transition<N>> {
-    //     // Construct the ledger witnesses.
-    //     let block_hash = ledger_proof.block_hash();
-    //
-    //     // Construct the inner circuit public and private variables.
-    //     let inner_public = InnerPublicVariables::new(transaction_id, block_hash, Some(request.program_id()))?;
-    //     let inner_private = InnerPrivateVariables::new(&request, &response, ledger_proof, function.function_type())?;
-    //     let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
-    //
-    //     // Compute the inner circuit proof, and verify that the inner proof passes.
-    //     let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
-    //     assert!(N::InnerSNARK::verify(
-    //         N::inner_verifying_key(),
-    //         &inner_public,
-    //         &inner_proof
-    //     )?);
-    //
-    //     // Construct the outer circuit public and private variables.
-    //     let outer_public = OuterPublicVariables::new(&inner_public, *N::inner_circuit_id());
-    //     let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
-    //     let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
-    //
-    //     let proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
-    //
-    //     Ok(Transition)
-    // }
-
-    // /// Returns an instance of an executable given the function ID, if it exists.
-    // fn to_executable(&self, function_id: &N::FunctionID) -> Result<Executable<N>, ProgramError> {
-    //     // Fetch the circuit from the tree.
-    //     let circuit = match self.to_function(function_id) {};
-    //     debug_assert_eq!(circuit.function_id(), *function_id);
-    //
-    //     let program_path = self.to_program_path(function_id)?;
-    //     debug_assert!(program_path.verify(&self.program_id(), function_id)?);
-    //
-    //     Ok(Executable::new(self.program_id(), circuit.clone(), program_path)?)
-    // }
 }
 
 impl<N: Network> Program<N> {

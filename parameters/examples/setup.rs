@@ -15,15 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, CRH, SNARK, SRS};
-use snarkvm_dpc::{
-    InnerCircuit,
-    Network,
-    OuterCircuit,
-    PoSWScheme,
-    ProgramExecutable,
-    ProgramScheme,
-    SynthesizedCircuit,
-};
+use snarkvm_dpc::{InnerCircuit, Network, OuterCircuit, PoSWScheme, ProgramScheme, SynthesizedCircuit};
 use snarkvm_marlin::ahp::AHPForR1CS;
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
@@ -79,7 +71,7 @@ pub fn noop_setup<N: Network>() -> Result<()> {
         &mut *N::program_srs(&mut thread_rng()).borrow_mut(),
     )?;
 
-    let noop_circuit_id = hex::encode(<N as Network>::function_id(&verifying_key)?.to_bytes_le()?);
+    let noop_function_id = hex::encode(<N as Network>::function_id(&verifying_key)?.to_bytes_le()?);
     let noop_proving_key = proving_key.to_bytes_le()?;
     let noop_verifying_key = verifying_key.to_bytes_le()?;
 
@@ -88,7 +80,7 @@ pub fn noop_setup<N: Network>() -> Result<()> {
         "proving_size": noop_proving_key.len(),
         "verifying_checksum": checksum(&noop_verifying_key),
         "verifying_size": noop_verifying_key.len(),
-        "circuit_id": noop_circuit_id,
+        "circuit_id": noop_function_id,
     });
 
     println!("{}", serde_json::to_string_pretty(&noop_metadata)?);
@@ -142,7 +134,7 @@ pub fn outer_setup<N: Network>() -> Result<()> {
     const OUTER_VERIFYING_KEY: &str = "outer.verifying";
 
     let noop_program = N::noop_program();
-    let noop_executable = noop_program.to_executable(N::noop_circuit_id())?;
+    let noop_executable = noop_program.to_executable(N::noop_function_id())?;
 
     let (inner_proof, inner_verifying_key) = match N::NETWORK_NAME {
         "testnet1" => {

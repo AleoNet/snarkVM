@@ -306,7 +306,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             Ok(MerklePath {
                 parameters: self.parameters.clone(),
                 path,
-                leaf_index: index as u32,
+                leaf_index: index as u64,
             })
         }
     }

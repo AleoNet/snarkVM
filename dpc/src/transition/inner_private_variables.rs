@@ -35,7 +35,7 @@ pub struct InnerPrivateVariables<N: Network> {
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
-    pub fn blank() -> Self {
+    pub(crate) fn blank() -> Self {
         Self {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proof: Default::default(),
@@ -49,7 +49,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         }
     }
 
-    pub fn new(request: &Request<N>, response: &Response<N>) -> Result<Self> {
+    pub(crate) fn new(request: &Request<N>, response: &Response<N>) -> Result<Self> {
         Ok(Self {
             input_records: request.records().clone(),
             output_records: response.records().clone(),

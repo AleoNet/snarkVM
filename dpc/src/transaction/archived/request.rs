@@ -207,7 +207,7 @@ impl<N: Network> Request<N> {
 
     /// Returns `true` if the request calls the noop program and function.
     pub fn is_noop(&self) -> bool {
-        self.program_id == *N::noop_program_id() && self.function_id == *N::noop_circuit_id()
+        self.program_id == *N::noop_program_id() && self.function_id == *N::noop_function_id()
     }
 
     /// Returns a reference to the records.

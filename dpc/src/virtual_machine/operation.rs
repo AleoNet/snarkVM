@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, FunctionInputs, FunctionType, Network};
+use crate::{Address, AleoAmount, FunctionInputs, FunctionType, Network};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -27,8 +27,10 @@ use std::io::{Read, Result as IoResult, Write};
 pub enum Operation<N: Network> {
     /// Noop.
     Noop,
+    /// Generates the given amount to the recipient address.
+    Coinbase(Address<N>, AleoAmount),
     /// Transfers the given amount to the recipient address.
-    Transfer(Address<N>, u64),
+    Transfer(Address<N>, AleoAmount),
     /// Invokes the given records on the function and inputs.
     Function(N::FunctionID, FunctionType, FunctionInputs<N>),
 }
@@ -36,7 +38,7 @@ pub enum Operation<N: Network> {
 impl<N: Network> Operation<N> {
     pub fn function_id(&self) -> N::FunctionID {
         match self {
-            Self::Noop | Self::Transfer(..) => *N::noop_circuit_id(),
+            Self::Noop | Self::Coinbase(..) | Self::Transfer(..) => *N::noop_function_id(),
             Self::Function(function_id, _, _) => *function_id,
         }
     }
@@ -44,6 +46,7 @@ impl<N: Network> Operation<N> {
     pub fn function_type(&self) -> FunctionType {
         match self {
             Self::Noop => FunctionType::Noop,
+            Self::Coinbase(..) => FunctionType::Add,
             Self::Transfer(..) => FunctionType::Full,
             Self::Function(_, function_type, _) => *function_type,
         }
@@ -71,7 +74,7 @@ impl<N: Network> ToBytes for Operation<N> {
 
 impl<N: Network> ToConstraintField<N::InnerScalarField> for Operation<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
+        let v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
         Ok(v)
     }
 }

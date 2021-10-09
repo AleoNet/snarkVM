@@ -17,6 +17,7 @@
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_utilities::ToBytes;
 
+use anyhow::Result;
 use rand::thread_rng;
 use std::{
     fs::File,
@@ -25,7 +26,7 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>)> {
     // Create a genesis block.
     let genesis_block = Block::<N>::new_genesis(recipient, &mut thread_rng())?;
     println!("block size - {}\n", genesis_block.to_bytes_le()?.len());

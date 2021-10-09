@@ -24,18 +24,24 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
     Debug(bound = "N: Network"),
     Default(bound = "N: Network")
 )]
-pub struct PublicVariables<N: Network> {
+pub struct ProgramPublicVariables<N: Network> {
     pub transition_id: N::TransitionID,
 }
 
-impl<N: Network> PublicVariables<N> {
+impl<N: Network> ProgramPublicVariables<N> {
+    pub fn blank() -> Self {
+        Self {
+            transition_id: Default::default(),
+        }
+    }
+
     pub fn new(transition_id: N::TransitionID) -> Self {
         Self { transition_id }
     }
 }
 
 /// Converts the public variables into bytes and packs them into field elements.
-impl<N: Network> ToConstraintField<N::InnerScalarField> for PublicVariables<N> {
+impl<N: Network> ToConstraintField<N::InnerScalarField> for ProgramPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
         v.extend_from_slice(&self.transition_id.to_field_elements()?);

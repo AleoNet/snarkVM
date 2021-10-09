@@ -14,24 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, CiphertextRandomizer, Network, PrivateKey, Record, RecordCiphertext};
+use crate::{Address, Network, PrivateKey, Record, RecordCiphertext};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{
     fmt::{
-        Display, Formatter, {self},
+        Display,
+        Formatter,
+        {self},
     },
     io::{Read, Result as IoResult, Write},
 };
+
+// TODO (howardwu): TEMPORARY - Merge this into the Network trait.
+use snarkvm_algorithms::traits::*;
+pub type CiphertextRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
 
 #[derive(Clone, Debug)]
 pub struct Response<N: Network> {
     /// The records being produced.
     records: Vec<Record<N>>,
-
+    /// The record ciphertexts.
     ciphertexts: Vec<RecordCiphertext<N>>,
+    /// The record ciphertext randomizers.
     ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
 }
 
@@ -90,6 +97,11 @@ impl<N: Network> Response<N> {
     /// Returns a reference to the ciphertext randomizers.
     pub fn ciphertext_randomizers(&self) -> &Vec<CiphertextRandomizer<N>> {
         &self.ciphertext_randomizers
+    }
+
+    /// Returns the commitments.
+    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
+        self.ciphertexts.iter().map(|c| Ok(c.to_ciphertext_id()?)).collect()
     }
 
     /// Returns the commitments.

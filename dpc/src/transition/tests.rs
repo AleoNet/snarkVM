@@ -27,30 +27,28 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10);
-    let state = State::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .build(&mut rng)
-        .unwrap();
-
-    let transaction_id = state.transition().to_transaction_id().unwrap();
-
-    // Execute the program circuit.
-    let execution = state.function().execute(PublicVariables::new(transaction_id)).unwrap();
-
-    // Construct the ledger witnesses.
-    let ledger_proof = LedgerProof::<N>::default();
+    let request = Request::new_coinbase(recipient.address(), amount, &mut rng).unwrap();
+    let response = VirtualMachine::new(&request).unwrap().evaluate(&mut rng).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
+    let local_commitments_root = LocalCommitments::<N>::new().unwrap().root();
+    let transition = Transition::<N>::from(local_commitments_root, &request, &response).unwrap();
+    let transition_id = transition.to_transition_id().unwrap();
+
+    // Compute the noop execution
+    let execution = Execution {
+        program_id: *N::noop_program_id(),
+        program_path: N::noop_program_path().clone(),
+        verifying_key: N::noop_circuit_verifying_key().clone(),
+        proof: Noop::<N>::new()
+            .execute(ProgramPublicVariables::new(transition_id))
+            .unwrap(),
+    };
+
     // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(
-        transaction_id,
-        ledger_proof.block_hash(),
-        Some(state.function().program_id()),
-    )
-    .unwrap();
-    let inner_private = InnerPrivateVariables::new(&state, ledger_proof).unwrap();
+    let inner_public = InnerPublicVariables::new(transition_id, Some(request.to_program_id().unwrap()));
+    let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();

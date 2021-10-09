@@ -26,8 +26,6 @@ use anyhow::Result;
 pub struct InnerPublicVariables<N: Network> {
     /// Transition ID
     pub(super) transition_id: N::TransitionID,
-    /// Ledger digest
-    pub(super) block_hash: N::BlockHash,
 
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
@@ -36,33 +34,22 @@ pub struct InnerPublicVariables<N: Network> {
 }
 
 impl<N: Network> InnerPublicVariables<N> {
-    pub fn blank() -> Self {
+    pub(crate) fn blank() -> Self {
         Self {
             transition_id: Default::default(),
-            block_hash: Default::default(),
             program_id: Some(N::ProgramID::default()),
         }
     }
 
-    pub fn new(
-        transition_id: N::TransitionID,
-        block_hash: N::BlockHash,
-        program_id: Option<N::ProgramID>,
-    ) -> Result<Self> {
-        Ok(Self {
+    pub(crate) fn new(transition_id: N::TransitionID, program_id: Option<N::ProgramID>) -> Self {
+        Self {
             transition_id,
-            block_hash,
             program_id,
-        })
-    }
-
-    /// Returns the block hash.
-    pub fn block_hash(&self) -> N::BlockHash {
-        self.block_hash
+        }
     }
 
     /// Returns the transaction ID.
-    pub fn transition_id(&self) -> N::TransitionID {
+    pub(crate) fn transition_id(&self) -> N::TransitionID {
         self.transition_id
     }
 }
@@ -73,7 +60,6 @@ where
 {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-        v.extend_from_slice(&self.block_hash.to_field_elements()?);
 
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);

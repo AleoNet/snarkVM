@@ -58,3 +58,9 @@ impl From<std::io::Error> for LedgerError {
         LedgerError::Crate("std::io", format!("{:?}", error))
     }
 }
+
+impl From<LedgerError> for std::io::Error {
+    fn from(error: LedgerError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
+}

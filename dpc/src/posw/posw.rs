@@ -19,7 +19,6 @@
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_parameters::testnet1::{PoSWProvingKeyBytes, PoSWVerifyingKeyBytes};
-use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
@@ -86,9 +85,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             let circuit = PoSWCircuit::<N>::new(&block_header)?;
 
             // Generate the proof.
-            let timer = start_timer!(|| "PoSW proof");
             block_header.set_proof((&<<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?).into());
-            end_timer!(timer);
 
             if self.verify(block_header) {
                 break;

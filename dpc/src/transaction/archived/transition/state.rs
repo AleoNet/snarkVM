@@ -70,7 +70,7 @@ impl<N: Network> State<N> {
     //         inputs.push(Input::new(
     //             &sender,
     //             record.clone(),
-    //             *N::noop_circuit_id(),
+    //             *N::noop_function_id(),
     //             Default::default(),
     //             // TODO (howardwu): TEMPORARY - Fix this cast.
     //             fee.0 as u64,
@@ -136,52 +136,6 @@ impl<N: Network> State<N> {
     pub fn memo(&self) -> &Memo<N> {
         &self.memo
     }
-
-    // /// Returns a transaction by executing an authorized state transition.
-    // pub fn execute<R: Rng + CryptoRng>(&self, ledger_proof: LedgerProof<N>, rng: &mut R) -> Result<Transaction<N>> {
-    //     debug_assert_eq!(N::NUM_INPUT_RECORDS, self.signatures.len());
-    //
-    //     let execution_timer = start_timer!(|| "DPC::execute");
-    //
-    //     // Construct the ledger witnesses.
-    //     let block_hash = ledger_proof.block_hash();
-    //
-    //     // Generate the transaction ID.
-    //     let transaction_id = self.transition().to_transaction_id()?;
-    //
-    //     // Execute the program circuit.
-    //     let execution = self.function().execute(PublicVariables::new(transaction_id))?;
-    //
-    //     // Construct the inner circuit public and private variables.
-    //     let inner_public = InnerPublicVariables::new(transaction_id, block_hash, Some(execution.program_id))?;
-    //     let inner_private = InnerPrivateVariables::new(&self, ledger_proof, self.signatures.clone())?;
-    //     let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
-    //
-    //     // Compute the inner circuit proof, and verify that the inner proof passes.
-    //     let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
-    //     assert!(N::InnerSNARK::verify(
-    //         N::inner_verifying_key(),
-    //         &inner_public,
-    //         &inner_proof
-    //     )?);
-    //
-    //     // Construct the outer circuit public and private variables.
-    //     let outer_public = OuterPublicVariables::new(&inner_public, *N::inner_circuit_id());
-    //     let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
-    //     let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
-    //
-    //     let transaction_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
-    //     end_timer!(execution_timer);
-    //
-    //     Transaction::from(
-    //         N::NETWORK_ID,
-    //         self.transition().clone(),
-    //         block_hash,
-    //         *N::inner_circuit_id(),
-    //         self.memo().clone(),
-    //         transaction_proof,
-    //     )
-    // }
 }
 
 // TODO (howardwu): TEMPORARY - Add an is_valid method, call it in InnerPrivateVariables.

@@ -29,7 +29,7 @@ pub struct OuterPublicVariables<N: Network> {
 }
 
 impl<N: Network> OuterPublicVariables<N> {
-    pub fn blank() -> Self {
+    pub(crate) fn blank() -> Self {
         // This inner circuit public variable is allocated as a private variable in the outer circuit,
         // as it is not included in the transaction broadcast to the ledger.
         let mut inner_public_variables = InnerPublicVariables::blank();
@@ -41,7 +41,7 @@ impl<N: Network> OuterPublicVariables<N> {
         }
     }
 
-    pub fn new(inner_public_variables: &InnerPublicVariables<N>, inner_circuit_id: N::InnerCircuitID) -> Self {
+    pub(crate) fn new(inner_public_variables: &InnerPublicVariables<N>, inner_circuit_id: N::InnerCircuitID) -> Self {
         // This inner circuit public variable is allocated as a private variable in the outer circuit,
         // as it is not included in the transaction broadcast to the ledger.
         let mut inner_public_variables: InnerPublicVariables<N> = inner_public_variables.clone();
@@ -53,11 +53,10 @@ impl<N: Network> OuterPublicVariables<N> {
         }
     }
 
-    pub fn from(transition: &Transition<N>, inner_circuit_id: N::InnerCircuitID) -> Result<Self> {
+    pub(crate) fn from(transition: &Transition<N>, inner_circuit_id: N::InnerCircuitID) -> Result<Self> {
         Ok(Self {
             inner_public_variables: InnerPublicVariables {
                 transition_id: transition.to_transition_id()?,
-                block_hash: transition.block_hash(),
                 // This inner circuit public variable is allocated as a private variable in the outer circuit,
                 // as it is not included in the transaction broadcast to the ledger.
                 program_id: None,

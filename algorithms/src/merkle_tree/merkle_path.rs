@@ -33,7 +33,7 @@ pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 pub struct MerklePath<P: MerkleParameters> {
     pub parameters: Arc<P>,
     pub path: Vec<MerkleTreeDigest<P>>,
-    pub leaf_index: u32,
+    pub leaf_index: u64,
 }
 
 impl<P: MerkleParameters> MerklePath<P> {
@@ -80,7 +80,7 @@ impl<P: MerkleParameters> MerklePath<P> {
     ///
     /// Returns: (left, right)
     fn select_left_right_bytes(
-        index: u32,
+        index: u64,
         computed_hash: &<P::H as CRH>::Output,
         sibling_hash: &<P::H as CRH>::Output,
     ) -> Result<(<P::H as CRH>::Output, <P::H as CRH>::Output), MerkleError> {
@@ -128,7 +128,7 @@ impl<P: MerkleParameters> FromBytes for MerklePath<P> {
             path.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let leaf_index: u32 = FromBytes::read_le(&mut reader)?;
+        let leaf_index: u64 = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             parameters,

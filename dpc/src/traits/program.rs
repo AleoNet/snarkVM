@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, Network, ProgramError, PublicVariables, Request, Response};
+use crate::{FunctionType, Network, ProgramPublicVariables, Request, Response};
 use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -43,9 +43,6 @@ pub trait ProgramScheme<N: Network> {
 
     /// Returns the program path (the Merkle path for a given function ID).
     fn to_program_path(&self, function_id: &N::FunctionID) -> Result<MerklePath<N::ProgramFunctionsTreeParameters>>;
-
-    /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, request: &Request<N>) -> Result<Response<N>>;
 }
 
 pub trait Function<N: Network>: Send + Sync {
@@ -56,13 +53,13 @@ pub trait Function<N: Network>: Send + Sync {
     fn function_type(&self) -> FunctionType;
 
     /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, request: &Request<N>) -> Result<Response<N>, ProgramError>;
+    fn evaluate(&self, request: &Request<N>) -> Result<Response<N>>;
 
     /// Executes the function, returning an proof.
-    fn execute(&self, public: PublicVariables<N>) -> Result<N::ProgramProof, ProgramError>;
+    fn execute(&self, public: ProgramPublicVariables<N>) -> Result<N::ProgramProof>;
 
     /// Returns true if the execution of the function is valid.
-    fn verify(&self, public: &PublicVariables<N>, proof: &N::ProgramProof) -> bool;
+    fn verify(&self, public: &ProgramPublicVariables<N>, proof: &N::ProgramProof) -> bool;
 
     // /// Synthesizes the circuit inside the given constraint system.
     // fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(
@@ -107,7 +104,7 @@ impl<N: Network> Noop<N> {
 impl<N: Network> Function<N> for Noop<N> {
     /// Returns the function ID.
     fn function_id(&self) -> N::FunctionID {
-        *N::noop_circuit_id()
+        *N::noop_function_id()
     }
 
     /// Returns the circuit type.
@@ -116,12 +113,12 @@ impl<N: Network> Function<N> for Noop<N> {
     }
 
     /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, _request: &Request<N>) -> Result<Response<N>, ProgramError> {
+    fn evaluate(&self, _request: &Request<N>) -> Result<Response<N>> {
         Ok(Response::new_noop(&mut rand::thread_rng())?)
     }
 
     /// Executes the function, returning an proof.
-    fn execute(&self, public: PublicVariables<N>) -> Result<N::ProgramProof, ProgramError> {
+    fn execute(&self, public: ProgramPublicVariables<N>) -> Result<N::ProgramProof> {
         let circuit = SynthesizedCircuit::Noop(public.clone());
         let proof =
             <N::ProgramSNARK as SNARK>::prove(N::noop_circuit_proving_key(), &circuit, &mut rand::thread_rng())?;
@@ -130,7 +127,7 @@ impl<N: Network> Function<N> for Noop<N> {
     }
 
     /// Returns true if the execution of the function is valid.
-    fn verify(&self, public: &PublicVariables<N>, proof: &N::ProgramProof) -> bool {
+    fn verify(&self, public: &ProgramPublicVariables<N>, proof: &N::ProgramProof) -> bool {
         <N::ProgramSNARK as SNARK>::verify(N::noop_circuit_verifying_key(), public, proof)
             .expect("Failed to verify noop function proof")
     }
@@ -138,7 +135,7 @@ impl<N: Network> Function<N> for Noop<N> {
 
 // TODO (howardwu): TEMPORARY - Guard access to this enum, to prevent abuse of it.
 pub enum SynthesizedCircuit<N: Network> {
-    Noop(PublicVariables<N>),
+    Noop(ProgramPublicVariables<N>),
     // Blank(Arc<dyn FunctionLogic<N>>),
     // Assigned(Arc<dyn FunctionLogic<N>>, PublicVariables<N>),
 }
