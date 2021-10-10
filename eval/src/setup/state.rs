@@ -460,7 +460,19 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                     let mut iter_state_data = Vec::new();
                     //todo: max loop count (DOS vector)
                     for i in iter {
-                        state_data.state.variables.insert(
+                        let mut state = EvaluatorState {
+                            program: state_data.state.program,
+                            variables: HashMap::new(),
+                            call_depth: state_data.state.call_depth,
+                            parent_variables: state_data
+                                .state
+                                .variables
+                                .clone()
+                                .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                            function_index: state_data.state.function_index,
+                            instruction_index: state_data.state.instruction_index,
+                        };
+                        state.variables.insert(
                             data.iter_variable,
                             ConstrainedValue::Integer(match from_int.get_type() {
                                 IntegerType::U8 => Integer::U8(UInt8::constant(
@@ -475,19 +487,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                                 _ => return Err(anyhow!("illegal type for loop index")),
                             }),
                         );
-
-                        let state = EvaluatorState {
-                            program: state_data.state.program,
-                            variables: HashMap::new(),
-                            call_depth: state_data.state.call_depth,
-                            parent_variables: state_data
-                                .state
-                                .variables
-                                .clone()
-                                .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
-                            function_index: state_data.state.function_index,
-                            instruction_index: state_data.state.instruction_index,
-                        };
                         let new_state_data = CallStateData {
                             function: state_data.function,
                             function_index: state_data.function_index,
@@ -563,7 +562,15 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         let assignments = state_data.state.variables;
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
-                            state_data.state.store(variable, value);
+                            if state_data
+                                .state
+                                .variables
+                                .get(&variable)
+                                .or(state_data.state.parent_variables.get(&variable))
+                                .is_some()
+                            {
+                                state_data.state.store(variable, value);
+                            }
                         }
                     }
                 },
