@@ -18,7 +18,6 @@
 
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_parameters::testnet1::{PoSWProvingKeyBytes, PoSWVerifyingKeyBytes};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
@@ -51,14 +50,10 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     fn load(is_prover: bool) -> Result<Self, PoswError> {
         Ok(Self {
             proving_key: match is_prover {
-                true => Some(<<N as Network>::PoswSNARK as SNARK>::ProvingKey::read_le(
-                    &PoSWProvingKeyBytes::load_bytes()?[..],
-                )?),
+                true => Some(N::posw_proving_key().clone()),
                 false => None,
             },
-            verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey::read_le(
-                &PoSWVerifyingKeyBytes::load_bytes()?[..],
-            )?,
+            verifying_key: N::posw_verifying_key().clone(),
         })
     }
 

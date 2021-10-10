@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, Address, AleoAmount, LocalCommitments, Network, Request, Transition, VirtualMachine};
+use crate::{record::*, Address, AleoAmount, LocalCommitments, Network, Request, Transition, ViewKey, VirtualMachine};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
@@ -240,6 +240,19 @@ impl<N: Network> Transaction<N> {
             .collect::<Result<Vec<_>>>()
     }
 
+    /// Returns the records that can be decrypted with the given account view key.
+    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Result<Vec<Record<N>>> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::ciphertexts)
+            .map(|c| c.decrypt(account_view_key))
+            .filter(|decryption_result| match decryption_result {
+                Ok(r) => !r.is_dummy(),
+                Err(_) => true,
+            })
+            .collect::<Result<Vec<Record<N>>>>()
+    }
+
     /// Returns the transaction ID.
     #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
@@ -300,5 +313,49 @@ impl<N: Network> fmt::Debug for Transaction<N> {
             self.inner_circuit_id(),
             self.transitions()
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+
+    use snarkvm_utilities::{FromBytes, UniformRand};
+
+    use crate::{testnet2::Testnet2, Account, AccountScheme, AleoAmount, Payload, Record, ViewKey, PAYLOAD_SIZE};
+
+    #[ignore]
+    #[test]
+    fn test_decrypt_records() {
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let dummy_account = Account::<Testnet2>::new(rng).unwrap();
+
+        // Construct output records
+        let mut payload = [0u8; PAYLOAD_SIZE];
+        rng.fill(&mut payload);
+        let record = Record::new_output(
+            dummy_account.address(),
+            1234,
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            UniformRand::rand(rng),
+            rng,
+        )
+        .unwrap();
+        let dummy_record = Record::new_noop_output(dummy_account.address(), UniformRand::rand(rng), rng).unwrap();
+
+        // Encrypt output records
+        let (encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
+        let (encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
+        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
+
+        // Construct transaction with 1 output record and 1 dummy output record
+        let transaction = Transaction::new_coinbase(dummy_account.address(), AleoAmount(1234), rng).unwrap();
+
+        let decrypted_records = transaction.to_decrypted_records(&account_view_key).unwrap();
+        assert_eq!(decrypted_records.len(), 1); // Excludes dummy record upon decryption
+        assert_eq!(decrypted_records.first().unwrap(), &record);
     }
 }

@@ -224,6 +224,9 @@ impl Network for Testnet2 {
     dpc_snark_setup!{Testnet2, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
     dpc_snark_setup!{Testnet2, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
 
+    dpc_snark_setup!{Testnet2, posw_proving_key, PoswSNARK, ProvingKey, PoSWProvingKeyBytes, "posw proving key"}
+    dpc_snark_setup!{Testnet2, posw_verifying_key, PoswSNARK, VerifyingKey, PoSWVerifyingKeyBytes, "posw verifying key"}
+
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()

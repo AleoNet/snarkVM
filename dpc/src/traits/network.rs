@@ -216,7 +216,9 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     fn outer_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
     fn outer_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
-    
+
+    fn posw_proving_key() -> &'static <Self::PoswSNARK as SNARK>::ProvingKey;
+    fn posw_verifying_key() -> &'static <Self::PoswSNARK as SNARK>::VerifyingKey;
     fn posw() -> &'static Self::PoSW;
 
     fn genesis_block() -> &'static Block<Self>;
