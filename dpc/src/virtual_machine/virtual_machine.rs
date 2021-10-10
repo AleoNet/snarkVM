@@ -89,12 +89,7 @@ impl<N: Network> VirtualMachine<N> {
         let response = self.build(rng)?;
         let transition = Transition::<N>::from(&self.request, &response, rng)?;
 
-        Transaction::from(
-            N::NETWORK_ID,
-            *N::inner_circuit_id(),
-            vec![transition],
-            Default::default(),
-        )
+        Transaction::from(N::NETWORK_ID, *N::inner_circuit_id(), vec![transition])
     }
 
     /// Generates the given `amount` to `recipient`.

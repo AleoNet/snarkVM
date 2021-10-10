@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, Address, AleoAmount, LocalCommitments, Memo, Network, Request, Transition, VirtualMachine};
+use crate::{record::*, Address, AleoAmount, LocalCommitments, Network, Request, Transition, VirtualMachine};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
@@ -40,8 +40,6 @@ pub struct Transaction<N: Network> {
     inner_circuit_id: N::InnerCircuitID,
     /// The state transition.
     transitions: Vec<Transition<N>>,
-    /// Publicly-visible data associated with the transaction.
-    memo: Memo<N>,
 }
 
 impl<N: Network> Transaction<N> {
@@ -60,17 +58,11 @@ impl<N: Network> Transaction<N> {
 
     /// Initializes an instance of `Transaction` from the given inputs.
     #[inline]
-    pub fn from(
-        network_id: u16,
-        inner_circuit_id: N::InnerCircuitID,
-        transitions: Vec<Transition<N>>,
-        memo: Memo<N>,
-    ) -> Result<Self> {
+    pub fn from(network_id: u16, inner_circuit_id: N::InnerCircuitID, transitions: Vec<Transition<N>>) -> Result<Self> {
         let transaction = Self {
             network_id,
             transitions,
             inner_circuit_id,
-            memo,
         };
 
         match transaction.is_valid() {
@@ -239,12 +231,6 @@ impl<N: Network> Transaction<N> {
         &self.transitions
     }
 
-    /// Returns a reference to the memo.
-    #[inline]
-    pub fn memo(&self) -> &Memo<N> {
-        &self.memo
-    }
-
     /// Returns the ciphertext IDs.
     #[inline]
     pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
@@ -274,8 +260,7 @@ impl<N: Network> ToBytes for Transaction<N> {
         self.network_id.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
         (self.transitions.len() as u16).write_le(&mut writer)?;
-        self.transitions.write_le(&mut writer)?;
-        self.memo.write_le(&mut writer)
+        self.transitions.write_le(&mut writer)
     }
 }
 
@@ -291,9 +276,7 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self::from(network_id, inner_circuit_id, transitions, memo).expect("Failed to deserialize a transaction"))
+        Ok(Self::from(network_id, inner_circuit_id, transitions).expect("Failed to deserialize a transaction"))
     }
 }
 
@@ -312,11 +295,10 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transitions: {:?}, memo: {:?} }}",
+            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transitions: {:?} }}",
             self.network_id(),
             self.inner_circuit_id(),
-            self.transitions(),
-            self.memo()
+            self.transitions()
         )
     }
 }

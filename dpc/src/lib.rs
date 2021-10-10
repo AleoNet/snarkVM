@@ -78,9 +78,6 @@ pub use network::*;
 pub mod posw;
 pub use posw::*;
 
-pub mod program;
-pub use program::*;
-
 pub mod record;
 pub use record::*;
 
@@ -89,9 +86,6 @@ pub use traits::*;
 
 pub mod transaction;
 pub use transaction::*;
-
-pub mod transition;
-pub use transition::*;
 
 pub mod virtual_machine;
 pub use virtual_machine::*;
@@ -102,11 +96,9 @@ pub mod prelude {
         block::*,
         errors::*,
         ledger::*,
-        program::*,
         record::*,
         traits::*,
         transaction::*,
-        transition::*,
         virtual_machine::*,
     };
 }

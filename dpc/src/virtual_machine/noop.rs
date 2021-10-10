@@ -53,18 +53,7 @@ impl<N: Network> Function<N> for Noop<N> {
         cs: &mut CS,
         public: &ProgramPublicVariables<N>,
     ) -> Result<(), SynthesisError> {
-        let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[0u8])?;
-
-        let _transition_id_crh =
-            N::TransitionIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare the transition ID CRH scheme"), || {
-                Ok(N::transition_id_crh().clone())
-            })?;
-
-        let _transition_id = <N::TransitionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-            cs.ns(|| "Alloc the transition ID"),
-            || Ok(public.transition_id),
-        )?;
-
+        SynthesizedCircuit::Noop(public.clone()).generate_constraints(cs)?;
         Ok(())
     }
 

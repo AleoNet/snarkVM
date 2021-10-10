@@ -87,8 +87,6 @@ impl Network for Testnet2 {
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
-    const MEMO_SIZE_IN_BYTES: usize = 64;
-
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const POSW_NUM_LEAVES: usize = 8;
     const POSW_TREE_DEPTH: usize = 3;
