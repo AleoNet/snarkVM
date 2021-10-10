@@ -36,8 +36,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Output = G::Affine;
     type Parameters = Vec<Vec<G>>;
 
-    const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
-
     fn setup(message: &str) -> Self {
         Self::bases(message).into()
     }

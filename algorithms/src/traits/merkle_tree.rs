@@ -54,7 +54,12 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
     }
 
     fn hash_empty(&self) -> Result<<Self::H as CRH>::Output, MerkleError> {
-        let empty_buffer = vec![0u8; <Self::H as CRH>::INPUT_SIZE_BITS / 8];
+        // TODO (howardwu): TEMPORARY - This choice of a 64 byte buffer is a temporary fix.
+        //  Previously, the size was `<Self::H as CRH>::INPUT_SIZE_BITS / 8` which was also incorrect.
+        //  One needs to define a `LeafCRH` and a `TwoToOneCRH` in order to set proper size expectations.
+        //  64 bytes was chosen as a temporary fix, to at least ensure the `TwoToOneCRH` preimage size fits,
+        //  however this temporary fix does not technically address the issue in a meaningful sense.
+        let empty_buffer = vec![0u8; 64];
         Ok(self.crh().hash(&empty_buffer)?)
     }
 }

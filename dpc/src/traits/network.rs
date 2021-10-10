@@ -20,7 +20,6 @@ use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwards
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
-    CryptoHashGadget,
     GroupGadget,
     MaskedCRHGadget,
     SNARKVerifierGadget,
@@ -139,8 +138,8 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type FunctionID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// Crypto hash for deriving the function inputs digest. Invoked only over `Self::InnerScalarField`.
-    type FunctionInputsCRH: CryptoHash<Input = Self::InnerScalarField, Output = Self::FunctionInputsDigest>;
-    type FunctionInputsCRHGadget: CryptoHashGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
+    type FunctionInputsCRH: CRH<Output = Self::FunctionInputsDigest>;
+    type FunctionInputsCRHGadget: CRHGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
     type FunctionInputsDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.

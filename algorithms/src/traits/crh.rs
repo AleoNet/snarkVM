@@ -27,8 +27,6 @@ pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as
     type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync + Copy;
     type Parameters: Clone + Debug + Eq;
 
-    const INPUT_SIZE_BITS: usize;
-
     fn setup(message: &str) -> Self;
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {

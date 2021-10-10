@@ -54,7 +54,7 @@ impl<N: Network> Operation<N> {
 
     /// Returns a hash of the operation.
     pub fn to_operation_id(&self) -> Result<N::FunctionInputsDigest> {
-        Ok(N::FunctionInputsCRH::evaluate(&self.to_field_elements()?)?)
+        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon").hash_field_elements(&self.to_field_elements()?)?)
     }
 }
 
