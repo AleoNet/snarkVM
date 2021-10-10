@@ -43,8 +43,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for ProgramCircuit<N
         &self,
         _cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        let public = &self.public;
-
         Ok(())
     }
 }

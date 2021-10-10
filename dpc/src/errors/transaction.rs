@@ -24,15 +24,6 @@ pub enum TransactionError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
-    #[error("insufficient funds from input: {} to spend as output: {}", _0, _1)]
-    InsufficientFunds(u64, u64),
-
-    #[error("invalid coinbase transaction")]
-    InvalidCoinbaseTransaction,
-
-    #[error("invalid transaction id {:?}", _0)]
-    InvalidTransactionId(usize),
-
     #[error(
         "Invalid transition: |serial numbers| = {}, |commitments| = {}, |ciphertexts| = {}",
         _0,
@@ -43,18 +34,6 @@ pub enum TransactionError {
 
     #[error("{}", _0)]
     Message(String),
-
-    #[error("the block has multiple coinbase transactions: {:?}", _0)]
-    MultipleCoinbaseTransactions(u32),
-
-    #[error("Null Error {:?}", _0)]
-    NullError(()),
-}
-
-impl From<()> for TransactionError {
-    fn from(_error: ()) -> Self {
-        TransactionError::NullError(())
-    }
 }
 
 impl From<&'static str> for TransactionError {

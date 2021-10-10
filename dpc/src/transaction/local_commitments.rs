@@ -45,29 +45,15 @@ impl<N: Network> LocalCommitments<N> {
     }
 
     /// TODO (howardwu): Add safety checks for u8 (max 2^8).
-    /// Adds the given commitment to the tree, returning its index in the tree.
-    pub(crate) fn add(&mut self, commitment: &N::Commitment) -> Result<u8> {
-        // Ensure the commitment does not already exist in the tree.
-        if self.contains_commitment(commitment) {
-            return Err(
-                MerkleError::Message(format!("{} already exists in the local commitments tree", commitment)).into(),
-            );
-        }
-
-        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &[commitment])?);
-
-        self.commitments.insert(*commitment, self.current_index);
-
-        self.current_index += 1;
-        Ok(self.current_index - 1)
-    }
-
-    /// TODO (howardwu): Add safety checks for u8 (max 2^8).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    pub(crate) fn add_all(&mut self, commitments: &Vec<N::Commitment>) -> Result<(u8, u8)> {
-        // Ensure the list of given commitments is non-empty.
-        if commitments.is_empty() {
-            return Err(anyhow!("The list of given commitments must be non-empty"));
+    pub(crate) fn add(&mut self, commitments: &Vec<N::Commitment>) -> Result<(u8, u8)> {
+        // Ensure the list of given commitments matches `N::NUM_INPUT_RECORDS`.
+        if commitments.len() != N::NUM_INPUT_RECORDS {
+            return Err(anyhow!(
+                "The list of given commitments is of incorrect size. Expected {}, found {}",
+                N::NUM_INPUT_RECORDS,
+                commitments.len()
+            ));
         }
 
         // Ensure the list of given commitments is unique.

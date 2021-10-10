@@ -153,7 +153,7 @@ impl<N: Network> Transaction<N> {
             for window in self.transitions.windows(2) {
                 if let [previous_transition, current_transition] = window {
                     // Update the local commitments tree.
-                    if let Err(error) = local_commitments_tree.add_all(previous_transition.commitments()) {
+                    if let Err(error) = local_commitments_tree.add(previous_transition.commitments()) {
                         eprintln!("Transaction failed to update local commitments tree: {}", error);
                         return false;
                     }

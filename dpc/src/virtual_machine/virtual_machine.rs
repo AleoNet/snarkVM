@@ -64,10 +64,11 @@ impl<N: Network> VirtualMachine<N> {
     #[cfg(test)]
     pub fn evaluate<R: Rng + CryptoRng>(mut self, rng: &mut R) -> Result<Response<N>> {
         // Compute the operation.
-        match self.request.operation() {
+        let operation = self.request.operation().clone();
+        match operation {
             Operation::Noop => (),
-            Operation::Coinbase(recipient, amount) => self.coinbase(*recipient, amount.0 as u64)?,
-            Operation::Transfer(recipient, amount) => self.transfer(*recipient, amount.0 as u64)?,
+            Operation::Coinbase(recipient, amount) => self.coinbase(recipient, amount.0 as u64)?,
+            Operation::Transfer(recipient, amount) => self.transfer(recipient, amount.0 as u64)?,
             Operation::Function(..) => unimplemented!(),
         }
 
@@ -76,10 +77,11 @@ impl<N: Network> VirtualMachine<N> {
 
     pub fn execute<R: Rng + CryptoRng>(mut self, rng: &mut R) -> Result<Transaction<N>> {
         // Compute the operation.
-        match self.request.operation() {
+        let operation = self.request.operation().clone();
+        match operation {
             Operation::Noop => (),
-            Operation::Coinbase(recipient, amount) => self.coinbase(*recipient, amount.0 as u64)?,
-            Operation::Transfer(recipient, amount) => self.transfer(*recipient, amount.0 as u64)?,
+            Operation::Coinbase(recipient, amount) => self.coinbase(recipient, amount.0 as u64)?,
+            Operation::Transfer(recipient, amount) => self.transfer(recipient, amount.0 as u64)?,
             Operation::Function(..) => unimplemented!(),
         }
 
