@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::MerkleError, CRH};
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use std::{fmt::Debug, io::Cursor};
+use std::fmt::Debug;
 
 pub trait MerkleParameters: Clone + Debug + Send + Sync {
     type H: CRH;
@@ -40,13 +40,8 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
     fn crh(&self) -> &Self::H;
 
     /// Returns the hash of a given leaf.
-    fn hash_leaf<L: ToBytes>(&self, leaf: &L, buffer: &mut [u8]) -> Result<<Self::H as CRH>::Output, MerkleError> {
-        debug_assert_eq!(buffer.len(), Self::H::INPUT_SIZE_BITS / 8);
-        let mut writer = Cursor::new(buffer);
-        leaf.write_le(&mut writer)?;
-
-        let buffer = writer.into_inner();
-        Ok(self.crh().hash(&buffer[..(Self::H::INPUT_SIZE_BITS / 8)])?)
+    fn hash_leaf<L: ToBytes>(&self, leaf: &L) -> Result<<Self::H as CRH>::Output, MerkleError> {
+        Ok(self.crh().hash(&leaf.to_bytes_le()?)?)
     }
 
     /// Returns the output hash, given a left and right hash value.
@@ -54,19 +49,8 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
         &self,
         left: &<Self::H as CRH>::Output,
         right: &<Self::H as CRH>::Output,
-        buffer: &mut [u8],
     ) -> Result<<Self::H as CRH>::Output, MerkleError> {
-        debug_assert_eq!(buffer.len(), Self::H::INPUT_SIZE_BITS / 8);
-        let mut writer = Cursor::new(buffer);
-
-        // Construct left input.
-        left.write_le(&mut writer)?;
-
-        // Construct right input.
-        right.write_le(&mut writer)?;
-
-        let buffer = writer.into_inner();
-        Ok(self.crh().hash(&buffer[..(<Self::H as CRH>::INPUT_SIZE_BITS / 8)])?)
+        Ok(self.crh().hash(&to_bytes_le![left, right]?)?)
     }
 
     fn hash_empty(&self) -> Result<<Self::H as CRH>::Output, MerkleError> {

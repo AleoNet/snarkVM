@@ -40,14 +40,10 @@ impl<P: MerkleParameters> MerklePath<P> {
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
         // Check that the given leaf matches the leaf in the membership proof.
         if !self.path.is_empty() {
-            let hash_input_size_in_bytes = P::H::INPUT_SIZE_BITS / 8;
-            let mut buffer = vec![0u8; hash_input_size_in_bytes];
+            let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf)?;
 
-            let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf, &mut buffer)?;
             let mut index = self.leaf_index;
-
             let mut curr_path_node = claimed_leaf_hash;
-            let mut buffer = vec![0u8; hash_input_size_in_bytes];
 
             // Check levels between leaf level and root.
             for level in 0..self.path.len() {
@@ -55,9 +51,7 @@ impl<P: MerkleParameters> MerklePath<P> {
                 let (left_bytes, right_bytes) =
                     Self::select_left_right_bytes(index, &curr_path_node, &self.path[level])?;
                 // Update the current path node.
-                curr_path_node = self
-                    .parameters
-                    .hash_inner_node(&left_bytes, &right_bytes, &mut buffer)?;
+                curr_path_node = self.parameters.hash_inner_node(&left_bytes, &right_bytes)?;
                 index >>= 1;
             }
 
