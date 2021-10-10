@@ -44,7 +44,6 @@ impl<N: Network> LocalCommitments<N> {
         })
     }
 
-    /// TODO (howardwu): Add safety checks for u8 (max 2^8).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
     pub(crate) fn add(&mut self, commitments: &Vec<N::Commitment>) -> Result<(u8, u8)> {
         // Ensure the list of given commitments matches `N::NUM_INPUT_RECORDS`.
@@ -54,6 +53,11 @@ impl<N: Network> LocalCommitments<N> {
                 N::NUM_INPUT_RECORDS,
                 commitments.len()
             ));
+        }
+
+        // Ensure the current index has not reached the maximum size (max 2^8).
+        if self.current_index > 254 {
+            return Err(anyhow!("Local commitments tree has reached maximum size"));
         }
 
         // Ensure the list of given commitments is unique.
