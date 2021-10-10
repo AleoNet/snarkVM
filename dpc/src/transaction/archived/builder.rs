@@ -257,45 +257,6 @@ impl<N: Network> TransitionBuilder<N> {
     //     // Execute the program circuit.
     //     let execution_proof = function.execute(PublicVariables::new(transaction_id))?;
     //
-    //     // // Construct the ledger witnesses.
-    //     // let block_hash = ledger_proof.block_hash();
-    //     //
-    //     // // Construct the inner circuit public and private variables.
-    //     // let inner_public = InnerPublicVariables::new(transaction_id, block_hash, Some(request.program_id()))?;
-    //     // let inner_private = InnerPrivateVariables::new(&request, &response, ledger_proof, function.function_type())?;
-    //     // let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
-    //     //
-    //     // // Compute the inner circuit proof, and verify that the inner proof passes.
-    //     // let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
-    //     // assert!(N::InnerSNARK::verify(
-    //     //     N::inner_verifying_key(),
-    //     //     &inner_public,
-    //     //     &inner_proof
-    //     // )?);
-    //     //
-    //     // // Construct the outer circuit public and private variables.
-    //     // let outer_public = OuterPublicVariables::new(&inner_public, *N::inner_circuit_id());
-    //     // let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
-    //     // let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
-    //     //
-    //     // let transaction_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
-    //     //
-    //     // // Process the memo.
-    //     // let mut memo_bytes = self.memo.clone();
-    //     // match memo_bytes.len() > N::MEMO_SIZE_IN_BYTES {
-    //     //     true => return Err(anyhow!("Memo size of {} exceeds capacity", memo_bytes.len())),
-    //     //     false => memo_bytes.resize(N::MEMO_SIZE_IN_BYTES, 0u8),
-    //     // };
-    //     // let memo = Memo::new(&memo_bytes)?;
-    //     //
-    //     // Transaction::from(
-    //     //     N::NETWORK_ID,
-    //     //     transition,
-    //     //     block_hash,
-    //     //     *N::inner_circuit_id(),
-    //     //     memo,
-    //     //     transaction_proof,
-    //     // )
     //
     //     //
     //     // // Ensure the executable input and output size requirements matches the records.

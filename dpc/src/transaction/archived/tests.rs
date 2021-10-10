@@ -193,3 +193,54 @@ mod transfer {
         );
     }
 }
+
+// /// Returns a new state transition that transfers a given amount of Aleo credits from a sender to a recipient.
+// pub fn new_transfer<R: Rng + CryptoRng>(
+//     sender: &PrivateKey<N>,
+//     records: &Vec<Record<N>>,
+//     recipient: Address<N>,
+//     amount: AleoAmount,
+//     fee: AleoAmount,
+//     rng: &mut R,
+// ) -> Result<Self> {
+//     assert!(records.len() <= N::NUM_INPUT_RECORDS);
+//
+//     // Calculate the available balance of the sender.
+//     let mut balance = AleoAmount::ZERO;
+//     let mut inputs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+//     for record in records {
+//         balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
+//         inputs.push(Input::new(
+//             &sender,
+//             record.clone(),
+//             *N::noop_function_id(),
+//             Default::default(),
+//             // TODO (howardwu): TEMPORARY - Fix this cast.
+//             fee.0 as u64,
+//             rng,
+//         )?);
+//     }
+//
+//     // Ensure the sender has sufficient balance.
+//     let total_cost = amount.add(fee);
+//     if balance < total_cost {
+//         return Err(anyhow!("Sender(s) has insufficient balance"));
+//     }
+//
+//     // Construct the sender output.
+//     let sender_output = Output::new(
+//         Address::from_private_key(sender)?,
+//         balance.sub(total_cost),
+//         Payload::default(),
+//         None,
+//     )?;
+//
+//     // Construct the recipient output.
+//     let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
+//
+//     Ok(Self::builder()
+//         .add_inputs(inputs)
+//         .add_output(sender_output)
+//         .add_output(recipient_output)
+//         .build(rng)?)
+// }
