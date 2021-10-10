@@ -14,10 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_ir::{instruction, CallData, Function};
+use snarkvm_gadgets::Integer as GadgetInteger;
+use snarkvm_gadgets::UInt16;
+use snarkvm_gadgets::UInt32;
+use snarkvm_gadgets::UInt8;
+use snarkvm_ir::{CallData, Function};
+
+use crate::IntegerType;
 
 use super::*;
 
+use std::convert::TryInto;
 use std::fmt;
 
 #[derive(Debug)]
@@ -98,83 +105,6 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
         cs: &mut CS,
     ) -> Result<FunctionReturn<'b>> {
         match instruction {
-            // Instruction::Repeat(RepeatData {
-            //     block_instruction_count,
-            //     iter_variable,
-            //     inclusive,
-            //     from,
-            //     to,
-            // }) => {
-            //     let block_instruction_count = *block_instruction_count as usize;
-            //     if block_instruction_count + self.instruction_index >= self.function.instructions.len() {
-            //         return Err(anyhow!("illegal repeat block length"));
-            //     }
-
-            //     let from = self.state.resolve(from, cs)?.into_owned();
-            //     let from_int = from
-            //         .extract_integer()
-            //         .map_err(|value| anyhow!("illegal type for loop init: {}", value))?
-            //         .to_owned();
-            //     let from = from_int
-            //         .to_usize()
-            //         .ok_or_else(|| anyhow!("illegal input-derived loop index"))?;
-
-            //     let to = self.state.resolve(to, cs)?.into_owned();
-            //     let to = to
-            //         .extract_integer()
-            //         .map_err(|value| anyhow!("illegal type for loop terminator: {}", value))?
-            //         .to_usize()
-            //         .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
-
-            //     let iter: Box<dyn Iterator<Item = usize>> = match (from < to, inclusive) {
-            //         (true, true) => Box::new(from..=to),
-            //         (true, false) => Box::new(from..to),
-            //         (false, true) => Box::new((to..=from).rev()),
-            //         // add the range to the values to get correct bound
-            //         (false, false) => Box::new(((to + 1)..(from + 1)).rev()),
-            //     };
-
-            //     self.instruction_index += 1;
-            //     //todo: max loop count (DOS vector)
-            //     for i in iter {
-            //         self.state.variables.insert(
-            //             *iter_variable,
-            //             ConstrainedValue::Integer(match from_int.get_type() {
-            //                 IntegerType::U8 => Integer::U8(UInt8::constant(
-            //                     i.try_into().map_err(|_| anyhow!("loop index out of range for u8"))?,
-            //                 )),
-            //                 IntegerType::U16 => Integer::U16(UInt16::constant(
-            //                     i.try_into().map_err(|_| anyhow!("loop index out of range for u16"))?,
-            //                 )),
-            //                 IntegerType::U32 => Integer::U32(UInt32::constant(
-            //                     i.try_into().map_err(|_| anyhow!("loop index out of range for u32"))?,
-            //                 )),
-            //                 _ => return Err(anyhow!("illegal type for loop index")),
-            //             }),
-            //         );
-
-            //         let mut assignments = HashMap::new();
-
-            //         self.child(
-            //             &*format!("{}: iteration #{}", self.instruction_index, i),
-            //             |state| {
-            //                 state.evaluate_block(
-            //                     base_instruction_index + *instruction_index,
-            //                     instruction_index,
-            //                     &block[*instruction_index..*instruction_index + block_instruction_count],
-            //                     &mut result,
-            //                     cs,
-            //                 )
-            //             },
-            //             &mut assignments,
-            //         )?;
-
-            //         for (variable, value) in assignments {
-            //             self.state.store(variable, value);
-            //         }
-            //     }
-            //     self.instruction_index += block_instruction_count as usize;
-            // }
             i @ Instruction::Call(_) => return Ok(FunctionReturn::Recurse(i)),
             i @ Instruction::Mask(_) => return Ok(FunctionReturn::Recurse(i)),
             i @ Instruction::Repeat(_) => return Ok(FunctionReturn::Recurse(i)),
@@ -452,7 +382,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         parent_instruction: ParentInstruction::Call(data),
                     };
                 }
-                Ok(Some(Instruction::Repeat(_))) => todo!(),
                 Ok(Some(Instruction::Mask(data))) => {
                     if data.instruction_count + state_data.state.instruction_index
                         >= state_data.function.instructions.len() as u32
@@ -493,23 +422,92 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         state_data.state.instruction_index += data.instruction_count
                     }
                 }
-                Ok(Some(e)) => panic!("todo: bad ins ret: {}", e),
-                e => match state_data.parent_instruction {
-                    ParentInstruction::None if e.is_ok() => {
+                Ok(Some(Instruction::Repeat(data))) => {
+                    if data.instruction_count + state_data.state.instruction_index
+                        >= state_data.function.instructions.len() as u32
+                    {
+                        return Err(anyhow!("illegal repeat block length"));
+                    }
+
+                    let from = state_data.state.resolve(&data.from, cs)?.into_owned();
+                    let from_int = from
+                        .extract_integer()
+                        .map_err(|value| anyhow!("illegal type for loop init: {}", value))?
+                        .to_owned();
+                    let from = from_int
+                        .to_usize()
+                        .ok_or_else(|| anyhow!("illegal input-derived loop index"))?;
+
+                    let to = state_data.state.resolve(&data.to, cs)?.into_owned();
+                    let to = to
+                        .extract_integer()
+                        .map_err(|value| anyhow!("illegal type for loop terminator: {}", value))?
+                        .to_usize()
+                        .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
+
+                    let iter: Box<dyn Iterator<Item = usize>> = match (from < to, data.inclusive) {
+                        (true, true) => Box::new(from..=to),
+                        (true, false) => Box::new(from..to),
+                        (false, true) => Box::new((to..=from).rev()),
+                        // add the range to the values to get correct bound
+                        (false, false) => Box::new(((to + 1)..(from + 1)).rev()),
+                    };
+
+                    state_data.state.instruction_index += 1;
+                    //todo: max loop count (DOS vector)
+                    for i in iter {
+                        state_data.state.variables.insert(
+                            data.iter_variable,
+                            ConstrainedValue::Integer(match from_int.get_type() {
+                                IntegerType::U8 => Integer::U8(UInt8::constant(
+                                    i.try_into().map_err(|_| anyhow!("loop index out of range for u8"))?,
+                                )),
+                                IntegerType::U16 => Integer::U16(UInt16::constant(
+                                    i.try_into().map_err(|_| anyhow!("loop index out of range for u16"))?,
+                                )),
+                                IntegerType::U32 => Integer::U32(UInt32::constant(
+                                    i.try_into().map_err(|_| anyhow!("loop index out of range for u32"))?,
+                                )),
+                                _ => return Err(anyhow!("illegal type for loop index")),
+                            }),
+                        );
+
+                        let state = EvaluatorState {
+                            program: state_data.state.program,
+                            variables: HashMap::new(),
+                            call_depth: state_data.state.call_depth,
+                            parent_variables: state_data
+                                .state
+                                .variables
+                                .clone()
+                                .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                            function_index: state_data.state.function_index,
+                            instruction_index: state_data.state.instruction_index,
+                        };
+                        let new_state_data = CallStateData {
+                            function: state_data.function,
+                            block_start: state_data.state.instruction_index,
+                            block_instruction_count: data.instruction_count,
+                            state,
+                            parent_instruction: ParentInstruction::Repeat(data),
+                        };
+                        call_stack.push(state_data);
+                        state_data = new_state_data;
+                    }
+                }
+                Ok(Some(e)) => todo!("todo: bad ins ret: {}", e),
+                Ok(None) => match state_data.parent_instruction {
+                    ParentInstruction::None => {
                         let res = result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         return Ok(res);
                     }
-                    ParentInstruction::Call(data) if e.is_ok() => {
+                    ParentInstruction::Call(data) => {
                         let res = result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         state_data = call_stack.pop().expect("no state to return to");
                         state_data.state.store(data.destination, res);
                         state_data.state.instruction_index += 1;
                     }
                     ParentInstruction::Mask(condition) => {
-                        let condition_bool = condition.get_value().unwrap_or(true);
-                        if e.is_err() && condition_bool {
-                            e?;
-                        }
                         let assignments = state_data.state.variables;
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
@@ -537,11 +535,19 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             state_data.block_start + state_data.block_instruction_count
                         );
                     }
-                    ParentInstruction::Repeat(data) => todo!(),
-                    _ => {
-                        e?;
+                    ParentInstruction::Repeat(data) => {
+                        let assignments = state_data.state.variables;
+                        let repeat_block_start = state_data.block_start;
+                        state_data = call_stack.pop().expect("no state to return to");
+                        for (variable, value) in assignments {
+                            state_data.state.store(variable, value);
+                        }
+                        if state_data.block_start != repeat_block_start {
+                            state_data.state.instruction_index += data.instruction_count
+                        }
                     }
                 },
+                Err(e) => return Err(e),
             }
         }
     }
