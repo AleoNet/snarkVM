@@ -20,7 +20,7 @@ use anyhow::*;
 use indexmap::IndexMap;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{Boolean, CondSelectGadget};
-use snarkvm_ir::{Input as IrInput, InputData, Instruction, Program, RepeatData, Type, Value};
+use snarkvm_ir::{Input as IrInput, InputData, Instruction, Program, Type, Value};
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{

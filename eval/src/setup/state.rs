@@ -38,7 +38,7 @@ enum ParentInstruction<'a> {
     None,
     Call(&'a CallData),
     Mask(Boolean),
-    Repeat(&'a RepeatData),
+    Repeat,
 }
 
 struct CallStateData<'a, 'b, F: PrimeField, G: GroupType<F>> {
@@ -456,8 +456,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                     };
 
                     state_data.state.instruction_index += 1;
-                    //todo: max loop count (DOS vector)
                     //todo: very memory intensive with large loops since all states get allocated at once
+                    let mut iter_state_data = Vec::new();
+                    //todo: max loop count (DOS vector)
                     for i in iter {
                         state_data.state.variables.insert(
                             data.iter_variable,
@@ -493,12 +494,16 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             block_start: state_data.state.instruction_index,
                             block_instruction_count: data.instruction_count,
                             state,
-                            parent_instruction: ParentInstruction::Repeat(data),
+                            parent_instruction: ParentInstruction::Repeat,
                             result: state_data.result.clone(),
                         };
-                        call_stack.push(state_data);
-                        state_data = new_state_data;
+                        iter_state_data.push(new_state_data);
                     }
+                    iter_state_data.reverse();
+                    state_data.state.instruction_index += data.instruction_count;
+                    call_stack.push(state_data);
+                    call_stack.extend(iter_state_data.into_iter());
+                    state_data = call_stack.pop().unwrap();
                 }
                 Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
                 Ok(None) => match state_data.parent_instruction {
@@ -554,15 +559,11 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             (_, None) => (),
                         }
                     }
-                    ParentInstruction::Repeat(data) => {
+                    ParentInstruction::Repeat => {
                         let assignments = state_data.state.variables;
-                        let repeat_block_start = state_data.block_start;
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
                             state_data.state.store(variable, value);
-                        }
-                        if state_data.block_start != repeat_block_start {
-                            state_data.state.instruction_index += data.instruction_count
                         }
                     }
                 },
