@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::prelude::*;
+// use snarkvm_algorithms::prelude::*;
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -85,41 +85,13 @@ impl<N: Network> VirtualMachine<N> {
 
         // Compute the transition.
         let response = self.build(rng)?;
-        let transition = Transition::<N>::from(&self.request, &response)?;
-        let transition_id = transition.to_transition_id()?;
-
-        // Compute the noop execution, for now.
-        let execution = Execution {
-            program_id: *N::noop_program_id(),
-            program_path: N::noop_program_path().clone(),
-            verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(ProgramPublicVariables::new(transition_id))?,
-        };
-
-        // Compute the inner circuit proof, and verify that the inner proof passes.
-        let inner_public = InnerPublicVariables::new(transition_id, Some(self.program_id));
-        let inner_private = InnerPrivateVariables::new(&self.request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
-        let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
-
-        assert!(N::InnerSNARK::verify(
-            N::inner_verifying_key(),
-            &inner_public,
-            &inner_proof
-        )?);
-
-        // Construct the outer circuit public and private variables.
-        let outer_public = OuterPublicVariables::new(transition_id, *N::inner_circuit_id());
-        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
-        let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
-        let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
+        let transition = Transition::<N>::from(&self.request, &response, rng)?;
 
         Transaction::from(
             N::NETWORK_ID,
             *N::inner_circuit_id(),
-            transition,
+            vec![transition],
             Default::default(),
-            outer_proof,
         )
     }
 

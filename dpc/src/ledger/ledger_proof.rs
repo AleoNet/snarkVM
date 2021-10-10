@@ -261,7 +261,7 @@ mod tests {
         let expected_commitments = coinbase_transaction.commitments();
 
         // Create a ledger proof for two commitments.
-        let ledger_proof = ledger.to_ledger_inclusion_proof(expected_commitments)?;
+        let ledger_proof = ledger.to_ledger_inclusion_proof(&expected_commitments)?;
         assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);

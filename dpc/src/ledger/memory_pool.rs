@@ -62,7 +62,7 @@ impl<N: Network> MemoryPool<N> {
 
         // Ensure the memory pool does not already contain a given serial numbers.
         let serial_numbers = transaction.serial_numbers();
-        for serial_number in serial_numbers {
+        for serial_number in &serial_numbers {
             if self.serial_numbers.contains(serial_number) {
                 return Err(anyhow!("Serial number already used in memory pool"));
             }
@@ -70,7 +70,7 @@ impl<N: Network> MemoryPool<N> {
 
         // Ensure the memory pool does not already contain a given commitments.
         let commitments = transaction.commitments();
-        for commitment in commitments {
+        for commitment in &commitments {
             if self.commitments.contains(commitment) {
                 return Err(anyhow!("Commitment already used in memory pool"));
             }
@@ -82,10 +82,10 @@ impl<N: Network> MemoryPool<N> {
 
             memory_pool.transactions.insert(transaction_id, transaction.clone());
             for serial_number in serial_numbers {
-                memory_pool.serial_numbers.insert(*serial_number);
+                memory_pool.serial_numbers.insert(serial_number);
             }
             for commitment in commitments {
-                memory_pool.commitments.insert(*commitment);
+                memory_pool.commitments.insert(commitment);
             }
 
             *self = memory_pool;

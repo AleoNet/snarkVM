@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Transition};
+use crate::Network;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
@@ -41,10 +41,6 @@ impl<N: Network> OuterPublicVariables<N> {
             transition_id,
             inner_circuit_id,
         }
-    }
-
-    pub(crate) fn from(transition: &Transition<N>, inner_circuit_id: N::InnerCircuitID) -> Result<Self> {
-        Ok(Self::new(transition.to_transition_id()?, inner_circuit_id))
     }
 
     pub(crate) fn transition_id(&self) -> N::TransitionID {

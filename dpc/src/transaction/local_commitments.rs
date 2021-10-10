@@ -64,7 +64,7 @@ impl<N: Network> LocalCommitments<N> {
 
     /// TODO (howardwu): Add safety checks for u8 (max 2^8).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    pub(crate) fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u8, u8)> {
+    pub(crate) fn add_all(&mut self, commitments: &Vec<N::Commitment>) -> Result<(u8, u8)> {
         // Ensure the list of given commitments is non-empty.
         if commitments.is_empty() {
             return Err(anyhow!("The list of given commitments must be non-empty"));
@@ -81,14 +81,15 @@ impl<N: Network> LocalCommitments<N> {
             return Err(anyhow!("The list of given commitments contains double spends"));
         }
 
-        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &commitments)?);
+        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, commitments)?);
 
         let start_index = self.current_index;
         let num_commitments = commitments.len();
 
         self.commitments.extend(
             commitments
-                .into_iter()
+                .iter()
+                .cloned()
                 .enumerate()
                 .map(|(index, commitment)| (commitment, start_index + index as u8)),
         );
@@ -114,6 +115,11 @@ impl<N: Network> LocalCommitments<N> {
         *self.tree.root()
     }
 
+    /// Returns the size of the local commitments tree.
+    pub(crate) fn len(&self) -> usize {
+        self.current_index as usize
+    }
+
     /// Returns the local Merkle path for a given commitment.
     pub(crate) fn to_local_proof(&self, commitments: &[N::Commitment]) -> Result<LocalProof<N>> {
         let mut commitment_inclusion_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -129,11 +135,5 @@ impl<N: Network> LocalCommitments<N> {
             commitment_inclusion_proofs,
             commitments.to_vec(),
         )?)
-    }
-}
-
-impl<N: Network> Default for LocalCommitments<N> {
-    fn default() -> Self {
-        Self::new().unwrap()
     }
 }

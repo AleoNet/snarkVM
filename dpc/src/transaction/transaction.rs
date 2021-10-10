@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, Address, AleoAmount, Memo, Network, OuterPublicVariables, Request, Transition, VirtualMachine};
-use snarkvm_algorithms::{CRH, SNARK};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use crate::{record::*, Address, AleoAmount, LocalCommitments, Memo, Network, Request, Transition, VirtualMachine};
+use snarkvm_algorithms::CRH;
+use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -39,15 +39,18 @@ pub struct Transaction<N: Network> {
     /// The ID of the inner circuit used to execute this transaction.
     inner_circuit_id: N::InnerCircuitID,
     /// The state transition.
-    transition: Transition<N>,
+    transitions: Vec<Transition<N>>,
     /// Publicly-visible data associated with the transaction.
     memo: Memo<N>,
-    #[derivative(PartialEq = "ignore")]
-    /// The zero-knowledge proof attesting to the validity of the transition.
-    proof: <N::OuterSNARK as SNARK>::Proof,
 }
 
 impl<N: Network> Transaction<N> {
+    /// Initializes a new transaction from a request.
+    #[inline]
+    pub fn new<R: Rng + CryptoRng>(request: Request<N>, rng: &mut R) -> Result<Self> {
+        VirtualMachine::<N>::new(&request)?.execute(rng)
+    }
+
     /// Initializes a new coinbase transaction.
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
@@ -60,16 +63,14 @@ impl<N: Network> Transaction<N> {
     pub fn from(
         network_id: u16,
         inner_circuit_id: N::InnerCircuitID,
-        transition: Transition<N>,
+        transitions: Vec<Transition<N>>,
         memo: Memo<N>,
-        proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
         let transaction = Self {
             network_id,
-            transition,
+            transitions,
             inner_circuit_id,
             memo,
-            proof,
         };
 
         match transaction.is_valid() {
@@ -89,36 +90,90 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
-        // Returns `false` if the transition is not well-formed.
-        if !self.transition.is_valid() {
-            eprintln!("Transition contains a transition that is not well-formed");
+        // Ensure the number of transitions is between 1 and 128 (inclusive).
+        let num_transitions = self.transitions.len();
+        if num_transitions < 1 || num_transitions > 128 {
+            eprintln!("Transaction contains invalid number of transitions");
             return false;
         }
 
-        // Returns `false` if the transition proof is invalid.
-        match N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &match OuterPublicVariables::from(&self.transition, self.inner_circuit_id) {
-                Ok(outer_public_variables) => outer_public_variables,
+        // Returns `false` if the number of serial numbers in the transaction is incorrect.
+        if self.serial_numbers().len() != num_transitions * N::NUM_INPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of serial numbers");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate serial numbers in the transaction.
+        if has_duplicates(self.serial_numbers()) {
+            eprintln!("Transaction contains duplicate serial numbers");
+            return false;
+        }
+
+        // Returns `false` if the number of commitments in the transaction is incorrect.
+        if self.commitments().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of commitments");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate commitments numbers in the transaction.
+        if has_duplicates(self.commitments()) {
+            eprintln!("Transaction contains duplicate commitments");
+            return false;
+        }
+
+        // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
+        if self.ciphertexts().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of record ciphertexts");
+            return false;
+        }
+
+        // Returns `false` if there are duplicate ciphertexts in the transition.
+        if has_duplicates(self.ciphertexts()) {
+            eprintln!("Transaction contains duplicate ciphertexts");
+            return false;
+        }
+
+        // Returns `false` if the transition is invalid.
+        if !self.transitions[0].verify(*N::inner_circuit_id(), Default::default()) {
+            eprintln!("Transaction contains an invalid transition");
+            return false;
+        }
+
+        // Returns `false` if any transition is invalid.
+        if num_transitions > 1 {
+            // Initialize a local commitments tree.
+            let mut local_commitments_tree = match LocalCommitments::<N>::new() {
+                Ok(local_commitments_tree) => local_commitments_tree,
                 Err(error) => {
-                    eprintln!("Unable to construct outer public variables - {}", error);
+                    eprintln!("Transaction failed to initialize a local commitments tree: {}", error);
                     return false;
                 }
-            },
-            self.proof(),
-        ) {
-            Ok(is_valid) => match is_valid {
-                true => true,
-                false => {
-                    eprintln!("Transaction proof failed to verify");
-                    false
+            };
+
+            for window in self.transitions.windows(2) {
+                if let [previous_transition, current_transition] = window {
+                    // Update the local commitments tree.
+                    if let Err(error) = local_commitments_tree.add_all(previous_transition.commitments()) {
+                        eprintln!("Transaction failed to update local commitments tree: {}", error);
+                        return false;
+                    }
+
+                    // Returns `false` if the transition is invalid.
+                    if !current_transition.verify(*N::inner_circuit_id(), local_commitments_tree.root()) {
+                        eprintln!("Transaction contains an invalid transition");
+                        return false;
+                    }
                 }
-            },
-            Err(error) => {
-                eprintln!("Failed to validate transaction proof: {:?}", error);
-                false
+            }
+
+            // Returns `false` if the size of the local commitments tree does not match the number of transitions.
+            if local_commitments_tree.len() != (num_transitions - 1) * N::NUM_INPUT_RECORDS {
+                eprintln!("Transaction contains invalid local commitments tree state");
+                return false;
             }
         }
+
+        true
     }
 
     /// Returns the network ID.
@@ -127,40 +182,61 @@ impl<N: Network> Transaction<N> {
         self.network_id
     }
 
-    /// Returns the serial numbers.
-    #[inline]
-    pub fn serial_numbers(&self) -> &[N::SerialNumber] {
-        self.transition.serial_numbers()
-    }
-
-    /// Returns the commitments.
-    #[inline]
-    pub fn commitments(&self) -> &[N::Commitment] {
-        self.transition.commitments()
-    }
-
-    /// Returns the output record ciphertexts.
-    #[inline]
-    pub fn ciphertexts(&self) -> &[RecordCiphertext<N>] {
-        &self.transition.ciphertexts()
-    }
-
-    /// Returns the value balance.
-    #[inline]
-    pub fn value_balance(&self) -> &AleoAmount {
-        self.transition.value_balance()
-    }
-
     /// Returns the inner circuit ID.
     #[inline]
     pub fn inner_circuit_id(&self) -> N::InnerCircuitID {
         self.inner_circuit_id
     }
 
-    /// Returns a reference to the state transition.
+    /// Returns the block hashes used to execute the transitions.
     #[inline]
-    pub fn transition(&self) -> &Transition<N> {
-        &self.transition
+    pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
+        self.transitions.iter().map(Transition::block_hash).collect()
+    }
+
+    /// Returns the serial numbers.
+    #[inline]
+    pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::serial_numbers)
+            .cloned()
+            .collect()
+    }
+
+    /// Returns the commitments.
+    #[inline]
+    pub fn commitments(&self) -> Vec<N::Commitment> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::commitments)
+            .cloned()
+            .collect()
+    }
+
+    /// Returns the output record ciphertexts.
+    #[inline]
+    pub fn ciphertexts(&self) -> Vec<RecordCiphertext<N>> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::ciphertexts)
+            .cloned()
+            .collect()
+    }
+
+    /// Returns the value balance.
+    #[inline]
+    pub fn value_balance(&self) -> AleoAmount {
+        self.transitions
+            .iter()
+            .map(Transition::value_balance)
+            .fold(AleoAmount::ZERO, |a, b| a.add(*b))
+    }
+
+    /// Returns a reference to the state transitions.
+    #[inline]
+    pub fn transitions(&self) -> &Vec<Transition<N>> {
+        &self.transitions
     }
 
     /// Returns a reference to the memo.
@@ -169,28 +245,26 @@ impl<N: Network> Transaction<N> {
         &self.memo
     }
 
-    /// Returns a reference to the proof of the transaction.
-    #[inline]
-    pub(crate) fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
-        &self.proof
-    }
-
-    /// Returns the block hashes used to execute the transitions.
-    #[inline]
-    pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
-        [self.transition.block_hash()].iter().cloned().collect()
-    }
-
     /// Returns the ciphertext IDs.
     #[inline]
     pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
-        self.transition.to_ciphertext_ids()
+        self.transitions
+            .iter()
+            .flat_map(Transition::to_ciphertext_ids)
+            .collect::<Result<Vec<_>>>()
     }
 
     /// Returns the transaction ID.
     #[inline]
     pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        Ok(N::transaction_id_crh().hash(&to_bytes_le![self.transition.to_transition_id()?]?)?)
+        let transition_ids = self
+            .transitions
+            .iter()
+            .map(|transition| Ok(transition.transition_id().to_bytes_le()?))
+            .collect::<Result<Vec<_>>>()?
+            .concat();
+
+        Ok(N::transaction_id_crh().hash(&transition_ids)?)
     }
 }
 
@@ -199,9 +273,9 @@ impl<N: Network> ToBytes for Transaction<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.network_id.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
-        self.transition.write_le(&mut writer)?;
-        self.memo.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
+        (self.transitions.len() as u16).write_le(&mut writer)?;
+        self.transitions.write_le(&mut writer)?;
+        self.memo.write_le(&mut writer)
     }
 }
 
@@ -210,12 +284,16 @@ impl<N: Network> FromBytes for Transaction<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let network_id: u16 = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
-        let transition = FromBytes::read_le(&mut reader)?;
-        let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
-        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(network_id, inner_circuit_id, transition, memo, proof)
-            .expect("Failed to deserialize a transaction"))
+        let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
+        let mut transitions = Vec::with_capacity(num_transitions as usize);
+        for _ in 0..num_transitions {
+            transitions.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let memo: Memo<N> = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self::from(network_id, inner_circuit_id, transitions, memo).expect("Failed to deserialize a transaction"))
     }
 }
 
@@ -234,12 +312,11 @@ impl<N: Network> fmt::Debug for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transition: {:?}, memo: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transitions: {:?}, memo: {:?} }}",
             self.network_id(),
             self.inner_circuit_id(),
-            self.transition(),
-            self.memo(),
-            self.proof()
+            self.transitions(),
+            self.memo()
         )
     }
 }

@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{prelude::*, Network};
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_algorithms::traits::{CRH, SNARK};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
+use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -31,6 +32,8 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Transition<N: Network> {
+    /// The ID of this transition.
+    transition_id: N::TransitionID,
     /// The block hash used to prove inclusion of ledger-consumed records.
     block_hash: N::BlockHash,
     /// The local commitments root used to prove inclusion of locally-consumed records.
@@ -43,16 +46,20 @@ pub struct Transition<N: Network> {
     ciphertexts: Vec<RecordCiphertext<N>>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
+    #[derivative(PartialEq = "ignore")]
+    /// The zero-knowledge proof attesting to the validity of the transition.
+    proof: <N::OuterSNARK as SNARK>::Proof,
 }
 
 impl<N: Network> Transition<N> {
     /// Initializes a new instance of a transition.
     #[inline]
-    pub(crate) fn from(request: &Request<N>, response: &Response<N>) -> Result<Self> {
+    pub(crate) fn from<R: Rng + CryptoRng>(request: &Request<N>, response: &Response<N>, rng: &mut R) -> Result<Self> {
         // Fetch the block hash, local commitments root, and serial numbers.
         let block_hash = request.block_hash();
         let local_commitments_root = request.local_commitments_root();
         let serial_numbers = request.to_serial_numbers()?;
+        let program_id = request.to_program_id()?;
 
         // Fetch the commitments and ciphertexts.
         let commitments = response.to_commitments();
@@ -67,68 +74,98 @@ impl<N: Network> Transition<N> {
             value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
         }
 
+        // Compute the transition ID.
+        let transition_id = Self::compute_transition_id(
+            block_hash,
+            local_commitments_root,
+            &serial_numbers,
+            &commitments,
+            &ciphertexts,
+            value_balance,
+        )?;
+
+        // Compute the noop execution, for now.
+        // let execution = response.execution();
+        let execution = Execution {
+            program_id: *N::noop_program_id(),
+            program_path: N::noop_program_path().clone(),
+            verifying_key: N::noop_circuit_verifying_key().clone(),
+            proof: Noop::<N>::new().execute(ProgramPublicVariables::new(transition_id))?,
+        };
+
+        // Compute the inner circuit proof, and verify that the inner proof passes.
+        let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
+        let inner_private = InnerPrivateVariables::new(&request, &response)?;
+        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
+        let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
+
+        assert!(N::InnerSNARK::verify(
+            N::inner_verifying_key(),
+            &inner_public,
+            &inner_proof
+        )?);
+
+        // Construct the outer circuit public and private variables.
+        let outer_public = OuterPublicVariables::new(transition_id, *N::inner_circuit_id());
+        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
+        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
+        let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
+
+        assert!(N::OuterSNARK::verify(
+            N::outer_verifying_key(),
+            &outer_public,
+            &outer_proof
+        )?);
+
         // Construct the transition.
-        let transition = Self {
+        Ok(Self {
+            transition_id,
             block_hash,
             local_commitments_root,
             serial_numbers,
             commitments,
             ciphertexts,
             value_balance,
-        };
+            proof: outer_proof,
+        })
+    }
 
-        // Ensure the transition is well-formed.
-        match transition.is_valid() {
-            true => Ok(transition),
-            false => Err(TransactionError::InvalidTransition(
-                transition.serial_numbers.len(),
-                transition.commitments.len(),
-                transition.ciphertexts.len(),
-            )
-            .into()),
+    /// Returns `true` if the transition proof is valid, and the local commitments root matches.
+    #[inline]
+    pub fn verify(&self, inner_circuit_id: N::InnerCircuitID, local_commitments_root: N::LocalCommitmentsRoot) -> bool {
+        // Returns `false` if the local commitments root does not match the given one.
+        if self.local_commitments_root != local_commitments_root {
+            eprintln!(
+                "Transition contains incorrect local commitments root: {} != {}",
+                self.local_commitments_root, local_commitments_root
+            );
+            return false;
+        }
+
+        // Returns `false` if the transition proof is invalid.
+        match N::OuterSNARK::verify(
+            N::outer_verifying_key(),
+            &OuterPublicVariables::new(self.transition_id, inner_circuit_id),
+            &self.proof,
+        ) {
+            Ok(is_valid) => match is_valid {
+                true => true,
+                false => {
+                    eprintln!("Transition proof failed to verify");
+                    return false;
+                }
+            },
+            Err(error) => {
+                eprintln!("Failed to validate transition proof: {:?}", error);
+                return false;
+            }
         }
     }
 
-    /// Returns `true` if the transition is well-formed.
+    /// Returns the transition ID.
     #[inline]
-    pub(crate) fn is_valid(&self) -> bool {
-        // Returns `false` if the number of serial numbers in the transition is incorrect.
-        if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
-            eprintln!("Transition contains incorrect number of serial numbers");
-            return false;
-        }
-
-        // Returns `false` if there are duplicate serial numbers in the transition.
-        if has_duplicates(self.serial_numbers().iter()) {
-            eprintln!("Transition contains duplicate serial numbers");
-            return false;
-        }
-
-        // Returns `false` if the number of commitments in the transition is incorrect.
-        if self.commitments().len() != N::NUM_OUTPUT_RECORDS {
-            eprintln!("Transition contains incorrect number of commitments");
-            return false;
-        }
-
-        // Returns `false` if there are duplicate commitments numbers in the transition.
-        if has_duplicates(self.commitments().iter()) {
-            eprintln!("Transition contains duplicate commitments");
-            return false;
-        }
-
-        // Returns `false` if the number of record ciphertexts in the transition is incorrect.
-        if self.ciphertexts().len() != N::NUM_OUTPUT_RECORDS {
-            eprintln!("Transition contains incorrect number of record ciphertexts");
-            return false;
-        }
-
-        // Returns `false` if there are duplicate ciphertexts in the transition.
-        if has_duplicates(self.ciphertexts().iter()) {
-            eprintln!("Transition contains duplicate ciphertexts");
-            return false;
-        }
-
-        true
+    pub(crate) fn transition_id(&self) -> N::TransitionID {
+        self.transition_id
     }
 
     /// Returns the block hash used to prove inclusion of ledger-consumed records.
@@ -167,22 +204,37 @@ impl<N: Network> Transition<N> {
         &self.value_balance
     }
 
+    /// Returns a reference to the transition proof.
+    #[inline]
+    pub(crate) fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
+        &self.proof
+    }
+
     /// Returns the ciphertext IDs.
     #[inline]
-    pub(crate) fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
-        self.ciphertexts.iter().map(|c| Ok(c.to_ciphertext_id()?)).collect()
+    pub(crate) fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
+        self.ciphertexts.iter().map(RecordCiphertext::to_ciphertext_id)
     }
 
     /// Transition ID := Hash(block hash || local commitments root || serial numbers || commitments || ciphertext_ids || value balance)
-    #[inline]
-    pub(crate) fn to_transition_id(&self) -> Result<N::TransitionID> {
+    fn compute_transition_id(
+        block_hash: N::BlockHash,
+        local_commitments_root: N::LocalCommitmentsRoot,
+        serial_numbers: &Vec<N::SerialNumber>,
+        commitments: &Vec<N::Commitment>,
+        ciphertexts: &Vec<RecordCiphertext<N>>,
+        value_balance: AleoAmount,
+    ) -> Result<N::TransitionID> {
         Ok(N::transition_id_crh().hash(&to_bytes_le![
-            self.block_hash,
-            self.local_commitments_root,
-            self.serial_numbers,
-            self.commitments,
-            self.to_ciphertext_ids()?,
-            self.value_balance
+            block_hash,
+            local_commitments_root,
+            serial_numbers,
+            commitments,
+            ciphertexts
+                .iter()
+                .map(RecordCiphertext::to_ciphertext_id)
+                .collect::<Result<Vec<_>>>()?,
+            value_balance
         ]?)?)
     }
 }
@@ -195,7 +247,8 @@ impl<N: Network> ToBytes for Transition<N> {
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
-        self.value_balance.write_le(&mut writer)
+        self.value_balance.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
     }
 }
 
@@ -221,26 +274,28 @@ impl<N: Network> FromBytes for Transition<N> {
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        let transition = Self {
+        let transition_id = Self::compute_transition_id(
+            block_hash,
+            local_commitments_root,
+            &serial_numbers,
+            &commitments,
+            &ciphertexts,
+            value_balance,
+        )
+        .expect("Failed to compute the transition ID during deserialization");
+
+        Ok(Self {
+            transition_id,
             block_hash,
             local_commitments_root,
             serial_numbers,
             commitments,
             ciphertexts,
             value_balance,
-        };
-
-        // Ensure the transition is well-formed.
-        match transition.is_valid() {
-            true => Ok(transition),
-            false => Err(TransactionError::InvalidTransition(
-                transition.serial_numbers.len(),
-                transition.commitments.len(),
-                transition.ciphertexts.len(),
-            )
-            .into()),
-        }
+            proof,
+        })
     }
 }
 
@@ -249,13 +304,15 @@ impl<N: Network> fmt::Debug for Transition<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transition {{ block_hash: {:?}, local_commitments_root: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?} }}",
+            "Transition {{ transition_id: {:?}, block_hash: {:?}, local_commitments_root: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, proof: {:?} }}",
+            self.transition_id(),
             self.block_hash(),
             self.local_commitments_root(),
             self.serial_numbers(),
             self.commitments(),
-            self.to_ciphertext_ids().unwrap(),
+            self.to_ciphertext_ids(),
             self.value_balance(),
+            self.proof()
         )
     }
 }

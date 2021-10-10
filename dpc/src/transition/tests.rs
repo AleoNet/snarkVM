@@ -32,8 +32,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     //////////////////////////////////////////////////////////////////////////
 
-    let transition = Transition::<N>::from(&request, &response).unwrap();
-    let transition_id = transition.to_transition_id().unwrap();
+    let transition = Transition::<N>::from(&request, &response, &mut rng).unwrap();
+    let transition_id = transition.transition_id();
 
     // Compute the noop execution
     let execution = Execution {

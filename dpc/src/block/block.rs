@@ -180,7 +180,7 @@ impl<N: Network> Block<N> {
         };
 
         // Ensure the coinbase reward is equal to or greater than the expected block reward.
-        let coinbase_reward = AleoAmount(0).sub(*coinbase_transaction.value_balance()); // Make it a positive number.
+        let coinbase_reward = AleoAmount::ZERO.sub(coinbase_transaction.value_balance()); // Make it a positive number.
         let block_reward = Self::block_reward(self.height());
         if coinbase_reward < block_reward {
             eprintln!("Coinbase reward must be >= {}, found {}", block_reward, coinbase_reward);
@@ -190,7 +190,7 @@ impl<N: Network> Block<N> {
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
         match self.transactions.to_net_value_balance() {
             Ok(net_value_balance) => {
-                let candidate_block_reward = AleoAmount(0).sub(net_value_balance); // Make it a positive number.
+                let candidate_block_reward = AleoAmount::ZERO.sub(net_value_balance); // Make it a positive number.
                 if candidate_block_reward > block_reward {
                     eprintln!("Block reward must be <= {}", block_reward);
                     return false;

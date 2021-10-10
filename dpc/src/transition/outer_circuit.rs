@@ -106,26 +106,26 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         "program ID",
     )?;
 
-    let transaction_id_fe_inner_snark =
-        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transaction ID inner snark")?;
-    let transaction_id_fe_program_snark =
-        alloc_program_snark_field_element::<N, _, _>(cs, &public.transition_id(), "transaction ID program snark")?;
+    let transition_id_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID inner snark")?;
+    let transition_id_fe_program_snark =
+        alloc_program_snark_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID program snark")?;
     {
         // Construct inner snark input as bits
-        let transaction_id_input_inner_snark_bits =
-            transaction_id_fe_inner_snark.to_bits_le(cs.ns(|| "transaction ID inner snark to bits"))?;
-        let transaction_id_input_program_snark_bits =
-            transaction_id_fe_program_snark.to_bits_le(cs.ns(|| "transaction ID program snark to bits"))?;
-        transaction_id_input_inner_snark_bits.enforce_equal(
-            cs.ns(|| "transaction ID equality"),
-            &transaction_id_input_program_snark_bits,
+        let transition_id_input_inner_snark_bits =
+            transition_id_fe_inner_snark.to_bits_le(cs.ns(|| "transition ID inner snark to bits"))?;
+        let transition_id_input_program_snark_bits =
+            transition_id_fe_program_snark.to_bits_le(cs.ns(|| "transition ID program snark to bits"))?;
+        transition_id_input_inner_snark_bits.enforce_equal(
+            cs.ns(|| "transition ID equality"),
+            &transition_id_input_program_snark_bits,
         )?;
     }
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
             program_id_fe,
-            transaction_id_fe_inner_snark,
+            transition_id_fe_inner_snark,
         ])?;
 
     // ************************************************************************
@@ -201,7 +201,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             &mut cs.ns(|| "Allocate position"),
             || Ok(vec![N::InnerScalarField::from(0u128)]),
         )?;
-        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &transaction_id_fe_program_snark)?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &transition_id_fe_program_snark)?;
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
