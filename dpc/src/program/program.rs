@@ -35,9 +35,9 @@ pub struct Program<N: Network> {
     last_function_index: u8,
 }
 
-impl<N: Network> ProgramScheme<N> for Program<N> {
+impl<N: Network> Program<N> {
     /// Initializes an instance of the program with the given functions.
-    fn new(functions: Vec<Arc<dyn Function<N>>>) -> Result<Self> {
+    pub fn new(functions: Vec<Arc<dyn Function<N>>>) -> Result<Self> {
         // Initialize a new functions tree, and add all functions to the tree.
         let mut program = Self {
             tree: MerkleTree::<N::ProgramFunctionsTreeParameters>::new::<N::FunctionID>(
@@ -53,7 +53,7 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     }
 
     /// Initializes an instance of the noop program.
-    fn new_noop() -> Result<Self> {
+    pub fn new_noop() -> Result<Self> {
         // Initialize a new functions tree, and add all functions to the tree.
         let mut program = Self {
             tree: MerkleTree::<N::ProgramFunctionsTreeParameters>::new::<N::FunctionID>(
@@ -69,17 +69,17 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     }
 
     /// Returns the program ID.
-    fn program_id(&self) -> N::ProgramID {
+    pub fn program_id(&self) -> N::ProgramID {
         *self.tree.root()
     }
 
     /// Returns `true` if the given function ID exists in the program.
-    fn contains_function(&self, function_id: &N::FunctionID) -> bool {
+    pub fn contains_function(&self, function_id: &N::FunctionID) -> bool {
         self.functions.get(function_id).is_some()
     }
 
     /// Returns the function given the function ID, if it exists.
-    fn to_function(&self, function_id: &N::FunctionID) -> Result<Arc<dyn Function<N>>> {
+    pub fn to_function(&self, function_id: &N::FunctionID) -> Result<Arc<dyn Function<N>>> {
         match self.functions.get(function_id) {
             Some((_, function)) => {
                 debug_assert_eq!(function.function_id(), *function_id);
@@ -90,7 +90,10 @@ impl<N: Network> ProgramScheme<N> for Program<N> {
     }
 
     /// Returns the program path (the Merkle path for a given function ID).
-    fn to_program_path(&self, function_id: &N::FunctionID) -> Result<MerklePath<N::ProgramFunctionsTreeParameters>> {
+    pub fn to_program_path(
+        &self,
+        function_id: &N::FunctionID,
+    ) -> Result<MerklePath<N::ProgramFunctionsTreeParameters>> {
         match self.get_function_index(function_id) {
             Some(index) => Ok(self.tree.generate_proof(index as usize, function_id)?),
             _ => Err(MerkleError::MissingLeaf(format!("{}", function_id)).into()),

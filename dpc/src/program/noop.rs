@@ -14,82 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, Network, ProgramPublicVariables, Request, Response};
-use snarkvm_algorithms::merkle_tree::MerklePath;
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-
-use anyhow::Result;
-use std::sync::Arc;
-
-pub trait ProgramScheme<N: Network> {
-    /// Initializes an instance of the program with the given functions.
-    fn new(functions: Vec<Arc<dyn Function<N>>>) -> Result<Self>
-    where
-        Self: Sized;
-
-    /// Initializes an instance of the noop program.
-    fn new_noop() -> Result<Self>
-    where
-        Self: Sized;
-
-    /// Returns the program ID.
-    fn program_id(&self) -> N::ProgramID;
-
-    /// Returns `true` if the given function ID exists in the program.
-    fn contains_function(&self, function_id: &N::FunctionID) -> bool;
-
-    /// Returns the function given the function ID, if it exists.
-    fn to_function(&self, function_id: &N::FunctionID) -> Result<Arc<dyn Function<N>>>;
-
-    /// Returns the program path (the Merkle path for a given function ID).
-    fn to_program_path(&self, function_id: &N::FunctionID) -> Result<MerklePath<N::ProgramFunctionsTreeParameters>>;
-}
-
-pub trait Function<N: Network>: Send + Sync {
-    /// Returns the function ID.
-    fn function_id(&self) -> N::FunctionID;
-
-    /// Returns the circuit type.
-    fn function_type(&self) -> FunctionType;
-
-    /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, request: &Request<N>) -> Result<Response<N>>;
-
-    /// Executes the function, returning an proof.
-    fn execute(&self, public: ProgramPublicVariables<N>) -> Result<N::ProgramProof>;
-
-    /// Returns true if the execution of the function is valid.
-    fn verify(&self, public: &ProgramPublicVariables<N>, proof: &N::ProgramProof) -> bool;
-
-    // /// Synthesizes the circuit inside the given constraint system.
-    // fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(
-    //     &self,
-    //     cs: &mut CS,
-    //     public: &PublicVariables<N>,
-    // ) -> Result<(), SynthesisError>
-    // where
-    //     Self: Sized;
-}
-
-// pub trait PrivateVariables<N: Network>:
-//     ToConstraintField<N::InnerScalarField> + Debug + ToBytes + FromBytes + Send + Sync
-// {
-//     /// Initializes a blank instance of the private variables, typically used for a SNARK setup.
-//     fn new_blank() -> Result<Self>
-//     where
-//         Self: Sized;
-//
-//     fn as_any(&self) -> &dyn std::any::Any;
-// }
-
-// use snarkvm_fields::ConstraintFieldError;
-
-// use std::io::{Read, Result as IoResult, Write};
-
+use crate::{Function, FunctionType, Network, ProgramPublicVariables, Request, Response};
 use snarkvm_algorithms::SNARK;
 use snarkvm_gadgets::prelude::*;
-use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
+use anyhow::Result;
 use std::marker::PhantomData;
 
 pub struct Noop<N: Network>(PhantomData<N>);
@@ -115,6 +45,27 @@ impl<N: Network> Function<N> for Noop<N> {
     /// Performs a native evaluation of the function for a given request.
     fn evaluate(&self, _request: &Request<N>) -> Result<Response<N>> {
         Ok(Response::new_noop(&mut rand::thread_rng())?)
+    }
+
+    /// Synthesizes the circuit inside the given constraint system.
+    fn synthesize<CS: ConstraintSystem<N::InnerScalarField>>(
+        &self,
+        cs: &mut CS,
+        public: &ProgramPublicVariables<N>,
+    ) -> Result<(), SynthesisError> {
+        let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[0u8])?;
+
+        let _transition_id_crh =
+            N::TransitionIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare the transition ID CRH scheme"), || {
+                Ok(N::transition_id_crh().clone())
+            })?;
+
+        let _transition_id = <N::TransitionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            cs.ns(|| "Alloc the transition ID"),
+            || Ok(public.transition_id),
+        )?;
+
+        Ok(())
     }
 
     /// Executes the function, returning an proof.

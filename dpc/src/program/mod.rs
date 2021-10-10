@@ -20,6 +20,9 @@ pub use function_inputs::*;
 pub mod function_type;
 pub use function_type::*;
 
+pub mod noop;
+pub use noop::*;
+
 pub mod program;
 pub use program::*;
 

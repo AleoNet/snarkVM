@@ -24,7 +24,6 @@ use crate::{
     PoSWScheme,
     Program,
     ProgramPublicVariables,
-    ProgramScheme,
 };
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
