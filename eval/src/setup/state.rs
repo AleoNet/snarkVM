@@ -575,7 +575,14 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         }
                     }
                 },
-                Err(e) => return Err(anyhow!("f#{}: {:?}", state_data.function_index, e)),
+                Err(e) => {
+                    return Err(anyhow!(
+                        "f#{} i#{}: {:?}",
+                        state_data.function_index,
+                        state_data.state.instruction_index,
+                        e
+                    ))
+                }
             }
         }
     }
