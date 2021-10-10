@@ -109,7 +109,7 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the outer circuit public and private variables.
-        let outer_public = OuterPublicVariables::new(&inner_public, *N::inner_circuit_id());
+        let outer_public = OuterPublicVariables::new(transition_id, *N::inner_circuit_id());
         let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
         let outer_circuit = OuterCircuit::<N>::new(outer_public, outer_private);
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;

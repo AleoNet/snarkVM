@@ -75,16 +75,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     public: &OuterPublicVariables<N>,
     private: &OuterPrivateVariables<N>,
 ) -> Result<(), SynthesisError> {
-    // Access the outer public variables.
-    let OuterPublicVariables {
-        inner_public_variables: inner_public,
-        inner_circuit_id,
-    } = public;
-
-    // In the outer circuit, thus variable must be allocated as private input,
-    // as it is not included in the transaction.
-    debug_assert!(inner_public.program_id.is_none());
-
     // ************************************************************************
     // Declare public parameters.
     // ************************************************************************
@@ -116,16 +106,10 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         "program ID",
     )?;
 
-    let transaction_id_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
-        cs,
-        &inner_public.transition_id(),
-        "transaction ID inner snark",
-    )?;
-    let transaction_id_fe_program_snark = alloc_program_snark_field_element::<N, _, _>(
-        cs,
-        &inner_public.transition_id(),
-        "transaction ID program snark",
-    )?;
+    let transaction_id_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transaction ID inner snark")?;
+    let transaction_id_fe_program_snark =
+        alloc_program_snark_field_element::<N, _, _>(cs, &public.transition_id(), "transaction ID program snark")?;
     {
         // Construct inner snark input as bits
         let transaction_id_input_inner_snark_bits =
@@ -244,7 +228,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     let given_inner_circuit_id =
         <N::InnerCircuitIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc_input(
             &mut cs.ns(|| "Inner circuit ID"),
-            || Ok(inner_circuit_id),
+            || Ok(public.inner_circuit_id()),
         )?;
 
     let candidate_inner_circuit_id = inner_circuit_id_crh

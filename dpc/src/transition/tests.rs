@@ -88,7 +88,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
 
     // Construct the outer circuit public and private variables.
-    let outer_public = OuterPublicVariables::new(&inner_public, inner_circuit_id);
+    let outer_public = OuterPublicVariables::new(transition_id, inner_circuit_id);
     let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
 
     // Check that the proof check constraint system was satisfied.
@@ -119,7 +119,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(229690, 141537);
+        dpc_execute_circuits_test::<Testnet1>(229690, 141277);
     }
 }
 
@@ -129,6 +129,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(229690, 233665);
+        dpc_execute_circuits_test::<Testnet2>(229690, 233405);
     }
 }
