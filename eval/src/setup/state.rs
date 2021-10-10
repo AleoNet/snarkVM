@@ -509,6 +509,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                     }
                     ParentInstruction::Mask(condition) => {
                         let assignments = state_data.state.variables;
+                        let target_index = state_data.block_start + state_data.block_instruction_count;
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
                             if let Some(prior) = state_data
@@ -530,10 +531,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                                 // self.store(variable, value);
                             }
                         }
-                        assert_eq!(
-                            state_data.state.instruction_index,
-                            state_data.block_start + state_data.block_instruction_count
-                        );
+                        assert_eq!(state_data.state.instruction_index, target_index);
                     }
                     ParentInstruction::Repeat(data) => {
                         let assignments = state_data.state.variables;
