@@ -43,10 +43,12 @@ enum ParentInstruction<'a> {
 
 struct CallStateData<'a, 'b, F: PrimeField, G: GroupType<F>> {
     function: &'b Function,
+    function_index: u32,
     parent_instruction: ParentInstruction<'b>,
     block_start: u32,
     block_instruction_count: u32,
     state: EvaluatorState<'a, F, G>,
+    result: Option<ConstrainedValue<F, G>>,
 }
 
 /// implemented this so i could easily debug execution flow
@@ -80,14 +82,10 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, 'b
 }
 
 impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
-    pub fn evaluate_block<CS: ConstraintSystem<F>>(
-        &mut self,
-        result: &mut Option<ConstrainedValue<F, G>>,
-        cs: &mut CS,
-    ) -> Result<Option<&'b Instruction>> {
+    pub fn evaluate_block<CS: ConstraintSystem<F>>(&mut self, cs: &mut CS) -> Result<Option<&'b Instruction>> {
         while self.state.instruction_index < self.block_start + self.block_instruction_count {
             let instruction = &self.function.instructions[self.state.instruction_index as usize];
-            match self.evaluate_control_instruction(instruction, result, cs)? {
+            match self.evaluate_control_instruction(instruction, cs)? {
                 FunctionReturn::Recurse(ins) => return Ok(Some(ins)),
                 FunctionReturn::ControlFlow(true) => {
                     return Ok(None);
@@ -101,7 +99,6 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
     fn evaluate_control_instruction<CS: ConstraintSystem<F>>(
         &mut self,
         instruction: &'b Instruction,
-        result: &mut Option<ConstrainedValue<F, G>>,
         cs: &mut CS,
     ) -> Result<FunctionReturn<'b>> {
         match instruction {
@@ -111,7 +108,7 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
             instruction => {
                 match self.state.evaluate_instruction(instruction, cs) {
                     Ok(Some(returned)) => {
-                        *result = Some(returned);
+                        self.result = Some(returned);
                         return Ok(FunctionReturn::ControlFlow(true));
                     }
                     Ok(None) => (),
@@ -344,14 +341,15 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
         let function = self.setup_evaluate_function(index, arguments)?;
         let mut state_data = CallStateData {
             function: &function,
+            function_index: index,
             block_start: 0,
             block_instruction_count: function.instructions.len() as u32,
             state: self,
             parent_instruction: ParentInstruction::None,
+            result: None,
         };
         loop {
-            let mut result = None;
-            match state_data.evaluate_block(&mut result, cs) {
+            match state_data.evaluate_block(cs) {
                 Ok(Some(Instruction::Call(data))) => {
                     let arguments = data
                         .arguments
@@ -376,10 +374,12 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                     call_stack.push(state_data);
                     state_data = CallStateData {
                         function: &function,
+                        function_index: data.index,
                         block_start: 0,
                         block_instruction_count: function.instructions.len() as u32,
                         state,
                         parent_instruction: ParentInstruction::Call(data),
+                        result: None,
                     };
                 }
                 Ok(Some(Instruction::Mask(data))) => {
@@ -410,10 +410,12 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         };
                         let new_state_data = CallStateData {
                             function: state_data.function,
+                            function_index: state_data.function_index,
                             block_start: state_data.state.instruction_index,
                             block_instruction_count: data.instruction_count,
                             state,
                             parent_instruction: ParentInstruction::Mask(condition),
+                            result: state_data.result.clone(),
                         };
                         state_data.state.instruction_index += data.instruction_count;
                         call_stack.push(state_data);
@@ -455,6 +457,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
 
                     state_data.state.instruction_index += 1;
                     //todo: max loop count (DOS vector)
+                    //todo: very memory intensive with large loops since all states get allocated at once
                     for i in iter {
                         state_data.state.variables.insert(
                             data.iter_variable,
@@ -486,23 +489,25 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         };
                         let new_state_data = CallStateData {
                             function: state_data.function,
+                            function_index: state_data.function_index,
                             block_start: state_data.state.instruction_index,
                             block_instruction_count: data.instruction_count,
                             state,
                             parent_instruction: ParentInstruction::Repeat(data),
+                            result: state_data.result.clone(),
                         };
                         call_stack.push(state_data);
                         state_data = new_state_data;
                     }
                 }
-                Ok(Some(e)) => todo!("todo: bad ins ret: {}", e),
+                Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
                 Ok(None) => match state_data.parent_instruction {
                     ParentInstruction::None => {
-                        let res = result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
+                        let res = state_data.result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         return Ok(res);
                     }
                     ParentInstruction::Call(data) => {
-                        let res = result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
+                        let res = state_data.result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         state_data = call_stack.pop().expect("no state to return to");
                         state_data.state.store(data.destination, res);
                         state_data.state.instruction_index += 1;
@@ -510,6 +515,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                     ParentInstruction::Mask(condition) => {
                         let assignments = state_data.state.variables;
                         let target_index = state_data.block_start + state_data.block_instruction_count;
+                        let result = state_data.result.clone();
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
                             if let Some(prior) = state_data
@@ -532,6 +538,21 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             }
                         }
                         assert_eq!(state_data.state.instruction_index, target_index);
+                        match (state_data.result.clone(), result.clone()) {
+                            (Some(prior), Some(interior)) => {
+                                state_data.result = Some(ConstrainedValue::conditionally_select(
+                                    &mut state_data.state.cs_meta(&*format!("selection result"), cs),
+                                    &condition,
+                                    &interior,
+                                    &prior,
+                                )?);
+                            }
+                            (None, Some(interior)) => {
+                                // will produce garbage if invalid IR (incomplete return path)
+                                state_data.result = Some(interior);
+                            }
+                            (_, None) => (),
+                        }
                     }
                     ParentInstruction::Repeat(data) => {
                         let assignments = state_data.state.variables;
@@ -545,7 +566,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         }
                     }
                 },
-                Err(e) => return Err(e),
+                Err(e) => return Err(anyhow!("f#{}: {:?}", state_data.function_index, e)),
             }
         }
     }
