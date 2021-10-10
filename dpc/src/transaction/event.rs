@@ -14,20 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod amount;
-pub use amount::*;
+use crate::{Network, ViewKey};
 
-pub mod event;
-pub use event::*;
-
-pub(crate) mod local_commitments;
-pub(crate) use local_commitments::*;
-
-pub mod local_proof;
-pub use local_proof::*;
-
-pub mod memo;
-pub use memo::*;
-
-pub mod transaction;
-pub use transaction::*;
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Event<N: Network> {
+    AccountViewKey(ViewKey<N>),
+    RecordViewKey(u8, Vec<u8>),
+    Custom(Vec<u8>),
+}
