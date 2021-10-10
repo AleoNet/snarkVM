@@ -85,7 +85,7 @@ impl<N: Network> VirtualMachine<N> {
 
         // Compute the transition.
         let response = self.build(rng)?;
-        let transition = Transition::<N>::from(self.local_commitments.root(), &self.request, &response)?;
+        let transition = Transition::<N>::from(&self.request, &response)?;
         let transition_id = transition.to_transition_id()?;
 
         // Compute the noop execution, for now.

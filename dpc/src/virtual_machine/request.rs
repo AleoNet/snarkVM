@@ -14,7 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, ComputeKey, FunctionType, LedgerProof, Network, Operation, PrivateKey, Record};
+use crate::{
+    Address,
+    AleoAmount,
+    ComputeKey,
+    FunctionType,
+    LedgerProof,
+    LocalProof,
+    Network,
+    Operation,
+    PrivateKey,
+    Record,
+};
 use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -35,6 +46,8 @@ pub struct Request<N: Network> {
     operation: Operation<N>,
     /// The inclusion proof of ledger-consumed records.
     ledger_proof: LedgerProof<N>,
+    /// The inclusion proof of locally-consumed records.
+    local_proof: LocalProof<N>,
     /// The network fee being paid.
     fee: u64,
     /// The signature for the request.
@@ -92,7 +105,7 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*function_id, operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, operation, ledger_proof, fee, signature)
+        Self::from(records, operation, ledger_proof, LocalProof::default(), fee, signature)
     }
 
     /// Returns a new instance of a noop request.
@@ -120,6 +133,7 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         operation: Operation<N>,
         ledger_proof: LedgerProof<N>,
+        local_proof: LocalProof<N>,
         fee: u64,
         signature: N::AccountSignature,
     ) -> Result<Self> {
@@ -127,6 +141,7 @@ impl<N: Network> Request<N> {
             records,
             operation,
             ledger_proof,
+            local_proof,
             fee,
             signature,
         };
@@ -190,7 +205,7 @@ impl<N: Network> Request<N> {
         // Ensure the function ID is in the specified program.
         {}
 
-        // Ensure the given record commitments are in the specified ledger proof.
+        // Ensure the given record commitments are in the specified ledger proof or local proof.
         {}
 
         // Prepare for signature verification.
@@ -255,6 +270,16 @@ impl<N: Network> Request<N> {
         &self.ledger_proof
     }
 
+    /// Returns the local commitments root used to prove inclusion of locally-consumed records.
+    pub fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
+        self.local_proof.local_commitments_root()
+    }
+
+    /// Returns a reference to the local proof.
+    pub fn local_proof(&self) -> &LocalProof<N> {
+        &self.local_proof
+    }
+
     /// Returns the fee.
     pub fn fee(&self) -> u64 {
         self.fee
@@ -302,6 +327,11 @@ impl<N: Network> Request<N> {
             .map(|record| Ok(record.to_serial_number(&ComputeKey::from_signature(&self.signature)?)?))
             .collect::<Result<Vec<_>>>()
     }
+
+    /// Returns the input commitments.
+    pub fn to_input_commitments(&self) -> Vec<N::Commitment> {
+        self.records.iter().map(|record| record.commitment()).collect()
+    }
 }
 
 impl<N: Network> FromBytes for Request<N> {
@@ -314,10 +344,14 @@ impl<N: Network> FromBytes for Request<N> {
 
         let operation = FromBytes::read_le(&mut reader)?;
         let ledger_proof = FromBytes::read_le(&mut reader)?;
+        let local_proof = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(records, operation, ledger_proof, fee, signature).expect("Failed to deserialize a request"))
+        Ok(
+            Self::from(records, operation, ledger_proof, local_proof, fee, signature)
+                .expect("Failed to deserialize a request"),
+        )
     }
 }
 
@@ -327,6 +361,7 @@ impl<N: Network> ToBytes for Request<N> {
         self.records.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
         self.ledger_proof.write_le(&mut writer)?;
+        self.local_proof.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)
     }

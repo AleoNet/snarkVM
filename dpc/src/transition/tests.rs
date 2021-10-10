@@ -32,8 +32,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     //////////////////////////////////////////////////////////////////////////
 
-    let local_commitments_root = LocalCommitments::<N>::new().unwrap().root();
-    let transition = Transition::<N>::from(local_commitments_root, &request, &response).unwrap();
+    let transition = Transition::<N>::from(&request, &response).unwrap();
     let transition_id = transition.to_transition_id().unwrap();
 
     // Compute the noop execution
@@ -120,7 +119,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(223389, 153210);
+        dpc_execute_circuits_test::<Testnet1>(229690, 141537);
     }
 }
 
@@ -130,6 +129,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(223389, 245338);
+        dpc_execute_circuits_test::<Testnet2>(229690, 233665);
     }
 }

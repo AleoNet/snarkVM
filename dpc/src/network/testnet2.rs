@@ -137,8 +137,8 @@ impl Network for Testnet2 {
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
 
-    type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 117, 63>;
-    type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 117, 63>;
+    type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
+    type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type BlockHash = <Self::BlockHashCRH as CRH>::Output;
 
     type BlockHeaderTreeCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
@@ -146,12 +146,12 @@ impl Network for Testnet2 {
     type BlockHeaderTreeParameters = MaskedMerkleTreeParameters<Self::BlockHeaderTreeCRH, 3>;
     type BlockHeaderRoot = <Self::BlockHeaderTreeCRH as CRH>::Output;
 
-    type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 80, 32>;
-    type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 80, 32>;
+    type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
+    type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
     type CiphertextID = <Self::CiphertextIDCRH as CRH>::Output;
 
-    type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 48, 50>;
-    type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 48, 50>;
+    type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
+    type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
     type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
 
     type CommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -167,21 +167,21 @@ impl Network for Testnet2 {
     type FunctionInputsCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
     type FunctionInputsDigest= <Self::FunctionInputsCRH as CryptoHash>::Output;
 
-    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 296, 32>;
-    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 32>;
+    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 68, 63>;
+    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 68, 63>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalCommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LocalCommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type LocalCommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 8>;
-    type LocalCommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
+    type LocalCommitmentsTreeParameters = MerkleTreeParameters<Self::LocalCommitmentsTreeCRH, 8>;
+    type LocalCommitmentsRoot = <Self::LocalCommitmentsTreeCRH as CRH>::Output;
     
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type PoSW = PoSW<Self>;
 
-    type ProgramFunctionsTreeCRH = BHPCRH<EdwardsBW6, 48, 16>;
-    type ProgramFunctionsTreeCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 48, 16>;
+    type ProgramFunctionsTreeCRH = BHPCRH<EdwardsBW6, 16, 48>;
+    type ProgramFunctionsTreeCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
     type ProgramFunctionsTreeParameters = MerkleTreeParameters<Self::ProgramFunctionsTreeCRH, 8>;
     type ProgramID = <Self::ProgramFunctionsTreeCRH as CRH>::Output;
     

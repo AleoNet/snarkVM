@@ -226,6 +226,21 @@ impl<N: Network> Block<N> {
         &self.transactions
     }
 
+    /// Returns the transactions root in the block header.
+    pub fn transactions_root(&self) -> N::TransactionsRoot {
+        self.header.transactions_root()
+    }
+
+    /// Returns the serial numbers root in the block header.
+    pub fn serial_numbers_root(&self) -> N::SerialNumbersRoot {
+        self.header.serial_numbers_root()
+    }
+
+    /// Returns the commitments root in the block header.
+    pub fn commitments_root(&self) -> N::CommitmentsRoot {
+        self.header.commitments_root()
+    }
+
     /// Returns the block height.
     pub fn height(&self) -> u32 {
         self.header.height()

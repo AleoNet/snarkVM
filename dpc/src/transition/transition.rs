@@ -48,13 +48,10 @@ pub struct Transition<N: Network> {
 impl<N: Network> Transition<N> {
     /// Initializes a new instance of a transition.
     #[inline]
-    pub(crate) fn from(
-        local_commitments_root: N::LocalCommitmentsRoot,
-        request: &Request<N>,
-        response: &Response<N>,
-    ) -> Result<Self> {
+    pub(crate) fn from(request: &Request<N>, response: &Response<N>) -> Result<Self> {
         // Fetch the block hash, local commitments root, and serial numbers.
         let block_hash = request.block_hash();
+        let local_commitments_root = request.local_commitments_root();
         let serial_numbers = request.to_serial_numbers()?;
 
         // Fetch the commitments and ciphertexts.
