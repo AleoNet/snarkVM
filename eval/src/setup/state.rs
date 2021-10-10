@@ -38,7 +38,7 @@ enum ParentInstruction<'a> {
     None,
     Call(&'a CallData),
     Mask(Boolean),
-    Repeat,
+    Repeat(u32),
 }
 
 struct CallStateData<'a, 'b, F: PrimeField, G: GroupType<F>> {
@@ -493,7 +493,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             block_start: state_data.state.instruction_index,
                             block_instruction_count: data.instruction_count,
                             state,
-                            parent_instruction: ParentInstruction::Repeat,
+                            parent_instruction: ParentInstruction::Repeat(data.iter_variable),
                             result: state_data.result.clone(),
                         };
                         iter_state_data.push(new_state_data);
@@ -558,7 +558,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             (_, None) => (),
                         }
                     }
-                    ParentInstruction::Repeat => {
+                    ParentInstruction::Repeat(iter_variable) => {
                         let assignments = state_data.state.variables;
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
@@ -568,6 +568,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                                 .get(&variable)
                                 .or(state_data.state.parent_variables.get(&variable))
                                 .is_some()
+                                && variable != iter_variable
                             {
                                 state_data.state.store(variable, value);
                             }
