@@ -69,7 +69,7 @@ impl<N: Network> VirtualMachine<N> {
             Operation::Noop => (),
             Operation::Coinbase(recipient, amount) => self.coinbase(recipient, amount.0 as u64)?,
             Operation::Transfer(recipient, amount) => self.transfer(recipient, amount.0 as u64)?,
-            Operation::Function(..) => unimplemented!(),
+            Operation::Execute(..) => unimplemented!(),
         }
 
         self.build(rng)
@@ -82,7 +82,7 @@ impl<N: Network> VirtualMachine<N> {
             Operation::Noop => (),
             Operation::Coinbase(recipient, amount) => self.coinbase(recipient, amount.0 as u64)?,
             Operation::Transfer(recipient, amount) => self.transfer(recipient, amount.0 as u64)?,
-            Operation::Function(..) => unimplemented!(),
+            Operation::Execute(..) => unimplemented!(),
         }
 
         // Compute the transition.

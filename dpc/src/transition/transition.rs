@@ -142,6 +142,30 @@ impl<N: Network> Transition<N> {
             return false;
         }
 
+        // Returns `false` if the transition ID does not match the computed one.
+        match Self::compute_transition_id(
+            self.block_hash,
+            self.local_commitments_root,
+            &self.serial_numbers,
+            &self.commitments,
+            &self.ciphertexts,
+            self.value_balance,
+        ) {
+            Ok(computed_transition_id) => {
+                if computed_transition_id != self.transition_id {
+                    eprintln!(
+                        "Transition ID is incorrect. Expected {}, found {}",
+                        computed_transition_id, self.transition_id
+                    );
+                    return false;
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to compute the transition ID for verification: {}", error);
+                return false;
+            }
+        };
+
         // Returns `false` if the transition proof is invalid.
         match N::OuterSNARK::verify(
             N::outer_verifying_key(),
@@ -217,7 +241,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Transition ID := Hash(block hash || local commitments root || serial numbers || commitments || ciphertext_ids || value balance)
-    fn compute_transition_id(
+    #[inline]
+    pub(super) fn compute_transition_id(
         block_hash: N::BlockHash,
         local_commitments_root: N::LocalCommitmentsRoot,
         serial_numbers: &Vec<N::SerialNumber>,

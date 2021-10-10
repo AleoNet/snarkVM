@@ -156,9 +156,9 @@ impl Network for Testnet2 {
     type CommitmentsTreeCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type CommitmentsTreeParameters = MerkleTreeParameters<Self::CommitmentsTreeCRH, 42>;
     type CommitmentsRoot = <Self::CommitmentsTreeCRH as CRH>::Output;
-
-    type FunctionIDCRH = BHPCRH<EdwardsBW6, 79, 48>;
-    type FunctionIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 79, 48>;
+    
+    type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
+    type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;
     type FunctionID = <Self::FunctionIDCRH as CRH>::Output;
 
     type FunctionInputsCRH = PoseidonCRH<Self::InnerScalarField, 128>;

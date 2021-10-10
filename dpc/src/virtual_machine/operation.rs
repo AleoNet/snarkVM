@@ -32,14 +32,14 @@ pub enum Operation<N: Network> {
     /// Transfers the given amount to the recipient address.
     Transfer(Address<N>, AleoAmount),
     /// Invokes the given records on the function and inputs.
-    Function(N::FunctionID, FunctionType, FunctionInputs<N>),
+    Execute(N::FunctionID, FunctionType, FunctionInputs<N>),
 }
 
 impl<N: Network> Operation<N> {
     pub fn function_id(&self) -> N::FunctionID {
         match self {
             Self::Noop | Self::Coinbase(..) | Self::Transfer(..) => *N::noop_function_id(),
-            Self::Function(function_id, _, _) => *function_id,
+            Self::Execute(function_id, _, _) => *function_id,
         }
     }
 
@@ -48,7 +48,7 @@ impl<N: Network> Operation<N> {
             Self::Noop => FunctionType::Noop,
             Self::Coinbase(..) => FunctionType::Add,
             Self::Transfer(..) => FunctionType::Full,
-            Self::Function(_, function_type, _) => *function_type,
+            Self::Execute(_, function_type, _) => *function_type,
         }
     }
 

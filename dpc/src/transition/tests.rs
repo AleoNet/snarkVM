@@ -32,8 +32,37 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     //////////////////////////////////////////////////////////////////////////
 
-    let transition = Transition::<N>::from(&request, &response, &mut rng).unwrap();
-    let transition_id = transition.transition_id();
+    // Fetch the block hash, local commitments root, and serial numbers.
+    let block_hash = request.block_hash();
+    let local_commitments_root = request.local_commitments_root();
+    let serial_numbers = request.to_serial_numbers().unwrap();
+    let program_id = request.to_program_id().unwrap();
+
+    // Fetch the commitments and ciphertexts.
+    let commitments = response.to_commitments();
+    let ciphertexts = response.ciphertexts().clone();
+
+    // Compute the value balance.
+    let mut value_balance = AleoAmount::ZERO;
+    for record in request.records().iter().take(N::NUM_INPUT_RECORDS) {
+        value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
+    }
+    for record in response.records().iter().take(N::NUM_OUTPUT_RECORDS) {
+        value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
+    }
+
+    // Compute the transition ID.
+    let transition_id = Transition::compute_transition_id(
+        block_hash,
+        local_commitments_root,
+        &serial_numbers,
+        &commitments,
+        &ciphertexts,
+        value_balance,
+    )
+    .unwrap();
+
+    //////////////////////////////////////////////////////////////////////////
 
     // Compute the noop execution
     let execution = Execution {
@@ -46,7 +75,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     };
 
     // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(transition_id, Some(request.to_program_id().unwrap()));
+    let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
@@ -61,7 +90,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     if !inner_cs.is_satisfied() {
         println!("=========================================================");
-        println!("Outer circuit num constraints: {}", candidate_inner_num_constraints);
+        println!("Inner circuit num constraints: {}", candidate_inner_num_constraints);
         println!("Unsatisfied constraints:\n{}", inner_cs.which_is_unsatisfied().unwrap());
         println!("=========================================================");
     }
@@ -73,7 +102,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     assert!(inner_cs.is_satisfied());
 
-    // Generate inner snark parameters and proof for verification in the outer snark
+    // Generate inner circuit parameters and proof for verification in the outer circuit.
     let (inner_proving_key, inner_verifying_key) =
         <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(&mut rng)).unwrap();
 
@@ -119,7 +148,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(229690, 141277);
+        dpc_execute_circuits_test::<Testnet1>(229690, 139151);
     }
 }
 
@@ -129,6 +158,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(229690, 233405);
+        dpc_execute_circuits_test::<Testnet2>(229690, 231487);
     }
 }
