@@ -59,14 +59,8 @@ impl<N: Network> Request<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
-        Self::new(
-            &burner,
-            vec![],
-            LedgerProof::new_genesis()?,
-            operation,
-            AleoAmount::ZERO,
-            rng,
-        )
+        let fee = AleoAmount::ZERO.sub(amount);
+        Self::new(&burner, vec![], LedgerProof::default(), operation, fee, rng)
     }
 
     /// Initializes a new transfer request.
@@ -79,7 +73,7 @@ impl<N: Network> Request<N> {
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
-        let operation = Operation::Transfer(recipient, amount);
+        let operation = Operation::Transfer(caller.to_address()?, recipient, amount);
         Self::new(caller, records, ledger_proof, operation, fee, rng)
     }
 
@@ -131,7 +125,6 @@ impl<N: Network> Request<N> {
             commitments.push(record.commitment());
         }
 
-        let operation_id = operation.to_operation_id()?;
         let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
@@ -186,10 +179,12 @@ impl<N: Network> Request<N> {
         };
 
         // Ensure the records contains a total value that is at least the fee amount.
-        let balance: u64 = self.records.iter().map(|record| record.value()).sum();
-        if AleoAmount(balance as i64) < self.fee {
-            eprintln!("Request records do not contain sufficient value for fee");
-            return false;
+        if !self.operation.is_coinbase() {
+            let balance: u64 = self.records.iter().map(|record| record.value()).sum();
+            if AleoAmount(balance as i64) < self.fee {
+                eprintln!("Request records do not contain sufficient value for fee");
+                return false;
+            }
         }
 
         // Ensure the records contain at most 1 program ID, and retrieve the program ID.
@@ -220,13 +215,6 @@ impl<N: Network> Request<N> {
 
         // Prepare for signature verification.
         let commitments: Vec<_> = self.records.iter().map(|record| record.commitment()).collect();
-        let operation_id = match self.operation.to_operation_id() {
-            Ok(operation_id) => operation_id,
-            Err(error) => {
-                eprintln!("Failed to construct request operation ID: {:?}", error);
-                return false;
-            }
-        };
         let message = match to_bytes_le![commitments /*operation_id, self.fee*/] {
             Ok(signature_message) => signature_message,
             Err(error) => {

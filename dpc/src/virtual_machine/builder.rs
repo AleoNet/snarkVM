@@ -173,7 +173,11 @@ impl<N: Network> ResponseBuilder<N> {
 
         // Ensure the value balance matches the fee from the request.
         if value_balance != request.fee() {
-            return Err(anyhow!("Value balance does not match fee amount from request"));
+            return Err(anyhow!(
+                "Value balance does not match fee amount from request. Expected {} from request, found {} from response",
+                request.fee(),
+                value_balance
+            ));
         }
 
         // Process the events.
@@ -189,14 +193,6 @@ impl<N: Network> ResponseBuilder<N> {
             value_balance,
         )?;
 
-        // Compute the noop execution, for now.
-        let execution = Execution {
-            program_id: *N::noop_program_id(),
-            program_path: N::noop_program_path().clone(),
-            verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(ProgramPublicVariables::new(transition_id))?,
-        };
-
         // Construct the response.
         Response::new(
             transition_id,
@@ -205,7 +201,6 @@ impl<N: Network> ResponseBuilder<N> {
             ciphertext_randomizers,
             value_balance,
             events,
-            execution.clone(),
         )
     }
 

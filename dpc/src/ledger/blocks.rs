@@ -263,7 +263,10 @@ impl<N: Network> Blocks<N> {
             // Ensure the transaction in the block references a valid past or current block hash.
             for block_hash in &transaction.block_hashes() {
                 if !self.contains_block_hash(block_hash) {
-                    return Err(anyhow!("The given transaction references a non-existent block hash"));
+                    return Err(anyhow!(
+                        "The given transaction references a non-existent block hash {}",
+                        block_hash
+                    ));
                 }
             }
         }

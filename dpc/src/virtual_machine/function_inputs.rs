@@ -15,9 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
+use snarkvm_algorithms::CRH;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use anyhow::Result;
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
@@ -38,6 +40,11 @@ pub struct FunctionInputs<N: Network> {
 impl<N: Network> FunctionInputs<N> {
     pub fn new() -> Self {
         Self { _unused: PhantomData }
+    }
+
+    /// Returns a hash of the function inputs.
+    pub fn to_hash(&self) -> Result<N::FunctionInputsDigest> {
+        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon").hash_field_elements(&self.to_field_elements()?)?)
     }
 }
 

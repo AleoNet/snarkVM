@@ -56,15 +56,15 @@ pub struct Transaction<N: Network> {
 impl<N: Network> Transaction<N> {
     /// Initializes a new transaction from a request.
     #[inline]
-    pub fn new<R: Rng + CryptoRng>(request: Request<N>, rng: &mut R) -> Result<Self> {
-        VirtualMachine::<N>::new(&request)?.execute(rng)?.finalize()
+    pub fn new<R: Rng + CryptoRng>(request: &Request<N>, rng: &mut R) -> Result<Self> {
+        VirtualMachine::<N>::new()?.execute(request, rng)?.finalize()
     }
 
     /// Initializes a new coinbase transaction.
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let request = Request::new_coinbase(recipient, amount, rng)?;
-        VirtualMachine::<N>::new(&request)?.execute(rng)?.finalize()
+        VirtualMachine::<N>::new()?.execute(&request, rng)?.finalize()
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
@@ -369,8 +369,8 @@ mod tests {
         let dummy_record = Record::new_noop_output(dummy_account.address(), UniformRand::rand(rng), rng).unwrap();
 
         // Encrypt output records
-        let (encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
-        let (encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
+        let (_encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
+        let (_encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
         let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
 
         // Construct transaction with 1 output record and 1 dummy output record

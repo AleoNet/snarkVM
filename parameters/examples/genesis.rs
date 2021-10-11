@@ -26,7 +26,7 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>)> {
+pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
     // Create a genesis block.
     let genesis_block = Block::<N>::new_genesis(recipient, &mut thread_rng())?;
     println!("block size - {}\n", genesis_block.to_bytes_le()?.len());
@@ -43,7 +43,11 @@ pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>)>
     let transaction_bytes = transaction.to_bytes_le()?;
     println!("transaction size - {}\n", transaction_bytes.len());
 
-    Ok((genesis_header.to_bytes_le()?, transaction_bytes))
+    Ok((
+        genesis_block.previous_block_hash().to_bytes_le()?,
+        genesis_header.to_bytes_le()?,
+        transaction_bytes,
+    ))
 }
 
 pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
@@ -63,19 +67,23 @@ pub fn main() {
     match args[1].as_str() {
         "testnet1" => {
             let recipient = Address::from_str(&args[2]).unwrap();
-            let genesis_header_file = &args[3];
-            let transaction_file = &args[4];
+            let genesis_previous_file = &args[3];
+            let genesis_header_file = &args[4];
+            let transaction_file = &args[5];
 
-            let (genesis_header, transaction) = generate::<Testnet1>(recipient).unwrap();
+            let (genesis_previous_block_hash, genesis_header, transaction) = generate::<Testnet1>(recipient).unwrap();
+            store(genesis_previous_file, &genesis_previous_block_hash).unwrap();
             store(genesis_header_file, &genesis_header).unwrap();
             store(transaction_file, &transaction).unwrap();
         }
         "testnet2" => {
             let recipient = Address::from_str(&args[2]).unwrap();
-            let genesis_header_file = &args[3];
-            let transaction_file = &args[4];
+            let genesis_previous_file = &args[3];
+            let genesis_header_file = &args[4];
+            let transaction_file = &args[5];
 
-            let (genesis_header, transaction) = generate::<Testnet2>(recipient).unwrap();
+            let (genesis_previous_block_hash, genesis_header, transaction) = generate::<Testnet2>(recipient).unwrap();
+            store(genesis_previous_file, &genesis_previous_block_hash).unwrap();
             store(genesis_header_file, &genesis_header).unwrap();
             store(transaction_file, &transaction).unwrap();
         }

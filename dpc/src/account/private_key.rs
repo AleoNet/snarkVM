@@ -14,7 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountError, ComputeKey, Network, ACCOUNT_SEED_R_SIG_DOMAIN, ACCOUNT_SEED_SK_SIG_DOMAIN};
+use crate::{
+    account_format,
+    AccountError,
+    Address,
+    ComputeKey,
+    Network,
+    ACCOUNT_SEED_R_SIG_DOMAIN,
+    ACCOUNT_SEED_SK_SIG_DOMAIN,
+};
 use snarkvm_algorithms::traits::{SignatureScheme, PRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
@@ -56,6 +64,11 @@ impl<N: Network> PrivateKey<N> {
     /// Signs a message using the account private key.
     pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
         Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?)
+    }
+
+    /// Returns the address from the private key.
+    pub fn to_address(&self) -> Result<Address<N>, AccountError> {
+        Address::from_private_key(self)
     }
 
     /// Returns a reference to the account compute key.

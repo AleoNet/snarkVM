@@ -22,17 +22,15 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerPrivateVariables<N: Network> {
-    // Inputs records.
+    // Inputs.
     pub(super) input_records: Vec<Record<N>>,
     pub(super) ledger_proof: LedgerProof<N>,
     pub(super) local_proof: LocalProof<N>,
     pub(super) signature: N::AccountSignature,
-    // Output records.
-    pub(super) output_records: Vec<Record<N>>,
-    // Encryption of output records.
-    pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-    // Function.
     pub(super) function_type: FunctionType,
+    // Outputs.
+    pub(super) output_records: Vec<Record<N>>,
+    pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -42,24 +40,24 @@ impl<N: Network> InnerPrivateVariables<N> {
             ledger_proof: Default::default(),
             local_proof: Default::default(),
             signature: N::AccountSignature::default(),
+            function_type: FunctionType::Noop,
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             ciphertext_randomizers: vec![
                 <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
-            function_type: FunctionType::Noop,
         }
     }
 
     pub(crate) fn new(request: &Request<N>, response: &Response<N>) -> Result<Self> {
         Ok(Self {
             input_records: request.records().clone(),
-            output_records: response.records().clone(),
-            signature: request.signature().clone(),
             ledger_proof: request.ledger_proof().clone(),
             local_proof: request.local_proof().clone(),
-            ciphertext_randomizers: response.ciphertext_randomizers().clone(),
+            signature: request.signature().clone(),
             function_type: request.function_type(),
+            output_records: response.records().clone(),
+            ciphertext_randomizers: response.ciphertext_randomizers().clone(),
         })
     }
 }

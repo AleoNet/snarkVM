@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Event, Execution, Network, Record, RecordCiphertext};
+use crate::{AleoAmount, Event, Network, Record, RecordCiphertext};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -41,8 +41,6 @@ pub struct Response<N: Network> {
     value_balance: AleoAmount,
     /// The events emitted from the execution.
     events: Vec<Event<N>>,
-    /// The execution of the function.
-    execution: Execution<N>,
 }
 
 impl<N: Network> Response<N> {
@@ -54,7 +52,6 @@ impl<N: Network> Response<N> {
         ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
         value_balance: AleoAmount,
         events: Vec<Event<N>>,
-        execution: Execution<N>,
     ) -> Result<Self> {
         Ok(Self {
             transition_id,
@@ -63,7 +60,6 @@ impl<N: Network> Response<N> {
             ciphertext_randomizers,
             value_balance,
             events,
-            execution,
         })
     }
 
@@ -111,11 +107,6 @@ impl<N: Network> Response<N> {
         &self.events
     }
 
-    /// Returns a reference to the execution.
-    pub fn execution(&self) -> &Execution<N> {
-        &self.execution
-    }
-
     /// Returns the commitments.
     pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
         self.ciphertexts.iter().map(|c| Ok(c.to_ciphertext_id()?)).collect()
@@ -150,8 +141,6 @@ impl<N: Network> FromBytes for Response<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let execution = FromBytes::read_le(&mut reader)?;
-
         Ok(Self {
             transition_id,
             records,
@@ -159,7 +148,6 @@ impl<N: Network> FromBytes for Response<N> {
             ciphertext_randomizers,
             value_balance,
             events,
-            execution,
         })
     }
 }
@@ -173,8 +161,7 @@ impl<N: Network> ToBytes for Response<N> {
         self.ciphertext_randomizers.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
-        self.events.write_le(&mut writer)?;
-        self.execution.write_le(&mut writer)
+        self.events.write_le(&mut writer)
     }
 }
 

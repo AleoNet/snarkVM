@@ -15,12 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTree},
+    prelude::*,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 /// A ledger proof of inclusion.
 #[derive(Derivative)]
@@ -124,28 +130,6 @@ impl<N: Network> LedgerProof<N> {
         })
     }
 
-    /// Returns a ledger proof with invalid `commitments` and `commitment_inclusion_proofs` for use
-    /// in coinbase transactions.
-    pub(crate) fn new_genesis() -> Result<Self> {
-        let genesis_block = N::genesis_block();
-        let block_hash = genesis_block.to_block_hash()?;
-        let previous_block_hash = genesis_block.previous_block_hash();
-        let commitments_root = genesis_block.header().commitments_root();
-        let header_tree = genesis_block.header().to_header_tree()?;
-        let header_root = *header_tree.root();
-        let header_inclusion_proof = header_tree.generate_proof(2, &commitments_root)?;
-
-        Ok(Self {
-            block_hash,
-            previous_block_hash,
-            header_root,
-            header_inclusion_proof,
-            commitments_root,
-            commitment_inclusion_proofs: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
-            commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
-        })
-    }
-
     /// Returns the block hash used to prove inclusion of ledger-consumed records.
     pub fn block_hash(&self) -> N::BlockHash {
         self.block_hash
@@ -224,19 +208,18 @@ impl<N: Network> ToBytes for LedgerProof<N> {
 
 impl<N: Network> Default for LedgerProof<N> {
     fn default() -> Self {
-        use snarkvm_algorithms::merkle_tree::MerkleTree;
-        use std::sync::Arc;
+        let empty_commitment = N::Commitment::default();
 
         let header_tree = MerkleTree::<N::BlockHeaderTreeParameters>::new(
             Arc::new(N::block_header_tree_parameters().clone()),
-            &vec![[0u8; 32]; N::POSW_NUM_LEAVES],
+            &vec![empty_commitment; N::POSW_NUM_LEAVES],
         )
         .expect("Ledger proof failed to create default header tree");
 
         let previous_block_hash = N::BlockHash::default();
         let header_root = *header_tree.root();
         let header_inclusion_proof = header_tree
-            .generate_proof(2, &[0u8; 32])
+            .generate_proof(2, &empty_commitment)
             .expect("Ledger proof failed to create default header inclusion proof");
 
         let block_hash = N::block_hash_crh()
@@ -260,7 +243,7 @@ impl<N: Network> Default for LedgerProof<N> {
             header_inclusion_proof,
             commitments_root: Default::default(),
             commitment_inclusion_proofs: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
-            commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
+            commitments: vec![empty_commitment; N::NUM_INPUT_RECORDS],
         }
     }
 }

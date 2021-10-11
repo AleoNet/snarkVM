@@ -31,7 +31,7 @@ impl Genesis for GenesisBlock {
         let transactions = [Transaction1::load_bytes()];
 
         let mut buffer = vec![];
-        buffer.extend([0u8; 32]); // Previous block hash bytes
+        buffer.extend(include_bytes!("previous_hash.genesis")); // Previous block hash bytes
         buffer.extend(block_header_bytes); // Genesis block header bytes
         buffer.extend(variable_length_integer(transactions.len() as u64)); // Number of transactions
         buffer.extend(transactions.concat()); // Ordered buffer of all transaction bytes

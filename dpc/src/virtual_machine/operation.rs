@@ -15,12 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, AleoAmount, FunctionInputs, FunctionType, Network};
-use snarkvm_algorithms::prelude::*;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
+
+type Caller<N> = Address<N>;
+type Recipient<N> = Address<N>;
 
 #[derive(Derivative)]
 #[derivative(
@@ -33,18 +35,28 @@ pub enum Operation<N: Network> {
     /// Noop.
     Noop,
     /// Generates the given amount to the recipient address.
-    Coinbase(Address<N>, AleoAmount),
-    /// Transfers the given amount to the recipient address.
-    Transfer(Address<N>, AleoAmount),
+    Coinbase(Recipient<N>, AleoAmount),
+    /// Transfers the given amount from the caller to the recipient address.
+    Transfer(Caller<N>, Recipient<N>, AleoAmount),
     /// Invokes the given records on the function and inputs.
-    Execute(N::FunctionID, FunctionType, FunctionInputs<N>),
+    Evaluate(N::FunctionID, FunctionType, FunctionInputs<N>),
 }
 
 impl<N: Network> Operation<N> {
+    /// Returns the operation ID.
+    pub fn operation_id(&self) -> u16 {
+        match self {
+            Self::Noop => 0,
+            Self::Coinbase(..) => 1,
+            Self::Transfer(..) => 2,
+            Self::Evaluate(..) => 3,
+        }
+    }
+
     pub fn function_id(&self) -> N::FunctionID {
         match self {
             Self::Noop | Self::Coinbase(..) | Self::Transfer(..) => *N::noop_function_id(),
-            Self::Execute(function_id, _, _) => *function_id,
+            Self::Evaluate(function_id, _, _) => *function_id,
         }
     }
 
@@ -53,27 +65,57 @@ impl<N: Network> Operation<N> {
             Self::Noop => FunctionType::Noop,
             Self::Coinbase(..) => FunctionType::Add,
             Self::Transfer(..) => FunctionType::Full,
-            Self::Execute(_, function_type, _) => *function_type,
+            Self::Evaluate(_, function_type, _) => *function_type,
         }
     }
 
-    /// Returns a hash of the operation.
-    pub fn to_operation_id(&self) -> Result<N::FunctionInputsDigest> {
-        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon").hash_field_elements(&self.to_field_elements()?)?)
+    pub fn is_coinbase(&self) -> bool {
+        match self {
+            Self::Coinbase(..) => true,
+            _ => false,
+        }
     }
 }
 
 impl<N: Network> FromBytes for Operation<N> {
     #[inline]
-    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
-        Ok(Self::Noop)
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let operation_id: u16 = FromBytes::read_le(&mut reader)?;
+        match operation_id {
+            0 => Ok(Self::Noop),
+            1 => {
+                let recipient = FromBytes::read_le(&mut reader)?;
+                let amount = FromBytes::read_le(&mut reader)?;
+                Ok(Self::Coinbase(recipient, amount))
+            }
+            2 => {
+                let caller = FromBytes::read_le(&mut reader)?;
+                let recipient = FromBytes::read_le(&mut reader)?;
+                let amount = FromBytes::read_le(&mut reader)?;
+                Ok(Self::Transfer(caller, recipient, amount))
+            }
+            _ => unreachable!("Invalid operation during deserialization"),
+        }
     }
 }
 
 impl<N: Network> ToBytes for Operation<N> {
     #[inline]
-    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
-        Ok(())
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operation_id().write_le(&mut writer)?;
+        match self {
+            Self::Noop => Ok(()),
+            Self::Coinbase(recipient, amount) => {
+                recipient.write_le(&mut writer)?;
+                amount.write_le(&mut writer)
+            }
+            Self::Transfer(caller, recipient, amount) => {
+                caller.write_le(&mut writer)?;
+                recipient.write_le(&mut writer)?;
+                amount.write_le(&mut writer)
+            }
+            Self::Evaluate(function_id, _, _) => function_id.write_le(&mut writer),
+        }
     }
 }
 
