@@ -23,7 +23,6 @@ use snarkvm_algorithms::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::ToBytes;
 
 use crate::{
     bits::{boolean::Boolean, ToBytesGadget},
@@ -45,10 +44,8 @@ pub struct MerkleTriePathGadget<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>,
     traversal: Vec<UInt8>,
     /// `path[i]`is the entry of siblings of ith depth from leaf to root.
     path: Vec<Vec<HG::OutputGadget>>,
-    /// `parents[i]`is the parent key value pair at the ith depth from bottom to top.
-    parents: Vec<(Key, Value)>,
-    /// The depth of the key, value pair in the tree. All elements of `traversal`, `path`,
-    /// and `parents` past the `depth` index, is zeros.
+    /// The depth of the key, value pair in the tree. All elements of `traversal` and `path`,
+    /// past the `depth` index, is zeros.
     depth: UInt8,
 }
 
@@ -62,18 +59,13 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
     ) -> Result<HG::OutputGadget, SynthesisError> {
         let empty_child =
             HG::OutputGadget::alloc(&mut cs.ns(|| "empty_child"), || Ok(<P::H as CRH>::Output::default()))?;
-        let mut curr_hash = Self::hash_node(cs.ns(|| "leaf_hash"), crh, key, value, &vec![
-            empty_child.clone();
+        let mut curr_hash = Self::hash_node_with_key_value(cs.ns(|| "leaf_hash"), crh, key, value, &vec![
+            empty_child
+                .clone();
             P::MAX_BRANCH
         ])?;
 
-        for (i, (((parent_key, parent_value), position), siblings)) in self
-            .parents
-            .iter()
-            .zip_eq(self.traversal.iter())
-            .zip_eq(self.path.iter())
-            .enumerate()
-        {
+        for (i, (position, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
             let current_depth = UInt8::alloc(cs.ns(|| format!("depth_{}", i)), || Ok(i as u8))?;
 
             // Insert the current node into the siblings
@@ -98,13 +90,7 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
             }
 
             // Create the new hash and select it as valid only if the current depth is less than or equal to the given depth.
-            let new_hash = Self::hash_node(
-                cs.ns(|| format!("leaf_hash_{}", i)),
-                crh,
-                parent_key,
-                parent_value,
-                &final_siblings,
-            )?;
+            let new_hash = Self::hash_node(cs.ns(|| format!("leaf_hash_{}", i)), crh, &final_siblings)?;
             let depth_is_in_range = current_depth.less_than(cs.ns(|| format!("less_than_{}", i)), &self.depth)?;
             let selected_hash = HG::OutputGadget::conditionally_select(
                 cs.ns(|| format!("conditionally_select_hash_{}", i)),
@@ -118,7 +104,7 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
         Ok(curr_hash)
     }
 
-    pub(crate) fn hash_node<CS: ConstraintSystem<F>>(
+    pub(crate) fn hash_node_with_key_value<CS: ConstraintSystem<F>>(
         mut cs: CS,
         crh: &HG,
         key: impl ToBytesGadget<F>,
@@ -127,6 +113,21 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
     ) -> Result<HG::OutputGadget, SynthesisError> {
         let mut bytes = key.to_bytes(cs.ns(|| "key_to_bytes"))?;
         bytes.extend_from_slice(&value.to_bytes(cs.ns(|| "value_to_bytes"))?);
+
+        for (i, child) in child_roots.iter().enumerate() {
+            let child_bytes = child.to_bytes(&mut cs.ns(|| format!("leaf_to_bytes_{}", i)))?;
+            bytes.extend_from_slice(&child_bytes);
+        }
+
+        crh.check_evaluation_gadget(cs, bytes)
+    }
+
+    pub(crate) fn hash_node<CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        crh: &HG,
+        child_roots: &Vec<HG::OutputGadget>,
+    ) -> Result<HG::OutputGadget, SynthesisError> {
+        let mut bytes = Vec::new();
 
         for (i, child) in child_roots.iter().enumerate() {
             let child_bytes = child.to_bytes(&mut cs.ns(|| format!("leaf_to_bytes_{}", i)))?;
@@ -162,21 +163,19 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
     }
 }
 
-impl<P, HGadget, F, L> AllocGadget<MerkleTriePath<P, L>, F> for MerkleTriePathGadget<P, HGadget, F>
+impl<P, HGadget, F> AllocGadget<MerkleTriePath<P>, F> for MerkleTriePathGadget<P, HGadget, F>
 where
     P: MerkleTrieParameters,
     HGadget: CRHGadget<P::H, F>,
     F: PrimeField,
-    L: ToBytes + Clone,
 {
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<MerkleTriePath<P, L>>,
+        T: Borrow<MerkleTriePath<P>>,
     {
         let merkle_trie_path = value_gen()?.borrow().clone();
 
-        assert_eq!(merkle_trie_path.parents.len(), merkle_trie_path.path.len());
         assert_eq!(merkle_trie_path.path.len(), merkle_trie_path.traversal.len());
 
         let mut traversal = Vec::with_capacity(P::max_depth());
@@ -217,24 +216,9 @@ where
             path.push(siblings);
         }
 
-        let mut parents = Vec::with_capacity(P::max_depth());
-        for (i, (key, value)) in merkle_trie_path.parents.iter().enumerate() {
-            let key_gadget = match key {
-                Some(k) => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &k.to_bytes_le()?)?,
-                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_key_{}", i)), &vec![0u8; P::KEY_SIZE])?,
-            };
+        let depth = UInt8::alloc(cs.ns(|| "alloc_depth"), || Ok(merkle_trie_path.traversal.len() as u8))?;
 
-            let value_gadget = match value {
-                Some(l) => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &l.to_bytes_le()?)?,
-                None => UInt8::alloc_vec(cs.ns(|| format!("alloc_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?,
-            };
-
-            parents.push((key_gadget, value_gadget));
-        }
-
-        let depth = UInt8::alloc(cs.ns(|| "alloc_depth"), || Ok(merkle_trie_path.parents.len() as u8))?;
-
-        // Fill `traversal`, `path`, and `parents` to the max depth.
+        // Fill `traversal` and `path` to the max depth.
 
         for i in traversal.len()..P::max_depth() {
             traversal.push(UInt8::alloc(cs.ns(|| format!("alloc_filler_traversal_{}", i)), || {
@@ -253,29 +237,16 @@ where
             path.push(siblings);
         }
 
-        for i in parents.len()..P::max_depth() {
-            let key_gadget = UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_key_{}", i)), &vec![0u8; P::KEY_SIZE])?;
-            let value_gadget =
-                UInt8::alloc_vec(cs.ns(|| format!("alloc_filler_value_{}", i)), &vec![0u8; P::VALUE_SIZE])?;
-            parents.push((key_gadget, value_gadget));
-        }
-
         assert_eq!(traversal.len(), P::max_depth());
         assert_eq!(path.len(), P::max_depth());
-        assert_eq!(parents.len(), P::max_depth());
 
-        Ok(MerkleTriePathGadget {
-            traversal,
-            path,
-            parents,
-            depth,
-        })
+        Ok(MerkleTriePathGadget { traversal, path, depth })
     }
 
     fn alloc_input<Fn, T, CS: ConstraintSystem<F>>(_cs: CS, _value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<MerkleTriePath<P, L>>,
+        T: Borrow<MerkleTriePath<P>>,
     {
         // let merkle_trie_path = value_gen()?.borrow().clone();
 
