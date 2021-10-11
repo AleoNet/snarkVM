@@ -24,6 +24,7 @@ pub struct MemoryPool<N: Network> {
     transactions: HashMap<N::TransactionID, Transaction<N>>,
     serial_numbers: HashSet<N::SerialNumber>,
     commitments: HashSet<N::Commitment>,
+    requests: HashSet<Request<N>>,
 }
 
 impl<N: Network> MemoryPool<N> {
@@ -33,6 +34,7 @@ impl<N: Network> MemoryPool<N> {
             transactions: Default::default(),
             serial_numbers: Default::default(),
             commitments: Default::default(),
+            requests: Default::default(),
         }
     }
 
@@ -47,11 +49,21 @@ impl<N: Network> MemoryPool<N> {
         }
     }
 
+    /// Returns the transactions in the memory pool.
+    pub fn transactions(&self) -> Vec<Transaction<N>> {
+        self.transactions.values().cloned().collect()
+    }
+
     /// Adds the given unconfirmed transaction to the memory pool.
-    pub fn add(&mut self, transaction: &Transaction<N>) -> Result<()> {
+    pub fn add_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the unconfirmed transaction itself is valid.
         if !transaction.is_valid() {
             return Err(anyhow!("The unconfirmed transaction is invalid"));
+        }
+
+        // Ensure the transaction does not attempt to mint new value.
+        if transaction.value_balance().is_negative() {
+            return Err(anyhow!("The unconfirmed transaction is attempting to mint new value"));
         }
 
         // Ensure the transaction does not already exist in the memory pool.
@@ -92,5 +104,12 @@ impl<N: Network> MemoryPool<N> {
         }
 
         Ok(())
+    }
+
+    /// Clears all transactions (and associated state) from the memory pool.
+    pub fn clear_transactions(&mut self) {
+        self.transactions = Default::default();
+        self.serial_numbers = Default::default();
+        self.commitments = Default::default();
     }
 }

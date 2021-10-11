@@ -185,9 +185,19 @@ impl<N: Network> Blocks<N> {
         self.serial_numbers_roots.contains_key(serial_numbers_root)
     }
 
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
+        self.serial_numbers.contains_serial_number(serial_number)
+    }
+
     /// Returns `true` if the given commitments root exists.
     pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
         self.commitments_roots.contains_key(commitments_root)
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+        self.commitments.contains_commitment(commitment)
     }
 
     /// Adds the given block as the next block in the chain.
