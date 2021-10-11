@@ -57,14 +57,14 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new transaction from a request.
     #[inline]
     pub fn new<R: Rng + CryptoRng>(request: Request<N>, rng: &mut R) -> Result<Self> {
-        VirtualMachine::<N>::new(&request)?.execute(rng)
+        VirtualMachine::<N>::new(&request)?.execute(rng)?.finalize()
     }
 
     /// Initializes a new coinbase transaction.
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let request = Request::new_coinbase(recipient, amount, rng)?;
-        VirtualMachine::<N>::new(&request)?.execute(rng)
+        VirtualMachine::<N>::new(&request)?.execute(rng)?.finalize()
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.

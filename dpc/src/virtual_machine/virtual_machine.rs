@@ -19,67 +19,44 @@ use snarkvm_algorithms::prelude::*;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use std::collections::HashMap;
 
 pub struct VirtualMachine<N: Network> {
-    /// The caller of the request.
-    caller: Address<N>,
-    /// The program ID.
-    program_id: N::ProgramID,
-    /// The outputs balances.
-    balances: HashMap<Address<N>, AleoAmount>,
     /// The request.
     request: Request<N>,
     /// The local commitments tree.
     local_commitments: LocalCommitments<N>,
+    /// The current list of transitions.
+    transitions: Vec<Transition<N>>,
 }
 
 impl<N: Network> VirtualMachine<N> {
     /// Initializes a new instance of the virtual machine, with the given request.
     pub fn new(request: &Request<N>) -> Result<Self> {
-        // Determine the caller.
-        let caller = request.caller()?;
-
-        // Compute the starting balance of the caller.
-        let caller_balance = request.to_balance().sub(request.fee());
-        if caller_balance.is_negative() {
-            return Err(VMError::BalanceInsufficient.into());
-        }
-
-        // Determine the program ID.
-        let program_id = request.to_program_id()?;
-
-        // Initialize the balances.
-        let balances = [(caller, caller_balance)].iter().cloned().collect();
-
         Ok(Self {
-            caller,
-            program_id,
-            balances,
             request: request.clone(),
             local_commitments: LocalCommitments::new()?,
+            transitions: Default::default(),
         })
     }
 
     /// Executes the request, returning a transaction.
-    pub fn execute<R: Rng + CryptoRng>(self, rng: &mut R) -> Result<Transaction<N>> {
+    pub fn execute<R: Rng + CryptoRng>(mut self, rng: &mut R) -> Result<Self> {
         // Compute the operation.
         let operation = self.request.operation().clone();
         let response = match operation {
             Operation::Noop => Self::noop(&self.request, rng)?,
             Operation::Coinbase(recipient, amount) => Self::coinbase(&self.request, recipient, amount, rng)?,
             Operation::Transfer(recipient, amount) => Self::transfer(&self.request, recipient, amount, rng)?,
-            Operation::Execute(..) => self.build(rng)?,
+            Operation::Execute(..) => self.prove(rng)?,
         };
 
-        let request = self.request;
-        let program_id = request.to_program_id()?;
+        let program_id = self.request.to_program_id()?;
         let transition_id = response.transition_id();
         let execution = response.execution().clone();
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
-        let inner_private = InnerPrivateVariables::new(&request, &response)?;
+        let inner_private = InnerPrivateVariables::new(&self.request, &response)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
@@ -101,9 +78,14 @@ impl<N: Network> VirtualMachine<N> {
             &outer_proof
         )?);
 
-        let transition = Transition::<N>::from(&request, &response, outer_proof)?;
+        self.transitions
+            .push(Transition::<N>::from(&self.request, &response, outer_proof)?);
+        Ok(self)
+    }
 
-        Transaction::from(N::NETWORK_ID, *N::inner_circuit_id(), vec![transition])
+    /// Finalizes the virtual machine state and returns a transaction.
+    pub fn finalize(&self) -> Result<Transaction<N>> {
+        Transaction::from(N::NETWORK_ID, *N::inner_circuit_id(), self.transitions.clone())
     }
 
     /// Performs a noop transition.
@@ -154,7 +136,7 @@ impl<N: Network> VirtualMachine<N> {
     }
 
     /// Returns a response based on the current state of the virtual machine.
-    fn build<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Response<N>> {
+    fn prove<R: Rng + CryptoRng>(&self, _rng: &mut R) -> Result<Response<N>> {
         // assert_eq!(
         //     self.balances.len(),
         //     N::NUM_OUTPUT_RECORDS,
