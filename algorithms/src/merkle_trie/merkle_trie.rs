@@ -89,7 +89,7 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
         self.node.remove(&self.parameters, &translated_key)
     }
 
-    pub fn generate_proof(&self, key: &[u8], value: &T) -> Result<MerkleTriePath<P, T>, MerkleTrieError> {
+    pub fn generate_proof(&self, key: &[u8], value: &T) -> Result<MerkleTriePath<P>, MerkleTrieError> {
         let prove_time = start_timer!(|| "MerkleTrie::generate_proof");
 
         // Check that the key pair exists.
@@ -98,11 +98,12 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 return Err(MerkleTrieError::IncorrectKey(key.to_vec()));
             }
         } else {
-            return Err(MerkleTrieError::MissingLeaf(key.to_vec()));
+            let expected_key = &translate_key::<P>(key).unwrap()[..];
+
+            return Err(MerkleTrieError::MissingLeaf(expected_key.to_vec()));
         }
 
         let mut path = vec![];
-        let mut parents = vec![(self.node.full_key.clone(), self.node.value.clone())];
         let mut traversal = vec![];
 
         let mut temp_key = self.node.key.clone();
@@ -113,14 +114,12 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
         // Traverse the children until the key/value pair is found.
         let mut found = false;
         while !found {
-            if temp_key == expected_key {
+            if expected_key.len() == 1 && temp_key == expected_key {
                 found = true;
             } else {
                 // If the given key starts with the root key.
 
-                let suffix = &expected_key[temp_key.len()..];
-
-                let index = temp_children.keys().position(|&r| r == suffix[0]).unwrap();
+                let index = temp_children.keys().position(|&r| r == expected_key[0]).unwrap();
                 let mut siblings: Vec<MerkleTrieDigest<P>> =
                     temp_children.iter().map(|(_x, trie)| trie.root().clone()).collect();
                 siblings.remove(index);
@@ -128,29 +127,23 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrie<P, T> {
                 traversal.push(index as u8);
                 path.push(siblings);
 
-                if let Some(child_node) = temp_children.get(&suffix[0]) {
-                    parents.push((child_node.full_key.clone(), child_node.value.clone()));
+                if let Some(child_node) = temp_children.get(&expected_key[0]) {
                     temp_children = &child_node.children;
                     temp_key = child_node.key.clone();
                 }
 
-                expected_key = suffix;
+                expected_key = &expected_key[1..];
             }
         }
 
-        // Do not include the provided key/value pair in the list of parents;
-        parents.pop();
-
         // Reverse the vectors to start from the leaf.
         path.reverse();
-        parents.reverse();
         traversal.reverse();
 
         end_timer!(prove_time);
 
         let proof = MerkleTriePath {
             parameters: self.parameters.clone(),
-            parents,
             path,
             traversal,
         };

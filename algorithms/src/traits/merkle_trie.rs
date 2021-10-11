@@ -49,15 +49,11 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
         if let Some(key) = &key {
             let key_bytes = to_bytes_le![key]?;
             input.extend(key_bytes);
-        } else {
-            input.extend(&vec![0u8; Self::KEY_SIZE]);
         }
 
         if let Some(value) = &value {
             let value_bytes = to_bytes_le![value]?;
             input.extend(value_bytes);
-        } else {
-            input.extend(&vec![0u8; Self::VALUE_SIZE]);
         }
 
         // Add the children roots to the hash input.

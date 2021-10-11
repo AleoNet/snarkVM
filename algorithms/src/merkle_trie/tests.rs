@@ -157,7 +157,7 @@ mod poseidon_on_bls12_377_fr {
     }
 
     #[test]
-    fn good_root_test() {
+    fn good_root_test_123() {
         define_merkle_trie_parameters!(MerkleTrieParams, PoseidonCryptoHash<Fr, 4, false>, 64, 32, 32);
 
         run_good_root_test::<MerkleTrieParams>();
