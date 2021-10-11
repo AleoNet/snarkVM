@@ -63,9 +63,9 @@ macro_rules! to_bytes_int_impl {
                     None => vec![None; BYTES_SIZE],
                 };
 
-                let bits = self.to_bits_le(&mut cs.ns(|| "to_bits_le"))?;
+                let bits = self.to_bits_le(&mut cs.ns(|| "to_bytes_le"))?;
                 let bytes = bits
-                    .chunks(BYTES_SIZE)
+                    .chunks(8)
                     .into_iter()
                     .zip(value_chunks.iter())
                     .map(|(chunk8, value)| UInt8 {

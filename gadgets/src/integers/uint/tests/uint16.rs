@@ -21,7 +21,7 @@ use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget},
+    bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     integers::uint::{Sub, UInt, UInt16},
     traits::{alloc::AllocGadget, bits::Xor, integers::*},
 };
@@ -53,6 +53,47 @@ fn check_all_allocated_bits(mut expected: u16, actual: UInt16) {
         }
 
         expected >>= 1;
+    }
+}
+
+#[test]
+fn test_uint16_to_bits_le() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+    let bits = byte.to_bits_le(cs).expect("failed to get u16 bits le");
+    for (i, bit) in bits.iter().enumerate() {
+        assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
+    }
+}
+
+#[test]
+fn test_uint16_to_bits_be() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+    let bits = byte.to_bits_be(cs).expect("failed to get u16 bits be");
+    for (i, bit) in bits.iter().rev().enumerate() {
+        assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
+    }
+}
+
+#[test]
+fn test_uint16_to_bytes_le() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+    let bytes = byte
+        .to_bytes_le(cs)
+        .expect("failed to get u16 bits le")
+        .iter()
+        .map(|v| v.value.unwrap())
+        .collect::<Vec<u8>>();
+
+    assert_eq!(bytes.len(), 2);
+    assert_eq!(bytes[0], 113);
+    for byte in bytes.iter().skip(1) {
+        assert_eq!(*byte, 0);
     }
 }
 

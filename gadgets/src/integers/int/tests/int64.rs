@@ -21,7 +21,7 @@ use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
 use crate::{
-    bits::Boolean,
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     integers::int::*,
     traits::{alloc::AllocGadget, eq::EqGadget, integers::*},
 };
@@ -91,6 +91,47 @@ fn test_int64_constant_and_alloc() {
         check_all_constant_bits(a, a_const);
         check_all_allocated_bits(a, a_bit);
         check_all_allocated_bits(a, a_bit_fe);
+    }
+}
+
+#[test]
+fn test_int64_to_bits_le() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = Int64::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+    let bits = byte.to_bits_le(cs).expect("failed to get i64 bits le");
+    for (i, bit) in bits.iter().enumerate() {
+        assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
+    }
+}
+
+#[test]
+fn test_int64_to_bits_be() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = Int64::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+    let bits = byte.to_bits_be(cs).expect("failed to get i64 bits be");
+    for (i, bit) in bits.iter().rev().enumerate() {
+        assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
+    }
+}
+
+#[test]
+fn test_int64_to_bytes_le() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = Int64::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+    let bytes = byte
+        .to_bytes_le(cs)
+        .expect("failed to get i64 bits le")
+        .iter()
+        .map(|v| v.value.unwrap())
+        .collect::<Vec<u8>>();
+
+    assert_eq!(bytes.len(), 8);
+    assert_eq!(bytes[0], 113);
+    for byte in bytes.iter().skip(1) {
+        assert_eq!(*byte, 0);
     }
 }
 

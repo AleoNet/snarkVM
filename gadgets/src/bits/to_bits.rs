@@ -37,21 +37,29 @@ impl<F: Field> ToBitsBEGadget<F> for Boolean {
 
 impl<F: Field> ToBitsBEGadget<F> for [Boolean] {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.to_vec())
+        let mut bits = self.to_vec();
+        bits.reverse();
+        Ok(bits)
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.to_vec())
+        let mut bits = self.to_vec();
+        bits.reverse();
+        Ok(bits)
     }
 }
 
 impl<F: Field> ToBitsBEGadget<F> for Vec<Boolean> {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.clone())
+        let mut bits = self.to_vec();
+        bits.reverse();
+        Ok(bits)
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.clone())
+        let mut bits = self.to_vec();
+        bits.reverse();
+        Ok(bits)
     }
 }
 
