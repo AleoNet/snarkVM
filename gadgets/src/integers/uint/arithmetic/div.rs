@@ -136,7 +136,7 @@ macro_rules! div_int_impl {
 
                 quotient_bits.reverse();
 
-                let quotient = Self::from_bits_le(&quotient_bits)?;
+                let quotient = Self::from_bits_le(&quotient_bits, cs)?;
                 Ok(quotient)
             }
         }

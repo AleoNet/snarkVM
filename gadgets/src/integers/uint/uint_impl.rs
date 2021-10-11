@@ -114,7 +114,7 @@ impl UInt8 {
         // Chunk up slices of 8 bit into bytes.
         Ok(allocated_bits[0..8 * values_len]
             .chunks(8)
-            .map(Self::from_bits_le)
+            .map(Self::u8_from_bits_le)
             .flatten()
             .collect())
     }
@@ -123,6 +123,47 @@ impl UInt8 {
     /// Gadget implementations and Leo functions should call `ToBitsLEGadget` instead.
     pub fn u8_to_bits_le(&self) -> Vec<Boolean> {
         self.bits.clone()
+    }
+
+    /// Returns a `UInt8` gadget from a vector of `Boolean` gadget bits in little-endian order.
+    /// Gadget implementations and Leo functions should call `FromBitsLEGadget` instead.
+    pub fn u8_from_bits_le(bits: &[Boolean]) -> Result<Self, SynthesisError> {
+        if bits.len() != 8 {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        let mut value = Some(0u8);
+        for b in bits.iter().rev() {
+            value.as_mut().map(|v| *v <<= 1);
+
+            match *b {
+                Boolean::Constant(b) => {
+                    if b {
+                        value.as_mut().map(|v| *v |= 1);
+                    }
+                }
+                Boolean::Is(ref b) => match b.get_value() {
+                    Some(true) => {
+                        value.as_mut().map(|v| *v |= 1);
+                    }
+                    Some(false) => {}
+                    None => value = None,
+                },
+                Boolean::Not(ref b) => match b.get_value() {
+                    Some(false) => {
+                        value.as_mut().map(|v| *v |= 1);
+                    }
+                    Some(true) => {}
+                    None => value = None,
+                },
+            }
+        }
+
+        Ok(Self {
+            value: value.map(|x| x as u8),
+            bits: bits.to_vec(),
+            negated: false,
+        })
     }
 }
 
@@ -153,5 +194,46 @@ impl UInt32 {
         }
 
         Ok(bytes)
+    }
+
+    /// Returns a `UInt32` gadget from a vector of `Boolean` gadget bits in little-endian order.
+    /// Gadget implementations and Leo functions should call `FromBitsLEGadget` instead.
+    pub fn u32_from_bits_le(bits: &[Boolean]) -> Result<Self, SynthesisError> {
+        if bits.len() != 32 {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        let mut value = Some(0u32);
+        for b in bits.iter().rev() {
+            value.as_mut().map(|v| *v <<= 1);
+
+            match *b {
+                Boolean::Constant(b) => {
+                    if b {
+                        value.as_mut().map(|v| *v |= 1);
+                    }
+                }
+                Boolean::Is(ref b) => match b.get_value() {
+                    Some(true) => {
+                        value.as_mut().map(|v| *v |= 1);
+                    }
+                    Some(false) => {}
+                    None => value = None,
+                },
+                Boolean::Not(ref b) => match b.get_value() {
+                    Some(false) => {
+                        value.as_mut().map(|v| *v |= 1);
+                    }
+                    Some(true) => {}
+                    None => value = None,
+                },
+            }
+        }
+
+        Ok(Self {
+            value: value.map(|x| x as u32),
+            bits: bits.to_vec(),
+            negated: false,
+        })
     }
 }

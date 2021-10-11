@@ -21,7 +21,7 @@ use std::{
 };
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     overhead,
@@ -669,7 +669,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesLEGadget<BaseField>
                     bits_per_byte.resize_with(8, || Boolean::constant(false));
                 }
 
-                UInt8::from_bits_le(&bits_per_byte)
+                UInt8::u8_from_bits_le(&bits_per_byte)
             })
             .flatten()
             .collect::<Vec<UInt8>>();

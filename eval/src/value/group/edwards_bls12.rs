@@ -476,31 +476,51 @@ impl ToBitsBEGadget<Fq> for EdwardsGroupType {
     }
 }
 
-impl FromBitsLEGadget for EdwardsGroupType {
-    fn from_bits_le(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
-        /* if bits.len() !=  {
-            return Err(SynthesisError::Unsatisfiable);
-        } */
+impl FromBitsLEGadget<Fq> for EdwardsGroupType {
+    fn from_bits_le<CS: ConstraintSystem<Fq>>(
+        bits: &[Boolean],
+        mut cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        // read first 256 bits as x coordinate
+        let mut iter = bits.chunks_exact(256);
+        let x_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
+        let y_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
 
-        todo!()
+        let x = FpGadget::from_bits_le(x_bits, cs.ns("x_coordinate"))?;
+        let y = FpGadget::from_bits_le(y_bits, cs.ns("y_coordinate"))?;
+
+        Ok(EdwardsGroupType::Allocated(Box::new(EdwardsBls12Gadget::new(x, y))))
     }
 
-    fn from_bits_le_strict(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
-        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    fn from_bits_le_strict<CS: ConstraintSystem<Fq>>(
+        bits: &[Boolean],
+        cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        <Self as FromBitsLEGadget<Fq>>::from_bits_le(bits, cs)
     }
 }
 
-impl FromBitsBEGadget for EdwardsGroupType {
-    fn from_bits_be(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
-        /* if bits.len() !=  {
-            return Err(SynthesisError::Unsatisfiable);
-        } */
+impl FromBitsBEGadget<Fq> for EdwardsGroupType {
+    fn from_bits_be<CS: ConstraintSystem<Fq>>(
+        bits: &[Boolean],
+        mut cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        // read first 256 bits as x coordinate
+        let mut iter = bits.chunks_exact(256);
+        let x_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
+        let y_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
 
-        todo!()
+        let x = FpGadget::from_bits_be(x_bits, cs.ns("x_coordinate"))?;
+        let y = FpGadget::from_bits_be(y_bits, cs.ns("y_coordinate"))?;
+
+        Ok(EdwardsGroupType::Allocated(Box::new(EdwardsBls12Gadget::new(x, y))))
     }
 
-    fn from_bits_be_strict(bits: &[Boolean]) -> Result<EdwardsGroupType, SynthesisError> {
-        <Self as FromBitsBEGadget>::from_bits_be(bits)
+    fn from_bits_be_strict<CS: ConstraintSystem<Fq>>(
+        bits: &[Boolean],
+        cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        <Self as FromBitsBEGadget<Fq>>::from_bits_be(bits, cs)
     }
 }
 

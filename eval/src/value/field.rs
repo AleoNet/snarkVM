@@ -264,21 +264,18 @@ impl<F: PrimeField> ToBitsBEGadget<F> for FieldType<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget for FieldType<F> {
-    fn from_bits_le(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
-        /* let big_int = BigInteger::from_bits(bits);
-
-        FieldType()*/
-        todo!()
+impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        Ok(Self(FpGadget::from_bits_le(bits, cs)?))
     }
 
-    fn from_bits_le_strict(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
-        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
     }
 }
 
-impl<F: PrimeField> FromBitsBEGadget for FieldType<F> {
-    fn from_bits_be(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
+impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
         /* if bits.len() !=  {
             return Err(SynthesisError::Unsatisfiable);
         } */
@@ -286,8 +283,8 @@ impl<F: PrimeField> FromBitsBEGadget for FieldType<F> {
         todo!()
     }
 
-    fn from_bits_be_strict(bits: &[Boolean]) -> Result<FieldType<F>, SynthesisError> {
-        <Self as FromBitsBEGadget>::from_bits_be(bits)
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
     }
 }
 

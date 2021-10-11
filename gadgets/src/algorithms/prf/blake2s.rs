@@ -21,7 +21,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBytesLEGadget},
     integers::uint::{UInt, UInt32, UInt8},
     traits::{
         algorithms::PRFGadget,
@@ -344,7 +344,7 @@ pub fn blake2s_gadget<F: PrimeField, CS: ConstraintSystem<F>>(
             while tmp.len() < 32 {
                 tmp.push(Boolean::constant(false));
             }
-            this_block.push(UInt32::from_bits_le(&tmp)?);
+            this_block.push(UInt32::u32_from_bits_le(&tmp)?);
         }
         while this_block.len() < 16 {
             this_block.push(UInt32::constant(0));

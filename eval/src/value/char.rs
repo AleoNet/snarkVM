@@ -175,29 +175,29 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Char<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget for Char<F> {
-    fn from_bits_le(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsLEGadget>::from_bits_le(bits)?;
+impl<F: PrimeField> FromBitsLEGadget<F> for Char<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsLEGadget<F>>::from_bits_le(bits, cs)?;
 
         Ok(Self { character: 0, field })
     }
 
-    fn from_bits_le_strict(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsLEGadget>::from_bits_le_strict(bits)?;
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsLEGadget<F>>::from_bits_le_strict(bits, cs)?;
 
         Ok(Self { character: 0, field })
     }
 }
 
-impl<F: PrimeField> FromBitsBEGadget for Char<F> {
-    fn from_bits_be(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsBEGadget>::from_bits_be(bits)?;
+impl<F: PrimeField> FromBitsBEGadget<F> for Char<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsBEGadget<F>>::from_bits_be(bits, cs)?;
 
         Ok(Self { character: 0, field })
     }
 
-    fn from_bits_be_strict(bits: &[Boolean]) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsBEGadget>::from_bits_be_strict(bits)?;
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsBEGadget<F>>::from_bits_be_strict(bits, cs)?;
 
         Ok(Self { character: 0, field })
     }

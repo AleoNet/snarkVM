@@ -151,10 +151,10 @@ macro_rules! uint_impl_common {
         }
 
         to_bits_le_int_impl!($name);
-        from_bits_le_int_impl!($name, $_type, $size);
         to_bits_be_int_impl!($name);
-        from_bits_be_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $size);
+        from_bits_le_int_impl!($name, $_type, $size);
+        from_bits_be_int_impl!($name, $_type, $size);
         cond_select_int_impl!($name, $_type, $size);
     };
 }

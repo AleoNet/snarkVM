@@ -17,7 +17,7 @@
 use crate::{errors::AddressError, ConstrainedValue, GroupType};
 
 use snarkvm_dpc::{account::address, testnet1::instantiated::Components};
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_gadgets::{
     boolean::Boolean,
     integers::uint::UInt8,
@@ -306,8 +306,8 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Address {
     }
 }
 
-impl FromBitsLEGadget for Address {
-    fn from_bits_le(bits: &[Boolean]) -> Result<Address, SynthesisError> {
+impl<F: Field> FromBitsLEGadget<F> for Address {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Address, SynthesisError> {
         /* if bits.len() !=  {
             return Err(SynthesisError::Unsatisfiable);
         } */
@@ -315,13 +315,13 @@ impl FromBitsLEGadget for Address {
         todo!()
     }
 
-    fn from_bits_le_strict(bits: &[Boolean]) -> Result<Address, SynthesisError> {
-        <Self as FromBitsLEGadget>::from_bits_le(bits)
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
+        <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
     }
 }
 
-impl FromBitsBEGadget for Address {
-    fn from_bits_be(bits: &[Boolean]) -> Result<Address, SynthesisError> {
+impl<F: Field> FromBitsBEGadget<F> for Address {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
         /* if bits.len() !=  {
             return Err(SynthesisError::Unsatisfiable);
         } */
@@ -329,8 +329,8 @@ impl FromBitsBEGadget for Address {
         todo!()
     }
 
-    fn from_bits_be_strict(bits: &[Boolean]) -> Result<Address, SynthesisError> {
-        <Self as FromBitsBEGadget>::from_bits_be(bits)
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
+        <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
     }
 }
 

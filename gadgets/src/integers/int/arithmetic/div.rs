@@ -101,7 +101,7 @@ macro_rules! div_int_impl {
                         )?);
                     }
 
-                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits)?
+                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits, cs.ns(||"a_absolute_value_bits"))?
                 };
                 let b_absolute : <$gadget as Integer>::UnsignedGadget = {
                     let negated_bits = other.bits.neg(cs.ns(||"neg_other_bits"))?;
@@ -116,7 +116,7 @@ macro_rules! div_int_impl {
                         )?);
                     }
 
-                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits)?
+                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits, cs.ns(||"b_absolute_value_bits"))?
                 };
 
                 let quotient = a_absolute.div(cs.ns(||"div_absolute_value"), &b_absolute).map_err(
@@ -140,7 +140,7 @@ macro_rules! div_int_impl {
                     )?);
                 }
 
-                let quotient = Self::from_bits_le(&result_bits)?;
+                let quotient = Self::from_bits_le(&result_bits, cs)?;
                 Ok(quotient)
             }
         }

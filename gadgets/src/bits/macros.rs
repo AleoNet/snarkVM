@@ -88,8 +88,8 @@ macro_rules! to_bytes_int_impl {
 
 macro_rules! from_bits_le_int_impl {
     ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
-        impl FromBitsLEGadget for $name {
-            fn from_bits_le(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+        impl<F: Field> FromBitsLEGadget<F> for $name {
+            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
@@ -127,14 +127,14 @@ macro_rules! from_bits_le_int_impl {
                 })
             }
 
-            fn from_bits_le_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
-                <Self as FromBitsLEGadget>::from_bits_le(bits)
+            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
             }
         }
     };
     ($name: ident, $type_: ty, $size: expr) => {
-        impl FromBitsLEGadget for $name {
-            fn from_bits_le(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+        impl<F: Field> FromBitsLEGadget<F> for $name {
+            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
@@ -173,8 +173,8 @@ macro_rules! from_bits_le_int_impl {
                 })
             }
 
-            fn from_bits_le_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
-                <Self as FromBitsLEGadget>::from_bits_le(bits)
+            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
             }
         }
     };
@@ -182,8 +182,8 @@ macro_rules! from_bits_le_int_impl {
 
 macro_rules! from_bits_be_int_impl {
     ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
-        impl FromBitsBEGadget for $name {
-            fn from_bits_be(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+        impl<F: Field> FromBitsBEGadget<F> for $name {
+            fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
@@ -221,14 +221,14 @@ macro_rules! from_bits_be_int_impl {
                 })
             }
 
-            fn from_bits_be_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
-                <Self as FromBitsBEGadget>::from_bits_be(bits)
+            fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
+                <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
             }
         }
     };
     ($name: ident, $type_: ty, $size: expr) => {
-        impl FromBitsBEGadget for $name {
-            fn from_bits_be(bits: &[Boolean]) -> Result<$name, SynthesisError> {
+        impl<F: Field> FromBitsBEGadget<F> for $name {
+            fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
                     return Err(SynthesisError::Unsatisfiable);
                 }
@@ -267,8 +267,8 @@ macro_rules! from_bits_be_int_impl {
                 })
             }
 
-            fn from_bits_be_strict(bits: &[Boolean]) -> Result<$name, SynthesisError> {
-                <Self as FromBitsBEGadget>::from_bits_be(bits)
+            fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
+                <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
             }
         }
     };

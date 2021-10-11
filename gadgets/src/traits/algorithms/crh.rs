@@ -21,7 +21,7 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{FromBitsLEGadget, ToBytesLEGadget},
+    bits::ToBytesLEGadget,
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
@@ -58,7 +58,7 @@ pub trait MaskedCRHGadget<H: CRH, F: PrimeField>: CRHGadget<H, F> {
                     .chunks(4)
                     .map(|c| {
                         let new_byte = c.iter().flat_map(|b| vec![*b, b.not()]).collect::<Vec<_>>();
-                        UInt8::from_bits_le(&new_byte)
+                        UInt8::u8_from_bits_le(&new_byte)
                     })
                     .flatten()
                     .collect::<Vec<_>>()
