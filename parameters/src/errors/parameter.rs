@@ -34,10 +34,17 @@ pub enum ParameterError {
     SizeMismatch(usize, usize),
 }
 
-#[cfg(any(test, feature = "remote"))]
+#[cfg(not(target_family = "wasm"))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {
         ParameterError::Crate("curl::error", format!("{:?}", error))
+    }
+}
+
+#[cfg(target_family = "wasm")]
+impl From<reqwest::Error> for ParameterError {
+    fn from(error: reqwest::Error) -> Self {
+        ParameterError::Crate("request::error", format!("{:?}", error))
     }
 }
 

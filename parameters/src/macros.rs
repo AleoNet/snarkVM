@@ -131,31 +131,51 @@ macro_rules! impl_remote {
 
                     // Load remote file
                     cfg_if::cfg_if! {
-                        if #[cfg(any(test, feature = "remote"))] {
-                            let output = {
-                                println!("{} - Downloading parameters...", module_path!());
-                                let mut buffer = vec![];
-                                Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, filename))?;
-                                println!("\n{} - Download complete", module_path!());
-                                buffer
-                            };
+                        if #[cfg(not(target_family = "wasm"))] {
+                            println!("{} - Downloading parameters...", module_path!());
+                            let mut buffer = vec![];
+                            Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, filename))?;
+                            println!("\n{} - Download complete", module_path!());
 
                             // Ensure the checksum matches.
-                            let candidate_checksum = checksum!(&output);
+                            let candidate_checksum = checksum!(&buffer);
                             if expected_checksum != candidate_checksum {
                                 return checksum_error!(expected_checksum, candidate_checksum)
                             }
 
-                            match Self::store_bytes(&output, &relative_path, &absolute_path, &file_path) {
-                                Ok(()) => output,
+                            match Self::store_bytes(&buffer, &relative_path, &absolute_path, &file_path) {
+                                Ok(()) => buffer,
                                 Err(_) => {
                                     eprintln!(
                                         "\nWARNING - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
                                         filename, file_path
                                     );
-                                    output
+                                    buffer
                                 }
                             }
+                        } else if #[cfg(target_family = "wasm")] {
+                            let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
+                            let url = String::from($remote_url);
+
+                            // NOTE(julesdesmit): I'm leaking memory here so that I can get a
+                            // static reference to the url, which is needed to pass it into
+                            // the local thread which downloads the file.
+                            let url = Box::leak(url.into_boxed_str());
+
+                            let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
+                            Self::remote_fetch(buffer_clone, url)?;
+
+                            // Recover the bytes.
+                            let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
+                            let buffer = buffer.write().clone();
+
+                            // Ensure the checksum matches.
+                            let candidate_checksum = checksum!(&buffer);
+                            if expected_checksum != candidate_checksum {
+                                return checksum_error!(expected_checksum, candidate_checksum)
+                            }
+
+                            buffer
                         } else {
                             return Err(crate::errors::ParameterError::RemoteFetchDisabled);
                         }
@@ -176,6 +196,7 @@ macro_rules! impl_remote {
                 return Ok(buffer)
             }
 
+            #[cfg(not(target_family = "wasm"))]
             fn store_bytes(
                 buffer: &[u8],
                 relative_path: &std::path::Path,
@@ -194,7 +215,7 @@ macro_rules! impl_remote {
                 Ok(())
             }
 
-            #[cfg(any(test, feature = "remote"))]
+            #[cfg(not(target_family = "wasm"))]
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
@@ -217,6 +238,27 @@ macro_rules! impl_remote {
                     Ok(data.len())
                 })?;
                 Ok(transfer.perform()?)
+            }
+
+            #[cfg(target_family = "wasm")]
+            fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), crate::errors::ParameterError> {
+                // NOTE(julesdesmit): We spawn a local thread here in order to be
+                // able to accommodate the async syntax from reqwest.
+                wasm_bindgen_futures::spawn_local(async move {
+                    let content = reqwest::get(url)
+                        .await
+                        .unwrap()
+                        .text()
+                        .await
+                        .unwrap();
+
+                    let buffer = buffer.upgrade().unwrap();
+                    buffer
+                        .write()
+                        .extend_from_slice(content.as_bytes());
+                    drop(buffer);
+                });
+                Ok(())
             }
         }
 

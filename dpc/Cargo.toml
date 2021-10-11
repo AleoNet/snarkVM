@@ -145,7 +145,7 @@ default = [
   "snarkvm-parameters/default",
   "snarkvm-utilities/default"
 ]
-wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full" ]
+wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full", "snarkvm-parameters/wasm" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 full = [ "testnet1", "testnet2" ]
 testnet1 = []
