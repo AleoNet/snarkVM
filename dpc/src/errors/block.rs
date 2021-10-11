@@ -32,15 +32,6 @@ pub enum BlockError {
 
     #[error("{}", _0)]
     TransactionError(#[from] crate::TransactionError),
-
-    #[error("block number {} has not been mined yet", _0)]
-    InvalidBlockNumber(u32),
-
-    #[error("expected block parent: {} got parent: {} ", _0, _1)]
-    InvalidParent(String, String),
-
-    #[error("the given block {} is not a canonical or sidechain block", _0)]
-    IrrelevantBlock(String),
 }
 
 impl From<std::io::Error> for BlockError {

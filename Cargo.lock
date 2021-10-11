@@ -1690,7 +1690,6 @@ dependencies = [
  "snarkvm-marlin",
  "snarkvm-parameters",
  "snarkvm-polycommit",
- "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",

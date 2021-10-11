@@ -24,8 +24,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        145, 98, 177, 85, 153, 120, 45, 94, 180, 52, 131, 32, 210, 226, 25, 92, 69, 181, 178, 12, 14, 113, 130, 122,
-        145, 7, 251, 6, 176, 238, 46, 220, 170, 8, 235, 213, 242, 89, 135, 90, 169, 175, 23, 91, 96, 41, 35, 0,
+        15, 208, 178, 28, 67, 161, 254, 241, 33, 166, 148, 227, 173, 242, 83, 68, 240, 51, 52, 58, 201, 157, 40, 133,
+        133, 182, 117, 249, 226, 156, 173, 198, 248, 157, 52, 2, 143, 102, 201, 230, 54, 182, 9, 203, 237, 195, 34, 1,
     ];
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -65,7 +65,7 @@ fn dpc_testnet2_integration_test() {
         assert_eq!(coinbase_transaction, recovered_transaction);
 
         // Check that coinbase record can be decrypted from the transaction.
-        let encrypted_record = &coinbase_transaction.encrypted_records()[0];
+        let encrypted_record = &coinbase_transaction.ciphertexts()[0];
         let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());

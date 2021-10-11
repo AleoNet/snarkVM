@@ -14,18 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    record::encrypted::*,
-    testnet2::*,
-    Account,
-    AccountScheme,
-    Payload,
-    Program,
-    ProgramScheme,
-    Record,
-    ViewKey,
-    PAYLOAD_SIZE,
-};
+use crate::{record::*, testnet2::*, Account, AccountScheme, Network, Payload, Record, ViewKey, PAYLOAD_SIZE};
 use snarkvm_utilities::{FromBytes, UniformRand};
 
 use rand::{Rng, SeedableRng};
@@ -34,35 +23,32 @@ use rand_chacha::ChaChaRng;
 pub(crate) const ITERATIONS: usize = 25;
 
 #[test]
-fn test_record_encryption() {
+fn test_record_ciphertext() {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let noop_program = Program::<Testnet2>::new_noop().unwrap();
-
     for _ in 0..ITERATIONS {
-        let dummy_account = Account::<Testnet2>::new(rng).unwrap();
+        let account = Account::<Testnet2>::new(rng).unwrap();
 
         let value = rng.gen();
         let mut payload = [0u8; PAYLOAD_SIZE];
         rng.fill(&mut payload);
 
-        let given_record = Record::new_input(
-            dummy_account.address,
+        let expected_record = Record::new_input(
+            account.address,
             value,
             Payload::from_bytes_le(&payload).unwrap(),
-            noop_program.program_id(),
+            *Testnet2::noop_program_id(),
             UniformRand::rand(rng),
             UniformRand::rand(rng),
         )
         .unwrap();
 
-        // Encrypt the record
-        let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, rng).unwrap();
-        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
+        // Encrypt the record.
+        let (record_ciphertext, _) = RecordCiphertext::encrypt(&expected_record, rng).unwrap();
 
-        // Decrypt the record
-        let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
-
-        assert_eq!(given_record, decrypted_record);
+        // Decrypt the record.
+        let account_view_key = ViewKey::from_private_key(&account.private_key()).unwrap();
+        let candidate_record = record_ciphertext.decrypt(&account_view_key).unwrap();
+        assert_eq!(expected_record, candidate_record);
     }
 }

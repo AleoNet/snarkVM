@@ -15,17 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::ToBytes;
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTree},
+    prelude::*,
+};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 /// A ledger proof of inclusion.
-#[allow(unused)]
 #[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct LedgerProof<N: Network> {
+    /// The block hash used to prove inclusion of ledger-consumed records.
     block_hash: N::BlockHash,
     previous_block_hash: N::BlockHash,
     header_root: N::BlockHeaderRoot,
@@ -123,7 +130,7 @@ impl<N: Network> LedgerProof<N> {
         })
     }
 
-    /// Returns the block hash.
+    /// Returns the block hash used to prove inclusion of ledger-consumed records.
     pub fn block_hash(&self) -> N::BlockHash {
         self.block_hash
     }
@@ -154,16 +161,89 @@ impl<N: Network> LedgerProof<N> {
     }
 }
 
+impl<N: Network> FromBytes for LedgerProof<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let block_hash = FromBytes::read_le(&mut reader)?;
+        let previous_block_hash = FromBytes::read_le(&mut reader)?;
+        let header_root = FromBytes::read_le(&mut reader)?;
+        let header_inclusion_proof = FromBytes::read_le(&mut reader)?;
+        let commitments_root = FromBytes::read_le(&mut reader)?;
+
+        let mut commitment_inclusion_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            commitment_inclusion_proofs.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        Ok(Self::new(
+            block_hash,
+            previous_block_hash,
+            header_root,
+            header_inclusion_proof,
+            commitments_root,
+            commitment_inclusion_proofs,
+            commitments,
+        )
+        .expect("Failed to deserialize a ledger inclusion proof"))
+    }
+}
+
+impl<N: Network> ToBytes for LedgerProof<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.block_hash.write_le(&mut writer)?;
+        self.previous_block_hash.write_le(&mut writer)?;
+        self.header_root.write_le(&mut writer)?;
+        self.header_inclusion_proof.write_le(&mut writer)?;
+        self.commitments_root.write_le(&mut writer)?;
+        self.commitment_inclusion_proofs.write_le(&mut writer)?;
+        self.commitments.write_le(&mut writer)
+    }
+}
+
 impl<N: Network> Default for LedgerProof<N> {
     fn default() -> Self {
+        let empty_commitment = N::Commitment::default();
+
+        let header_tree = MerkleTree::<N::BlockHeaderTreeParameters>::new(
+            Arc::new(N::block_header_tree_parameters().clone()),
+            &vec![empty_commitment; N::POSW_NUM_LEAVES],
+        )
+        .expect("Ledger proof failed to create default header tree");
+
+        let previous_block_hash = N::BlockHash::default();
+        let header_root = *header_tree.root();
+        let header_inclusion_proof = header_tree
+            .generate_proof(2, &empty_commitment)
+            .expect("Ledger proof failed to create default header inclusion proof");
+
+        let block_hash = N::block_hash_crh()
+            .hash(
+                &[
+                    previous_block_hash
+                        .to_bytes_le()
+                        .expect("Ledger proof failed to convert previous block hash to bytes"),
+                    header_root
+                        .to_bytes_le()
+                        .expect("Ledger proof failed to convert header root to bytes"),
+                ]
+                .concat(),
+            )
+            .expect("Ledger proof failed to compute block hash");
+
         Self {
-            block_hash: Default::default(),
-            previous_block_hash: Default::default(),
-            header_root: Default::default(),
-            header_inclusion_proof: MerklePath::default(),
+            block_hash,
+            previous_block_hash,
+            header_root,
+            header_inclusion_proof,
             commitments_root: Default::default(),
             commitment_inclusion_proofs: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
-            commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
+            commitments: vec![empty_commitment; N::NUM_INPUT_RECORDS],
         }
     }
 }
@@ -183,7 +263,7 @@ mod tests {
         let expected_commitments = coinbase_transaction.commitments();
 
         // Create a ledger proof for two commitments.
-        let ledger_proof = ledger.to_ledger_inclusion_proof(expected_commitments)?;
+        let ledger_proof = ledger.to_ledger_inclusion_proof(&expected_commitments)?;
         assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);

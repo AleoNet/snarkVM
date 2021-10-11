@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Block, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, PublicVariables};
+use crate::{Block, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, ProgramPublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -27,7 +27,6 @@ use snarkvm_gadgets::{
 use snarkvm_utilities::{
     fmt::{Debug, Display},
     hash::Hash,
-    sync::Arc,
     FromBytes,
     ToBytes,
     ToMinimalBits,
@@ -44,11 +43,10 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
+    const NUM_EVENTS: usize;
     const NUM_INPUT_RECORDS: usize;
     const NUM_OUTPUT_RECORDS: usize;
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
-    
-    const MEMO_SIZE_IN_BYTES: usize;
     
     const POSW_PROOF_SIZE_IN_BYTES: usize;
     const POSW_NUM_LEAVES: usize;
@@ -81,9 +79,12 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
 
     /// SNARK for Aleo programs.
-    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = PublicVariables<Self>, UniversalSetupConfig = usize>;
+    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, Proof = Self::ProgramProof, UniversalSetupConfig = usize>;
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
-    
+    type ProgramProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
+    type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + ToBytes + FromBytes + ToMinimalBits + Send + Sync;
+    type ProgramProof: Clone + Debug + ToBytes + FromBytes + Sync + Send;
+
     /// SNARK for PoSW.
     type PoswSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, Proof = Self::PoSWProof, UniversalSetupConfig = usize>;
     type PoSWProof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send;
@@ -110,47 +111,58 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
     
     /// Masked Merkle tree for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderTreeCRH: CRH<Output = Self::BlockHeaderRoot>;
-    type BlockHeaderTreeCRHGadget: MaskedCRHGadget<<Self::BlockHeaderTreeParameters as MerkleParameters>::H, Self::InnerScalarField>;
+    type BlockHeaderTreeCRHGadget: MaskedCRHGadget<<Self::BlockHeaderTreeParameters as MerkleParameters>::H, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
     type BlockHeaderTreeParameters: MaskedMerkleParameters<H = Self::BlockHeaderTreeCRH>;
     type BlockHeaderRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
+    /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
+    type CiphertextIDCRH: CRH<Output = Self::CiphertextID>;
+    type CiphertextIDCRHGadget: CRHGadget<Self::CiphertextIDCRH, Self::InnerScalarField>;
+    type CiphertextID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
     type CommitmentScheme: CommitmentScheme<Output = Self::Commitment>;
     type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
     type Commitment: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// Merkle tree scheme for the commitments root. Invoked only over `Self::InnerScalarField`.
+    /// Merkle tree scheme for the commitments root on the ledger. Invoked only over `Self::InnerScalarField`.
     type CommitmentsTreeCRH: CRH<Output = Self::CommitmentsRoot>;
     type CommitmentsTreeCRHGadget: CRHGadget<Self::CommitmentsTreeCRH, Self::InnerScalarField>;
-    type CommitmentsTreeParameters: LoadableMerkleParameters<H = Self::CommitmentsTreeCRH>;
+    type CommitmentsTreeParameters: MerkleParameters<H = Self::CommitmentsTreeCRH>;
     type CommitmentsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
-    type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordID>;
-    type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
-    type EncryptedRecordID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
+    type FunctionIDCRH: CRH<Output = Self::FunctionID>;
+    type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::OuterScalarField>;
+    type FunctionID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
+    /// Crypto hash for deriving the function inputs digest. Invoked only over `Self::InnerScalarField`.
+    type FunctionInputsCRH: CRH<Output = Self::FunctionInputsDigest>;
+    type FunctionInputsCRHGadget: CRHGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
+    type FunctionInputsDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+    
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
+    /// Merkle tree scheme for the local commitments root in transitions. Invoked only over `Self::InnerScalarField`.
+    type LocalCommitmentsTreeCRH: CRH<Output = Self::LocalCommitmentsRoot>;
+    type LocalCommitmentsTreeCRHGadget: CRHGadget<Self::LocalCommitmentsTreeCRH, Self::InnerScalarField>;
+    type LocalCommitmentsTreeParameters: MerkleParameters<H = Self::LocalCommitmentsTreeCRH>;
+    type LocalCommitmentsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
     type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::BlockHeaderRoot, Output = Self::InnerScalarField>;
     type PoSWMaskPRFGadget: PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>;
     type PoSW: PoSWScheme<Self>;
     
-    /// CRH for deriving program circuit IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
-    type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
-    type ProgramCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramCircuitsTreeCRH: CRH<Output = Self::ProgramID>;
-    type ProgramCircuitsTreeCRHGadget: CRHGadget<Self::ProgramCircuitsTreeCRH, Self::OuterScalarField>;
-    type ProgramCircuitsTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitsTreeCRH>;
+    type ProgramFunctionsTreeCRH: CRH<Output = Self::ProgramID>;
+    type ProgramFunctionsTreeCRHGadget: CRHGadget<Self::ProgramFunctionsTreeCRH, Self::OuterScalarField>;
+    type ProgramFunctionsTreeParameters: MerkleParameters<H = Self::ProgramFunctionsTreeCRH>;
     type ProgramID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-
+    
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     // TODO (howardwu): TEMPORARY - Revisit Vec<Self::SerialNumberNonce> after upgrading serial number construction.
     type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumber>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
@@ -159,47 +171,52 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     /// Merkle tree scheme for the serial numbers root. Invoked only over `Self::InnerScalarField`.
     type SerialNumbersTreeCRH: CRH<Output = Self::SerialNumbersRoot>;
-    type SerialNumbersTreeParameters: LoadableMerkleParameters<H = Self::SerialNumbersTreeCRH>;
+    type SerialNumbersTreeParameters: MerkleParameters<H = Self::SerialNumbersTreeCRH>;
     type SerialNumbersRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
-    
+
     /// CRH scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::TransactionID>;
-    type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField>;
     type TransactionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
-    /// CRH scheme for computing the transactions root. Invoked only over `Self::InnerScalarField`.
+    /// CRH scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
     type TransactionsTreeCRH: CRH<Output = Self::TransactionsRoot>;
-    type TransactionsTreeParameters: LoadableMerkleParameters<H = Self::TransactionsTreeCRH>;
+    type TransactionsTreeParameters: MerkleParameters<H = Self::TransactionsTreeCRH>;
     type TransactionsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
+
+    /// CRH scheme for computing the transition ID. Invoked only over `Self::InnerScalarField`.
+    type TransitionIDCRH: CRH<Output = Self::TransitionID>;
+    type TransitionIDCRHGadget: CRHGadget<Self::TransitionIDCRH, Self::InnerScalarField>;
+    type TransitionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_tree_parameters() -> &'static Self::BlockHeaderTreeParameters;
+    fn ciphertext_id_crh() -> &'static Self::CiphertextIDCRH;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
     fn commitments_tree_parameters() -> &'static Self::CommitmentsTreeParameters;
-    fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
+    fn function_id_crh() -> &'static Self::FunctionIDCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-    fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
-    fn program_circuits_tree_crh() -> &'static Self::ProgramCircuitsTreeCRH;
-    fn program_circuits_tree_parameters() -> &'static Arc<Self::ProgramCircuitsTreeParameters>;
+    fn local_commitments_tree_parameters() -> &'static Self::LocalCommitmentsTreeParameters;
+    fn program_functions_tree_parameters() -> &'static Self::ProgramFunctionsTreeParameters;
     fn serial_numbers_tree_parameters() -> &'static Self::SerialNumbersTreeParameters;
     fn transaction_id_crh() -> &'static Self::TransactionIDCRH;
     fn transactions_tree_parameters() -> &'static Self::TransactionsTreeParameters;
-    
+    fn transition_id_crh() -> &'static Self::TransitionIDCRH;
+
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
-    fn inner_circuit_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
-    fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
+    fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
+    fn inner_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
     fn noop_program() -> &'static Program<Self>;
     fn noop_program_id() -> &'static Self::ProgramID;
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramCircuitsTreeParameters>;
-    fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
+    fn noop_program_path() -> &'static MerklePath<Self::ProgramFunctionsTreeParameters>;
+    fn noop_function_id() -> &'static Self::FunctionID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
 
-    fn outer_circuit_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
-    fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
+    fn outer_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
+    fn outer_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
 
     fn posw_proving_key() -> &'static <Self::PoswSNARK as SNARK>::ProvingKey;
     fn posw_verifying_key() -> &'static <Self::PoswSNARK as SNARK>::VerifyingKey;
@@ -207,11 +224,11 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send +
 
     fn genesis_block() -> &'static Block<Self>;
 
-    /// Returns the program circuit ID given a program circuit verifying key.
-    fn program_circuit_id(
+    /// Returns the function ID given a program function verifying key.
+    fn function_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
-    ) -> Result<Self::ProgramCircuitID> {
-        Ok(Self::program_circuit_id_crh().hash_bits(&verifying_key.to_minimal_bits())?)
+    ) -> Result<Self::FunctionID> {
+        Ok(Self::function_id_crh().hash_bits(&verifying_key.to_minimal_bits())?)
     }
 
     /// Returns the program SRS for Aleo applications.

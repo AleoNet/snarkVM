@@ -72,24 +72,19 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !self
-            .0
-            .as_parallel_slice()
-            .par_iter()
-            .all(|transaction| transaction.is_valid())
-        {
+        if !self.0.as_parallel_slice().par_iter().all(Transaction::is_valid) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
 
         // Ensure there are no duplicate serial numbers.
-        if has_duplicates(self.0.iter().map(|tx| tx.serial_numbers()).flatten()) {
+        if has_duplicates(self.0.iter().map(Transaction::serial_numbers).flatten()) {
             eprintln!("Found duplicate serial numbers in the transactions list");
             return false;
         }
 
         // Ensure there are no duplicate commitments.
-        if has_duplicates(self.0.iter().map(|tx| tx.commitments()).flatten()) {
+        if has_duplicates(self.0.iter().map(Transaction::commitments).flatten()) {
             eprintln!("Found duplicate commitments in the transactions list");
             return false;
         }
@@ -110,7 +105,7 @@ impl<N: Network> Transactions<N> {
             true => {
                 let transaction_ids = (*self)
                     .iter()
-                    .map(|tx| tx.to_transaction_id())
+                    .map(Transaction::to_transaction_id)
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(*MerkleTree::<N::TransactionsTreeParameters>::new(
@@ -126,7 +121,7 @@ impl<N: Network> Transactions<N> {
     /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
     pub fn to_serial_numbers(&self) -> Result<Vec<<N as Network>::SerialNumber>> {
         match self.is_valid() {
-            true => Ok(self.0.iter().map(|tx| tx.serial_numbers()).flatten().cloned().collect()),
+            true => Ok(self.0.iter().flat_map(Transaction::serial_numbers).collect()),
             false => Err(anyhow!("The transactions list is invalid")),
         }
     }
@@ -134,7 +129,7 @@ impl<N: Network> Transactions<N> {
     /// Returns the commitments, by constructing a flattened list of commitments from all transactions.
     pub fn to_commitments(&self) -> Result<Vec<<N as Network>::Commitment>> {
         match self.is_valid() {
-            true => Ok(self.0.iter().map(|tx| tx.commitments()).flatten().cloned().collect()),
+            true => Ok(self.0.iter().flat_map(Transaction::commitments).collect()),
             false => Err(anyhow!("The transactions list is invalid")),
         }
     }
@@ -148,7 +143,7 @@ impl<N: Network> Transactions<N> {
                 .iter()
                 .filter_map(|t| match t.value_balance().is_negative() {
                     true => None,
-                    false => Some(*t.value_balance()),
+                    false => Some(t.value_balance()),
                 })
                 .reduce(|a, b| a.add(b))
                 .ok_or(anyhow!("Failed to compute the transaction fees for block")),
@@ -159,12 +154,11 @@ impl<N: Network> Transactions<N> {
     /// Returns the net value balance, by summing the value balance from all transactions.
     pub fn to_net_value_balance(&self) -> Result<AleoAmount> {
         match self.is_valid() {
-            true => self
+            true => Ok(self
                 .0
                 .iter()
-                .map(|transaction| *transaction.value_balance())
-                .reduce(|a, b| a.add(b))
-                .ok_or(anyhow!("Failed to compute net value balance for block")),
+                .map(Transaction::value_balance)
+                .fold(AleoAmount::ZERO, |a, b| a.add(b))),
             false => Err(anyhow!("The transactions list is invalid")),
         }
     }

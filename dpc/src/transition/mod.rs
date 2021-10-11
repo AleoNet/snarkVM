@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod builder;
-pub use builder::*;
+pub mod request;
+pub use request::*;
 
-pub mod input;
-pub use input::*;
+pub mod response;
+pub use response::*;
 
-pub mod output;
-pub use output::*;
-
-pub mod transition;
-pub use transition::*;
-
-#[cfg(test)]
-mod tests;
+pub(crate) mod transition;
+pub(crate) use transition::*;

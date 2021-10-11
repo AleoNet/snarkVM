@@ -33,29 +33,17 @@ pub enum AccountError {
     #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
 
-    #[error("invalid account commitment")]
-    InvalidAccountCommitment,
-
     #[error("invalid byte length: {}", _0)]
     InvalidByteLength(usize),
 
     #[error("invalid character length: {}", _0)]
     InvalidCharacterLength(usize),
 
-    #[error("invalid account compute key")]
-    InvalidComputeKey,
-
     #[error("invalid prefix: {:?}", _0)]
     InvalidPrefix(String),
 
     #[error("invalid prefix bytes: {:?}", _0)]
     InvalidPrefixBytes(Vec<u8>),
-
-    #[error("invalid account private key")]
-    InvalidPrivateKey,
-
-    #[error("invalid account private key seed")]
-    InvalidPrivateKeySeed,
 
     #[error("{}", _0)]
     Message(String),

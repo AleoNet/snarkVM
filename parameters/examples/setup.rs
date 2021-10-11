@@ -16,12 +16,14 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, CRH, SNARK, SRS};
 use snarkvm_dpc::{
+    Execution,
+    Function,
     InnerCircuit,
     Network,
+    Noop,
     OuterCircuit,
     PoSWScheme,
-    ProgramExecutable,
-    ProgramScheme,
+    ProgramPublicVariables,
     SynthesizedCircuit,
 };
 use snarkvm_marlin::ahp::AHPForR1CS;
@@ -68,6 +70,28 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     Ok(())
 }
 
+/// Runs a universal SRS setup.
+pub fn universal_setup<N: Network>() -> Result<()> {
+    const UNIVERSAL_METADATA: &str = "universal.metadata";
+    const UNIVERSAL_SRS: &str = "universal.srs";
+
+    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(70000, 70000, 70000).unwrap();
+    let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
+    let universal_srs = universal_srs.to_bytes_le()?;
+
+    let universal_checksum = checksum(&universal_srs);
+    let universal_metadata = json!({
+        "srs_checksum": universal_checksum,
+        "srs_size": universal_srs.len()
+    });
+
+    println!("{}", serde_json::to_string_pretty(&universal_metadata)?);
+    write_metadata(UNIVERSAL_METADATA, &universal_metadata)?;
+    write_remote(UNIVERSAL_SRS, &universal_checksum, &universal_srs)?;
+
+    Ok(())
+}
+
 /// Runs the noop circuit setup.
 pub fn noop_setup<N: Network>() -> Result<()> {
     const NOOP_CIRCUIT_METADATA: &str = "noop.metadata";
@@ -79,7 +103,7 @@ pub fn noop_setup<N: Network>() -> Result<()> {
         &mut *N::program_srs(&mut thread_rng()).borrow_mut(),
     )?;
 
-    let noop_circuit_id = hex::encode(<N as Network>::program_circuit_id(&verifying_key)?.to_bytes_le()?);
+    let noop_function_id = hex::encode(<N as Network>::function_id(&verifying_key)?.to_bytes_le()?);
     let noop_proving_key = proving_key.to_bytes_le()?;
     let noop_verifying_key = verifying_key.to_bytes_le()?;
 
@@ -88,7 +112,7 @@ pub fn noop_setup<N: Network>() -> Result<()> {
         "proving_size": noop_proving_key.len(),
         "verifying_checksum": checksum(&noop_verifying_key),
         "verifying_size": noop_verifying_key.len(),
-        "circuit_id": noop_circuit_id,
+        "circuit_id": noop_function_id,
     });
 
     println!("{}", serde_json::to_string_pretty(&noop_metadata)?);
@@ -141,9 +165,6 @@ pub fn outer_setup<N: Network>() -> Result<()> {
     const OUTER_PROVING_KEY: &str = "outer.proving";
     const OUTER_VERIFYING_KEY: &str = "outer.verifying";
 
-    let noop_program = N::noop_program();
-    let noop_executable = noop_program.to_executable(N::noop_circuit_id())?;
-
     let (inner_proof, inner_verifying_key) = match N::NETWORK_NAME {
         "testnet1" => {
             use snarkvm_parameters::testnet1::{InnerProvingKeyBytes, InnerVerifyingKeyBytes};
@@ -171,11 +192,12 @@ pub fn outer_setup<N: Network>() -> Result<()> {
     };
 
     let (outer_proving_key, outer_verifying_key) = N::OuterSNARK::setup(
-        &OuterCircuit::<N>::blank(
-            inner_verifying_key,
-            inner_proof,
-            noop_executable.execute(Default::default())?,
-        ),
+        &OuterCircuit::<N>::blank(inner_verifying_key, inner_proof, Execution {
+            program_id: *N::noop_program_id(),
+            program_path: N::noop_program_path().clone(),
+            verifying_key: N::noop_circuit_verifying_key().clone(),
+            proof: Noop::<N>::new().execute(ProgramPublicVariables::blank())?,
+        }),
         &mut SRS::CircuitSpecific(&mut thread_rng()),
     )?;
 
@@ -233,28 +255,6 @@ pub fn posw_setup<N: Network>() -> Result<()> {
     write_metadata(POSW_CIRCUIT_METADATA, &posw_metadata)?;
     write_remote(POSW_PROVING_KEY, &posw_proving_checksum, &posw_proving_key)?;
     write_local(POSW_VERIFYING_KEY, &posw_verifying_key)?;
-
-    Ok(())
-}
-
-/// Runs a universal SRS setup.
-pub fn universal_setup<N: Network>() -> Result<()> {
-    const UNIVERSAL_METADATA: &str = "universal.metadata";
-    const UNIVERSAL_SRS: &str = "universal.srs";
-
-    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(70000, 70000, 70000).unwrap();
-    let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
-    let universal_srs = universal_srs.to_bytes_le()?;
-
-    let universal_checksum = checksum(&universal_srs);
-    let universal_metadata = json!({
-        "srs_checksum": universal_checksum,
-        "srs_size": universal_srs.len()
-    });
-
-    println!("{}", serde_json::to_string_pretty(&universal_metadata)?);
-    write_metadata(UNIVERSAL_METADATA, &universal_metadata)?;
-    write_remote(UNIVERSAL_SRS, &universal_checksum, &universal_srs)?;
 
     Ok(())
 }

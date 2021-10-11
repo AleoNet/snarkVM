@@ -39,11 +39,13 @@ pub enum PoswError {
     #[error("could not load PoSW parameters: {0}")]
     Parameters(#[from] ParameterError),
 
-    /// Thrown when a proof fails verification
-    #[error("could not verify PoSW")]
-    PoswVerificationFailed,
-
     /// Thrown when there's an internal error in the underlying SNARK
     #[error(transparent)]
     SnarkError(#[from] SNARKError),
+}
+
+impl From<PoswError> for std::io::Error {
+    fn from(error: PoswError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
 }

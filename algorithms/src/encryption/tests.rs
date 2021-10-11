@@ -17,29 +17,29 @@
 mod ecies {
     use crate::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
     use snarkvm_curves::edwards_bls12::EdwardsParameters;
-    use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
 
-    type TestEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     pub const ITERATIONS: usize = 1000;
+
+    type TestEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
 
     #[test]
     fn test_encrypt_and_decrypt() {
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
         let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
-
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-        let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
+        let randomness = encryption_scheme.generate_randomness(rng).unwrap();
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
-
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
-        let decrypted_message = encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
-        assert_eq!(message, decrypted_message);
+
+        let candidate_message = encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
+        assert_eq!(message, candidate_message);
     }
 
     #[test]
@@ -52,7 +52,7 @@ mod ecies {
             let private_key = encryption_scheme.generate_private_key(rng);
             let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-            let public_key_bytes = to_bytes_le![public_key].unwrap();
+            let public_key_bytes = public_key.to_bytes_le().unwrap();
             let recovered_public_key =
                 <TestEncryptionScheme as EncryptionScheme>::PublicKey::read_le(&public_key_bytes[..]).unwrap();
             assert_eq!(public_key, recovered_public_key);
@@ -69,7 +69,7 @@ mod ecies {
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-        let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
+        let randomness = encryption_scheme.generate_randomness(rng).unwrap();
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
 
         let mut ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();

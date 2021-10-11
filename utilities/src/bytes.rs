@@ -78,22 +78,32 @@ macro_rules! push_bytes_to_vec {
     })
 }
 
-pub trait ToBytes: Sized {
+pub trait ToBytes {
     /// Writes `self` into `writer` as little-endian bytes.
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()>;
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()>
+    where
+        Self: Sized;
 
     /// Returns `self` as a byte array in little-endian order.
-    fn to_bytes_le(&self) -> anyhow::Result<Vec<u8>> {
+    fn to_bytes_le(&self) -> anyhow::Result<Vec<u8>>
+    where
+        Self: Sized,
+    {
         Ok(to_bytes_le![self]?)
     }
 }
 
-pub trait FromBytes: Sized {
+pub trait FromBytes {
     /// Reads `Self` from `reader` as little-endian bytes.
-    fn read_le<R: Read>(reader: R) -> IoResult<Self>;
+    fn read_le<R: Read>(reader: R) -> IoResult<Self>
+    where
+        Self: Sized;
 
     /// Returns `Self` from a byte array in little-endian order.
-    fn from_bytes_le(bytes: &[u8]) -> anyhow::Result<Self> {
+    fn from_bytes_le(bytes: &[u8]) -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
         Ok(Self::read_le(bytes)?)
     }
 }

@@ -17,8 +17,8 @@
 pub mod account;
 pub use account::*;
 
-pub mod dpc;
-pub use dpc::*;
+pub mod function;
+pub use function::*;
 
 pub mod ledger;
 pub use ledger::*;
@@ -28,9 +28,3 @@ pub use network::*;
 
 pub mod posw;
 pub use posw::*;
-
-pub mod program;
-pub use program::*;
-
-pub mod record;
-pub use record::*;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, BlockHeader, Network, Transaction, Transactions};
+use crate::{Address, AleoAmount, BlockHeader, LedgerProof, Network, Transaction, Transactions};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -102,7 +102,7 @@ impl<N: Network> Block<N> {
 
         // Construct the genesis block.
         let block = Self {
-            previous_block_hash: Default::default(),
+            previous_block_hash: LedgerProof::<N>::default().block_hash(),
             header,
             transactions,
         };
@@ -133,11 +133,15 @@ impl<N: Network> Block<N> {
     /// Returns `true` if the block is well-formed.
     pub fn is_valid(&self) -> bool {
         // Ensure the previous block hash is well-formed.
+        let genesis_previous_block_hash = LedgerProof::<N>::default().block_hash();
         if self.height() == 0u32 {
-            if self.previous_block_hash != Default::default() {
-                eprintln!("Genesis block must have an empty previous block hash");
+            if self.previous_block_hash != genesis_previous_block_hash {
+                eprintln!("Genesis block must have the default ledger proof block hash");
                 return false;
             }
+        } else if self.previous_block_hash == genesis_previous_block_hash {
+            eprintln!("Block cannot have genesis previous block hash");
+            return false;
         } else if self.previous_block_hash == Default::default() {
             eprintln!("Block must have a non-empty previous block hash");
             return false;
@@ -180,7 +184,7 @@ impl<N: Network> Block<N> {
         };
 
         // Ensure the coinbase reward is equal to or greater than the expected block reward.
-        let coinbase_reward = AleoAmount(0).sub(*coinbase_transaction.value_balance()); // Make it a positive number.
+        let coinbase_reward = AleoAmount::ZERO.sub(coinbase_transaction.value_balance()); // Make it a positive number.
         let block_reward = Self::block_reward(self.height());
         if coinbase_reward < block_reward {
             eprintln!("Coinbase reward must be >= {}, found {}", block_reward, coinbase_reward);
@@ -190,7 +194,7 @@ impl<N: Network> Block<N> {
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
         match self.transactions.to_net_value_balance() {
             Ok(net_value_balance) => {
-                let candidate_block_reward = AleoAmount(0).sub(net_value_balance); // Make it a positive number.
+                let candidate_block_reward = AleoAmount::ZERO.sub(net_value_balance); // Make it a positive number.
                 if candidate_block_reward > block_reward {
                     eprintln!("Block reward must be <= {}", block_reward);
                     return false;
@@ -224,6 +228,21 @@ impl<N: Network> Block<N> {
     /// Returns the transactions.
     pub fn transactions(&self) -> &Transactions<N> {
         &self.transactions
+    }
+
+    /// Returns the transactions root in the block header.
+    pub fn transactions_root(&self) -> N::TransactionsRoot {
+        self.header.transactions_root()
+    }
+
+    /// Returns the serial numbers root in the block header.
+    pub fn serial_numbers_root(&self) -> N::SerialNumbersRoot {
+        self.header.serial_numbers_root()
+    }
+
+    /// Returns the commitments root in the block header.
+    pub fn commitments_root(&self) -> N::CommitmentsRoot {
+        self.header.commitments_root()
     }
 
     /// Returns the block height.

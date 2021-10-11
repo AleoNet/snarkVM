@@ -26,7 +26,7 @@ pub trait EncryptionScheme:
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
+    type Randomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
 
     fn setup(message: &str) -> Self;
 
@@ -37,11 +37,7 @@ pub trait EncryptionScheme:
         private_key: &<Self as EncryptionScheme>::PrivateKey,
     ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError>;
 
-    fn generate_randomness<R: Rng + CryptoRng>(
-        &self,
-        public_key: &<Self as EncryptionScheme>::PublicKey,
-        rng: &mut R,
-    ) -> Result<Self::Randomness, EncryptionError>;
+    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Randomness, EncryptionError>;
 
     fn encrypt(
         &self,

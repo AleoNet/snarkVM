@@ -419,11 +419,11 @@ mod merkle_tree_bowe_hopwood_pedersen_crh_on_projective {
 
 mod merkle_tree_poseidon {
     use super::*;
-    use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
-    use snarkvm_algorithms::crypto_hash::PoseidonCryptoHash;
+    use crate::algorithms::crh::PoseidonCRHGadget;
+    use snarkvm_algorithms::crh::PoseidonCRH;
 
-    type H = PoseidonCryptoHash<Fr, 4, false>;
-    type HG = PoseidonCryptoHashGadget<Fr, 4, false>;
+    type H = PoseidonCRH<Fr, 3>;
+    type HG = PoseidonCRHGadget<Fr, 3>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 

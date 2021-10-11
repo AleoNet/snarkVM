@@ -115,8 +115,29 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add_unconfirmed_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
+        // Ensure the transaction contains block hashes from the canon chain.
+        for block_hash in &transaction.block_hashes() {
+            if !self.canon_blocks.contains_block_hash(block_hash) {
+                return Err(anyhow!("Transaction references a non-existent block hash"));
+            }
+        }
+
+        // Ensure the transaction does not contain serial numbers already in the canon chain.
+        for serial_number in &transaction.serial_numbers() {
+            if self.canon_blocks.contains_serial_number(serial_number) {
+                return Err(anyhow!("Transaction contains a serial number already in existence"));
+            }
+        }
+
+        // Ensure the transaction does not contain commitments already in the canon chain.
+        for commitment in &transaction.commitments() {
+            if self.canon_blocks.contains_commitment(commitment) {
+                return Err(anyhow!("Transaction contains a commitment already in existence"));
+            }
+        }
+
         // Attempt to add the transaction into the memory pool.
-        self.memory_pool.add(transaction)?;
+        self.memory_pool.add_transaction(transaction)?;
 
         Ok(())
     }
@@ -137,7 +158,7 @@ impl<N: Network> Ledger<N> {
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
         let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
-        let transactions = Transactions::from(&[coinbase_transaction])?; // TODO (howardwu): TEMPORARY - Add mempool txs.
+        let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
         // Construct the new serial numbers root.
         let mut serial_numbers = self.canon_blocks.latest_serial_numbers();
@@ -161,8 +182,13 @@ impl<N: Network> Ledger<N> {
             rng,
         )?;
 
-        // Add the block to canon.
-        self.add_next_block(&block)
+        // Attempt to add the block to the canon chain.
+        self.add_next_block(&block)?;
+
+        // On success, clear the memory pool of its transactions.
+        self.memory_pool.clear_transactions();
+
+        Ok(())
     }
 
     ///

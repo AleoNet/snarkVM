@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, Network, OuterPrivateVariables, OuterPublicVariables};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{MerkleParameters, SNARK},
+};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
@@ -41,12 +44,12 @@ pub struct OuterCircuit<N: Network> {
 impl<N: Network> OuterCircuit<N> {
     pub fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_snark_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: <N::InnerSNARK as SNARK>::Proof,
         execution: Execution<N>,
     ) -> Self {
         Self {
             public: OuterPublicVariables::blank(),
-            private: OuterPrivateVariables::blank(inner_verifying_key, inner_snark_proof, execution),
+            private: OuterPrivateVariables::blank(inner_verifying_key, inner_proof, execution),
         }
     }
 
@@ -72,28 +75,18 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     public: &OuterPublicVariables<N>,
     private: &OuterPrivateVariables<N>,
 ) -> Result<(), SynthesisError> {
-    // Access the outer public variables.
-    let OuterPublicVariables {
-        inner_public_variables: inner_public,
-        inner_circuit_id,
-    } = public;
-
-    // In the outer circuit, thus variable must be allocated as private input,
-    // as it is not included in the transaction.
-    debug_assert!(inner_public.program_id.is_none());
-
     // ************************************************************************
     // Declare public parameters.
     // ************************************************************************
 
-    let program_circuit_id_crh = N::ProgramCircuitIDCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
-        || Ok(N::program_circuit_id_crh().clone()),
-    )?;
+    let function_id_crh =
+        N::FunctionIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare function_id_crh_parameters"), || {
+            Ok(N::function_id_crh().clone())
+        })?;
 
-    let program_circuits_tree_crh = N::ProgramCircuitsTreeCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_circuits_tree_crh_parameters"),
-        || Ok(N::program_circuits_tree_crh().clone()),
+    let program_functions_tree_crh = N::ProgramFunctionsTreeCRHGadget::alloc_constant(
+        &mut cs.ns(|| "Declare program_functions_tree_crh_parameters"),
+        || Ok(N::program_functions_tree_parameters().crh().clone()),
     )?;
 
     let inner_circuit_id_crh =
@@ -107,62 +100,29 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // Declare inner circuit public variables as inner circuit field elements
 
-    let block_hash_fe = alloc_inner_snark_input_field_element::<N, _, _>(cs, &inner_public.block_hash, "block hash")?;
+    let program_id_fe =
+        alloc_inner_snark_field_element::<N, _, _>(cs, &private.execution.program_id.to_bytes_le()?[..], "program ID")?;
 
-    let encrypted_record_ids_fe = {
-        let mut encrypted_record_ids_fe_vec =
-            Vec::with_capacity(inner_public.encrypted_record_ids.len() * N::NUM_OUTPUT_RECORDS);
-
-        for (index, encrypted_record_hash) in inner_public.encrypted_record_ids.iter().enumerate() {
-            let encrypted_record_id_fe = alloc_inner_snark_input_field_element::<N, _, _>(
-                cs,
-                encrypted_record_hash,
-                &format!("encrypted_record_id {}", index),
-            )?;
-
-            encrypted_record_ids_fe_vec.push(encrypted_record_id_fe);
-        }
-
-        <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
-            cs.ns(|| "encrypted_record_ids_merge"),
-            &encrypted_record_ids_fe_vec,
-        )?
-    };
-
-    let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
-        cs,
-        &private.program_execution.program_id.to_bytes_le()?[..],
-        "program ID",
-    )?;
-
-    let transaction_id_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
-        cs,
-        &inner_public.transaction_id(),
-        "transaction ID inner snark",
-    )?;
-    let transaction_id_fe_program_snark = alloc_program_snark_field_element::<N, _, _>(
-        cs,
-        &inner_public.transaction_id(),
-        "transaction ID program snark",
-    )?;
+    let transition_id_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID inner snark")?;
+    let transition_id_fe_program_snark =
+        alloc_program_snark_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID program snark")?;
     {
         // Construct inner snark input as bits
-        let transaction_id_input_inner_snark_bits =
-            transaction_id_fe_inner_snark.to_bits_le(cs.ns(|| "transaction ID inner snark to bits"))?;
-        let transaction_id_input_program_snark_bits =
-            transaction_id_fe_program_snark.to_bits_le(cs.ns(|| "transaction ID program snark to bits"))?;
-        transaction_id_input_inner_snark_bits.enforce_equal(
-            cs.ns(|| "transaction ID equality"),
-            &transaction_id_input_program_snark_bits,
+        let transition_id_input_inner_snark_bits =
+            transition_id_fe_inner_snark.to_bits_le(cs.ns(|| "transition ID inner snark to bits"))?;
+        let transition_id_input_program_snark_bits =
+            transition_id_fe_program_snark.to_bits_le(cs.ns(|| "transition ID program snark to bits"))?;
+        transition_id_input_inner_snark_bits.enforce_equal(
+            cs.ns(|| "transition ID equality"),
+            &transition_id_input_program_snark_bits,
         )?;
     }
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
-            block_hash_fe,
-            encrypted_record_ids_fe,
-            program_id_fe.clone(),
-            transaction_id_fe_inner_snark,
+            program_id_fe,
+            transition_id_fe_inner_snark,
         ])?;
 
     // ************************************************************************
@@ -176,7 +136,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(&private.inner_snark_proof),
+        || Ok(&private.inner_proof),
     )?;
 
     N::InnerSNARKGadget::check_verify(
@@ -195,7 +155,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         let program_circuit_verifying_key =
             <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
                 &mut cs.ns(|| "Allocate program circuit verifying key"),
-                || Ok(&private.program_execution.verifying_key),
+                || Ok(&private.execution.verifying_key),
             )?;
 
         // Check that the program ID is derived correctly.
@@ -204,26 +164,26 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             let program_circuit_verifying_key_bits = program_circuit_verifying_key
                 .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
-            let claimed_circuit_id = program_circuit_id_crh.check_evaluation_gadget_on_bits(
+            let claimed_circuit_id = function_id_crh.check_evaluation_gadget_on_bits(
                 &mut cs.ns(|| "Compute circuit ID"),
                 program_circuit_verifying_key_bits,
             )?;
 
-            let program_path_gadget = MerklePathGadget::<_, N::ProgramCircuitsTreeCRHGadget, _>::alloc(
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramFunctionsTreeCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
-                || Ok(&private.program_execution.program_path),
+                || Ok(&private.execution.program_path),
             )?;
 
             let claimed_program_id = program_path_gadget.calculate_root(
                 &mut cs.ns(|| "calculate_program_id"),
-                &program_circuits_tree_crh,
+                &program_functions_tree_crh,
                 claimed_circuit_id,
             )?;
 
             let given_program_id =
-                <N::ProgramCircuitsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
+                <N::ProgramFunctionsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
                     &mut cs.ns(|| "Given program ID"),
-                    || Ok(&private.program_execution.program_id),
+                    || Ok(&private.execution.program_id),
                 )?;
 
             claimed_program_id.enforce_equal(
@@ -238,11 +198,11 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             &mut cs.ns(|| "Allocate position"),
             || Ok(vec![N::InnerScalarField::from(0u128)]),
         )?;
-        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &transaction_id_fe_program_snark)?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &transition_id_fe_program_snark)?;
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&private.program_execution.proof),
+            || Ok(&private.execution.proof),
         )?;
 
         N::ProgramSNARKGadget::check_verify(
@@ -265,7 +225,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     let given_inner_circuit_id =
         <N::InnerCircuitIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc_input(
             &mut cs.ns(|| "Inner circuit ID"),
-            || Ok(inner_circuit_id),
+            || Ok(public.inner_circuit_id()),
         )?;
 
     let candidate_inner_circuit_id = inner_circuit_id_crh

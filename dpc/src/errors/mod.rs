@@ -20,20 +20,14 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
-pub mod dpc;
-pub use dpc::*;
-
-pub mod ledger;
-pub use ledger::*;
-
 pub mod posw;
 pub use posw::*;
-
-pub mod program;
-pub use program::*;
 
 pub mod record;
 pub use record::*;
 
 pub mod transaction;
 pub use transaction::*;
+
+pub mod virtual_machine;
+pub use virtual_machine::*;

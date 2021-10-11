@@ -55,9 +55,6 @@
 #![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
 
 #[macro_use]
-extern crate snarkvm_profiler;
-
-#[macro_use]
 extern crate derivative;
 
 #[macro_use]
@@ -72,9 +69,6 @@ pub use block::*;
 pub mod circuits;
 pub use circuits::*;
 
-pub mod dpc;
-pub use dpc::*;
-
 pub mod errors;
 pub use errors::*;
 
@@ -86,9 +80,6 @@ pub use network::*;
 
 pub mod posw;
 pub use posw::*;
-
-pub mod program;
-pub use program::*;
 
 pub mod record;
 pub use record::*;
@@ -102,18 +93,19 @@ pub use transaction::*;
 pub mod transition;
 pub use transition::*;
 
+pub mod virtual_machine;
+pub use virtual_machine::*;
+
 pub mod prelude {
     pub use crate::{
         account::*,
         block::*,
-        circuits::*,
-        dpc::*,
         errors::*,
         ledger::*,
-        program::*,
         record::*,
         traits::*,
         transaction::*,
         transition::*,
+        virtual_machine::*,
     };
 }

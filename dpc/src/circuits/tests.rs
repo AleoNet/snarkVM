@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToMinimalBits;
@@ -27,60 +27,65 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10);
-    let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
+    let request = Request::new_coinbase(recipient.address(), amount, &mut rng).unwrap();
+    let response = ResponseBuilder::new()
+        .add_request(request.clone())
+        .add_output(Output::new(recipient.address(), amount, Default::default(), None).unwrap())
         .build(&mut rng)
         .unwrap();
 
-    let authorization = DPC::<N>::authorize(&vec![], &state, &mut rng).unwrap();
-    let transaction_id = authorization.to_transaction_id().unwrap();
+    //////////////////////////////////////////////////////////////////////////
 
-    // Execute the program circuit.
-    let execution = state
-        .executable()
-        .execute(PublicVariables::new(transaction_id))
-        .unwrap();
+    // Fetch the block hash, local commitments root, and serial numbers.
+    let block_hash = request.block_hash();
+    let local_commitments_root = request.local_commitments_root();
+    let serial_numbers = request.to_serial_numbers().unwrap();
+    let program_id = request.to_program_id().unwrap();
 
-    // Compute the encrypted records.
-    let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
-        authorization.to_encrypted_records(&mut rng).unwrap();
+    // Fetch the commitments and ciphertexts.
+    let commitments = response.commitments();
+    let ciphertexts = response.ciphertexts().clone();
 
-    let TransactionAuthorization {
-        kernel,
-        input_records,
-        output_records,
-        signatures,
-    } = authorization;
+    // Compute the value balance.
+    let mut value_balance = AleoAmount::ZERO;
+    for record in request.records().iter().take(N::NUM_INPUT_RECORDS) {
+        value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
+    }
+    for record in response.records().iter().take(N::NUM_OUTPUT_RECORDS) {
+        value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
+    }
 
-    // Construct the ledger witnesses.
-    let ledger_proof = LedgerProof::<N>::default();
+    // Compute the transition ID.
+    let transition_id = Transition::compute_transition_id(
+        block_hash,
+        local_commitments_root,
+        &serial_numbers,
+        &commitments,
+        &ciphertexts,
+        value_balance,
+    )
+    .unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
+    // Compute the noop execution
+    let execution = Execution {
+        program_id: *N::noop_program_id(),
+        program_path: N::noop_program_path().clone(),
+        verifying_key: N::noop_circuit_verifying_key().clone(),
+        proof: Noop::<N>::new()
+            .execute(ProgramPublicVariables::new(transition_id))
+            .unwrap(),
+    };
+
     // Construct the inner circuit public and private variables.
-    let inner_public_variables = InnerPublicVariables::new(
-        transaction_id,
-        ledger_proof.block_hash(),
-        &encrypted_record_hashes,
-        Some(state.executable().program_id()),
-    )
-    .unwrap();
-    let inner_private_variables = InnerPrivateVariables::new(
-        &kernel,
-        input_records.clone(),
-        ledger_proof,
-        signatures,
-        output_records.clone(),
-        encrypted_record_randomizers,
-        state.executable(),
-    )
-    .unwrap();
+    let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
+    let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
-    let inner_circuit = InnerCircuit::new(inner_public_variables.clone(), inner_private_variables);
+    let inner_circuit = InnerCircuit::new(inner_public.clone(), inner_private);
     inner_circuit
         .generate_constraints(&mut inner_cs.ns(|| "Inner circuit"))
         .unwrap();
@@ -89,7 +94,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     if !inner_cs.is_satisfied() {
         println!("=========================================================");
-        println!("Outer circuit num constraints: {}", candidate_inner_num_constraints);
+        println!("Inner circuit num constraints: {}", candidate_inner_num_constraints);
         println!("Unsatisfied constraints:\n{}", inner_cs.which_is_unsatisfied().unwrap());
         println!("=========================================================");
     }
@@ -101,7 +106,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     assert!(inner_cs.is_satisfied());
 
-    // Generate inner snark parameters and proof for verification in the outer snark
+    // Generate inner circuit parameters and proof for verification in the outer circuit.
     let (inner_proving_key, inner_verifying_key) =
         <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(&mut rng)).unwrap();
 
@@ -113,21 +118,16 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, &mut rng).unwrap();
 
     // Verify that the inner circuit proof passes.
-    assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public_variables, &inner_proof).unwrap());
+    assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
 
     // Construct the outer circuit public and private variables.
-    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, inner_circuit_id);
-    let outer_private_variables = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
+    let outer_public = OuterPublicVariables::new(transition_id, inner_circuit_id);
+    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
 
-    execute_outer_circuit::<N, _>(
-        &mut outer_cs.ns(|| "Outer circuit"),
-        &outer_public_variables,
-        &outer_private_variables,
-    )
-    .unwrap();
+    execute_outer_circuit::<N, _>(&mut outer_cs.ns(|| "Outer circuit"), &outer_public, &outer_private).unwrap();
 
     let candidate_outer_num_constraints = outer_cs.num_constraints();
 
@@ -152,7 +152,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(223411, 161057);
+        dpc_execute_circuits_test::<Testnet1>(229690, 139151);
     }
 }
 
@@ -162,6 +162,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(223411, 253185);
+        dpc_execute_circuits_test::<Testnet2>(229690, 231487);
     }
 }

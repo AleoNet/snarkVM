@@ -24,12 +24,8 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct InnerPublicVariables<N: Network> {
-    /// Transaction ID
-    pub(super) transaction_id: N::TransactionID,
-    /// Ledger digest
-    pub(super) block_hash: N::BlockHash,
-    /// Output encrypted record hashes
-    pub(super) encrypted_record_ids: Vec<N::EncryptedRecordID>,
+    /// Transition ID
+    pub(super) transition_id: N::TransitionID,
 
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
@@ -38,39 +34,23 @@ pub struct InnerPublicVariables<N: Network> {
 }
 
 impl<N: Network> InnerPublicVariables<N> {
-    pub fn blank() -> Self {
+    pub(crate) fn blank() -> Self {
         Self {
-            transaction_id: Default::default(),
-            block_hash: Default::default(),
-            encrypted_record_ids: vec![N::EncryptedRecordID::default(); N::NUM_OUTPUT_RECORDS],
+            transition_id: Default::default(),
             program_id: Some(N::ProgramID::default()),
         }
     }
 
-    pub fn new(
-        transaction_id: N::TransactionID,
-        block_hash: N::BlockHash,
-        encrypted_record_ids: &Vec<N::EncryptedRecordID>,
-        program_id: Option<N::ProgramID>,
-    ) -> Result<Self> {
-        assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_record_ids.len());
-
-        Ok(Self {
-            transaction_id,
-            block_hash,
-            encrypted_record_ids: encrypted_record_ids.clone(),
+    pub(crate) fn new(transition_id: N::TransitionID, program_id: Option<N::ProgramID>) -> Self {
+        Self {
+            transition_id,
             program_id,
-        })
-    }
-
-    /// Returns the block hash.
-    pub fn block_hash(&self) -> N::BlockHash {
-        self.block_hash
+        }
     }
 
     /// Returns the transaction ID.
-    pub fn transaction_id(&self) -> N::TransactionID {
-        self.transaction_id
+    pub(crate) fn transition_id(&self) -> N::TransitionID {
+        self.transition_id
     }
 }
 
@@ -80,17 +60,12 @@ where
 {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-        v.extend_from_slice(&self.block_hash.to_field_elements()?);
-
-        for encrypted_record_id in self.encrypted_record_ids.iter().take(N::NUM_OUTPUT_RECORDS) {
-            v.extend_from_slice(&encrypted_record_id.to_field_elements()?);
-        }
 
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         }
 
-        v.extend_from_slice(&self.transaction_id.to_field_elements()?);
+        v.extend_from_slice(&self.transition_id.to_field_elements()?);
 
         Ok(v)
     }
