@@ -100,11 +100,8 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // Declare inner circuit public variables as inner circuit field elements
 
-    let program_id_fe = alloc_inner_snark_field_element::<N, _, _>(
-        cs,
-        &private.program_execution.program_id.to_bytes_le()?[..],
-        "program ID",
-    )?;
+    let program_id_fe =
+        alloc_inner_snark_field_element::<N, _, _>(cs, &private.execution.program_id.to_bytes_le()?[..], "program ID")?;
 
     let transition_id_fe_inner_snark =
         alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID inner snark")?;
@@ -158,7 +155,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         let program_circuit_verifying_key =
             <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
                 &mut cs.ns(|| "Allocate program circuit verifying key"),
-                || Ok(&private.program_execution.verifying_key),
+                || Ok(&private.execution.verifying_key),
             )?;
 
         // Check that the program ID is derived correctly.
@@ -174,7 +171,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
             let program_path_gadget = MerklePathGadget::<_, N::ProgramFunctionsTreeCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
-                || Ok(&private.program_execution.program_path),
+                || Ok(&private.execution.program_path),
             )?;
 
             let claimed_program_id = program_path_gadget.calculate_root(
@@ -186,7 +183,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             let given_program_id =
                 <N::ProgramFunctionsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
                     &mut cs.ns(|| "Given program ID"),
-                    || Ok(&private.program_execution.program_id),
+                    || Ok(&private.execution.program_id),
                 )?;
 
             claimed_program_id.enforce_equal(
@@ -205,7 +202,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&private.program_execution.proof),
+            || Ok(&private.execution.proof),
         )?;
 
         N::ProgramSNARKGadget::check_verify(

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToMinimalBits;
@@ -28,7 +28,11 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let recipient = Account::new(&mut rng).unwrap();
     let amount = AleoAmount::from_bytes(10);
     let request = Request::new_coinbase(recipient.address(), amount, &mut rng).unwrap();
-    let response = VirtualMachine::new(&request).unwrap().evaluate(&mut rng).unwrap();
+    let response = ResponseBuilder::new()
+        .add_request(request.clone())
+        .add_output(Output::new(recipient.address(), amount, Default::default(), None).unwrap())
+        .build(&mut rng)
+        .unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -39,7 +43,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let program_id = request.to_program_id().unwrap();
 
     // Fetch the commitments and ciphertexts.
-    let commitments = response.to_commitments();
+    let commitments = response.commitments();
     let ciphertexts = response.ciphertexts().clone();
 
     // Compute the value balance.

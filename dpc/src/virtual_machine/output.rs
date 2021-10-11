@@ -23,9 +23,13 @@ use std::convert::TryInto;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
 pub struct Output<N: Network> {
+    /// The address of the recipient.
     address: Address<N>,
+    /// The balance of the recipient.
     value: AleoAmount,
+    /// The program data of the recipient.
     payload: Payload,
+    /// The program that was run.
     program_id: N::ProgramID,
 }
 
@@ -101,61 +105,61 @@ impl<N: Network> Output<N> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::testnet2::*;
-
-    use rand::{thread_rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
-
-    const ITERATIONS: usize = 100;
-
-    #[test]
-    fn test_new_noop_and_to_record() {
-        for _ in 0..ITERATIONS {
-            // Sample a random seed for the RNG.
-            let seed: u64 = thread_rng().gen();
-
-            // Generate the given inputs.
-            let mut given_rng = ChaChaRng::seed_from_u64(seed);
-            let given_serial_numbers = {
-                let mut serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
-                for _ in 0..Testnet2::NUM_INPUT_RECORDS {
-                    let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
-                    serial_numbers.push(input.serial_number().clone());
-                }
-                serial_numbers
-            };
-
-            // Checkpoint the RNG and clone it.
-            let mut expected_rng = given_rng.clone();
-            let mut candidate_rng = given_rng.clone();
-
-            // Generate the expected output state.
-            let expected_record = {
-                let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
-                Record::new_noop_output(account.address, given_serial_numbers[0], &mut expected_rng).unwrap()
-            };
-
-            // Generate the candidate output state.
-            let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_program_id) = {
-                let output = Output::new_noop(&mut candidate_rng).unwrap();
-                let record = output.to_record(given_serial_numbers[0], &mut candidate_rng).unwrap();
-                (
-                    record,
-                    output.address(),
-                    output.value(),
-                    output.payload().clone(),
-                    output.program_id(),
-                )
-            };
-
-            assert_eq!(expected_record, candidate_record);
-            assert_eq!(expected_record.owner(), candidate_address);
-            assert_eq!(expected_record.value(), candidate_value.0 as u64);
-            assert_eq!(expected_record.payload(), &candidate_payload);
-            assert_eq!(expected_record.program_id(), candidate_program_id);
-        }
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::testnet2::*;
+//
+//     use rand::{thread_rng, SeedableRng};
+//     use rand_chacha::ChaChaRng;
+//
+//     const ITERATIONS: usize = 100;
+//
+//     #[test]
+//     fn test_new_noop_and_to_record() {
+//         for _ in 0..ITERATIONS {
+//             // Sample a random seed for the RNG.
+//             let seed: u64 = thread_rng().gen();
+//
+//             // Generate the given inputs.
+//             let mut given_rng = ChaChaRng::seed_from_u64(seed);
+//             let given_serial_numbers = {
+//                 let mut serial_numbers = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
+//                 for _ in 0..Testnet2::NUM_INPUT_RECORDS {
+//                     let input = Input::<Testnet2>::new_noop(&mut given_rng).unwrap();
+//                     serial_numbers.push(input.serial_number().clone());
+//                 }
+//                 serial_numbers
+//             };
+//
+//             // Checkpoint the RNG and clone it.
+//             let mut expected_rng = given_rng.clone();
+//             let mut candidate_rng = given_rng.clone();
+//
+//             // Generate the expected output state.
+//             let expected_record = {
+//                 let account = Account::<Testnet2>::new(&mut expected_rng).unwrap();
+//                 Record::new_noop_output(account.address, given_serial_numbers[0], &mut expected_rng).unwrap()
+//             };
+//
+//             // Generate the candidate output state.
+//             let (candidate_record, candidate_address, candidate_value, candidate_payload, candidate_program_id) = {
+//                 let output = Output::new_noop(&mut candidate_rng).unwrap();
+//                 let record = output.to_record(given_serial_numbers[0], &mut candidate_rng).unwrap();
+//                 (
+//                     record,
+//                     output.address(),
+//                     output.value(),
+//                     output.payload().clone(),
+//                     output.program_id(),
+//                 )
+//             };
+//
+//             assert_eq!(expected_record, candidate_record);
+//             assert_eq!(expected_record.owner(), candidate_address);
+//             assert_eq!(expected_record.value(), candidate_value.0 as u64);
+//             assert_eq!(expected_record.payload(), &candidate_payload);
+//             assert_eq!(expected_record.program_id(), candidate_program_id);
+//         }
+//     }
+// }

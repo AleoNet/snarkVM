@@ -14,7 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::*, Address, AleoAmount, LocalCommitments, Network, Request, Transition, ViewKey, VirtualMachine};
+use crate::{
+    record::*,
+    Address,
+    AleoAmount,
+    Event,
+    LocalCommitments,
+    Network,
+    Request,
+    Transition,
+    ViewKey,
+    VirtualMachine,
+};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
@@ -79,6 +90,12 @@ impl<N: Network> Transaction<N> {
         // Returns `false` if the network ID is incorrect.
         if self.network_id != N::NETWORK_ID {
             eprintln!("Transaction contains an incorrect network ID");
+            return false;
+        }
+
+        // Ensure the number of events is less than `N::NUM_EVENTS`.
+        if self.events().len() > N::NUM_EVENTS {
+            eprintln!("Transaction contains an invalid number of events");
             return false;
         }
 
@@ -225,6 +242,12 @@ impl<N: Network> Transaction<N> {
             .fold(AleoAmount::ZERO, |a, b| a.add(*b))
     }
 
+    /// Returns the events.
+    #[inline]
+    pub fn events(&self) -> Vec<Event<N>> {
+        self.transitions.iter().flat_map(Transition::events).cloned().collect()
+    }
+
     /// Returns a reference to the state transitions.
     #[inline]
     pub fn transitions(&self) -> &Vec<Transition<N>> {
@@ -319,12 +342,11 @@ impl<N: Network> fmt::Debug for Transaction<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{testnet2::Testnet2, Account, AccountScheme, Payload, PAYLOAD_SIZE};
+    use snarkvm_utilities::UniformRand;
+
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-
-    use snarkvm_utilities::{FromBytes, UniformRand};
-
-    use crate::{testnet2::Testnet2, Account, AccountScheme, AleoAmount, Payload, Record, ViewKey, PAYLOAD_SIZE};
 
     #[ignore]
     #[test]

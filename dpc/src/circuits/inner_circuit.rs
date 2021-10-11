@@ -366,7 +366,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             let mut signature_message = Vec::new();
             signature_message.extend_from_slice(&input_commitments_bytes);
-            // signature_message.extend_from_slice(&function_id);
             // signature_message.extend_from_slice(&inputs_digest);
             // signature_message.extend_from_slice(&fee);
 

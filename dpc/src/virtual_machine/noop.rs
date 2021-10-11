@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, FunctionType, Network, ProgramPublicVariables, Request, Response};
+use crate::{Function, FunctionType, Network, ProgramPublicVariables};
 use snarkvm_algorithms::SNARK;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -40,11 +40,6 @@ impl<N: Network> Function<N> for Noop<N> {
     /// Returns the circuit type.
     fn function_type(&self) -> FunctionType {
         FunctionType::Noop
-    }
-
-    /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, _request: &Request<N>) -> Result<Response<N>> {
-        Ok(Response::new_noop(&mut rand::thread_rng())?)
     }
 
     /// Synthesizes the circuit inside the given constraint system.

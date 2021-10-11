@@ -259,7 +259,7 @@ where
         let given_public_key_commitment =
             TE::BaseField::from_bytes_le(&ciphertext[per_field_element_bytes..2 * per_field_element_bytes])?;
         if given_public_key_commitment != public_key_commitment {
-            return Err(EncryptionError::MismatchedPublicKey);
+            return Err(EncryptionError::MismatchingAddress);
         }
 
         // Compute the number of sponge elements needed.

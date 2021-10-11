@@ -14,161 +14,199 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
-// use snarkvm_algorithms::prelude::*;
+use crate::{circuits::*, prelude::*};
+use snarkvm_algorithms::prelude::*;
 
 use anyhow::Result;
-use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::collections::HashMap;
 
 pub struct VirtualMachine<N: Network> {
-    /// The request.
-    request: Request<N>,
     /// The caller of the request.
     caller: Address<N>,
-    /// The outputs balances.
-    balances: HashMap<Address<N>, u64>,
     /// The program ID.
     program_id: N::ProgramID,
+    /// The outputs balances.
+    balances: HashMap<Address<N>, AleoAmount>,
+    /// The request.
+    request: Request<N>,
     /// The local commitments tree.
     local_commitments: LocalCommitments<N>,
 }
 
 impl<N: Network> VirtualMachine<N> {
+    /// Initializes a new instance of the virtual machine, with the given request.
     pub fn new(request: &Request<N>) -> Result<Self> {
         // Determine the caller.
-        let caller = request.to_caller()?;
+        let caller = request.caller()?;
 
         // Compute the starting balance of the caller.
-        let caller_balance = request
-            .to_balance()
-            .checked_sub(request.fee())
-            .ok_or(VMError::BalanceInsufficient)?;
-
-        // Initialize the balances.
-        let balances = [(caller, caller_balance)].iter().cloned().collect();
+        let caller_balance = request.to_balance().sub(request.fee());
+        if caller_balance.is_negative() {
+            return Err(VMError::BalanceInsufficient.into());
+        }
 
         // Determine the program ID.
         let program_id = request.to_program_id()?;
 
+        // Initialize the balances.
+        let balances = [(caller, caller_balance)].iter().cloned().collect();
+
         Ok(Self {
-            request: request.clone(),
             caller,
-            balances,
             program_id,
+            balances,
+            request: request.clone(),
             local_commitments: LocalCommitments::new()?,
         })
     }
 
-    #[cfg(test)]
-    pub fn evaluate<R: Rng + CryptoRng>(mut self, rng: &mut R) -> Result<Response<N>> {
+    /// Executes the request, returning a transaction.
+    pub fn execute<R: Rng + CryptoRng>(self, rng: &mut R) -> Result<Transaction<N>> {
         // Compute the operation.
         let operation = self.request.operation().clone();
-        match operation {
-            Operation::Noop => (),
-            Operation::Coinbase(recipient, amount) => self.coinbase(recipient, amount.0 as u64)?,
-            Operation::Transfer(recipient, amount) => self.transfer(recipient, amount.0 as u64)?,
-            Operation::Execute(..) => unimplemented!(),
-        }
+        let response = match operation {
+            Operation::Noop => Self::noop(&self.request, rng)?,
+            Operation::Coinbase(recipient, amount) => Self::coinbase(&self.request, recipient, amount, rng)?,
+            Operation::Transfer(recipient, amount) => Self::transfer(&self.request, recipient, amount, rng)?,
+            Operation::Execute(..) => self.build(rng)?,
+        };
 
-        self.build(rng)
-    }
+        let request = self.request;
+        let program_id = request.to_program_id()?;
+        let transition_id = response.transition_id();
+        let execution = response.execution().clone();
 
-    pub fn execute<R: Rng + CryptoRng>(mut self, rng: &mut R) -> Result<Transaction<N>> {
-        // Compute the operation.
-        let operation = self.request.operation().clone();
-        match operation {
-            Operation::Noop => (),
-            Operation::Coinbase(recipient, amount) => self.coinbase(recipient, amount.0 as u64)?,
-            Operation::Transfer(recipient, amount) => self.transfer(recipient, amount.0 as u64)?,
-            Operation::Execute(..) => unimplemented!(),
-        }
+        // Compute the inner circuit proof, and verify that the inner proof passes.
+        let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
+        let inner_private = InnerPrivateVariables::new(&request, &response)?;
+        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
+        let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
-        // Compute the transition.
-        let response = self.build(rng)?;
-        let transition = Transition::<N>::from(&self.request, &response, rng)?;
+        assert!(N::InnerSNARK::verify(
+            N::inner_verifying_key(),
+            &inner_public,
+            &inner_proof
+        )?);
+
+        // Construct the outer circuit public and private variables.
+        let outer_public = OuterPublicVariables::new(transition_id, *N::inner_circuit_id());
+        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
+        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
+        let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
+
+        assert!(N::OuterSNARK::verify(
+            N::outer_verifying_key(),
+            &outer_public,
+            &outer_proof
+        )?);
+
+        let transition = Transition::<N>::from(&request, &response, outer_proof)?;
 
         Transaction::from(N::NETWORK_ID, *N::inner_circuit_id(), vec![transition])
     }
 
+    /// Performs a noop transition.
+    fn noop<R: Rng + CryptoRng>(request: &Request<N>, rng: &mut R) -> Result<Response<N>> {
+        ResponseBuilder::new().add_request(request.clone()).build(rng)
+    }
+
     /// Generates the given `amount` to `recipient`.
-    fn coinbase(&mut self, recipient: Address<N>, amount: u64) -> Result<()> {
-        let mut balances = self.balances.clone();
-
-        // Increment the balance of the recipient.
-        match balances.get_mut(&recipient) {
-            Some(balance) => *balance = balance.checked_add(amount).ok_or(VMError::BalanceOverflow)?,
-            None => {
-                if balances.insert(recipient, amount).is_some() {
-                    return Err(VMError::BalanceOverwritten.into());
-                }
-            }
-        }
-
-        self.balances = balances;
-
-        Ok(())
+    fn coinbase<R: Rng + CryptoRng>(
+        request: &Request<N>,
+        recipient: Address<N>,
+        amount: AleoAmount,
+        rng: &mut R,
+    ) -> Result<Response<N>> {
+        ResponseBuilder::new()
+            .add_request(request.clone())
+            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .build(rng)
     }
 
     /// Transfers the given `amount` from `caller` to `recipient`.
-    fn transfer(&mut self, recipient: Address<N>, amount: u64) -> Result<()> {
-        let mut balances = self.balances.clone();
+    fn transfer<R: Rng + CryptoRng>(
+        request: &Request<N>,
+        recipient: Address<N>,
+        amount: AleoAmount,
+        rng: &mut R,
+    ) -> Result<Response<N>> {
+        // Fetch the caller.
+        let caller = request.caller()?;
 
-        // Decrement the balance of the caller.
-        match balances.get_mut(&self.caller) {
-            Some(balance) => *balance = balance.checked_sub(amount).ok_or(VMError::BalanceInsufficient)?,
-            None => return Err(VMError::MissingCaller(self.caller.to_string()).into()),
+        // Compute the starting balance of the caller.
+        let starting_balance = request.to_balance().sub(request.fee());
+        if starting_balance.is_negative() {
+            return Err(VMError::BalanceInsufficient.into());
         }
 
-        // Increment the balance of the recipient.
-        match balances.get_mut(&recipient) {
-            Some(balance) => *balance = balance.checked_add(amount).ok_or(VMError::BalanceOverflow)?,
-            None => {
-                if balances.insert(recipient, amount).is_some() {
-                    return Err(VMError::BalanceOverwritten.into());
-                }
-            }
+        // Compute the final balance of the caller.
+        let caller_balance = starting_balance.sub(amount);
+        if caller_balance.is_negative() {
+            return Err(VMError::BalanceInsufficient.into());
         }
 
-        self.balances = balances;
-
-        Ok(())
+        ResponseBuilder::new()
+            .add_request(request.clone())
+            .add_output(Output::new(caller, caller_balance, Default::default(), None)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .build(rng)
     }
 
     /// Returns a response based on the current state of the virtual machine.
     fn build<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Response<N>> {
-        assert_eq!(
-            self.balances.len(),
-            N::NUM_OUTPUT_RECORDS,
-            "For now, only 2 outputs are support, this will change"
-        );
-
-        let serial_numbers = self.request.to_serial_numbers()?;
-
-        let mut records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        for (i, ((owner, balance), serial_number)) in self
-            .balances
-            .iter()
-            .zip_eq(serial_numbers.iter())
-            .take(N::NUM_OUTPUT_RECORDS)
-            .enumerate()
-        {
-            let program_id = match i < self.request.function_type().output_count() as usize {
-                true => self.program_id,
-                false => *N::noop_program_id(),
-            };
-
-            records.push(Record::new_output(
-                *owner,
-                *balance,
-                Default::default(),
-                program_id,
-                *serial_number,
-                rng,
-            )?);
-        }
-
-        Response::new(records, rng)
+        // assert_eq!(
+        //     self.balances.len(),
+        //     N::NUM_OUTPUT_RECORDS,
+        //     "For now, only 2 outputs are support, this will change"
+        // );
+        //
+        // // let mut balances = self.balances.clone();
+        // //
+        // // // Decrement the balance of the caller.
+        // // match balances.get_mut(&self.caller) {
+        // //     Some(balance) => *balance = balance.checked_sub(amount).ok_or(VMError::BalanceInsufficient)?,
+        // //     None => return Err(VMError::MissingCaller(self.caller.to_string()).into()),
+        // // }
+        // //
+        // // // Increment the balance of the recipient.
+        // // match balances.get_mut(&recipient) {
+        // //     Some(balance) => *balance = balance.checked_add(amount).ok_or(VMError::BalanceOverflow)?,
+        // //     None => {
+        // //         if balances.insert(recipient, amount).is_some() {
+        // //             return Err(VMError::BalanceOverwritten.into());
+        // //         }
+        // //     }
+        // // }
+        // //
+        // // self.balances = balances;
+        //
+        // let serial_numbers = self.request.to_serial_numbers()?;
+        //
+        // let mut records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        // for (i, ((owner, balance), serial_number)) in self
+        //     .balances
+        //     .iter()
+        //     .zip_eq(serial_numbers.iter())
+        //     .take(N::NUM_OUTPUT_RECORDS)
+        //     .enumerate()
+        // {
+        //     let program_id = match i < self.request.function_type().output_count() as usize {
+        //         true => self.program_id,
+        //         false => *N::noop_program_id(),
+        //     };
+        //
+        //     records.push(Record::new_output(
+        //         *owner,
+        //         *balance,
+        //         Default::default(),
+        //         program_id,
+        //         *serial_number,
+        //         rng,
+        //     )?);
+        // }
+        //
+        // Response::new(records, vec![], rng)
+        unimplemented!()
     }
 }

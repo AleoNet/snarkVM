@@ -14,24 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256::sha256;
+pub mod request;
+pub use request::*;
 
-use std::{
-    fs::{
-        File,
-        {self},
-    },
-    io::{BufWriter, Result as IoResult, Write},
-    path::PathBuf,
-};
+pub mod response;
+pub use response::*;
 
-pub fn store(file_path: &PathBuf, checksum_path: &PathBuf, bytes: &[u8]) -> IoResult<()> {
-    // Save checksum to file
-    fs::write(checksum_path, hex::encode(sha256(bytes)))?;
-
-    // Save buffer to file
-    let mut file = BufWriter::new(File::create(file_path)?);
-    file.write_all(&bytes)?;
-    drop(file);
-    Ok(())
-}
+pub(crate) mod transition;
+pub(crate) use transition::*;

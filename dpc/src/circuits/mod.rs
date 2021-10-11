@@ -14,38 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod amount;
-pub use amount::*;
+pub mod inner_circuit;
+pub use inner_circuit::*;
 
-pub mod builder;
-pub use builder::*;
+pub(crate) mod inner_private_variables;
+pub(crate) use inner_private_variables::*;
 
-pub mod event;
-pub use event::*;
+pub(crate) mod inner_public_variables;
+pub(crate) use inner_public_variables::*;
 
-pub mod execution;
-pub use execution::*;
+pub mod outer_circuit;
+pub use outer_circuit::*;
 
-pub mod function_inputs;
-pub use function_inputs::*;
+pub(crate) mod outer_private_variables;
+pub(crate) use outer_private_variables::*;
 
-pub mod function_type;
-pub use function_type::*;
+pub(crate) mod outer_public_variables;
+pub(crate) use outer_public_variables::*;
 
-pub mod noop;
-pub use noop::*;
-
-pub mod operation;
-pub use operation::*;
-
-pub mod output;
-pub use output::*;
-
-pub mod program;
-pub use program::*;
-
-pub mod program_public_variables;
-pub use program_public_variables::*;
-
-pub mod virtual_machine;
-pub use virtual_machine::*;
+#[cfg(test)]
+mod tests;

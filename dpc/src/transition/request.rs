@@ -49,7 +49,7 @@ pub struct Request<N: Network> {
     /// The operation being performed.
     operation: Operation<N>,
     /// The network fee being paid.
-    fee: u64,
+    fee: AleoAmount,
     /// The signature for the request.
     signature: N::AccountSignature,
 }
@@ -59,7 +59,14 @@ impl<N: Network> Request<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
-        Self::new(&burner, vec![], LedgerProof::new_genesis()?, operation, 0, rng)
+        Self::new(
+            &burner,
+            vec![],
+            LedgerProof::new_genesis()?,
+            operation,
+            AleoAmount::ZERO,
+            rng,
+        )
     }
 
     /// Initializes a new transfer request.
@@ -69,14 +76,15 @@ impl<N: Network> Request<N> {
         ledger_proof: LedgerProof<N>,
         recipient: Address<N>,
         amount: AleoAmount,
+        fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
         let operation = Operation::Transfer(recipient, amount);
-        Self::new(caller, records, ledger_proof, operation, 0, rng)
+        Self::new(caller, records, ledger_proof, operation, fee, rng)
     }
 
     /// Returns a new instance of a noop request.
-    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(ledger_proof: LedgerProof<N>, rng: &mut R) -> Result<Self> {
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = Address::from_private_key(&noop_private_key)?;
@@ -90,9 +98,9 @@ impl<N: Network> Request<N> {
         Self::new(
             &noop_private_key,
             records,
-            LedgerProof::new_genesis()?,
+            ledger_proof,
             Operation::Noop,
-            0,
+            AleoAmount::ZERO,
             rng,
         )
     }
@@ -103,7 +111,7 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proof: LedgerProof<N>,
         operation: Operation<N>,
-        fee: u64,
+        fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
         let caller_address = Address::from_private_key(caller)?;
@@ -123,9 +131,8 @@ impl<N: Network> Request<N> {
             commitments.push(record.commitment());
         }
 
-        let function_id = operation.function_id();
         let operation_id = operation.to_operation_id()?;
-        let message = to_bytes_le![commitments /*function_id, operation_id, fee*/]?;
+        let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
         Self::from(records, ledger_proof, LocalProof::default(), operation, fee, signature)
@@ -137,7 +144,7 @@ impl<N: Network> Request<N> {
         ledger_proof: LedgerProof<N>,
         local_proof: LocalProof<N>,
         operation: Operation<N>,
-        fee: u64,
+        fee: AleoAmount,
         signature: N::AccountSignature,
     ) -> Result<Self> {
         let request = Self {
@@ -180,7 +187,7 @@ impl<N: Network> Request<N> {
 
         // Ensure the records contains a total value that is at least the fee amount.
         let balance: u64 = self.records.iter().map(|record| record.value()).sum();
-        if balance < self.fee {
+        if AleoAmount(balance as i64) < self.fee {
             eprintln!("Request records do not contain sufficient value for fee");
             return false;
         }
@@ -220,7 +227,7 @@ impl<N: Network> Request<N> {
                 return false;
             }
         };
-        let message = match to_bytes_le![commitments /*self.function_id(), operation_id, self.fee*/] {
+        let message = match to_bytes_le![commitments /*operation_id, self.fee*/] {
             Ok(signature_message) => signature_message,
             Err(error) => {
                 eprintln!("Failed to construct request signature message: {}", error);
@@ -284,7 +291,7 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the fee.
-    pub fn fee(&self) -> u64 {
+    pub fn fee(&self) -> AleoAmount {
         self.fee
     }
 
@@ -294,8 +301,8 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the caller of the request.
-    pub fn to_caller(&self) -> Result<Address<N>> {
-        let owners: HashSet<Address<N>> = self.records.iter().map(|record| record.owner()).collect();
+    pub fn caller(&self) -> Result<Address<N>> {
+        let owners: HashSet<Address<N>> = self.records.iter().map(Record::owner).collect();
         match owners.len() == 1 {
             true => owners
                 .into_iter()
@@ -306,8 +313,8 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the balance of the caller.
-    pub fn to_balance(&self) -> u64 {
-        self.records.iter().map(|record| record.value()).sum()
+    pub fn to_balance(&self) -> AleoAmount {
+        AleoAmount(self.records.iter().map(|record| record.value()).sum::<u64>() as i64)
     }
 
     /// Returns the program ID.
@@ -375,51 +382,3 @@ impl<N: Network> fmt::Display for Request<N> {
         write!(f, "{:?}", self)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::{testnet2::*, traits::account::AccountScheme, Account};
-//
-//     use rand::{thread_rng, SeedableRng};
-//     use rand_chacha::ChaChaRng;
-//
-//     const ITERATIONS: usize = 100;
-//
-//     #[test]
-//     fn test_new_noop() {
-//         for _ in 0..ITERATIONS {
-//             // Sample a random seed for the RNG.
-//             let seed: u64 = thread_rng().gen();
-//
-//             // Generate the expected request state.
-//             let (expected_record, expected_serial_number, expected_program_id) = {
-//                 let rng = &mut ChaChaRng::seed_from_u64(seed);
-//
-//                 let account = Account::new(rng).unwrap();
-//                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
-//                 let serial_number = input_record
-//                     .to_serial_number(&account.private_key().to_compute_key().unwrap())
-//                     .unwrap();
-//                 let program_id = input_record.program_id();
-//
-//                 (input_record, serial_number, program_id)
-//             };
-//
-//             // Generate the candidate request state.
-//             let (candidate_record, candidate_serial_number, candidate_program_id) = {
-//                 let rng = &mut ChaChaRng::seed_from_u64(seed);
-//                 let input = Request::<Testnet2>::new_noop(rng).unwrap();
-//                 (
-//                     input.record().clone(),
-//                     input.serial_number().clone(),
-//                     input.program_id().clone(),
-//                 )
-//             };
-//
-//             assert_eq!(expected_record, candidate_record);
-//             assert_eq!(expected_serial_number, candidate_serial_number);
-//             assert_eq!(expected_program_id, candidate_program_id);
-//         }
-//     }
-// }

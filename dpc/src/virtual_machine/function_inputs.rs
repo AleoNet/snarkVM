@@ -28,7 +28,8 @@ use std::{
     Copy(bound = "N: Network"),
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
-    Default(bound = "N: Network")
+    Default(bound = "N: Network"),
+    PartialEq(bound = "N: Network")
 )]
 pub struct FunctionInputs<N: Network> {
     _unused: PhantomData<N>,

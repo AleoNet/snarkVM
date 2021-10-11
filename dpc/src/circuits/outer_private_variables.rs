@@ -22,31 +22,31 @@ use snarkvm_algorithms::traits::SNARK;
 pub struct OuterPrivateVariables<N: Network> {
     pub(super) inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
     pub(super) inner_proof: <N::InnerSNARK as SNARK>::Proof,
-    pub(super) program_execution: Execution<N>,
+    pub(super) execution: Execution<N>,
 }
 
 impl<N: Network> OuterPrivateVariables<N> {
-    pub fn blank(
+    pub(crate) fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_proof: <N::InnerSNARK as SNARK>::Proof,
-        program_execution: Execution<N>,
+        execution: Execution<N>,
     ) -> Self {
         Self {
             inner_verifying_key,
             inner_proof,
-            program_execution,
+            execution,
         }
     }
 
-    pub fn new(
+    pub(crate) fn new(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
         inner_proof: <N::InnerSNARK as SNARK>::Proof,
-        program_execution: Execution<N>,
+        execution: Execution<N>,
     ) -> Self {
         Self {
             inner_verifying_key,
             inner_proof,
-            program_execution,
+            execution,
         }
     }
 }

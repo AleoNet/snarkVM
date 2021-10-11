@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FunctionType {
     Noop,
     Add,
     Update,
     Remove,
+    DoubleAdd,
+    DoubleRemove,
     Join,
     Split,
     Full,
@@ -32,6 +34,8 @@ impl FunctionType {
             Self::Add => 0,
             Self::Update => 1,
             Self::Remove => 1,
+            Self::DoubleAdd => 0,
+            Self::DoubleRemove => 2,
             Self::Join => 2,
             Self::Split => 1,
             Self::Full => 2,
@@ -44,6 +48,8 @@ impl FunctionType {
             Self::Add => 1,
             Self::Update => 1,
             Self::Remove => 0,
+            Self::DoubleAdd => 2,
+            Self::DoubleRemove => 2,
             Self::Join => 1,
             Self::Split => 2,
             Self::Full => 2,

@@ -23,7 +23,12 @@ use anyhow::Result;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derivative(
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
+)]
 pub enum Operation<N: Network> {
     /// Noop.
     Noop,

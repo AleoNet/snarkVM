@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, Network, ProgramPublicVariables, Request, Response};
+use crate::{FunctionType, Network, ProgramPublicVariables};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use anyhow::Result;
@@ -25,9 +25,6 @@ pub trait Function<N: Network>: Send + Sync {
 
     /// Returns the circuit type.
     fn function_type(&self) -> FunctionType;
-
-    /// Performs a native evaluation of the function for a given request.
-    fn evaluate(&self, request: &Request<N>) -> Result<Response<N>>;
 
     /// Executes the function, returning an proof.
     fn execute(&self, public: ProgramPublicVariables<N>) -> Result<N::ProgramProof>;
