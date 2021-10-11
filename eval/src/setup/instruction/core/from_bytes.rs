@@ -41,7 +41,7 @@ from_bytes_impl!(
     call_core_address_from_bytes_le,
     ADDRESS_FROM_BYTES_LE_CORE,
     "address_from_bytes_le",
-    8,
+    32,
     |_bytes: &[UInt8]| -> Result<ConstrainedValue<F, G>> {
         Err(anyhow!(
             "the type `address` does not implement the from_bytes_le method"
@@ -52,7 +52,7 @@ from_bytes_impl!(
     call_core_bool_from_bytes_le,
     BOOL_FROM_BYTES_LE_CORE,
     "bool_from_bytes_le",
-    8,
+    1,
     |_bytes: &[UInt8]| -> Result<ConstrainedValue<F, G>> {
         Err(anyhow!("the type `bool` does not implement the from_bytes_le method"))
     }
@@ -61,7 +61,7 @@ from_bytes_impl!(
     call_core_char_from_bytes_le,
     CHAR_FROM_BYTES_LE_CORE,
     "char_from_bytes_le",
-    8,
+    32,
     |_bytes: &[UInt8]| -> Result<ConstrainedValue<F, G>> {
         Err(anyhow!("the type `char` does not implement the from_bytes_le method"))
     }
@@ -70,7 +70,7 @@ from_bytes_impl!(
     call_core_field_from_bytes_le,
     FIELD_FROM_BYTES_LE_CORE,
     "field_from_bytes_le",
-    8,
+    32,
     |_bytes: &[UInt8]| -> Result<ConstrainedValue<F, G>> {
         Err(anyhow!("the type `field` does not implement the from_bytes_le method"))
     }
@@ -79,7 +79,7 @@ from_bytes_impl!(
     call_core_group_from_bytes_le,
     GROUP_FROM_BYTES_LE_CORE,
     "group_from_bytes_le",
-    8,
+    64,
     |_bytes: &[UInt8]| -> Result<ConstrainedValue<F, G>> {
         Err(anyhow!("the type `group` does not implement the from_bytes_le method"))
     }

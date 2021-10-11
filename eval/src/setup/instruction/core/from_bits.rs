@@ -50,7 +50,7 @@ from_bits_impl!(
     call_core_address_from_bits_le,
     ADDRESS_FROM_BITS_LE_CORE,
     "address_from_bits_le",
-    8,
+    256,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Address(Address::from_bits_le(bits, cs)?))
     }
@@ -59,7 +59,7 @@ from_bits_impl!(
     call_core_bool_from_bits_le,
     BOOL_FROM_BITS_LE_CORE,
     "bool_from_bits_le",
-    8,
+    1,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Boolean(Boolean::from_bits_le(bits, cs)?))
     }
@@ -68,7 +68,7 @@ from_bits_impl!(
     call_core_char_from_bits_le,
     CHAR_FROM_BITS_LE_CORE,
     "char_from_bits_le",
-    8,
+    253,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Char(Char::from_bits_le(bits, cs)?))
     }
@@ -77,7 +77,7 @@ from_bits_impl!(
     call_core_field_from_bits_le,
     FIELD_FROM_BITS_LE_CORE,
     "field_from_bits_le",
-    8,
+    253,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Field(FieldType::from_bits_le(bits, cs)?))
     }
@@ -86,7 +86,7 @@ from_bits_impl!(
     call_core_group_from_bits_le,
     GROUP_FROM_BITS_LE_CORE,
     "group_from_bits_le",
-    8,
+    506,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Group(G::from_bits_le(bits, cs)?))
     }
@@ -191,7 +191,7 @@ from_bits_impl!(
     call_core_address_from_bits_be,
     ADDRESS_FROM_BITS_BE_CORE,
     "address_from_bits_be",
-    8,
+    256,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Address(Address::from_bits_be(bits, cs)?))
     }
@@ -200,7 +200,7 @@ from_bits_impl!(
     call_core_bool_from_bits_be,
     BOOL_FROM_BITS_BE_CORE,
     "bool_from_bits_be",
-    8,
+    1,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Boolean(Boolean::from_bits_be(bits, cs)?))
     }
@@ -209,7 +209,7 @@ from_bits_impl!(
     call_core_char_from_bits_be,
     CHAR_FROM_BITS_BE_CORE,
     "char_from_bits_be",
-    8,
+    253,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Char(Char::from_bits_be(bits, cs)?))
     }
@@ -218,7 +218,7 @@ from_bits_impl!(
     call_core_field_from_bits_be,
     FIELD_FROM_BITS_BE_CORE,
     "field_from_bits_be",
-    8,
+    253,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Field(FieldType::from_bits_be(bits, cs)?))
     }
@@ -227,7 +227,7 @@ from_bits_impl!(
     call_core_group_from_bits_be,
     GROUP_FROM_BITS_BE_CORE,
     "group_from_bits_be",
-    8,
+    506,
     |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Group(G::from_bits_be(bits, cs)?))
     }
