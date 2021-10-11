@@ -486,8 +486,8 @@ impl FromBitsLEGadget<Fq> for EdwardsGroupType {
         let x_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
         let y_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
 
-        let x = FpGadget::from_bits_le(x_bits, cs.ns("x_coordinate"))?;
-        let y = FpGadget::from_bits_le(y_bits, cs.ns("y_coordinate"))?;
+        let x = FpGadget::from_bits_le(x_bits, cs.ns(|| "x_coordinate"))?;
+        let y = FpGadget::from_bits_le(y_bits, cs.ns(|| "y_coordinate"))?;
 
         Ok(EdwardsGroupType::Allocated(Box::new(EdwardsBls12Gadget::new(x, y))))
     }
@@ -510,8 +510,8 @@ impl FromBitsBEGadget<Fq> for EdwardsGroupType {
         let x_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
         let y_bits = iter.next().ok_or(SynthesisError::AssignmentMissing)?;
 
-        let x = FpGadget::from_bits_be(x_bits, cs.ns("x_coordinate"))?;
-        let y = FpGadget::from_bits_be(y_bits, cs.ns("y_coordinate"))?;
+        let x = FpGadget::from_bits_be(x_bits, cs.ns(|| "x_coordinate"))?;
+        let y = FpGadget::from_bits_be(y_bits, cs.ns(|| "y_coordinate"))?;
 
         Ok(EdwardsGroupType::Allocated(Box::new(EdwardsBls12Gadget::new(x, y))))
     }
