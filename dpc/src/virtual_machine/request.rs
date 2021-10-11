@@ -42,12 +42,12 @@ use std::{
 pub struct Request<N: Network> {
     /// The records being consumed.
     records: Vec<Record<N>>,
-    /// The operation being performed.
-    operation: Operation<N>,
     /// The inclusion proof of ledger-consumed records.
     ledger_proof: LedgerProof<N>,
     /// The inclusion proof of locally-consumed records.
     local_proof: LocalProof<N>,
+    /// The operation being performed.
+    operation: Operation<N>,
     /// The network fee being paid.
     fee: u64,
     /// The signature for the request.
@@ -59,27 +59,50 @@ impl<N: Network> Request<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
-        Self::new(&burner, vec![], operation, Default::default(), 0, rng)
+        Self::new(&burner, vec![], LedgerProof::new_genesis()?, operation, 0, rng)
     }
 
     /// Initializes a new transfer request.
     pub fn new_transfer<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
         records: Vec<Record<N>>,
+        ledger_proof: LedgerProof<N>,
         recipient: Address<N>,
         amount: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
         let operation = Operation::Transfer(recipient, amount);
-        Self::new(caller, records, operation, Default::default(), 0, rng)
+        Self::new(caller, records, ledger_proof, operation, 0, rng)
+    }
+
+    /// Returns a new instance of a noop request.
+    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+        // Sample a burner noop private key.
+        let noop_private_key = PrivateKey::new(rng);
+        let noop_address = Address::from_private_key(&noop_private_key)?;
+
+        // Construct the noop records.
+        let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            records.push(Record::new_noop_input(noop_address, rng)?);
+        }
+
+        Self::new(
+            &noop_private_key,
+            records,
+            LedgerProof::new_genesis()?,
+            Operation::Noop,
+            0,
+            rng,
+        )
     }
 
     /// Signs and returns a new instance of a request.
     pub fn new<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
         records: Vec<Record<N>>,
-        operation: Operation<N>,
         ledger_proof: LedgerProof<N>,
+        operation: Operation<N>,
         fee: u64,
         rng: &mut R,
     ) -> Result<Self> {
@@ -105,35 +128,15 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*function_id, operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, operation, ledger_proof, LocalProof::default(), fee, signature)
-    }
-
-    /// Returns a new instance of a noop request.
-    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
-        // Sample a burner noop private key.
-        let noop_private_key = PrivateKey::new(rng);
-        let noop_address = Address::from_private_key(&noop_private_key)?;
-
-        // Construct the noop records.
-        let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
-            records.push(Record::new_noop_input(noop_address, rng)?);
-        }
-
-        // Set the operation and fee.
-        let operation = Operation::Noop;
-        let ledger_proof = LedgerProof::default();
-        let fee = 0;
-
-        Self::new(&noop_private_key, records, operation, ledger_proof, fee, rng)
+        Self::from(records, ledger_proof, LocalProof::default(), operation, fee, signature)
     }
 
     /// Returns a new instance of a request.
     pub fn from(
         records: Vec<Record<N>>,
-        operation: Operation<N>,
         ledger_proof: LedgerProof<N>,
         local_proof: LocalProof<N>,
+        operation: Operation<N>,
         fee: u64,
         signature: N::AccountSignature,
     ) -> Result<Self> {
@@ -245,21 +248,6 @@ impl<N: Network> Request<N> {
         &self.records
     }
 
-    /// Returns the function ID.
-    pub fn function_id(&self) -> N::FunctionID {
-        self.operation.function_id()
-    }
-
-    /// Returns the function type.
-    pub fn function_type(&self) -> FunctionType {
-        self.operation.function_type()
-    }
-
-    /// Returns a reference to the operation.
-    pub fn operation(&self) -> &Operation<N> {
-        &self.operation
-    }
-
     /// Returns the block hash used to prove inclusion of ledger-consumed records.
     pub fn block_hash(&self) -> N::BlockHash {
         self.ledger_proof.block_hash()
@@ -278,6 +266,21 @@ impl<N: Network> Request<N> {
     /// Returns a reference to the local proof.
     pub fn local_proof(&self) -> &LocalProof<N> {
         &self.local_proof
+    }
+
+    /// Returns the function ID.
+    pub fn function_id(&self) -> N::FunctionID {
+        self.operation.function_id()
+    }
+
+    /// Returns the function type.
+    pub fn function_type(&self) -> FunctionType {
+        self.operation.function_type()
+    }
+
+    /// Returns a reference to the operation.
+    pub fn operation(&self) -> &Operation<N> {
+        &self.operation
     }
 
     /// Returns the fee.
@@ -342,14 +345,14 @@ impl<N: Network> FromBytes for Request<N> {
             records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let operation = FromBytes::read_le(&mut reader)?;
         let ledger_proof = FromBytes::read_le(&mut reader)?;
         let local_proof = FromBytes::read_le(&mut reader)?;
+        let operation = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
 
         Ok(
-            Self::from(records, operation, ledger_proof, local_proof, fee, signature)
+            Self::from(records, ledger_proof, local_proof, operation, fee, signature)
                 .expect("Failed to deserialize a request"),
         )
     }
@@ -359,9 +362,9 @@ impl<N: Network> ToBytes for Request<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.records.write_le(&mut writer)?;
-        self.operation.write_le(&mut writer)?;
         self.ledger_proof.write_le(&mut writer)?;
         self.local_proof.write_le(&mut writer)?;
+        self.operation.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)
     }
