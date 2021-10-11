@@ -22,7 +22,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use crate::{
-    bits::{Boolean, ToBytesGadget},
+    bits::{Boolean, ToBytesLEGadget},
     curves::templates::bls12::AffineGadget,
     fields::Fp2Gadget,
     integers::uint::UInt8,
@@ -49,20 +49,20 @@ pub struct G2PreparedGadget<P: Bls12Parameters> {
     pub ell_coeffs: Vec<LCoeff<P>>,
 }
 
-impl<P: Bls12Parameters> ToBytesGadget<P::Fp> for G2PreparedGadget<P> {
+impl<P: Bls12Parameters> ToBytesLEGadget<P::Fp> for G2PreparedGadget<P> {
     #[inline]
-    fn to_bytes<CS: ConstraintSystem<P::Fp>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le<CS: ConstraintSystem<P::Fp>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut bytes = Vec::new();
         for (i, coeffs) in self.ell_coeffs.iter().enumerate() {
             let mut cs = cs.ns(|| format!("Iteration {}", i));
-            bytes.extend_from_slice(&coeffs.0.to_bytes(&mut cs.ns(|| "c0"))?);
-            bytes.extend_from_slice(&coeffs.1.to_bytes(&mut cs.ns(|| "c1"))?);
+            bytes.extend_from_slice(&coeffs.0.to_bytes_le(&mut cs.ns(|| "c0"))?);
+            bytes.extend_from_slice(&coeffs.1.to_bytes_le(&mut cs.ns(|| "c1"))?);
         }
         Ok(bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<P::Fp>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_le_strict<CS: ConstraintSystem<P::Fp>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_le(cs)
     }
 }
 

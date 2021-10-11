@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    bits::{Boolean, ToBytesGadget},
+    bits::{Boolean, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
@@ -140,13 +140,13 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for Schno
 
 impl<G: Group, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.public_key.to_bytes(&mut cs.ns(|| "to_bytes"))
+impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesLEGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.public_key.to_bytes_le(&mut cs.ns(|| "to_bytes"))
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.public_key.to_bytes_strict(&mut cs.ns(|| "to_bytes_strict"))
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.public_key.to_bytes_le_strict(&mut cs.ns(|| "to_bytes_strict"))
     }
 }
 
@@ -241,32 +241,32 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> ConditionalEqGadget<F> for Schno
 
 impl<G: Group, F: Field, FG: FieldGadget<F, F>> EqGadget<F> for SchnorrSignatureGadget<G, F, FG> {}
 
-impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesGadget<F> for SchnorrSignatureGadget<G, F, FG> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesLEGadget<F> for SchnorrSignatureGadget<G, F, FG> {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut result = Vec::new();
 
         result.extend(
             self.prover_response
-                .to_bytes(&mut cs.ns(|| "prover_response_to_bytes"))?,
+                .to_bytes_le(&mut cs.ns(|| "prover_response_to_bytes"))?,
         );
         result.extend(
             self.verifier_challenge
-                .to_bytes(&mut cs.ns(|| "verifier_challenge_to_bytes"))?,
+                .to_bytes_le(&mut cs.ns(|| "verifier_challenge_to_bytes"))?,
         );
 
         Ok(result)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut result = Vec::new();
 
         result.extend(
             self.prover_response
-                .to_bytes_strict(&mut cs.ns(|| "prover_response_to_bytes_strict"))?,
+                .to_bytes_le_strict(&mut cs.ns(|| "prover_response_to_bytes_strict"))?,
         );
         result.extend(
             self.verifier_challenge
-                .to_bytes_strict(&mut cs.ns(|| "verifier_challenge_to_bytes_strict"))?,
+                .to_bytes_le_strict(&mut cs.ns(|| "verifier_challenge_to_bytes_strict"))?,
         );
 
         Ok(result)
@@ -298,7 +298,7 @@ impl<
         public_key: &Self::PublicKeyGadget,
         randomness: &[UInt8],
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let randomness = randomness.iter().flat_map(|b| b.to_bits_le_u8()).collect::<Vec<_>>();
+        let randomness = randomness.iter().flat_map(|b| b.u8_to_bits_le()).collect::<Vec<_>>();
         let mut rand_pk = public_key.public_key.clone();
         rand_pk.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
@@ -324,11 +324,11 @@ impl<
 
         let prover_response_bytes = signature
             .prover_response
-            .to_bytes(cs.ns(|| "prover_response_to_bytes"))?;
+            .to_bytes_le(cs.ns(|| "prover_response_to_bytes"))?;
 
         let prover_response_bits = prover_response_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect::<Vec<_>>();
         let verifier_challenge_bits = signature
             .verifier_challenge
@@ -364,7 +364,7 @@ impl<
 
         let salt_bytes = UInt8::alloc_vec(cs.ns(|| "alloc_salt"), &parameters.parameters.salt)?;
         let claimed_prover_commitment_bytes =
-            claimed_prover_commitment.to_bytes(cs.ns(|| "claimed_prover_commitment_to_bytes"))?;
+            claimed_prover_commitment.to_bytes_le(cs.ns(|| "claimed_prover_commitment_to_bytes"))?;
 
         // Construct the hash
 
@@ -376,10 +376,10 @@ impl<
 
         // Check that the hash bytes are equivalent to the Field gadget.
 
-        let hash_bytes = hash.to_bytes(cs.ns(|| "hash_to_bytes"))?;
+        let hash_bytes = hash.to_bytes_le(cs.ns(|| "hash_to_bytes"))?;
         let verifier_challenge_bytes = signature
             .verifier_challenge
-            .to_bytes(cs.ns(|| "verifier_challenge_to_bytes"))?;
+            .to_bytes_le(cs.ns(|| "verifier_challenge_to_bytes"))?;
 
         let total_bits = <G as Group>::ScalarField::size_in_bits();
         let mut expected_bits = Vec::with_capacity(total_bits);
@@ -388,9 +388,9 @@ impl<
         // Check all the bits up to the bit size of the Field gadget.
         for (i, (expected_byte, found_byte)) in verifier_challenge_bytes.iter().zip_eq(&hash_bytes).enumerate() {
             for (j, (expected_bit, found_bit)) in expected_byte
-                .to_bits_le_u8()
+                .u8_to_bits_le()
                 .iter()
-                .zip_eq(found_byte.to_bits_le_u8())
+                .zip_eq(found_byte.u8_to_bits_le())
                 .enumerate()
             {
                 if (i * 8 + j) < total_bits {

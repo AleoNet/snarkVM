@@ -26,7 +26,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
-    bits::ToBytesGadget,
+    bits::ToBytesLEGadget,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
@@ -319,7 +319,7 @@ where
     for input_bytes in inner_snark_input_bytes {
         let input_bits = input_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect::<Vec<_>>();
         inner_snark_input_bits.push(input_bits);
     }
@@ -363,7 +363,7 @@ where
     for input_bytes in program_input_bytes {
         let input_bits = input_bytes
             .iter()
-            .flat_map(|byte| byte.to_bits_le_u8())
+            .flat_map(|byte| byte.u8_to_bits_le())
             .collect::<Vec<_>>();
         if !input_bits.is_empty() {
             program_input_bits.push(input_bits);
@@ -402,7 +402,7 @@ where
         )?;
 
         let claimed_death_program_id_bytes =
-            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
+            claimed_death_program_id.to_bytes_le(&mut cs.ns(|| "Convert death program ID to bytes"))?;
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
@@ -464,7 +464,7 @@ where
         )?;
 
         let claimed_birth_program_id_bytes =
-            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
+            claimed_birth_program_id.to_bytes_le(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
 
         new_birth_program_ids.push(claimed_birth_program_id_bytes);
 
@@ -547,7 +547,7 @@ where
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
+    let inner_snark_vk_bytes = inner_snark_vk.to_bytes_le(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
 
     let given_inner_circuit_id =
         <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(

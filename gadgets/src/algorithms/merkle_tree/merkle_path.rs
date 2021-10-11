@@ -26,7 +26,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
+        ToBytesLEGadget,
     },
     traits::{
         algorithms::CRHGadget,
@@ -45,7 +45,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         cs: CS,
         parameters: &HG::ParametersGadget,
         root: &HG::OutputGadget,
-        leaf: impl ToBytesGadget<F>,
+        leaf: impl ToBytesLEGadget<F>,
     ) -> Result<(), SynthesisError> {
         self.conditionally_check_membership(cs, parameters, root, leaf, &Boolean::Constant(true))
     }
@@ -55,13 +55,13 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         mut cs: CS,
         parameters: &HG::ParametersGadget,
         root: &HG::OutputGadget,
-        leaf: impl ToBytesGadget<F>,
+        leaf: impl ToBytesLEGadget<F>,
         should_enforce: &Boolean,
     ) -> Result<(), SynthesisError> {
         assert_eq!(self.path.len(), P::DEPTH);
         // Check that the hash of the given leaf matches the leaf hash in the membership
         // proof.
-        let leaf_bits = leaf.to_bytes(&mut cs.ns(|| "leaf_to_bytes"))?;
+        let leaf_bits = leaf.to_bytes_le(&mut cs.ns(|| "leaf_to_bytes"))?;
         let leaf_hash = HG::check_evaluation_gadget(cs.ns(|| "check_evaluation_gadget"), parameters, leaf_bits)?;
 
         // Check if leaf is one of the bottom-most siblings.
@@ -118,8 +118,8 @@ where
     H: CRH,
     HG: CRHGadget<H, F>,
 {
-    let left_bytes = left_child.to_bytes(&mut cs.ns(|| "left_to_bytes"))?;
-    let right_bytes = right_child.to_bytes(&mut cs.ns(|| "right_to_bytes"))?;
+    let left_bytes = left_child.to_bytes_le(&mut cs.ns(|| "left_to_bytes"))?;
+    let right_bytes = right_child.to_bytes_le(&mut cs.ns(|| "right_to_bytes"))?;
     let mut bytes = left_bytes;
     bytes.extend_from_slice(&right_bytes);
 

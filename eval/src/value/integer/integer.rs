@@ -33,6 +33,7 @@ use snarkvm_gadgets::{
     Integer as IntegerGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
+    ToBytesLEGadget,
 };
 use snarkvm_ir::{Integer as IrInteger, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -132,7 +133,7 @@ impl Integer {
 
     // pub fn to_bits_le(&self) -> Vec<Boolean> {
     //     let integer = self;
-    //     match_integer!(integer => integer.to_bits_le_u8())
+    //     match_integer!(integer => integer.u8_to_bits_le())
     // }
 
     // pub fn is_allocated(&self) -> bool {
@@ -382,5 +383,17 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Integer {
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let a = self;
         match_integer!(a => a.to_bits_be_strict(cs))
+    }
+}
+
+impl<F: PrimeField> ToBytesLEGadget<F> for Integer {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let a = self;
+        match_integer!(a => a.to_bytes_le(cs))
+    }
+
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let a = self;
+        match_integer!(a => a.to_bytes_le_strict(cs))
     }
 }

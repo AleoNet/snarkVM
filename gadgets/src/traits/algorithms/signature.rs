@@ -19,7 +19,7 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::ToBytesGadget,
+    bits::ToBytesLEGadget,
     integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
     Boolean,
@@ -28,8 +28,8 @@ use crate::{
 
 pub trait SignaturePublicKeyRandomizationGadget<S: SignatureScheme, F: Field> {
     type ParametersGadget: AllocGadget<S::Parameters, F>;
-    type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
-    type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
+    type PublicKeyGadget: ToBytesLEGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
+    type SignatureGadget: ToBytesLEGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
     fn check_randomization_gadget<CS: ConstraintSystem<F>>(
         cs: CS,

@@ -28,7 +28,7 @@ use crate::{
         FromBitsLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
-        ToBytesGadget,
+        ToBytesLEGadget,
     },
     integers::uint::{UInt, UInt8},
     traits::{

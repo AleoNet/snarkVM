@@ -18,7 +18,7 @@ use core::borrow::Borrow;
 
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{bits::ToBytesGadget, fields::FpGadget, integers::uint::UInt8, traits::alloc::AllocGadget};
+use snarkvm_gadgets::{bits::ToBytesLEGadget, fields::FpGadget, integers::uint::UInt8, traits::alloc::AllocGadget};
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -220,31 +220,47 @@ impl<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-> ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+> ToBytesLEGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
-    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();
 
-        res.append(&mut self.domain_h_size_gadget.to_bytes(cs.ns(|| "domain_h_size_gadget"))?);
-        res.append(&mut self.domain_k_size_gadget.to_bytes(cs.ns(|| "domain_k_size_gadget"))?);
-        res.append(&mut self.verifier_key.to_bytes(cs.ns(|| "verifier_key"))?);
+        res.append(
+            &mut self
+                .domain_h_size_gadget
+                .to_bytes_le(cs.ns(|| "domain_h_size_gadget"))?,
+        );
+        res.append(
+            &mut self
+                .domain_k_size_gadget
+                .to_bytes_le(cs.ns(|| "domain_k_size_gadget"))?,
+        );
+        res.append(&mut self.verifier_key.to_bytes_le(cs.ns(|| "verifier_key"))?);
 
         for (i, comm) in self.index_comms.iter().enumerate() {
-            res.append(&mut comm.to_bytes(cs.ns(|| format!("commitment_{}", i)))?);
+            res.append(&mut comm.to_bytes_le(cs.ns(|| format!("commitment_{}", i)))?);
         }
 
         Ok(res)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();
 
-        res.append(&mut self.domain_h_size_gadget.to_bytes(cs.ns(|| "domain_h_size_gadget"))?);
-        res.append(&mut self.domain_k_size_gadget.to_bytes(cs.ns(|| "domain_k_size_gadget"))?);
-        res.append(&mut self.verifier_key.to_bytes(cs.ns(|| "verifier_key"))?);
+        res.append(
+            &mut self
+                .domain_h_size_gadget
+                .to_bytes_le(cs.ns(|| "domain_h_size_gadget"))?,
+        );
+        res.append(
+            &mut self
+                .domain_k_size_gadget
+                .to_bytes_le(cs.ns(|| "domain_k_size_gadget"))?,
+        );
+        res.append(&mut self.verifier_key.to_bytes_le(cs.ns(|| "verifier_key"))?);
 
         for (i, comm) in self.index_comms.iter().enumerate() {
-            res.append(&mut comm.to_bytes(cs.ns(|| format!("commitment_{}", i)))?);
+            res.append(&mut comm.to_bytes_le(cs.ns(|| format!("commitment_{}", i)))?);
         }
 
         Ok(res)

@@ -21,7 +21,7 @@ use std::{
 };
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     overhead,
@@ -654,10 +654,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesLEGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
-    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let bits = self.to_bits_le(cs)?;
 
         let bytes = bits
@@ -677,8 +677,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
         Ok(bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_le_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_le(cs)
     }
 }
 

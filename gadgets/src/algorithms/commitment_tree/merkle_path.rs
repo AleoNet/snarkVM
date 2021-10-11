@@ -26,7 +26,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
+        ToBytesLEGadget,
     },
     traits::{
         algorithms::{CRHGadget, CommitmentGadget},
@@ -80,8 +80,8 @@ impl<C: CommitmentScheme, H: CRH, CG: CommitmentGadget<C, F>, HG: CRHGadget<H, F
         leaf.conditional_enforce_equal(&mut cs.ns(|| "check_leaf_is_right"), &leaf, &should_enforce_right)?;
 
         // Check that the inner hash is valid
-        let left_leaf_bytes = left_leaf.to_bytes(&mut cs.ns(|| "left_leaf_to_bytes"))?;
-        let right_leaf_bytes = right_leaf.to_bytes(&mut cs.ns(|| "right_leaf_to_bytes"))?;
+        let left_leaf_bytes = left_leaf.to_bytes_le(&mut cs.ns(|| "left_leaf_to_bytes"))?;
+        let right_leaf_bytes = right_leaf.to_bytes_le(&mut cs.ns(|| "right_leaf_to_bytes"))?;
         let mut leaf_bytes = left_leaf_bytes;
         leaf_bytes.extend_from_slice(&right_leaf_bytes);
 
@@ -102,8 +102,8 @@ impl<C: CommitmentScheme, H: CRH, CG: CommitmentGadget<C, F>, HG: CRHGadget<H, F
         )?;
 
         // Check that the root is valid
-        let left_inner_hash_bytes = left_inner_hash.to_bytes(&mut cs.ns(|| "left_inner_hash_to_bytes"))?;
-        let right_inner_hash_bytes = right_inner_hash.to_bytes(&mut cs.ns(|| "right_inner_hash_to_bytes"))?;
+        let left_inner_hash_bytes = left_inner_hash.to_bytes_le(&mut cs.ns(|| "left_inner_hash_to_bytes"))?;
+        let right_inner_hash_bytes = right_inner_hash.to_bytes_le(&mut cs.ns(|| "right_inner_hash_to_bytes"))?;
         let mut inner_hash_bytes = left_inner_hash_bytes;
         inner_hash_bytes.extend_from_slice(&right_inner_hash_bytes);
 

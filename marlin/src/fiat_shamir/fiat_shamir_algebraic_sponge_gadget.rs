@@ -27,9 +27,9 @@ use snarkvm_gadgets::{
         NonNativeFieldVar,
     },
     overhead,
-    traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
+    traits::{alloc::AllocGadget, fields::FieldGadget},
 };
-use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 
 use crate::fiat_shamir::{
     traits::{AlgebraicSpongeVar, FiatShamirRngVar},
@@ -363,7 +363,7 @@ impl<
         let capacity = BaseField::size_in_bits() - 1;
         let mut bits = Vec::<Boolean>::new();
         for elem in elems.iter() {
-            let mut bits_le = elem.to_bits_le_u8(); // UInt8's to_bits is le, which is an exception in Zexe.
+            let mut bits_le = elem.u8_to_bits_le(); // UInt8's to_bits is le, which is an exception in Zexe.
             bits_le.reverse();
             bits.extend_from_slice(&bits_le);
         }
@@ -538,10 +538,13 @@ mod tests {
             .unwrap();
 
         let mut absorbed_rand_byte_elems_gadgets = Vec::<Vec<UInt8>>::new();
-        for absorbed_rand_byte_elem in absorbed_rand_byte_elems.iter() {
+        for (i, absorbed_rand_byte_elem) in absorbed_rand_byte_elems.iter().enumerate() {
             let mut byte_gadget = Vec::<UInt8>::new();
-            for byte in absorbed_rand_byte_elem.iter() {
-                byte_gadget.push(UInt8::constant(*byte));
+            for (j, byte) in absorbed_rand_byte_elem.iter().enumerate() {
+                let byte: Option<u8> = Into::into(*byte);
+                let alloc_byte = UInt8::alloc(&mut cs.ns(|| format!("byte_{}_{}", i, j)), || byte.get())
+                    .expect("failed to alloc byte");
+                byte_gadget.push(alloc_byte);
             }
             absorbed_rand_byte_elems_gadgets.push(byte_gadget);
         }

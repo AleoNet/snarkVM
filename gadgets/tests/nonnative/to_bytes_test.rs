@@ -17,7 +17,7 @@
 use snarkvm_curves::{bls12_377::Bls12_377, bw6_761::BW6_761, pairing_engine::PairingEngine};
 use snarkvm_fields::Zero;
 use snarkvm_gadgets::{
-    bits::{ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    bits::{ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     nonnative::NonNativeFieldVar,
     traits::alloc::AllocGadget,
 };
@@ -35,7 +35,7 @@ fn to_bytes_test() {
         .unwrap();
 
     let target_to_bytes: Vec<u8> = target_test_gadget
-        .to_bytes(cs)
+        .to_bytes_le(cs)
         .unwrap()
         .iter()
         .map(|v| v.value.unwrap())

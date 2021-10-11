@@ -21,7 +21,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBytesGadget},
+    bits::{Boolean, FromBitsLEGadget, ToBytesLEGadget},
     integers::uint::{UInt, UInt32, UInt8},
     traits::{
         algorithms::PRFGadget,
@@ -420,15 +420,15 @@ impl<F: PrimeField> CondSelectGadget<F> for Blake2sOutputGadget {
     }
 }
 
-impl<F: PrimeField> ToBytesGadget<F> for Blake2sOutputGadget {
+impl<F: PrimeField> ToBytesLEGadget<F> for Blake2sOutputGadget {
     #[inline]
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         Ok(self.0.clone())
     }
 
     #[inline]
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_le(cs)
     }
 }
 
@@ -475,14 +475,14 @@ impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
         // assert_eq!(input.len(), 32);
         let mut gadget_input = vec![];
         for byte in seed.iter().chain(input) {
-            gadget_input.extend_from_slice(&byte.to_bits_le_u8());
+            gadget_input.extend_from_slice(&byte.u8_to_bits_le());
         }
         let mut result = vec![];
         for (i, int) in blake2s_gadget(cs.ns(|| "blake2s_prf"), &gadget_input)?
             .into_iter()
             .enumerate()
         {
-            let chunk = int.to_bytes(&mut cs.ns(|| format!("to_bytes_{}", i)))?;
+            let chunk = int.u32_to_bytes_le(&mut cs.ns(|| format!("to_bytes_{}", i)))?;
             result.extend_from_slice(&chunk);
         }
         Ok(Blake2sOutputGadget(result))

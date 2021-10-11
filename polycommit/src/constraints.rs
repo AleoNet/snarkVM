@@ -20,7 +20,7 @@ use hashbrown::{HashMap, HashSet};
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
-    bits::{Boolean, ToBytesGadget},
+    bits::{Boolean, ToBytesLEGadget},
     fields::FpGadget,
     nonnative::NonNativeFieldVar,
     traits::alloc::AllocGadget,
@@ -157,14 +157,14 @@ pub struct PCCheckRandomDataVar<TargetField: PrimeField, BaseField: PrimeField> 
 /// verifier.
 pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF: PrimeField>: Clone {
     /// An allocated version of `PC::VerifierKey`.
-    type VerifierKeyVar: AllocGadget<PC::VerifierKey, ConstraintF> + Clone + ToBytesGadget<ConstraintF>;
+    type VerifierKeyVar: AllocGadget<PC::VerifierKey, ConstraintF> + Clone + ToBytesLEGadget<ConstraintF>;
     /// An allocated version of `PC::PreparedVerifierKey`.
     type PreparedVerifierKeyVar: AllocGadget<PC::PreparedVerifierKey, ConstraintF>
         + Clone
         + PrepareGadget<Self::VerifierKeyVar, ConstraintF>
         + Into<Self::VerifierKeyVar>;
     /// An allocated version of `PC::Commitment`.
-    type CommitmentVar: AllocGadget<PC::Commitment, ConstraintF> + Clone + ToBytesGadget<ConstraintF>;
+    type CommitmentVar: AllocGadget<PC::Commitment, ConstraintF> + Clone + ToBytesLEGadget<ConstraintF>;
     /// An allocated version of `PC::PreparedCommitment`.
     type PreparedCommitmentVar: AllocGadget<PC::PreparedCommitment, ConstraintF>
         + PrepareGadget<Self::CommitmentVar, ConstraintF>

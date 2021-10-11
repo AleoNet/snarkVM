@@ -19,7 +19,7 @@ use core::borrow::Borrow;
 use snarkvm_curves::{traits::AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
-    bits::ToBytesGadget,
+    bits::ToBytesLEGadget,
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -197,7 +197,7 @@ where
     }
 }
 
-impl<TargetCurve, BaseCurve, PG> ToBytesGadget<<BaseCurve as PairingEngine>::Fr>
+impl<TargetCurve, BaseCurve, PG> ToBytesLEGadget<<BaseCurve as PairingEngine>::Fr>
     for CommitmentVar<TargetCurve, BaseCurve, PG>
 where
     TargetCurve: PairingEngine,
@@ -206,24 +206,24 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn to_bytes<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+    fn to_bytes_le<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
         mut cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
         let zero_shifted_comm = PG::G1Gadget::zero(cs.ns(|| "zero"))?;
 
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.comm.to_bytes(cs.ns(|| "comm_to_bytes"))?);
+        bytes.extend_from_slice(&self.comm.to_bytes_le(cs.ns(|| "comm_to_bytes"))?);
 
         let shifted_comm = self.shifted_comm.clone().unwrap_or(zero_shifted_comm);
-        bytes.extend_from_slice(&shifted_comm.to_bytes(cs.ns(|| "shifted_comm_to_bytes"))?);
+        bytes.extend_from_slice(&shifted_comm.to_bytes_le(cs.ns(|| "shifted_comm_to_bytes"))?);
         Ok(bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+    fn to_bytes_le_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
         cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+        self.to_bytes_le(cs)
     }
 }

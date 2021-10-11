@@ -23,7 +23,7 @@ use snarkvm_curves::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, ToBytesGadget},
+    bits::{Boolean, ToBytesLEGadget},
     curves::templates::bls12::AffineGadget,
     fields::FpGadget,
     integers::uint::UInt8,
@@ -58,14 +58,14 @@ impl<P: Bls12Parameters> G1PreparedGadget<P> {
     }
 }
 
-impl<P: Bls12Parameters> ToBytesGadget<P::Fp> for G1PreparedGadget<P> {
+impl<P: Bls12Parameters> ToBytesLEGadget<P::Fp> for G1PreparedGadget<P> {
     #[inline]
-    fn to_bytes<CS: ConstraintSystem<P::Fp>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes(&mut cs.ns(|| "g_alpha to bytes"))
+    fn to_bytes_le<CS: ConstraintSystem<P::Fp>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_le(&mut cs.ns(|| "g_alpha to bytes"))
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<P::Fp>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_le_strict<CS: ConstraintSystem<P::Fp>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_le(cs)
     }
 }
 

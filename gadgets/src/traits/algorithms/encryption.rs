@@ -21,24 +21,24 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::ToBytesGadget,
+    bits::ToBytesLEGadget,
     traits::{alloc::AllocGadget, eq::EqGadget},
 };
 
 pub trait EncryptionGadget<E: EncryptionScheme, F: Field> {
     type ParametersGadget: AllocGadget<<E as EncryptionScheme>::Parameters, F> + Clone;
     type PrivateKeyGadget: AllocGadget<<E as EncryptionScheme>::PrivateKey, F>
-        + ToBytesGadget<F>
+        + ToBytesLEGadget<F>
         + Clone
         + Sized
         + Debug;
     type PublicKeyGadget: AllocGadget<<E as EncryptionScheme>::PublicKey, F>
         + EqGadget<F>
-        + ToBytesGadget<F>
+        + ToBytesLEGadget<F>
         + Clone
         + Sized
         + Debug;
-    type CiphertextGadget: AllocGadget<Vec<E::Text>, F> + ToBytesGadget<F> + EqGadget<F> + Clone + Sized + Debug;
+    type CiphertextGadget: AllocGadget<Vec<E::Text>, F> + ToBytesLEGadget<F> + EqGadget<F> + Clone + Sized + Debug;
     type PlaintextGadget: AllocGadget<Vec<E::Text>, F> + EqGadget<F> + Clone + Sized + Debug;
     type RandomnessGadget: AllocGadget<E::Randomness, F> + Clone + Sized + Debug;
     type BlindingExponentGadget: AllocGadget<Vec<E::BlindingExponent>, F> + Clone + Sized + Debug;

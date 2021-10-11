@@ -61,7 +61,7 @@ fn test_uint8_from_bits_to_bits() {
     let mut cs = TestConstraintSystem::<Fr>::new();
     let byte_val = 0b01110001;
     let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
-    let bits = byte.to_bits_le_u8();
+    let bits = byte.u8_to_bits_le();
     for (i, bit) in bits.iter().enumerate() {
         assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
     }
@@ -73,7 +73,7 @@ fn test_uint8_alloc_input_vec() {
     let byte_vals = (64u8..128u8).collect::<Vec<_>>();
     let bytes = UInt8::alloc_input_vec_le(cs.ns(|| "alloc value"), &byte_vals).unwrap();
     for (native_byte, gadget_byte) in byte_vals.into_iter().zip(bytes) {
-        let bits = gadget_byte.to_bits_le_u8();
+        let bits = gadget_byte.u8_to_bits_le();
         for (i, bit) in bits.iter().enumerate() {
             assert_eq!(bit.get_value().unwrap(), (native_byte >> i) & 1 == 1)
         }
@@ -98,7 +98,7 @@ fn test_uint8_from_bits() {
             }
         }
 
-        let expected_to_be_same = b.to_bits_le_u8();
+        let expected_to_be_same = b.u8_to_bits_le();
 
         for x in v.iter().zip(expected_to_be_same.iter()) {
             match x {

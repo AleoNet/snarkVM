@@ -35,7 +35,7 @@ use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, Projectiv
 use snarkvm_fields::{Field, One, PrimeField};
 use snarkvm_gadgets::{
     algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
-    bits::{Boolean, ToBitsLEGadget, ToBytesGadget},
+    bits::{Boolean, ToBitsLEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::{int::Int64, uint::UInt8},
     traits::{
@@ -474,7 +474,7 @@ where
 
             // Construct the account view key.
             let candidate_account_view_key = {
-                let mut account_view_key_input = pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?;
+                let mut account_view_key_input = pk_sig.to_bytes_le(&mut account_cs.ns(|| "pk_sig to_bytes"))?;
                 account_view_key_input.extend_from_slice(&sk_prf);
 
                 // This is the record decryption key.
@@ -510,10 +510,10 @@ where
                     )?;
 
                     let given_account_view_key_bytes =
-                        given_account_view_key.to_bytes(&mut account_cs.ns(|| "given_account_view_key to_bytes"))?;
+                        given_account_view_key.to_bytes_le(&mut account_cs.ns(|| "given_account_view_key to_bytes"))?;
 
                     let candidate_account_commitment_bytes = candidate_account_commitment
-                        .to_bytes(&mut account_cs.ns(|| "candidate_account_commitment to_bytes"))?;
+                        .to_bytes_le(&mut account_cs.ns(|| "candidate_account_commitment to_bytes"))?;
 
                     candidate_account_commitment_bytes.enforce_equal(
                         &mut account_cs.ns(|| "Check that candidate and given account view keys are equal"),
@@ -550,7 +550,8 @@ where
         let serial_number_nonce_bytes = {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
-            let serial_number_nonce_bytes = serial_number_nonce.to_bytes(&mut sn_cs.ns(|| "Convert nonce to bytes"))?;
+            let serial_number_nonce_bytes =
+                serial_number_nonce.to_bytes_le(&mut sn_cs.ns(|| "Convert nonce to bytes"))?;
 
             let prf_seed = sk_prf;
             let randomizer = PGadget::check_evaluation_gadget(
@@ -558,7 +559,7 @@ where
                 &prf_seed,
                 &serial_number_nonce_bytes,
             )?;
-            let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
+            let randomizer_bytes = randomizer.to_bytes_le(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
 
             let candidate_serial_number_gadget = AccountSignatureGadget::check_randomization_gadget(
                 &mut sn_cs.ns(|| "Compute serial number"),
@@ -579,7 +580,7 @@ where
 
             // Convert input serial numbers to bytes
             let bytes = candidate_serial_number_gadget
-                .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
+                .to_bytes_le(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
             old_serial_numbers_bytes_gadgets.extend_from_slice(&bytes);
 
             old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
@@ -602,8 +603,8 @@ where
             )?;
 
             let record_owner_bytes =
-                given_record_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
-            let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
+                given_record_owner.to_bytes_le(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
+            let is_dummy_bytes = given_is_dummy.to_bytes_le(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
             let mut commitment_input = Vec::new();
             commitment_input.extend_from_slice(&record_owner_bytes);
@@ -715,7 +716,7 @@ where
                 })?;
 
             let serial_number_nonce_bytes =
-                serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
+                serial_number_nonce.to_bytes_le(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
 
             (
                 given_record_owner,
@@ -777,8 +778,8 @@ where
             )?;
 
             let record_owner_bytes =
-                given_record_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
-            let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
+                given_record_owner.to_bytes_le(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
+            let is_dummy_bytes = given_is_dummy.to_bytes_le(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
             let mut commitment_input = Vec::new();
             commitment_input.extend_from_slice(&record_owner_bytes);
@@ -966,27 +967,27 @@ where
             // Feed in Field elements of the serialization and convert them to bits
 
             let given_serial_number_nonce_bytes = &record_field_elements_gadgets[0]
-                .to_bytes(&mut encryption_cs.ns(|| "given_serial_number_nonce_bytes"))?;
+                .to_bytes_le(&mut encryption_cs.ns(|| "given_serial_number_nonce_bytes"))?;
             let given_serial_number_nonce_bits = given_serial_number_nonce_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert given_serial_number_nonce_bytes to bits"))?;
 
             let given_commitment_randomness_bytes = &record_field_elements_gadgets[1]
-                .to_bytes(&mut encryption_cs.ns(|| "given_commitment_randomness_bytes"))?;
+                .to_bytes_le(&mut encryption_cs.ns(|| "given_commitment_randomness_bytes"))?;
             let given_commitment_randomness_bits = given_commitment_randomness_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert given_commitment_randomness_bytes to bits"))?;
 
-            let given_birth_program_id_bytes =
-                &record_field_elements_gadgets[2].to_bytes(&mut encryption_cs.ns(|| "given_birth_program_id_bytes"))?;
+            let given_birth_program_id_bytes = &record_field_elements_gadgets[2]
+                .to_bytes_le(&mut encryption_cs.ns(|| "given_birth_program_id_bytes"))?;
             let given_birth_program_id_bits = given_birth_program_id_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id_bytes to bits"))?;
 
-            let given_death_program_id_bytes =
-                &record_field_elements_gadgets[3].to_bytes(&mut encryption_cs.ns(|| "given_death_program_id_bytes"))?;
+            let given_death_program_id_bytes = &record_field_elements_gadgets[3]
+                .to_bytes_le(&mut encryption_cs.ns(|| "given_death_program_id_bytes"))?;
             let given_death_program_id_bits = given_death_program_id_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id_bytes to bits"))?;
 
             let given_program_id_remainder_bytes = &record_field_elements_gadgets[4]
-                .to_bytes(&mut encryption_cs.ns(|| "given_program_id_remainder_bytes"))?;
+                .to_bytes_le(&mut encryption_cs.ns(|| "given_program_id_remainder_bytes"))?;
             let given_program_id_remainder_bits = given_program_id_remainder_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert given_program_id_remainder_bytes to bits"))?;
 
@@ -1024,7 +1025,7 @@ where
                 .enumerate()
             {
                 let given_element_bytes =
-                    field_element.to_bytes(&mut encryption_cs.ns(|| format!("given_payload_bytes - {}", i)))?;
+                    field_element.to_bytes_le(&mut encryption_cs.ns(|| format!("given_payload_bytes - {}", i)))?;
                 let given_element_bits = given_element_bytes
                     .to_bits_le(&mut encryption_cs.ns(|| format!("Convert given_payload_bytes - {} to bits", i)))?;
 
@@ -1178,7 +1179,7 @@ where
             )?;
 
             let candidate_encrypted_record_bytes = candidate_encrypted_record_gadget
-                .to_bytes(encryption_cs.ns(|| format!("output record {} encrypted record bytes", j)))?;
+                .to_bytes_le(encryption_cs.ns(|| format!("output record {} encrypted record bytes", j)))?;
 
             let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
                 &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
@@ -1269,9 +1270,10 @@ where
         for i in 0..C::NUM_INPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
 
-            input_bytes.extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes(&mut cs.ns(|| "old_serial_number"))?);
+            input_bytes
+                .extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes_le(&mut cs.ns(|| "old_serial_number"))?);
             input_bytes.extend_from_slice(
-                &old_record_commitments_gadgets[i].to_bytes(&mut cs.ns(|| "old_record_commitment"))?,
+                &old_record_commitments_gadgets[i].to_bytes_le(&mut cs.ns(|| "old_record_commitment"))?,
             );
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
@@ -1289,7 +1291,7 @@ where
             )?;
 
             old_record_commitment_bytes
-                .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "old_record_local_data"))?);
+                .extend_from_slice(&commitment.to_bytes_le(&mut cs.ns(|| "old_record_local_data"))?);
 
             input_bytes.clear();
         }
@@ -1301,7 +1303,7 @@ where
             let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
 
             input_bytes
-                .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes(&mut cs.ns(|| "record_commitment"))?);
+                .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes_le(&mut cs.ns(|| "record_commitment"))?);
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
 
@@ -1318,7 +1320,7 @@ where
             )?;
 
             new_record_commitment_bytes
-                .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "new_record_local_data"))?);
+                .extend_from_slice(&commitment.to_bytes_le(&mut cs.ns(|| "new_record_local_data"))?);
 
             input_bytes.clear();
         }
@@ -1338,9 +1340,9 @@ where
 
         let mut inner_commitment_hash_bytes = Vec::new();
         inner_commitment_hash_bytes
-            .extend_from_slice(&inner1_commitment_hash.to_bytes(&mut cs.ns(|| "inner1_commitment_hash"))?);
+            .extend_from_slice(&inner1_commitment_hash.to_bytes_le(&mut cs.ns(|| "inner1_commitment_hash"))?);
         inner_commitment_hash_bytes
-            .extend_from_slice(&inner2_commitment_hash.to_bytes(&mut cs.ns(|| "inner2_commitment_hash"))?);
+            .extend_from_slice(&inner2_commitment_hash.to_bytes_le(&mut cs.ns(|| "inner2_commitment_hash"))?);
 
         let candidate_local_data_root = LocalDataCRHGadget::check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment root"),
