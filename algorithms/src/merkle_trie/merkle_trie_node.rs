@@ -45,7 +45,10 @@ impl<P: MerkleTrieParameters, T: ToBytes + PartialEq + Clone> MerkleTrieNode<P, 
                 child_roots.push(child.root());
             }
 
-            let root = parameters.hash_node(&self.full_key, &self.value, &child_roots)?;
+            let root = match self.full_key.is_some() && self.value.is_some() {
+                true => parameters.hash_leaf(&self.full_key, &self.value)?,
+                false => parameters.hash_node(&child_roots)?,
+            };
 
             // Update the new root.
             self.root = root;

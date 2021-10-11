@@ -38,11 +38,34 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
     fn crh(&self) -> &Self::H;
 
     /// Calculate the root hash of a given node with it's key, value, and children.
-    fn hash_node<L: ToBytes>(
+    fn hash_node(
+        &self,
+        child_roots: &Vec<&<Self::H as CRH>::Output>,
+    ) -> Result<<Self::H as CRH>::Output, MerkleTrieError> {
+        let mut input = vec![];
+
+        // Add the children roots to the hash input.
+        for child in child_roots {
+            let child_root_bytes = to_bytes_le![child]?;
+            input.extend(child_root_bytes);
+        }
+
+        for _ in child_roots.len()..Self::MAX_BRANCH {
+            let empty_value = <Self::H as CRH>::Output::default().to_bytes_le()?;
+            input.extend(&empty_value);
+        }
+
+        // Hash the input
+        let hash = self.crh().hash(&input)?;
+
+        Ok(hash)
+    }
+
+    /// Calculate the root hash of a given node with it's key, value, and children.
+    fn hash_leaf<L: ToBytes>(
         &self,
         key: &Option<Vec<u8>>,
         value: &Option<L>,
-        child_roots: &Vec<&<Self::H as CRH>::Output>,
     ) -> Result<<Self::H as CRH>::Output, MerkleTrieError> {
         // Add the current node's key and value to the hash input.
         let mut input = vec![]; // TODO (raychu86): Add the key to the root hash. Full key vs key suffix?
@@ -54,17 +77,6 @@ pub trait MerkleTrieParameters: Send + Sync + Clone {
         if let Some(value) = &value {
             let value_bytes = to_bytes_le![value]?;
             input.extend(value_bytes);
-        }
-
-        // Add the children roots to the hash input.
-        for child in child_roots {
-            let child_root_bytes = to_bytes_le![child]?;
-            input.extend(child_root_bytes);
-        }
-
-        for _ in child_roots.len()..Self::MAX_BRANCH {
-            let empty_value = <Self::H as CRH>::Output::default().to_bytes_le()?;
-            input.extend(&empty_value);
         }
 
         // Hash the input

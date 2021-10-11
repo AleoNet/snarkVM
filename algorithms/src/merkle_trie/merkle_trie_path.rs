@@ -44,14 +44,14 @@ impl<P: MerkleTrieParameters> MerkleTriePath<P> {
     ) -> Result<bool, MerkleTrieError> {
         assert_eq!(self.path.len(), self.traversal.len());
 
-        let mut curr_hash = self.parameters.hash_node(&Some(key.to_vec()), &Some(value), &vec![])?;
+        let mut curr_hash = self.parameters.hash_leaf(&Some(key.to_vec()), &Some(value))?;
 
         // Check that the given leaf matches the leaf in the membership proof.
         for (_, (index, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
             let mut node_hashes: Vec<&MerkleTrieDigest<P>> = siblings.iter().map(|x| x).collect();
             node_hashes.insert(*index as usize, &curr_hash);
 
-            curr_hash = self.parameters.hash_node::<T>(&None, &None, &node_hashes)?;
+            curr_hash = self.parameters.hash_node(&node_hashes)?;
         }
 
         // Check if final hash is root
