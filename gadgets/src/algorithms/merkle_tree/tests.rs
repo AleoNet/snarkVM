@@ -422,8 +422,8 @@ mod merkle_tree_poseidon {
     use crate::algorithms::crh::PoseidonCRHGadget;
     use snarkvm_algorithms::crh::PoseidonCRH;
 
-    type H = PoseidonCRH<Fr, 2>;
-    type HG = PoseidonCRHGadget<Fr, 2>;
+    type H = PoseidonCRH<Fr, 3>;
+    type HG = PoseidonCRHGadget<Fr, 3>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
