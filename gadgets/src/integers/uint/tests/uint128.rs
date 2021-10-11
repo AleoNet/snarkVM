@@ -64,9 +64,11 @@ fn test_uint128_from_bits() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..1000 {
+        let cs = TestConstraintSystem::<Fr>::new();
+
         let v = (0..128).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
 
-        let b = UInt128::from_bits_le(&v).expect("failed to create UInt128 from bits.");
+        let b = UInt128::from_bits_le(&v, cs).expect("failed to create UInt128 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().enumerate() {
             match *bit_gadget {
