@@ -102,7 +102,13 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
         cs: &mut CS,
     ) -> Result<FunctionReturn<'b>> {
         match instruction {
-            i @ Instruction::Call(_) => return Ok(FunctionReturn::Recurse(i)),
+            i @ Instruction::Call(_) => {
+                if self.state.call_depth > self.state.program.header.inline_limit {
+                    return Err(anyhow!("max inline limit hit"));
+                } else {
+                    return Ok(FunctionReturn::Recurse(i));
+                }
+            }
             i @ Instruction::Mask(_) => return Ok(FunctionReturn::Recurse(i)),
             i @ Instruction::Repeat(_) => return Ok(FunctionReturn::Recurse(i)),
             instruction => {
@@ -112,7 +118,7 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
                         return Ok(FunctionReturn::ControlFlow(true));
                     }
                     Ok(None) => (),
-                    Err(e) => return Err(anyhow!("i#{}: {:?}", self.state.instruction_index, e)),
+                    Err(e) => return Err(e),
                 }
                 self.state.instruction_index += 1;
             }
@@ -331,6 +337,26 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
         Ok(())
     }
 
+    pub fn setup_evaluate_function(
+        &mut self,
+        index: u32,
+        arguments: &[ConstrainedValue<F, G>],
+    ) -> Result<&'a Function> {
+        let function = self.program.functions.get(index as usize).expect("missing function");
+
+        let mut arg_register = function.argument_start_variable;
+        for argument in arguments {
+            self.variables.insert(arg_register, argument.clone());
+            arg_register += 1;
+        }
+
+        self.function_index = index;
+        self.instruction_index = 0;
+        self.call_depth += 1;
+
+        Ok(&function)
+    }
+
     pub fn evaluate_function<CS: ConstraintSystem<F>>(
         mut self,
         index: u32,
@@ -395,34 +421,30 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
                         .clone();
                     state_data.state.instruction_index += 1;
-                    if condition.get_value().unwrap_or(true) {
-                        let state = EvaluatorState {
-                            program: state_data.state.program,
-                            variables: HashMap::new(),
-                            call_depth: state_data.state.call_depth,
-                            parent_variables: state_data
-                                .state
-                                .variables
-                                .clone()
-                                .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
-                            function_index: state_data.state.function_index,
-                            instruction_index: state_data.state.instruction_index,
-                        };
-                        let new_state_data = CallStateData {
-                            function: state_data.function,
-                            function_index: state_data.function_index,
-                            block_start: state_data.state.instruction_index,
-                            block_instruction_count: data.instruction_count,
-                            state,
-                            parent_instruction: ParentInstruction::Mask(condition),
-                            result: state_data.result.clone(),
-                        };
-                        state_data.state.instruction_index += data.instruction_count;
-                        call_stack.push(state_data);
-                        state_data = new_state_data;
-                    } else {
-                        state_data.state.instruction_index += data.instruction_count
-                    }
+                    let state = EvaluatorState {
+                        program: state_data.state.program,
+                        variables: HashMap::new(),
+                        call_depth: state_data.state.call_depth,
+                        parent_variables: state_data
+                            .state
+                            .variables
+                            .clone()
+                            .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                        function_index: state_data.state.function_index,
+                        instruction_index: state_data.state.instruction_index,
+                    };
+                    let new_state_data = CallStateData {
+                        function: state_data.function,
+                        function_index: state_data.function_index,
+                        block_start: state_data.state.instruction_index,
+                        block_instruction_count: data.instruction_count,
+                        state,
+                        parent_instruction: ParentInstruction::Mask(condition),
+                        result: state_data.result.clone(),
+                    };
+                    state_data.state.instruction_index += data.instruction_count;
+                    call_stack.push(state_data);
+                    state_data = new_state_data;
                 }
                 Ok(Some(Instruction::Repeat(data))) => {
                     if data.instruction_count + state_data.state.instruction_index
@@ -505,18 +527,26 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                     state_data = call_stack.pop().unwrap();
                 }
                 Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
-                Ok(None) => match state_data.parent_instruction {
-                    ParentInstruction::None => {
+                e => match state_data.parent_instruction {
+                    ParentInstruction::None if e.is_ok() => {
                         let res = state_data.result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         return Ok(res);
                     }
-                    ParentInstruction::Call(data) => {
+                    ParentInstruction::Call(data) if e.is_ok() => {
                         let res = state_data.result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         state_data = call_stack.pop().expect("no state to return to");
                         state_data.state.store(data.destination, res);
                         state_data.state.instruction_index += 1;
                     }
                     ParentInstruction::Mask(condition) => {
+                        if e.is_err() && condition.get_value().unwrap_or(true) {
+                            return Err(anyhow!(
+                                "f#{} i#{}: {:?}",
+                                state_data.function_index,
+                                state_data.state.instruction_index,
+                                e.unwrap_err()
+                            ));
+                        }
                         let assignments = state_data.state.variables;
                         let target_index = state_data.block_start + state_data.block_instruction_count;
                         let result = state_data.result.clone();
@@ -536,9 +566,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                                     &prior,
                                 )?;
                                 state_data.state.store(variable, value);
-                            } else {
-                                // if it didnt exist in parent scope before, it cant exist now
-                                // self.store(variable, value);
                             }
                         }
                         assert_eq!(state_data.state.instruction_index, target_index);
@@ -558,7 +585,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             (_, None) => (),
                         }
                     }
-                    ParentInstruction::Repeat(iter_variable) => {
+                    ParentInstruction::Repeat(iter_variable) if e.is_ok() => {
                         let assignments = state_data.state.variables;
                         state_data = call_stack.pop().expect("no state to return to");
                         for (variable, value) in assignments {
@@ -574,39 +601,16 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             }
                         }
                     }
+                    _ => {
+                        return Err(anyhow!(
+                            "f#{} i#{}: {:?}",
+                            state_data.function_index,
+                            state_data.state.instruction_index,
+                            e.unwrap_err()
+                        ))
+                    }
                 },
-                Err(e) => {
-                    return Err(anyhow!(
-                        "f#{} i#{}: {:?}",
-                        state_data.function_index,
-                        state_data.state.instruction_index,
-                        e
-                    ))
-                }
             }
         }
-    }
-
-    pub fn setup_evaluate_function(
-        &mut self,
-        index: u32,
-        arguments: &[ConstrainedValue<F, G>],
-    ) -> Result<&'a Function> {
-        let function = self.program.functions.get(index as usize).expect("missing function");
-
-        let mut arg_register = function.argument_start_variable;
-        for argument in arguments {
-            self.variables.insert(arg_register, argument.clone());
-            arg_register += 1;
-        }
-
-        self.function_index = index;
-        self.instruction_index = 0;
-        self.call_depth += 1;
-
-        if self.call_depth > self.program.header.inline_limit {
-            return Err(anyhow!("f#{}: max inline limit hit", index));
-        }
-        Ok(&function)
     }
 }
