@@ -57,13 +57,7 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
         key: impl ToBytesGadget<F>,
         value: impl ToBytesGadget<F>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
-        let empty_child =
-            HG::OutputGadget::alloc(&mut cs.ns(|| "empty_child"), || Ok(<P::H as CRH>::Output::default()))?;
-        let mut curr_hash = Self::hash_node_with_key_value(cs.ns(|| "leaf_hash"), crh, key, value, &vec![
-            empty_child
-                .clone();
-            P::MAX_BRANCH
-        ])?;
+        let mut curr_hash = Self::hash_leaf(cs.ns(|| "leaf_hash"), crh, key, value)?;
 
         for (i, (position, siblings)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
             let current_depth = UInt8::alloc(cs.ns(|| format!("depth_{}", i)), || Ok(i as u8))?;
@@ -104,20 +98,14 @@ impl<P: MerkleTrieParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerkleTrieP
         Ok(curr_hash)
     }
 
-    pub(crate) fn hash_node_with_key_value<CS: ConstraintSystem<F>>(
+    pub(crate) fn hash_leaf<CS: ConstraintSystem<F>>(
         mut cs: CS,
         crh: &HG,
         key: impl ToBytesGadget<F>,
         value: impl ToBytesGadget<F>,
-        child_roots: &Vec<HG::OutputGadget>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
         let mut bytes = key.to_bytes(cs.ns(|| "key_to_bytes"))?;
         bytes.extend_from_slice(&value.to_bytes(cs.ns(|| "value_to_bytes"))?);
-
-        for (i, child) in child_roots.iter().enumerate() {
-            let child_bytes = child.to_bytes(&mut cs.ns(|| format!("leaf_to_bytes_{}", i)))?;
-            bytes.extend_from_slice(&child_bytes);
-        }
 
         crh.check_evaluation_gadget(cs, bytes)
     }

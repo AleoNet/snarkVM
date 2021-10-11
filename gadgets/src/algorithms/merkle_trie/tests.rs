@@ -179,8 +179,8 @@ mod merkle_trie_bhp {
     use snarkvm_algorithms::crh::BHPCompressedCRH;
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
 
-    type H = BHPCompressedCRH<EdwardsProjective, 74, 63>;
-    type HG = BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, 74, 63>;
+    type H = BHPCompressedCRH<EdwardsProjective, 71, 58>;
+    type HG = BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, 71, 58>;
 
     const KEY_SIZE: usize = 32;
     const VALUE_SIZE: usize = 32;
