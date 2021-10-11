@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
     overhead,
     traits::{alloc::AllocGadget, fields::FieldGadget},
 };
-use snarkvm_r1cs::{Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
+use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 
 use crate::fiat_shamir::{
     traits::{AlgebraicSpongeVar, FiatShamirRngVar},
@@ -457,7 +457,7 @@ mod tests {
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One;
     use snarkvm_gadgets::{bits::ToBitsLEGadget, traits::eq::EqGadget};
-    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_r1cs::{Assignment, TestConstraintSystem};
     use snarkvm_utilities::rand::UniformRand;
 
     use crate::fiat_shamir::{

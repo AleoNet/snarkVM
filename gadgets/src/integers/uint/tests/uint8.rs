@@ -95,6 +95,8 @@ fn test_uint8_to_bits_le() {
 fn test_uint8_to_bits_be() {
     let mut cs = TestConstraintSystem::<Fr>::new();
     let byte_val = 0b01110001;
+    // check bits size
+    // check if cs is satisfied
     let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
     let bits = byte.to_bits_be(cs).expect("failed to get u8 bits be");
     for (i, bit) in bits.iter().rev().enumerate() {
@@ -105,6 +107,7 @@ fn test_uint8_to_bits_be() {
 #[test]
 fn test_uint8_to_bytes_le() {
     let mut cs = TestConstraintSystem::<Fr>::new();
+    // check all bits are allocated
     let byte_val = 0b01110001;
     let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
     let mut bytes = byte

@@ -316,5 +316,12 @@ macro_rules! biginteger {
                 repr
             }
         }
+
+        impl Into<u64> for $name {
+            #[inline]
+            fn into(self) -> u64 {
+                self.0[0]
+            }
+        }
     };
 }

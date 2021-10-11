@@ -61,6 +61,7 @@ pub trait BigInteger:
     + AsMut<[u64]>
     + AsRef<[u64]>
     + From<u64>
+    + Into<u64>
 {
     /// The number of limbs used in this BigInteger.
     const NUM_LIMBS: usize;

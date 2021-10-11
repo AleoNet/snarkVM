@@ -276,11 +276,7 @@ impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
 
 impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
     fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
-        /* if bits.len() !=  {
-            return Err(SynthesisError::Unsatisfiable);
-        } */
-
-        todo!()
+        Ok(Self(FpGadget::from_bits_be(bits, cs)?))
     }
 
     fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
