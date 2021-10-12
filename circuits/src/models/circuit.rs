@@ -26,7 +26,7 @@ use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
 
 thread_local! {
-    static CB: OnceCell<RefCell<Circuit >> = OnceCell::new();
+    static CB: OnceCell<RefCell<Circuit>> = OnceCell::new();
 }
 
 #[derive(Clone)]

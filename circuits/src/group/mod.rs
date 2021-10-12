@@ -24,7 +24,7 @@ pub mod neg;
 // pub mod sub;
 pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, Field, Mode};
+use crate::{traits::*, Boolean, Environment, Field, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
 

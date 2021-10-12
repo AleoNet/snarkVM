@@ -14,20 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod boolean;
-pub use boolean::*;
+/**
+Add,
+    Div,
+    Double,
+    Inv,
+    IsEq,
+    IsNeq,
+    Mul,
+    Neg,
+    One,
+    Square,
+    Sub,
+    Ternary,
+    ToBitsLE,
+    ToBitsBE,
+    Zero,
 
-pub mod field;
-pub use field::*;
+ */
 
-pub mod group;
-pub use group::*;
-
-pub mod models;
-pub use models::*;
-
-pub mod operations;
-pub use operations::*;
-
-pub mod traits;
-pub use traits::*;
+pub enum BooleanOp {
+    And,
+    IsEq,
+    IsNeq,
+    Nand,
+    Nor,
+    Not,
+    Or,
+    Ternary,
+    Xor,
+}

@@ -44,21 +44,7 @@ pub struct Signed<E: Environment, I, const SIZE: usize> {
 
 impl<E: Environment, I, const SIZE: usize> Signed<E, I, SIZE> {
     /// Initializes a new signed integer.
-    pub fn new(mode: Mode, value: I) -> Self {
-        // // Derive the y-coordinate if it is not given.
-        // let y = match y {
-        //     Some(y) => y,
-        //     None => E::recover_from_x_coordinate(x).to_y_coordinate(),
-        // };
-        //
-        // // Initialize the x- and y-coordinate field elements.
-        // let x = Field::new(mode, x);
-        // let y = Field::new(mode, y);
+    pub fn new(mode: Mode, value: I) -> Self {}
 
-        // Self::from(x, y)
-    }
-
-    pub fn to_value(&self) -> (E::BaseField, E::BaseField) {
-        // (self.x.to_value(), self.y.to_value())
-    }
+    pub fn to_value(&self) -> I {}
 }

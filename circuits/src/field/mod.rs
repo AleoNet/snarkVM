@@ -28,7 +28,7 @@ pub mod ternary;
 pub mod to_bits;
 pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, LinearCombination, Mode};
+use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
 use snarkvm_utilities::ToBits as TBits;
 
