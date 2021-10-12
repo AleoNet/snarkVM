@@ -70,6 +70,14 @@ pub trait Or<Rhs: ?Sized = Self> {
     fn or(&self, other: &Rhs) -> Self::Output;
 }
 
+/// Binary operator for performing `NOT (a AND b)`.
+pub trait Nand<Rhs: ?Sized = Self> {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    fn nand(&self, other: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for performing `(NOT a) AND (NOT b)`.
 pub trait Nor<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
