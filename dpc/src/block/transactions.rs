@@ -16,13 +16,7 @@
 
 use crate::{AleoAmount, BlockError, Network, Transaction, TransactionError};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
-use snarkvm_utilities::{
-    has_duplicates,
-    to_bytes_le,
-    variable_length_integer::{read_variable_length_integer, variable_length_integer},
-    FromBytes,
-    ToBytes,
-};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
@@ -179,8 +173,8 @@ impl<N: Network> Transactions<N> {
 impl<N: Network> FromBytes for Transactions<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_transactions = read_variable_length_integer(&mut reader)?;
-        let mut transactions = Vec::with_capacity(num_transactions);
+        let num_transactions: u16 = FromBytes::read_le(&mut reader)?;
+        let mut transactions = Vec::with_capacity(num_transactions as usize);
         for _ in 0..num_transactions {
             transactions.push(FromBytes::read_le(&mut reader)?);
         }
@@ -199,7 +193,7 @@ impl<N: Network> ToBytes for Transactions<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self.is_valid() {
             true => {
-                variable_length_integer(self.0.len() as u64).write_le(&mut writer)?;
+                (self.0.len() as u16).write_le(&mut writer)?;
                 for transaction in &self.0 {
                     transaction.write_le(&mut writer)?;
                 }
