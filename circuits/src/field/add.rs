@@ -57,7 +57,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    const ITERATIONS: usize = 500_000;
+    const ITERATIONS: usize = 100_000;
 
     #[test]
     fn test_add() {

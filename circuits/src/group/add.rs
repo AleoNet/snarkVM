@@ -137,7 +137,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 250;
+    const ITERATIONS: usize = 200;
 
     #[test]
     fn test_add() {

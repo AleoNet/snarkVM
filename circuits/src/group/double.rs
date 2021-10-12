@@ -93,7 +93,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 500;
+    const ITERATIONS: usize = 250;
 
     #[test]
     fn test_double() {

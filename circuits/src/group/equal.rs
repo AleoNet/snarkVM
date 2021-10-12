@@ -52,7 +52,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 500;
+    const ITERATIONS: usize = 200;
 
     #[test]
     fn test_is_eq() {

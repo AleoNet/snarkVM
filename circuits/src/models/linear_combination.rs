@@ -64,6 +64,7 @@ impl<F: PrimeField> LinearCombination<F> {
 
             // Enforce property 1.
             if self.terms.is_empty() {
+                eprintln!("Property 1 of the `Boolean` type was violated");
                 return false;
             }
 
@@ -75,18 +76,21 @@ impl<F: PrimeField> LinearCombination<F> {
                 .count()
                 > 0
             {
+                eprintln!("Property 2 of the `Boolean` type was violated");
                 return false;
             }
 
             // Enforce property 3.
             let value = self.to_value();
             if !(value.is_zero() || value.is_one()) {
+                eprintln!("Property 3 of the `Boolean` type was violated");
                 return false;
             }
 
             true
         } else {
             // Both self.constant and self.terms contain elements. This is a violation.
+            eprintln!("Both LC::constant and LC::terms contain elements, which is a violation");
             false
         }
     }

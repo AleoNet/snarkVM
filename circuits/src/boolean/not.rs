@@ -45,8 +45,8 @@ impl<E: Environment> Not for &Boolean<E> {
         // Public and private cases
         else {
             match self.to_value() {
-                true => Boolean(self.0.clone() - E::one()),
-                false => Boolean(self.0.clone() + E::one()),
+                true => Boolean(self.0.clone() - Variable::Public(0, E::BaseField::one())),
+                false => Boolean(self.0.clone() + Variable::Public(0, E::BaseField::one())),
             }
         }
     }
