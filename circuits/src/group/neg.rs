@@ -37,7 +37,6 @@ impl<E: Environment> Neg for &Affine<E> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_curves::Group;
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;

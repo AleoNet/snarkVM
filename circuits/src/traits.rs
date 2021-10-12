@@ -54,12 +54,28 @@ pub trait Equal<Rhs: ?Sized = Self> {
     fn is_neq(&self, other: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for performing `a && b`.
+/// Binary operator for performing `a AND b`.
 pub trait And<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
     type Output;
 
     fn and(&self, other: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for performing `a OR b`.
+pub trait Or<Rhs: ?Sized = Self> {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    fn or(&self, other: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for performing `(NOT a) AND (NOT b)`.
+pub trait Nor<Rhs: ?Sized = Self> {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    fn nor(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Trait for ternary operations.

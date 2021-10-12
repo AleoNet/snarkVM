@@ -16,32 +16,32 @@
 
 use super::*;
 
-impl<E: Environment> And<Self> for Boolean<E> {
+impl<E: Environment> Nor<Self> for Boolean<E> {
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 
-    fn and(&self, other: &Self) -> Self::Output {
+    fn nor(&self, other: &Self) -> Self::Output {
         // Constant `self`
         if self.is_constant() {
             match self.to_value() {
-                true => other.clone(),
-                false => self.clone(),
+                true => !self.clone(),
+                false => !other.clone(),
             }
         }
         // Constant `other`
         else if other.is_constant() {
             match other.to_value() {
-                true => self.clone(),
-                false => other.clone(),
+                true => !other.clone(),
+                false => !self.clone(),
             }
         }
-        // Variable AND Variable
+        // Variable NOR Variable
         else {
-            let output = Boolean::<E>::new(Mode::Private, self.to_value() & other.to_value());
+            let output = Boolean::<E>::new(Mode::Private, !self.to_value() & !other.to_value());
 
-            // Ensure `self` * `other` = `output`
-            // `output` is `1` iff `self` AND `other` are both `1`.
-            E::enforce(|| (self, other, &output));
+            // Ensure (1 - `self`) * (1 - `other`) = `output`
+            // `output` is `1` iff `self` and `other` are both `0`, otherwise `output` is `0`.
+            E::enforce(|| (E::one() - &self.0, E::one() - &other.0, &output));
 
             Self(output.into())
         }
@@ -53,7 +53,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    fn check_and(
+    fn check_nor(
         name: &str,
         expected: bool,
         a: Boolean<Circuit>,
@@ -64,11 +64,11 @@ mod tests {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, |scope| {
-            let candidate = a.and(&b);
+            let candidate = a.nor(&b);
             assert_eq!(
                 expected,
                 candidate.to_value(),
-                "{} != {} := ({} AND {})",
+                "{} != {} := ({} NOR {})",
                 expected,
                 candidate.to_value(),
                 a.to_value(),
@@ -84,164 +84,164 @@ mod tests {
     }
 
     #[test]
-    fn test_constant_and_constant() {
-        // false AND false
-        let expected = false;
+    fn test_constant_nor_constant() {
+        // false NOR false
+        let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Constant, false);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_and("false AND false", expected, a, b, 0, 0, 0, 0);
+        check_nor("false NOR false", expected, a, b, 0, 0, 0, 0);
 
-        // false AND true
+        // false NOR true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Constant, false);
         let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_and("false AND true", expected, a, b, 0, 0, 0, 0);
+        check_nor("false NOR true", expected, a, b, 0, 0, 0, 0);
 
-        // true AND false
+        // true NOR false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_and("true AND false", expected, a, b, 0, 0, 0, 0);
+        check_nor("true NOR false", expected, a, b, 0, 0, 0, 0);
 
-        // true AND true
-        let expected = true;
+        // true NOR true
+        let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_and("true AND true", expected, a, b, 0, 0, 0, 0);
+        check_nor("true NOR true", expected, a, b, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_constant_and_public() {
-        // false AND false
-        let expected = false;
+    fn test_constant_nor_public() {
+        // false NOR false
+        let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Constant, false);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_and("false AND false", expected, a, b, 0, 0, 0, 0);
+        check_nor("false NOR false", expected, a, b, 0, 0, 0, 0);
 
-        // false AND true
+        // false NOR true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Constant, false);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_and("false AND true", expected, a, b, 0, 0, 0, 0);
+        check_nor("false NOR true", expected, a, b, 0, 0, 0, 0);
 
-        // true AND false
+        // true NOR false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_and("true AND false", expected, a, b, 0, 0, 0, 0);
+        check_nor("true NOR false", expected, a, b, 0, 0, 0, 0);
 
-        // true AND true
-        let expected = true;
+        // true NOR true
+        let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_and("true AND true", expected, a, b, 0, 0, 0, 0);
+        check_nor("true NOR true", expected, a, b, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_public_and_constant() {
-        // false AND false
-        let expected = false;
+    fn test_public_nor_constant() {
+        // false NOR false
+        let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_and("false AND false", expected, a, b, 0, 0, 0, 0);
+        check_nor("false NOR false", expected, a, b, 0, 0, 0, 0);
 
-        // false AND true
+        // false NOR true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_and("false AND true", expected, a, b, 0, 0, 0, 0);
+        check_nor("false NOR true", expected, a, b, 0, 0, 0, 0);
 
-        // true AND false
+        // true NOR false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_and("true AND false", expected, a, b, 0, 0, 0, 0);
+        check_nor("true NOR false", expected, a, b, 0, 0, 0, 0);
 
-        // true AND true
-        let expected = true;
+        // true NOR true
+        let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_and("true AND true", expected, a, b, 0, 0, 0, 0);
+        check_nor("true NOR true", expected, a, b, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_public_and_public() {
-        // false AND false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_and("false AND false", expected, a, b, 0, 0, 1, 2);
-
-        // false AND true
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_and("false AND true", expected, a, b, 0, 0, 1, 2);
-
-        // true AND false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_and("true AND false", expected, a, b, 0, 0, 1, 2);
-
-        // true AND true
+    fn test_public_nor_public() {
+        // false NOR false
         let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Public, false);
+        let b = Boolean::<Circuit>::new(Mode::Public, false);
+        check_nor("false NOR false", expected, a, b, 0, 0, 1, 2);
+
+        // false NOR true
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Public, false);
+        let b = Boolean::<Circuit>::new(Mode::Public, true);
+        check_nor("false NOR true", expected, a, b, 0, 0, 1, 2);
+
+        // true NOR false
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Public, true);
+        let b = Boolean::<Circuit>::new(Mode::Public, false);
+        check_nor("true NOR false", expected, a, b, 0, 0, 1, 2);
+
+        // true NOR true
+        let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_and("true AND true", expected, a, b, 0, 0, 1, 2);
+        check_nor("true NOR true", expected, a, b, 0, 0, 1, 2);
     }
 
     #[test]
-    fn test_public_and_private() {
-        // false AND false
-        let expected = false;
+    fn test_public_nor_private() {
+        // false NOR false
+        let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("false AND false", expected, a, b, 0, 0, 1, 2);
+        check_nor("false NOR false", expected, a, b, 0, 0, 1, 2);
 
-        // false AND true
+        // false NOR true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("false AND true", expected, a, b, 0, 0, 1, 2);
+        check_nor("false NOR true", expected, a, b, 0, 0, 1, 2);
 
-        // true AND false
+        // true NOR false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("true AND false", expected, a, b, 0, 0, 1, 2);
+        check_nor("true NOR false", expected, a, b, 0, 0, 1, 2);
 
-        // true AND true
-        let expected = true;
+        // true NOR true
+        let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("true AND true", expected, a, b, 0, 0, 1, 2);
+        check_nor("true NOR true", expected, a, b, 0, 0, 1, 2);
     }
 
     #[test]
-    fn test_private_and_private() {
-        // false AND false
-        let expected = false;
+    fn test_private_nor_private() {
+        // false NOR false
+        let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("false AND false", expected, a, b, 0, 0, 1, 2);
+        check_nor("false NOR false", expected, a, b, 0, 0, 1, 2);
 
-        // false AND true
+        // false NOR true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("false AND true", expected, a, b, 0, 0, 1, 2);
+        check_nor("false NOR true", expected, a, b, 0, 0, 1, 2);
 
-        // true AND false
+        // true NOR false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("true AND false", expected, a, b, 0, 0, 1, 2);
+        check_nor("true NOR false", expected, a, b, 0, 0, 1, 2);
 
-        // true AND true
-        let expected = true;
+        // true NOR true
+        let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("true AND true", expected, a, b, 0, 0, 1, 2);
+        check_nor("true NOR true", expected, a, b, 0, 0, 1, 2);
     }
 }
