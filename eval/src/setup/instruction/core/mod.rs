@@ -25,7 +25,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
         &mut self,
         name: &str,
         arguments: &[ConstrainedValue<F, G>],
-        cs: &mut CS,
+        cs: &mut CS
     ) -> Result<ConstrainedValue<F, G>> {
         match name {
             blake2s::BLAKE2S_CORE => self.call_core_blake2s(arguments, cs),

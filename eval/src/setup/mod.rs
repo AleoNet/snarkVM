@@ -26,13 +26,7 @@ use snarkvm_r1cs::ConstraintSystem;
 use crate::{
     bool_from_input,
     errors::{GroupError, ValueError},
-    Address,
-    Char,
-    ConstrainedValue,
-    Evaluator,
-    FieldType,
-    GroupType,
-    Integer,
+    Address, Char, ConstrainedValue, Evaluator, FieldType, GroupType, Integer,
 };
 use im::HashMap;
 

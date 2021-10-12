@@ -14,14 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::{Integer as GadgetInteger, UInt16, UInt32, UInt8};
+use snarkvm_gadgets::Integer as GadgetInteger;
+use snarkvm_gadgets::UInt16;
+use snarkvm_gadgets::UInt32;
+use snarkvm_gadgets::UInt8;
 use snarkvm_ir::{CallData, Function};
 
 use crate::IntegerType;
 
 use super::*;
 
-use std::{convert::TryInto, fmt};
+use std::convert::TryInto;
+use std::fmt;
 
 #[derive(Debug)]
 enum FunctionReturn<'a> {
@@ -78,14 +82,10 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, 'b
 }
 
 impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
-    pub fn evaluate_block<CS: ConstraintSystem<F>>(
-        &mut self,
-        call_stack: &[Self],
-        cs: &mut CS,
-    ) -> Result<Option<&'b Instruction>> {
+    pub fn evaluate_block<CS: ConstraintSystem<F>>(&mut self, cs: &mut CS) -> Result<Option<&'b Instruction>> {
         while self.state.instruction_index < self.block_start + self.block_instruction_count {
             let instruction = &self.function.instructions[self.state.instruction_index as usize];
-            match self.evaluate_control_instruction(instruction, call_stack, cs)? {
+            match self.evaluate_control_instruction(instruction, cs)? {
                 FunctionReturn::Recurse(ins) => return Ok(Some(ins)),
                 FunctionReturn::ControlFlow(true) => {
                     return Ok(None);
@@ -99,25 +99,18 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
     fn evaluate_control_instruction<CS: ConstraintSystem<F>>(
         &mut self,
         instruction: &'b Instruction,
-        call_stack: &[Self],
         cs: &mut CS,
     ) -> Result<FunctionReturn<'b>> {
         match instruction {
-            Instruction::Call(data) => {
-                if call_stack
-                    .iter()
-                    .any(|state| matches!(state.parent_instruction, ParentInstruction::Call(d) if d == data))
-                {
-                    return Err(anyhow!("infinite recursion detected"));
-                }
+            i @ Instruction::Call(_) => {
                 if self.state.call_depth > self.state.program.header.inline_limit {
                     return Err(anyhow!("max inline limit hit"));
                 } else {
-                    return Ok(FunctionReturn::Recurse(instruction));
+                    return Ok(FunctionReturn::Recurse(i));
                 }
             }
-            Instruction::Mask(_) => return Ok(FunctionReturn::Recurse(instruction)),
-            Instruction::Repeat(_) => return Ok(FunctionReturn::Recurse(instruction)),
+            i @ Instruction::Mask(_) => return Ok(FunctionReturn::Recurse(i)),
+            i @ Instruction::Repeat(_) => return Ok(FunctionReturn::Recurse(i)),
             instruction => {
                 match self.state.evaluate_instruction(instruction, cs) {
                     Ok(Some(returned)) => {
@@ -382,7 +375,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
             result: None,
         };
         loop {
-            match state_data.evaluate_block(&call_stack, cs) {
+            match state_data.evaluate_block(cs) {
                 Ok(Some(Instruction::Call(data))) => {
                     let arguments = data
                         .arguments
@@ -614,7 +607,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                             state_data.function_index,
                             state_data.state.instruction_index,
                             e.unwrap_err()
-                        ));
+                        ))
                     }
                 },
             }
