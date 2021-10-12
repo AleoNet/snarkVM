@@ -81,8 +81,8 @@ impl<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> Evaluator<F, G> fo
             &input.private_leaf_states,
             &mut self.cs,
         )?;
-
-        let output = state.evaluate_function(0, &[], &mut self.cs)?; // arguments assigned via input system for entrypoint
+        let function = state.setup_evaluate_function(0, &[])?;
+        let output = FunctionEvaluator::evaluate_function(function, state, 0, &mut self.cs)?; // arguments assigned via input system for entrypoint
         Ok(output)
     }
 }

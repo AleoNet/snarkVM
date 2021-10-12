@@ -18,6 +18,8 @@ use snarkvm_gadgets::Integer as GadgetInteger;
 use snarkvm_gadgets::UInt16;
 use snarkvm_gadgets::UInt32;
 use snarkvm_gadgets::UInt8;
+use snarkvm_ir::MaskData;
+use snarkvm_ir::RepeatData;
 use snarkvm_ir::{CallData, Function};
 
 use crate::IntegerType;
@@ -27,12 +29,15 @@ use super::*;
 use std::convert::TryInto;
 use std::fmt;
 
+/// the possible outcomes of evaluating an instruction
 #[derive(Debug)]
-enum FunctionReturn<'a> {
-    ControlFlow(bool),
+enum ControlFlow<'a> {
+    Continue,
+    Return,
     Recurse(&'a Instruction),
 }
 
+/// data concerning the parent instruction of a scope
 #[derive(Debug)]
 enum ParentInstruction<'a> {
     None,
@@ -41,18 +46,336 @@ enum ParentInstruction<'a> {
     Repeat(u32),
 }
 
-struct CallStateData<'a, 'b, F: PrimeField, G: GroupType<F>> {
-    function: &'b Function,
+pub(super) struct FunctionEvaluator<'a, F: PrimeField, G: GroupType<F>> {
+    call_stack: Vec<CallStateData<'a, F, G>>,
+    state_data: CallStateData<'a, F, G>,
+}
+
+impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
+    fn nest(&mut self, state: CallStateData<'a, F, G>) {
+        self.call_stack.push(std::mem::replace(&mut self.state_data, state));
+    }
+
+    fn unnest(&mut self) -> CallStateData<'a, F, G> {
+        let last_state = self.call_stack.pop().expect("no state to return to");
+        std::mem::replace(&mut self.state_data, last_state)
+    }
+
+    /// setup the state and call stack to start evaluating the target call instruction
+    fn setup_call<CS: ConstraintSystem<F>>(&mut self, data: &'a CallData, cs: &mut CS) -> Result<()> {
+        let arguments = data
+            .arguments
+            .iter()
+            .map(|x| self.state_data.state.resolve(x, cs).map(|x| x.into_owned()))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut state = EvaluatorState {
+            program: self.state_data.state.program,
+            variables: HashMap::new(),
+            call_depth: self.state_data.state.call_depth,
+            parent_variables: self
+                .state_data
+                .state
+                .variables
+                .clone()
+                .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+            function_index: self.state_data.state.function_index,
+            instruction_index: 0,
+        };
+
+        let function = state.setup_evaluate_function(data.index, &arguments)?;
+        let state_data = CallStateData {
+            function: &function,
+            function_index: data.index,
+            block_start: 0,
+            block_instruction_count: function.instructions.len() as u32,
+            state,
+            parent_instruction: ParentInstruction::Call(data),
+            result: None,
+        };
+
+        self.nest(state_data);
+        Ok(())
+    }
+
+    fn finish_call(&mut self, data: &CallData) -> Result<()> {
+        let res = self.unnest().result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
+        self.state_data.state.store(data.destination, res);
+        self.state_data.state.instruction_index += 1;
+        Ok(())
+    }
+
+    /// setup the state and call stack to start evaluating the target mask instruction
+    fn setup_mask<CS: ConstraintSystem<F>>(&mut self, data: &'a MaskData, cs: &mut CS) -> Result<()> {
+        if data.instruction_count + self.state_data.state.instruction_index
+            >= self.state_data.function.instructions.len() as u32
+        {
+            return Err(anyhow!("illegal mask block length"));
+        }
+
+        let condition = self.state_data.state.resolve(&data.condition, cs)?.into_owned();
+        let condition = condition
+            .extract_bool()
+            .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
+            .clone();
+        self.state_data.state.instruction_index += 1;
+        let state = EvaluatorState {
+            program: self.state_data.state.program,
+            variables: HashMap::new(),
+            call_depth: self.state_data.state.call_depth,
+            parent_variables: self
+                .state_data
+                .state
+                .variables
+                .clone()
+                .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+            function_index: self.state_data.state.function_index,
+            instruction_index: self.state_data.state.instruction_index,
+        };
+        let state_data = CallStateData {
+            function: self.state_data.function,
+            function_index: self.state_data.function_index,
+            block_start: self.state_data.state.instruction_index,
+            block_instruction_count: data.instruction_count,
+            state,
+            parent_instruction: ParentInstruction::Mask(condition),
+            result: self.state_data.result.clone(),
+        };
+        self.state_data.state.instruction_index += data.instruction_count;
+        self.nest(state_data);
+        Ok(())
+    }
+
+    fn finish_mask<CS: ConstraintSystem<F>>(
+        &mut self,
+        condition: Boolean,
+        cs: &mut CS,
+        e: Result<Option<&snarkvm_ir::Instruction>>,
+    ) -> Result<()> {
+        if e.is_err() && condition.get_value().unwrap_or(true) {
+            return Err(anyhow!(
+                "f#{} i#{}: {:?}",
+                self.state_data.function_index,
+                self.state_data.state.instruction_index,
+                e.unwrap_err()
+            ));
+        }
+        let inner_state = self.unnest();
+        let assignments = inner_state.state.variables;
+        let target_index = inner_state.block_start + inner_state.block_instruction_count;
+        let result = inner_state.result.clone();
+        for (variable, value) in assignments {
+            if let Some(prior) = self.state_data.state.variables.get(&variable).or(self
+                .state_data
+                .state
+                .parent_variables
+                .get(&variable))
+            {
+                let prior = prior.clone(); //todo: optimize away clone
+                let value = ConstrainedValue::conditionally_select(
+                    &mut self.state_data.state.cs_meta(&*format!("selection {}", variable), cs),
+                    &condition,
+                    &value,
+                    &prior,
+                )?;
+                self.state_data.state.store(variable, value);
+            }
+        }
+        assert_eq!(self.state_data.state.instruction_index, target_index);
+        match (self.state_data.result.clone(), result.clone()) {
+            (Some(prior), Some(interior)) => {
+                self.state_data.result = Some(ConstrainedValue::conditionally_select(
+                    &mut self.state_data.state.cs_meta(&*format!("selection result"), cs),
+                    &condition,
+                    &interior,
+                    &prior,
+                )?);
+            }
+            (None, Some(interior)) => {
+                // will produce garbage if invalid IR (incomplete return path)
+                self.state_data.result = Some(interior);
+            }
+            (_, None) => (),
+        }
+        Ok(())
+    }
+
+    /// setup the state and call stack to start evaluating the target repeat instruction
+    fn setup_repeat<CS: ConstraintSystem<F>>(&mut self, data: &'a RepeatData, cs: &mut CS) -> Result<()> {
+        if data.instruction_count + self.state_data.state.instruction_index
+            >= self.state_data.function.instructions.len() as u32
+        {
+            return Err(anyhow!("illegal repeat block length"));
+        }
+
+        let from = self.state_data.state.resolve(&data.from, cs)?.into_owned();
+        let from_int = from
+            .extract_integer()
+            .map_err(|value| anyhow!("illegal type for loop init: {}", value))?
+            .to_owned();
+        let from = from_int
+            .to_usize()
+            .ok_or_else(|| anyhow!("illegal input-derived loop index"))?;
+
+        let to = self.state_data.state.resolve(&data.to, cs)?.into_owned();
+        let to = to
+            .extract_integer()
+            .map_err(|value| anyhow!("illegal type for loop terminator: {}", value))?
+            .to_usize()
+            .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
+
+        let iter: Box<dyn Iterator<Item = usize>> = match (from < to, data.inclusive) {
+            (true, true) => Box::new(from..=to),
+            (true, false) => Box::new(from..to),
+            (false, true) => Box::new((to..=from).rev()),
+            // add the range to the values to get correct bound
+            (false, false) => Box::new(((to + 1)..(from + 1)).rev()),
+        };
+
+        self.state_data.state.instruction_index += 1;
+        //todo: very memory intensive with large loops since all states get allocated at once
+        let mut iter_state_data = Vec::new();
+        //todo: max loop count (DOS vector)
+        for i in iter {
+            let mut state = EvaluatorState {
+                program: self.state_data.state.program,
+                variables: HashMap::new(),
+                call_depth: self.state_data.state.call_depth,
+                parent_variables: self
+                    .state_data
+                    .state
+                    .variables
+                    .clone()
+                    .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                function_index: self.state_data.state.function_index,
+                instruction_index: self.state_data.state.instruction_index,
+            };
+            state.variables.insert(
+                data.iter_variable,
+                ConstrainedValue::Integer(match from_int.get_type() {
+                    IntegerType::U8 => Integer::U8(UInt8::constant(
+                        i.try_into().map_err(|_| anyhow!("loop index out of range for u8"))?,
+                    )),
+                    IntegerType::U16 => Integer::U16(UInt16::constant(
+                        i.try_into().map_err(|_| anyhow!("loop index out of range for u16"))?,
+                    )),
+                    IntegerType::U32 => Integer::U32(UInt32::constant(
+                        i.try_into().map_err(|_| anyhow!("loop index out of range for u32"))?,
+                    )),
+                    _ => return Err(anyhow!("illegal type for loop index")),
+                }),
+            );
+            let new_state_data = CallStateData {
+                function: self.state_data.function,
+                function_index: self.state_data.function_index,
+                block_start: self.state_data.state.instruction_index,
+                block_instruction_count: data.instruction_count,
+                state,
+                parent_instruction: ParentInstruction::Repeat(data.iter_variable),
+                result: self.state_data.result.clone(),
+            };
+            iter_state_data.push(new_state_data);
+        }
+        iter_state_data.reverse();
+        self.state_data.state.instruction_index += data.instruction_count;
+        if !iter_state_data.is_empty() {
+            let new_state = iter_state_data.pop().unwrap();
+            self.nest(new_state);
+            self.call_stack.extend(iter_state_data.into_iter());
+        }
+        Ok(())
+    }
+
+    fn finish_repeat(&mut self, iter_variable: u32) -> Result<()> {
+        let inner_state = self.unnest();
+        for (variable, value) in inner_state.state.variables {
+            if self
+                .state_data
+                .state
+                .variables
+                .get(&variable)
+                .or(self.state_data.state.parent_variables.get(&variable))
+                .is_some()
+                && variable != iter_variable
+            {
+                self.state_data.state.store(variable, value);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn evaluate_function<CS: ConstraintSystem<F>>(
+        function: &'a Function,
+        state: EvaluatorState<'a, F, G>,
+        index: u32,
+        cs: &mut CS,
+    ) -> Result<ConstrainedValue<F, G>> {
+        let mut evaluator = Self {
+            call_stack: Vec::new(),
+            state_data: CallStateData::create_initial_state_data(state, function, index)?,
+        };
+        loop {
+            match evaluator.state_data.evaluate_block(cs) {
+                Ok(Some(Instruction::Call(data))) => {
+                    evaluator.setup_call(data, cs)?;
+                }
+                Ok(Some(Instruction::Mask(data))) => {
+                    evaluator.setup_mask(data, cs)?;
+                }
+                Ok(Some(Instruction::Repeat(data))) => {
+                    evaluator.setup_repeat(data, cs)?;
+                }
+                Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
+                e => match evaluator.state_data.parent_instruction {
+                    ParentInstruction::None if e.is_ok() => {
+                        assert!(evaluator.call_stack.is_empty());
+                        let res = evaluator
+                            .state_data
+                            .result
+                            .unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
+                        return Ok(res);
+                    }
+                    ParentInstruction::Call(data) if e.is_ok() => {
+                        evaluator.finish_call(data)?;
+                    }
+                    ParentInstruction::Mask(condition) => {
+                        evaluator.finish_mask(condition, cs, e)?;
+                    }
+                    ParentInstruction::Repeat(iter_variable) if e.is_ok() => {
+                        evaluator.finish_repeat(iter_variable)?;
+                    }
+                    _ => {
+                        return Err(anyhow!(
+                            "f#{} i#{}: {:?}",
+                            evaluator.state_data.function_index,
+                            evaluator.state_data.state.instruction_index,
+                            e.unwrap_err()
+                        ))
+                    }
+                },
+            }
+        }
+    }
+}
+/// stores data about the state for scope recursion
+struct CallStateData<'a, F: PrimeField, G: GroupType<F>> {
+    /// the function currently being evaluated
+    function: &'a Function,
     function_index: u32,
-    parent_instruction: ParentInstruction<'b>,
+    /// the instruction that created this scope
+    parent_instruction: ParentInstruction<'a>,
+    /// the starting instruction index of the scope
     block_start: u32,
+    /// the length of the scope
     block_instruction_count: u32,
+    /// the state of the scope
     state: EvaluatorState<'a, F, G>,
+    /// the value returned by the scope, if anything has been returned yet
     result: Option<ConstrainedValue<F, G>>,
 }
 
 /// implemented this so i could easily debug execution flow
-impl<'a, 'b, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, 'b, F, G> {
+impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -63,6 +386,7 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, 'b
                 instructions: {:?},
                 ...
             }},
+            function_index: {},
             instruction: {:?},
             block_start: {},
             block_instruction_count: {},
@@ -71,51 +395,76 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, 'b
                 instruction_index: {},
                 ...
             }}
+            result: {:?},
         }}",
             self.function.instructions,
+            self.function_index,
             self.parent_instruction,
             self.block_start,
             self.block_instruction_count,
-            self.state.instruction_index
+            self.state.instruction_index,
+            self.result,
         )
     }
 }
 
-impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
-    pub fn evaluate_block<CS: ConstraintSystem<F>>(&mut self, cs: &mut CS) -> Result<Option<&'b Instruction>> {
+impl<'a, F: PrimeField, G: GroupType<F>> CallStateData<'a, F, G> {
+    /// creates the initial state at the start of a programs function evaluation step.
+    /// the function passed should be main and the index should point to main
+    pub fn create_initial_state_data(
+        state: EvaluatorState<'a, F, G>,
+        function: &'a Function,
+        index: u32,
+    ) -> Result<Self> {
+        Ok(Self {
+            function: &function,
+            function_index: index,
+            block_start: 0,
+            block_instruction_count: function.instructions.len() as u32,
+            state,
+            parent_instruction: ParentInstruction::None,
+            result: None,
+        })
+    }
+
+    /// evaluates each instruction in a block.
+    /// if a control instruction was hit (mask, repeat, call) then it halts evaluation and returns the instruction
+    pub fn evaluate_block<CS: ConstraintSystem<F>>(&mut self, cs: &mut CS) -> Result<Option<&'a Instruction>> {
         while self.state.instruction_index < self.block_start + self.block_instruction_count {
             let instruction = &self.function.instructions[self.state.instruction_index as usize];
-            match self.evaluate_control_instruction(instruction, cs)? {
-                FunctionReturn::Recurse(ins) => return Ok(Some(ins)),
-                FunctionReturn::ControlFlow(true) => {
+            match self.evaluate_instruction(instruction, cs)? {
+                ControlFlow::Recurse(ins) => return Ok(Some(ins)),
+                ControlFlow::Return => {
                     return Ok(None);
                 }
-                FunctionReturn::ControlFlow(false) => continue,
+                ControlFlow::Continue => continue,
             }
         }
         Ok(None)
     }
 
-    fn evaluate_control_instruction<CS: ConstraintSystem<F>>(
+    /// handles the control flow of instruction evaluation.
+    /// returns the instruction if mask, call, or repeat was hit; else passes it to state for evaluation
+    fn evaluate_instruction<CS: ConstraintSystem<F>>(
         &mut self,
-        instruction: &'b Instruction,
+        instruction: &'a Instruction,
         cs: &mut CS,
-    ) -> Result<FunctionReturn<'b>> {
+    ) -> Result<ControlFlow<'a>> {
         match instruction {
             i @ Instruction::Call(_) => {
                 if self.state.call_depth > self.state.program.header.inline_limit {
                     return Err(anyhow!("max inline limit hit"));
                 } else {
-                    return Ok(FunctionReturn::Recurse(i));
+                    return Ok(ControlFlow::Recurse(i));
                 }
             }
-            i @ Instruction::Mask(_) => return Ok(FunctionReturn::Recurse(i)),
-            i @ Instruction::Repeat(_) => return Ok(FunctionReturn::Recurse(i)),
+            i @ Instruction::Mask(_) => return Ok(ControlFlow::Recurse(i)),
+            i @ Instruction::Repeat(_) => return Ok(ControlFlow::Recurse(i)),
             instruction => {
                 match self.state.evaluate_instruction(instruction, cs) {
                     Ok(Some(returned)) => {
                         self.result = Some(returned);
-                        return Ok(FunctionReturn::ControlFlow(true));
+                        return Ok(ControlFlow::Return);
                     }
                     Ok(None) => (),
                     Err(e) => return Err(e),
@@ -124,7 +473,7 @@ impl<'a, 'b, F: PrimeField, G: GroupType<F>> CallStateData<'a, 'b, F, G> {
             }
         }
 
-        Ok(FunctionReturn::ControlFlow(false))
+        Ok(ControlFlow::Continue)
     }
 }
 
@@ -355,262 +704,5 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
         self.call_depth += 1;
 
         Ok(&function)
-    }
-
-    pub fn evaluate_function<CS: ConstraintSystem<F>>(
-        mut self,
-        index: u32,
-        arguments: &[ConstrainedValue<F, G>],
-        cs: &mut CS,
-    ) -> Result<ConstrainedValue<F, G>> {
-        let mut call_stack = Vec::new();
-        let function = self.setup_evaluate_function(index, arguments)?;
-        let mut state_data = CallStateData {
-            function: &function,
-            function_index: index,
-            block_start: 0,
-            block_instruction_count: function.instructions.len() as u32,
-            state: self,
-            parent_instruction: ParentInstruction::None,
-            result: None,
-        };
-        loop {
-            match state_data.evaluate_block(cs) {
-                Ok(Some(Instruction::Call(data))) => {
-                    let arguments = data
-                        .arguments
-                        .iter()
-                        .map(|x| state_data.state.resolve(x, cs).map(|x| x.into_owned()))
-                        .collect::<Result<Vec<_>, _>>()?;
-
-                    let mut state = EvaluatorState {
-                        program: state_data.state.program,
-                        variables: HashMap::new(),
-                        call_depth: state_data.state.call_depth,
-                        parent_variables: state_data
-                            .state
-                            .variables
-                            .clone()
-                            .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
-                        function_index: state_data.state.function_index,
-                        instruction_index: 0,
-                    };
-
-                    let function = state.setup_evaluate_function(data.index, &arguments)?;
-                    call_stack.push(state_data);
-                    state_data = CallStateData {
-                        function: &function,
-                        function_index: data.index,
-                        block_start: 0,
-                        block_instruction_count: function.instructions.len() as u32,
-                        state,
-                        parent_instruction: ParentInstruction::Call(data),
-                        result: None,
-                    };
-                }
-                Ok(Some(Instruction::Mask(data))) => {
-                    if data.instruction_count + state_data.state.instruction_index
-                        >= state_data.function.instructions.len() as u32
-                    {
-                        return Err(anyhow!("illegal mask block length"));
-                    }
-
-                    let condition = state_data.state.resolve(&data.condition, cs)?.into_owned();
-                    let condition = condition
-                        .extract_bool()
-                        .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
-                        .clone();
-                    state_data.state.instruction_index += 1;
-                    let state = EvaluatorState {
-                        program: state_data.state.program,
-                        variables: HashMap::new(),
-                        call_depth: state_data.state.call_depth,
-                        parent_variables: state_data
-                            .state
-                            .variables
-                            .clone()
-                            .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
-                        function_index: state_data.state.function_index,
-                        instruction_index: state_data.state.instruction_index,
-                    };
-                    let new_state_data = CallStateData {
-                        function: state_data.function,
-                        function_index: state_data.function_index,
-                        block_start: state_data.state.instruction_index,
-                        block_instruction_count: data.instruction_count,
-                        state,
-                        parent_instruction: ParentInstruction::Mask(condition),
-                        result: state_data.result.clone(),
-                    };
-                    state_data.state.instruction_index += data.instruction_count;
-                    call_stack.push(state_data);
-                    state_data = new_state_data;
-                }
-                Ok(Some(Instruction::Repeat(data))) => {
-                    if data.instruction_count + state_data.state.instruction_index
-                        >= state_data.function.instructions.len() as u32
-                    {
-                        return Err(anyhow!("illegal repeat block length"));
-                    }
-
-                    let from = state_data.state.resolve(&data.from, cs)?.into_owned();
-                    let from_int = from
-                        .extract_integer()
-                        .map_err(|value| anyhow!("illegal type for loop init: {}", value))?
-                        .to_owned();
-                    let from = from_int
-                        .to_usize()
-                        .ok_or_else(|| anyhow!("illegal input-derived loop index"))?;
-
-                    let to = state_data.state.resolve(&data.to, cs)?.into_owned();
-                    let to = to
-                        .extract_integer()
-                        .map_err(|value| anyhow!("illegal type for loop terminator: {}", value))?
-                        .to_usize()
-                        .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
-
-                    let iter: Box<dyn Iterator<Item = usize>> = match (from < to, data.inclusive) {
-                        (true, true) => Box::new(from..=to),
-                        (true, false) => Box::new(from..to),
-                        (false, true) => Box::new((to..=from).rev()),
-                        // add the range to the values to get correct bound
-                        (false, false) => Box::new(((to + 1)..(from + 1)).rev()),
-                    };
-
-                    state_data.state.instruction_index += 1;
-                    //todo: very memory intensive with large loops since all states get allocated at once
-                    let mut iter_state_data = Vec::new();
-                    //todo: max loop count (DOS vector)
-                    for i in iter {
-                        let mut state = EvaluatorState {
-                            program: state_data.state.program,
-                            variables: HashMap::new(),
-                            call_depth: state_data.state.call_depth,
-                            parent_variables: state_data
-                                .state
-                                .variables
-                                .clone()
-                                .union(state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
-                            function_index: state_data.state.function_index,
-                            instruction_index: state_data.state.instruction_index,
-                        };
-                        state.variables.insert(
-                            data.iter_variable,
-                            ConstrainedValue::Integer(match from_int.get_type() {
-                                IntegerType::U8 => Integer::U8(UInt8::constant(
-                                    i.try_into().map_err(|_| anyhow!("loop index out of range for u8"))?,
-                                )),
-                                IntegerType::U16 => Integer::U16(UInt16::constant(
-                                    i.try_into().map_err(|_| anyhow!("loop index out of range for u16"))?,
-                                )),
-                                IntegerType::U32 => Integer::U32(UInt32::constant(
-                                    i.try_into().map_err(|_| anyhow!("loop index out of range for u32"))?,
-                                )),
-                                _ => return Err(anyhow!("illegal type for loop index")),
-                            }),
-                        );
-                        let new_state_data = CallStateData {
-                            function: state_data.function,
-                            function_index: state_data.function_index,
-                            block_start: state_data.state.instruction_index,
-                            block_instruction_count: data.instruction_count,
-                            state,
-                            parent_instruction: ParentInstruction::Repeat(data.iter_variable),
-                            result: state_data.result.clone(),
-                        };
-                        iter_state_data.push(new_state_data);
-                    }
-                    iter_state_data.reverse();
-                    state_data.state.instruction_index += data.instruction_count;
-                    call_stack.push(state_data);
-                    call_stack.extend(iter_state_data.into_iter());
-                    state_data = call_stack.pop().unwrap();
-                }
-                Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
-                e => match state_data.parent_instruction {
-                    ParentInstruction::None if e.is_ok() => {
-                        let res = state_data.result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
-                        return Ok(res);
-                    }
-                    ParentInstruction::Call(data) if e.is_ok() => {
-                        let res = state_data.result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
-                        state_data = call_stack.pop().expect("no state to return to");
-                        state_data.state.store(data.destination, res);
-                        state_data.state.instruction_index += 1;
-                    }
-                    ParentInstruction::Mask(condition) => {
-                        if e.is_err() && condition.get_value().unwrap_or(true) {
-                            return Err(anyhow!(
-                                "f#{} i#{}: {:?}",
-                                state_data.function_index,
-                                state_data.state.instruction_index,
-                                e.unwrap_err()
-                            ));
-                        }
-                        let assignments = state_data.state.variables;
-                        let target_index = state_data.block_start + state_data.block_instruction_count;
-                        let result = state_data.result.clone();
-                        state_data = call_stack.pop().expect("no state to return to");
-                        for (variable, value) in assignments {
-                            if let Some(prior) = state_data
-                                .state
-                                .variables
-                                .get(&variable)
-                                .or(state_data.state.parent_variables.get(&variable))
-                            {
-                                let prior = prior.clone(); //todo: optimize away clone
-                                let value = ConstrainedValue::conditionally_select(
-                                    &mut state_data.state.cs_meta(&*format!("selection {}", variable), cs),
-                                    &condition,
-                                    &value,
-                                    &prior,
-                                )?;
-                                state_data.state.store(variable, value);
-                            }
-                        }
-                        assert_eq!(state_data.state.instruction_index, target_index);
-                        match (state_data.result.clone(), result.clone()) {
-                            (Some(prior), Some(interior)) => {
-                                state_data.result = Some(ConstrainedValue::conditionally_select(
-                                    &mut state_data.state.cs_meta(&*format!("selection result"), cs),
-                                    &condition,
-                                    &interior,
-                                    &prior,
-                                )?);
-                            }
-                            (None, Some(interior)) => {
-                                // will produce garbage if invalid IR (incomplete return path)
-                                state_data.result = Some(interior);
-                            }
-                            (_, None) => (),
-                        }
-                    }
-                    ParentInstruction::Repeat(iter_variable) if e.is_ok() => {
-                        let assignments = state_data.state.variables;
-                        state_data = call_stack.pop().expect("no state to return to");
-                        for (variable, value) in assignments {
-                            if state_data
-                                .state
-                                .variables
-                                .get(&variable)
-                                .or(state_data.state.parent_variables.get(&variable))
-                                .is_some()
-                                && variable != iter_variable
-                            {
-                                state_data.state.store(variable, value);
-                            }
-                        }
-                    }
-                    _ => {
-                        return Err(anyhow!(
-                            "f#{} i#{}: {:?}",
-                            state_data.function_index,
-                            state_data.state.instruction_index,
-                            e.unwrap_err()
-                        ))
-                    }
-                },
-            }
-        }
     }
 }
