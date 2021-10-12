@@ -77,9 +77,6 @@ pub use self::rand::*;
 pub mod serialize;
 pub use serialize::*;
 
-pub mod variable_length_integer;
-pub use variable_length_integer::*;
-
 #[cfg(not(feature = "std"))]
 pub mod io;
 

@@ -18,7 +18,6 @@ use crate::{
     testnet2::{block_header::GenesisBlockHeader, transaction_1::Transaction1},
     traits::Genesis,
 };
-use snarkvm_utilities::variable_length_integer::variable_length_integer;
 
 pub struct GenesisBlock;
 
@@ -33,7 +32,7 @@ impl Genesis for GenesisBlock {
         let mut buffer = vec![];
         buffer.extend(include_bytes!("previous_hash.genesis")); // Previous block hash bytes
         buffer.extend(block_header_bytes); // Genesis block header bytes
-        buffer.extend(variable_length_integer(transactions.len() as u64)); // Number of transactions
+        buffer.extend((transactions.len() as u16).to_le_bytes()); // Number of transactions
         buffer.extend(transactions.concat()); // Ordered buffer of all transaction bytes
         buffer
     }
