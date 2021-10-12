@@ -21,7 +21,7 @@ use crate::IntegerType;
 
 use super::*;
 
-use std::{convert::TryInto, fmt};
+use std::{convert::TryInto, fmt, mem};
 
 /// the possible outcomes of evaluating an instruction
 #[derive(Debug)]
@@ -47,12 +47,29 @@ pub(super) struct FunctionEvaluator<'a, F: PrimeField, G: GroupType<F>> {
 
 impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
     fn nest(&mut self, state: CallStateData<'a, F, G>) {
-        self.call_stack.push(std::mem::replace(&mut self.state_data, state));
+        self.call_stack.push(mem::replace(&mut self.state_data, state));
     }
 
     fn unnest(&mut self) -> CallStateData<'a, F, G> {
         let last_state = self.call_stack.pop().expect("no state to return to");
-        std::mem::replace(&mut self.state_data, last_state)
+        mem::replace(&mut self.state_data, last_state)
+    }
+
+    /// if run condition `false`, returns error; else returns to last state with `true` run condition
+    fn unwind(&mut self, e: Error) -> Result<()> {
+        if self.state_data.condition {
+            return Err(anyhow!(
+                "f#{} i#{}: {:?}",
+                self.state_data.function_index,
+                self.state_data.state.instruction_index,
+                e
+            ));
+        } else {
+            self.call_stack = self.call_stack.drain(..).rev().skip_while(|s| !s.condition).collect();
+            self.call_stack.reverse();
+            self.unnest();
+            Ok(())
+        }
     }
 
     /// setup the state and call stack to start evaluating the target call instruction
@@ -86,7 +103,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::Call(data),
             result: None,
-            is_ran: self.state_data.is_ran,
+            condition: self.state_data.condition,
         };
 
         self.state_data.state.instruction_index += 1;
@@ -135,7 +152,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::Mask(condition),
             result: self.state_data.result.clone(),
-            is_ran: self.state_data.is_ran && condition.get_value().unwrap_or(true),
+            condition: self.state_data.condition && condition.get_value().unwrap_or(true),
         };
         self.state_data.state.instruction_index += data.instruction_count;
         self.nest(state_data);
@@ -256,7 +273,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 state,
                 parent_instruction: ParentInstruction::Repeat(data.iter_variable),
                 result: self.state_data.result.clone(),
-                is_ran: self.state_data.is_ran,
+                condition: self.state_data.condition,
             };
             iter_state_data.push(new_state_data);
         }
@@ -330,23 +347,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                     }
                 },
                 Err(e) => {
-                    if evaluator.state_data.is_ran {
-                        return Err(anyhow!(
-                            "f#{} i#{}: {:?}",
-                            evaluator.state_data.function_index,
-                            evaluator.state_data.state.instruction_index,
-                            e
-                        ));
-                    } else {
-                        evaluator.call_stack = evaluator
-                            .call_stack
-                            .into_iter()
-                            .rev()
-                            .skip_while(|s| !s.is_ran)
-                            .collect();
-                        evaluator.call_stack.reverse();
-                        evaluator.unnest();
-                    }
+                    evaluator.unwind(e)?;
                 }
             }
         }
@@ -368,7 +369,7 @@ struct CallStateData<'a, F: PrimeField, G: GroupType<F>> {
     /// the value returned by the scope, if anything has been returned yet
     result: Option<ConstrainedValue<F, G>>,
     /// if the code doesnt always execute
-    is_ran: bool,
+    condition: bool,
 }
 
 /// implemented this so i could easily debug execution flow
@@ -394,7 +395,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> 
                 ...
             }}
             result: {:?},
-            is_ran: {},
+            condition: {},
         }}",
             self.function.instructions,
             self.function_index,
@@ -404,7 +405,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> 
             self.state.instruction_index,
             self.state.call_depth,
             self.result,
-            self.is_ran,
+            self.condition,
         )
     }
 }
@@ -425,7 +426,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> CallStateData<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::None,
             result: None,
-            is_ran: true,
+            condition: true,
         })
     }
 
