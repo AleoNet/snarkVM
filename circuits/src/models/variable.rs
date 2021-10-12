@@ -52,7 +52,6 @@ impl<F: PrimeField> Variable<F> {
 
     pub fn one() -> Self {
         Self::Constant(F::one())
-        // Self::Public(0, F::one())
     }
 
     pub fn value(&self) -> F {

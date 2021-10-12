@@ -33,24 +33,20 @@ impl<E: Environment> Not for &Boolean<E> {
             E::halt("Boolean variable is not well-formed")
         }
 
-        let one = E::BaseField::one();
-        let boolean = self.to_value();
-
-        let output = if self.is_constant() {
-            // Constant case
-            match boolean {
-                true => self.0.clone() - Variable::Constant(one),
-                false => self.0.clone() + Variable::Constant(one),
+        // Constant case
+        if self.is_constant() {
+            match self.to_value() {
+                true => Boolean(self.0.clone() - Variable::one()),
+                false => Boolean(self.0.clone() + Variable::one()),
             }
-        } else {
-            // Public and private cases
-            match boolean {
-                true => self.0.clone() - E::one(),
-                false => self.0.clone() + E::one(),
+        }
+        // Public and private cases
+        else {
+            match self.to_value() {
+                true => Boolean(self.0.clone() - E::one()),
+                false => Boolean(self.0.clone() + E::one()),
             }
-        };
-
-        Boolean(output)
+        }
     }
 }
 
@@ -59,45 +55,63 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
+    fn check_not(
+        name: &str,
+        expected: bool,
+        candidate_input: Boolean<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let candidate_output = !candidate_input;
+            assert_eq!(expected, candidate_output.to_value());
+
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
+        });
+    }
+
     #[test]
-    fn test_not() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+    fn test_not_constant() {
+        // NOT false
+        let expected = true;
+        let candidate_input = Boolean::<Circuit>::new(Mode::Constant, false);
+        check_not("NOT false", expected, candidate_input, 0, 0, 0, 0);
 
-        let candidate = !Boolean::<Circuit>::new(Mode::Constant, false);
-        assert_eq!(true, candidate.to_value());
-        assert!(Circuit::is_satisfied());
+        // NOT true
+        let expected = false;
+        let candidate_input = Boolean::<Circuit>::new(Mode::Constant, true);
+        check_not("NOT true", expected, candidate_input, 0, 0, 0, 0);
+    }
 
-        let candidate = !Boolean::<Circuit>::new(Mode::Constant, true);
-        assert_eq!(false, candidate.to_value());
-        assert!(Circuit::is_satisfied());
+    #[test]
+    fn test_not_public() {
+        // NOT false
+        let expected = true;
+        let candidate_input = Boolean::<Circuit>::new(Mode::Public, false);
+        check_not("NOT false", expected, candidate_input, 0, 0, 0, 0);
 
-        assert_eq!(2, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        // NOT true
+        let expected = false;
+        let candidate_input = Boolean::<Circuit>::new(Mode::Public, true);
+        check_not("NOT true", expected, candidate_input, 0, 0, 0, 0);
+    }
 
-        let candidate = !Boolean::<Circuit>::new(Mode::Public, false);
-        assert_eq!(true, candidate.to_value());
-        assert!(Circuit::is_satisfied());
+    #[test]
+    fn test_not_private() {
+        // NOT false
+        let expected = true;
+        let candidate_input = Boolean::<Circuit>::new(Mode::Private, false);
+        check_not("NOT false", expected, candidate_input, 0, 0, 0, 0);
 
-        assert_eq!(2, Circuit::num_constants());
-        assert_eq!(2, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(1, Circuit::num_constraints());
-
-        let candidate = !Boolean::<Circuit>::new(Mode::Public, true);
-        assert_eq!(false, candidate.to_value());
-        assert!(Circuit::is_satisfied());
-
-        let candidate = !Boolean::<Circuit>::new(Mode::Private, false);
-        assert_eq!(true, candidate.to_value());
-        assert!(Circuit::is_satisfied());
-
-        let candidate = !Boolean::<Circuit>::new(Mode::Private, true);
-        assert_eq!(false, candidate.to_value());
-        assert!(Circuit::is_satisfied());
+        // NOT true
+        let expected = false;
+        let candidate_input = Boolean::<Circuit>::new(Mode::Private, true);
+        check_not("NOT true", expected, candidate_input, 0, 0, 0, 0);
     }
 }

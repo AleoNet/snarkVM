@@ -147,6 +147,71 @@ mod tests {
     }
 
     #[test]
+    fn test_to_bits_be() {
+        let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
+
+        // Constant
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let candidate = Field::<Circuit>::new(Mode::Constant, expected);
+
+            Circuit::scoped(&format!("Constant {}", i), |scope| {
+                let candidate = candidate.to_bits_be();
+                assert_eq!(expected_number_of_bits, candidate.len());
+                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
+                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                }
+
+                assert_eq!(506, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(0, scope.num_private_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
+            });
+        }
+
+        // Public
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let candidate = Field::<Circuit>::new(Mode::Public, expected);
+
+            Circuit::scoped(&format!("Public {}", i), |scope| {
+                let candidate = candidate.to_bits_be();
+                assert_eq!(expected_number_of_bits, candidate.len());
+                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
+                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                }
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(253, scope.num_private_in_scope());
+                assert_eq!(254, scope.num_constraints_in_scope());
+            });
+        }
+
+        // Private
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let candidate = Field::<Circuit>::new(Mode::Private, expected);
+
+            Circuit::scoped(&format!("Private {}", i), |scope| {
+                let candidate = candidate.to_bits_be();
+                assert_eq!(expected_number_of_bits, candidate.len());
+                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
+                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                }
+
+                assert_eq!(0, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_public_in_scope());
+                assert_eq!(253, scope.num_private_in_scope());
+                assert_eq!(254, scope.num_constraints_in_scope());
+            });
+        }
+    }
+
+    #[test]
     fn test_one() {
         let one = <Circuit as Environment>::BaseField::one();
 
@@ -160,11 +225,24 @@ mod tests {
             }
         }
 
+        /// Checks that the field element, when converted to big-endian bits, is well-formed.
+        fn check_bits_be(candidate: Field<Circuit>) {
+            for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
+                match i == 0 {
+                    true => assert_eq!(true, bit.to_value()),
+                    false => assert_eq!(false, bit.to_value()),
+                }
+            }
+        }
+
         // Constant
         check_bits_le(Field::<Circuit>::new(Mode::Constant, one));
+        check_bits_be(Field::<Circuit>::new(Mode::Constant, one));
         // Public
         check_bits_le(Field::<Circuit>::new(Mode::Public, one));
+        check_bits_be(Field::<Circuit>::new(Mode::Public, one));
         // Private
         check_bits_le(Field::<Circuit>::new(Mode::Private, one));
+        check_bits_be(Field::<Circuit>::new(Mode::Private, one));
     }
 }
