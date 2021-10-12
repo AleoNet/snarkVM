@@ -20,6 +20,7 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsParameters},
     AffineCurve,
 };
+use snarkvm_fields::PrimeField;
 
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};

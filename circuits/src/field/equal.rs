@@ -170,8 +170,8 @@ mod tests {
             }
         }
 
-        // Constant variables
-        Circuit::scoped("Constant", |scope| {
+        // Constant == Constant
+        Circuit::scoped("Constant == Constant", |scope| {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -190,8 +190,8 @@ mod tests {
             }
         });
 
-        // Public variables
-        Circuit::scoped("Public", |scope| {
+        // Public == Public
+        Circuit::scoped("Public == Public", |scope| {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -210,8 +210,8 @@ mod tests {
             }
         });
 
-        // Public and private variables
-        Circuit::scoped("Public and Private", |scope| {
+        // Public == Private
+        Circuit::scoped("Public == Private", |scope| {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -230,8 +230,8 @@ mod tests {
             }
         });
 
-        // Private variables
-        Circuit::scoped("Private", |scope| {
+        // Private == Private
+        Circuit::scoped("Private == Private", |scope| {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
