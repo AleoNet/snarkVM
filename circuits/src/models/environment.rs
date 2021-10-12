@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::models::*;
+use crate::{boolean::Boolean, models::*};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
@@ -53,12 +53,27 @@ pub trait Environment: Clone {
     where
         Fn: FnOnce(CircuitScope<Self::BaseField>);
 
+    /// Adds one constraint enforcing that `(A * B) == C`.
     fn enforce<Fn, A, B, C>(constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
         A: Into<LinearCombination<Self::BaseField>>,
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>;
+
+    /// Adds one constraint enforcing that the given boolean is `true`.
+    fn assert(boolean: &Boolean<Self>) {
+        Self::enforce(|| (boolean, Self::one(), Self::one()))
+    }
+
+    /// Adds one constraint enforcing that the `A == B`.
+    fn assert_eq<A, B>(a: A, b: B)
+    where
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+    {
+        Self::enforce(|| (a, Self::one(), b))
+    }
 
     fn num_constants() -> usize;
     fn num_public() -> usize;
