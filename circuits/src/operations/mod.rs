@@ -187,14 +187,21 @@ impl<E: Environment> Function<E> {
         }
     }
 
-    /// Allocates a new register in memory, returning the new register locator.
+    /// Allocates a new register in memory, returning the new register.
     fn new_register(&mut self) -> Register<E> {
         let locator = self.memory.borrow_mut().new_register();
         Register(locator, self.memory.clone())
     }
 
+    /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
+    fn new_input(&mut self, input: Value<E>) -> Register<E> {
+        let register = self.new_register();
+        self.push_instruction(Instruction::Store(input, register.clone()));
+        register
+    }
+
     /// Adds the given instruction.
-    fn add_instruction(&mut self, instruction: Instruction<E>) {
+    fn push_instruction(&mut self, instruction: Instruction<E>) {
         self.instructions.push(instruction);
     }
 
@@ -225,23 +232,19 @@ impl<E: Environment> HelloWorld<E> {
         // Allocate a new register for each input, and store each input in the register.
         let mut registers = Vec::with_capacity(2);
         for input in inputs {
-            let register = function.new_register();
-            function.add_instruction(Instruction::Store(input, register.clone()));
-            registers.push(register);
+            registers.push(function.new_input(input));
         }
 
         // Add the values in the registers, storing the result in a newly allocated register.
         for pair in registers.chunks(2) {
-            let (first, second) = (&pair[0], &pair[1]);
-            let output_register = function.new_register();
+            let first = Value::Register(pair[0].clone());
+            let second = Value::Register(pair[1].clone());
+            let output = function.new_register();
 
-            function.add_instruction(Instruction::Add(
-                Value::Register(first.clone()),
-                Value::Register(second.clone()),
-                output_register.clone(),
-            ));
+            let instruction = Instruction::Add(first, second, output.clone());
 
-            outputs.push(output_register);
+            function.push_instruction(instruction);
+            outputs.push(output);
         }
 
         Self { function, outputs }
