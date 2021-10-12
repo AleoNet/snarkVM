@@ -32,6 +32,9 @@ pub use not::*;
 pub mod or;
 pub use or::*;
 
+pub mod ternary;
+pub use ternary::*;
+
 pub mod xor;
 pub use xor::*;
 

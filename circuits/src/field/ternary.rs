@@ -20,25 +20,26 @@ impl<E: Environment> Ternary for Field<E> {
     type Boolean = Boolean<E>;
     type Output = Self;
 
-    fn ternary(condition: &Self::Boolean, a: &Self, b: &Self) -> Self::Output {
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
         // Constant Condition
         if condition.is_constant() {
             match condition.to_value() {
-                true => a.clone(),
-                false => b.clone(),
+                true => first.clone(),
+                false => second.clone(),
             }
         }
         // Constant Variables
-        else if a.0.is_constant() && b.0.is_constant() {
+        else if first.is_constant() && second.is_constant() {
             let not_condition = Self::from(&!condition);
             let condition = Self::from(&condition);
-            (condition * a) + (not_condition * b)
+            (condition * first) + (not_condition * second)
         }
         // Variables
         else {
             let witness = Field::new(Mode::Private, match condition.to_value() {
-                true => a.to_value(),
-                false => b.to_value(),
+                true => first.to_value(),
+                false => second.to_value(),
             });
 
             //
@@ -83,7 +84,7 @@ impl<E: Environment> Ternary for Field<E> {
             //       a - b = 0
             // => if a != b, as LHS != RHS, the witness is incorrect.
             //
-            E::enforce(|| (condition, (a.clone() - b), (witness.clone().0 - &b.0)));
+            E::enforce(|| (condition, (first.clone() - second), (witness.0.clone() - &second.0)));
 
             witness
         }

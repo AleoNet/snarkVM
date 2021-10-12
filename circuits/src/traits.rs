@@ -104,7 +104,8 @@ pub trait Ternary {
     type Boolean: BooleanTrait;
     type Output;
 
-    fn ternary(condition: &Self::Boolean, a: &Self, b: &Self) -> Self::Output;
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output;
 }
 
 /// Unary operator for retrieving the doubled value.
