@@ -539,52 +539,6 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F> for AllocatedFp<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], mut cs: CS) -> Result<AllocatedFp<F>, SynthesisError> {
-        if bits.len() != F::Parameters::MODULUS_BITS as usize {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
-        let bits = bits
-            .iter()
-            .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
-            .collect::<Result<Vec<bool>, SynthesisError>>()?;
-        let allocated_fp = Self::alloc(cs.ns(|| ""), || F::from_repr(F::BigInteger::from_bits_le(&bits)).get())?;
-
-        Ok(allocated_fp)
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(
-        bits: &[Boolean],
-        cs: CS,
-    ) -> Result<AllocatedFp<F>, SynthesisError> {
-        <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
-    }
-}
-
-impl<F: PrimeField> FromBitsBEGadget<F> for AllocatedFp<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], mut cs: CS) -> Result<AllocatedFp<F>, SynthesisError> {
-        if bits.len() != F::Parameters::MODULUS_BITS as usize {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
-        let bits = bits
-            .iter()
-            .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
-            .collect::<Result<Vec<bool>, SynthesisError>>()?;
-        let allocated_fp = Self::alloc(cs.ns(|| ""), || F::from_repr(F::BigInteger::from_bits_be(&bits)).get())?;
-
-        Ok(allocated_fp)
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(
-        bits: &[Boolean],
-        cs: CS,
-    ) -> Result<AllocatedFp<F>, SynthesisError> {
-        <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
-    }
-}
-
 impl<F: PrimeField> ToBytesLEGadget<F> for AllocatedFp<F> {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let byte_values = match self.value {
@@ -634,6 +588,54 @@ impl<F: PrimeField> ToBytesLEGadget<F> for AllocatedFp<F> {
         )?;
 
         Ok(bytes)
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget<F> for AllocatedFp<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<AllocatedFp<F>, SynthesisError> {
+        unimplemented!()
+        // if bits.len() != F::Parameters::MODULUS_BITS as usize {
+        //     return Err(SynthesisError::Unsatisfiable);
+        // }
+        //
+        // let bits = bits
+        //     .iter()
+        //     .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
+        //     .collect::<Result<Vec<bool>, SynthesisError>>()?;
+        // let allocated_fp = Self::alloc(cs.ns(|| ""), || F::from_repr(F::BigInteger::from_bits_le(&bits)).get())?;
+        //
+        // Ok(allocated_fp)
+    }
+
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(
+        _bits: &[Boolean],
+        _cs: CS,
+    ) -> Result<AllocatedFp<F>, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget<F> for AllocatedFp<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<AllocatedFp<F>, SynthesisError> {
+        unimplemented!()
+        // if bits.len() != F::Parameters::MODULUS_BITS as usize {
+        //     return Err(SynthesisError::Unsatisfiable);
+        // }
+        //
+        // let bits = bits
+        //     .iter()
+        //     .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
+        //     .collect::<Result<Vec<bool>, SynthesisError>>()?;
+        // let allocated_fp = Self::alloc(cs.ns(|| ""), || F::from_repr(F::BigInteger::from_bits_be(&bits)).get())?;
+        //
+        // Ok(allocated_fp)
+    }
+
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(
+        _bits: &[Boolean],
+        _cs: CS,
+    ) -> Result<AllocatedFp<F>, SynthesisError> {
+        unimplemented!()
     }
 }
 
@@ -1201,52 +1203,6 @@ impl<F: PrimeField> ToBitsLEGadget<F> for FpGadget<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F> for FpGadget<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FpGadget<F>, SynthesisError> {
-        let is_allocated = bits.iter().any(|b| b.is_allocated());
-
-        if is_allocated {
-            Ok(Self::Variable(AllocatedFp::from_bits_le(bits, cs)?))
-        } else {
-            let bits = bits
-                .iter()
-                .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
-                .collect::<Result<Vec<bool>, SynthesisError>>()?;
-            let prime_field =
-                F::from_repr(F::BigInteger::from_bits_le(&bits)).ok_or(SynthesisError::AssignmentMissing)?;
-
-            Ok(Self::Constant(prime_field))
-        }
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FpGadget<F>, SynthesisError> {
-        <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
-    }
-}
-
-impl<F: PrimeField> FromBitsBEGadget<F> for FpGadget<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FpGadget<F>, SynthesisError> {
-        let is_allocated = bits.iter().any(|b| b.is_allocated());
-
-        if is_allocated {
-            Ok(Self::Variable(AllocatedFp::from_bits_be(bits, cs)?))
-        } else {
-            let bits = bits
-                .iter()
-                .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
-                .collect::<Result<Vec<bool>, SynthesisError>>()?;
-            let prime_field =
-                F::from_repr(F::BigInteger::from_bits_be(&bits)).ok_or(SynthesisError::AssignmentMissing)?;
-
-            Ok(Self::Constant(prime_field))
-        }
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FpGadget<F>, SynthesisError> {
-        <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
-    }
-}
-
 impl<F: PrimeField> ToBytesLEGadget<F> for FpGadget<F> {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
@@ -1260,6 +1216,54 @@ impl<F: PrimeField> ToBytesLEGadget<F> for FpGadget<F> {
             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Variable(v) => v.to_bytes_le_strict(cs),
         }
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget<F> for FpGadget<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FpGadget<F>, SynthesisError> {
+        // let is_allocated = bits.iter().any(|b| b.is_allocated());
+        //
+        // if is_allocated {
+        //     Ok(Self::Variable(AllocatedFp::from_bits_le(bits, cs)?))
+        // } else {
+        //     let bits = bits
+        //         .iter()
+        //         .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
+        //         .collect::<Result<Vec<bool>, SynthesisError>>()?;
+        //     let prime_field =
+        //         F::from_repr(F::BigInteger::from_bits_le(&bits)).ok_or(SynthesisError::AssignmentMissing)?;
+        //
+        //     Ok(Self::Constant(prime_field))
+        // }
+        unimplemented!()
+    }
+
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FpGadget<F>, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget<F> for FpGadget<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FpGadget<F>, SynthesisError> {
+        // let is_allocated = bits.iter().any(|b| b.is_allocated());
+        //
+        // if is_allocated {
+        //     Ok(Self::Variable(AllocatedFp::from_bits_be(bits, cs)?))
+        // } else {
+        //     let bits = bits
+        //         .iter()
+        //         .map(|b| b.get_value().ok_or(SynthesisError::AssignmentMissing))
+        //         .collect::<Result<Vec<bool>, SynthesisError>>()?;
+        //     let prime_field =
+        //         F::from_repr(F::BigInteger::from_bits_be(&bits)).ok_or(SynthesisError::AssignmentMissing)?;
+        //
+        //     Ok(Self::Constant(prime_field))
+        // }
+        unimplemented!()
+    }
+
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FpGadget<F>, SynthesisError> {
+        unimplemented!()
     }
 }
 

@@ -264,26 +264,6 @@ impl<F: PrimeField> ToBitsBEGadget<F> for FieldType<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
-        Ok(Self(FpGadget::from_bits_le(bits, cs)?))
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
-        <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
-    }
-}
-
-impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
-        Ok(Self(FpGadget::from_bits_be(bits, cs)?))
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
-        <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
-    }
-}
-
 impl<F: PrimeField> ToBytesLEGadget<F> for FieldType<F> {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes_le(cs)
@@ -291,6 +271,26 @@ impl<F: PrimeField> ToBytesLEGadget<F> for FieldType<F> {
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes_le_strict(cs)
+    }
+}
+
+impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
     }
 }
 
