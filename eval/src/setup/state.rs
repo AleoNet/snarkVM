@@ -67,7 +67,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         } else {
             self.call_stack = self.call_stack.drain(..).rev().skip_while(|s| !s.condition).collect();
             self.call_stack.reverse();
-            self.unnest();
+            self.state_data = self.call_stack.pop().expect("no state to return to");
             Ok(())
         }
     }
@@ -305,6 +305,15 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         Ok(())
     }
 
+    fn finish_evaluation(self) -> ConstrainedValue<F, G> {
+        assert!(self.call_stack.is_empty());
+        let res = self
+            .state_data
+            .result
+            .unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
+        res
+    }
+
     pub fn evaluate_function<CS: ConstraintSystem<F>>(
         function: &'a Function,
         state: EvaluatorState<'a, F, G>,
@@ -328,14 +337,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 }
                 Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
                 Ok(None) => match evaluator.state_data.parent_instruction {
-                    ParentInstruction::None => {
-                        assert!(evaluator.call_stack.is_empty());
-                        let res = evaluator
-                            .state_data
-                            .result
-                            .unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
-                        return Ok(res);
-                    }
                     ParentInstruction::Call(data) => {
                         evaluator.finish_call(data)?;
                     }
@@ -344,6 +345,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                     }
                     ParentInstruction::Repeat(iter_variable) => {
                         evaluator.finish_repeat(iter_variable)?;
+                    }
+                    ParentInstruction::None => {
+                        return Ok(evaluator.finish_evaluation());
                     }
                 },
                 Err(e) => {
