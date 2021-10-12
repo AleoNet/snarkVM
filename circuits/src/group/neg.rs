@@ -20,6 +20,7 @@ impl<E: Environment> Neg for Affine<E> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
+        // The call to `Affine::from` checks that the negated point is on the curve.
         Affine::from(-self.x, self.y)
     }
 }
@@ -36,44 +37,89 @@ impl<E: Environment> Neg for &Affine<E> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use snarkvm_curves::Group;
+    use snarkvm_utilities::UniformRand;
 
-    // #[test]
-    // fn test_zero() {
-    //     let zero = <Circuit as Environment>::BaseField::zero();
-    //
-    //     let candidate = Affine::<Circuit>::zero();
-    //     assert_eq!(zero, candidate.to_value());
-    //     assert_eq!(zero, (-&candidate).to_value());
-    //     assert_eq!(zero, (-(-candidate)).to_value());
-    //
-    //     let candidate = Affine::<Circuit>::new(Mode::Public, zero);
-    //     assert_eq!(zero, candidate.to_value());
-    //     assert_eq!(zero, (-&candidate).to_value());
-    //     assert_eq!(zero, (-(-candidate)).to_value());
-    //
-    //     let candidate = Affine::<Circuit>::new(Mode::Private, zero);
-    //     assert_eq!(zero, candidate.to_value());
-    //     assert_eq!(zero, (-&candidate).to_value());
-    //     assert_eq!(zero, (-(-candidate)).to_value());
-    // }
-    //
-    // #[test]
-    // fn test_one() {
-    //     let one = <Circuit as Environment>::BaseField::one();
-    //
-    //     let candidate = Affine::<Circuit>::one();
-    //     assert_eq!(one, candidate.to_value());
-    //     assert_eq!(-one, (-&candidate).to_value());
-    //     assert_eq!(one, (-(-candidate)).to_value());
-    //
-    //     let candidate = Affine::<Circuit>::new(Mode::Public, one);
-    //     assert_eq!(one, candidate.to_value());
-    //     assert_eq!(-one, (-&candidate).to_value());
-    //     assert_eq!(one, (-(-candidate)).to_value());
-    //
-    //     let candidate = Affine::<Circuit>::new(Mode::Private, one);
-    //     assert_eq!(one, candidate.to_value());
-    //     assert_eq!(-one, (-&candidate).to_value());
-    //     assert_eq!(one, (-(-candidate)).to_value());
-    // }
+    use rand::thread_rng;
+
+    const ITERATIONS: usize = 100;
+
+    fn check_neg(
+        name: &str,
+        expected: <Circuit as Environment>::Affine,
+        candidate_input: Affine<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let candidate_output = -candidate_input;
+            assert_eq!(
+                (expected.to_x_coordinate(), expected.to_y_coordinate()),
+                candidate_output.to_value()
+            );
+
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
+        });
+    }
+
+    #[test]
+    fn test_neg_constant() {
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+
+            let expected = -point;
+            let candidate_input =
+                Affine::<Circuit>::new(Mode::Constant, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+            check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 6, 0, 0, 0);
+        }
+    }
+
+    #[test]
+    fn test_neg_public() {
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+
+            let expected = -point;
+            let candidate_input =
+                Affine::<Circuit>::new(Mode::Public, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+            check_neg(&format!("NEG Public {}", i), expected, candidate_input, 2, 0, 2, 3);
+        }
+    }
+
+    #[test]
+    fn test_neg_private() {
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+
+            let expected = -point;
+            let candidate_input =
+                Affine::<Circuit>::new(Mode::Private, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+            check_neg(&format!("NEG Private {}", i), expected, candidate_input, 2, 0, 2, 3);
+        }
+    }
+
+    #[test]
+    fn test_zero() {
+        let zero = <Circuit as Environment>::BaseField::zero();
+
+        let expected = <Circuit as Environment>::Affine::zero();
+
+        let candidate_input = Affine::<Circuit>::zero();
+        check_neg("NEG Constant Zero", expected, candidate_input, 6, 0, 0, 0);
+
+        let candidate_input = Affine::<Circuit>::new(Mode::Public, zero, None);
+        check_neg("NEG Public Zero", expected, candidate_input, 2, 0, 2, 3);
+
+        let candidate_input = Affine::<Circuit>::new(Mode::Private, zero, None);
+        check_neg("NEG Private Zero", expected, candidate_input, 2, 0, 2, 3);
+    }
 }

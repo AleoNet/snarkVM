@@ -52,7 +52,6 @@ impl<E: Environment> Add<&Self> for Affine<E> {
 
         let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
         let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
-        let one = Field::new(Mode::Constant, E::BaseField::one());
 
         // Compute U = (-A * x1 + y1) * (x2 + y2)
         let u1 = (&self.x * &-&a) + &self.y;
@@ -95,13 +94,13 @@ impl<E: Environment> Add<&Self> for Affine<E> {
 
         // Ensure x3 is well-formed.
         // x3 * (v2 + 1) = v0 + v1
-        let v2_plus_one = &v2 + &one;
+        let v2_plus_one = &v2 + &Field::one();
         let v0_plus_v1 = &v0 + &v1;
         E::enforce(|| (&x3, v2_plus_one, v0_plus_v1));
 
         // Ensure y3 is well-formed.
         // y3 * (1 - v2) = u + (a * v0) - v1
-        let one_minus_v2 = one - v2;
+        let one_minus_v2 = Field::one() - v2;
         let a_v0 = v0 * a;
         let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
         E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));
@@ -138,7 +137,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 500;
+    const ITERATIONS: usize = 250;
 
     #[test]
     fn test_add() {
@@ -159,7 +158,7 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(9, scope.num_constants_in_scope());
+                assert_eq!(8, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
@@ -183,7 +182,7 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(4, scope.num_constants_in_scope());
+                assert_eq!(3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(3, scope.num_private_in_scope());
                 assert_eq!(3, scope.num_constraints_in_scope());
@@ -207,7 +206,7 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(3, scope.num_private_in_scope());
                 assert_eq!(3, scope.num_constraints_in_scope());
@@ -231,7 +230,7 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(6, scope.num_private_in_scope());
                 assert_eq!(6, scope.num_constraints_in_scope());
@@ -256,7 +255,7 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(6, scope.num_private_in_scope());
                 assert_eq!(6, scope.num_constraints_in_scope());
@@ -281,7 +280,7 @@ mod tests {
                     candidate.to_value()
                 );
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(6, scope.num_private_in_scope());
                 assert_eq!(6, scope.num_constraints_in_scope());

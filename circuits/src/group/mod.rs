@@ -74,14 +74,13 @@ impl<E: Environment> Affine<E> {
         {
             let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
             let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
-            let one = Field::new(Mode::Constant, E::BaseField::one());
 
             let x2 = x.square();
             let y2 = y.square();
 
             let first = y2;
-            let second = (d * &x2) - &one;
-            let third = (a * x2) - one;
+            let second = (d * &x2) - &Field::one();
+            let third = (a * x2) - Field::one();
 
             // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
             E::enforce(|| (first, second, third));
@@ -107,7 +106,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: usize = 500;
 
     #[test]
     fn test_new() {
@@ -128,7 +127,7 @@ mod tests {
                 let affine = Affine::<Circuit>::new(Mode::Constant, x_coordinate, None);
                 assert_eq!((x_coordinate, y_coordinate), affine.to_value());
 
-                assert_eq!(9, scope.num_constants_in_scope());
+                assert_eq!(8, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
@@ -146,7 +145,7 @@ mod tests {
                 let affine = Affine::<Circuit>::new(Mode::Public, x_coordinate, None);
                 assert_eq!((x_coordinate, y_coordinate), affine.to_value());
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(2, scope.num_public_in_scope());
                 assert_eq!(2, scope.num_private_in_scope());
                 assert_eq!(3, scope.num_constraints_in_scope());
@@ -165,7 +164,7 @@ mod tests {
                 let affine = Affine::<Circuit>::new(Mode::Private, x_coordinate, None);
                 assert_eq!((x_coordinate, y_coordinate), affine.to_value());
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(4, scope.num_private_in_scope());
                 assert_eq!(3, scope.num_constraints_in_scope());

@@ -69,7 +69,7 @@ mod tests {
                 let equals = a.is_eq(&b);
                 assert!(!equals.to_value());
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
@@ -79,7 +79,7 @@ mod tests {
                 let equals = a.is_neq(&b);
                 assert!(equals.to_value());
 
-                assert_eq!(3, scope.num_constants_in_scope());
+                assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());

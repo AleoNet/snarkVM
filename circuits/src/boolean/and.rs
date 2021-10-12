@@ -52,10 +52,6 @@ impl<E: Environment> And<Self> for Boolean<E> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_fields::PrimeField;
-    use snarkvm_utilities::UniformRand;
-
-    use itertools::Itertools;
 
     fn check_and(
         name: &str,
