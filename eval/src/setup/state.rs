@@ -14,20 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::Integer as GadgetInteger;
-use snarkvm_gadgets::UInt16;
-use snarkvm_gadgets::UInt32;
-use snarkvm_gadgets::UInt8;
-use snarkvm_ir::MaskData;
-use snarkvm_ir::RepeatData;
-use snarkvm_ir::{CallData, Function};
+use snarkvm_gadgets::{Integer as GadgetInteger, UInt16, UInt32, UInt8};
+use snarkvm_ir::{CallData, Function, MaskData, RepeatData};
 
 use crate::IntegerType;
 
 use super::*;
 
-use std::convert::TryInto;
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 /// the possible outcomes of evaluating an instruction
 #[derive(Debug)]
