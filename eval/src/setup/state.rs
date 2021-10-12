@@ -92,8 +92,10 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::Call(data),
             result: None,
+            is_ran: self.state_data.is_ran,
         };
 
+        self.state_data.state.instruction_index += 1;
         self.nest(state_data);
         Ok(())
     }
@@ -101,7 +103,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
     fn finish_call(&mut self, data: &CallData) -> Result<()> {
         let res = self.unnest().result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
         self.state_data.state.store(data.destination, res);
-        self.state_data.state.instruction_index += 1;
         Ok(())
     }
 
@@ -140,26 +141,14 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::Mask(condition),
             result: self.state_data.result.clone(),
+            is_ran: self.state_data.is_ran && condition.get_value().unwrap_or(true),
         };
         self.state_data.state.instruction_index += data.instruction_count;
         self.nest(state_data);
         Ok(())
     }
 
-    fn finish_mask<CS: ConstraintSystem<F>>(
-        &mut self,
-        condition: Boolean,
-        cs: &mut CS,
-        e: Result<Option<&snarkvm_ir::Instruction>>,
-    ) -> Result<()> {
-        if e.is_err() && condition.get_value().unwrap_or(true) {
-            return Err(anyhow!(
-                "f#{} i#{}: {:?}",
-                self.state_data.function_index,
-                self.state_data.state.instruction_index,
-                e.unwrap_err()
-            ));
-        }
+    fn finish_mask<CS: ConstraintSystem<F>>(&mut self, condition: Boolean, cs: &mut CS) -> Result<()> {
         let inner_state = self.unnest();
         let assignments = inner_state.state.variables;
         let target_index = inner_state.block_start + inner_state.block_instruction_count;
@@ -273,6 +262,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 state,
                 parent_instruction: ParentInstruction::Repeat(data.iter_variable),
                 result: self.state_data.result.clone(),
+                is_ran: self.state_data.is_ran,
             };
             iter_state_data.push(new_state_data);
         }
@@ -326,8 +316,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                     evaluator.setup_repeat(data, cs)?;
                 }
                 Ok(Some(e)) => panic!("invalid control instruction: {:?}", e),
-                e => match evaluator.state_data.parent_instruction {
-                    ParentInstruction::None if e.is_ok() => {
+                Ok(None) => match evaluator.state_data.parent_instruction {
+                    ParentInstruction::None => {
                         assert!(evaluator.call_stack.is_empty());
                         let res = evaluator
                             .state_data
@@ -335,24 +325,35 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                             .unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
                         return Ok(res);
                     }
-                    ParentInstruction::Call(data) if e.is_ok() => {
+                    ParentInstruction::Call(data) => {
                         evaluator.finish_call(data)?;
                     }
                     ParentInstruction::Mask(condition) => {
-                        evaluator.finish_mask(condition, cs, e)?;
+                        evaluator.finish_mask(condition, cs)?;
                     }
-                    ParentInstruction::Repeat(iter_variable) if e.is_ok() => {
+                    ParentInstruction::Repeat(iter_variable) => {
                         evaluator.finish_repeat(iter_variable)?;
                     }
-                    _ => {
+                },
+                Err(e) => {
+                    if evaluator.state_data.is_ran {
                         return Err(anyhow!(
                             "f#{} i#{}: {:?}",
                             evaluator.state_data.function_index,
                             evaluator.state_data.state.instruction_index,
-                            e.unwrap_err()
-                        ))
+                            e
+                        ));
+                    } else {
+                        evaluator.call_stack = evaluator
+                            .call_stack
+                            .into_iter()
+                            .rev()
+                            .skip_while(|s| !s.is_ran)
+                            .collect();
+                        evaluator.call_stack.reverse();
+                        evaluator.unnest();
                     }
-                },
+                }
             }
         }
     }
@@ -372,6 +373,8 @@ struct CallStateData<'a, F: PrimeField, G: GroupType<F>> {
     state: EvaluatorState<'a, F, G>,
     /// the value returned by the scope, if anything has been returned yet
     result: Option<ConstrainedValue<F, G>>,
+    /// if the code doesnt always execute
+    is_ran: bool,
 }
 
 /// implemented this so i could easily debug execution flow
@@ -393,9 +396,11 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> 
             state: {{
                 ...
                 instruction_index: {},
+                call_depth: {},
                 ...
             }}
             result: {:?},
+            is_ran: {},
         }}",
             self.function.instructions,
             self.function_index,
@@ -403,7 +408,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> 
             self.block_start,
             self.block_instruction_count,
             self.state.instruction_index,
+            self.state.call_depth,
             self.result,
+            self.is_ran,
         )
     }
 }
@@ -424,6 +431,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> CallStateData<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::None,
             result: None,
+            is_ran: true,
         })
     }
 
