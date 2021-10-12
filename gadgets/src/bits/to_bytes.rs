@@ -19,6 +19,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::integers::uint::UInt8;
 
+// LE
 pub trait ToBytesLEGadget<F: Field> {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError>;
 
@@ -63,5 +64,57 @@ impl<F: Field> ToBytesLEGadget<F> for Vec<UInt8> {
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes_le(cs)
+    }
+}
+
+// BE
+pub trait ToBytesBEGadget<F: Field> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError>;
+
+    /// Additionally checks if the produced list of boobeans is 'valid'.
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError>;
+}
+
+impl<F: Field> ToBytesBEGadget<F> for [UInt8] {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        Ok(self.to_vec())
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
+    }
+}
+
+impl<'a, F: Field, T: 'a + ToBytesBEGadget<F>> ToBytesBEGadget<F> for &'a T {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        (*self).to_bytes_be(cs)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
+    }
+}
+
+impl<'a, F: Field> ToBytesBEGadget<F> for &'a [UInt8] {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = self.to_vec();
+        vec.reverse();
+        Ok(vec)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
+    }
+}
+
+impl<F: Field> ToBytesBEGadget<F> for Vec<UInt8> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = self.to_vec();
+        vec.reverse();
+        Ok(vec)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
     }
 }

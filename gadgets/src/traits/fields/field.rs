@@ -21,7 +21,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::BitIteratorBE;
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
     traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
@@ -38,6 +38,7 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
     + ToBitsBEGadget<F>
     + ToBitsLEGadget<F>
     + AllocGadget<NativeF, F>
+    + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
     + CondSelectGadget<F>
     + TwoBitLookupGadget<F, TableConstant = NativeF>

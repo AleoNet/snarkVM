@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    bits::{Boolean, ToBytesLEGadget},
+    bits::{Boolean, ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
@@ -142,11 +142,21 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKey
 
 impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesLEGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.public_key.to_bytes_le(&mut cs.ns(|| "to_bytes"))
+        self.public_key.to_bytes_le(&mut cs.ns(|| "to_bytes_le"))
     }
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.public_key.to_bytes_le_strict(&mut cs.ns(|| "to_bytes_strict"))
+        self.public_key.to_bytes_le_strict(&mut cs.ns(|| "to_bytes_le_strict"))
+    }
+}
+
+impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesBEGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.public_key.to_bytes_be(&mut cs.ns(|| "to_bytes_be"))
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.public_key.to_bytes_be_strict(&mut cs.ns(|| "to_bytes_be_strict"))
     }
 }
 
@@ -247,11 +257,11 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesLEGadget<F> for SchnorrSi
 
         result.extend(
             self.prover_response
-                .to_bytes_le(&mut cs.ns(|| "prover_response_to_bytes"))?,
+                .to_bytes_le(&mut cs.ns(|| "prover_response_to_bytes_le"))?,
         );
         result.extend(
             self.verifier_challenge
-                .to_bytes_le(&mut cs.ns(|| "verifier_challenge_to_bytes"))?,
+                .to_bytes_le(&mut cs.ns(|| "verifier_challenge_to_bytes_le"))?,
         );
 
         Ok(result)
@@ -262,11 +272,43 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesLEGadget<F> for SchnorrSi
 
         result.extend(
             self.prover_response
-                .to_bytes_le_strict(&mut cs.ns(|| "prover_response_to_bytes_strict"))?,
+                .to_bytes_le_strict(&mut cs.ns(|| "prover_response_to_bytes_le_strict"))?,
         );
         result.extend(
             self.verifier_challenge
-                .to_bytes_le_strict(&mut cs.ns(|| "verifier_challenge_to_bytes_strict"))?,
+                .to_bytes_le_strict(&mut cs.ns(|| "verifier_challenge_to_bytes_le_strict"))?,
+        );
+
+        Ok(result)
+    }
+}
+
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesBEGadget<F> for SchnorrSignatureGadget<G, F, FG> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut result = Vec::new();
+
+        result.extend(
+            self.prover_response
+                .to_bytes_be(&mut cs.ns(|| "prover_response_to_bytes_be"))?,
+        );
+        result.extend(
+            self.verifier_challenge
+                .to_bytes_be(&mut cs.ns(|| "verifier_challenge_to_bytes_be"))?,
+        );
+
+        Ok(result)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut result = Vec::new();
+
+        result.extend(
+            self.prover_response
+                .to_bytes_be_strict(&mut cs.ns(|| "prover_response_to_bytes_be_strict"))?,
+        );
+        result.extend(
+            self.verifier_challenge
+                .to_bytes_be_strict(&mut cs.ns(|| "verifier_challenge_to_bytes_be_strict"))?,
         );
 
         Ok(result)

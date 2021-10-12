@@ -16,7 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
-    bits::{FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBytesLEGadget},
+    bits::{FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
     boolean::Boolean,
     fields::FpGadget,
     integers::uint::UInt8,
@@ -274,22 +274,38 @@ impl<F: PrimeField> ToBytesLEGadget<F> for FieldType<F> {
     }
 }
 
+impl<F: PrimeField> ToBytesBEGadget<F> for FieldType<F> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_be(cs)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_be_strict(cs)
+    }
+}
+
 impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(
+        _bits: &[Boolean],
+        _cs: CS,
+    ) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 }
 
 impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<FieldType<F>, SynthesisError> {
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(
+        _bits: &[Boolean],
+        _cs: CS,
+    ) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 }

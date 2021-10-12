@@ -22,7 +22,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::alloc::AllocGadget,
@@ -86,5 +86,15 @@ impl<P: MontgomeryParameters, F: PrimeField> ToBytesLEGadget<F> for Elligator2Fi
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes_le_strict(cs)
+    }
+}
+
+impl<P: MontgomeryParameters, F: PrimeField> ToBytesBEGadget<F> for Elligator2FieldGadget<P, F> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_be(cs)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_be_strict(cs)
     }
 }

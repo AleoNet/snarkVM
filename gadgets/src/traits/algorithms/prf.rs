@@ -21,13 +21,13 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::ToBytesLEGadget,
+    bits::{ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
 };
 
 pub trait PRFGadget<P: PRF, F: Field> {
-    type OutputGadget: EqGadget<F> + ToBytesLEGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;
+    type OutputGadget: EqGadget<F> + ToBytesBEGadget<F> + ToBytesLEGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;
 
     fn new_seed<CS: ConstraintSystem<F>>(cs: CS, output: &P::Seed) -> Vec<UInt8>;
 

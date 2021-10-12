@@ -18,7 +18,12 @@ use core::borrow::Borrow;
 
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{bits::ToBytesLEGadget, fields::FpGadget, integers::uint::UInt8, traits::alloc::AllocGadget};
+use snarkvm_gadgets::{
+    bits::{ToBytesBEGadget, ToBytesLEGadget},
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::alloc::AllocGadget,
+};
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -264,6 +269,26 @@ impl<
         }
 
         Ok(res)
+    }
+}
+
+impl<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> ToBytesBEGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
+{
+    fn to_bytes_be<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le(cs)?;
+        bytes.reverse();
+        Ok(bytes)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le_strict(cs)?;
+        bytes.reverse();
+        Ok(bytes)
     }
 }
 

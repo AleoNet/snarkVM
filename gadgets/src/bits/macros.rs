@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! to_bits_le_int_impl {
+macro_rules! to_bits_int_impl {
     ($name: ident) => {
         impl<F: Field> ToBitsLEGadget<F> for $name {
             fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
@@ -25,11 +25,7 @@ macro_rules! to_bits_le_int_impl {
                 self.bits.to_bits_le(cs)
             }
         }
-    };
-}
 
-macro_rules! to_bits_be_int_impl {
-    ($name: ident) => {
         impl<F: Field> ToBitsBEGadget<F> for $name {
             fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
                 self.bits.to_bits_be(cs)
@@ -81,6 +77,19 @@ macro_rules! to_bytes_int_impl {
 
             fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
                 self.to_bytes_le(cs)
+            }
+        }
+
+        impl<F: Field> ToBytesBEGadget<F> for $name {
+            #[inline]
+            fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                let mut bytes = self.to_bytes_le(cs)?;
+                bytes.reverse();
+                Ok(bytes)
+            }
+
+            fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                self.to_bytes_be(cs)
             }
         }
     };

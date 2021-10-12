@@ -26,7 +26,7 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
     traits::{
         alloc::AllocGadget,
         eq::{EqGadget, NEqGadget},
@@ -36,6 +36,7 @@ use crate::{
 
 pub trait GroupGadget<G: Group, F: Field>:
     Sized
+    + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
     + NEqGadget<F>
     + EqGadget<F>
@@ -258,7 +259,8 @@ pub trait GroupGadget<G: Group, F: Field>:
 }
 
 pub trait CompressedGroupGadget<G: Group + ProjectiveCurve, F: Field>: GroupGadget<G, F> {
-    type BaseFieldGadget: ToBytesLEGadget<F>
+    type BaseFieldGadget: ToBytesBEGadget<F>
+        + ToBytesLEGadget<F>
         + EqGadget<F>
         + CondSelectGadget<F>
         + AllocGadget<<G::Affine as AffineCurve>::BaseField, F>

@@ -19,7 +19,7 @@ use core::borrow::Borrow;
 use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    bits::{Boolean, ToBytesLEGadget},
+    bits::{Boolean, ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -335,6 +335,42 @@ where
         cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes_le(cs)
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG> ToBytesBEGadget<<BaseCurve as PairingEngine>::Fr>
+    for VerifierKeyVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+{
+    fn to_bytes_be<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(&self.g.to_bytes_be(cs.ns(|| "g_to_bytes"))?);
+        bytes.extend_from_slice(&self.h.to_bytes_be(cs.ns(|| "h_to_bytes"))?);
+        bytes.extend_from_slice(&self.beta_h.to_bytes_be(cs.ns(|| "beta_h_to_bytes"))?);
+
+        if self.degree_bounds_and_shift_powers.is_some() {
+            let degree_bounds_and_shift_powers = self.degree_bounds_and_shift_powers.as_ref().unwrap();
+            for (i, (_, degree_bound, shift_power)) in degree_bounds_and_shift_powers.iter().enumerate() {
+                bytes.extend_from_slice(&degree_bound.to_bytes_be(cs.ns(|| format!("degree_bound_to_bytes_{}", i)))?);
+                bytes.extend_from_slice(&shift_power.to_bytes_be(cs.ns(|| format!("shift_power_to_bytes_{}", i)))?);
+            }
+        }
+
+        Ok(bytes)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
     }
 }
 
