@@ -24,6 +24,8 @@ use crate::{
     bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
     integers::uint::{Sub, UInt, UInt8},
     traits::{alloc::AllocGadget, bits::Xor, integers::*},
+    FromBytesBEGadget,
+    FromBytesLEGadget,
 };
 
 fn check_all_constant_bits(mut expected: u8, actual: UInt8) {
@@ -122,7 +124,7 @@ fn test_uint8_to_bytes_le() {
 }
 
 #[test]
-fn test_uint8_from_bits() {
+fn test_uint8_from_bits_le() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..1000 {
@@ -149,6 +151,60 @@ fn test_uint8_from_bits() {
                 _ => unreachable!(),
             }
         }
+    }
+}
+
+#[test]
+fn test_uint8_from_bytes_be() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let v = vec![UInt8::constant(0u8)];
+
+    let b = UInt8::from_bytes_be(&v, cs.ns(|| "from_bytes_gadget")).expect("failed to create a UInt8 from a byte");
+
+    // check bits
+    for (i, bit_gadget) in b.bits.iter().enumerate() {
+        match *bit_gadget {
+            Boolean::Constant(bit_gadget) => {
+                assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // check bytes
+    let actual_bytes = b
+        .to_bytes_be(cs.ns(|| "to_bytes_gadget"))
+        .expect("failed to get bytes from u8");
+
+    for (expected, actual) in v.iter().zip(actual_bytes.iter()) {
+        assert_eq!(expected, actual);
+    }
+}
+
+#[test]
+fn test_uint8_from_bytes_le() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let v = vec![UInt8::constant(0u8)];
+
+    let b = UInt8::from_bytes_le(&v, cs.ns(|| "from_bytes_gadget")).expect("failed to create a UInt8 from a byte");
+
+    // check bits
+    for (i, bit_gadget) in b.bits.iter().enumerate() {
+        match *bit_gadget {
+            Boolean::Constant(bit_gadget) => {
+                assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // check bytes
+    let actual_bytes = b
+        .to_bytes_le(cs.ns(|| "to_bytes_gadget"))
+        .expect("failed to get bytes from u8");
+
+    for (expected, actual) in v.iter().zip(actual_bytes.iter()) {
+        assert_eq!(expected, actual);
     }
 }
 

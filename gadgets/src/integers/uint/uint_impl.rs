@@ -25,6 +25,8 @@ use crate::{
         boolean::{AllocatedBit, Boolean},
         FromBitsBEGadget,
         FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
         ToBytesLEGadget,

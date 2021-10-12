@@ -31,7 +31,6 @@ use snarkvm_r1cs::{
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
     to_bytes_le,
-    FromBits,
     ToBytes,
 };
 

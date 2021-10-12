@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 macro_rules! cond_select_int_impl {
-    ($name: ident, $_type: ty, $size: expr) => {
+    ($name: ident, $type_: ty, $size: expr) => {
         impl<F: PrimeField> CondSelectGadget<F> for $name {
             fn conditionally_select<CS: ConstraintSystem<F>>(
                 mut cs: CS,
@@ -76,22 +76,22 @@ macro_rules! cond_select_int_impl {
 
 #[macro_export]
 macro_rules! uint_impl_common {
-    ($name: ident, $_type: ty, $size: expr) => {
+    ($name: ident, $type_: ty, $size: expr) => {
         #[derive(Clone, Debug)]
         pub struct $name {
             pub bits: Vec<Boolean>,
             pub negated: bool,
-            pub value: Option<$_type>,
+            pub value: Option<$type_>,
         }
 
         impl crate::traits::integers::Integer for $name {
-            type IntegerType = $_type;
+            type IntegerType = $type_;
             type UnsignedGadget = $name;
-            type UnsignedIntegerType = $_type;
+            type UnsignedIntegerType = $type_;
 
             const SIZE: usize = $size;
 
-            fn constant(value: $_type) -> Self {
+            fn constant(value: $type_) -> Self {
                 let mut bits = Vec::with_capacity($size);
 
                 let mut tmp = value;
@@ -115,11 +115,11 @@ macro_rules! uint_impl_common {
             }
 
             fn one() -> Self {
-                Self::constant(1 as $_type)
+                Self::constant(1 as $type_)
             }
 
             fn zero() -> Self {
-                Self::constant(0 as $_type)
+                Self::constant(0 as $type_)
             }
 
             fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self {
@@ -152,16 +152,22 @@ macro_rules! uint_impl_common {
 
         to_bits_le_int_impl!($name);
         to_bits_be_int_impl!($name);
+
         to_bytes_int_impl!($name, $size);
-        from_bits_le_int_impl!($name, $_type, $size);
-        from_bits_be_int_impl!($name, $_type, $size);
-        cond_select_int_impl!($name, $_type, $size);
+
+        from_bits_le_int_impl!($name, $type_, $size);
+        from_bits_be_int_impl!($name, $type_, $size);
+
+        from_bytes_le_int_impl!($name, $type_, $type_, $size);
+        from_bytes_be_int_impl!($name, $type_, $type_, $size);
+
+        cond_select_int_impl!($name, $type_, $size);
     };
 }
 
 macro_rules! uint_impl {
-    ($name: ident, $_type: ty, $size: expr) => {
-        uint_impl_common!($name, $_type, $size);
+    ($name: ident, $type_: ty, $size: expr) => {
+        uint_impl_common!($name, $type_, $size);
 
         impl UInt for $name {
             fn negate(&self) -> Self {
@@ -187,7 +193,7 @@ macro_rules! uint_impl {
                 Self {
                     bits: new_bits,
                     negated: false,
-                    value: self.value.map(|v| v.rotate_right(by as u32) as $_type),
+                    value: self.value.map(|v| v.rotate_right(by as u32) as $type_),
                 }
             }
 
@@ -201,7 +207,7 @@ macro_rules! uint_impl {
                 assert!(operands.len() >= 2); // Weird trivial cases that should never happen
 
                 // Compute the maximum value of the sum we allocate enough bits for the result
-                let mut max_value = (operands.len() as u128) * u128::from(<$_type>::max_value());
+                let mut max_value = (operands.len() as u128) * u128::from(<$type_>::max_value());
 
                 // Keep track of the resulting value
                 let mut result_value = Some(0u128);
@@ -291,7 +297,7 @@ macro_rules! uint_impl {
                 }
 
                 // The value of the actual result is modulo 2 ^ $size
-                let modular_value = result_value.map(|v| v as $_type);
+                let modular_value = result_value.map(|v| v as $type_);
 
                 if all_constants && modular_value.is_some() {
                     // We can just return a constant, rather than
@@ -354,10 +360,10 @@ macro_rules! uint_impl {
                 // return res
 
                 let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let constant_result = Self::constant(0 as $_type);
+                let constant_result = Self::constant(0 as $type_);
                 let allocated_result = Self::alloc(
                     &mut cs.ns(|| format!("allocated_0u{}", $size)),
-                    || Ok(0 as $_type),
+                    || Ok(0 as $type_),
                 )?;
                 let zero_result = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated"),

@@ -14,24 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-pub mod macros;
-pub use macros::*;
+use crate::UInt8;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub mod boolean;
-pub use boolean::*;
+pub trait FromBytesLEGadget<F: Field> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+    where
+        Self: Sized;
 
-pub mod boolean_input;
-pub use boolean_input::*;
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+    where
+        Self: Sized;
+}
 
-pub mod from_bits;
-pub use from_bits::*;
+pub trait FromBytesBEGadget<F: Field> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+    where
+        Self: Sized;
 
-pub mod from_bytes;
-pub use from_bytes::*;
-
-pub mod to_bits;
-pub use to_bits::*;
-
-pub mod to_bytes;
-pub use to_bytes::*;
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+    where
+        Self: Sized;
+}
