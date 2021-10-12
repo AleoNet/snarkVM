@@ -29,6 +29,9 @@ pub use not::*;
 pub mod or;
 pub use or::*;
 
+pub mod xor;
+pub use xor::*;
+
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 

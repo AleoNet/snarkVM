@@ -19,6 +19,7 @@ use super::*;
 impl<E: Environment> Not for Boolean<E> {
     type Output = Boolean<E>;
 
+    /// Returns `(NOT a)`.
     fn not(self) -> Self::Output {
         (&self).not()
     }
@@ -27,6 +28,7 @@ impl<E: Environment> Not for Boolean<E> {
 impl<E: Environment> Not for &Boolean<E> {
     type Output = Boolean<E>;
 
+    /// Returns `(NOT a)`.
     fn not(self) -> Self::Output {
         // Perform a software-level safety check that the boolean is well-formed.
         if !self.0.is_boolean_type() {

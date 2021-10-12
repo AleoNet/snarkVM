@@ -59,6 +59,7 @@ pub trait And<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
     type Output;
 
+    /// Returns `(a AND b)`.
     fn and(&self, other: &Rhs) -> Self::Output;
 }
 
@@ -67,6 +68,7 @@ pub trait Or<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
     type Output;
 
+    /// Returns `(a OR b)`.
     fn or(&self, other: &Rhs) -> Self::Output;
 }
 
@@ -75,6 +77,7 @@ pub trait Nand<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
     type Output;
 
+    /// Returns `NOT (a AND b)`.
     fn nand(&self, other: &Rhs) -> Self::Output;
 }
 
@@ -83,7 +86,17 @@ pub trait Nor<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
     type Output;
 
+    /// Returns `(NOT a) AND (NOT b)`.
     fn nor(&self, other: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for performing `(a != b)`.
+pub trait Xor<Rhs: ?Sized = Self> {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    /// Returns `(a != b)`.
+    fn xor(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Trait for ternary operations.

@@ -20,6 +20,7 @@ impl<E: Environment> And<Self> for Boolean<E> {
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 
+    /// Returns `(a AND b)`.
     fn and(&self, other: &Self) -> Self::Output {
         // Constant `self`
         if self.is_constant() {
