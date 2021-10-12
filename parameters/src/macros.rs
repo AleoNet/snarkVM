@@ -29,50 +29,77 @@ macro_rules! checksum_error {
 }
 
 #[macro_export]
-macro_rules! impl_params_local {
-    ($name: ident, $test_name: ident, $local_dir: expr, $fname: tt, $size: tt) => {
+macro_rules! impl_local {
+    ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt) => {
         #[derive(Clone, Debug, PartialEq, Eq)]
         pub struct $name;
 
-        impl crate::traits::Parameter for $name {
-            const CHECKSUM: &'static str = include_str!(concat!($local_dir, $fname, ".checksum"));
-            const SIZE: u64 = $size;
+        impl $name {
+            pub fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
+                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
-            fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                let buffer = include_bytes!(concat!($local_dir, $fname, ".params"));
-                let checksum = checksum!(buffer);
+                let metadata: serde_json::Value =
+                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                let expected_checksum: String = metadata[concat!($ftype, "_checksum")]
+                    .as_str()
+                    .expect("Failed to parse checksum")
+                    .to_string();
+                let expected_size: usize = metadata[concat!($ftype, "_size")]
+                    .to_string()
+                    .parse()
+                    .expect("Failed to retrieve the file size");
 
-                match Self::CHECKSUM == checksum {
-                    true => Ok(buffer.to_vec()),
-                    false => checksum_error!(Self::CHECKSUM.into(), checksum),
+                let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype));
+
+                // Ensure the size matches.
+                if expected_size != buffer.len() {
+                    return Err(crate::errors::ParameterError::SizeMismatch(
+                        expected_size,
+                        buffer.len(),
+                    ));
                 }
+
+                // Ensure the checksum matches.
+                let candidate_checksum = checksum!(buffer);
+                if expected_checksum != candidate_checksum {
+                    return checksum_error!(expected_checksum, candidate_checksum);
+                }
+
+                return Ok(buffer.to_vec());
             }
         }
 
-        #[cfg(test)]
-        #[test]
-        fn $test_name() {
-            use crate::traits::Parameter;
-
-            let parameters = $name::load_bytes().expect("failed to load parameters");
-            assert_eq!($name::SIZE, parameters.len() as u64);
+        paste::item! {
+            #[cfg(test)]
+            #[test]
+            fn [< test_ $fname _ $ftype >]() {
+                assert!($name::load_bytes().is_ok());
+            }
         }
     };
 }
 
 #[macro_export]
-macro_rules! impl_params_remote {
-    ($name: ident, $test_name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $size: tt) => {
+macro_rules! impl_remote {
+    ($name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $ftype: tt) => {
 
         pub struct $name;
 
-        impl crate::traits::Parameter for $name {
-            const CHECKSUM: &'static str = include_str!(concat!($local_dir, $fname, ".checksum"));
-            const SIZE: u64 = $size;
+        impl $name {
+            pub fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
+                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
-            fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
+                let metadata: serde_json::Value = serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                let expected_checksum: String = metadata[concat!($ftype, "_checksum")].as_str().expect("Failed to parse checksum").to_string();
+                let expected_size: usize = metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
+
+                // Construct the versioned filename.
+                let filename = match expected_checksum.get(0..7) {
+                    Some(sum) => format!("{}.{}.{}", $fname, $ftype, sum),
+                    _ => concat!($fname, $ftype).to_string()
+                };
+
                 // Compose the correct file path for the parameter file.
-                let filename = Self::versioned_filename();
                 let mut file_path = std::path::PathBuf::from(file!());
                 file_path.pop();
                 file_path.push($local_dir);
@@ -101,65 +128,75 @@ macro_rules! impl_params_remote {
                         "\nWARNING - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
                         filename, filename, file_path
                     );
-                    let output = Self::load_remote()?;
-                    match Self::store_bytes(&output, &relative_path, &absolute_path, &file_path) {
-                        Ok(()) => output,
-                        Err(_) => {
-                            eprintln!(
-                                "\nWARNING - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
-                                filename, file_path
-                            );
-                            output
+
+                    // Load remote file
+                    cfg_if::cfg_if! {
+                        if #[cfg(not(target_family = "wasm"))] {
+                            println!("{} - Downloading parameters...", module_path!());
+                            let mut buffer = vec![];
+                            Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, filename))?;
+                            println!("\n{} - Download complete", module_path!());
+
+                            // Ensure the checksum matches.
+                            let candidate_checksum = checksum!(&buffer);
+                            if expected_checksum != candidate_checksum {
+                                return checksum_error!(expected_checksum, candidate_checksum)
+                            }
+
+                            match Self::store_bytes(&buffer, &relative_path, &absolute_path, &file_path) {
+                                Ok(()) => buffer,
+                                Err(_) => {
+                                    eprintln!(
+                                        "\nWARNING - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
+                                        filename, file_path
+                                    );
+                                    buffer
+                                }
+                            }
+                        } else if #[cfg(target_family = "wasm")] {
+                            let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
+                            let url = String::from($remote_url);
+
+                            // NOTE(julesdesmit): I'm leaking memory here so that I can get a
+                            // static reference to the url, which is needed to pass it into
+                            // the local thread which downloads the file.
+                            let url = Box::leak(url.into_boxed_str());
+
+                            let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
+                            Self::remote_fetch(buffer_clone, url)?;
+
+                            // Recover the bytes.
+                            let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
+                            let buffer = buffer.write().clone();
+
+                            // Ensure the checksum matches.
+                            let candidate_checksum = checksum!(&buffer);
+                            if expected_checksum != candidate_checksum {
+                                return checksum_error!(expected_checksum, candidate_checksum)
+                            }
+
+                            buffer
+                        } else {
+                            return Err(crate::errors::ParameterError::RemoteFetchDisabled);
                         }
                     }
                 };
 
-                let checksum = checksum!(&buffer);
-                match Self::CHECKSUM == checksum {
-                    true => Ok(buffer),
-                    false => checksum_error!(Self::CHECKSUM.into(), checksum),
+                 // Ensure the size matches.
+                if expected_size != buffer.len() {
+                    return Err(crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
                 }
-            }
-        }
 
-        impl $name {
-            #[cfg(any(test, feature = "remote"))]
-            pub fn load_remote() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                use crate::traits::Parameter;
-
-                println!("{} - Downloading parameters...", module_path!());
-                let mut buffer = vec![];
-                let url = Self::remote_url();
-                Self::remote_fetch(&mut buffer, &url)?;
-                println!("\n{} - Download complete", module_path!());
-
-                // Verify the checksum of the remote data before returning
-                let checksum = checksum!(&buffer);
-                match Self::CHECKSUM == checksum {
-                    true => Ok(buffer),
-                    false => checksum_error!(Self::CHECKSUM.into(), checksum),
+                // Ensure the checksum matches.
+                let candidate_checksum = checksum!(buffer.as_slice());
+                if expected_checksum != candidate_checksum {
+                    return checksum_error!(expected_checksum, candidate_checksum)
                 }
+
+                return Ok(buffer)
             }
 
-            #[cfg(not(any(test, feature = "remote")))]
-            pub fn load_remote() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                Err(crate::errors::ParameterError::RemoteFetchDisabled)
-            }
-
-            fn versioned_filename() -> String {
-                use crate::traits::Parameter;
-
-                match Self::CHECKSUM.get(0..7) {
-                    Some(sum) => format!("{}-{}.params", $fname, sum),
-                    _ => concat!($fname, ".params",).to_string()
-                }
-            }
-
-            #[cfg(any(test, feature = "remote"))]
-            fn remote_url() -> String {
-                format!("{}/{}", $remote_url, Self::versioned_filename())
-            }
-
+            #[cfg(not(target_family = "wasm"))]
             fn store_bytes(
                 buffer: &[u8],
                 relative_path: &std::path::Path,
@@ -178,7 +215,7 @@ macro_rules! impl_params_remote {
                 Ok(())
             }
 
-            #[cfg(any(test, feature = "remote"))]
+            #[cfg(not(target_family = "wasm"))]
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
@@ -202,15 +239,35 @@ macro_rules! impl_params_remote {
                 })?;
                 Ok(transfer.perform()?)
             }
+
+            #[cfg(target_family = "wasm")]
+            fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), crate::errors::ParameterError> {
+                // NOTE(julesdesmit): We spawn a local thread here in order to be
+                // able to accommodate the async syntax from reqwest.
+                wasm_bindgen_futures::spawn_local(async move {
+                    let content = reqwest::get(url)
+                        .await
+                        .unwrap()
+                        .text()
+                        .await
+                        .unwrap();
+
+                    let buffer = buffer.upgrade().unwrap();
+                    buffer
+                        .write()
+                        .extend_from_slice(content.as_bytes());
+                    drop(buffer);
+                });
+                Ok(())
+            }
         }
 
-        #[cfg(test)]
-        #[test]
-        fn $test_name() {
-            use crate::traits::Parameter;
-
-            let parameters = $name::load_bytes().expect("failed to load parameters");
-            assert_eq!($name::SIZE, parameters.len() as u64);
+        paste::item! {
+            #[cfg(test)]
+            #[test]
+            fn [< test_ $fname _ $ftype >]() {
+                assert!($name::load_bytes().is_ok());
+            }
         }
     }
 }

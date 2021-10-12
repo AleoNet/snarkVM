@@ -21,7 +21,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use crate::constraints::polynomial::AlgebraForAHP;
+use crate::{constraints::polynomial::AlgebraForAHP, Vec};
 
 /// A helper struct for evaluating the vanishing polynomial.
 pub struct VanishingPolynomial<F: Field> {

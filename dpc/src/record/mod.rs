@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod encrypted;
-pub use encrypted::*;
+pub mod ciphertext;
+pub use ciphertext::*;
 
 pub mod payload;
 pub use payload::*;

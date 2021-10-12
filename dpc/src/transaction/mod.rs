@@ -14,20 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod amount;
-pub use amount::*;
+pub(crate) mod local_commitments;
+pub(crate) use local_commitments::*;
 
-pub mod authorization;
-pub use authorization::*;
-
-pub mod kernel;
-pub use kernel::*;
-
-pub mod memo;
-pub use memo::*;
-
-pub mod metadata;
-pub use metadata::*;
+pub mod local_proof;
+pub use local_proof::*;
 
 pub mod transaction;
 pub use transaction::*;

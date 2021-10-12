@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::prelude::*;
-use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet2::*};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use chrono::Utc;
 use rand::SeedableRng;
@@ -27,8 +24,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        89, 1, 244, 55, 149, 169, 177, 28, 96, 248, 194, 168, 209, 8, 174, 157, 113, 203, 225, 172, 114, 208, 134, 97,
-        25, 157, 92, 117, 166, 178, 220, 98, 67, 222, 150, 75, 19, 76, 238, 108, 240, 70, 54, 89, 33, 207, 116, 0,
+        15, 208, 178, 28, 67, 161, 254, 241, 33, 166, 148, 227, 173, 242, 83, 68, 240, 51, 52, 58, 201, 157, 40, 133,
+        133, 182, 117, 249, 226, 156, 173, 198, 248, 157, 52, 2, 143, 102, 201, 230, 54, 182, 9, 203, 237, 195, 34, 1,
     ];
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -68,7 +65,7 @@ fn dpc_testnet2_integration_test() {
         assert_eq!(coinbase_transaction, recovered_transaction);
 
         // Check that coinbase record can be decrypted from the transaction.
-        let encrypted_record = &coinbase_transaction.encrypted_records()[0];
+        let encrypted_record = &coinbase_transaction.ciphertexts()[0];
         let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
@@ -117,147 +114,4 @@ fn dpc_testnet2_integration_test() {
 
     ledger.add_next_block(&block).unwrap();
     assert_eq!(ledger.latest_block_height(), 1);
-}
-
-#[test]
-fn test_testnet2_dpc_execute_constraints() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-    let recipient = Account::new(&mut rng).unwrap();
-    let amount = AleoAmount::from_bytes(10 as i64);
-    let state = StateTransition::builder()
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .add_output(Output::new(recipient.address, amount, Payload::default(), None).unwrap())
-        .build(&mut rng)
-        .unwrap();
-
-    let authorization = DPC::<Testnet2>::authorize(&vec![], &state, &mut rng).unwrap();
-
-    // Generate the transaction ID.
-    let transaction_id = authorization.to_transaction_id().unwrap();
-
-    // Execute the program circuit.
-    let execution = state
-        .executable()
-        .execute(PublicVariables::new(transaction_id))
-        .unwrap();
-
-    // Compute the encrypted records.
-    let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
-        authorization.to_encrypted_records(&mut rng).unwrap();
-
-    let TransactionAuthorization {
-        kernel,
-        input_records,
-        output_records,
-        signatures,
-    } = authorization;
-
-    // Construct the ledger witnesses.
-    let ledger_proof = LedgerProof::<Testnet2>::default();
-    let ledger_digest = ledger_proof.commitments_root();
-    let input_witnesses = ledger_proof.commitment_inclusion_proofs();
-
-    //////////////////////////////////////////////////////////////////////////
-
-    // Construct the inner circuit public and private variables.
-    let inner_public_variables = InnerPublicVariables::new(
-        &kernel,
-        &ledger_digest,
-        &encrypted_record_hashes,
-        Some(state.executable().program_id()),
-    )
-    .unwrap();
-    let inner_private_variables = InnerPrivateVariables::new(
-        input_records.clone(),
-        input_witnesses,
-        signatures,
-        output_records.clone(),
-        encrypted_record_randomizers,
-        state.executable(),
-    )
-    .unwrap();
-
-    // Check that the core check constraint system was satisfied.
-    let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
-
-    let inner_circuit = InnerCircuit::new(inner_public_variables.clone(), inner_private_variables);
-    inner_circuit
-        .generate_constraints(&mut inner_circuit_cs.ns(|| "Inner circuit"))
-        .unwrap();
-
-    if !inner_circuit_cs.is_satisfied() {
-        println!("=========================================================");
-        println!(
-            "Inner circuit num constraints: {:?}",
-            inner_circuit_cs.num_constraints()
-        );
-        println!("Unsatisfied constraints:");
-        println!("{}", inner_circuit_cs.which_is_unsatisfied().unwrap());
-        println!("=========================================================");
-    }
-
-    println!("=========================================================");
-    let num_constraints = inner_circuit_cs.num_constraints();
-    println!("Inner circuit num constraints: {:?}", num_constraints);
-    assert_eq!(176812, num_constraints);
-    println!("=========================================================");
-
-    assert!(inner_circuit_cs.is_satisfied());
-
-    // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet2 as Network>::InnerSNARK::setup(
-        &InnerCircuit::<Testnet2>::blank(),
-        &mut SRS::CircuitSpecific(&mut rng),
-    )
-    .unwrap();
-
-    let inner_snark_vk = inner_snark_parameters.1.clone();
-
-    // NOTE: Do not change this to `Testnet2Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    let inner_circuit_id = <Testnet2 as Network>::inner_circuit_id_crh()
-        .hash_bits(&inner_snark_vk.to_minimal_bits())
-        .unwrap();
-
-    let inner_snark_proof =
-        <Testnet2 as Network>::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, &mut rng).unwrap();
-
-    // Verify that the inner circuit proof passes.
-    assert!(
-        <Testnet2 as Network>::InnerSNARK::verify(&inner_snark_vk, &inner_public_variables, &inner_snark_proof)
-            .unwrap()
-    );
-
-    // Construct the outer circuit public and private variables.
-    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
-    let outer_private_variables = OuterPrivateVariables::new(inner_snark_vk.clone(), inner_snark_proof, execution);
-
-    // Check that the proof check constraint system was satisfied.
-    let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
-
-    execute_outer_circuit::<Testnet2, _>(
-        &mut outer_circuit_cs.ns(|| "Outer circuit"),
-        &outer_public_variables,
-        &outer_private_variables,
-    )
-    .unwrap();
-
-    if !outer_circuit_cs.is_satisfied() {
-        println!("=========================================================");
-        println!(
-            "Outer circuit num constraints: {:?}",
-            outer_circuit_cs.num_constraints()
-        );
-        println!("Unsatisfied constraints:");
-        println!("{}", outer_circuit_cs.which_is_unsatisfied().unwrap());
-        println!("=========================================================");
-    }
-
-    println!("=========================================================");
-    let num_constraints = outer_circuit_cs.num_constraints();
-    println!("Outer circuit num constraints: {:?}", num_constraints);
-    assert_eq!(287977, num_constraints);
-    println!("=========================================================");
-
-    assert!(outer_circuit_cs.is_satisfied());
 }

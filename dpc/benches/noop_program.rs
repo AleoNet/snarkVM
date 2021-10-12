@@ -36,7 +36,7 @@ fn noop_program_setup(c: &mut Criterion) {
             .unwrap();
 
             // Compute the circuit ID.
-            let _circuit_id = <Testnet2 as Network>::program_circuit_id(&verifying_key).unwrap();
+            let _circuit_id = <Testnet2 as Network>::function_id(&verifying_key).unwrap();
         })
     });
 }

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{BlockError, Network, PoSWScheme, ProofOfSuccinctWork};
-use snarkvm_algorithms::merkle_tree::MerkleTree;
+use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -260,6 +260,18 @@ impl<N: Network> BlockHeader<N> {
             Arc::new(N::block_header_tree_parameters().clone()),
             &leaves,
         )?)
+    }
+
+    /// Returns an instance of the block header tree.
+    pub fn to_header_inclusion_proof(
+        &self,
+        index: usize,
+        leaf: impl ToBytes,
+    ) -> Result<MerklePath<N::BlockHeaderTreeParameters>> {
+        let leaf_bytes = leaf.to_bytes_le()?;
+        assert_eq!(leaf_bytes.len(), 32);
+
+        Ok(self.to_header_tree()?.generate_proof(index, &leaf_bytes)?)
     }
 
     /// Returns the block header root.

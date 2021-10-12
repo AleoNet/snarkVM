@@ -17,6 +17,7 @@
 use crate::{
     fiat_shamir::{AlgebraicSponge, FiatShamirError, FiatShamirRng},
     PhantomData,
+    Vec,
 };
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{

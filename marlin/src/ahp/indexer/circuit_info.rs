@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::AHPForR1CS;
+use crate::{ahp::AHPForR1CS, BTreeSet, Matrix, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
-use crate::Matrix;
 use core::marker::PhantomData;
 use derivative::Derivative;
-use std::collections::BTreeSet;
 
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
@@ -66,7 +64,7 @@ impl<F: PrimeField> CircuitInfo<F> {
 }
 
 impl<F: PrimeField> ToBytes for CircuitInfo<F> {
-    fn write_le<W: Write>(&self, mut w: W) -> Result<(), std::io::Error> {
+    fn write_le<W: Write>(&self, mut w: W) -> Result<(), crate::io::Error> {
         (self.num_variables as u64).write_le(&mut w)?;
         (self.num_constraints as u64).write_le(&mut w)?;
         (self.num_non_zero as u64).write_le(&mut w)

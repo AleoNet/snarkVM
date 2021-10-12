@@ -21,7 +21,7 @@
 // ([COS20]: https://eprint.iacr.org/2019/1076) with small syntax changes.
 //
 
-use crate::fiat_shamir::AlgebraicSponge;
+use crate::{fiat_shamir::AlgebraicSponge, Vec};
 use snarkvm_algorithms::crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField};
 use snarkvm_fields::PrimeField;
 

@@ -34,7 +34,8 @@ use std::{
     Copy(bound = "N: Network"),
     Clone(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
+    Eq(bound = "N: Network"),
+    Hash(bound = "N: Network")
 )]
 pub struct Address<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
 
@@ -60,11 +61,6 @@ impl<N: Network> Address<N> {
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
     pub fn verify_signature(&self, message: &[u8], signature: &N::AccountSignature) -> Result<bool, AccountError> {
         Ok(N::account_signature_scheme().verify(&self.0, message, signature)?)
-    }
-
-    /// Returns the address as an encryption public key.
-    pub fn encryption_key(&self) -> <N::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
-        self.0
     }
 }
 

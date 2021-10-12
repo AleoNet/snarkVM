@@ -14,10 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "std")]
 use crate::marlin::MarlinError;
+use crate::String;
 
 use core::fmt::Display;
+#[cfg(feature = "std")]
 use std::fmt::{Debug, Formatter};
+
+#[cfg(not(feature = "std"))]
+use core::fmt::{Debug, Formatter};
 
 /// Error handling for Marlin constraints.
 pub struct MarlinConstraintsError {
@@ -25,6 +31,7 @@ pub struct MarlinConstraintsError {
     pub error_msg: String,
 }
 
+#[cfg(feature = "std")]
 impl<E> From<MarlinError<E>> for MarlinConstraintsError
 where
     E: std::error::Error,

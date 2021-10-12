@@ -29,12 +29,22 @@ pub enum ParameterError {
 
     #[error("Remote fetch is disabled, enable compiler flag for feature")]
     RemoteFetchDisabled,
+
+    #[error("Expected size of {}, found size of {}", _0, _1)]
+    SizeMismatch(usize, usize),
 }
 
-#[cfg(any(test, feature = "remote"))]
+#[cfg(not(target_family = "wasm"))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {
         ParameterError::Crate("curl::error", format!("{:?}", error))
+    }
+}
+
+#[cfg(target_family = "wasm")]
+impl From<reqwest::Error> for ParameterError {
+    fn from(error: reqwest::Error) -> Self {
+        ParameterError::Crate("request::error", format!("{:?}", error))
     }
 }
 

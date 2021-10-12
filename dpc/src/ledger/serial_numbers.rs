@@ -30,8 +30,8 @@ use std::{collections::HashMap, sync::Arc};
 pub struct SerialNumbers<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: Arc<MerkleTree<N::SerialNumbersTreeParameters>>,
-    serial_numbers: HashMap<N::SerialNumber, u32>,
-    current_index: u32,
+    serial_numbers: HashMap<N::SerialNumber, u64>,
+    current_index: u64,
 }
 
 impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
@@ -47,9 +47,9 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
         })
     }
 
-    /// TODO (howardwu): Add safety checks for u32 (max 2^32).
+    /// TODO (howardwu): Add safety checks for u64 (max 2^42).
     /// Adds the given serial number to the tree, returning its index in the tree.
-    fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u32> {
+    fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u64> {
         // Ensure the serial number does not already exist in the tree.
         if self.contains_serial_number(serial_number) {
             return Err(
@@ -65,9 +65,9 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
         Ok(self.current_index - 1)
     }
 
-    /// TODO (howardwu): Add safety checks for u32 (max 2^32).
+    /// TODO (howardwu): Add safety checks for u64 (max 2^42).
     /// Adds all given serial numbers to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u32, u32)> {
+    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u64, u64)> {
         // Ensure the list of given serial_numbers is non-empty.
         if serial_numbers.is_empty() {
             return Err(anyhow!("The list of given serial numbers must be non-empty"));
@@ -96,10 +96,10 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
             serial_numbers
                 .into_iter()
                 .enumerate()
-                .map(|(index, serial_number)| (serial_number, start_index + index as u32)),
+                .map(|(index, serial_number)| (serial_number, start_index + index as u64)),
         );
 
-        self.current_index += num_serial_numbers as u32;
+        self.current_index += num_serial_numbers as u64;
         let end_index = self.current_index - 1;
 
         Ok((start_index, end_index))
@@ -111,7 +111,7 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
     }
 
     /// Returns the index for the given serial number, if it exists.
-    fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u32> {
+    fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u64> {
         self.serial_numbers.get(serial_number)
     }
 

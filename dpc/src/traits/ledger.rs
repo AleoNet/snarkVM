@@ -25,16 +25,16 @@ pub trait CommitmentsTreeScheme<N: Network>: Sized {
     fn new() -> Result<Self>;
 
     /// Adds the given commitment to the tree, returning its index in the tree.
-    fn add(&mut self, commitment: &N::Commitment) -> Result<u32>;
+    fn add(&mut self, commitment: &N::Commitment) -> Result<u64>;
 
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u32, u32)>;
+    fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u64, u64)>;
 
     /// Returns `true` if the given commitment exists.
     fn contains_commitment(&self, commitment: &N::Commitment) -> bool;
 
     /// Returns the index for the given commitment, if it exists.
-    fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u32>;
+    fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u64>;
 
     /// Returns the commitments root.
     fn root(&self) -> N::CommitmentsRoot;
@@ -52,16 +52,16 @@ pub trait SerialNumbersTreeScheme<N: Network>: Sized {
     fn new() -> Result<Self>;
 
     /// Adds the given serial number to the tree, returning its index in the tree.
-    fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u32>;
+    fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u64>;
 
     /// Adds all given serial numbers to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u32, u32)>;
+    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u64, u64)>;
 
     /// Returns `true` if the given serial number exists.
     fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool;
 
     /// Returns the index for the given serial number, if it exists.
-    fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u32>;
+    fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u64>;
 
     /// Returns the serial numbers root.
     fn root(&self) -> N::SerialNumbersRoot;

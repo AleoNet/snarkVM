@@ -1,0 +1,7 @@
+{
+  "circuit_id": "0fd0b21c43a1fef121a694e3adf25344f033343ac99d288585b675f9e29cadc6f89d34028f66c9e636b609cbedc32201",
+  "proving_checksum": "003c053c1fbd315e3e220678cbd764c047332bfa94e294ec8f5dcb73ad84e82c",
+  "proving_size": 141669109,
+  "verifying_checksum": "72785b0120ed9bd6440f0422ef9a4162e6fdb83306c848976cad43947773c463",
+  "verifying_size": 1068
+}

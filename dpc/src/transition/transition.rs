@@ -14,110 +14,311 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::{circuits::*, prelude::*};
+use snarkvm_algorithms::traits::{CRH, SNARK};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use anyhow::{anyhow, Result};
-use rand::{CryptoRng, Rng};
+use anyhow::Result;
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+};
 
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
-pub struct StateTransition<N: Network> {
-    pub(super) kernel: TransactionKernel<N>,
-    #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub(super) executable: Executable<N>,
-    pub(super) input_records: Vec<Record<N>>,
-    pub(super) output_records: Vec<Record<N>>,
-    pub(super) noop_private_keys: Vec<Option<PrivateKey<N>>>,
+pub struct Transition<N: Network> {
+    /// The ID of this transition.
+    transition_id: N::TransitionID,
+    /// The block hash used to prove inclusion of ledger-consumed records.
+    block_hash: N::BlockHash,
+    /// The local commitments root used to prove inclusion of locally-consumed records.
+    local_commitments_root: N::LocalCommitmentsRoot,
+    /// The serial numbers of the input records.
+    serial_numbers: Vec<N::SerialNumber>,
+    /// The commitments of the output records.
+    commitments: Vec<N::Commitment>,
+    /// The ciphertexts of the output records.
+    ciphertexts: Vec<RecordCiphertext<N>>,
+    /// A value balance is the difference between the input and output record values.
+    value_balance: AleoAmount,
+    /// The events emitted from this transition.
+    events: Vec<Event<N>>,
+    #[derivative(PartialEq = "ignore")]
+    /// The zero-knowledge proof attesting to the validity of this transition.
+    proof: <N::OuterSNARK as SNARK>::Proof,
 }
 
-impl<N: Network> StateTransition<N> {
-    /// Returns a new state transition with no operations performed.
-    pub fn new_noop<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
-        Ok(Self::builder().build(rng)?)
-    }
-
-    /// Returns a new state transition that mints the given amount to the recipient.
-    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
-        Ok(Self::builder()
-            .add_output(Output::new(recipient, amount, Payload::default(), None)?)
-            .build(rng)?)
-    }
-
-    /// Returns a new state transition that transfers a given amount of Aleo credits from a sender to a recipient.
-    pub fn new_transfer<R: Rng + CryptoRng>(
-        sender: &PrivateKey<N>,
-        records: &Vec<Record<N>>,
-        recipient: Address<N>,
-        amount: AleoAmount,
-        fee: AleoAmount,
-        rng: &mut R,
+impl<N: Network> Transition<N> {
+    /// Initializes a new instance of a transition.
+    #[inline]
+    pub(crate) fn from(
+        request: &Request<N>,
+        response: &Response<N>,
+        proof: <N::OuterSNARK as SNARK>::Proof,
     ) -> Result<Self> {
-        assert!(records.len() <= N::NUM_INPUT_RECORDS);
+        // Fetch the block hash, local commitments root, and serial numbers.
+        let block_hash = request.block_hash();
+        let local_commitments_root = request.local_commitments_root();
+        let serial_numbers = request.to_serial_numbers()?;
 
-        // Calculate the available balance of the sender.
-        let mut balance = AleoAmount::ZERO;
-        let mut inputs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for record in records {
-            balance = balance.add(AleoAmount::from_bytes(record.value() as i64));
-            inputs.push(Input::new(&sender.to_compute_key()?, record.clone())?);
-        }
+        // Fetch the commitments and ciphertexts.
+        let commitments = response.commitments();
+        let ciphertexts = response.ciphertexts().clone();
+        let value_balance = response.value_balance();
+        let events = response.events().clone();
 
-        // Ensure the sender has sufficient balance.
-        let total_cost = amount.add(fee);
-        if balance < total_cost {
-            return Err(anyhow!("Sender(s) has insufficient balance"));
-        }
-
-        // Construct the sender output.
-        let sender_output = Output::new(
-            Address::from_private_key(sender)?,
-            balance.sub(total_cost),
-            Payload::default(),
-            None,
+        // Compute the transition ID.
+        let transition_id = Self::compute_transition_id(
+            block_hash,
+            local_commitments_root,
+            &serial_numbers,
+            &commitments,
+            &ciphertexts,
+            value_balance,
         )?;
 
-        // Construct the recipient output.
-        let recipient_output = Output::new(recipient, amount, Payload::default(), None)?;
-
-        Ok(Self::builder()
-            .add_inputs(inputs)
-            .add_output(sender_output)
-            .add_output(recipient_output)
-            .build(rng)?)
+        // Construct the transition.
+        Ok(Self {
+            transition_id,
+            block_hash,
+            local_commitments_root,
+            serial_numbers,
+            commitments,
+            ciphertexts,
+            value_balance,
+            events,
+            proof,
+        })
     }
 
-    /// Returns a new instance of `StateBuilder`.
-    pub fn builder() -> TransitionBuilder<N> {
-        TransitionBuilder::new()
+    /// Returns `true` if the transition proof is valid, and the local commitments root matches.
+    #[inline]
+    pub fn verify(&self, inner_circuit_id: N::InnerCircuitID, local_commitments_root: N::LocalCommitmentsRoot) -> bool {
+        // Returns `false` if the local commitments root does not match the given one.
+        if self.local_commitments_root != local_commitments_root {
+            eprintln!(
+                "Transition contains incorrect local commitments root: {} != {}",
+                self.local_commitments_root, local_commitments_root
+            );
+            return false;
+        }
+
+        // Returns `false` if the transition ID does not match the computed one.
+        match Self::compute_transition_id(
+            self.block_hash,
+            self.local_commitments_root,
+            &self.serial_numbers,
+            &self.commitments,
+            &self.ciphertexts,
+            self.value_balance,
+        ) {
+            Ok(computed_transition_id) => {
+                if computed_transition_id != self.transition_id {
+                    eprintln!(
+                        "Transition ID is incorrect. Expected {}, found {}",
+                        computed_transition_id, self.transition_id
+                    );
+                    return false;
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to compute the transition ID for verification: {}", error);
+                return false;
+            }
+        };
+
+        // Returns `false` if the transition proof is invalid.
+        match N::OuterSNARK::verify(
+            N::outer_verifying_key(),
+            &OuterPublicVariables::new(self.transition_id, inner_circuit_id),
+            &self.proof,
+        ) {
+            Ok(is_valid) => match is_valid {
+                true => true,
+                false => {
+                    eprintln!("Transition proof failed to verify");
+                    return false;
+                }
+            },
+            Err(error) => {
+                eprintln!("Failed to validate transition proof: {:?}", error);
+                return false;
+            }
+        }
     }
 
-    /// Returns a reference to the transaction kernel.
-    pub fn kernel(&self) -> &TransactionKernel<N> {
-        &self.kernel
+    /// Returns the transition ID.
+    #[inline]
+    pub(crate) fn transition_id(&self) -> N::TransitionID {
+        self.transition_id
     }
 
-    /// Returns a reference to the executable.
-    pub fn executable(&self) -> &Executable<N> {
-        &self.executable
+    /// Returns the block hash used to prove inclusion of ledger-consumed records.
+    #[inline]
+    pub(crate) fn block_hash(&self) -> N::BlockHash {
+        self.block_hash
     }
 
-    /// Returns a reference to the input records.
-    pub fn input_records(&self) -> &Vec<Record<N>> {
-        &self.input_records
+    /// Returns the local commitments root used to prove inclusion of locally-consumed records.
+    #[inline]
+    pub(crate) fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
+        self.local_commitments_root
     }
 
-    /// Returns a reference to the output records.
-    pub fn output_records(&self) -> &Vec<Record<N>> {
-        &self.output_records
+    /// Returns a reference to the serial numbers.
+    #[inline]
+    pub(crate) fn serial_numbers(&self) -> &Vec<N::SerialNumber> {
+        &self.serial_numbers
     }
 
-    /// Returns a reference to the noop private keys.
-    pub fn noop_private_keys(&self) -> &Vec<Option<PrivateKey<N>>> {
-        &self.noop_private_keys
+    /// Returns a reference to the commitments.
+    #[inline]
+    pub(crate) fn commitments(&self) -> &Vec<N::Commitment> {
+        &self.commitments
+    }
+
+    /// Returns a reference to the ciphertexts.
+    #[inline]
+    pub(crate) fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
+        &self.ciphertexts
+    }
+
+    /// Returns a reference to the value balance.
+    #[inline]
+    pub(crate) fn value_balance(&self) -> &AleoAmount {
+        &self.value_balance
+    }
+
+    /// Returns a reference to the events.
+    #[inline]
+    pub(crate) fn events(&self) -> &Vec<Event<N>> {
+        &self.events
+    }
+
+    /// Returns a reference to the transition proof.
+    #[inline]
+    pub(crate) fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
+        &self.proof
+    }
+
+    /// Returns the ciphertext IDs.
+    #[inline]
+    pub(crate) fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
+        self.ciphertexts.iter().map(RecordCiphertext::to_ciphertext_id)
+    }
+
+    /// Transition ID := Hash(block hash || local commitments root || serial numbers || commitments || ciphertext_ids || value balance)
+    #[inline]
+    pub(crate) fn compute_transition_id(
+        block_hash: N::BlockHash,
+        local_commitments_root: N::LocalCommitmentsRoot,
+        serial_numbers: &Vec<N::SerialNumber>,
+        commitments: &Vec<N::Commitment>,
+        ciphertexts: &Vec<RecordCiphertext<N>>,
+        value_balance: AleoAmount,
+    ) -> Result<N::TransitionID> {
+        Ok(N::transition_id_crh().hash(&to_bytes_le![
+            block_hash,
+            local_commitments_root,
+            serial_numbers,
+            commitments,
+            ciphertexts
+                .iter()
+                .map(RecordCiphertext::to_ciphertext_id)
+                .collect::<Result<Vec<_>>>()?,
+            value_balance
+        ]?)?)
+    }
+}
+
+impl<N: Network> FromBytes for Transition<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let block_hash = FromBytes::read_le(&mut reader)?;
+        let local_commitments_root = FromBytes::read_le(&mut reader)?;
+
+        let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            serial_numbers.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut commitments = Vec::<N::Commitment>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
+            commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut ciphertexts = Vec::<RecordCiphertext<N>>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
+            ciphertexts.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+
+        let num_events: u16 = FromBytes::read_le(&mut reader)?;
+        let mut events = Vec::with_capacity(num_events as usize);
+        for _ in 0..num_events {
+            events.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
+
+        let transition_id = Self::compute_transition_id(
+            block_hash,
+            local_commitments_root,
+            &serial_numbers,
+            &commitments,
+            &ciphertexts,
+            value_balance,
+        )
+        .expect("Failed to compute the transition ID during deserialization");
+
+        Ok(Self {
+            transition_id,
+            block_hash,
+            local_commitments_root,
+            serial_numbers,
+            commitments,
+            ciphertexts,
+            value_balance,
+            events,
+            proof,
+        })
+    }
+}
+
+impl<N: Network> ToBytes for Transition<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.block_hash.write_le(&mut writer)?;
+        self.local_commitments_root.write_le(&mut writer)?;
+        self.serial_numbers.write_le(&mut writer)?;
+        self.commitments.write_le(&mut writer)?;
+        self.ciphertexts.write_le(&mut writer)?;
+        self.value_balance.write_le(&mut writer)?;
+        (self.events.len() as u16).write_le(&mut writer)?;
+        self.events.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
+    }
+}
+
+// TODO (raychu): add debug support for record ciphertexts
+impl<N: Network> fmt::Debug for Transition<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Transition {{ transition_id: {:?}, block_hash: {:?}, local_commitments_root: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, proof: {:?} }}",
+            self.transition_id(),
+            self.block_hash(),
+            self.local_commitments_root(),
+            self.serial_numbers(),
+            self.commitments(),
+            self.to_ciphertext_ids(),
+            self.value_balance(),
+            self.proof()
+        )
     }
 }

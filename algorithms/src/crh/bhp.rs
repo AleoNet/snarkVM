@@ -48,8 +48,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Output = <G::Affine as AffineCurve>::BaseField;
     type Parameters = Vec<Vec<G>>;
 
-    const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
-
     fn setup(message: &str) -> Self {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
             let upper_limit = F::modulus_minus_one_div_two();

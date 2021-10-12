@@ -16,7 +16,11 @@
 
 use snarkvm_algorithms::SNARKError;
 
+#[cfg(feature = "std")]
 use std::fmt::Debug;
+
+#[cfg(not(feature = "std"))]
+use core::fmt::Debug;
 
 /// A `enum` specifying the possible failure modes of `Marlin`.
 #[derive(Debug)]

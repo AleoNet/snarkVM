@@ -89,7 +89,7 @@ mod ecies_poseidon {
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-        let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
+        let randomness = encryption_scheme.generate_randomness(rng).unwrap();
         let message: Vec<u8> = (0..10).map(|_| rand::random::<u8>()).collect();
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
 

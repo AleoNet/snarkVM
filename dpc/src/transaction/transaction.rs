@@ -18,23 +18,21 @@ use crate::{
     record::*,
     Address,
     AleoAmount,
-    DPCScheme,
-    LedgerProof,
-    Memo,
+    Event,
+    LocalCommitments,
     Network,
-    OuterPublicVariables,
-    StateTransition,
-    TransactionKernel,
-    TransactionMetadata,
-    TransactionScheme,
-    DPC,
+    Request,
+    Transition,
+    ViewKey,
+    VirtualMachine,
 };
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
+    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
@@ -47,40 +45,35 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Transaction<N: Network> {
-    /// The transaction kernel.
-    kernel: TransactionKernel<N>,
-    /// The transaction metadata.
-    metadata: TransactionMetadata<N>,
-    /// The encrypted output records.
-    encrypted_records: Vec<EncryptedRecord<N>>,
-    #[derivative(PartialEq = "ignore")]
-    /// Zero-knowledge proof attesting to the validity of the transaction.
-    proof: <N::OuterSNARK as SNARK>::Proof,
+    /// The network ID.
+    network_id: u16,
+    /// The ID of the inner circuit used to execute this transaction.
+    inner_circuit_id: N::InnerCircuitID,
+    /// The state transition.
+    transitions: Vec<Transition<N>>,
 }
 
 impl<N: Network> Transaction<N> {
+    /// Initializes a new transaction from a request.
+    #[inline]
+    pub fn new<R: Rng + CryptoRng>(request: &Request<N>, rng: &mut R) -> Result<Self> {
+        VirtualMachine::<N>::new()?.execute(request, rng)?.finalize()
+    }
+
     /// Initializes a new coinbase transaction.
+    #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
-        let transition = StateTransition::new_coinbase(recipient, amount, rng)?;
-        let authorization = DPC::<N>::authorize(&vec![], &transition, rng)?;
-        DPC::<N>::execute(authorization, transition.executable(), &LedgerProof::default(), rng)
+        let request = Request::new_coinbase(recipient, amount, rng)?;
+        VirtualMachine::<N>::new()?.execute(&request, rng)?.finalize()
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
-    pub fn from(
-        kernel: TransactionKernel<N>,
-        metadata: TransactionMetadata<N>,
-        encrypted_records: Vec<EncryptedRecord<N>>,
-        proof: <N::OuterSNARK as SNARK>::Proof,
-    ) -> Result<Self> {
-        assert!(kernel.is_valid());
-        assert_eq!(N::NUM_OUTPUT_RECORDS, encrypted_records.len());
-
+    #[inline]
+    pub fn from(network_id: u16, inner_circuit_id: N::InnerCircuitID, transitions: Vec<Transition<N>>) -> Result<Self> {
         let transaction = Self {
-            kernel,
-            metadata,
-            encrypted_records,
-            proof,
+            network_id,
+            transitions,
+            inner_circuit_id,
         };
 
         match transaction.is_valid() {
@@ -90,164 +83,241 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the transaction is well-formed, meaning it contains
-    /// the correct network ID, unique serial numbers, unique commitments, and a valid proof.
+    /// the correct network ID, unique serial numbers, unique commitments,
+    /// correct ciphertext IDs, and a valid proof.
+    #[inline]
     pub fn is_valid(&self) -> bool {
+        // Returns `false` if the network ID is incorrect.
+        if self.network_id != N::NETWORK_ID {
+            eprintln!("Transaction contains an incorrect network ID");
+            return false;
+        }
+
+        // Ensure the number of events is less than `N::NUM_EVENTS`.
+        if self.events().len() > N::NUM_EVENTS {
+            eprintln!("Transaction contains an invalid number of events");
+            return false;
+        }
+
+        // Ensure the number of transitions is between 1 and 128 (inclusive).
+        let num_transitions = self.transitions.len();
+        if num_transitions < 1 || num_transitions > 128 {
+            eprintln!("Transaction contains invalid number of transitions");
+            return false;
+        }
+
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().len() != N::NUM_INPUT_RECORDS {
+        if self.serial_numbers().len() != num_transitions * N::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
 
         // Returns `false` if there are duplicate serial numbers in the transaction.
-        if has_duplicates(self.serial_numbers().iter()) {
+        if has_duplicates(self.serial_numbers()) {
             eprintln!("Transaction contains duplicate serial numbers");
             return false;
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().len() != N::NUM_OUTPUT_RECORDS {
+        if self.commitments().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
 
         // Returns `false` if there are duplicate commitments numbers in the transaction.
-        if has_duplicates(self.commitments().iter()) {
+        if has_duplicates(self.commitments()) {
             eprintln!("Transaction contains duplicate commitments");
             return false;
         }
 
-        // Returns `false` if the number of encrypted records in the transaction is incorrect.
-        if self.encrypted_records().len() != N::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of encrypted records");
+        // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
+        if self.ciphertexts().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
 
-        // Returns `false` if the transaction proof is invalid.
-        match N::OuterSNARK::verify(
-            N::outer_circuit_verifying_key(),
-            &match OuterPublicVariables::from(&self) {
-                Ok(outer_public_variables) => outer_public_variables,
+        // Returns `false` if there are duplicate ciphertexts in the transition.
+        if has_duplicates(self.ciphertexts()) {
+            eprintln!("Transaction contains duplicate ciphertexts");
+            return false;
+        }
+
+        // Returns `false` if the transition is invalid.
+        if !self.transitions[0].verify(*N::inner_circuit_id(), Default::default()) {
+            eprintln!("Transaction contains an invalid transition");
+            return false;
+        }
+
+        // Returns `false` if any transition is invalid.
+        if num_transitions > 1 {
+            // Initialize a local commitments tree.
+            let mut local_commitments_tree = match LocalCommitments::<N>::new() {
+                Ok(local_commitments_tree) => local_commitments_tree,
                 Err(error) => {
-                    eprintln!("Unable to construct outer public variables - {}", error);
+                    eprintln!("Transaction failed to initialize a local commitments tree: {}", error);
                     return false;
                 }
-            },
-            self.proof(),
-        ) {
-            Ok(is_valid) => match is_valid {
-                true => true,
-                false => {
-                    eprintln!("Transaction proof failed to verify");
-                    false
+            };
+
+            for window in self.transitions.windows(2) {
+                if let [previous_transition, current_transition] = window {
+                    // Update the local commitments tree.
+                    if let Err(error) = local_commitments_tree.add(previous_transition.commitments()) {
+                        eprintln!("Transaction failed to update local commitments tree: {}", error);
+                        return false;
+                    }
+
+                    // Returns `false` if the transition is invalid.
+                    if !current_transition.verify(*N::inner_circuit_id(), local_commitments_tree.root()) {
+                        eprintln!("Transaction contains an invalid transition");
+                        return false;
+                    }
                 }
-            },
-            Err(error) => {
-                eprintln!("Failed to validate transaction proof: {:?}", error);
-                false
+            }
+
+            // Returns `false` if the size of the local commitments tree does not match the number of transitions.
+            if local_commitments_tree.len() != (num_transitions - 1) * N::NUM_INPUT_RECORDS {
+                eprintln!("Transaction contains invalid local commitments tree state");
+                return false;
             }
         }
+
+        true
     }
 
-    /// Returns a reference to the kernel of the transaction.
-    pub fn kernel(&self) -> &TransactionKernel<N> {
-        &self.kernel
+    /// Returns the network ID.
+    #[inline]
+    pub fn network_id(&self) -> u16 {
+        self.network_id
     }
 
-    /// Returns a reference to the metadata of the transaction.
-    pub fn metadata(&self) -> &TransactionMetadata<N> {
-        &self.metadata
+    /// Returns the inner circuit ID.
+    #[inline]
+    pub fn inner_circuit_id(&self) -> N::InnerCircuitID {
+        self.inner_circuit_id
     }
 
-    /// Returns a reference to the proof of the transaction.
-    pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
-        &self.proof
+    /// Returns the block hashes used to execute the transitions.
+    #[inline]
+    pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
+        self.transitions.iter().map(Transition::block_hash).collect()
     }
 
-    /// Returns the encrypted record hashes.
-    pub fn to_encrypted_record_hashes(&self) -> Result<Vec<N::EncryptedRecordID>> {
-        Ok(self
-            .encrypted_records
+    /// Returns the serial numbers.
+    #[inline]
+    pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
+        self.transitions
             .iter()
-            .take(N::NUM_OUTPUT_RECORDS)
-            .map(|e| Ok(e.to_hash()?))
-            .collect::<Result<Vec<_>>>()?)
-    }
-}
-
-impl<N: Network> TransactionScheme<N> for Transaction<N> {
-    type Digest = MerkleTreeDigest<N::CommitmentsTreeParameters>;
-    type EncryptedRecord = EncryptedRecord<N>;
-
-    fn network_id(&self) -> u16 {
-        self.kernel.network_id()
+            .flat_map(Transition::serial_numbers)
+            .cloned()
+            .collect()
     }
 
-    fn serial_numbers(&self) -> &[N::SerialNumber] {
-        self.kernel.serial_numbers()
+    /// Returns the commitments.
+    #[inline]
+    pub fn commitments(&self) -> Vec<N::Commitment> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::commitments)
+            .cloned()
+            .collect()
     }
 
-    fn commitments(&self) -> &[N::Commitment] {
-        self.kernel.commitments()
+    /// Returns the output record ciphertexts.
+    #[inline]
+    pub fn ciphertexts(&self) -> Vec<RecordCiphertext<N>> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::ciphertexts)
+            .cloned()
+            .collect()
     }
 
-    fn value_balance(&self) -> &AleoAmount {
-        self.kernel.value_balance()
+    /// Returns the value balance.
+    #[inline]
+    pub fn value_balance(&self) -> AleoAmount {
+        self.transitions
+            .iter()
+            .map(Transition::value_balance)
+            .fold(AleoAmount::ZERO, |a, b| a.add(*b))
     }
 
-    fn memo(&self) -> &Memo<N> {
-        self.kernel.memo()
+    /// Returns the events.
+    #[inline]
+    pub fn events(&self) -> Vec<Event<N>> {
+        self.transitions.iter().flat_map(Transition::events).cloned().collect()
     }
 
-    fn ledger_digest(&self) -> &Self::Digest {
-        self.metadata.ledger_digest()
+    /// Returns a reference to the state transitions.
+    #[inline]
+    pub fn transitions(&self) -> &Vec<Transition<N>> {
+        &self.transitions
     }
 
-    fn inner_circuit_id(&self) -> &N::InnerCircuitID {
-        self.metadata.inner_circuit_id()
+    /// Returns the ciphertext IDs.
+    #[inline]
+    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::to_ciphertext_ids)
+            .collect::<Result<Vec<_>>>()
     }
 
-    fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
-        &self.encrypted_records
+    /// Returns the records that can be decrypted with the given account view key.
+    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Result<Vec<Record<N>>> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::ciphertexts)
+            .map(|c| c.decrypt(account_view_key))
+            .filter(|decryption_result| match decryption_result {
+                Ok(r) => !r.is_dummy(),
+                Err(_) => true,
+            })
+            .collect::<Result<Vec<Record<N>>>>()
     }
 
-    /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)
-    fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        self.kernel.to_transaction_id()
+    /// Returns the transaction ID.
+    #[inline]
+    pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
+        let transition_ids = self
+            .transitions
+            .iter()
+            .map(|transition| Ok(transition.transition_id().to_bytes_le()?))
+            .collect::<Result<Vec<_>>>()?
+            .concat();
+
+        Ok(N::transaction_id_crh().hash(&transition_ids)?)
     }
 }
 
 impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.kernel().write_le(&mut writer)?;
-        self.metadata().write_le(&mut writer)?;
-        for encrypted_record in &self.encrypted_records {
-            encrypted_record.write_le(&mut writer)?;
-        }
-        self.proof.write_le(&mut writer)
+        self.network_id.write_le(&mut writer)?;
+        self.inner_circuit_id.write_le(&mut writer)?;
+        (self.transitions.len() as u16).write_le(&mut writer)?;
+        self.transitions.write_le(&mut writer)
     }
 }
 
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the transaction kernel.
-        let kernel = FromBytes::read_le(&mut reader)?;
-        // Read the transaction metadata.
-        let metadata = FromBytes::read_le(&mut reader)?;
-        // Read the encrypted records.
-        let mut encrypted_records = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        for _ in 0..N::NUM_OUTPUT_RECORDS {
-            encrypted_records.push(FromBytes::read_le(&mut reader)?);
-        }
-        // Read the transaction proof.
-        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
+        let network_id: u16 = FromBytes::read_le(&mut reader)?;
+        let inner_circuit_id = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(kernel, metadata, encrypted_records, proof).expect("Failed to deserialize a transaction"))
+        let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
+        let mut transitions = Vec::with_capacity(num_transitions as usize);
+        for _ in 0..num_transitions {
+            transitions.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        Ok(Self::from(network_id, inner_circuit_id, transitions).expect("Failed to deserialize a transaction"))
     }
 }
 
 impl<N: Network> Hash for Transaction<N> {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.to_transaction_id()
             .expect("Failed to compute the transaction ID")
@@ -257,18 +327,57 @@ impl<N: Network> Hash for Transaction<N> {
 
 // TODO add debug support for record ciphertexts
 impl<N: Network> fmt::Debug for Transaction<N> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, serial_numbers: {:?}, commitments: {:?}, value_balance: {:?}, memo: {:?}, digest: {:?}, inner_circuit_id: {:?}, proof: {:?} }}",
+            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transitions: {:?} }}",
             self.network_id(),
-            self.serial_numbers(),
-            self.commitments(),
-            self.value_balance(),
-            self.memo(),
-            self.ledger_digest(),
             self.inner_circuit_id(),
-            self.proof(),
+            self.transitions()
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{testnet2::Testnet2, Account, AccountScheme, Payload, PAYLOAD_SIZE};
+    use snarkvm_utilities::UniformRand;
+
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+
+    #[ignore]
+    #[test]
+    fn test_decrypt_records() {
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let dummy_account = Account::<Testnet2>::new(rng).unwrap();
+
+        // Construct output records
+        let mut payload = [0u8; PAYLOAD_SIZE];
+        rng.fill(&mut payload);
+        let record = Record::new_output(
+            dummy_account.address(),
+            1234,
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            UniformRand::rand(rng),
+            rng,
+        )
+        .unwrap();
+        let dummy_record = Record::new_noop_output(dummy_account.address(), UniformRand::rand(rng), rng).unwrap();
+
+        // Encrypt output records
+        let (_encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
+        let (_encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
+        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
+
+        // Construct transaction with 1 output record and 1 dummy output record
+        let transaction = Transaction::new_coinbase(dummy_account.address(), AleoAmount(1234), rng).unwrap();
+
+        let decrypted_records = transaction.to_decrypted_records(&account_view_key).unwrap();
+        assert_eq!(decrypted_records.len(), 1); // Excludes dummy record upon decryption
+        assert_eq!(decrypted_records.first().unwrap(), &record);
     }
 }

@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
-use snarkvm_algorithms::Prepare;
+use snarkvm_algorithms::{crh::sha256::sha256, Prepare};
 use snarkvm_curves::{
-    traits::{PairingCurve, PairingEngine},
+    traits::{AffineCurve, PairingCurve, PairingEngine},
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
@@ -77,7 +77,227 @@ pub struct CommitterKey<E: PairingEngine> {
     /// The maximum degree supported by the `UniversalParams` from which `self` was derived
     pub max_degree: usize,
 }
-impl_bytes!(CommitterKey);
+
+impl<E: PairingEngine> FromBytes for CommitterKey<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        // Deserialize `powers`.
+        let powers_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut powers = Vec::with_capacity(powers_len as usize);
+        for _ in 0..powers_len {
+            let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            powers.push(power);
+        }
+
+        // Deserialize `powers_of_gamma_g`.
+        let powers_of_gamma_g_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut powers_of_gamma_g = Vec::with_capacity(powers_of_gamma_g_len as usize);
+        for _ in 0..powers_of_gamma_g_len {
+            let powers_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            powers_of_gamma_g.push(powers_of_g);
+        }
+
+        // Deserialize `shifted_powers`.
+        let has_shifted_powers: bool = FromBytes::read_le(&mut reader)?;
+        let shifted_powers = match has_shifted_powers {
+            true => {
+                let shifted_powers_len: u32 = FromBytes::read_le(&mut reader)?;
+                let mut shifted_powers = Vec::with_capacity(shifted_powers_len as usize);
+                for _ in 0..shifted_powers_len {
+                    let shifted_power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+                    shifted_powers.push(shifted_power);
+                }
+
+                Some(shifted_powers)
+            }
+            false => None,
+        };
+
+        // Deserialize `shifted_powers_of_gamma_g`.
+        let has_shifted_powers_of_gamma_g: bool = FromBytes::read_le(&mut reader)?;
+        let shifted_powers_of_gamma_g = match has_shifted_powers_of_gamma_g {
+            true => {
+                let mut shifted_powers_of_gamma_g = BTreeMap::new();
+                let shifted_powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+                for _ in 0..shifted_powers_of_gamma_g_num_elements {
+                    let key: u32 = FromBytes::read_le(&mut reader)?;
+
+                    let value_len: u32 = FromBytes::read_le(&mut reader)?;
+                    let mut value = Vec::with_capacity(value_len as usize);
+                    for _ in 0..value_len {
+                        let val: E::G1Affine = FromBytes::read_le(&mut reader)?;
+                        value.push(val);
+                    }
+
+                    shifted_powers_of_gamma_g.insert(key as usize, value);
+                }
+
+                Some(shifted_powers_of_gamma_g)
+            }
+            false => None,
+        };
+
+        // Deserialize `enforced_degree_bounds`.
+        let has_enforced_degree_bounds: bool = FromBytes::read_le(&mut reader)?;
+        let enforced_degree_bounds = match has_enforced_degree_bounds {
+            true => {
+                let enforced_degree_bounds_len: u32 = FromBytes::read_le(&mut reader)?;
+                let mut enforced_degree_bounds = Vec::with_capacity(enforced_degree_bounds_len as usize);
+                for _ in 0..enforced_degree_bounds_len {
+                    let enforced_degree_bound: u32 = FromBytes::read_le(&mut reader)?;
+                    enforced_degree_bounds.push(enforced_degree_bound as usize);
+                }
+
+                Some(enforced_degree_bounds)
+            }
+            false => None,
+        };
+
+        // Deserialize `max_degree`.
+        let max_degree: u32 = FromBytes::read_le(&mut reader)?;
+
+        // Construct the hash of the group elements.
+        let mut hash_input = powers.to_bytes_le().map_err(|_| error("Could not serialize powers"))?;
+
+        hash_input.extend_from_slice(
+            &powers_of_gamma_g
+                .to_bytes_le()
+                .map_err(|_| error("Could not serialize powers_of_gamma_g"))?,
+        );
+
+        if let Some(shifted_powers) = &shifted_powers {
+            hash_input.extend_from_slice(
+                &shifted_powers
+                    .to_bytes_le()
+                    .map_err(|_| error("Could not serialize shifted_powers"))?,
+            );
+        }
+
+        if let Some(shifted_powers_of_gamma_g) = &shifted_powers_of_gamma_g {
+            for (_key, value) in shifted_powers_of_gamma_g {
+                hash_input.extend_from_slice(
+                    &value
+                        .to_bytes_le()
+                        .map_err(|_| error("Could not serialize shifted_power_of_gamma_g"))?,
+                );
+            }
+        }
+
+        // Deserialize `hash`.
+        let hash = sha256(&hash_input);
+        let expected_hash: [u8; 32] = FromBytes::read_le(&mut reader)?;
+
+        // Enforce the group elements construct the expected hash.
+        if expected_hash != hash {
+            return Err(error("Mismatching group elements"));
+        }
+
+        Ok(Self {
+            powers,
+            powers_of_gamma_g,
+            shifted_powers,
+            shifted_powers_of_gamma_g,
+            enforced_degree_bounds,
+            max_degree: max_degree as usize,
+        })
+    }
+}
+
+impl<E: PairingEngine> ToBytes for CommitterKey<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        // Serialize `powers`.
+        (self.powers.len() as u32).write_le(&mut writer)?;
+        for power in &self.powers {
+            if !power.is_in_correct_subgroup_assuming_on_curve() {
+                return Err(error("invalid data"));
+            }
+            power.write_le(&mut writer)?;
+        }
+
+        // Serialize `powers_of_gamma_g`.
+        (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
+        for power_of_gamma_g in &self.powers_of_gamma_g {
+            if !power_of_gamma_g.is_in_correct_subgroup_assuming_on_curve() {
+                return Err(error("invalid data"));
+            }
+            power_of_gamma_g.write_le(&mut writer)?;
+        }
+
+        // Serialize `shifted_powers`.
+        self.shifted_powers.is_some().write_le(&mut writer)?;
+        if let Some(shifted_powers) = &self.shifted_powers {
+            (shifted_powers.len() as u32).write_le(&mut writer)?;
+            for shifted_power in shifted_powers {
+                if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
+                    return Err(error("invalid data"));
+                }
+                shifted_power.write_le(&mut writer)?;
+            }
+        }
+
+        // Serialize `shifted_powers_of_gamma_g`.
+        self.shifted_powers_of_gamma_g.is_some().write_le(&mut writer)?;
+        if let Some(shifted_powers_of_gamma_g) = &self.shifted_powers_of_gamma_g {
+            (shifted_powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
+            for (key, shifted_powers) in shifted_powers_of_gamma_g {
+                (*key as u32).write_le(&mut writer)?;
+                (shifted_powers.len() as u32).write_le(&mut writer)?;
+                for shifted_power in shifted_powers {
+                    if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
+                        return Err(error("invalid data"));
+                    }
+                    shifted_power.write_le(&mut writer)?;
+                }
+            }
+        }
+
+        // Serialize `enforced_degree_bounds`.
+        self.enforced_degree_bounds.is_some().write_le(&mut writer)?;
+        if let Some(enforced_degree_bounds) = &self.enforced_degree_bounds {
+            (enforced_degree_bounds.len() as u32).write_le(&mut writer)?;
+            for enforced_degree_bound in enforced_degree_bounds {
+                (*enforced_degree_bound as u32).write_le(&mut writer)?;
+            }
+        }
+
+        // Serialize `max_degree`.
+        (self.max_degree as u32).write_le(&mut writer)?;
+
+        // Construct the hash of the group elements.
+        let mut hash_input = self
+            .powers
+            .to_bytes_le()
+            .map_err(|_| error("Could not serialize powers"))?;
+
+        hash_input.extend_from_slice(
+            &self
+                .powers_of_gamma_g
+                .to_bytes_le()
+                .map_err(|_| error("Could not serialize powers_of_gamma_g"))?,
+        );
+
+        if let Some(shifted_powers) = &self.shifted_powers {
+            hash_input.extend_from_slice(
+                &shifted_powers
+                    .to_bytes_le()
+                    .map_err(|_| error("Could not serialize shifted_powers"))?,
+            );
+        }
+
+        if let Some(shifted_powers_of_gamma_g) = &self.shifted_powers_of_gamma_g {
+            for (_key, value) in shifted_powers_of_gamma_g {
+                hash_input.extend_from_slice(
+                    &value
+                        .to_bytes_le()
+                        .map_err(|_| error("Could not serialize shifted_power_of_gamma_g"))?,
+                );
+            }
+        }
+
+        // Serialize `hash`
+        let hash = sha256(&hash_input);
+        hash.write_le(&mut writer)
+    }
+}
 
 impl<E: PairingEngine> CommitterKey<E> {
     /// Obtain powers for the underlying KZG10 construction
