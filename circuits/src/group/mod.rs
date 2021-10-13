@@ -22,6 +22,7 @@ pub mod mul;
 pub mod neg;
 // pub mod one;
 pub mod sub;
+pub mod ternary;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, Field, Mode};

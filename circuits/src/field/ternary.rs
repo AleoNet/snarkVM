@@ -22,14 +22,14 @@ impl<E: Environment> Ternary for Field<E> {
 
     /// Returns `first` if `condition` is `true`, otherwise returns `second`.
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
-        // Constant Condition
+        // Constant `condition`
         if condition.is_constant() {
             match condition.eject_value() {
                 true => first.clone(),
                 false => second.clone(),
             }
         }
-        // Constant Variables
+        // Constant `first` and `second`
         else if first.is_constant() && second.is_constant() {
             let not_condition = Self::from(&!condition);
             let condition = Self::from(&condition);

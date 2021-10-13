@@ -24,6 +24,16 @@ impl<E: Environment> Mul<Field<E>> for Affine<E> {
     }
 }
 
+impl<E: Environment> Mul<Field<E>> for &Affine<E> {
+    type Output = Self;
+
+    fn mul(self, other: Field<E>) -> Self::Output {
+        let mut output = self;
+        output *= other;
+        output
+    }
+}
+
 impl<E: Environment> Mul<&Field<E>> for Affine<E> {
     type Output = Self;
 
@@ -52,6 +62,14 @@ impl<E: Environment> Mul<Affine<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Mul<Affine<E>> for &Field<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: Affine<E>) -> Self::Output {
+        &other * self
+    }
+}
+
 impl<E: Environment> Mul<&Affine<E>> for Field<E> {
     type Output = Affine<E>;
 
@@ -74,8 +92,29 @@ impl<E: Environment> MulAssign<Field<E>> for Affine<E> {
     }
 }
 
+impl<E: Environment> MulAssign<Field<E>> for &Affine<E> {
+    fn mul_assign(&mut self, other: Field<E>) {
+        *self *= &other;
+    }
+}
+
 impl<E: Environment> MulAssign<&Field<E>> for Affine<E> {
     fn mul_assign(&mut self, other: &Field<E>) {
+        *self *= other;
+    }
+}
+
+impl<E: Environment> MulAssign<&Field<E>> for &Affine<E> {
+    fn mul_assign(&mut self, other: &Field<E>) {
+        // let mut output = Affine::zero();
+        //
+        // for (i, bit) in other.to_bits_be().iter().enumerate() {
+        //     output = output.double();
+        //     if bit {
+        //         output += self;
+        //     }
+        // }
+
         // let mut output = Affine::zero();
         unimplemented!()
     }
