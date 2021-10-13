@@ -33,7 +33,7 @@ thread_local! {
 pub struct Circuit(CircuitScope<Fr>);
 
 impl Circuit {
-    fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
+    pub(super) fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
         CB.with(|cb| {
             cb.get_or_init(|| {
                 let scope = CircuitScope::<<Self as Environment>::BaseField>::new(

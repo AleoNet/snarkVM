@@ -17,6 +17,8 @@
 pub mod circuit;
 pub use circuit::*;
 
+mod constraint_converter;
+
 mod constraint_system;
 use constraint_system::*;
 

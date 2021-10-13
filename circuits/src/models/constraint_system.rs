@@ -65,24 +65,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
         variable
     }
 
-    /// Return the "one" input variable.
-    pub(super) fn one(&self) -> Variable<F> {
-        self.public[0]
-    }
-
-    pub(super) fn is_satisfied(&self) -> bool {
-        for (a, b, c) in &self.constraints {
-            let a = a.to_value();
-            let b = b.to_value();
-            let c = c.to_value();
-
-            if a * b != c {
-                return false;
-            }
-        }
-        true
-    }
-
     pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn, scope: Scope)
     where
         Fn: FnOnce() -> (A, B, C),
@@ -97,6 +79,19 @@ impl<F: PrimeField> ConstraintSystem<F> {
             self.constraints.push((a, b, c));
             self.counter.increment_constraints(&scope);
         }
+    }
+
+    pub(super) fn is_satisfied(&self) -> bool {
+        for (a, b, c) in &self.constraints {
+            let a = a.to_value();
+            let b = b.to_value();
+            let c = c.to_value();
+
+            if a * b != c {
+                return false;
+            }
+        }
+        true
     }
 
     pub(super) fn num_constants(&self) -> usize {
@@ -129,5 +124,17 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
     pub(super) fn num_constraints_in_scope(&self, scope: &Scope) -> usize {
         self.counter.num_constraints_in_scope(scope)
+    }
+
+    pub(super) fn to_public_variables(&self) -> &Vec<Variable<F>> {
+        &self.public
+    }
+
+    pub(super) fn to_private_variables(&self) -> &Vec<Variable<F>> {
+        &self.private
+    }
+
+    pub(super) fn to_constraints(&self) -> &Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)> {
+        &self.constraints
     }
 }

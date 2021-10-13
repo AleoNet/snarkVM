@@ -113,6 +113,14 @@ impl<F: PrimeField> LinearCombination<F> {
 
         self.constant + sum
     }
+
+    pub(super) fn to_constant(&self) -> F {
+        self.constant
+    }
+
+    pub(super) fn to_terms(&self) -> &HashMap<Variable<F>, F> {
+        &self.terms
+    }
 }
 
 impl<F: PrimeField> From<Variable<F>> for LinearCombination<F> {
