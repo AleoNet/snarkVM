@@ -282,38 +282,33 @@ impl<F: PrimeField> ToBitsLEGadget<F> for Address {
 }
 
 impl<F: PrimeField> ToBitsBEGadget<F> for Address {
-    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self
-            .bytes
-            .iter()
-            .enumerate()
-            .map(|(i, byte)| byte.to_bits_be(cs.ns(|| format!("to_bits_be_{}", i))))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect())
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut bits = self.to_bits_le(cs)?;
+        bits.reverse();
+        Ok(bits)
     }
 
-    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self
-            .bytes
-            .iter()
-            .enumerate()
-            .map(|(i, byte)| byte.to_bits_be_strict(cs.ns(|| format!("to_bits_be_{}", i))))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect())
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut bits = self.to_bits_le_strict(cs)?;
+        bits.reverse();
+        Ok(bits)
     }
 }
 
 impl<F: Field> FromBitsLEGadget<F> for Address {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Address, SynthesisError> {
-        /* if bits.len() !=  {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _cs: CS) -> Result<Address, SynthesisError> {
+        if bits.len() != 256 {
             return Err(SynthesisError::Unsatisfiable);
-        } */
+        }
 
-        todo!()
+        let bytes = bits
+            .chunks(8)
+            .into_iter()
+            .map(|chunk8| UInt8::u8_from_bits_le(chunk8).map(|v| v.value.ok_or(SynthesisError::Unsatisfiable)))
+            .flatten()
+            .collect::<Result<Vec<u8>, SynthesisError>>()?;
+
+        Self::constant(&bytes).map_err(|_| SynthesisError::Unsatisfiable)
     }
 
     fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
@@ -322,12 +317,22 @@ impl<F: Field> FromBitsLEGadget<F> for Address {
 }
 
 impl<F: Field> FromBitsBEGadget<F> for Address {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
-        /* if bits.len() !=  {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _cs: CS) -> Result<Address, SynthesisError> {
+        if bits.len() != 256 {
             return Err(SynthesisError::Unsatisfiable);
-        } */
+        }
 
-        todo!()
+        let mut bits = bits.to_vec();
+        bits.reverse();
+
+        let bytes = bits
+            .chunks(8)
+            .into_iter()
+            .map(|chunk8| UInt8::u8_from_bits_le(chunk8).map(|v| v.value.ok_or(SynthesisError::Unsatisfiable)))
+            .flatten()
+            .collect::<Result<Vec<u8>, SynthesisError>>()?;
+
+        Self::constant(&bytes).map_err(|_| SynthesisError::Unsatisfiable)
     }
 
     fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
