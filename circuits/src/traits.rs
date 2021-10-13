@@ -14,9 +14,38 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Not;
+use num_traits::Inv;
+use std::{
+    fmt::Debug,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+};
 
-pub trait BooleanTrait: And + Equal + Nand + Nor + Not + Or + Ternary + Xor {}
+/// Representation of a boolean.
+pub trait BooleanTrait: And + Clone + Debug + Equal + Nand + Nor + Not + Or + Ternary + Xor {}
+
+/// Representation of a field.
+pub trait FieldTrait:
+    Add
+    + AddAssign
+    + Clone
+    + Debug
+    + Div
+    + DivAssign
+    + Double
+    + Equal
+    + Inv
+    + Mul
+    + MulAssign
+    + Neg
+    + One
+    + Square
+    + Sub
+    + SubAssign
+    + Ternary
+    + ToBits
+    + Zero
+{
+}
 
 /// Representation of the zero value.
 pub trait Zero {

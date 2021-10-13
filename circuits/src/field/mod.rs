@@ -80,6 +80,8 @@ impl<E: Environment> fmt::Debug for Field<E> {
     }
 }
 
+impl<E: Environment> FieldTrait for Field<E> {}
+
 impl<E: Environment> From<Field<E>> for LinearCombination<E::BaseField> {
     fn from(field: Field<E>) -> Self {
         field.0
