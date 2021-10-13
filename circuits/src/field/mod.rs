@@ -35,7 +35,6 @@ use snarkvm_utilities::ToBits as TBits;
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
 
-use cfg_if::cfg_if;
 use num_traits::Inv;
 use std::{
     fmt,
@@ -60,6 +59,9 @@ impl<E: Environment> Field<E> {
         Self((**boolean).clone())
     }
 
+    ///
+    /// Returns `true` if the field is a constant.
+    ///
     pub fn is_constant(&self) -> bool {
         self.0.is_constant()
     }
@@ -68,15 +70,7 @@ impl<E: Environment> Field<E> {
     /// Ejects the field as a constant field element.
     ///
     pub fn eject_value(&self) -> E::BaseField {
-        cfg_if! {
-            if #[cfg(test)] {
-                // In a test case, this is acceptable behavior.
-                self.0.to_value()
-            } else {
-                // In a non-test case, this should be forbidden.
-                E::halt("Attempting to eject a field element in a production environment. Are you sure this is correct behavior?")
-            }
-        }
+        self.0.to_value()
     }
 }
 

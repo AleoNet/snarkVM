@@ -28,22 +28,22 @@ impl<E: Environment> Inv for &Field<E> {
     type Output = Field<E>;
 
     fn inv(self) -> Self::Output {
+        let mode = match self.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        };
+
         let inverse = match self.eject_value().inverse() {
             Some(inverse) => inverse,
             None => E::halt("Failed to compute the inverse"),
         };
 
-        match self.0.is_constant() {
-            true => Field::<E>::new(Mode::Constant, inverse),
-            false => {
-                let inverse = E::new_variable(Mode::Private, inverse);
+        let inverse = Field::new(mode, inverse);
 
-                // Ensure self * self^(-1) == 1.
-                E::enforce(|| (self, inverse, E::one()));
+        // Ensure self * self^(-1) == 1.
+        E::enforce(|| (self, &inverse, E::one()));
 
-                Field(inverse.into())
-            }
-        }
+        inverse
     }
 }
 

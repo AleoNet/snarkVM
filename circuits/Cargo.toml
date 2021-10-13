@@ -50,9 +50,6 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.43"
 
-[dependencies.cfg-if]
-version = "1"
-
 [dependencies.derivative]
 version = "2"
 

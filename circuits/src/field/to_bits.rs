@@ -56,7 +56,7 @@ impl<E: Environment> ToBits for &Field<E> {
         }
 
         // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::enforce(|| (self.0.clone(), E::one(), accumulator));
+        E::enforce(|| (*self, E::one(), accumulator));
 
         bits
     }
