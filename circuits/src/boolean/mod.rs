@@ -70,7 +70,11 @@ impl<E: Environment> Boolean<E> {
     /// Returns `true` if the boolean is a constant.
     ///
     pub fn is_constant(&self) -> bool {
-        self.0.is_constant()
+        // Perform a software-level safety check that the boolean is well-formed.
+        match self.0.is_boolean_type() {
+            true => self.0.is_constant(),
+            false => E::halt("Boolean variable is not well-formed"),
+        }
     }
 
     ///

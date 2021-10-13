@@ -30,11 +30,6 @@ impl<E: Environment> Not for &Boolean<E> {
 
     /// Returns `(NOT a)`.
     fn not(self) -> Self::Output {
-        // Perform a software-level safety check that the boolean is well-formed.
-        if !self.0.is_boolean_type() {
-            E::halt("Boolean variable is not well-formed")
-        }
-
         // Constant case
         if self.is_constant() {
             match self.eject_value() {
