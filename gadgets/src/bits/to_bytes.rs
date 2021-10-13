@@ -109,10 +109,8 @@ impl<'a, F: Field> ToBytesBEGadget<F> for &'a [UInt8] {
 
 impl<F: Field> ToBytesBEGadget<F> for Vec<UInt8> {
     fn to_bytes_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        dbg!(self);
         let mut vec = self.to_vec();
         vec.reverse();
-        dbg!(&vec);
         Ok(vec)
     }
 
