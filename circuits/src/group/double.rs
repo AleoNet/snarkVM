@@ -43,10 +43,10 @@ impl<E: Environment> Double for &Affine<E> {
 
         // Compute x3 and y3.
         let (x3, y3) = {
-            let xy = xy.to_value();
-            let x2 = x2.to_value();
-            let y2 = y2.to_value();
-            let ax2 = ax2.to_value();
+            let xy = xy.eject_value();
+            let x2 = x2.eject_value();
+            let y2 = y2.eject_value();
+            let ax2 = ax2.eject_value();
             let two = E::BaseField::one() + E::BaseField::one();
 
             // Assign x3 = (2xy) / (ax^2 + y^2)

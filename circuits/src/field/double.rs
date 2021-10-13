@@ -51,7 +51,7 @@ mod tests {
             for _ in 0..ITERATIONS {
                 expected = expected.double();
                 candidate = candidate.double();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(1, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -68,7 +68,7 @@ mod tests {
             for _ in 0..ITERATIONS {
                 expected = expected.double();
                 candidate = candidate.double();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(1, scope.num_public_in_scope());
@@ -85,7 +85,7 @@ mod tests {
             for _ in 0..ITERATIONS {
                 expected = expected.double();
                 candidate = candidate.double();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -100,7 +100,7 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero).double();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
     }
 
     #[test]
@@ -109,6 +109,6 @@ mod tests {
         let two = one + one;
 
         let candidate = Field::<Circuit>::new(Mode::Public, one).double();
-        assert_eq!(two, candidate.to_value());
+        assert_eq!(two, candidate.eject_value());
     }
 }

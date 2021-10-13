@@ -38,8 +38,8 @@ impl<E: Environment> Ternary for Field<E> {
         // Variables
         else {
             let witness = Field::new(Mode::Private, match condition.to_value() {
-                true => first.to_value(),
-                false => second.to_value(),
+                true => first.eject_value(),
+                false => second.eject_value(),
             });
 
             //

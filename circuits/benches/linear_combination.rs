@@ -35,7 +35,7 @@ fn evaluate(c: &mut Criterion) {
 
     c.bench_function("evaluate", move |b| {
         b.iter(|| {
-            let _value = candidate.to_value();
+            let _value = candidate.eject_value();
         })
     });
 }

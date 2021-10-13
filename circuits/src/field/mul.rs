@@ -53,11 +53,11 @@ impl<E: Environment> MulAssign<Self> for Field<E> {
 impl<E: Environment> MulAssign<&Self> for Field<E> {
     fn mul_assign(&mut self, other: &Self) {
         match (self.is_constant(), other.is_constant()) {
-            (true, true) => *self = Self::new(Mode::Constant, self.to_value() * other.to_value()),
-            (true, false) => self.0 = other.0.clone() * self.to_value(),
-            (false, true) => self.0 = self.0.clone() * other.to_value(),
+            (true, true) => *self = Self::new(Mode::Constant, self.eject_value() * other.eject_value()),
+            (true, false) => self.0 = other.0.clone() * self.eject_value(),
+            (false, true) => self.0 = self.0.clone() * other.eject_value(),
             (false, false) => {
-                let product = E::new_variable(Mode::Private, self.to_value() * other.to_value());
+                let product = E::new_variable(Mode::Private, self.eject_value() * other.eject_value());
 
                 // Ensure self * other == product.
                 E::enforce(|| (self.0.clone(), other, product));
@@ -95,7 +95,7 @@ mod tests {
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
 
-            assert_eq!(expected_product, candidate_product.to_value());
+            assert_eq!(expected_product, candidate_product.eject_value());
         });
 
         // Constant * Public
@@ -113,7 +113,7 @@ mod tests {
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
 
-            assert_eq!(expected_product, candidate_product.to_value());
+            assert_eq!(expected_product, candidate_product.eject_value());
         });
 
         // Public * Constant
@@ -131,7 +131,7 @@ mod tests {
                 assert_eq!(0, scope.num_constraints_in_scope());
             }
 
-            assert_eq!(expected_product, candidate_product.to_value());
+            assert_eq!(expected_product, candidate_product.eject_value());
         });
 
         // Public * Public
@@ -150,7 +150,7 @@ mod tests {
                 assert!(scope.is_satisfied());
             }
 
-            assert_eq!(expected_product, candidate_product.to_value());
+            assert_eq!(expected_product, candidate_product.eject_value());
         });
 
         // Private * Private
@@ -169,7 +169,7 @@ mod tests {
                 assert!(scope.is_satisfied());
             }
 
-            assert_eq!(expected_product, candidate_product.to_value());
+            assert_eq!(expected_product, candidate_product.eject_value());
         });
     }
 
@@ -178,19 +178,19 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::zero() * Field::zero();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::zero() * &Field::zero();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero) * Field::new(Mode::Public, zero);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero) * Field::new(Mode::Private, zero);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Private, zero) * Field::new(Mode::Private, zero);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
     }
 
     #[test]
@@ -199,25 +199,25 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::zero() * Field::one();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::zero() * &Field::one();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::one() * Field::zero();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::one() * &Field::zero();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Public, one) * Field::new(Mode::Public, zero);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Public, one) * Field::new(Mode::Private, zero);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Private, one) * Field::new(Mode::Private, zero);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
     }
 
     #[test]
@@ -225,19 +225,19 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::one() * Field::one();
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.eject_value());
 
         let candidate = Field::<Circuit>::one() * &Field::one();
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Public, one) * Field::new(Mode::Public, one);
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Private, one) * Field::new(Mode::Public, one);
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Private, one) * Field::new(Mode::Private, one);
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.eject_value());
     }
 
     #[test]
@@ -248,15 +248,15 @@ mod tests {
 
         let candidate_two = Field::<Circuit>::one() + Field::one();
         let candidate = candidate_two * (Field::<Circuit>::one() + Field::one());
-        assert_eq!(four, candidate.to_value());
+        assert_eq!(four, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Public, two) * Field::new(Mode::Public, two);
-        assert_eq!(four, candidate.to_value());
+        assert_eq!(four, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Private, two) * Field::new(Mode::Public, two);
-        assert_eq!(four, candidate.to_value());
+        assert_eq!(four, candidate.eject_value());
 
         let candidate = Field::<Circuit>::new(Mode::Private, two) * Field::new(Mode::Private, two);
-        assert_eq!(four, candidate.to_value());
+        assert_eq!(four, candidate.eject_value());
     }
 }

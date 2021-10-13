@@ -51,7 +51,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected = expected.square();
                 candidate = candidate.square();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(i + 2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -68,7 +68,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected = expected.square();
                 candidate = candidate.square();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(1, scope.num_public_in_scope());
@@ -86,7 +86,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 expected = expected.square();
                 candidate = candidate.square();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -102,7 +102,7 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero).square();
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.eject_value());
     }
 
     #[test]
@@ -110,7 +110,7 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         let candidate = Field::<Circuit>::new(Mode::Public, one).square();
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.eject_value());
     }
 
     #[test]
@@ -120,6 +120,6 @@ mod tests {
         let four = two.square();
 
         let candidate = (Field::<Circuit>::new(Mode::Public, one) + Field::new(Mode::Public, one)).square();
-        assert_eq!(four, candidate.to_value());
+        assert_eq!(four, candidate.eject_value());
     }
 }

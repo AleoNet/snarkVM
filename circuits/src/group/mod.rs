@@ -94,7 +94,7 @@ impl<E: Environment> Affine<E> {
     }
 
     pub fn to_value(&self) -> (E::BaseField, E::BaseField) {
-        (self.x.to_value(), self.y.to_value())
+        (self.x.eject_value(), self.y.eject_value())
     }
 }
 

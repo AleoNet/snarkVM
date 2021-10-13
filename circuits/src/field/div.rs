@@ -66,7 +66,7 @@ mod tests {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient =
                         Field::<Circuit>::new(Mode::Constant, dividend) / Field::new(Mode::Constant, divisor);
-                    assert_eq!(expected_quotient, candidate_quotient.to_value());
+                    assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
                     assert_eq!(4, scope.num_constants_in_scope());
                     assert_eq!(0, scope.num_public_in_scope());
@@ -88,7 +88,7 @@ mod tests {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient =
                         Field::<Circuit>::new(Mode::Public, dividend) / Field::new(Mode::Public, divisor);
-                    assert_eq!(expected_quotient, candidate_quotient.to_value());
+                    assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
                     assert_eq!(0, scope.num_constants_in_scope());
                     assert_eq!(2, scope.num_public_in_scope());
@@ -111,7 +111,7 @@ mod tests {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient =
                         Field::<Circuit>::new(Mode::Private, dividend) / Field::new(Mode::Private, divisor);
-                    assert_eq!(expected_quotient, candidate_quotient.to_value());
+                    assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
                     assert_eq!(0, scope.num_constants_in_scope());
                     assert_eq!(0, scope.num_public_in_scope());

@@ -182,7 +182,7 @@ mod tests {
             accumulator *= Field::new(Mode::Private, two);
         }
 
-        assert_eq!((accumulator - Field::one()).to_value(), candidate.to_value());
+        assert_eq!((accumulator - Field::one()).eject_value(), candidate.eject_value());
         assert_eq!(2, E::num_public());
         assert_eq!(2 * EXPONENT + 1, E::num_private());
         assert_eq!(EXPONENT, E::num_constraints());

@@ -41,7 +41,7 @@ impl<E: Environment> ToBits for &Field<E> {
         };
 
         let bits = self
-            .to_value()
+            .eject_value()
             .to_bits_le()
             .iter()
             .map(|bit| Boolean::new(mode, *bit))

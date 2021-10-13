@@ -35,6 +35,7 @@ use snarkvm_utilities::ToBits as TBits;
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
 
+use cfg_if::cfg_if;
 use num_traits::Inv;
 use std::{
     fmt,
@@ -45,12 +46,16 @@ use std::{
 pub struct Field<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> Field<E> {
+    ///
     /// Initializes a new instance of a field from a constant field element.
+    ///
     pub fn new(mode: Mode, value: E::BaseField) -> Self {
         Self(E::new_variable(mode, value).into())
     }
 
+    ///
     /// Initializes a new instance of a field from a boolean.
+    ///
     pub fn from(boolean: &Boolean<E>) -> Self {
         Self((**boolean).clone())
     }
@@ -59,14 +64,25 @@ impl<E: Environment> Field<E> {
         self.0.is_constant()
     }
 
-    pub fn to_value(&self) -> E::BaseField {
-        self.0.to_value()
+    ///
+    /// Ejects the field as a constant field element.
+    ///
+    pub fn eject_value(&self) -> E::BaseField {
+        cfg_if! {
+            if #[cfg(test)] {
+                // In a test case, this is acceptable behavior.
+                self.0.to_value()
+            } else {
+                // In a non-test case, this should be forbidden.
+                E::halt("Attempting to eject a field element in a production environment. Are you sure this is correct behavior?")
+            }
+        }
     }
 }
 
 impl<E: Environment> fmt::Debug for Field<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_value())
+        write!(f, "{}", self.eject_value())
     }
 }
 
@@ -101,7 +117,7 @@ mod tests {
 
         let candidate_element = <Circuit as Environment>::BaseField::from_str(&format!("{:?}", candidate)).unwrap();
         let candidate_recovered = Field::<Circuit>::new(mode, candidate_element);
-        assert_eq!(candidate.to_value(), candidate_recovered.to_value());
+        assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
 
     #[test]

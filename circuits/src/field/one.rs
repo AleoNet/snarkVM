@@ -50,7 +50,7 @@ mod tests {
             assert_eq!(0, scope.num_constraints_in_scope());
 
             let candidate = Field::<Circuit>::one();
-            assert_eq!(one, candidate.to_value());
+            assert_eq!(one, candidate.eject_value());
 
             assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());

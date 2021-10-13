@@ -39,10 +39,10 @@ impl<E: Environment> Equal<Self> for Field<E> {
     ///
     fn is_neq(&self, other: &Self) -> Self::Output {
         match (self.is_constant(), other.is_constant()) {
-            (true, true) => Boolean::new(Mode::Constant, self.to_value() != other.to_value()),
+            (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
             _ => {
-                let this = self.to_value();
-                let that = other.to_value();
+                let this = self.eject_value();
+                let that = other.eject_value();
 
                 // Compute a boolean that is `true` if `this` and `that` are not equivalent.
                 let is_neq = Boolean::new(Mode::Private, this != that);

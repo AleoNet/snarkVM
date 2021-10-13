@@ -28,7 +28,7 @@ impl<E: Environment> Inv for &Field<E> {
     type Output = Field<E>;
 
     fn inv(self) -> Self::Output {
-        let inverse = match self.to_value().inverse() {
+        let inverse = match self.eject_value().inverse() {
             Some(inverse) => inverse,
             None => E::halt("Failed to compute the inverse"),
         };
@@ -65,7 +65,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
                 let candidate = Field::<Circuit>::new(Mode::Constant, accumulator).inv();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -83,7 +83,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
                 let candidate = Field::<Circuit>::new(Mode::Public, accumulator).inv();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(i + 1, scope.num_public_in_scope());
@@ -102,7 +102,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
                 let candidate = Field::<Circuit>::new(Mode::Private, accumulator).inv();
-                assert_eq!(expected, candidate.to_value());
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());

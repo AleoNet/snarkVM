@@ -69,9 +69,9 @@ impl<E: Environment> Add<&Self> for Affine<E> {
 
         // Compute x3 and y3.
         let (x3, y3) = {
-            let v0 = v0.to_value();
-            let v1 = v1.to_value();
-            let v2 = v2.to_value();
+            let v0 = v0.eject_value();
+            let v1 = v1.eject_value();
+            let v2 = v2.eject_value();
 
             // Assign x3 = (v0 + v1) / (v2 + 1)
             let x3 = {
@@ -83,7 +83,7 @@ impl<E: Environment> Add<&Self> for Affine<E> {
 
             // Assign y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = {
-                let t0 = u.to_value() + (v0 * a.to_value()) - v1;
+                let t0 = u.eject_value() + (v0 * a.eject_value()) - v1;
                 let t1 = E::BaseField::one() - v2;
                 let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
                 Field::new(Mode::Private, t0_div_t1)
