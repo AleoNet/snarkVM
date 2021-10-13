@@ -16,18 +16,18 @@
 
 use super::*;
 
-impl<E: Environment> Add<Self> for Field<E> {
-    type Output = Self;
+impl<E: Environment> Add<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
-    fn add(self, other: Self) -> Self::Output {
+    fn add(self, other: Field<E>) -> Self::Output {
         self + &other
     }
 }
 
-impl<E: Environment> Add<&Self> for Field<E> {
-    type Output = Self;
+impl<E: Environment> Add<&Field<E>> for Field<E> {
+    type Output = Field<E>;
 
-    fn add(self, other: &Self) -> Self::Output {
+    fn add(self, other: &Field<E>) -> Self::Output {
         Self(self.0 + &other.0)
     }
 }
@@ -40,14 +40,14 @@ impl<E: Environment> Add<&Field<E>> for &Field<E> {
     }
 }
 
-impl<E: Environment> AddAssign<Self> for Field<E> {
-    fn add_assign(&mut self, other: Self) {
+impl<E: Environment> AddAssign<Field<E>> for Field<E> {
+    fn add_assign(&mut self, other: Field<E>) {
         *self += &other;
     }
 }
 
-impl<E: Environment> AddAssign<&Self> for Field<E> {
-    fn add_assign(&mut self, other: &Self) {
+impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
+    fn add_assign(&mut self, other: &Field<E>) {
         self.0 += &other.0
     }
 }
@@ -56,133 +56,224 @@ impl<E: Environment> AddAssign<&Self> for Field<E> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 100_000;
 
-    #[test]
-    fn test_add() {
-        let one = <Circuit as Environment>::BaseField::one();
+    fn check_add(
+        name: &str,
+        expected: &<Circuit as Environment>::BaseField,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let candidate = a + b;
+            assert_eq!(
+                *expected,
+                candidate.eject_value(),
+                "{} != {} := ({} + {})",
+                expected,
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
+            );
 
-        // Constant variables
-        Circuit::scoped("Constant", |scope| {
-            let mut expected_sum = one;
-            let mut candidate_sum = Field::<Circuit>::one();
-
-            for i in 0..ITERATIONS {
-                expected_sum = expected_sum + &one;
-                candidate_sum = candidate_sum + Field::new(Mode::Constant, one);
-
-                assert_eq!(i + 1, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            }
-
-            assert_eq!(expected_sum, candidate_sum.eject_value());
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
         });
+    }
 
-        // Public variables
-        Circuit::scoped("Public", |scope| {
-            let mut expected_sum = one;
-            let mut candidate_sum = Field::<Circuit>::one();
+    fn check_add_assign(
+        name: &str,
+        expected: &<Circuit as Environment>::BaseField,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let mut candidate = a.clone();
+            candidate += b;
+            assert_eq!(
+                *expected,
+                candidate.eject_value(),
+                "{} != {} := ({} + {})",
+                expected,
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
+            );
 
-            for i in 0..ITERATIONS {
-                expected_sum = expected_sum + &one;
-                candidate_sum = candidate_sum + Field::new(Mode::Public, one);
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            }
-
-            assert_eq!(expected_sum, candidate_sum.eject_value());
-        });
-
-        // Private variables
-        Circuit::scoped("Private", |scope| {
-            let mut expected_sum = one;
-            let mut candidate_sum = Field::<Circuit>::one();
-
-            for i in 0..ITERATIONS {
-                expected_sum = expected_sum + &one;
-                candidate_sum = candidate_sum + Field::new(Mode::Private, one);
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(i + 1, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            }
-
-            assert_eq!(expected_sum, candidate_sum.eject_value());
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
         });
     }
 
     #[test]
-    fn test_add_assign() {
-        let one = <Circuit as Environment>::BaseField::one();
+    fn test_constant_plus_constant() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
 
-        // Constant variables
-        {
-            let mut expected_sum = one;
-            let mut candidate_sum = Field::<Circuit>::one();
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Constant, first);
+            let b = Field::<Circuit>::new(Mode::Constant, second);
 
-            Circuit::scoped("Constant", |scope| {
-                for i in 0..ITERATIONS {
-                    expected_sum += &one;
-                    candidate_sum += Field::new(Mode::Constant, one);
-
-                    assert_eq!(i + 1, scope.num_constants_in_scope());
-                    assert_eq!(0, scope.num_public_in_scope());
-                    assert_eq!(0, scope.num_private_in_scope());
-                    assert_eq!(0, scope.num_constraints_in_scope());
-                }
-            });
-
-            assert_eq!(expected_sum, candidate_sum.eject_value());
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
         }
+    }
 
-        // Public variables
-        {
-            let mut expected_sum = one;
-            let mut candidate_sum = Field::<Circuit>::one();
+    #[test]
+    fn test_constant_plus_public() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
 
-            Circuit::scoped("Public", |scope| {
-                for i in 0..ITERATIONS {
-                    expected_sum += &one;
-                    candidate_sum += Field::new(Mode::Public, one);
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Constant, first);
+            let b = Field::<Circuit>::new(Mode::Public, second);
 
-                    assert_eq!(0, scope.num_constants_in_scope());
-                    assert_eq!(i + 1, scope.num_public_in_scope());
-                    assert_eq!(0, scope.num_private_in_scope());
-                    assert_eq!(0, scope.num_constraints_in_scope());
-                }
-            });
-
-            assert_eq!(expected_sum, candidate_sum.eject_value());
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
         }
+    }
 
-        // Private variables
-        {
-            let mut expected_sum = one;
-            let mut candidate_sum = Field::<Circuit>::one();
+    #[test]
+    fn test_public_plus_constant() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
 
-            Circuit::scoped("Private", |scope| {
-                for i in 0..ITERATIONS {
-                    expected_sum += &one;
-                    candidate_sum += Field::new(Mode::Private, one);
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Public, first);
+            let b = Field::<Circuit>::new(Mode::Constant, second);
 
-                    assert_eq!(0, scope.num_constants_in_scope());
-                    assert_eq!(0, scope.num_public_in_scope());
-                    assert_eq!(i + 1, scope.num_private_in_scope());
-                    assert_eq!(0, scope.num_constraints_in_scope());
-                }
-            });
-
-            assert_eq!(expected_sum, candidate_sum.eject_value());
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
         }
+    }
 
-        // println!("{:?}", CircuitBuilder::print_circuit());
+    #[test]
+    fn test_constant_plus_private() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Constant, first);
+            let b = Field::<Circuit>::new(Mode::Private, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
+
+    #[test]
+    fn test_private_plus_constant() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Private, first);
+            let b = Field::<Circuit>::new(Mode::Constant, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
+
+    #[test]
+    fn test_public_plus_public() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Public, first);
+            let b = Field::<Circuit>::new(Mode::Public, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
+
+    #[test]
+    fn test_public_plus_private() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Public, first);
+            let b = Field::<Circuit>::new(Mode::Private, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
+
+    #[test]
+    fn test_private_plus_public() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Private, first);
+            let b = Field::<Circuit>::new(Mode::Public, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
+
+    #[test]
+    fn test_private_plus_private() {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut thread_rng());
+            let second = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Field::<Circuit>::new(Mode::Private, first);
+            let b = Field::<Circuit>::new(Mode::Private, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
     }
 
     #[test]
