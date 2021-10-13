@@ -176,7 +176,7 @@ impl<N: Network> Ledger<N> {
         let commitments_root = commitments.root();
 
         // Mine the next block.
-        let block = Block::mine_new(
+        let block = Block::mine(
             previous_block_hash,
             block_height,
             block_timestamp,

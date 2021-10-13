@@ -100,7 +100,7 @@ fn dpc_testnet2_integration_test() {
     );
 
     // Construct the new block header.
-    let header = BlockHeader::mine_new(
+    let header = BlockHeader::mine(
         block_height,
         timestamp,
         difficulty_target,

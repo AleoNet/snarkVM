@@ -39,7 +39,7 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
-    pub fn mine_new<R: Rng + CryptoRng>(
+    pub fn mine<R: Rng + CryptoRng>(
         previous_block_hash: N::BlockHash,
         block_height: u32,
         block_timestamp: i64,
@@ -53,7 +53,7 @@ impl<N: Network> Block<N> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         // Compute the block header.
-        let header = BlockHeader::mine_new(
+        let header = BlockHeader::mine(
             block_height,
             block_timestamp,
             difficulty_target,
@@ -92,7 +92,7 @@ impl<N: Network> Block<N> {
         let difficulty_target = u64::MAX;
 
         // Compute the genesis block header.
-        let header = BlockHeader::mine_new(
+        let header = BlockHeader::mine(
             block_height,
             block_timestamp,
             difficulty_target,

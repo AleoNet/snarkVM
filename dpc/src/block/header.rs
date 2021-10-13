@@ -97,7 +97,7 @@ pub struct BlockHeader<N: Network> {
 
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
-    pub fn mine_new<R: Rng + CryptoRng>(
+    pub fn mine<R: Rng + CryptoRng>(
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
