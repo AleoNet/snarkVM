@@ -161,27 +161,27 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
 
 #[cfg(test)]
 mod tests {
-    use crate::{Circuit, Environment, Field, Mode, One};
+    use crate::{BaseField, Circuit, Environment, Mode, One};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One as O;
     use snarkvm_r1cs::ConstraintSynthesizer;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
-    fn create_example_circuit<E: Environment>() -> Field<E> {
+    fn create_example_circuit<E: Environment>() -> BaseField<E> {
         let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
         const EXPONENT: usize = 64;
 
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
-        let mut candidate = Field::<E>::new(Mode::Public, one);
-        let mut accumulator = Field::new(Mode::Private, two);
+        let mut candidate = BaseField::<E>::new(Mode::Public, one);
+        let mut accumulator = BaseField::new(Mode::Private, two);
         for _ in 0..EXPONENT {
             candidate += &accumulator;
-            accumulator *= Field::new(Mode::Private, two);
+            accumulator *= BaseField::new(Mode::Private, two);
         }
 
-        assert_eq!((accumulator - Field::one()).eject_value(), candidate.eject_value());
+        assert_eq!((accumulator - BaseField::one()).eject_value(), candidate.eject_value());
         assert_eq!(2, E::num_public());
         assert_eq!(2 * EXPONENT + 1, E::num_private());
         assert_eq!(EXPONENT, E::num_constraints());

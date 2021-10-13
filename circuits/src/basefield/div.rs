@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Div<Self> for Field<E> {
+impl<E: Environment> Div<Self> for BaseField<E> {
     type Output = Self;
 
     fn div(self, other: Self) -> Self::Output {
@@ -24,7 +24,7 @@ impl<E: Environment> Div<Self> for Field<E> {
     }
 }
 
-impl<E: Environment> Div<&Self> for Field<E> {
+impl<E: Environment> Div<&Self> for BaseField<E> {
     type Output = Self;
 
     fn div(self, other: &Self) -> Self::Output {
@@ -34,13 +34,13 @@ impl<E: Environment> Div<&Self> for Field<E> {
     }
 }
 
-impl<E: Environment> DivAssign<Self> for Field<E> {
+impl<E: Environment> DivAssign<Self> for BaseField<E> {
     fn div_assign(&mut self, other: Self) {
         *self /= &other;
     }
 }
 
-impl<E: Environment> DivAssign<&Self> for Field<E> {
+impl<E: Environment> DivAssign<&Self> for BaseField<E> {
     fn div_assign(&mut self, other: &Self) {
         *self *= other.inv();
     }
@@ -65,7 +65,7 @@ mod tests {
                 Circuit::scoped(&format!("Constant - ({}, {})", i, j), |scope| {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient =
-                        Field::<Circuit>::new(Mode::Constant, dividend) / Field::new(Mode::Constant, divisor);
+                        BaseField::<Circuit>::new(Mode::Constant, dividend) / BaseField::new(Mode::Constant, divisor);
                     assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
                     assert_eq!(4, scope.num_constants_in_scope());
@@ -87,7 +87,7 @@ mod tests {
                 Circuit::scoped(&format!("Public - ({}, {})", i, j), |scope| {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient =
-                        Field::<Circuit>::new(Mode::Public, dividend) / Field::new(Mode::Public, divisor);
+                        BaseField::<Circuit>::new(Mode::Public, dividend) / BaseField::new(Mode::Public, divisor);
                     assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
                     assert_eq!(0, scope.num_constants_in_scope());
@@ -110,7 +110,7 @@ mod tests {
                 Circuit::scoped(&format!("Private - ({}, {})", i, j), |scope| {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient =
-                        Field::<Circuit>::new(Mode::Private, dividend) / Field::new(Mode::Private, divisor);
+                        BaseField::<Circuit>::new(Mode::Private, dividend) / BaseField::new(Mode::Private, divisor);
                     assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
                     assert_eq!(0, scope.num_constants_in_scope());
@@ -131,19 +131,22 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
         let one = <Circuit as Environment>::BaseField::one();
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::one() / Field::zero());
+        let result = std::panic::catch_unwind(|| BaseField::<Circuit>::one() / BaseField::zero());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result =
-            std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, one) / Field::new(Mode::Constant, zero));
+        let result = std::panic::catch_unwind(|| {
+            BaseField::<Circuit>::new(Mode::Constant, one) / BaseField::new(Mode::Constant, zero)
+        });
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result =
-            std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, one) / Field::new(Mode::Public, zero));
+        let result = std::panic::catch_unwind(|| {
+            BaseField::<Circuit>::new(Mode::Public, one) / BaseField::new(Mode::Public, zero)
+        });
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result =
-            std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, one) / Field::new(Mode::Private, zero));
+        let result = std::panic::catch_unwind(|| {
+            BaseField::<Circuit>::new(Mode::Private, one) / BaseField::new(Mode::Private, zero)
+        });
         assert!(result.is_err()); // Probe further for specific error type here, if desired
     }
 }

@@ -53,8 +53,8 @@ impl<E: Environment> Add<&Self> for Affine<E> {
             return Self::new(Mode::Constant, x, Some(y));
         }
 
-        let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
-        let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
+        let a = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_A);
+        let d = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_D);
 
         // Compute U = (-A * x1 + y1) * (x2 + y2)
         let u1 = (&self.x * &-&a) + &self.y;
@@ -81,7 +81,7 @@ impl<E: Environment> Add<&Self> for Affine<E> {
                 let t0 = v0 + v1;
                 let t1 = v2 + E::BaseField::one();
                 let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
-                Field::new(Mode::Private, t0_div_t1)
+                BaseField::new(Mode::Private, t0_div_t1)
             };
 
             // Assign y3 = (U + a * v0 - v1) / (1 - v2)
@@ -89,7 +89,7 @@ impl<E: Environment> Add<&Self> for Affine<E> {
                 let t0 = u.eject_value() + (v0 * a.eject_value()) - v1;
                 let t1 = E::BaseField::one() - v2;
                 let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
-                Field::new(Mode::Private, t0_div_t1)
+                BaseField::new(Mode::Private, t0_div_t1)
             };
 
             (x3, y3)
@@ -97,13 +97,13 @@ impl<E: Environment> Add<&Self> for Affine<E> {
 
         // Ensure x3 is well-formed.
         // x3 * (v2 + 1) = v0 + v1
-        let v2_plus_one = &v2 + &Field::one();
+        let v2_plus_one = &v2 + &BaseField::one();
         let v0_plus_v1 = &v0 + &v1;
         E::enforce(|| (&x3, v2_plus_one, v0_plus_v1));
 
         // Ensure y3 is well-formed.
         // y3 * (1 - v2) = u + (a * v0) - v1
-        let one_minus_v2 = Field::one() - v2;
+        let one_minus_v2 = BaseField::one() - v2;
         let a_v0 = v0 * a;
         let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
         E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));

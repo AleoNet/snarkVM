@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Inv for Field<E> {
+impl<E: Environment> Inv for BaseField<E> {
     type Output = Self;
 
     fn inv(self) -> Self::Output {
@@ -24,8 +24,8 @@ impl<E: Environment> Inv for Field<E> {
     }
 }
 
-impl<E: Environment> Inv for &Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Inv for &BaseField<E> {
+    type Output = BaseField<E>;
 
     fn inv(self) -> Self::Output {
         let mode = match self.is_constant() {
@@ -38,7 +38,7 @@ impl<E: Environment> Inv for &Field<E> {
             None => E::halt("Failed to compute the inverse"),
         };
 
-        let inverse = Field::new(mode, inverse);
+        let inverse = BaseField::new(mode, inverse);
 
         // Ensure self * self^(-1) == 1.
         E::enforce(|| (self, &inverse, E::one()));
@@ -64,7 +64,7 @@ mod tests {
 
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
-                let candidate = Field::<Circuit>::new(Mode::Constant, accumulator).inv();
+                let candidate = BaseField::<Circuit>::new(Mode::Constant, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
@@ -82,7 +82,7 @@ mod tests {
 
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
-                let candidate = Field::<Circuit>::new(Mode::Public, accumulator).inv();
+                let candidate = BaseField::<Circuit>::new(Mode::Public, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -101,7 +101,7 @@ mod tests {
 
             for i in 0..ITERATIONS {
                 let expected = accumulator.inverse().unwrap();
-                let candidate = Field::<Circuit>::new(Mode::Private, accumulator).inv();
+                let candidate = BaseField::<Circuit>::new(Mode::Private, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -119,16 +119,16 @@ mod tests {
     fn test_zero_inv_fails() {
         let zero = <Circuit as Environment>::BaseField::zero();
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inv());
+        let result = std::panic::catch_unwind(|| BaseField::<Circuit>::zero().inv());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, zero).inv());
+        let result = std::panic::catch_unwind(|| BaseField::<Circuit>::new(Mode::Constant, zero).inv());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, zero).inv());
+        let result = std::panic::catch_unwind(|| BaseField::<Circuit>::new(Mode::Public, zero).inv());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, zero).inv());
+        let result = std::panic::catch_unwind(|| BaseField::<Circuit>::new(Mode::Private, zero).inv());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
     }
 }

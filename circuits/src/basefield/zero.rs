@@ -16,18 +16,16 @@
 
 use super::*;
 
-impl<E: Environment> Zero for Affine<E> {
+impl<E: Environment> Zero for BaseField<E> {
     type Boolean = Boolean<E>;
     type Output = Self::Boolean;
 
     fn zero() -> Self {
-        Self::from(BaseField::zero(), BaseField::one())
+        Self(E::zero())
     }
 
     fn is_zero(&self) -> Self::Output {
-        let is_x_zero = self.x.is_eq(&BaseField::zero());
-        let is_y_one = self.y.is_eq(&BaseField::one());
-        is_x_zero.and(&is_y_one)
+        self.is_eq(&Self::zero())
     }
 }
 
@@ -39,7 +37,6 @@ mod tests {
     #[test]
     fn test_zero() {
         let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
 
         Circuit::scoped("Zero", |scope| {
             assert_eq!(0, Circuit::num_constants());
@@ -52,16 +49,15 @@ mod tests {
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            let candidate = Affine::<Circuit>::zero().eject_value();
-            assert_eq!(zero, candidate.to_x_coordinate());
-            assert_eq!(one, candidate.to_y_coordinate());
+            let candidate = BaseField::<Circuit>::zero();
+            assert_eq!(zero, candidate.eject_value());
 
-            assert_eq!(6, scope.num_constants_in_scope());
+            assert_eq!(0, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            assert_eq!(6, Circuit::num_constants());
+            assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());
             assert_eq!(0, Circuit::num_constraints());
@@ -70,10 +66,14 @@ mod tests {
 
     #[test]
     fn test_is_zero() {
-        let candidate = Affine::<Circuit>::zero();
+        let candidate = BaseField::<Circuit>::zero();
 
         // Should equal 0.
         let candidate_boolean = candidate.is_zero();
         assert_eq!(true, candidate_boolean.eject_value());
+
+        // Should not equal 1.
+        let candidate_boolean = candidate.is_one();
+        assert_eq!(false, candidate_boolean.eject_value());
     }
 }

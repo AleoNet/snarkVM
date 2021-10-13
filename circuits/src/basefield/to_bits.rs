@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> ToBits for Field<E> {
+impl<E: Environment> ToBits for BaseField<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
@@ -30,7 +30,7 @@ impl<E: Environment> ToBits for Field<E> {
     }
 }
 
-impl<E: Environment> ToBits for &Field<E> {
+impl<E: Environment> ToBits for &BaseField<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
@@ -47,11 +47,11 @@ impl<E: Environment> ToBits for &Field<E> {
             .map(|bit| Boolean::new(mode, *bit))
             .collect::<Vec<_>>();
 
-        let mut accumulator = Field::zero();
-        let mut coefficient = Field::one();
+        let mut accumulator = BaseField::zero();
+        let mut coefficient = BaseField::one();
 
         for bit in &bits {
-            accumulator += Field::from(bit) * &coefficient;
+            accumulator += BaseField::from(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 
@@ -89,7 +89,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = Field::<Circuit>::new(Mode::Constant, expected);
+            let candidate = BaseField::<Circuit>::new(Mode::Constant, expected);
 
             Circuit::scoped(&format!("Constant {}", i), |scope| {
                 let candidate = candidate.to_bits_le();
@@ -109,7 +109,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = Field::<Circuit>::new(Mode::Public, expected);
+            let candidate = BaseField::<Circuit>::new(Mode::Public, expected);
 
             Circuit::scoped(&format!("Public {}", i), |scope| {
                 let candidate = candidate.to_bits_le();
@@ -129,7 +129,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = Field::<Circuit>::new(Mode::Private, expected);
+            let candidate = BaseField::<Circuit>::new(Mode::Private, expected);
 
             Circuit::scoped(&format!("Private {}", i), |scope| {
                 let candidate = candidate.to_bits_le();
@@ -154,7 +154,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = Field::<Circuit>::new(Mode::Constant, expected);
+            let candidate = BaseField::<Circuit>::new(Mode::Constant, expected);
 
             Circuit::scoped(&format!("Constant {}", i), |scope| {
                 let candidate = candidate.to_bits_be();
@@ -174,7 +174,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = Field::<Circuit>::new(Mode::Public, expected);
+            let candidate = BaseField::<Circuit>::new(Mode::Public, expected);
 
             Circuit::scoped(&format!("Public {}", i), |scope| {
                 let candidate = candidate.to_bits_be();
@@ -194,7 +194,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = Field::<Circuit>::new(Mode::Private, expected);
+            let candidate = BaseField::<Circuit>::new(Mode::Private, expected);
 
             Circuit::scoped(&format!("Private {}", i), |scope| {
                 let candidate = candidate.to_bits_be();
@@ -216,7 +216,7 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         /// Checks that the field element, when converted to little-endian bits, is well-formed.
-        fn check_bits_le(candidate: Field<Circuit>) {
+        fn check_bits_le(candidate: BaseField<Circuit>) {
             for (i, bit) in candidate.to_bits_le().iter().enumerate() {
                 match i == 0 {
                     true => assert_eq!(true, bit.eject_value()),
@@ -226,7 +226,7 @@ mod tests {
         }
 
         /// Checks that the field element, when converted to big-endian bits, is well-formed.
-        fn check_bits_be(candidate: Field<Circuit>) {
+        fn check_bits_be(candidate: BaseField<Circuit>) {
             for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
                 match i == 0 {
                     true => assert_eq!(true, bit.eject_value()),
@@ -236,13 +236,13 @@ mod tests {
         }
 
         // Constant
-        check_bits_le(Field::<Circuit>::new(Mode::Constant, one));
-        check_bits_be(Field::<Circuit>::new(Mode::Constant, one));
+        check_bits_le(BaseField::<Circuit>::new(Mode::Constant, one));
+        check_bits_be(BaseField::<Circuit>::new(Mode::Constant, one));
         // Public
-        check_bits_le(Field::<Circuit>::new(Mode::Public, one));
-        check_bits_be(Field::<Circuit>::new(Mode::Public, one));
+        check_bits_le(BaseField::<Circuit>::new(Mode::Public, one));
+        check_bits_be(BaseField::<Circuit>::new(Mode::Public, one));
         // Private
-        check_bits_le(Field::<Circuit>::new(Mode::Private, one));
-        check_bits_be(Field::<Circuit>::new(Mode::Private, one));
+        check_bits_le(BaseField::<Circuit>::new(Mode::Private, one));
+        check_bits_be(BaseField::<Circuit>::new(Mode::Private, one));
     }
 }

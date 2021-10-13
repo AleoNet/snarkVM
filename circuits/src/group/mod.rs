@@ -25,7 +25,7 @@ pub mod sub;
 pub mod ternary;
 pub mod zero;
 
-use crate::{traits::*, Boolean, Environment, Field, Mode};
+use crate::{traits::*, BaseField, Boolean, Environment, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O};
 
@@ -37,8 +37,8 @@ use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone)]
 pub struct Affine<E: Environment> {
-    x: Field<E>,
-    y: Field<E>,
+    x: BaseField<E>,
+    y: BaseField<E>,
 }
 
 impl<E: Environment> Affine<E> {
@@ -58,8 +58,8 @@ impl<E: Environment> Affine<E> {
         };
 
         // Initialize the x- and y-coordinate field elements.
-        let x = Field::new(mode, x);
-        let y = Field::new(mode, y);
+        let x = BaseField::new(mode, x);
+        let y = BaseField::new(mode, y);
 
         Self::from(x, y)
     }
@@ -68,7 +68,7 @@ impl<E: Environment> Affine<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     ///
-    pub fn from(x: Field<E>, y: Field<E>) -> Self {
+    pub fn from(x: BaseField<E>, y: BaseField<E>) -> Self {
         //
         // Check the point is on the curve.
         //
@@ -76,15 +76,15 @@ impl<E: Environment> Affine<E> {
         // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
         //
         {
-            let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
-            let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
+            let a = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_A);
+            let d = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_D);
 
             let x2 = x.square();
             let y2 = y.square();
 
             let first = y2;
-            let second = (d * &x2) - &Field::one();
-            let third = (a * x2) - Field::one();
+            let second = (d * &x2) - &BaseField::one();
+            let third = (a * x2) - BaseField::one();
 
             // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
             E::enforce(|| (first, second, third));

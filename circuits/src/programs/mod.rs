@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::*, Affine, Boolean, Environment, Field};
+use crate::{traits::*, Affine, BaseField, Boolean, Environment};
 
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;
@@ -23,7 +23,7 @@ use std::{cell::RefCell, rc::Rc};
 #[derive(Clone)]
 pub enum Value<E: Environment> {
     Boolean(Boolean<E>),
-    Field(Field<E>),
+    BaseField(BaseField<E>),
     Group(Affine<E>),
     Register(Register<E>),
 }
@@ -166,7 +166,7 @@ impl<E: Environment> Instruction<E> {
 
         // Perform the operation.
         match (first.to_value(), second.to_value()) {
-            (Value::Field(a), Value::Field(b)) => register.store(&Value::Field(a + b)),
+            (Value::BaseField(a), Value::BaseField(b)) => register.store(&Value::BaseField(a + b)),
             (Value::Group(a), Value::Group(b)) => register.store(&Value::Group(a + b)),
             _ => unreachable!(),
         }
@@ -262,15 +262,15 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
-        let first = Value::Field(Field::<Circuit>::one());
-        let second = Value::Field(Field::one());
+        let first = Value::BaseField(BaseField::<Circuit>::one());
+        let second = Value::BaseField(BaseField::one());
 
         let function = HelloWorld::new([first, second]);
         function.run();
 
-        let expected = Field::one() + Field::one();
+        let expected = BaseField::one() + BaseField::one();
         match function.outputs[0].load() {
-            Value::Field(output) => assert!(output.is_eq(&expected).eject_value()),
+            Value::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
             _ => panic!("Failed to load output"),
         }
     }

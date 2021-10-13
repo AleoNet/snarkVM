@@ -36,8 +36,6 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 100;
-
     fn check_ternary(
         name: &str,
         expected: <Circuit as Environment>::Affine,

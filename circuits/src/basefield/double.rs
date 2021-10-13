@@ -16,19 +16,19 @@
 
 use super::*;
 
-impl<E: Environment> Double for Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Double for BaseField<E> {
+    type Output = BaseField<E>;
 
     fn double(self) -> Self::Output {
         (&self).double()
     }
 }
 
-impl<E: Environment> Double for &Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Double for &BaseField<E> {
+    type Output = BaseField<E>;
 
     fn double(self) -> Self::Output {
-        Field(&self.0 + &self.0)
+        BaseField(&self.0 + &self.0)
     }
 }
 
@@ -46,7 +46,7 @@ mod tests {
         // Constant variables
         Circuit::scoped("Constant", |scope| {
             let mut expected = one;
-            let mut candidate = Field::<Circuit>::new(Mode::Constant, one);
+            let mut candidate = BaseField::<Circuit>::new(Mode::Constant, one);
 
             for _ in 0..ITERATIONS {
                 expected = expected.double();
@@ -63,7 +63,7 @@ mod tests {
         // Public variables
         Circuit::scoped("Public", |scope| {
             let mut expected = one;
-            let mut candidate = Field::<Circuit>::new(Mode::Public, one);
+            let mut candidate = BaseField::<Circuit>::new(Mode::Public, one);
 
             for _ in 0..ITERATIONS {
                 expected = expected.double();
@@ -80,7 +80,7 @@ mod tests {
         // Private variables
         Circuit::scoped("Private", |scope| {
             let mut expected = one;
-            let mut candidate = Field::<Circuit>::new(Mode::Private, one);
+            let mut candidate = BaseField::<Circuit>::new(Mode::Private, one);
 
             for _ in 0..ITERATIONS {
                 expected = expected.double();
@@ -99,7 +99,7 @@ mod tests {
     fn test_0_double() {
         let zero = <Circuit as Environment>::BaseField::zero();
 
-        let candidate = Field::<Circuit>::new(Mode::Public, zero).double();
+        let candidate = BaseField::<Circuit>::new(Mode::Public, zero).double();
         assert_eq!(zero, candidate.eject_value());
     }
 
@@ -108,7 +108,7 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
 
-        let candidate = Field::<Circuit>::new(Mode::Public, one).double();
+        let candidate = BaseField::<Circuit>::new(Mode::Public, one).double();
         assert_eq!(two, candidate.eject_value());
     }
 }

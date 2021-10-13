@@ -16,18 +16,16 @@
 
 use super::*;
 
-impl<E: Environment> Zero for Affine<E> {
+impl<E: Environment> One for ScalarField<E> {
     type Boolean = Boolean<E>;
     type Output = Self::Boolean;
 
-    fn zero() -> Self {
-        Self::from(BaseField::zero(), BaseField::one())
+    fn one() -> Self {
+        Self::new(Mode::Constant, <E as Environment>::ScalarField::one())
     }
 
-    fn is_zero(&self) -> Self::Output {
-        let is_x_zero = self.x.is_eq(&BaseField::zero());
-        let is_y_one = self.y.is_eq(&BaseField::one());
-        is_x_zero.and(&is_y_one)
+    fn is_one(&self) -> Self::Output {
+        self.is_eq(&Self::one())
     }
 }
 
@@ -37,11 +35,10 @@ mod tests {
     use crate::Circuit;
 
     #[test]
-    fn test_zero() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+    fn test_one() {
+        let one = <Circuit as Environment>::ScalarField::one();
 
-        Circuit::scoped("Zero", |scope| {
+        Circuit::scoped("One", |scope| {
             assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());
@@ -52,16 +49,15 @@ mod tests {
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            let candidate = Affine::<Circuit>::zero().eject_value();
-            assert_eq!(zero, candidate.to_x_coordinate());
-            assert_eq!(one, candidate.to_y_coordinate());
+            let candidate = ScalarField::<Circuit>::one();
+            assert_eq!(one, candidate.eject_value());
 
-            assert_eq!(6, scope.num_constants_in_scope());
+            assert_eq!(251, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            assert_eq!(6, Circuit::num_constants());
+            assert_eq!(251, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());
             assert_eq!(0, Circuit::num_constraints());
@@ -69,11 +65,15 @@ mod tests {
     }
 
     #[test]
-    fn test_is_zero() {
-        let candidate = Affine::<Circuit>::zero();
+    fn test_is_one() {
+        let candidate = ScalarField::<Circuit>::one();
 
-        // Should equal 0.
-        let candidate_boolean = candidate.is_zero();
+        // Should equal 1.
+        let candidate_boolean = candidate.is_one();
         assert_eq!(true, candidate_boolean.eject_value());
+
+        // Should not equal 0.
+        let candidate_boolean = candidate.is_zero();
+        assert_eq!(false, candidate_boolean.eject_value());
     }
 }

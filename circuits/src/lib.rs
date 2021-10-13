@@ -17,8 +17,8 @@
 pub mod boolean;
 pub use boolean::*;
 
-pub mod field;
-pub use field::*;
+pub mod basefield;
+pub use basefield::*;
 
 pub mod group;
 pub use group::*;
@@ -28,6 +28,9 @@ pub use models::*;
 
 pub mod programs;
 pub use programs::*;
+
+pub mod scalarfield;
+pub use scalarfield::*;
 
 pub mod traits;
 pub use traits::*;

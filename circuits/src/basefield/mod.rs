@@ -42,54 +42,54 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct Field<E: Environment>(LinearCombination<E::BaseField>);
+pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
 
-impl<E: Environment> Field<E> {
+impl<E: Environment> BaseField<E> {
     ///
-    /// Initializes a new instance of a field from a constant field value.
+    /// Initializes a new instance of a base field from a constant base field value.
     ///
     pub fn new(mode: Mode, value: E::BaseField) -> Self {
         Self(E::new_variable(mode, value).into())
     }
 
     ///
-    /// Initializes a new instance of a field from a boolean.
+    /// Initializes a new instance of a base field from a boolean.
     ///
     pub fn from(boolean: &Boolean<E>) -> Self {
         Self((**boolean).clone())
     }
 
     ///
-    /// Returns `true` if the field is a constant.
+    /// Returns `true` if the base field is a constant.
     ///
     pub fn is_constant(&self) -> bool {
         self.0.is_constant()
     }
 
     ///
-    /// Ejects the field as a constant field value.
+    /// Ejects the base field as a constant base field value.
     ///
     pub fn eject_value(&self) -> E::BaseField {
         self.0.to_value()
     }
 }
 
-impl<E: Environment> fmt::Debug for Field<E> {
+impl<E: Environment> fmt::Debug for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
     }
 }
 
-impl<E: Environment> FieldTrait for Field<E> {}
+impl<E: Environment> BaseFieldTrait for BaseField<E> {}
 
-impl<E: Environment> From<Field<E>> for LinearCombination<E::BaseField> {
-    fn from(field: Field<E>) -> Self {
+impl<E: Environment> From<BaseField<E>> for LinearCombination<E::BaseField> {
+    fn from(field: BaseField<E>) -> Self {
         field.0
     }
 }
 
-impl<E: Environment> From<&Field<E>> for LinearCombination<E::BaseField> {
-    fn from(field: &Field<E>) -> Self {
+impl<E: Environment> From<&BaseField<E>> for LinearCombination<E::BaseField> {
+    fn from(field: &BaseField<E>) -> Self {
         field.0.clone()
     }
 }
@@ -108,11 +108,11 @@ mod tests {
     /// Attempts to construct a field from the given element and mode,
     /// format it in debug mode, and recover a field from it.
     fn check_debug(mode: Mode, element: <Circuit as Environment>::BaseField) {
-        let candidate = Field::<Circuit>::new(mode, element);
+        let candidate = BaseField::<Circuit>::new(mode, element);
         assert_eq!(element.to_string(), format!("{:?}", candidate));
 
         let candidate_element = <Circuit as Environment>::BaseField::from_str(&format!("{:?}", candidate)).unwrap();
-        let candidate_recovered = Field::<Circuit>::new(mode, candidate_element);
+        let candidate_recovered = BaseField::<Circuit>::new(mode, candidate_element);
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
 
@@ -135,15 +135,15 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         // Constant
-        let candidate = Field::<Circuit>::new(Mode::Constant, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Constant, zero);
         assert_eq!("0", &format!("{:?}", candidate));
 
         // Public
-        let candidate = Field::<Circuit>::new(Mode::Public, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, zero);
         assert_eq!("0", &format!("{:?}", candidate));
 
         // Private
-        let candidate = Field::<Circuit>::new(Mode::Private, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, zero);
         assert_eq!("0", &format!("{:?}", candidate));
     }
 
@@ -152,15 +152,15 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Constant
-        let candidate = Field::<Circuit>::new(Mode::Constant, one);
+        let candidate = BaseField::<Circuit>::new(Mode::Constant, one);
         assert_eq!("1", &format!("{:?}", candidate));
 
         // Public
-        let candidate = Field::<Circuit>::new(Mode::Public, one);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, one);
         assert_eq!("1", &format!("{:?}", candidate));
 
         // Private
-        let candidate = Field::<Circuit>::new(Mode::Private, one);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, one);
         assert_eq!("1", &format!("{:?}", candidate));
     }
 
@@ -170,15 +170,15 @@ mod tests {
         let two = one + one;
 
         // Constant
-        let candidate = Field::<Circuit>::new(Mode::Constant, two);
+        let candidate = BaseField::<Circuit>::new(Mode::Constant, two);
         assert_eq!("2", &format!("{:?}", candidate));
 
         // Public
-        let candidate = Field::<Circuit>::new(Mode::Public, two);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, two);
         assert_eq!("2", &format!("{:?}", candidate));
 
         // Private
-        let candidate = Field::<Circuit>::new(Mode::Private, two);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, two);
         assert_eq!("2", &format!("{:?}", candidate));
     }
 }

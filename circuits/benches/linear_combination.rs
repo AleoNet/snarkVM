@@ -17,7 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_circuits::{traits::One, Circuit, Environment, Field, Mode};
+use snarkvm_circuits::{traits::One, BaseField, Circuit, Environment, Mode};
 use snarkvm_fields::One as O;
 
 use criterion::Criterion;
@@ -26,11 +26,11 @@ fn evaluate(c: &mut Criterion) {
     let one = <Circuit as Environment>::BaseField::one();
 
     // Public variables
-    let mut candidate = Field::<Circuit>::one();
+    let mut candidate = BaseField::<Circuit>::one();
     for _ in 0..1_000_000 {
-        candidate += Field::new(Mode::Constant, one);
-        candidate += Field::new(Mode::Public, one);
-        candidate += Field::new(Mode::Private, one);
+        candidate += BaseField::new(Mode::Constant, one);
+        candidate += BaseField::new(Mode::Public, one);
+        candidate += BaseField::new(Mode::Private, one);
     }
 
     c.bench_function("evaluate", move |b| {

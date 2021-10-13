@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Ternary for Field<E> {
+impl<E: Environment> Ternary for BaseField<E> {
     type Boolean = Boolean<E>;
     type Output = Self;
 
@@ -37,7 +37,7 @@ impl<E: Environment> Ternary for Field<E> {
         }
         // Variables
         else {
-            let witness = Field::new(Mode::Private, match condition.eject_value() {
+            let witness = BaseField::new(Mode::Private, match condition.eject_value() {
                 true => first.eject_value(),
                 false => second.eject_value(),
             });
@@ -103,12 +103,12 @@ mod tests {
     fn test_ternary() {
         // Constant ? Constant : Constant
         {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Constant, true);
             Circuit::scoped("Constant(true) ? Constant : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -120,7 +120,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Constant, false);
             Circuit::scoped("Constant(false) ? Constant : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -133,12 +133,12 @@ mod tests {
 
         // Constant ? Public : Private
         {
-            let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Constant, true);
             Circuit::scoped("Constant(true) ? Public : Private", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -150,7 +150,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Constant, false);
             Circuit::scoped("Constant(false) ? Public : Private", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -163,12 +163,12 @@ mod tests {
 
         // Public ? Constant : Constant
         {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Public, true);
             Circuit::scoped("Public(true) ? Constant : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -180,7 +180,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Public, false);
             Circuit::scoped("Public(false) ? Constant : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -193,12 +193,12 @@ mod tests {
 
         // Private ? Constant : Constant
         {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -210,7 +210,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
@@ -223,12 +223,12 @@ mod tests {
 
         // Private ? Public : Constant
         {
-            let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Public : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(1, scope.num_private_in_scope());
@@ -241,7 +241,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Public : Constant", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(1, scope.num_private_in_scope());
@@ -255,12 +255,12 @@ mod tests {
 
         // Private ? Constant : Public
         {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Public", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(1, scope.num_private_in_scope());
@@ -273,7 +273,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Public", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(1, scope.num_private_in_scope());
@@ -287,12 +287,12 @@ mod tests {
 
         // Private ? Private : Public
         {
-            let a = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
-            let b = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let a = BaseField::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let b = BaseField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Private : Public", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(1, scope.num_private_in_scope());
@@ -305,7 +305,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Private : Public", |scope| {
-                let output = Field::ternary(&condition, &a, &b);
+                let output = BaseField::ternary(&condition, &a, &b);
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(1, scope.num_private_in_scope());

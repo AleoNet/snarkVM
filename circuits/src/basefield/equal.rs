@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Equal<Self> for Field<E> {
+impl<E: Environment> Equal<Self> for BaseField<E> {
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 
@@ -48,7 +48,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 let is_neq = Boolean::new(Mode::Private, this != that);
 
                 // Assign the expected multiplier.
-                let multiplier = Field::<E>::new(Mode::Private, match this != that {
+                let multiplier = BaseField::<E>::new(Mode::Private, match this != that {
                     true => (this - that).inverse().expect("Failed to compute a native inverse"),
                     false => E::BaseField::one(),
                 });
@@ -151,18 +151,18 @@ mod tests {
             let mut accumulator = one + one;
 
             for _ in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Private, accumulator);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
+                let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(true, is_eq.eject_value());
 
-                let a = Field::<Circuit>::new(Mode::Private, one);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let a = BaseField::<Circuit>::new(Mode::Private, one);
+                let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(false, is_eq.eject_value());
 
-                let a = Field::<Circuit>::new(Mode::Private, accumulator);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator - one);
+                let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
+                let b = BaseField::<Circuit>::new(Mode::Private, accumulator - one);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(false, is_eq.eject_value());
 
@@ -175,8 +175,8 @@ mod tests {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Constant, accumulator);
-                let b = Field::<Circuit>::new(Mode::Constant, accumulator);
+                let a = BaseField::<Circuit>::new(Mode::Constant, accumulator);
+                let b = BaseField::<Circuit>::new(Mode::Constant, accumulator);
 
                 let is_eq = a.is_eq(&b);
                 assert_eq!(true, is_eq.eject_value());
@@ -195,8 +195,8 @@ mod tests {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Public, accumulator);
-                let b = Field::<Circuit>::new(Mode::Public, accumulator);
+                let a = BaseField::<Circuit>::new(Mode::Public, accumulator);
+                let b = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(true, is_eq.eject_value());
 
@@ -215,8 +215,8 @@ mod tests {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Public, accumulator);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let a = BaseField::<Circuit>::new(Mode::Public, accumulator);
+                let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(true, is_eq.eject_value());
 
@@ -235,8 +235,8 @@ mod tests {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Private, accumulator);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator);
+                let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
+                let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert_eq!(true, is_eq.eject_value());
                 assert!(scope.is_satisfied());
@@ -263,27 +263,28 @@ mod tests {
         // Check 1:  (a - b) * multiplier = is_neq
         // Check 2:  (a - b) * not(is_neq) = 0
 
-        let enforce = |a: Field<Circuit>, b: Field<Circuit>, multiplier: Field<Circuit>, is_neq: Boolean<Circuit>| {
-            // Compute `self` - `other`.
-            let delta = &a.0 - &b.0;
+        let enforce =
+            |a: BaseField<Circuit>, b: BaseField<Circuit>, multiplier: BaseField<Circuit>, is_neq: Boolean<Circuit>| {
+                // Compute `self` - `other`.
+                let delta = &a.0 - &b.0;
 
-            // Negate `is_neq`.
-            let is_eq = !is_neq.clone();
+                // Negate `is_neq`.
+                let is_eq = !is_neq.clone();
 
-            // Check 1: (a - b) * multiplier = is_neq
-            Circuit::enforce(|| (delta.clone(), multiplier, is_neq.clone()));
+                // Check 1: (a - b) * multiplier = is_neq
+                Circuit::enforce(|| (delta.clone(), multiplier, is_neq.clone()));
 
-            // Check 2: (a - b) * not(is_neq) = 0
-            Circuit::enforce(|| (delta, is_eq, Circuit::zero()));
-        };
+                // Check 2: (a - b) * not(is_neq) = 0
+                Circuit::enforce(|| (delta, is_eq, Circuit::zero()));
+            };
 
         //
         // Case 1: a == b AND is_neq == 0 (honest)
         // ----------------------------------------------------------------
 
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, five);
-        let multiplier = Field::<Circuit>::new(Mode::Private, one);
+        let a = BaseField::<Circuit>::new(Mode::Private, five);
+        let b = BaseField::<Circuit>::new(Mode::Private, five);
+        let multiplier = BaseField::<Circuit>::new(Mode::Private, one);
         let is_neq = Boolean::new(Mode::Private, false);
 
         assert!(Circuit::is_satisfied());
@@ -295,9 +296,9 @@ mod tests {
         // Case 2: a == b AND is_neq == 1 (dishonest)
         // ----------------------------------------------------------------
 
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, five);
-        let multiplier = Field::<Circuit>::new(Mode::Private, one);
+        let a = BaseField::<Circuit>::new(Mode::Private, five);
+        let b = BaseField::<Circuit>::new(Mode::Private, five);
+        let multiplier = BaseField::<Circuit>::new(Mode::Private, one);
         let is_neq = Boolean::new(Mode::Private, true);
 
         assert!(Circuit::is_satisfied());
@@ -308,9 +309,9 @@ mod tests {
         // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
         // ----------------------------------------------------------------
 
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(Mode::Private, zero);
+        let a = BaseField::<Circuit>::new(Mode::Private, five);
+        let b = BaseField::<Circuit>::new(Mode::Private, two);
+        let multiplier = BaseField::<Circuit>::new(Mode::Private, zero);
         let is_neq = Boolean::new(Mode::Private, false);
 
         assert!(Circuit::is_satisfied());
@@ -322,9 +323,9 @@ mod tests {
         // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
         // ----------------------------------------------------------------
 
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(Mode::Private, one);
+        let a = BaseField::<Circuit>::new(Mode::Private, five);
+        let b = BaseField::<Circuit>::new(Mode::Private, two);
+        let multiplier = BaseField::<Circuit>::new(Mode::Private, one);
         let is_neq = Boolean::new(Mode::Private, false);
 
         assert!(Circuit::is_satisfied());
@@ -336,9 +337,9 @@ mod tests {
         // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
         // ---------------------------------------------------------------------------------
 
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(Mode::Private, two);
+        let a = BaseField::<Circuit>::new(Mode::Private, five);
+        let b = BaseField::<Circuit>::new(Mode::Private, two);
+        let multiplier = BaseField::<Circuit>::new(Mode::Private, two);
         let is_neq = Boolean::new(Mode::Private, true);
 
         assert!(Circuit::is_satisfied());
@@ -350,9 +351,9 @@ mod tests {
         // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
         // ---------------------------------------------------------------------------------
 
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(
+        let a = BaseField::<Circuit>::new(Mode::Private, five);
+        let b = BaseField::<Circuit>::new(Mode::Private, two);
+        let multiplier = BaseField::<Circuit>::new(
             Mode::Private,
             (five - two).inverse().expect("Failed to compute a native inverse"),
         );

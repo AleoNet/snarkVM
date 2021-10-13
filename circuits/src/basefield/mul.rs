@@ -16,54 +16,54 @@
 
 use super::*;
 
-impl<E: Environment> Mul<Field<E>> for Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Mul<BaseField<E>> for BaseField<E> {
+    type Output = BaseField<E>;
 
-    fn mul(self, other: Field<E>) -> Self::Output {
+    fn mul(self, other: BaseField<E>) -> Self::Output {
         self * &other
     }
 }
 
-impl<E: Environment> Mul<Field<E>> for &Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Mul<BaseField<E>> for &BaseField<E> {
+    type Output = BaseField<E>;
 
-    fn mul(self, other: Field<E>) -> Self::Output {
+    fn mul(self, other: BaseField<E>) -> Self::Output {
         other * self
     }
 }
 
-impl<E: Environment> Mul<&Field<E>> for Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Mul<&BaseField<E>> for BaseField<E> {
+    type Output = BaseField<E>;
 
-    fn mul(self, other: &Field<E>) -> Self::Output {
+    fn mul(self, other: &BaseField<E>) -> Self::Output {
         &self * other
     }
 }
 
-impl<E: Environment> Mul<&Field<E>> for &Field<E> {
-    type Output = Field<E>;
+impl<E: Environment> Mul<&BaseField<E>> for &BaseField<E> {
+    type Output = BaseField<E>;
 
-    fn mul(self, other: &Field<E>) -> Self::Output {
+    fn mul(self, other: &BaseField<E>) -> Self::Output {
         let mut output = (*self).clone();
         output *= other;
         output
     }
 }
 
-impl<E: Environment> MulAssign<Field<E>> for Field<E> {
-    fn mul_assign(&mut self, other: Field<E>) {
+impl<E: Environment> MulAssign<BaseField<E>> for BaseField<E> {
+    fn mul_assign(&mut self, other: BaseField<E>) {
         *self *= &other;
     }
 }
 
-impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
-    fn mul_assign(&mut self, other: &Field<E>) {
+impl<E: Environment> MulAssign<&BaseField<E>> for BaseField<E> {
+    fn mul_assign(&mut self, other: &BaseField<E>) {
         match (self.is_constant(), other.is_constant()) {
             (true, true) => *self = Self::new(Mode::Constant, self.eject_value() * other.eject_value()),
             (true, false) => self.0 = other.0.clone() * self.eject_value(),
             (false, true) => self.0 = self.0.clone() * other.eject_value(),
             (false, false) => {
-                let product = Field::new(Mode::Private, self.eject_value() * other.eject_value());
+                let product = BaseField::new(Mode::Private, self.eject_value() * other.eject_value());
 
                 // Ensure self * other == product.
                 E::enforce(|| (self.0.clone(), other, &product));
@@ -88,11 +88,11 @@ mod tests {
 
         // Constant * Constant
         Circuit::scoped("Constant * Constant", |scope| {
-            let mut candidate_product = Field::<Circuit>::one();
+            let mut candidate_product = BaseField::<Circuit>::one();
             let mut expected_product = one;
 
             for i in 0..ITERATIONS {
-                candidate_product = candidate_product * Field::new(Mode::Constant, two);
+                candidate_product = candidate_product * BaseField::new(Mode::Constant, two);
                 expected_product = expected_product * &two;
 
                 assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
@@ -106,11 +106,12 @@ mod tests {
 
         // Constant * Public
         Circuit::scoped("Constant * Public", |scope| {
-            let mut candidate_product = Field::<Circuit>::one();
+            let mut candidate_product = BaseField::<Circuit>::one();
             let mut expected_product = one;
 
             for i in 0..ITERATIONS {
-                candidate_product = Field::new(Mode::Constant, expected_product) * Field::new(Mode::Public, two);
+                candidate_product =
+                    BaseField::new(Mode::Constant, expected_product) * BaseField::new(Mode::Public, two);
                 expected_product = expected_product * &two;
 
                 assert_eq!(i + 1, scope.num_constants_in_scope());
@@ -124,11 +125,12 @@ mod tests {
 
         // Public * Constant
         Circuit::scoped("Public * Constant", |scope| {
-            let mut candidate_product = Field::<Circuit>::one();
+            let mut candidate_product = BaseField::<Circuit>::one();
             let mut expected_product = one;
 
             for i in 0..ITERATIONS {
-                candidate_product = Field::new(Mode::Public, expected_product) * Field::new(Mode::Constant, two);
+                candidate_product =
+                    BaseField::new(Mode::Public, expected_product) * BaseField::new(Mode::Constant, two);
                 expected_product = expected_product * &two;
 
                 assert_eq!(i + 1, scope.num_constants_in_scope());
@@ -142,11 +144,11 @@ mod tests {
 
         // Public * Public
         Circuit::scoped("Public * Public", |scope| {
-            let mut candidate_product = Field::<Circuit>::new(Mode::Public, one);
+            let mut candidate_product = BaseField::<Circuit>::new(Mode::Public, one);
             let mut expected_product = one;
 
             for i in 0..ITERATIONS {
-                candidate_product = candidate_product * Field::new(Mode::Public, two);
+                candidate_product = candidate_product * BaseField::new(Mode::Public, two);
                 expected_product = expected_product * &two;
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -161,11 +163,11 @@ mod tests {
 
         // Private * Private
         Circuit::scoped("Private * Private", |scope| {
-            let mut candidate_product = Field::<Circuit>::new(Mode::Private, one);
+            let mut candidate_product = BaseField::<Circuit>::new(Mode::Private, one);
             let mut expected_product = one;
 
             for i in 0..ITERATIONS {
-                candidate_product = candidate_product * Field::new(Mode::Private, two);
+                candidate_product = candidate_product * BaseField::new(Mode::Private, two);
                 expected_product = expected_product * &two;
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -183,19 +185,19 @@ mod tests {
     fn test_0_times_0() {
         let zero = <Circuit as Environment>::BaseField::zero();
 
-        let candidate = Field::<Circuit>::zero() * Field::zero();
+        let candidate = BaseField::<Circuit>::zero() * BaseField::zero();
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::zero() * &Field::zero();
+        let candidate = BaseField::<Circuit>::zero() * &BaseField::zero();
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Public, zero) * Field::new(Mode::Public, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, zero) * BaseField::new(Mode::Public, zero);
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Public, zero) * Field::new(Mode::Private, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, zero) * BaseField::new(Mode::Private, zero);
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Private, zero) * Field::new(Mode::Private, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, zero) * BaseField::new(Mode::Private, zero);
         assert_eq!(zero, candidate.eject_value());
     }
 
@@ -204,25 +206,25 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
         let one = <Circuit as Environment>::BaseField::one();
 
-        let candidate = Field::<Circuit>::zero() * Field::one();
+        let candidate = BaseField::<Circuit>::zero() * BaseField::one();
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::zero() * &Field::one();
+        let candidate = BaseField::<Circuit>::zero() * &BaseField::one();
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::one() * Field::zero();
+        let candidate = BaseField::<Circuit>::one() * BaseField::zero();
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::one() * &Field::zero();
+        let candidate = BaseField::<Circuit>::one() * &BaseField::zero();
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Public, one) * Field::new(Mode::Public, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, one) * BaseField::new(Mode::Public, zero);
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Public, one) * Field::new(Mode::Private, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, one) * BaseField::new(Mode::Private, zero);
         assert_eq!(zero, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Private, one) * Field::new(Mode::Private, zero);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, one) * BaseField::new(Mode::Private, zero);
         assert_eq!(zero, candidate.eject_value());
     }
 
@@ -230,19 +232,19 @@ mod tests {
     fn test_1_times_1() {
         let one = <Circuit as Environment>::BaseField::one();
 
-        let candidate = Field::<Circuit>::one() * Field::one();
+        let candidate = BaseField::<Circuit>::one() * BaseField::one();
         assert_eq!(one, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::one() * &Field::one();
+        let candidate = BaseField::<Circuit>::one() * &BaseField::one();
         assert_eq!(one, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Public, one) * Field::new(Mode::Public, one);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, one) * BaseField::new(Mode::Public, one);
         assert_eq!(one, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Private, one) * Field::new(Mode::Public, one);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, one) * BaseField::new(Mode::Public, one);
         assert_eq!(one, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Private, one) * Field::new(Mode::Private, one);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, one) * BaseField::new(Mode::Private, one);
         assert_eq!(one, candidate.eject_value());
     }
 
@@ -252,17 +254,17 @@ mod tests {
         let two = one + one;
         let four = two + two;
 
-        let candidate_two = Field::<Circuit>::one() + Field::one();
-        let candidate = candidate_two * (Field::<Circuit>::one() + Field::one());
+        let candidate_two = BaseField::<Circuit>::one() + BaseField::one();
+        let candidate = candidate_two * (BaseField::<Circuit>::one() + BaseField::one());
         assert_eq!(four, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Public, two) * Field::new(Mode::Public, two);
+        let candidate = BaseField::<Circuit>::new(Mode::Public, two) * BaseField::new(Mode::Public, two);
         assert_eq!(four, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Private, two) * Field::new(Mode::Public, two);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, two) * BaseField::new(Mode::Public, two);
         assert_eq!(four, candidate.eject_value());
 
-        let candidate = Field::<Circuit>::new(Mode::Private, two) * Field::new(Mode::Private, two);
+        let candidate = BaseField::<Circuit>::new(Mode::Private, two) * BaseField::new(Mode::Private, two);
         assert_eq!(four, candidate.eject_value());
     }
 }

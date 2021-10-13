@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<E: Environment> One for Field<E> {
+impl<E: Environment> Zero for ScalarField<E> {
     type Boolean = Boolean<E>;
     type Output = Self::Boolean;
 
-    fn one() -> Self {
-        Self(E::one())
+    fn zero() -> Self {
+        Self::new(Mode::Constant, <E as Environment>::ScalarField::zero())
     }
 
-    fn is_one(&self) -> Self::Output {
-        self.is_eq(&Self::one())
+    fn is_zero(&self) -> Self::Output {
+        self.is_eq(&Self::zero())
     }
 }
 
@@ -35,10 +35,10 @@ mod tests {
     use crate::Circuit;
 
     #[test]
-    fn test_one() {
-        let one = <Circuit as Environment>::BaseField::one();
+    fn test_zero() {
+        let zero = <Circuit as Environment>::ScalarField::zero();
 
-        Circuit::scoped("One", |scope| {
+        Circuit::scoped("Zero", |scope| {
             assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());
@@ -49,31 +49,31 @@ mod tests {
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            let candidate = Field::<Circuit>::one();
-            assert_eq!(one, candidate.eject_value());
+            let candidate = ScalarField::<Circuit>::zero();
+            assert_eq!(zero, candidate.eject_value());
 
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
-            assert_eq!(0, scope.num_constants_in_scope());
+            assert_eq!(251, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
+
+            assert_eq!(251, Circuit::num_constants());
+            assert_eq!(1, Circuit::num_public());
+            assert_eq!(0, Circuit::num_private());
+            assert_eq!(0, Circuit::num_constraints());
         });
     }
 
     #[test]
-    fn test_is_one() {
-        let candidate = Field::<Circuit>::one();
+    fn test_is_zero() {
+        let candidate = ScalarField::<Circuit>::zero();
 
-        // Should equal 1.
-        let candidate_boolean = candidate.is_one();
+        // Should equal 0.
+        let candidate_boolean = candidate.is_zero();
         assert_eq!(true, candidate_boolean.eject_value());
 
-        // Should not equal 0.
-        let candidate_boolean = candidate.is_zero();
+        // Should not equal 1.
+        let candidate_boolean = candidate.is_one();
         assert_eq!(false, candidate_boolean.eject_value());
     }
 }

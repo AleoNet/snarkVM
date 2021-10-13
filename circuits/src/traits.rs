@@ -23,8 +23,8 @@ use std::{
 /// Representation of a boolean.
 pub trait BooleanTrait: And + Clone + Debug + Equal + Nand + Nor + Not + Or + Ternary + Xor {}
 
-/// Representation of a field.
-pub trait FieldTrait:
+/// Representation of a base field.
+pub trait BaseFieldTrait:
     Add
     + AddAssign
     + Clone
