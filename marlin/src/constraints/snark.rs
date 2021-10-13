@@ -30,6 +30,7 @@ use crate::{
     PhantomData,
     PolynomialCommitment,
 };
+use core::sync::atomic::AtomicBool;
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
@@ -95,12 +96,18 @@ where
         Ok((pk, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
+    fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
         parameters: &Self::ProvingKey,
         circuit: &C,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove(&parameters, circuit, rng) {
+        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove_with_terminator(
+            &parameters,
+            circuit,
+            terminator,
+            rng,
+        ) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }

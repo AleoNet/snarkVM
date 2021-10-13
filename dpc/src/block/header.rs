@@ -24,7 +24,7 @@ use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     io::{Read, Result as IoResult, Write},
     mem::size_of,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 
 pub mod proof_serialization {
@@ -97,13 +97,14 @@ pub struct BlockHeader<N: Network> {
 
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn mine_new<R: Rng + CryptoRng>(
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
         transactions_root: N::TransactionsRoot,
         serial_numbers_root: N::SerialNumbersRoot,
         commitments_root: N::CommitmentsRoot,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self> {
         // Construct the candidate block metadata.
@@ -128,7 +129,7 @@ impl<N: Network> BlockHeader<N> {
         debug_assert!(!block_header.is_valid(), "Block header with a missing proof is invalid");
 
         // Mine the block.
-        N::posw().mine(&mut block_header, rng)?;
+        N::posw().mine(&mut block_header, terminator, rng)?;
 
         // Ensure the block header is valid.
         match block_header.is_valid() {
@@ -402,7 +403,8 @@ mod tests {
         let mut block_header = Testnet2::genesis_block().header().clone();
 
         // Construct a PoSW proof.
-        posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+        posw.mine(&mut block_header, &AtomicBool::new(false), &mut thread_rng())
+            .unwrap();
 
         // Check that the difficulty target is satisfied.
         assert!(posw.verify(&block_header));

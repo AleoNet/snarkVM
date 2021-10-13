@@ -23,7 +23,7 @@ use rand::{CryptoRng, Rng};
 use std::{
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
     time::Instant,
 };
 
@@ -39,7 +39,7 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn mine_new<R: Rng + CryptoRng>(
         previous_block_hash: N::BlockHash,
         block_height: u32,
         block_timestamp: i64,
@@ -47,18 +47,20 @@ impl<N: Network> Block<N> {
         transactions: Transactions<N>,
         serial_numbers_root: N::SerialNumbersRoot,
         commitments_root: N::CommitmentsRoot,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         // Compute the block header.
-        let header = BlockHeader::new(
+        let header = BlockHeader::mine_new(
             block_height,
             block_timestamp,
             difficulty_target,
             transactions.to_transactions_root()?,
             serial_numbers_root,
             commitments_root,
+            terminator,
             rng,
         )?;
 
@@ -90,13 +92,14 @@ impl<N: Network> Block<N> {
         let difficulty_target = u64::MAX;
 
         // Compute the genesis block header.
-        let header = BlockHeader::new(
+        let header = BlockHeader::mine_new(
             block_height,
             block_timestamp,
             difficulty_target,
             transactions_root,
             *serial_numbers_tree.root(),
             *commitments_tree.root(),
+            &AtomicBool::new(false),
             rng,
         )?;
 

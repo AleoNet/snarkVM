@@ -14,9 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{SNARK, SRS};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
+
+use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme};
+use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme, PoswError};
 use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};
@@ -25,13 +33,30 @@ use rand::{rngs::ThreadRng, thread_rng};
 fn test_posw_load_and_mine() {
     // Construct a block header.
     let mut block_header = Testnet2::genesis_block().header().clone();
-    Testnet2::posw().mine(&mut block_header, &mut thread_rng()).unwrap();
+    Testnet2::posw()
+        .mine(&mut block_header, &AtomicBool::new(false), &mut thread_rng())
+        .unwrap();
 
     assert_eq!(
         block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
         Testnet2::POSW_PROOF_SIZE_IN_BYTES
     ); // NOTE: Marlin proofs use compressed serialization
     assert!(Testnet2::posw().verify(&block_header));
+}
+
+#[test]
+fn test_posw_terminate() {
+    // Construct a block header.
+    let mut block_header = Testnet2::genesis_block().header().clone();
+    let terminator = Arc::new(AtomicBool::new(false));
+    let thread_terminator = terminator.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(1));
+        thread_terminator.store(true, Ordering::SeqCst);
+    });
+    let result = Testnet2::posw().mine(&mut block_header, &AtomicBool::new(true), &mut thread_rng());
+
+    assert!(matches!(result, Err(PoswError::SnarkError(SNARKError::Terminated))));
 }
 
 /// TODO (howardwu): Update this when testnet2 is live.

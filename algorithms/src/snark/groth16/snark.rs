@@ -29,7 +29,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand::{CryptoRng, Rng};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 /// Note: V should serialize its contents to `Vec<E::Fr>` in the same order as
 /// during the constraint generation.
@@ -64,9 +64,11 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for Groth16<E
         Ok((pp, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    // terminator not implemented for Groth16
+    fn prove_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
+        _terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proof_time = start_timer!(|| "{Groth 2016}::Prove");

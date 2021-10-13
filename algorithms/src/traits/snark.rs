@@ -20,7 +20,7 @@ use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::atomic::AtomicBool};
 
 /// Defines a trait that describes preparing from an unprepared version to a prepare version.
 pub trait Prepare<T> {
@@ -73,6 +73,15 @@ pub trait SNARK {
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
+        rng: &mut R,
+    ) -> Result<Self::Proof, SNARKError> {
+        Self::prove_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
+    }
+
+    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &C,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 

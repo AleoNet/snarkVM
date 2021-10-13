@@ -17,6 +17,7 @@
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
+use core::sync::atomic::AtomicBool;
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
@@ -69,7 +70,12 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
     /// Given the leaves of the block header, it will calculate a PoSW and nonce
     /// such that they are under the difficulty target.
-    fn mine<R: Rng + CryptoRng>(&self, block_header: &mut BlockHeader<N>, rng: &mut R) -> Result<(), PoswError> {
+    fn mine<R: Rng + CryptoRng>(
+        &self,
+        block_header: &mut BlockHeader<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<(), PoswError> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
         loop {
@@ -80,7 +86,9 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             let circuit = PoSWCircuit::<N>::new(&block_header)?;
 
             // Generate the proof.
-            block_header.set_proof((&<<N as Network>::PoswSNARK as SNARK>::prove(pk, &circuit, rng)?).into());
+            block_header.set_proof(
+                (&<<N as Network>::PoswSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?).into(),
+            );
 
             if self.verify(block_header) {
                 break;
@@ -138,6 +146,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
 #[cfg(test)]
 mod tests {
+    use core::sync::atomic::AtomicBool;
+
     use crate::{testnet2::Testnet2, Network, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
@@ -166,7 +176,8 @@ mod tests {
 
         // Construct a block header.
         let mut block_header = Testnet2::genesis_block().header().clone();
-        posw.mine(&mut block_header, &mut thread_rng()).unwrap();
+        posw.mine(&mut block_header, &AtomicBool::new(false), &mut thread_rng())
+            .unwrap();
 
         assert!(block_header.proof().is_some());
         assert_eq!(

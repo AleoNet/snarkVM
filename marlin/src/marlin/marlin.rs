@@ -33,7 +33,10 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 use snarkvm_utilities::println;
 
 use crate::marlin::PreparedCircuitVerifyingKey;
-use core::marker::PhantomData;
+use core::{
+    marker::PhantomData,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use rand_core::RngCore;
 
 /// The Marlin proof system.
@@ -68,10 +71,10 @@ impl<
     pub fn universal_setup<R: RngCore>(
         max_degree: usize,
         rng: &mut R,
-    ) -> Result<UniversalSRS<TargetField, BaseField, PC>, MarlinError<PC::Error>> {
+    ) -> Result<UniversalSRS<TargetField, BaseField, PC>, MarlinError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
 
-        let srs = PC::setup(max_degree, rng).map_err(MarlinError::from_pc_err);
+        let srs = PC::setup(max_degree, rng).map_err(Into::into);
         end_timer!(setup_time);
         srs
     }
@@ -87,7 +90,7 @@ impl<
             CircuitProvingKey<TargetField, BaseField, PC>,
             CircuitVerifyingKey<TargetField, BaseField, PC>,
         ),
-        MarlinError<PC::Error>,
+        MarlinError,
     > {
         let index_time = start_timer!(|| "Marlin::CircuitSpecificSetup");
 
@@ -95,15 +98,14 @@ impl<
 
         // TODO: Add check that c is in the correct mode.
         let circuit = AHPForR1CS::index(c)?;
-        let srs = PC::setup(circuit.max_degree(), rng).map_err(MarlinError::from_pc_err)?;
+        let srs = PC::setup(circuit.max_degree(), rng)?;
 
         let coeff_support = AHPForR1CS::get_degree_bounds(&circuit.index_info);
 
         // Marlin only needs degree 2 random polynomials
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) =
-            PC::trim(&srs, circuit.max_degree(), supported_hiding_bound, Some(&coeff_support))
-                .map_err(MarlinError::from_pc_err)?;
+            PC::trim(&srs, circuit.max_degree(), supported_hiding_bound, Some(&coeff_support))?;
 
         let mut vanishing_polys = vec![];
         if is_recursion {
@@ -130,8 +132,7 @@ impl<
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, circuit.iter().chain(vanishing_polys.iter()), None)
-                .map_err(MarlinError::from_pc_err)?;
+            PC::commit(&committer_key, circuit.iter().chain(vanishing_polys.iter()), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
@@ -167,7 +168,7 @@ impl<
             CircuitProvingKey<TargetField, BaseField, PC>,
             CircuitVerifyingKey<TargetField, BaseField, PC>,
         ),
-        MarlinError<PC::Error>,
+        MarlinError,
     > {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
@@ -191,8 +192,7 @@ impl<
             index.max_degree(),
             supported_hiding_bound,
             Some(&coefficient_support),
-        )
-        .map_err(MarlinError::from_pc_err)?;
+        )?;
 
         let mut vanishing_polynomials = vec![];
         if is_recursion {
@@ -219,8 +219,7 @@ impl<
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter().chain(vanishing_polynomials.iter()), None)
-                .map_err(MarlinError::from_pc_err)?;
+            PC::commit(&committer_key, index.iter().chain(vanishing_polynomials.iter()), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
@@ -250,11 +249,25 @@ impl<
         circuit_proving_key: &CircuitProvingKey<TargetField, BaseField, PC>,
         circuit: &C,
         zk_rng: &mut R,
-    ) -> Result<Proof<TargetField, BaseField, PC>, MarlinError<PC::Error>> {
+    ) -> Result<Proof<TargetField, BaseField, PC>, MarlinError> {
+        Self::prove_with_terminator(circuit_proving_key, circuit, &AtomicBool::new(false), zk_rng)
+    }
+
+    /// Same as [`prove`] with an added termination flag, [`terminator`].
+    pub fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
+        circuit_proving_key: &CircuitProvingKey<TargetField, BaseField, PC>,
+        circuit: &C,
+        terminator: &AtomicBool,
+        zk_rng: &mut R,
+    ) -> Result<Proof<TargetField, BaseField, PC>, MarlinError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         // TODO: Add check that c is in the correct mode.
 
         let is_recursion = MM::RECURSION;
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let prover_init_state = AHPForR1CS::prover_init(&circuit_proving_key.circuit, circuit)?;
         let public_input = prover_init_state.public_input();
@@ -283,16 +296,23 @@ impl<
         // --------------------------------------------------------------------
         // First round
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (prover_first_message, prover_first_oracles, prover_state) =
             AHPForR1CS::prover_first_round(prover_init_state, zk_rng, hiding)?;
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = PC::commit(
             &circuit_proving_key.committer_key,
             prover_first_oracles.iter(),
             Some(zk_rng),
-        )
-        .map_err(MarlinError::from_pc_err)?;
+        )?;
         end_timer!(first_round_comm_time);
 
         if is_recursion {
@@ -304,6 +324,10 @@ impl<
             fs_rng.absorb_bytes(&to_bytes_le![first_commitments, prover_first_message].unwrap());
         }
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (verifier_first_message, verifier_state) =
             AHPForR1CS::verifier_first_round(circuit_proving_key.circuit_verifying_key.circuit_info, &mut fs_rng)?;
         // --------------------------------------------------------------------
@@ -311,16 +335,20 @@ impl<
         // --------------------------------------------------------------------
         // Second round
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (prover_second_message, prover_second_oracles, prover_state) =
             AHPForR1CS::prover_second_round(&verifier_first_message, prover_state, zk_rng, hiding);
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
-        let (second_commitments, second_commitment_randomnesses) = PC::commit(
+        let (second_commitments, second_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
             prover_second_oracles.iter(),
+            terminator,
             Some(zk_rng),
-        )
-        .map_err(MarlinError::from_pc_err)?;
+        )?;
         end_timer!(second_round_comm_time);
 
         if is_recursion {
@@ -332,21 +360,30 @@ impl<
             fs_rng.absorb_bytes(&to_bytes_le![second_commitments, prover_second_message].unwrap());
         }
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let (prover_third_message, prover_third_oracles) =
             AHPForR1CS::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
-        let (third_commitments, third_commitment_randomnesses) = PC::commit(
+        let (third_commitments, third_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
             prover_third_oracles.iter(),
+            terminator,
             Some(zk_rng),
-        )
-        .map_err(MarlinError::from_pc_err)?;
+        )?;
         end_timer!(third_round_comm_time);
 
         if is_recursion {
@@ -360,6 +397,10 @@ impl<
 
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         let vanishing_polys = if is_recursion {
             let domain_h = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_constraints)
@@ -394,6 +435,10 @@ impl<
             .chain(prover_second_oracles.iter())// 3 items
             .chain(prover_third_oracles.iter())// 2 items
             .collect();
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         // Sanity check, whose length should be updated if the underlying structs are updated.
         match is_recursion {
@@ -443,6 +488,10 @@ impl<
         let lc_s =
             AHPForR1CS::construct_linear_combinations(&public_input, &polynomials, &verifier_state, is_recursion)?;
 
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
+
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations_unsorted = Vec::new();
         for (label, (_point_name, point)) in &query_set {
@@ -459,6 +508,10 @@ impl<
         evaluations_unsorted.sort_by(|a, b| a.0.cmp(&b.0));
         let evaluations = evaluations_unsorted.iter().map(|x| x.1).collect::<Vec<TargetField>>();
         end_timer!(eval_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
@@ -482,8 +535,7 @@ impl<
                 &query_set,
                 &opening_challenges_f,
                 &commitment_randomnesses,
-            )
-            .map_err(MarlinError::from_pc_err)?
+            )?
         } else {
             let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
@@ -496,9 +548,12 @@ impl<
                 opening_challenge,
                 &commitment_randomnesses,
                 Some(zk_rng),
-            )
-            .map_err(MarlinError::from_pc_err)?
+            )?
         };
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(MarlinError::Terminated);
+        }
 
         // Gather prover messages together.
         let prover_messages = vec![prover_first_message, prover_second_message, prover_third_message];
@@ -516,7 +571,7 @@ impl<
         circuit_verifying_key: &CircuitVerifyingKey<TargetField, BaseField, PC>,
         public_input: &[TargetField],
         proof: &Proof<TargetField, BaseField, PC>,
-    ) -> Result<bool, MarlinError<PC::Error>> {
+    ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
         let public_input = {
@@ -683,8 +738,7 @@ impl<
                 &proof.pc_proof,
                 &opening_challenges_f,
                 &mut fs_rng,
-            )
-            .map_err(MarlinError::from_pc_err)?
+            )?
         } else {
             let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
@@ -697,8 +751,7 @@ impl<
                 &proof.pc_proof,
                 opening_challenge,
                 &mut fs_rng,
-            )
-            .map_err(MarlinError::from_pc_err)?
+            )?
         };
 
         if !evaluations_are_correct {
@@ -717,7 +770,7 @@ impl<
         prepared_vk: &PreparedCircuitVerifyingKey<TargetField, BaseField, PC>,
         public_input: &[TargetField],
         proof: &Proof<TargetField, BaseField, PC>,
-    ) -> Result<bool, MarlinError<PC::Error>> {
+    ) -> Result<bool, MarlinError> {
         Self::verify(&prepared_vk.orig_vk, public_input, proof)
     }
 }

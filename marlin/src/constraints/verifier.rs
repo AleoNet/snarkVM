@@ -138,7 +138,7 @@ where
         prepared_verifying_key: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
-    ) -> Result<Boolean, MarlinError<PC::Error>> {
+    ) -> Result<Boolean, MarlinError> {
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
         eprintln!("before AHP: constraints: {}", cs.num_constraints());
@@ -265,7 +265,7 @@ where
         verifying_key: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
-    ) -> Result<Boolean, MarlinError<PC::Error>> {
+    ) -> Result<Boolean, MarlinError> {
         eprintln!("before prepared_VK: constraints: {}", cs.num_constraints());
 
         let prepared_verifying_key = verifying_key.prepare(cs.ns(|| "prepare"))?;
