@@ -112,7 +112,7 @@ impl<F: Field> ToBytesBEGadget<F> for Vec<UInt8> {
         dbg!(self);
         let mut vec = self.to_vec();
         vec.reverse();
-        dbg!(vec);
+        dbg!(&vec);
         Ok(vec)
     }
 
