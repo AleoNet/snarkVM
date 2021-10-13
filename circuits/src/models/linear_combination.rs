@@ -31,6 +31,7 @@ pub struct LinearCombination<F: PrimeField> {
 }
 
 impl<F: PrimeField> LinearCombination<F> {
+    /// Returns the `zero` constant.
     pub fn zero() -> Self {
         Self {
             constant: F::zero(),
@@ -38,12 +39,30 @@ impl<F: PrimeField> LinearCombination<F> {
         }
     }
 
+    /// Returns the `one` constant.
     pub fn one() -> Self {
         Variable::one().into()
     }
 
+    /// Returns `true` if there are no terms in the linear combination.
     pub fn is_constant(&self) -> bool {
         self.terms.is_empty()
+    }
+
+    /// Returns `true` if there is exactly one term with a coefficient of one,
+    /// and the term contains a public variable.
+    pub fn is_public(&self) -> bool {
+        self.constant.is_zero()
+            && self.terms.len() == 1
+            && match self.terms.iter().next() {
+                Some((Variable::Public(..), coefficient)) => *coefficient == F::one(),
+                _ => false,
+            }
+    }
+
+    /// Returns `true` if the linear combination is not constant or public.
+    pub fn is_private(&self) -> bool {
+        !self.is_constant() && !self.is_public()
     }
 
     ///
@@ -92,6 +111,17 @@ impl<F: PrimeField> LinearCombination<F> {
             // Both self.constant and self.terms contain elements. This is a violation.
             eprintln!("Both LC::constant and LC::terms contain elements, which is a violation");
             false
+        }
+    }
+
+    /// Returns the mode of this linear combination.
+    pub fn to_mode(&self) -> Mode {
+        if self.is_constant() {
+            Mode::Constant
+        } else if self.is_public() {
+            Mode::Public
+        } else {
+            Mode::Private
         }
     }
 

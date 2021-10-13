@@ -67,7 +67,7 @@ impl<E: Environment> Boolean<E> {
     }
 
     ///
-    /// Returns `true` if the boolean is a constant.
+    /// Returns `true` if the boolean is a constant.    
     ///
     pub fn is_constant(&self) -> bool {
         // Perform a software-level safety check that the boolean is well-formed.
