@@ -43,6 +43,7 @@ enum ParentInstruction<'a> {
 pub(super) struct FunctionEvaluator<'a, F: PrimeField, G: GroupType<F>> {
     call_stack: Vec<StateData<'a, F, G>>,
     state_data: StateData<'a, F, G>,
+    namespace_id_counter: usize,
 }
 
 impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
@@ -80,6 +81,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             .map(|x| self.state_data.state.resolve(x, cs).map(|x| x.into_owned()))
             .collect::<Result<Vec<_>, _>>()?;
 
+        self.namespace_id_counter += 1;
         let mut state = EvaluatorState {
             program: self.state_data.state.program,
             variables: HashMap::new(),
@@ -92,7 +94,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
             function_index: self.state_data.state.function_index,
             instruction_index: 0,
+            namespace_id: self.namespace_id_counter,
         };
+        state.cs_meta("function call", cs);
 
         let function = state.setup_evaluate_function(data.index, &arguments)?;
         let state_data = StateData {
@@ -140,6 +144,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
             .clone();
         self.state_data.state.instruction_index += 1;
+        self.namespace_id_counter += 1;
         let state = EvaluatorState {
             program: self.state_data.state.program,
             variables: HashMap::new(),
@@ -152,6 +157,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
             function_index: self.state_data.state.function_index,
             instruction_index: self.state_data.state.instruction_index,
+            namespace_id: self.namespace_id_counter,
         };
         let state_data = StateData {
             arguments: self.state_data.arguments.clone(),
@@ -247,6 +253,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         let mut iter_state_data = Vec::new();
         //todo: max loop count (DOS vector)
         for i in iter {
+            self.namespace_id_counter += 1;
             let mut state = EvaluatorState {
                 program: self.state_data.state.program,
                 variables: HashMap::new(),
@@ -259,6 +266,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                     .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
                 function_index: self.state_data.state.function_index,
                 instruction_index: self.state_data.state.instruction_index,
+                namespace_id: self.namespace_id_counter,
             };
             state.variables.insert(
                 data.iter_variable,
@@ -333,6 +341,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
     ) -> Result<ConstrainedValue<F, G>> {
         let mut evaluator = Self {
             call_stack: Vec::new(),
+            namespace_id_counter: state.namespace_id,
             state_data: StateData::create_initial_state_data(state, function, Rc::new(Vec::new()), index)?,
         };
         loop {
@@ -499,6 +508,7 @@ pub(super) struct EvaluatorState<'a, F: PrimeField, G: GroupType<F>> {
     pub parent_variables: HashMap<u32, ConstrainedValue<F, G>>,
     pub function_index: u32,
     pub instruction_index: u32,
+    namespace_id: usize,
 }
 
 impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
@@ -510,13 +520,15 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
             parent_variables: HashMap::new(),
             function_index: 0,
             instruction_index: 0,
+            namespace_id: 0,
         }
     }
 
     pub fn cs<'b, CS: ConstraintSystem<F>>(&'b mut self, cs: &'b mut CS) -> impl ConstraintSystem<F> + 'b {
         let function_index = self.function_index;
         let instruction_index = self.instruction_index;
-        cs.ns(move || format!("f#{}i#{}", function_index, instruction_index))
+        let namespace_id = self.namespace_id;
+        cs.ns(move || format!("id#{}f#{}i#{}", namespace_id, function_index, instruction_index))
     }
 
     pub fn cs_meta<'b, CS: ConstraintSystem<F>>(
@@ -526,7 +538,13 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
     ) -> impl ConstraintSystem<F> + 'b {
         let function_index = self.function_index;
         let instruction_index = self.instruction_index;
-        cs.ns(move || format!("f#{}i#{}: {}", function_index, instruction_index, meta))
+        let namespace_id = self.namespace_id;
+        cs.ns(move || {
+            format!(
+                "id#{}f#{}i#{}: {}",
+                namespace_id, function_index, instruction_index, meta
+            )
+        })
     }
 
     fn allocate_input<CS2: ConstraintSystem<F>>(
