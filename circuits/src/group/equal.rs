@@ -67,7 +67,7 @@ mod tests {
 
             Circuit::scoped(&format!("Constant Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
-                assert!(!equals.to_value());
+                assert!(!equals.eject_value());
 
                 assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -77,7 +77,7 @@ mod tests {
 
             Circuit::scoped(&format!("Constant Not Equals {}", i), |scope| {
                 let equals = a.is_neq(&b);
-                assert!(equals.to_value());
+                assert!(equals.eject_value());
 
                 assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -97,7 +97,7 @@ mod tests {
 
             Circuit::scoped(&format!("Constant and Public Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
-                assert!(!equals.to_value());
+                assert!(!equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -108,7 +108,7 @@ mod tests {
 
             Circuit::scoped(&format!("Constant and Public Not Equals {}", i), |scope| {
                 let equals = a.is_neq(&b);
-                assert!(equals.to_value());
+                assert!(equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -129,7 +129,7 @@ mod tests {
 
             Circuit::scoped(&format!("Public and Constant Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
-                assert!(!equals.to_value());
+                assert!(!equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -140,7 +140,7 @@ mod tests {
 
             Circuit::scoped(&format!("Public and Constant Not Equals {}", i), |scope| {
                 let equals = a.is_neq(&b);
-                assert!(equals.to_value());
+                assert!(equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -161,7 +161,7 @@ mod tests {
 
             Circuit::scoped(&format!("Public Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
-                assert!(!equals.to_value());
+                assert!(!equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -172,7 +172,7 @@ mod tests {
 
             Circuit::scoped(&format!("Public Not Equals {}", i), |scope| {
                 let equals = a.is_neq(&b);
-                assert!(equals.to_value());
+                assert!(equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -193,7 +193,7 @@ mod tests {
 
             Circuit::scoped(&format!("Private Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
-                assert!(!equals.to_value());
+                assert!(!equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -204,7 +204,7 @@ mod tests {
 
             Circuit::scoped(&format!("Private Not Equals {}", i), |scope| {
                 let equals = a.is_neq(&b);
-                assert!(equals.to_value());
+                assert!(equals.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());

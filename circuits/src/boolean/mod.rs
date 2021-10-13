@@ -41,33 +41,51 @@ pub use xor::*;
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 
-use std::ops::{Deref, Not};
+use std::{
+    fmt,
+    ops::{Deref, Not},
+};
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> Boolean<E> {
+    ///
+    /// Initializes a new instance of a boolean from a constant boolean value.
+    ///
     pub fn new(mode: Mode, value: bool) -> Self {
         let variable = E::new_variable(mode, match value {
             true => E::BaseField::one(),
             false => E::BaseField::zero(),
         });
 
-        // Ensure `a` is either 0 or 1:
-        // (1 - a) * a = 0
+        // Ensure (1 - a) * a = 0
+        // `a` must be either 0 or 1.
         E::enforce(|| (E::one() - variable, variable, E::zero()));
 
         Self(variable.into())
     }
 
+    ///
+    /// Returns `true` if the boolean is a constant.
+    ///
     pub fn is_constant(&self) -> bool {
         self.0.is_constant()
     }
 
-    pub fn to_value(&self) -> bool {
+    ///
+    /// Ejects the boolean as a constant boolean value.
+    ///
+    pub fn eject_value(&self) -> bool {
         let value = self.0.to_value();
         debug_assert!(value.is_zero() || value.is_one());
         value.is_one()
+    }
+}
+
+impl<E: Environment> fmt::Debug for Boolean<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.eject_value())
     }
 }
 
@@ -106,11 +124,11 @@ mod tests {
         assert_eq!(0, Circuit::num_constraints());
 
         let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert_eq!(false, candidate.to_value());
+        assert_eq!(false, candidate.eject_value());
         assert!(Circuit::is_satisfied());
 
         let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert_eq!(true, candidate.to_value());
+        assert_eq!(true, candidate.eject_value());
         assert!(Circuit::is_satisfied());
 
         assert_eq!(2, Circuit::num_constants());
@@ -127,11 +145,11 @@ mod tests {
         assert_eq!(0, Circuit::num_constraints());
 
         let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert_eq!(false, candidate.to_value());
+        assert_eq!(false, candidate.eject_value());
         assert!(Circuit::is_satisfied());
 
         let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert_eq!(true, candidate.to_value());
+        assert_eq!(true, candidate.eject_value());
         assert!(Circuit::is_satisfied());
 
         assert_eq!(0, Circuit::num_constants());
@@ -148,11 +166,11 @@ mod tests {
         assert_eq!(0, Circuit::num_constraints());
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert_eq!(false, candidate.to_value());
+        assert_eq!(false, candidate.eject_value());
         assert!(Circuit::is_satisfied());
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert_eq!(true, candidate.to_value());
+        assert_eq!(true, candidate.eject_value());
         assert!(Circuit::is_satisfied());
 
         assert_eq!(0, Circuit::num_constants());
@@ -195,5 +213,26 @@ mod tests {
 
             Circuit::reset_circuit();
         }
+    }
+
+    #[test]
+    fn test_debug() {
+        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
+        assert_eq!("false", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
+        assert_eq!("true", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
+        assert_eq!("false", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
+        assert_eq!("true", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
+        assert_eq!("false", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
+        assert_eq!("true", format!("{:?}", candidate));
     }
 }

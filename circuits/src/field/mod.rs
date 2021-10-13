@@ -46,7 +46,7 @@ pub struct Field<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> Field<E> {
     ///
-    /// Initializes a new instance of a field from a constant field element.
+    /// Initializes a new instance of a field from a constant field value.
     ///
     pub fn new(mode: Mode, value: E::BaseField) -> Self {
         Self(E::new_variable(mode, value).into())
@@ -67,7 +67,7 @@ impl<E: Environment> Field<E> {
     }
 
     ///
-    /// Ejects the field as a constant field element.
+    /// Ejects the field as a constant field value.
     ///
     pub fn eject_value(&self) -> E::BaseField {
         self.0.to_value()
@@ -121,10 +121,8 @@ mod tests {
 
             // Constant
             check_debug(Mode::Constant, element);
-
             // Public
             check_debug(Mode::Public, element);
-
             // Private
             check_debug(Mode::Private, element);
         }

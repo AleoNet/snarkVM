@@ -92,6 +92,9 @@ impl<E: Environment> Affine<E> {
         Self { x, y }
     }
 
+    ///
+    /// Returns `true` if the group is a constant.
+    ///
     pub fn is_constant(&self) -> bool {
         self.x.is_constant() && self.y.is_constant()
     }

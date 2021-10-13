@@ -95,7 +95,7 @@ mod tests {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                    assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
                 assert_eq!(506, scope.num_constants_in_scope());
@@ -115,7 +115,7 @@ mod tests {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                    assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -135,7 +135,7 @@ mod tests {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                    assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -160,7 +160,7 @@ mod tests {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                    assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
                 assert_eq!(506, scope.num_constants_in_scope());
@@ -180,7 +180,7 @@ mod tests {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                    assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -200,7 +200,7 @@ mod tests {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.to_value());
+                    assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -219,8 +219,8 @@ mod tests {
         fn check_bits_le(candidate: Field<Circuit>) {
             for (i, bit) in candidate.to_bits_le().iter().enumerate() {
                 match i == 0 {
-                    true => assert_eq!(true, bit.to_value()),
-                    false => assert_eq!(false, bit.to_value()),
+                    true => assert_eq!(true, bit.eject_value()),
+                    false => assert_eq!(false, bit.eject_value()),
                 }
             }
         }
@@ -229,8 +229,8 @@ mod tests {
         fn check_bits_be(candidate: Field<Circuit>) {
             for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
                 match i == 0 {
-                    true => assert_eq!(true, bit.to_value()),
-                    false => assert_eq!(false, bit.to_value()),
+                    true => assert_eq!(true, bit.eject_value()),
+                    false => assert_eq!(false, bit.eject_value()),
                 }
             }
         }

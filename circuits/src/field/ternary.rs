@@ -24,7 +24,7 @@ impl<E: Environment> Ternary for Field<E> {
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
         // Constant Condition
         if condition.is_constant() {
-            match condition.to_value() {
+            match condition.eject_value() {
                 true => first.clone(),
                 false => second.clone(),
             }
@@ -37,7 +37,7 @@ impl<E: Environment> Ternary for Field<E> {
         }
         // Variables
         else {
-            let witness = Field::new(Mode::Private, match condition.to_value() {
+            let witness = Field::new(Mode::Private, match condition.eject_value() {
                 true => first.eject_value(),
                 false => second.eject_value(),
             });
@@ -114,8 +114,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
@@ -126,8 +126,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
 
@@ -144,8 +144,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
@@ -156,8 +156,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
 
@@ -174,8 +174,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Public, false);
@@ -186,8 +186,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
 
@@ -204,8 +204,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -216,8 +216,8 @@ mod tests {
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
 
@@ -235,8 +235,8 @@ mod tests {
                 assert_eq!(1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -248,8 +248,8 @@ mod tests {
                 assert_eq!(1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
 
@@ -267,8 +267,8 @@ mod tests {
                 assert_eq!(1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -280,8 +280,8 @@ mod tests {
                 assert_eq!(1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
 
@@ -299,8 +299,8 @@ mod tests {
                 assert_eq!(1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                assert!(output.is_eq(&a).to_value());
-                assert!(!output.is_eq(&b).to_value());
+                assert!(output.is_eq(&a).eject_value());
+                assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -312,8 +312,8 @@ mod tests {
                 assert_eq!(1, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                assert!(!output.is_eq(&a).to_value());
-                assert!(output.is_eq(&b).to_value());
+                assert!(!output.is_eq(&a).eject_value());
+                assert!(output.is_eq(&b).eject_value());
             });
         }
     }

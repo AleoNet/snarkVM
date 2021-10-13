@@ -24,30 +24,30 @@ impl<E: Environment> Ternary for Boolean<E> {
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
         // Constant `condition`
         if condition.is_constant() {
-            match condition.to_value() {
+            match condition.eject_value() {
                 true => first.clone(),
                 false => second.clone(),
             }
         }
         // Constant `first`
         else if first.is_constant() {
-            match first.to_value() {
+            match first.eject_value() {
                 true => condition.or(second),
                 false => (!condition).and(second),
             }
         }
         // Constant `second`
         else if second.is_constant() {
-            match second.to_value() {
+            match second.eject_value() {
                 true => (!condition).or(first),
                 false => condition.and(first),
             }
         }
         // Variables
         else {
-            let witness = Boolean::new(Mode::Private, match condition.to_value() {
-                true => first.to_value(),
-                false => second.to_value(),
+            let witness = Boolean::new(Mode::Private, match condition.eject_value() {
+                true => first.eject_value(),
+                false => second.eject_value(),
             });
 
             //
@@ -86,13 +86,13 @@ mod tests {
             let candidate = Boolean::ternary(&condition, &a, &b);
             assert_eq!(
                 expected,
-                candidate.to_value(),
+                candidate.eject_value(),
                 "{} != {} := ({} ? {} : {})",
                 expected,
-                candidate.to_value(),
-                condition.to_value(),
-                a.to_value(),
-                b.to_value()
+                candidate.eject_value(),
+                condition.eject_value(),
+                a.eject_value(),
+                b.eject_value()
             );
 
             assert_eq!(num_constants, scope.num_constants_in_scope());

@@ -24,21 +24,21 @@ impl<E: Environment> Xor<Self> for Boolean<E> {
     fn xor(&self, other: &Self) -> Self::Output {
         // Constant `self`
         if self.is_constant() {
-            match self.to_value() {
+            match self.eject_value() {
                 true => !other.clone(),
                 false => other.clone(),
             }
         }
         // Constant `other`
         else if other.is_constant() {
-            match other.to_value() {
+            match other.eject_value() {
                 true => !self.clone(),
                 false => self.clone(),
             }
         }
         // Variable != Variable
         else {
-            let output = Boolean::<E>::new(Mode::Private, self.to_value() ^ other.to_value());
+            let output = Boolean::<E>::new(Mode::Private, self.eject_value() ^ other.eject_value());
 
             // Ensure `self` * `other` = `output`
             // `output` is `1` iff `self` != `other`.
@@ -88,12 +88,12 @@ mod tests {
             let candidate = a.xor(&b);
             assert_eq!(
                 expected,
-                candidate.to_value(),
+                candidate.eject_value(),
                 "{} != {} := ({} != {})",
                 expected,
-                candidate.to_value(),
-                a.to_value(),
-                b.to_value()
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
             );
 
             assert_eq!(num_constants, scope.num_constants_in_scope());

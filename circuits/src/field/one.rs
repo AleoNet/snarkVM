@@ -70,10 +70,10 @@ mod tests {
 
         // Should equal 1.
         let candidate_boolean = candidate.is_one();
-        assert_eq!(true, candidate_boolean.to_value());
+        assert_eq!(true, candidate_boolean.eject_value());
 
         // Should not equal 0.
         let candidate_boolean = candidate.is_zero();
-        assert_eq!(false, candidate_boolean.to_value());
+        assert_eq!(false, candidate_boolean.eject_value());
     }
 }

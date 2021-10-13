@@ -37,14 +37,14 @@ impl<E: Environment> Not for &Boolean<E> {
 
         // Constant case
         if self.is_constant() {
-            match self.to_value() {
+            match self.eject_value() {
                 true => Boolean(self.0.clone() - Variable::one()),
                 false => Boolean(self.0.clone() + Variable::one()),
             }
         }
         // Public and private cases
         else {
-            match self.to_value() {
+            match self.eject_value() {
                 true => Boolean(self.0.clone() - Variable::Public(0, E::BaseField::one())),
                 false => Boolean(self.0.clone() + Variable::Public(0, E::BaseField::one())),
             }
@@ -68,7 +68,7 @@ mod tests {
     ) {
         Circuit::scoped(name, |scope| {
             let candidate_output = !candidate_input;
-            assert_eq!(expected, candidate_output.to_value());
+            assert_eq!(expected, candidate_output.eject_value());
 
             assert_eq!(num_constants, scope.num_constants_in_scope());
             assert_eq!(num_public, scope.num_public_in_scope());

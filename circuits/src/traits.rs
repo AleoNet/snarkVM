@@ -16,7 +16,7 @@
 
 use std::ops::Not;
 
-pub trait BooleanTrait: Not {}
+pub trait BooleanTrait: And + Equal + Nand + Nor + Not + Or + Ternary + Xor {}
 
 /// Representation of the zero value.
 pub trait Zero {

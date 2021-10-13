@@ -270,7 +270,7 @@ mod tests {
 
         let expected = Field::one() + Field::one();
         match function.outputs[0].load() {
-            Value::Field(output) => assert!(output.is_eq(&expected).to_value()),
+            Value::Field(output) => assert!(output.is_eq(&expected).eject_value()),
             _ => panic!("Failed to load output"),
         }
     }

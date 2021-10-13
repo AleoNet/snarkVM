@@ -154,17 +154,17 @@ mod tests {
                 let a = Field::<Circuit>::new(Mode::Private, accumulator);
                 let b = Field::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.to_value());
+                assert_eq!(true, is_eq.eject_value());
 
                 let a = Field::<Circuit>::new(Mode::Private, one);
                 let b = Field::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(false, is_eq.to_value());
+                assert_eq!(false, is_eq.eject_value());
 
                 let a = Field::<Circuit>::new(Mode::Private, accumulator);
                 let b = Field::<Circuit>::new(Mode::Private, accumulator - one);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(false, is_eq.to_value());
+                assert_eq!(false, is_eq.eject_value());
 
                 accumulator = accumulator + &one;
             }
@@ -179,7 +179,7 @@ mod tests {
                 let b = Field::<Circuit>::new(Mode::Constant, accumulator);
 
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.to_value());
+                assert_eq!(true, is_eq.eject_value());
 
                 assert_eq!((i + 1) * 3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -198,7 +198,7 @@ mod tests {
                 let a = Field::<Circuit>::new(Mode::Public, accumulator);
                 let b = Field::<Circuit>::new(Mode::Public, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.to_value());
+                assert_eq!(true, is_eq.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!((i + 1) * 2, scope.num_public_in_scope());
@@ -218,7 +218,7 @@ mod tests {
                 let a = Field::<Circuit>::new(Mode::Public, accumulator);
                 let b = Field::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.to_value());
+                assert_eq!(true, is_eq.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(i + 1, scope.num_public_in_scope());
@@ -238,7 +238,7 @@ mod tests {
                 let a = Field::<Circuit>::new(Mode::Private, accumulator);
                 let b = Field::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.to_value());
+                assert_eq!(true, is_eq.eject_value());
                 assert!(scope.is_satisfied());
 
                 assert_eq!(0, scope.num_constants_in_scope());

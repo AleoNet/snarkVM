@@ -50,12 +50,12 @@ mod tests {
             let candidate = a.is_eq(&b);
             assert_eq!(
                 expected,
-                candidate.to_value(),
+                candidate.eject_value(),
                 "{} == {} := ({} == {})",
                 expected,
-                candidate.to_value(),
-                a.to_value(),
-                b.to_value()
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
             );
 
             assert_eq!(num_constants, scope.num_constants_in_scope());
