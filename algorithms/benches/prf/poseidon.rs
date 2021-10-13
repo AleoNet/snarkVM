@@ -22,7 +22,7 @@ use snarkvm_curves::bls12_377::Fr;
 use snarkvm_utilities::UniformRand;
 
 use criterion::Criterion;
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
 
 fn poseidon_prf(c: &mut Criterion) {
     let rng = &mut thread_rng();

@@ -30,7 +30,11 @@ use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, Projectiv
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{marker::PhantomData, ops::Mul};
+use core::{
+    marker::PhantomData,
+    ops::Mul,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use rand_core::RngCore;
 
 #[cfg(feature = "parallel")]
@@ -222,6 +226,7 @@ impl<E: PairingEngine> KZG10<E> {
         powers: &Powers<E>,
         polynomial: &Polynomial<E::Fr>,
         hiding_bound: Option<usize>,
+        terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Commitment<E>, Randomness<E>), Error> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
@@ -237,6 +242,10 @@ impl<E: PairingEngine> KZG10<E> {
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
         let mut commitment = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &plain_coeffs);
         end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(Error::Terminated);
+        }
 
         let mut randomness = Randomness::empty();
         if let Some(hiding_degree) = hiding_bound {
@@ -254,6 +263,10 @@ impl<E: PairingEngine> KZG10<E> {
         let random_commitment =
             VariableBaseMSM::multi_scalar_mul(&powers.powers_of_gamma_g, random_ints.as_slice()).into_affine();
         end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(Error::Terminated);
+        }
 
         commitment.add_assign_mixed(&random_commitment);
 
@@ -557,8 +570,8 @@ mod tests {
         let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
 
         let hiding_bound = None;
-        let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, Some(rng)).unwrap();
-        let (f_comm, _) = KZG10::commit(&powers, &f_p, hiding_bound, Some(rng)).unwrap();
+        let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
+        let (f_comm, _) = KZG10::commit(&powers, &f_p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
         let mut f_comm_2 = Commitment::empty();
         f_comm_2 += (f, &comm);
 
@@ -576,7 +589,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, degree);
             let p = Polynomial::rand(degree, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -599,7 +612,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, 2);
             let p = Polynomial::rand(1, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -632,7 +645,7 @@ mod tests {
             for _ in 0..10 {
                 let p = Polynomial::rand(degree, rng);
                 let hiding_bound = Some(1);
-                let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
+                let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
                 let value = p.evaluate(point);
                 let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;

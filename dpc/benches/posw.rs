@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::atomic::AtomicBool;
+
 use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme};
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -31,7 +33,9 @@ fn marlin_posw(c: &mut Criterion) {
 
     group.bench_function("mine", |b| {
         b.iter(|| {
-            Testnet2::posw().mine(&mut block_header, rng).unwrap();
+            Testnet2::posw()
+                .mine(&mut block_header, &AtomicBool::new(false), rng)
+                .unwrap();
         });
     });
 

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::sync::atomic::AtomicBool;
+
 use crate::{BlockHeader, Network, PoswError};
 use snarkvm_algorithms::{traits::SNARK, SRS};
 
@@ -37,7 +39,12 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
 
     /// Given the leaves of the block header, it will calculate a PoSW and nonce
     /// such that they are under the difficulty target.
-    fn mine<R: Rng + CryptoRng>(&self, block_header: &mut BlockHeader<N>, rng: &mut R) -> Result<(), PoswError>;
+    fn mine<R: Rng + CryptoRng>(
+        &self,
+        block_header: &mut BlockHeader<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<(), PoswError>;
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
     fn verify(&self, block_header: &BlockHeader<N>) -> bool;

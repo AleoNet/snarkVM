@@ -19,7 +19,7 @@ use crate::prelude::*;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use rand::{CryptoRng, Rng};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::atomic::AtomicBool};
 
 #[derive(Clone, Debug)]
 pub struct Ledger<N: Network> {
@@ -143,7 +143,12 @@ impl<N: Network> Ledger<N> {
     }
 
     /// Mines a new block and adds it to the canon blocks.
-    pub fn mine_next_block<R: Rng + CryptoRng>(&mut self, recipient: Address<N>, rng: &mut R) -> Result<()> {
+    pub fn mine_next_block<R: Rng + CryptoRng>(
+        &mut self,
+        recipient: Address<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<()> {
         // Prepare the new block.
         let previous_block_hash = self.latest_block_hash();
         let block_height = self.latest_block_height() + 1;
@@ -171,7 +176,7 @@ impl<N: Network> Ledger<N> {
         let commitments_root = commitments.root();
 
         // Mine the next block.
-        let block = Block::new(
+        let block = Block::mine(
             previous_block_hash,
             block_height,
             block_timestamp,
@@ -179,6 +184,7 @@ impl<N: Network> Ledger<N> {
             transactions,
             serial_numbers_root,
             commitments_root,
+            terminator,
             rng,
         )?;
 
@@ -226,7 +232,9 @@ mod tests {
             let recipient = Account::<Testnet1>::new(rng).unwrap();
 
             assert_eq!(0, ledger.latest_block_height());
-            ledger.mine_next_block(recipient.address(), rng).unwrap();
+            ledger
+                .mine_next_block(recipient.address(), &AtomicBool::new(false), rng)
+                .unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
         {
@@ -234,7 +242,9 @@ mod tests {
             let recipient = Account::<Testnet2>::new(rng).unwrap();
 
             assert_eq!(0, ledger.latest_block_height());
-            ledger.mine_next_block(recipient.address(), rng).unwrap();
+            ledger
+                .mine_next_block(recipient.address(), &AtomicBool::new(false), rng)
+                .unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
     }

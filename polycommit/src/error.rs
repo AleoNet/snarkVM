@@ -98,6 +98,8 @@ pub enum Error {
 
     /// The commitment was generated incorrectly, tampered with, or doesn't support the polynomial.
     MalformedCommitment(String),
+
+    Terminated,
 }
 
 impl core::fmt::Display for Error {
@@ -156,6 +158,7 @@ impl core::fmt::Display for Error {
             ),
             Error::IncorrectInputLength(err) => write!(f, "{}", err),
             Error::MalformedCommitment(err) => write!(f, "{}", err),
+            Error::Terminated => write!(f, "terminated"),
         }
     }
 }
