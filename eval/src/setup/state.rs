@@ -21,7 +21,7 @@ use crate::IntegerType;
 
 use super::*;
 
-use std::{convert::TryInto, fmt, mem};
+use std::{convert::TryInto, fmt, mem, rc::Rc};
 
 /// the possible outcomes of evaluating an instruction
 #[derive(Debug)]
@@ -41,16 +41,16 @@ enum ParentInstruction<'a> {
 }
 
 pub(super) struct FunctionEvaluator<'a, F: PrimeField, G: GroupType<F>> {
-    call_stack: Vec<CallStateData<'a, F, G>>,
-    state_data: CallStateData<'a, F, G>,
+    call_stack: Vec<StateData<'a, F, G>>,
+    state_data: StateData<'a, F, G>,
 }
 
 impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
-    fn nest(&mut self, state: CallStateData<'a, F, G>) {
+    fn nest(&mut self, state: StateData<'a, F, G>) {
         self.call_stack.push(mem::replace(&mut self.state_data, state));
     }
 
-    fn unnest(&mut self) -> CallStateData<'a, F, G> {
+    fn unnest(&mut self) -> StateData<'a, F, G> {
         let last_state = self.call_stack.pop().expect("no state to return to");
         mem::replace(&mut self.state_data, last_state)
     }
@@ -95,7 +95,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         };
 
         let function = state.setup_evaluate_function(data.index, &arguments)?;
-        let state_data = CallStateData {
+        let state_data = StateData {
+            arguments: Rc::new(arguments),
             function: &function,
             function_index: data.index,
             block_start: 0,
@@ -108,6 +109,14 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
 
         self.state_data.state.instruction_index += 1;
         self.nest(state_data);
+        if self.state_data.state.call_depth > self.state_data.state.program.header.inline_limit {
+            self.unwind(anyhow!("max inline limit hit"))?;
+        } else if self.call_stack.iter().any(|old_state| {
+            old_state.arguments == self.state_data.arguments
+                && old_state.function_index == self.state_data.function_index
+        }) {
+            self.unwind(anyhow!("infinite recursion detected"))?;
+        }
         Ok(())
     }
 
@@ -144,7 +153,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             function_index: self.state_data.state.function_index,
             instruction_index: self.state_data.state.instruction_index,
         };
-        let state_data = CallStateData {
+        let state_data = StateData {
+            arguments: self.state_data.arguments.clone(),
             function: self.state_data.function,
             function_index: self.state_data.function_index,
             block_start: self.state_data.state.instruction_index,
@@ -265,7 +275,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                     _ => return Err(anyhow!("illegal type for loop index")),
                 }),
             );
-            let new_state_data = CallStateData {
+            let new_state_data = StateData {
+                arguments: self.state_data.arguments.clone(),
                 function: self.state_data.function,
                 function_index: self.state_data.function_index,
                 block_start: self.state_data.state.instruction_index,
@@ -322,7 +333,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
     ) -> Result<ConstrainedValue<F, G>> {
         let mut evaluator = Self {
             call_stack: Vec::new(),
-            state_data: CallStateData::create_initial_state_data(state, function, index)?,
+            state_data: StateData::create_initial_state_data(state, function, Rc::new(Vec::new()), index)?,
         };
         loop {
             match evaluator.state_data.evaluate_block(cs) {
@@ -358,7 +369,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
     }
 }
 /// stores data about the state for scope recursion
-struct CallStateData<'a, F: PrimeField, G: GroupType<F>> {
+struct StateData<'a, F: PrimeField, G: GroupType<F>> {
+    /// the arguments passed to the function
+    arguments: Rc<Vec<ConstrainedValue<F, G>>>,
     /// the function currently being evaluated
     function: &'a Function,
     function_index: u32,
@@ -377,11 +390,11 @@ struct CallStateData<'a, F: PrimeField, G: GroupType<F>> {
 }
 
 /// implemented this so i could easily debug execution flow
-impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> {
+impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for StateData<'a, F, G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "CallStateData {{
+            "StateData {{
             ...
             function: {{
                 ...
@@ -414,15 +427,17 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for CallStateData<'a, F, G> 
     }
 }
 
-impl<'a, F: PrimeField, G: GroupType<F>> CallStateData<'a, F, G> {
+impl<'a, F: PrimeField, G: GroupType<F>> StateData<'a, F, G> {
     /// creates the initial state at the start of a programs function evaluation step.
     /// the function passed should be main and the index should point to main
     pub fn create_initial_state_data(
         state: EvaluatorState<'a, F, G>,
         function: &'a Function,
+        arguments: Rc<Vec<ConstrainedValue<F, G>>>,
         index: u32,
     ) -> Result<Self> {
         Ok(Self {
+            arguments,
             function: &function,
             function_index: index,
             block_start: 0,
@@ -458,29 +473,21 @@ impl<'a, F: PrimeField, G: GroupType<F>> CallStateData<'a, F, G> {
         cs: &mut CS,
     ) -> Result<ControlFlow<'a>> {
         match instruction {
-            i @ Instruction::Call(_) => {
-                if self.state.call_depth > self.state.program.header.inline_limit {
-                    return Err(anyhow!("max inline limit hit"));
-                } else {
-                    return Ok(ControlFlow::Recurse(i));
-                }
+            Instruction::Call(_) | Instruction::Mask(_) | Instruction::Repeat(_) => {
+                Ok(ControlFlow::Recurse(instruction))
             }
-            i @ Instruction::Mask(_) => return Ok(ControlFlow::Recurse(i)),
-            i @ Instruction::Repeat(_) => return Ok(ControlFlow::Recurse(i)),
-            instruction => {
-                match self.state.evaluate_instruction(instruction, cs) {
-                    Ok(Some(returned)) => {
-                        self.result = Some(returned);
-                        return Ok(ControlFlow::Return);
-                    }
-                    Ok(None) => (),
-                    Err(e) => return Err(e),
+            instruction => match self.state.evaluate_instruction(instruction, cs) {
+                Ok(Some(returned)) => {
+                    self.result = Some(returned);
+                    Ok(ControlFlow::Return)
                 }
-                self.state.instruction_index += 1;
-            }
+                Ok(None) => {
+                    self.state.instruction_index += 1;
+                    Ok(ControlFlow::Continue)
+                }
+                Err(e) => Err(e),
+            },
         }
-
-        Ok(ControlFlow::Continue)
     }
 }
 
