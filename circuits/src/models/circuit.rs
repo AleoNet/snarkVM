@@ -38,7 +38,7 @@ impl Circuit {
             cb.get_or_init(|| {
                 let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
                     Rc::new(RefCell::new(ConstraintSystem::new())),
-                    format!("ConstraintSystem::new"),
+                    format!("Circuit::new"),
                     None,
                 );
                 RefCell::new(Circuit(scope))
@@ -54,7 +54,7 @@ impl Circuit {
         CB.with(|cb| {
             (*cb.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
                 Rc::new(RefCell::new(ConstraintSystem::new())),
-                format!("ConstraintSystem::new"),
+                format!("Circuit::new"),
                 None,
             );
         });
@@ -66,7 +66,7 @@ impl Circuit {
     }
 
     pub fn print_circuit() {
-        println!("{:?}", Self::cs().circuit.borrow());
+        println!("{:?}", Self::cs().cs.borrow());
     }
 }
 
@@ -74,14 +74,6 @@ impl Environment for Circuit {
     type Affine = EdwardsAffine;
     type AffineParameters = EdwardsParameters;
     type BaseField = Fr;
-
-    fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
-        match mode {
-            Mode::Constant => Self::cs().new_constant(value),
-            Mode::Public => Self::cs().new_public(value),
-            Mode::Private => Self::cs().new_private(value),
-        }
-    }
 
     fn zero() -> LinearCombination<Self::BaseField> {
         LinearCombination::zero()
@@ -91,13 +83,17 @@ impl Environment for Circuit {
         LinearCombination::one()
     }
 
-    fn is_satisfied() -> bool {
-        Self::cs().is_satisfied()
+    fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
+        match mode {
+            Mode::Constant => Self::cs().new_constant(value),
+            Mode::Public => Self::cs().new_public(value),
+            Mode::Private => Self::cs().new_private(value),
+        }
     }
 
     fn scope(name: &str) -> CircuitScope<Self::BaseField> {
         CB.with(|cb| {
-            let scope = Self::cs().scope(name);
+            let scope = Self::cs().new_scope(name);
             (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
             scope
         })
@@ -108,11 +104,11 @@ impl Environment for Circuit {
         Fn: FnOnce(CircuitScope<Self::BaseField>),
     {
         CB.with(|cb| {
-            // Fetch the current environment.
+            // Fetch a copy of the current environment.
             let current = Self::cs().clone();
 
             // Set the entire environment to the new scope, and run the logic.
-            let scope = current.clone().scope(name);
+            let scope = current.clone().new_scope(name);
             (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
             logic(scope);
 
@@ -129,6 +125,10 @@ impl Environment for Circuit {
         C: Into<LinearCombination<Self::BaseField>>,
     {
         Self::cs().enforce(constraint)
+    }
+
+    fn is_satisfied() -> bool {
+        Self::cs().is_satisfied()
     }
 
     fn num_constants() -> usize {
@@ -148,19 +148,19 @@ impl Environment for Circuit {
     }
 
     fn num_constants_in_scope(scope: &Scope) -> usize {
-        Self::cs().circuit.borrow().num_constants_in_scope(scope)
+        Self::cs().cs.borrow().num_constants_in_scope(scope)
     }
 
     fn num_public_in_scope(scope: &Scope) -> usize {
-        Self::cs().circuit.borrow().num_public_in_scope(scope)
+        Self::cs().cs.borrow().num_public_in_scope(scope)
     }
 
     fn num_private_in_scope(scope: &Scope) -> usize {
-        Self::cs().circuit.borrow().num_private_in_scope(scope)
+        Self::cs().cs.borrow().num_private_in_scope(scope)
     }
 
     fn num_constraints_in_scope(scope: &Scope) -> usize {
-        Self::cs().circuit.borrow().num_constraints_in_scope(scope)
+        Self::cs().cs.borrow().num_constraints_in_scope(scope)
     }
 
     fn recover_from_x_coordinate(x: Self::BaseField) -> Self::Affine {

@@ -202,7 +202,7 @@ mod tests {
         let _candidate_output = create_example_circuit::<Circuit>();
 
         let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
-        Circuit::cs().circuit.borrow().generate_constraints(&mut cs).unwrap();
+        Circuit::cs().cs.borrow().generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_r1cs::ConstraintSystem;
             assert_eq!(Circuit::num_public() + 1, cs.num_public_variables());
@@ -226,16 +226,15 @@ mod tests {
                 verify_proof,
             };
             use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-            use snarkvm_utilities::rand::{test_rng, UniformRand};
+            use snarkvm_utilities::rand::test_rng;
 
             use core::ops::MulAssign;
 
             let rng = &mut test_rng();
 
-            let parameters =
-                generate_random_parameters::<Bls12_377, _, _>(&*Circuit::cs().circuit.borrow(), rng).unwrap();
+            let parameters = generate_random_parameters::<Bls12_377, _, _>(&*Circuit::cs().cs.borrow(), rng).unwrap();
 
-            let proof = create_random_proof(&*Circuit::cs().circuit.borrow(), &parameters, rng).unwrap();
+            let proof = create_random_proof(&*Circuit::cs().cs.borrow(), &parameters, rng).unwrap();
             let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
 
             assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
@@ -256,7 +255,7 @@ mod tests {
                 marlin::{MarlinRecursiveMode, MarlinSNARK},
             };
             use snarkvm_polycommit::sonic_pc::SonicKZG10;
-            use snarkvm_utilities::rand::{test_rng, UniformRand};
+            use snarkvm_utilities::rand::test_rng;
 
             use core::ops::MulAssign;
 
@@ -274,11 +273,10 @@ mod tests {
             let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-            let (index_pk, index_vk) =
-                MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().circuit.borrow()).unwrap();
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().cs.borrow()).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &*Circuit::cs().circuit.borrow(), rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &*Circuit::cs().cs.borrow(), rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&index_vk, &[one, one], &proof).unwrap());

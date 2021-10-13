@@ -23,7 +23,7 @@ pub type Scope = String;
 
 #[derive(Clone)]
 pub struct CircuitScope<F: PrimeField> {
-    pub(super) circuit: Rc<RefCell<ConstraintSystem<F>>>,
+    pub(super) cs: Rc<RefCell<ConstraintSystem<F>>>,
     scope: Scope,
     previous: Option<Scope>,
 }
@@ -31,34 +31,30 @@ pub struct CircuitScope<F: PrimeField> {
 impl<F: PrimeField> CircuitScope<F> {
     pub(super) fn new(circuit: Rc<RefCell<ConstraintSystem<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
         Self {
-            circuit,
+            cs: circuit,
             scope,
             previous,
         }
     }
 
-    pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {
-        self.circuit.borrow_mut().new_constant(value, self.scope.clone())
-    }
-
-    pub(crate) fn new_public(&mut self, value: F) -> Variable<F> {
-        self.circuit.borrow_mut().new_public(value, self.scope.clone())
-    }
-
-    pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
-        self.circuit.borrow_mut().new_private(value, self.scope.clone())
-    }
-
-    pub(crate) fn scope(self, name: &str) -> Self {
+    pub(super) fn new_scope(self, name: &str) -> Self {
         Self {
-            circuit: self.circuit.clone(),
+            cs: self.cs.clone(),
             scope: format!("{}/{}", self.scope, name),
             previous: Some(self.scope.clone()),
         }
     }
 
-    pub(crate) fn is_satisfied(&self) -> bool {
-        self.circuit.borrow().is_satisfied()
+    pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {
+        self.cs.borrow_mut().new_constant(value, self.scope.clone())
+    }
+
+    pub(crate) fn new_public(&mut self, value: F) -> Variable<F> {
+        self.cs.borrow_mut().new_public(value, self.scope.clone())
+    }
+
+    pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
+        self.cs.borrow_mut().new_private(value, self.scope.clone())
     }
 
     pub(crate) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
@@ -68,39 +64,43 @@ impl<F: PrimeField> CircuitScope<F> {
         B: Into<LinearCombination<F>>,
         C: Into<LinearCombination<F>>,
     {
-        self.circuit.borrow_mut().enforce(constraint, self.scope.clone());
+        self.cs.borrow_mut().enforce(constraint, self.scope.clone());
+    }
+
+    pub(crate) fn is_satisfied(&self) -> bool {
+        self.cs.borrow().is_satisfied()
     }
 
     pub(super) fn num_constants(&self) -> usize {
-        self.circuit.borrow().num_constants()
+        self.cs.borrow().num_constants()
     }
 
     pub(super) fn num_public(&self) -> usize {
-        self.circuit.borrow().num_public()
+        self.cs.borrow().num_public()
     }
 
     pub(super) fn num_private(&self) -> usize {
-        self.circuit.borrow().num_private()
+        self.cs.borrow().num_private()
     }
 
     pub(super) fn num_constraints(&self) -> usize {
-        self.circuit.borrow().num_constraints()
+        self.cs.borrow().num_constraints()
     }
 
     pub fn num_constants_in_scope(&self) -> usize {
-        self.circuit.borrow().num_constants_in_scope(&self.scope)
+        self.cs.borrow().num_constants_in_scope(&self.scope)
     }
 
     pub fn num_public_in_scope(&self) -> usize {
-        self.circuit.borrow().num_public_in_scope(&self.scope)
+        self.cs.borrow().num_public_in_scope(&self.scope)
     }
 
     pub fn num_private_in_scope(&self) -> usize {
-        self.circuit.borrow().num_private_in_scope(&self.scope)
+        self.cs.borrow().num_private_in_scope(&self.scope)
     }
 
     pub fn num_constraints_in_scope(&self) -> usize {
-        self.circuit.borrow().num_constraints_in_scope(&self.scope)
+        self.cs.borrow().num_constraints_in_scope(&self.scope)
     }
 }
 

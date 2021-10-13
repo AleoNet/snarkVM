@@ -17,7 +17,7 @@
 use crate::models::*;
 use snarkvm_fields::traits::*;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
 pub(super) struct ConstraintSystem<F: PrimeField> {
@@ -26,6 +26,7 @@ pub(super) struct ConstraintSystem<F: PrimeField> {
     private: Vec<Variable<F>>,
     constraints: Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)>,
     transcript: HashMap<Variable<F>, Scope>,
+    scopes: HashSet<Scope>,
     counter: CircuitCounter,
 }
 
@@ -37,6 +38,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             private: Default::default(),
             constraints: Default::default(),
             transcript: Default::default(),
+            scopes: Default::default(),
             counter: Default::default(),
         }
     }

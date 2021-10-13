@@ -17,22 +17,22 @@
 pub mod circuit;
 pub use circuit::*;
 
+mod circuit_counter;
+use circuit_counter::*;
+
+pub mod circuit_scope;
+pub use circuit_scope::*;
+
 mod constraint_converter;
 
 mod constraint_system;
 use constraint_system::*;
-
-mod counter;
-use counter::*;
 
 pub mod environment;
 pub use environment::*;
 
 pub mod linear_combination;
 pub use linear_combination::*;
-
-pub mod scope;
-pub use scope::*;
 
 pub mod variable;
 pub use variable::*;
