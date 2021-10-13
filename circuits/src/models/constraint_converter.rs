@@ -33,7 +33,7 @@ struct Converter {
 impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
     fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<Fr>>(
         &self,
-        mut cs: &mut CS,
+        cs: &mut CS,
     ) -> Result<(), snarkvm_r1cs::SynthesisError> {
         let mut converter = Converter {
             public: Default::default(),
@@ -183,7 +183,7 @@ mod tests {
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
         let mut candidate = Field::<E>::new(Mode::Public, one);
         let mut accumulator = Field::new(Mode::Private, two);
-        for i in 0..EXPONENT {
+        for _ in 0..EXPONENT {
             candidate += &accumulator;
             accumulator *= Field::new(Mode::Private, two);
         }
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_constraint_converter() {
-        let candidate_output = create_example_circuit::<Circuit>();
+        let _candidate_output = create_example_circuit::<Circuit>();
 
         let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
         Circuit::cs().circuit.borrow().generate_constraints(&mut cs).unwrap();
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_groth16() {
-        let candidate_output = create_example_circuit::<Circuit>();
+        let _candidate_output = create_example_circuit::<Circuit>();
         let one = <Circuit as Environment>::BaseField::one();
 
         // Groth16 setup, prove, and verify.
@@ -240,6 +240,51 @@ mod tests {
 
             assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
             assert!(!verify_proof(&pvk, &proof, &[one, one + one]).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_marlin() {
+        let _candidate_output = create_example_circuit::<Circuit>();
+        let one = <Circuit as Environment>::BaseField::one();
+
+        // Marlin setup, prove, and verify.
+        {
+            use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+            use snarkvm_marlin::{
+                fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
+                marlin::{MarlinRecursiveMode, MarlinSNARK},
+            };
+            use snarkvm_polycommit::sonic_pc::SonicKZG10;
+            use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+            use core::ops::MulAssign;
+
+            type MultiPC = SonicKZG10<Bls12_377>;
+            type MarlinInst = MarlinSNARK<
+                Fr,
+                Fq,
+                MultiPC,
+                FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
+                MarlinRecursiveMode,
+            >;
+
+            let rng = &mut test_rng();
+
+            let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(200, 200, 300).unwrap();
+            let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+
+            let (index_pk, index_vk) =
+                MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().circuit.borrow()).unwrap();
+            println!("Called circuit setup");
+
+            let proof = MarlinInst::prove(&index_pk, &*Circuit::cs().circuit.borrow(), rng).unwrap();
+            println!("Called prover");
+
+            assert!(MarlinInst::verify(&index_vk, &[one, one], &proof).unwrap());
+            println!("Called verifier");
+            println!("\nShould not verify (i.e. verifier messages should print below):");
+            assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
         }
     }
 }
