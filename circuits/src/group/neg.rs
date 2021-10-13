@@ -54,10 +54,7 @@ mod tests {
     ) {
         Circuit::scoped(name, |scope| {
             let candidate_output = -candidate_input;
-            assert_eq!(
-                (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                candidate_output.to_value()
-            );
+            assert_eq!(expected, candidate_output.eject_value());
 
             assert_eq!(num_constants, scope.num_constants_in_scope());
             assert_eq!(num_public, scope.num_public_in_scope());

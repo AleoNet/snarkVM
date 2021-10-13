@@ -52,8 +52,9 @@ mod tests {
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            let candidate = Affine::<Circuit>::zero();
-            assert_eq!((zero, one), candidate.to_value());
+            let candidate = Affine::<Circuit>::zero().eject_value();
+            assert_eq!(zero, candidate.to_x_coordinate());
+            assert_eq!(one, candidate.to_y_coordinate());
 
             assert_eq!(6, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());

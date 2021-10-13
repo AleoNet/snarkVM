@@ -20,7 +20,6 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsParameters},
     AffineCurve,
 };
-use snarkvm_fields::PrimeField;
 
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
@@ -163,7 +162,7 @@ impl Environment for Circuit {
         Self::cs().cs.borrow().num_constraints_in_scope(scope)
     }
 
-    fn recover_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
+    fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
         if let Some(element) = Self::Affine::from_x_coordinate(x, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return element;
@@ -176,7 +175,10 @@ impl Environment for Circuit {
             }
         }
 
-        Self::halt(format!("Failed to recover affine group element from {}", x))
+        Self::halt(format!(
+            "Failed to recover an affine element from an x-coordinate of {}",
+            x
+        ))
     }
 
     fn halt<S: Into<String>, T>(message: S) -> T {

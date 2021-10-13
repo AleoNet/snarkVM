@@ -29,8 +29,11 @@ impl<E: Environment> Add<&Self> for Affine<E> {
 
     fn add(self, other: &Self) -> Self::Output {
         if self.is_constant() && other.is_constant() {
-            let (x1, y1) = self.to_value();
-            let (x2, y2) = other.to_value();
+            let this = self.eject_value();
+            let that = other.eject_value();
+
+            let (x1, y1) = (this.to_x_coordinate(), this.to_y_coordinate());
+            let (x2, y2) = (that.to_x_coordinate(), that.to_y_coordinate());
 
             let y1y2 = y1 * y2;
             let x1x2 = x1 * x2;
@@ -139,153 +142,217 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
+    fn check_add(
+        name: &str,
+        expected: &<Circuit as Environment>::Affine,
+        a: &Affine<Circuit>,
+        b: &Affine<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let candidate = a + b;
+            assert_eq!(
+                *expected,
+                candidate.eject_value(),
+                "{} != {} := ({} + {})",
+                expected,
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
+            );
+
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
+        });
+    }
+
+    fn check_add_assign(
+        name: &str,
+        expected: &<Circuit as Environment>::Affine,
+        a: &Affine<Circuit>,
+        b: &Affine<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let mut candidate = a.clone();
+            candidate += b;
+            assert_eq!(
+                *expected,
+                candidate.eject_value(),
+                "{} != {} := ({} + {})",
+                expected,
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
+            );
+
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
+        });
+    }
+
     #[test]
-    fn test_add() {
-        // Constant + Constant
+    fn test_constant_plus_constant() {
         for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let expected = a + b;
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
 
-            Circuit::scoped(&format!("Constant + Constant {}", i), |scope| {
-                let candidate = a + b;
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
-
-                assert_eq!(8, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            });
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 8, 0, 0, 0);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 8, 0, 0, 0);
         }
+    }
 
-        // Constant + Public
+    #[test]
+    fn test_constant_plus_public() {
         for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let expected = a + b;
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
 
-            Circuit::scoped(&format!("Constant + Public {}", i), |scope| {
-                let candidate = a + b;
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
-
-                assert_eq!(3, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(3, scope.num_private_in_scope());
-                assert_eq!(3, scope.num_constraints_in_scope());
-            });
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 3, 0, 3, 3);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 3, 0, 3, 3);
         }
+    }
 
-        // Public + Constant
+    #[test]
+    fn test_public_plus_constant() {
         for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let expected = a + b;
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
 
-            Circuit::scoped(&format!("Public + Constant {}", i), |scope| {
-                let candidate = a + b;
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
-
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(3, scope.num_private_in_scope());
-                assert_eq!(3, scope.num_constraints_in_scope());
-            });
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
         }
+    }
 
-        // Public + Public
+    #[test]
+    fn test_constant_plus_private() {
         for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let expected = a + b;
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
 
-            Circuit::scoped(&format!("Public + Public {}", i), |scope| {
-                let candidate = a + b;
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
-
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(6, scope.num_private_in_scope());
-                assert_eq!(6, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
-            });
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 3, 0, 3, 3);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 3, 0, 3, 3);
         }
+    }
 
-        // Public + Private
+    #[test]
+    fn test_private_plus_constant() {
         for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let expected = a + b;
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
 
-            Circuit::scoped(&format!("Public + Private {}", i), |scope| {
-                let candidate = a + b;
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
-
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(6, scope.num_private_in_scope());
-                assert_eq!(6, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
-            });
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
         }
+    }
 
-        // Private + Private
+    #[test]
+    fn test_public_plus_public() {
         for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let expected = a + b;
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
 
-            Circuit::scoped(&format!("Private + Private {}", i), |scope| {
-                let candidate = a + b;
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+        }
+    }
 
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(6, scope.num_private_in_scope());
-                assert_eq!(6, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
-            });
+    #[test]
+    fn test_public_plus_private() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+        }
+    }
+
+    #[test]
+    fn test_private_plus_public() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+        }
+    }
+
+    #[test]
+    fn test_private_plus_private() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+
+            let expected = first + second;
+            let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
+            let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+
+            let name = format!("Add: a + b {}", i);
+            check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
+            let name = format!("AddAssign: a + b {}", i);
+            check_add_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
         }
     }
 
@@ -300,18 +367,12 @@ mod tests {
         let first = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
         let second = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
         let candidate_a = first + second;
-        assert_eq!(
-            (expected.to_x_coordinate(), expected.to_y_coordinate()),
-            candidate_a.to_value()
-        );
+        assert_eq!(expected, candidate_a.eject_value());
 
         // Private
         let first = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
         let second = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
         let candidate_b = first + second;
-        assert_eq!(
-            (expected.to_x_coordinate(), expected.to_y_coordinate()),
-            candidate_b.to_value()
-        );
+        assert_eq!(expected, candidate_b.eject_value());
     }
 }

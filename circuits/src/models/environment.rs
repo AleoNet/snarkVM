@@ -85,7 +85,7 @@ pub trait Environment: Clone {
     fn num_private_in_scope(scope: &Scope) -> usize;
     fn num_constraints_in_scope(scope: &Scope) -> usize;
 
-    fn recover_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
+    fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
 
     fn halt<S: Into<String>, T>(message: S) -> T {
         panic!("{}", message.into())

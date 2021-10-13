@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::*, Affine, Boolean, Environment, Field, Mode};
+use crate::{traits::*, Affine, Boolean, Environment, Field};
 
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;

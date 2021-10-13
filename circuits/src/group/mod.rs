@@ -26,7 +26,10 @@ pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, Field, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{Field as F, One as O, Zero as Z};
+use snarkvm_fields::{Field as F, One as O};
+
+#[cfg(test)]
+use snarkvm_fields::Zero as Z;
 
 // use num_traits::Inv;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -50,7 +53,7 @@ impl<E: Environment> Affine<E> {
         // Derive the y-coordinate if it is not given.
         let y = match y {
             Some(y) => y,
-            None => E::recover_from_x_coordinate(x).to_y_coordinate(),
+            None => E::affine_from_x_coordinate(x).to_y_coordinate(),
         };
 
         // Initialize the x- and y-coordinate field elements.
@@ -93,8 +96,13 @@ impl<E: Environment> Affine<E> {
         self.x.is_constant() && self.y.is_constant()
     }
 
-    pub fn to_value(&self) -> (E::BaseField, E::BaseField) {
-        (self.x.eject_value(), self.y.eject_value())
+    ///
+    /// Ejects the group as a constant group element.
+    ///
+    pub fn eject_value(&self) -> E::Affine {
+        let value = E::affine_from_x_coordinate(self.x.eject_value());
+        assert_eq!(value.to_y_coordinate(), self.y.eject_value());
+        value
     }
 }
 
@@ -118,14 +126,14 @@ mod tests {
             let y_coordinate = point.to_y_coordinate();
             {
                 // Verify the recovery method is behaving correctly.
-                let recovered = Circuit::recover_from_x_coordinate(x_coordinate);
+                let recovered = Circuit::affine_from_x_coordinate(x_coordinate);
                 assert_eq!(x_coordinate, recovered.to_x_coordinate());
                 assert_eq!(y_coordinate, recovered.to_y_coordinate());
             }
 
             Circuit::scoped(&format!("Constant {}", i), |scope| {
                 let affine = Affine::<Circuit>::new(Mode::Constant, x_coordinate, None);
-                assert_eq!((x_coordinate, y_coordinate), affine.to_value());
+                assert_eq!(point, affine.eject_value());
 
                 assert_eq!(8, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -139,11 +147,10 @@ mod tests {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let x_coordinate = point.to_x_coordinate();
-            let y_coordinate = point.to_y_coordinate();
 
             Circuit::scoped(&format!("Public {}", i), |scope| {
                 let affine = Affine::<Circuit>::new(Mode::Public, x_coordinate, None);
-                assert_eq!((x_coordinate, y_coordinate), affine.to_value());
+                assert_eq!(point, affine.eject_value());
 
                 assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(2, scope.num_public_in_scope());
@@ -158,11 +165,10 @@ mod tests {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let x_coordinate = point.to_x_coordinate();
-            let y_coordinate = point.to_y_coordinate();
 
             Circuit::scoped(&format!("Private {}", i), |scope| {
                 let affine = Affine::<Circuit>::new(Mode::Private, x_coordinate, None);
-                assert_eq!((x_coordinate, y_coordinate), affine.to_value());
+                assert_eq!(point, affine.eject_value());
 
                 assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());

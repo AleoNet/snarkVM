@@ -107,10 +107,7 @@ mod tests {
 
             Circuit::scoped(&format!("Constant {}", i), |scope| {
                 let candidate = affine.double();
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(8, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -129,10 +126,7 @@ mod tests {
 
             Circuit::scoped(&format!("Public {}", i), |scope| {
                 let candidate = affine.double();
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -152,10 +146,7 @@ mod tests {
 
             Circuit::scoped(&format!("Private {}", i), |scope| {
                 let candidate = affine.double();
-                assert_eq!(
-                    (expected.to_x_coordinate(), expected.to_y_coordinate()),
-                    candidate.to_value()
-                );
+                assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(2, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
@@ -175,17 +166,11 @@ mod tests {
         // Constant
         let candidate_a =
             Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate())).double();
-        assert_eq!(
-            (expected.to_x_coordinate(), expected.to_y_coordinate()),
-            candidate_a.to_value()
-        );
+        assert_eq!(expected, candidate_a.eject_value());
 
         // Private
         let candidate_b =
             Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate())).double();
-        assert_eq!(
-            (expected.to_x_coordinate(), expected.to_y_coordinate()),
-            candidate_b.to_value()
-        );
+        assert_eq!(expected, candidate_b.eject_value());
     }
 }

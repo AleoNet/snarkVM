@@ -161,7 +161,6 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{Circuit, Environment, Field, Mode, One};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One as O;
@@ -222,8 +221,6 @@ mod tests {
             use snarkvm_curves::bls12_377::Bls12_377;
             use snarkvm_utilities::rand::test_rng;
 
-            use core::ops::MulAssign;
-
             let rng = &mut test_rng();
 
             let parameters = generate_random_parameters::<Bls12_377, _, _>(&*Circuit::cs().cs.borrow(), rng).unwrap();
@@ -250,8 +247,6 @@ mod tests {
             };
             use snarkvm_polycommit::sonic_pc::SonicKZG10;
             use snarkvm_utilities::rand::test_rng;
-
-            use core::ops::MulAssign;
 
             type MultiPC = SonicKZG10<Bls12_377>;
             type MarlinInst = MarlinSNARK<
