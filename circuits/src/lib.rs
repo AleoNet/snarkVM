@@ -26,8 +26,8 @@ pub use group::*;
 pub mod models;
 pub use models::*;
 
-pub mod operations;
-pub use operations::*;
+pub mod programs;
+pub use programs::*;
 
 pub mod traits;
 pub use traits::*;

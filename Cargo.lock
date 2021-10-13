@@ -1661,6 +1661,8 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-marlin",
+ "snarkvm-polycommit",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",

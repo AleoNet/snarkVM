@@ -15,11 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::models::{ConstraintSystem, LinearCombination, Variable};
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters},
-    AffineCurve,
-};
 use snarkvm_fields::PrimeField;
 
 use std::collections::HashMap;
@@ -30,8 +25,8 @@ struct Converter {
     private: HashMap<u64, snarkvm_r1cs::Variable>,
 }
 
-impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
-    fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<Fr>>(
+impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<F> {
+    fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), snarkvm_r1cs::SynthesisError> {
@@ -40,7 +35,7 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
             private: Default::default(),
         };
 
-        // Ensure the given `cs` is starting clean.
+        // Ensure the given `cs` is starting off clean.
         assert_eq!(1, cs.num_public_variables());
         assert_eq!(0, cs.num_private_variables());
         assert_eq!(0, cs.num_constraints());
@@ -104,9 +99,9 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
         // Enforce all of the constraints.
         for (i, (a, b, c)) in self.to_constraints().iter().enumerate() {
             // Converts terms from one linear combination in the first system to the second system.
-            let convert_linear_combination = |lc: &LinearCombination<Fr>| -> snarkvm_r1cs::LinearCombination<Fr> {
+            let convert_linear_combination = |lc: &LinearCombination<F>| -> snarkvm_r1cs::LinearCombination<F> {
                 // Initialize a linear combination for the second system.
-                let mut linear_combination = snarkvm_r1cs::LinearCombination::<Fr>::zero();
+                let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
 
                 // Keep an accumulator for constant values in the linear combination.
                 let mut constant_accumulator = lc.to_constant();
@@ -168,10 +163,9 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
 mod tests {
     use super::*;
     use crate::{Circuit, Environment, Field, Mode, One};
+    use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One as O;
     use snarkvm_r1cs::ConstraintSynthesizer;
-
-    const ITERATIONS: usize = 1000;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
@@ -225,7 +219,7 @@ mod tests {
                 prepare_verifying_key,
                 verify_proof,
             };
-            use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+            use snarkvm_curves::bls12_377::Bls12_377;
             use snarkvm_utilities::rand::test_rng;
 
             use core::ops::MulAssign;
@@ -249,7 +243,7 @@ mod tests {
 
         // Marlin setup, prove, and verify.
         {
-            use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+            use snarkvm_curves::bls12_377::{Bls12_377, Fq};
             use snarkvm_marlin::{
                 fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
                 marlin::{MarlinRecursiveMode, MarlinSNARK},

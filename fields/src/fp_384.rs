@@ -559,7 +559,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 impl<P: Fp384Parameters> Debug for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp384({})", self.to_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 

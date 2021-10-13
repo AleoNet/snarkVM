@@ -894,7 +894,7 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
 impl<P: Fp768Parameters> Debug for Fp768<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp768({})", self.to_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 
