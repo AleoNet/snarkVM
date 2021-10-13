@@ -20,7 +20,7 @@ use std::{
 };
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
@@ -406,6 +406,32 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesLEGadget<BaseField>
         match self {
             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Var(v) => v.to_bytes_le_strict(cs.ns(|| "to_bytes_strict")),
+        }
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesBEGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    /// Outputs the unique byte decomposition of `self` in *little-endian*
+    /// form.
+    fn to_bytes_be<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        match self {
+            Self::Constant(c) => {
+                let bytes = &to_bytes_le![c].unwrap().into_iter().rev().collect::<Vec<u8>>();
+                Ok(UInt8::constant_vec(bytes))
+            }
+            Self::Var(v) => v.to_bytes_be(cs.ns(|| "to_bytes")),
+        }
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        match self {
+            Self::Constant(c) => {
+                let bytes = &to_bytes_le![c].unwrap().into_iter().rev().collect::<Vec<u8>>();
+                Ok(UInt8::constant_vec(bytes))
+            }
+            Self::Var(v) => v.to_bytes_be_strict(cs.ns(|| "to_bytes_strict")),
         }
     }
 }

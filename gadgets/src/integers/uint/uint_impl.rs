@@ -29,6 +29,7 @@ use crate::{
         FromBytesLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
+        ToBytesBEGadget,
         ToBytesLEGadget,
     },
     fields::FpGadget,

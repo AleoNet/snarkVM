@@ -26,7 +26,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
 use crate::{
-    bits::{Boolean, ToBytesLEGadget},
+    bits::{Boolean, ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         algorithms::EncryptionGadget,
@@ -102,11 +102,21 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
 
 impl<G: Group, F: PrimeField> ToBytesLEGadget<F> for GroupEncryptionPrivateKeyGadget<G> {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes_le(&mut cs.ns(|| "to_bytes"))
+        self.0.to_bytes_le(&mut cs.ns(|| "to_bytes_le"))
     }
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes_le_strict(&mut cs.ns(|| "to_bytes_strict"))
+        self.0.to_bytes_le_strict(&mut cs.ns(|| "to_bytes_le_strict"))
+    }
+}
+
+impl<G: Group, F: PrimeField> ToBytesBEGadget<F> for GroupEncryptionPrivateKeyGadget<G> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_be(&mut cs.ns(|| "to_bytes_be"))
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_be_strict(&mut cs.ns(|| "to_bytes_be_strict"))
     }
 }
 
@@ -230,7 +240,9 @@ impl<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBy
 {
     /// Writes the x-coordinate of the encryption public key.
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.public_key.to_x_coordinate().to_bytes_le(&mut cs.ns(|| "to_bytes"))
+        self.public_key
+            .to_x_coordinate()
+            .to_bytes_le(&mut cs.ns(|| "to_bytes_le"))
     }
 
     /// Writes the x-coordinate of the encryption public key. Additionally checks if the
@@ -238,7 +250,26 @@ impl<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBy
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.public_key
             .to_x_coordinate()
-            .to_bytes_le_strict(&mut cs.ns(|| "to_bytes_strict"))
+            .to_bytes_le_strict(&mut cs.ns(|| "to_bytes_le_strict"))
+    }
+}
+
+impl<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBytesBEGadget<F>
+    for GroupEncryptionPublicKeyGadget<G, F, GG>
+{
+    /// Writes the x-coordinate of the encryption public key.
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le(cs)?;
+        bytes.reverse();
+        Ok(bytes)
+    }
+
+    /// Writes the x-coordinate of the encryption public key. Additionally checks if the
+    /// generated list of booleans is 'valid'.
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le_strict(cs)?;
+        bytes.reverse();
+        Ok(bytes)
     }
 }
 
@@ -423,7 +454,7 @@ impl<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBy
         for (i, group_gadget) in self.ciphertext.iter().enumerate() {
             let group_bytes = group_gadget
                 .to_x_coordinate()
-                .to_bytes_le(&mut cs.ns(|| format!("to_bytes {}", i)))?;
+                .to_bytes_le(&mut cs.ns(|| format!("to_bytes_le {}", i)))?;
             output_bytes.extend(group_bytes);
         }
 
@@ -435,11 +466,27 @@ impl<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBy
         for (i, group_gadget) in self.ciphertext.iter().enumerate() {
             let group_bytes = group_gadget
                 .to_x_coordinate()
-                .to_bytes_le_strict(&mut cs.ns(|| format!("to_bytes_strict {}", i)))?;
+                .to_bytes_le_strict(&mut cs.ns(|| format!("to_bytes_le_strict {}", i)))?;
             output_bytes.extend(group_bytes);
         }
 
         Ok(output_bytes)
+    }
+}
+
+impl<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBytesBEGadget<F>
+    for GroupEncryptionCiphertextGadget<G, F, GG>
+{
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le(cs)?;
+        bytes.reverse();
+        Ok(bytes)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le_strict(cs)?;
+        bytes.reverse();
+        Ok(bytes)
     }
 }
 

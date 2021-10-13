@@ -31,6 +31,7 @@ use snarkvm_gadgets::{
     Integer,
     ToBitsBEGadget,
     ToBitsLEGadget,
+    ToBytesBEGadget,
     ToBytesLEGadget,
 };
 use snarkvm_ir::Value;
@@ -307,7 +308,7 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Address {
 }
 
 impl<F: Field> FromBitsLEGadget<F> for Address {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Address, SynthesisError> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Address, SynthesisError> {
         /* if bits.len() !=  {
             return Err(SynthesisError::Unsatisfiable);
         } */
@@ -321,7 +322,7 @@ impl<F: Field> FromBitsLEGadget<F> for Address {
 }
 
 impl<F: Field> FromBitsBEGadget<F> for Address {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
         /* if bits.len() !=  {
             return Err(SynthesisError::Unsatisfiable);
         } */
@@ -341,6 +342,16 @@ impl<F: PrimeField> ToBytesLEGadget<F> for Address {
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.bytes.to_bytes_le_strict(cs)
+    }
+}
+
+impl<F: PrimeField> ToBytesBEGadget<F> for Address {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.bytes.to_bytes_be(cs)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.bytes.to_bytes_be_strict(cs)
     }
 }
 

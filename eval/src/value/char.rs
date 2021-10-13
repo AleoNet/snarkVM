@@ -26,6 +26,7 @@ use snarkvm_gadgets::{
     FromBitsLEGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
+    ToBytesBEGadget,
     ToBytesLEGadget,
     UInt8,
 };
@@ -226,6 +227,16 @@ impl<F: PrimeField> ToBytesLEGadget<F> for Char<F> {
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.field.to_bytes_le_strict(cs)
+    }
+}
+
+impl<F: PrimeField> ToBytesBEGadget<F> for Char<F> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.field.to_bytes_be(cs)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.field.to_bytes_be_strict(cs)
     }
 }
 

@@ -19,7 +19,17 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
 
 use crate::{
-    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
+    bits::{
+        Boolean,
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::integers::Integer,
 };
@@ -86,11 +96,10 @@ macro_rules! int_impl {
             }
         }
 
-        to_bits_le_int_impl!($name);
-        from_bits_le_int_impl!($name, $type_, $utype_, $size);
-        to_bits_be_int_impl!($name);
-        from_bits_be_int_impl!($name, $type_, $utype_, $size);
+        to_bits_int_impl!($name);
         to_bytes_int_impl!($name, $size);
+
+        from_bits_int_impl!($name, $type_, $utype_, $size);
     };
 }
 

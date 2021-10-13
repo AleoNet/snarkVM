@@ -21,7 +21,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, ToBytesLEGadget},
+    bits::{Boolean, ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::{UInt, UInt32, UInt8},
     traits::{
         algorithms::PRFGadget,
@@ -429,6 +429,20 @@ impl<F: PrimeField> ToBytesLEGadget<F> for Blake2sOutputGadget {
     #[inline]
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes_le(cs)
+    }
+}
+
+impl<F: PrimeField> ToBytesBEGadget<F> for Blake2sOutputGadget {
+    #[inline]
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.0.clone();
+        bytes.reverse();
+        Ok(bytes)
+    }
+
+    #[inline]
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
     }
 }
 

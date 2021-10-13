@@ -41,6 +41,7 @@ use crate::{
         FromBitsLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
+        ToBytesBEGadget,
         ToBytesLEGadget,
     },
     integers::uint::UInt8,
@@ -586,6 +587,20 @@ impl<F: PrimeField> ToBytesLEGadget<F> for AllocatedFp<F> {
                 .collect::<Vec<_>>(),
         )?;
 
+        Ok(bytes)
+    }
+}
+
+impl<F: PrimeField> ToBytesBEGadget<F> for AllocatedFp<F> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le(cs)?;
+        bytes.reverse();
+        Ok(bytes)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le_strict(cs)?;
+        bytes.reverse();
         Ok(bytes)
     }
 }
@@ -1214,6 +1229,28 @@ impl<F: PrimeField> ToBytesLEGadget<F> for FpGadget<F> {
         match self {
             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Variable(v) => v.to_bytes_le_strict(cs),
+        }
+    }
+}
+
+impl<F: PrimeField> ToBytesBEGadget<F> for FpGadget<F> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        match self {
+            Self::Constant(c) => {
+                let bytes = &to_bytes_le![c].unwrap().into_iter().rev().collect::<Vec<u8>>();
+                Ok(UInt8::constant_vec(bytes))
+            }
+            Self::Variable(v) => v.to_bytes_be(cs),
+        }
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        match self {
+            Self::Constant(c) => {
+                let bytes = &to_bytes_le![c].unwrap().into_iter().rev().collect::<Vec<u8>>();
+                Ok(UInt8::constant_vec(bytes))
+            }
+            Self::Variable(v) => v.to_bytes_be_strict(cs),
         }
     }
 }

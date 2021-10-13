@@ -21,7 +21,7 @@ use std::{
 };
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     overhead,
@@ -679,6 +679,20 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesLEGadget<BaseField>
 
     fn to_bytes_le_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes_le(cs)
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesBEGadget<BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    fn to_bytes_be<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = self.to_bytes_le(cs)?;
+        bytes.reverse();
+        Ok(bytes)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
     }
 }
 

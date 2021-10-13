@@ -21,7 +21,7 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::ToBytesLEGadget,
+    bits::{ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
@@ -34,6 +34,7 @@ pub trait CRHGadget<H: CRH, F: Field>: Sized + Clone {
     type ParametersGadget: AllocGadget<H::Parameters, F> + Clone;
     type OutputGadget: ConditionalEqGadget<F>
         + EqGadget<F>
+        + ToBytesBEGadget<F>
         + ToBytesLEGadget<F>
         + CondSelectGadget<F>
         + AllocGadget<H::Output, F>

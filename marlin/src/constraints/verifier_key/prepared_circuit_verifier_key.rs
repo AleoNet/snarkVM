@@ -19,7 +19,7 @@ use std::marker::PhantomData;
 
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    bits::ToBytesLEGadget,
+    bits::{ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -446,6 +446,41 @@ where
         let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
 
         res.append(&mut unprepared_vk.to_bytes_le_strict(cs.ns(|| "to_bytes_strict"))?);
+
+        Ok(res)
+    }
+}
+
+impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesBEGadget<BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    fn to_bytes_be<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
+
+        res.append(&mut unprepared_vk.to_bytes_be(cs.ns(|| "to_bytes"))?);
+
+        Ok(res)
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
+
+        res.append(&mut unprepared_vk.to_bytes_be_strict(cs.ns(|| "to_bytes_strict"))?);
 
         Ok(res)
     }

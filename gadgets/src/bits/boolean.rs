@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    bits::ToBytesLEGadget,
+    bits::{ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -924,6 +924,26 @@ impl<F: Field> ToBytesLEGadget<F> for Boolean {
     /// Additionally checks if the produced list of booleans is 'valid'.
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes_le(cs)
+    }
+}
+
+impl<F: Field> ToBytesBEGadget<F> for Boolean {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bits = vec![Boolean::constant(false); 7];
+        bits.push(*self);
+        bits.reverse();
+        let value = self.get_value().map(|val| val as u8);
+        let byte = UInt8 {
+            bits,
+            negated: false,
+            value,
+        };
+        Ok(vec![byte])
+    }
+
+    /// Additionally checks if the produced list of booleans is 'valid'.
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_be(cs)
     }
 }
 

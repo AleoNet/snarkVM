@@ -30,6 +30,7 @@ use crate::{
         FromBytesLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
+        ToBytesBEGadget,
         ToBytesLEGadget,
     },
     integers::uint::{UInt, UInt8},

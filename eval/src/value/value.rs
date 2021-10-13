@@ -23,6 +23,7 @@ use snarkvm_gadgets::{
     traits::{eq::ConditionalEqGadget, select::CondSelectGadget},
     ToBitsBEGadget,
     ToBitsLEGadget,
+    ToBytesBEGadget,
     ToBytesLEGadget,
 };
 use snarkvm_ir::Type;
@@ -199,6 +200,36 @@ impl<F: PrimeField, G: GroupType<F>> ToBytesLEGadget<F> for ConstrainedValue<F, 
             Field(field) => field.to_bytes_le_strict(cs),
             Group(group) => group.to_bytes_le_strict(cs),
             Integer(integer) => integer.to_bytes_le_strict(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
+    }
+}
+
+impl<F: PrimeField, G: GroupType<F>> ToBytesBEGadget<F> for ConstrainedValue<F, G> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bytes_be(cs),
+            Boolean(boolean) => boolean.to_bytes_be(cs),
+            Char(character) => character.to_bytes_be(cs),
+            Field(field) => field.to_bytes_be(cs),
+            Group(group) => group.to_bytes_be(cs),
+            Integer(integer) => integer.to_bytes_be(cs),
+            _ => Err(SynthesisError::UnknownMethod),
+        }
+    }
+
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(address) => address.to_bytes_be_strict(cs),
+            Boolean(boolean) => boolean.to_bytes_be_strict(cs),
+            Char(character) => character.to_bytes_be_strict(cs),
+            Field(field) => field.to_bytes_be_strict(cs),
+            Group(group) => group.to_bytes_be_strict(cs),
+            Integer(integer) => integer.to_bytes_be_strict(cs),
             _ => Err(SynthesisError::UnknownMethod),
         }
     }
