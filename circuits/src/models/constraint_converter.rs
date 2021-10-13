@@ -40,6 +40,11 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
             private: Default::default(),
         };
 
+        // Ensure the given `cs` is starting clean.
+        assert_eq!(1, cs.num_public_variables());
+        assert_eq!(0, cs.num_private_variables());
+        assert_eq!(0, cs.num_constraints());
+
         // Allocate the public variables.
         for (i, public) in self.to_public_variables().iter().enumerate() {
             match public {
@@ -150,6 +155,11 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fr> for ConstraintSystem<Fr> {
             );
         }
 
+        // Ensure the given `cs` matches in size with the first system.
+        assert_eq!(self.num_public() + 1, cs.num_public_variables());
+        assert_eq!(self.num_private(), cs.num_private_variables());
+        assert_eq!(self.num_constraints(), cs.num_constraints());
+
         Ok(())
     }
 }
@@ -163,25 +173,33 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    #[test]
-    fn test_constraint_converter() {
-        let one = <Circuit as Environment>::BaseField::one();
+    /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
+    fn create_example_circuit<E: Environment>() -> Field<E> {
+        let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
         const EXPONENT: usize = 64;
 
-        // Compute 2^EXPONENT - 1, in a constraint inefficient manner for testing.
-        let mut candidate = Field::<Circuit>::new(Mode::Public, one);
-        let mut accumulator = Field::<Circuit>::new(Mode::Private, two);
+        // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
+        let mut candidate = Field::<E>::new(Mode::Public, one);
+        let mut accumulator = Field::new(Mode::Private, two);
         for i in 0..EXPONENT {
             candidate += &accumulator;
             accumulator *= Field::new(Mode::Private, two);
         }
+
         assert_eq!((accumulator - Field::one()).to_value(), candidate.to_value());
-        assert_eq!(2, Circuit::num_public());
-        assert_eq!(2 * EXPONENT + 1, Circuit::num_private());
-        assert_eq!(EXPONENT, Circuit::num_constraints());
-        assert!(Circuit::is_satisfied());
+        assert_eq!(2, E::num_public());
+        assert_eq!(2 * EXPONENT + 1, E::num_private());
+        assert_eq!(EXPONENT, E::num_constraints());
+        assert!(E::is_satisfied());
+
+        candidate
+    }
+
+    #[test]
+    fn test_constraint_converter() {
+        let candidate_output = create_example_circuit::<Circuit>();
 
         let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
         Circuit::cs().circuit.borrow().generate_constraints(&mut cs).unwrap();
@@ -191,6 +209,37 @@ mod tests {
             assert_eq!(Circuit::num_private(), cs.num_private_variables());
             assert_eq!(Circuit::num_constraints(), cs.num_constraints());
             assert!(cs.is_satisfied());
+        }
+    }
+
+    #[test]
+    fn test_groth16() {
+        let candidate_output = create_example_circuit::<Circuit>();
+        let one = <Circuit as Environment>::BaseField::one();
+
+        // Groth16 setup, prove, and verify.
+        {
+            use snarkvm_algorithms::snark::groth16::{
+                create_random_proof,
+                generate_random_parameters,
+                prepare_verifying_key,
+                verify_proof,
+            };
+            use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+            use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+            use core::ops::MulAssign;
+
+            let rng = &mut test_rng();
+
+            let parameters =
+                generate_random_parameters::<Bls12_377, _, _>(&*Circuit::cs().circuit.borrow(), rng).unwrap();
+
+            let proof = create_random_proof(&*Circuit::cs().circuit.borrow(), &parameters, rng).unwrap();
+            let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
+
+            assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
+            assert!(!verify_proof(&pvk, &proof, &[one, one + one]).unwrap());
         }
     }
 }
