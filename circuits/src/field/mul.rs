@@ -16,21 +16,27 @@
 
 use super::*;
 
-impl<E: Environment> Mul<Self> for Field<E> {
-    type Output = Self;
+impl<E: Environment> Mul<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
-    fn mul(self, other: Self) -> Self::Output {
+    fn mul(self, other: Field<E>) -> Self::Output {
         self * &other
     }
 }
 
-impl<E: Environment> Mul<&Self> for Field<E> {
-    type Output = Self;
+impl<E: Environment> Mul<Field<E>> for &Field<E> {
+    type Output = Field<E>;
 
-    fn mul(self, other: &Self) -> Self::Output {
-        let mut output = self;
-        output *= other;
-        output
+    fn mul(self, other: Field<E>) -> Self::Output {
+        other * self
+    }
+}
+
+impl<E: Environment> Mul<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    fn mul(self, other: &Field<E>) -> Self::Output {
+        &self * other
     }
 }
 
@@ -44,25 +50,25 @@ impl<E: Environment> Mul<&Field<E>> for &Field<E> {
     }
 }
 
-impl<E: Environment> MulAssign<Self> for Field<E> {
-    fn mul_assign(&mut self, other: Self) {
+impl<E: Environment> MulAssign<Field<E>> for Field<E> {
+    fn mul_assign(&mut self, other: Field<E>) {
         *self *= &other;
     }
 }
 
-impl<E: Environment> MulAssign<&Self> for Field<E> {
-    fn mul_assign(&mut self, other: &Self) {
+impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
+    fn mul_assign(&mut self, other: &Field<E>) {
         match (self.is_constant(), other.is_constant()) {
             (true, true) => *self = Self::new(Mode::Constant, self.eject_value() * other.eject_value()),
             (true, false) => self.0 = other.0.clone() * self.eject_value(),
             (false, true) => self.0 = self.0.clone() * other.eject_value(),
             (false, false) => {
-                let product = E::new_variable(Mode::Private, self.eject_value() * other.eject_value());
+                let product = Field::new(Mode::Private, self.eject_value() * other.eject_value());
 
                 // Ensure self * other == product.
-                E::enforce(|| (self.0.clone(), other, product));
+                E::enforce(|| (self.0.clone(), other, &product));
 
-                self.0 = product.into();
+                *self = product;
             }
         }
     }

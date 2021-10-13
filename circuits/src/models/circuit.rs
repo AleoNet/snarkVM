@@ -16,8 +16,7 @@
 
 use crate::models::*;
 use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters},
+    edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq, Fr},
     AffineCurve,
 };
 
@@ -29,7 +28,7 @@ thread_local! {
 }
 
 #[derive(Clone)]
-pub struct Circuit(CircuitScope<Fr>);
+pub struct Circuit(CircuitScope<Fq>);
 
 impl Circuit {
     pub(super) fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
@@ -72,12 +71,15 @@ impl Circuit {
 impl Environment for Circuit {
     type Affine = EdwardsAffine;
     type AffineParameters = EdwardsParameters;
-    type BaseField = Fr;
+    type BaseField = Fq;
+    type ScalarField = Fr;
 
+    /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {
         LinearCombination::zero()
     }
 
+    /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField> {
         LinearCombination::one()
     }

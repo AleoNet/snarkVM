@@ -48,7 +48,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 let is_neq = Boolean::new(Mode::Private, this != that);
 
                 // Assign the expected multiplier.
-                let multiplier = E::new_variable(Mode::Private, match this != that {
+                let multiplier = Field::<E>::new(Mode::Private, match this != that {
                     true => (this - that).inverse().expect("Failed to compute a native inverse"),
                     false => E::BaseField::one(),
                 });
@@ -123,7 +123,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 let is_eq = !is_neq.clone();
 
                 // Check 1: (a - b) * multiplier = is_neq
-                E::enforce(|| (delta.clone(), multiplier, is_neq.clone()));
+                E::enforce(|| (delta.clone(), &multiplier, is_neq.clone()));
 
                 // Check 2: (a - b) * not(is_neq) = 0
                 E::enforce(|| (delta, is_eq, E::zero()));

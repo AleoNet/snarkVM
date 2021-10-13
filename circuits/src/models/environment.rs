@@ -38,14 +38,15 @@ pub trait Environment: Clone {
     type Affine: AffineCurve<BaseField = Self::BaseField>;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;
+    type ScalarField: PrimeField + Copy;
 
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
+    /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField>;
 
+    /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField>;
-
-    fn is_satisfied() -> bool;
 
     fn scope(name: &str) -> CircuitScope<Self::BaseField>;
 
@@ -74,6 +75,8 @@ pub trait Environment: Clone {
     {
         Self::enforce(|| (a, Self::one(), b))
     }
+
+    fn is_satisfied() -> bool;
 
     fn num_constants() -> usize;
     fn num_public() -> usize;
