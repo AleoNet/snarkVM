@@ -1,0 +1,23 @@
+decl f0: <0>
+  store &v1, ((v0), (), (), ())
+  call &v3, f1, 5
+  store &v4, v3
+  eq &v5, v4, 3
+  retn v5
+decl f1: <6>
+  eq &v7, v6, 1
+  mask 1, v7
+    retn 0
+  not &v8, v7
+  mask 11, v8
+    eq &v9, v6, 2
+    mask 1, v9
+      retn 1
+    not &v10, v9
+    mask 6, v10
+      sub &v11, v6, 1
+      call &v12, f1, v11
+      sub &v13, v6, 2
+      call &v14, f1, v13
+      add &v15, v12, v14
+      retn v15
