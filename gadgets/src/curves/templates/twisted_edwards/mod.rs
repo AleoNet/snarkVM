@@ -1363,13 +1363,13 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> To
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBytesBEGadget<F>
     for AffineGadget<P, F, FG>
 {
-    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut bytes = self.to_bytes_le(cs)?;
         bytes.reverse();
         Ok(bytes)
     }
 
-    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut bytes = self.to_bytes_le_strict(cs)?;
         bytes.reverse();
         Ok(bytes)
