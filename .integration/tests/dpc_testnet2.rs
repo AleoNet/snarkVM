@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::atomic::AtomicBool;
+
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -98,13 +100,14 @@ fn dpc_testnet2_integration_test() {
     );
 
     // Construct the new block header.
-    let header = BlockHeader::new(
+    let header = BlockHeader::mine_new(
         block_height,
         timestamp,
         difficulty_target,
         transactions_root,
         serial_numbers_root,
         commitments_root,
+        &AtomicBool::new(false),
         &mut rng,
     )
     .unwrap();
