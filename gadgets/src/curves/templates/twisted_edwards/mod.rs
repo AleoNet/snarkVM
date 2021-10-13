@@ -22,7 +22,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
-use snarkvm_utilities::{bititerator::BitIteratorBE, ToBytes};
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},

@@ -98,8 +98,8 @@ macro_rules! int_impl {
 
         to_bits_int_impl!($name);
         to_bytes_int_impl!($name, $size);
-
         from_bits_int_impl!($name, $type_, $utype_, $size);
+        from_bytes_int_impl!($name, $type_, $utype_, $size);
     };
 }
 
