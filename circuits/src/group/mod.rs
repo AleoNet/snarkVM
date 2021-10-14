@@ -18,14 +18,14 @@ pub mod add;
 pub mod double;
 pub mod equal;
 // pub mod inv;
-// pub mod mul;
+pub mod mul;
 pub mod neg;
 // pub mod one;
 pub mod sub;
 pub mod ternary;
 pub mod zero;
 
-use crate::{traits::*, BaseField, Boolean, Environment, Mode};
+use crate::{traits::*, BaseField, Boolean, Environment, Mode, ScalarField};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O};
 

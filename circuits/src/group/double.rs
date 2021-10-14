@@ -33,7 +33,7 @@ impl<E: Environment> Double for &Affine<E> {
         }
 
         let a = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_A);
-        let two = BaseField::new(Mode::Constant, E::BaseField::one()).double();
+        let two = BaseField::one() + BaseField::one();
 
         // Compute xy, xx, yy, axx.
         let xy = &self.x * &self.y;
@@ -128,7 +128,7 @@ mod tests {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(2, scope.num_constants_in_scope());
+                assert_eq!(1, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(5, scope.num_constraints_in_scope());
@@ -148,7 +148,7 @@ mod tests {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(2, scope.num_constants_in_scope());
+                assert_eq!(1, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
                 assert_eq!(5, scope.num_constraints_in_scope());

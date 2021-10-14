@@ -21,11 +21,11 @@ impl<E: Environment> Zero for BaseField<E> {
     type Output = Self::Boolean;
 
     fn zero() -> Self {
-        Self(E::zero())
+        BaseField(E::zero())
     }
 
     fn is_zero(&self) -> Self::Output {
-        self.is_eq(&Self::zero())
+        self.is_eq(&BaseField::zero())
     }
 }
 

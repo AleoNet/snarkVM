@@ -24,11 +24,19 @@ impl<E: Environment> Add<BaseField<E>> for BaseField<E> {
     }
 }
 
+impl<E: Environment> Add<BaseField<E>> for &BaseField<E> {
+    type Output = BaseField<E>;
+
+    fn add(self, other: BaseField<E>) -> Self::Output {
+        self + &other
+    }
+}
+
 impl<E: Environment> Add<&BaseField<E>> for BaseField<E> {
     type Output = BaseField<E>;
 
     fn add(self, other: &BaseField<E>) -> Self::Output {
-        Self(self.0 + &other.0)
+        BaseField(self.0 + &other.0)
     }
 }
 

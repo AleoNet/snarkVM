@@ -21,7 +21,10 @@ impl<E: Environment> Zero for Affine<E> {
     type Output = Self::Boolean;
 
     fn zero() -> Self {
-        Self::from(BaseField::zero(), BaseField::one())
+        Affine {
+            x: BaseField::zero(),
+            y: BaseField::one(),
+        }
     }
 
     fn is_zero(&self) -> Self::Output {
@@ -56,12 +59,12 @@ mod tests {
             assert_eq!(zero, candidate.to_x_coordinate());
             assert_eq!(one, candidate.to_y_coordinate());
 
-            assert_eq!(6, scope.num_constants_in_scope());
+            assert_eq!(0, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            assert_eq!(6, Circuit::num_constants());
+            assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());
             assert_eq!(0, Circuit::num_constraints());

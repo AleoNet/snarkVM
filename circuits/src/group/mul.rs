@@ -16,6 +16,84 @@
 
 use super::*;
 
+impl<E: Environment> Mul<ScalarField<E>> for Affine<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: ScalarField<E>) -> Self::Output {
+        self * &other
+    }
+}
+
+impl<E: Environment> Mul<ScalarField<E>> for &Affine<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: ScalarField<E>) -> Self::Output {
+        self * &other
+    }
+}
+
+impl<E: Environment> Mul<&ScalarField<E>> for Affine<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: &ScalarField<E>) -> Self::Output {
+        let mut output = self;
+        output *= other;
+        output
+    }
+}
+
+impl<E: Environment> Mul<&ScalarField<E>> for &Affine<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: &ScalarField<E>) -> Self::Output {
+        (*self).clone() * other
+    }
+}
+
+impl<E: Environment> Mul<Affine<E>> for ScalarField<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: Affine<E>) -> Self::Output {
+        other * &self
+    }
+}
+
+impl<E: Environment> Mul<Affine<E>> for &ScalarField<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: Affine<E>) -> Self::Output {
+        &other * self
+    }
+}
+
+impl<E: Environment> Mul<&Affine<E>> for ScalarField<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: &Affine<E>) -> Self::Output {
+        other * &self
+    }
+}
+
+impl<E: Environment> Mul<&Affine<E>> for &ScalarField<E> {
+    type Output = Affine<E>;
+
+    fn mul(self, other: &Affine<E>) -> Self::Output {
+        other * self
+    }
+}
+
+impl<E: Environment> MulAssign<ScalarField<E>> for Affine<E> {
+    fn mul_assign(&mut self, other: ScalarField<E>) {
+        *self *= &other;
+    }
+}
+
+impl<E: Environment> MulAssign<&ScalarField<E>> for Affine<E> {
+    fn mul_assign(&mut self, other: &ScalarField<E>) {
+        *self *= other.to_bits_be().as_slice();
+    }
+}
+
 impl<E: Environment, const N: usize> Mul<[Boolean<E>; N]> for Affine<E> {
     type Output = Affine<E>;
 
@@ -46,9 +124,7 @@ impl<E: Environment> Mul<&[Boolean<E>]> for &Affine<E> {
     type Output = Affine<E>;
 
     fn mul(self, other: &[Boolean<E>]) -> Self::Output {
-        let mut output = (*self).clone();
-        output *= other;
-        output
+        (*self).clone() * other
     }
 }
 
@@ -111,13 +187,13 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 10;
 
     fn check_mul(
         name: &str,
         expected: &<Circuit as Environment>::Affine,
         a: &Affine<Circuit>,
-        b: &Field<Circuit>,
+        b: &ScalarField<Circuit>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -147,7 +223,7 @@ mod tests {
         name: &str,
         expected: &<Circuit as Environment>::Affine,
         a: &Affine<Circuit>,
-        b: &Field<Circuit>,
+        b: &ScalarField<Circuit>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -175,155 +251,155 @@ mod tests {
     }
 
     #[test]
-    fn test_constant_plus_constant() {
+    fn test_constant_times_scalar_constant() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Constant, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Constant, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 8, 0, 0, 0);
+            check_mul(&name, &expected, &a, &b, 4016, 0, 0, 0);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 8, 0, 0, 0);
+            check_mul_assign(&name, &expected, &a, &b, 4016, 0, 0, 0);
         }
     }
 
     #[test]
-    fn test_constant_plus_public() {
+    fn test_constant_times_scalar_public() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Constant, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Public, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_mul(&name, &expected, &a, &b, 766, 0, 2500, 2500);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_mul_assign(&name, &expected, &a, &b, 766, 0, 2500, 2500);
         }
     }
 
     #[test]
-    fn test_public_plus_constant() {
+    fn test_public_times_scalar_constant() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Constant, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_mul(&name, &expected, &a, &b, 767, 0, 2753, 2745);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_mul_assign(&name, &expected, &a, &b, 767, 0, 2753, 2745);
         }
     }
 
     #[test]
-    fn test_constant_plus_private() {
+    fn test_constant_times_scalar_private() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Constant, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Private, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_mul(&name, &expected, &a, &b, 766, 0, 2500, 2500);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_mul_assign(&name, &expected, &a, &b, 766, 0, 2500, 2500);
         }
     }
 
     #[test]
-    fn test_private_plus_constant() {
+    fn test_private_times_scalar_constant() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Constant, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_mul(&name, &expected, &a, &b, 767, 0, 2753, 2745);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_mul_assign(&name, &expected, &a, &b, 767, 0, 2753, 2745);
         }
     }
 
     #[test]
-    fn test_public_plus_public() {
+    fn test_public_times_scalar_public() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Public, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul(&name, &expected, &a, &b, 760, 0, 3255, 3255);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul_assign(&name, &expected, &a, &b, 760, 0, 3255, 3255);
         }
     }
 
     #[test]
-    fn test_public_plus_private() {
+    fn test_public_times_scalar_private() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Private, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul(&name, &expected, &a, &b, 760, 0, 3255, 3255);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul_assign(&name, &expected, &a, &b, 760, 0, 3255, 3255);
         }
     }
 
     #[test]
-    fn test_private_plus_public() {
+    fn test_private_times_scalar_public() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Public, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul(&name, &expected, &a, &b, 760, 0, 3255, 3255);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul_assign(&name, &expected, &a, &b, 760, 0, 3255, 3255);
         }
     }
 
     #[test]
-    fn test_private_plus_private() {
+    fn test_private_times_scalar_private() {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
-            let b = Field::<Circuit>::new(Mode::Private, scalar);
+            let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul(&name, &expected, &a, &b, 760, 0, 3255, 3255);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_mul_assign(&name, &expected, &a, &b, 760, 0, 3255, 3255);
         }
     }
 
@@ -336,13 +412,13 @@ mod tests {
 
         // Constant
         let base = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-        let scalar = Field::<Circuit>::new(Mode::Constant, b);
+        let scalar = ScalarField::<Circuit>::new(Mode::Constant, b);
         let candidate_a = base * scalar;
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
         let base = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-        let scalar = Field::<Circuit>::new(Mode::Private, b);
+        let scalar = ScalarField::<Circuit>::new(Mode::Private, b);
         let candidate_b = base * scalar;
         assert_eq!(expected, candidate_b.eject_value());
     }

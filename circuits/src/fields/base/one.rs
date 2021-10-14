@@ -21,11 +21,11 @@ impl<E: Environment> One for BaseField<E> {
     type Output = Self::Boolean;
 
     fn one() -> Self {
-        Self(E::one())
+        BaseField(E::one())
     }
 
     fn is_one(&self) -> Self::Output {
-        self.is_eq(&Self::one())
+        self.is_eq(&BaseField::one())
     }
 }
 

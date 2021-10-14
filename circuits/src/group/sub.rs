@@ -151,9 +151,9 @@ mod tests {
             let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_sub(&name, &expected, &a, &b, 2, 0, 3, 3);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_sub_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
         }
     }
 
@@ -185,9 +185,9 @@ mod tests {
             let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_sub(&name, &expected, &a, &b, 2, 0, 3, 3);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 3, 0, 3, 3);
+            check_sub_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
         }
     }
 
