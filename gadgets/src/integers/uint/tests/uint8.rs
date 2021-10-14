@@ -21,11 +21,17 @@ use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
+    bits::{
+        Boolean,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesLEGadget,
+    },
     integers::uint::{Sub, UInt, UInt8},
     traits::{alloc::AllocGadget, bits::Xor, integers::*},
-    FromBytesBEGadget,
-    FromBytesLEGadget,
 };
 
 fn check_all_constant_bits(mut expected: u8, actual: UInt8) {
@@ -156,55 +162,51 @@ fn test_uint8_from_bits_le() {
 
 #[test]
 fn test_uint8_from_bytes_be() {
-    let mut cs = TestConstraintSystem::<Fr>::new();
-    let v = vec![UInt8::constant(0u8)];
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let b = UInt8::from_bytes_be(&v, cs.ns(|| "from_bytes_gadget")).expect("failed to create a UInt8 from a byte");
+    for _ in 0..1000 {
+        let expected: u8 = rng.gen();
+        let v: [UInt8; 1] = expected.to_be_bytes().map(|byte| UInt8::constant(byte));
 
-    // check bits
-    for (i, bit_gadget) in b.bits.iter().enumerate() {
-        match *bit_gadget {
-            Boolean::Constant(bit_gadget) => {
-                assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let b = UInt8::from_bytes_be(v.clone(), cs.ns(|| "from_bytes_gadget"))
+            .expect("failed to create a UInt8 from a byte");
+
+        // check bits
+        for (i, bit_gadget) in b.bits.iter().enumerate() {
+            match *bit_gadget {
+                Boolean::Constant(bit_gadget) => {
+                    assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+                }
+                _ => unreachable!(),
             }
-            _ => unreachable!(),
         }
-    }
-
-    // check bytes
-    let actual_bytes = b
-        .to_bytes_be(cs.ns(|| "to_bytes_gadget"))
-        .expect("failed to get bytes from u8");
-
-    for (expected, actual) in v.iter().zip(actual_bytes.iter()) {
-        assert_eq!(expected, actual);
     }
 }
 
 #[test]
 fn test_uint8_from_bytes_le() {
-    let mut cs = TestConstraintSystem::<Fr>::new();
-    let v = vec![UInt8::constant(0u8)];
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let b = UInt8::from_bytes_le(&v, cs.ns(|| "from_bytes_gadget")).expect("failed to create a UInt8 from a byte");
+    for _ in 0..1000 {
+        let expected: u8 = rng.gen();
+        let v: [UInt8; 1] = expected.to_le_bytes().map(|byte| UInt8::constant(byte));
 
-    // check bits
-    for (i, bit_gadget) in b.bits.iter().enumerate() {
-        match *bit_gadget {
-            Boolean::Constant(bit_gadget) => {
-                assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let b = UInt8::from_bytes_le(v.clone(), cs.ns(|| "from_bytes_gadget"))
+            .expect("failed to create a UInt8 from a byte");
+
+        // check bits
+        for (i, bit_gadget) in b.bits.iter().enumerate() {
+            match *bit_gadget {
+                Boolean::Constant(bit_gadget) => {
+                    assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+                }
+                _ => unreachable!(),
             }
-            _ => unreachable!(),
         }
-    }
-
-    // check bytes
-    let actual_bytes = b
-        .to_bytes_le(cs.ns(|| "to_bytes_gadget"))
-        .expect("failed to get bytes from u8");
-
-    for (expected, actual) in v.iter().zip(actual_bytes.iter()) {
-        assert_eq!(expected, actual);
     }
 }
 

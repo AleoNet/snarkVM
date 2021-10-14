@@ -154,7 +154,7 @@ macro_rules! uint_impl_common {
         to_bytes_int_impl!($name, $size);
 
         from_bits_int_impl!($name, $type_, $size);
-        from_bytes_int_impl!($name, $type_, $type_, $size);
+        from_bytes_int_impl!($name, $type_, { $size / UInt8::SIZE });
 
         cond_select_int_impl!($name, $type_, $size);
     };

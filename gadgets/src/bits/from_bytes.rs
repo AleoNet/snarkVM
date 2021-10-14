@@ -18,22 +18,28 @@ use crate::UInt8;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub trait FromBytesLEGadget<F: Field> {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+pub trait FromBytesBEGadget<F: Field, const SIZE_BYTES: usize> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(bytes: [UInt8; SIZE_BYTES], cs: CS) -> Result<Self, SynthesisError>
     where
         Self: Sized;
 
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(
+        bytes: [UInt8; SIZE_BYTES],
+        cs: CS,
+    ) -> Result<Self, SynthesisError>
     where
         Self: Sized;
 }
 
-pub trait FromBytesBEGadget<F: Field> {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+pub trait FromBytesLEGadget<F: Field, const SIZE_BYTES: usize> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(bytes: [UInt8; SIZE_BYTES], cs: CS) -> Result<Self, SynthesisError>
     where
         Self: Sized;
 
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<Self, SynthesisError>
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(
+        bytes: [UInt8; SIZE_BYTES],
+        cs: CS,
+    ) -> Result<Self, SynthesisError>
     where
         Self: Sized;
 }

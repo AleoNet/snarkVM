@@ -23,8 +23,16 @@ use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
 use crate::{
-    bits::{Boolean, FromBitsLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesLEGadget},
-    integers::uint::{Sub, UInt, UInt64},
+    bits::{
+        Boolean,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesLEGadget,
+    },
+    integers::uint::{Sub, UInt, UInt64, UInt8},
     traits::{alloc::AllocGadget, bits::Xor, integers::*},
 };
 
@@ -125,6 +133,56 @@ fn test_uint64_from_bits() {
             match x {
                 (&Boolean::Constant(true), &Boolean::Constant(true)) => {}
                 (&Boolean::Constant(false), &Boolean::Constant(false)) => {}
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+#[test]
+fn test_uint64_from_bytes_be() {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..1000 {
+        let expected: u64 = rng.gen();
+        let v: [UInt8; 8] = expected.to_be_bytes().map(|byte| UInt8::constant(byte));
+
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let b = UInt64::from_bytes_be(v.clone(), cs.ns(|| "from_bytes_gadget"))
+            .expect("failed to create a UInt64 from a byte");
+
+        // check bits
+        for (i, bit_gadget) in b.bits.iter().enumerate() {
+            match *bit_gadget {
+                Boolean::Constant(bit_gadget) => {
+                    assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+#[test]
+fn test_uint64_from_bytes_le() {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..1000 {
+        let expected: u64 = rng.gen();
+        let v: [UInt8; 8] = expected.to_le_bytes().map(|byte| UInt8::constant(byte));
+
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let b = UInt64::from_bytes_le(v.clone(), cs.ns(|| "from_bytes_gadget"))
+            .expect("failed to create a UInt64 from a byte");
+
+        // check bits
+        for (i, bit_gadget) in b.bits.iter().enumerate() {
+            match *bit_gadget {
+                Boolean::Constant(bit_gadget) => {
+                    assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+                }
                 _ => unreachable!(),
             }
         }

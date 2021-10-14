@@ -16,16 +16,6 @@
 
 macro_rules! to_bits_int_impl {
     ($name: ident) => {
-        impl<F: Field> ToBitsLEGadget<F> for $name {
-            fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.to_bits_le(cs)
-            }
-
-            fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.to_bits_le(cs)
-            }
-        }
-
         impl<F: Field> ToBitsBEGadget<F> for $name {
             fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
                 self.bits.to_bits_be(cs)
@@ -35,11 +25,34 @@ macro_rules! to_bits_int_impl {
                 self.bits.to_bits_be(cs)
             }
         }
+
+        impl<F: Field> ToBitsLEGadget<F> for $name {
+            fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                self.bits.to_bits_le(cs)
+            }
+
+            fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                self.bits.to_bits_le(cs)
+            }
+        }
     };
 }
 
 macro_rules! to_bytes_int_impl {
     ($name: ident, $size: expr) => {
+        impl<F: Field> ToBytesBEGadget<F> for $name {
+            #[inline]
+            fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                let mut bytes = self.to_bytes_le(cs)?;
+                bytes.reverse();
+                Ok(bytes)
+            }
+
+            fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                self.to_bytes_be(cs)
+            }
+        }
+
         impl<F: Field> ToBytesLEGadget<F> for $name {
             #[inline]
             fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
@@ -79,68 +92,11 @@ macro_rules! to_bytes_int_impl {
                 self.to_bytes_le(cs)
             }
         }
-
-        impl<F: Field> ToBytesBEGadget<F> for $name {
-            #[inline]
-            fn to_bytes_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                let mut bytes = self.to_bytes_le(cs)?;
-                bytes.reverse();
-                Ok(bytes)
-            }
-
-            fn to_bytes_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                self.to_bytes_be(cs)
-            }
-        }
     };
 }
 
 macro_rules! from_bits_int_impl {
     ($name: ident, $type_: ty, $utype: ty, $size: expr) => {
-        impl<F: Field> FromBitsLEGadget<F> for $name {
-            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
-                if bits.len() != $size {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
-                let mut value = Some(0 as $utype);
-                for b in bits.iter().rev() {
-                    value.as_mut().map(|v| *v <<= 1);
-
-                    match *b {
-                        Boolean::Constant(b) => {
-                            if b {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                        }
-                        Boolean::Is(ref b) => match b.get_value() {
-                            Some(true) => {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                            Some(false) => {}
-                            None => value = None,
-                        },
-                        Boolean::Not(ref b) => match b.get_value() {
-                            Some(false) => {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                            Some(true) => {}
-                            None => value = None,
-                        },
-                    }
-                }
-
-                Ok(Self {
-                    value: value.map(|x| x as $type_),
-                    bits: bits.to_vec(),
-                })
-            }
-
-            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
-                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
-            }
-        }
-
         impl<F: Field> FromBitsBEGadget<F> for $name {
             fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
@@ -182,56 +138,55 @@ macro_rules! from_bits_int_impl {
 
             fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
                 <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
+            }
+        }
+
+        impl<F: Field> FromBitsLEGadget<F> for $name {
+            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
+                if bits.len() != $size {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
+                let mut value = Some(0 as $utype);
+                for b in bits.iter().rev() {
+                    value.as_mut().map(|v| *v <<= 1);
+
+                    match *b {
+                        Boolean::Constant(b) => {
+                            if b {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                        }
+                        Boolean::Is(ref b) => match b.get_value() {
+                            Some(true) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(false) => {}
+                            None => value = None,
+                        },
+                        Boolean::Not(ref b) => match b.get_value() {
+                            Some(false) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(true) => {}
+                            None => value = None,
+                        },
+                    }
+                }
+
+                Ok(Self {
+                    value: value.map(|x| x as $type_),
+                    bits: bits.to_vec(),
+                })
+            }
+
+            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
             }
         }
     };
 
     ($name: ident, $type_: ty, $size: expr) => {
-        impl<F: Field> FromBitsLEGadget<F> for $name {
-            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
-                if bits.len() != $size {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
-                let mut value = Some(0 as $type_);
-                for b in bits.iter().rev() {
-                    value.as_mut().map(|v| *v <<= 1);
-
-                    match *b {
-                        Boolean::Constant(b) => {
-                            if b {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                        }
-                        Boolean::Is(ref b) => match b.get_value() {
-                            Some(true) => {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                            Some(false) => {}
-                            None => value = None,
-                        },
-                        Boolean::Not(ref b) => match b.get_value() {
-                            Some(false) => {
-                                value.as_mut().map(|v| *v |= 1);
-                            }
-                            Some(true) => {}
-                            None => value = None,
-                        },
-                    }
-                }
-
-                Ok(Self {
-                    value: value.map(|x| x as $type_),
-                    negated: false,
-                    bits: bits.to_vec(),
-                })
-            }
-
-            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
-                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
-            }
-        }
-
         impl<F: Field> FromBitsBEGadget<F> for $name {
             fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
                 if bits.len() != $size {
@@ -274,42 +229,119 @@ macro_rules! from_bits_int_impl {
 
             fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
                 <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
+            }
+        }
+        impl<F: Field> FromBitsLEGadget<F> for $name {
+            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
+                if bits.len() != $size {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
+                let mut value = Some(0 as $type_);
+                for b in bits.iter().rev() {
+                    value.as_mut().map(|v| *v <<= 1);
+
+                    match *b {
+                        Boolean::Constant(b) => {
+                            if b {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                        }
+                        Boolean::Is(ref b) => match b.get_value() {
+                            Some(true) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(false) => {}
+                            None => value = None,
+                        },
+                        Boolean::Not(ref b) => match b.get_value() {
+                            Some(false) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(true) => {}
+                            None => value = None,
+                        },
+                    }
+                }
+
+                Ok(Self {
+                    value: value.map(|x| x as $type_),
+                    negated: false,
+                    bits: bits.to_vec(),
+                })
+            }
+
+            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
             }
         }
     };
 }
 
 macro_rules! from_bytes_int_impl {
-    ($name: ident, $type_: ty, $utype: ty, $size: expr) => {
-        impl<F: Field> FromBytesLEGadget<F> for $name {
-            fn from_bytes_le<CS: ConstraintSystem<F>>(bytes: &[UInt8], mut cs: CS) -> Result<$name, SynthesisError> {
-                if bytes.len() != $size / UInt8::SIZE {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
-                let bits = bytes.to_bits_le(cs.ns(|| "to_bits_le"))?;
-
-                $name::from_bits_le(&bits, cs)
+    (UInt8, u8, 8) => {
+        impl<F: Field> FromBytesBEGadget<F, 1> for UInt8 {
+            fn from_bytes_be<CS: ConstraintSystem<F>>(bytes: [UInt8; 1], _: CS) -> Result<Self, SynthesisError> {
+                Ok(bytes[0].clone())
             }
 
-            fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<$name, SynthesisError> {
-                $name::from_bytes_le(bytes, cs)
+            fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bytes: [UInt8; 1], _: CS) -> Result<Self, SynthesisError> {
+                Ok(bytes[0].clone())
             }
         }
 
-        impl<F: Field> FromBytesBEGadget<F> for $name {
-            fn from_bytes_be<CS: ConstraintSystem<F>>(bytes: &[UInt8], mut cs: CS) -> Result<$name, SynthesisError> {
-                if bytes.len() != $size / UInt8::SIZE {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
-                let bits = bytes.to_bits_be(cs.ns(|| "to_bits_be"))?;
-
-                $name::from_bits_be(&bits, cs)
+        impl<F: Field> FromBytesLEGadget<F, 1> for UInt8 {
+            fn from_bytes_le<CS: ConstraintSystem<F>>(bytes: [UInt8; 1], _: CS) -> Result<Self, SynthesisError> {
+                Ok(bytes[0].clone())
             }
 
-            fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bytes: &[UInt8], cs: CS) -> Result<$name, SynthesisError> {
-                $name::from_bytes_be(bytes, cs)
+            fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bytes: [UInt8; 1], _: CS) -> Result<Self, SynthesisError> {
+                Ok(bytes[0].clone())
+            }
+        }
+    };
+
+    ($name: ident, $type_: ty, $size_bytes: expr) => {
+        impl<F: Field> FromBytesBEGadget<F, $size_bytes> for $name {
+            fn from_bytes_be<CS: ConstraintSystem<F>>(
+                bytes: [UInt8; $size_bytes],
+                cs: CS,
+            ) -> Result<Self, SynthesisError> {
+                let bits = bytes
+                    .iter()
+                    .rev()
+                    .flat_map(|byte| byte.u8_to_bits_le())
+                    .collect::<Vec<_>>();
+
+                Self::from_bits_le(&bits, cs)
+            }
+
+            fn from_bytes_be_strict<CS: ConstraintSystem<F>>(
+                bytes: [UInt8; $size_bytes],
+                cs: CS,
+            ) -> Result<Self, SynthesisError> {
+                Self::from_bytes_be(bytes, cs)
+            }
+        }
+
+        impl<F: Field> FromBytesLEGadget<F, $size_bytes> for $name {
+            fn from_bytes_le<CS: ConstraintSystem<F>>(
+                bytes: [UInt8; $size_bytes],
+                cs: CS,
+            ) -> Result<Self, SynthesisError> {
+                let bits = bytes
+                    .iter()
+                    .flat_map(|byte| byte.u8_to_bits_le())
+                    .collect::<Vec<_>>();
+
+                Self::from_bits_le(&bits, cs)
+            }
+
+            fn from_bytes_le_strict<CS: ConstraintSystem<F>>(
+                bytes: [UInt8; $size_bytes],
+                cs: CS,
+            ) -> Result<Self, SynthesisError> {
+                Self::from_bytes_le(bytes, cs)
             }
         }
     };

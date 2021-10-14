@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_use]
-pub mod macros;
-pub use macros::*;
+pub mod int_macros;
+pub use int_macros::*;
 
 pub mod boolean;
 pub use boolean::*;

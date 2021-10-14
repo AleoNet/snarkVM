@@ -18,34 +18,6 @@ use crate::bits::Boolean;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-pub trait FromBitsLEGadget<F: Field> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Self, SynthesisError>
-    where
-        Self: Sized;
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Self, SynthesisError>
-    where
-        Self: Sized;
-}
-
-impl<F: Field> FromBitsLEGadget<F> for Boolean {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Boolean, SynthesisError> {
-        if bits.len() != 1 {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
-        bits.get(0).copied().ok_or_else(|| SynthesisError::Unsatisfiable)
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Boolean, SynthesisError> {
-        if bits.len() != 1 {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
-        bits.get(0).copied().ok_or_else(|| SynthesisError::Unsatisfiable)
-    }
-}
-
 pub trait FromBitsBEGadget<F: Field> {
     fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Self, SynthesisError>
     where
@@ -68,6 +40,34 @@ impl<F: Field> FromBitsBEGadget<F> for Boolean {
 
     /// Additionally checks if the produced list of booleans is 'valid'.
     fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Boolean, SynthesisError> {
+        if bits.len() != 1 {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        bits.get(0).copied().ok_or_else(|| SynthesisError::Unsatisfiable)
+    }
+}
+
+pub trait FromBitsLEGadget<F: Field> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Self, SynthesisError>
+    where
+        Self: Sized;
+
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Self, SynthesisError>
+    where
+        Self: Sized;
+}
+
+impl<F: Field> FromBitsLEGadget<F> for Boolean {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Boolean, SynthesisError> {
+        if bits.len() != 1 {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        bits.get(0).copied().ok_or_else(|| SynthesisError::Unsatisfiable)
+    }
+
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<Boolean, SynthesisError> {
         if bits.len() != 1 {
             return Err(SynthesisError::Unsatisfiable);
         }
