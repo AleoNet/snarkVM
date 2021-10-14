@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn test_public_condition_and_constant_input() {
+    fn test_public_condition_and_constant_inputs() {
         let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
         let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
@@ -168,7 +168,20 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+
+        // true ? Constant : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
+        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+    }
+
+    #[test]
+    fn test_public_condition_and_mixed_inputs() {
+        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
         // false ? Constant : Public
         let expected = second;
@@ -183,13 +196,6 @@ mod tests {
         let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
         check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Public
         let expected = first;
@@ -207,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn test_private_condition_and_constant_input() {
+    fn test_private_condition_and_constant_inputs() {
         let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
         let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
@@ -216,7 +222,20 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+
+        // true ? Constant : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
+        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+    }
+
+    #[test]
+    fn test_private_condition_and_mixed_inputs() {
+        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
         // false ? Constant : Public
         let expected = second;
@@ -231,13 +250,6 @@ mod tests {
         let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
         check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Public
         let expected = first;
