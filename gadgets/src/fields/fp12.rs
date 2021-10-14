@@ -29,7 +29,7 @@ use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
+    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, FromBytesBEGadget, FromBytesLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -663,6 +663,62 @@ where
 
     fn cost() -> usize {
         2 * <Fp6Gadget<P, F> as NEqGadget<F>>::cost()
+    }
+}
+
+impl<P, F: PrimeField> FromBitsBEGadget<F, 253> for Fp12Gadget<P, F>
+    where
+    P: Fp12Parameters,
+    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
+{
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<P, F: PrimeField> FromBitsLEGadget<F, 253> for Fp12Gadget<P, F> 
+where
+    P: Fp12Parameters,
+    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
+{
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<P, F: PrimeField> FromBytesBEGadget<F, 32> for Fp12Gadget<P, F> 
+where
+    P: Fp12Parameters,
+    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
+{
+    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<P, F: PrimeField> FromBytesLEGadget<F, 32> for Fp12Gadget<P, F> 
+where
+    P: Fp12Parameters,
+    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
+{
+    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 }
 

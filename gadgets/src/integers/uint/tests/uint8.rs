@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::TryInto;
+
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
@@ -148,10 +150,13 @@ fn test_uint8_to_bytes_be() {
         let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
 
         let bytes_from_gadget = byte
-            .to_bytes_be(cs.ns(|| "to_bytes_be"))
-            .expect("failed to get u8 bits be");
+            .to_bytes_le(cs.ns(|| "to_bytes_le"))
+            .expect("failed to get u8 bits le")
+            .iter()
+            .map(|v| v.value.unwrap())
+            .collect::<Vec<u8>>();
 
-        assert_eq!(bytes, bytes_from_gadget);
+        assert_eq!(bytes.to_vec(), bytes_from_gadget);
         assert!(!cs.is_satisfied());
     }
 }
@@ -169,9 +174,12 @@ fn test_uint8_to_bytes_le() {
 
         let bytes_from_gadget = byte
             .to_bytes_le(cs.ns(|| "to_bytes_le"))
-            .expect("failed to get u8 bits le");
+            .expect("failed to get u8 bits le")
+            .iter()
+            .map(|v| v.value.unwrap())
+            .collect::<Vec<u8>>();
 
-        assert_eq!(bytes, bytes_from_gadget);
+        assert_eq!(bytes.to_vec(), bytes_from_gadget);
         assert!(!cs.is_satisfied());
     }
 }
@@ -185,7 +193,7 @@ fn test_uint8_from_bits_be() {
         let mut v = (0..8).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
         v.reverse();
 
-        let b = UInt8::from_bits_be(&v, cs.ns(|| "from_bits_be")).expect("failed to create UInt8 from bits.");
+        let b = UInt8::from_bits_be(v.try_into().expect("failed to convert bits to array"), cs.ns(|| "from_bits_be")).expect("failed to create UInt8 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().rev().enumerate() {
             match *bit_gadget {

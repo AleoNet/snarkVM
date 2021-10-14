@@ -137,7 +137,7 @@ macro_rules! div_int_impl {
 
                 quotient_bits.reverse();
 
-                let quotient = Self::from_bits_le(quotient_bits.try_into::<[Boolean; <$gadget as Integer>::SIZE]>().expect("failed to convert vector to array"), cs)?;
+                let quotient = Self::from_bits_le(quotient_bits.try_into().expect("failed to convert vector to array"), cs)?;
                 Ok(quotient)
             }
         }

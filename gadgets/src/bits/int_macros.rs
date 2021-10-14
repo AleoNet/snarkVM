@@ -237,7 +237,7 @@ macro_rules! from_bits_int_impl {
                 <Self as FromBitsBEGadget<F, $size_bits>>::from_bits_be(bits, cs)
             }
         }
-        impl<F: Field> FromBitsLEGadget<F> for $name {
+        impl<F: Field> FromBitsLEGadget<F, $size_bits> for $name {
             fn from_bits_le<CS: ConstraintSystem<F>>(
                 bits: [Boolean; $size_bits],
                 _: CS,
