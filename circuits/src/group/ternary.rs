@@ -168,14 +168,14 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
     }
 
     #[test]
@@ -222,14 +222,14 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
         let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 2, 0, 0, 2);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
     }
 
     #[test]

@@ -278,9 +278,9 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2259, 0, 0, 502);
+            check_mul(&name, &expected, &a, &b, 757, 0, 2500, 2500);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2259, 0, 0, 502);
+            check_mul_assign(&name, &expected, &a, &b, 757, 0, 2500, 2500);
         }
     }
 
@@ -295,9 +295,9 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 2259, 0, 0, 502);
+            check_mul(&name, &expected, &a, &b, 757, 0, 2500, 2500);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 2259, 0, 0, 502);
+            check_mul_assign(&name, &expected, &a, &b, 757, 0, 2500, 2500);
         }
     }
 

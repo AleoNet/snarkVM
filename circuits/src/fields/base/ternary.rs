@@ -29,22 +29,16 @@ impl<E: Environment> Ternary for BaseField<E> {
                 false => second.clone(),
             }
         }
-        // // Constant `first` and `second`
-        // else if first.is_constant() && second.is_constant() {
-        //     let not_condition = BaseField::from(&!condition);
-        //     let condition = BaseField::from(&condition);
-        //     (condition * first) + (not_condition * second)
-        // }
+        // Constant `first` and `second`
+        else if first.is_constant() && second.is_constant() {
+            let not_condition = BaseField::from(&!condition);
+            let condition = BaseField::from(&condition);
+            (condition * first) + (not_condition * second)
+        }
         // Variables
         else {
-            // Determine the variable mode.
-            let mode = match first.is_constant() && second.is_constant() {
-                true => Mode::Constant,
-                false => Mode::Private,
-            };
-
             // Initialize the witness.
-            let witness = BaseField::new(mode, match condition.eject_value() {
+            let witness = BaseField::new(Mode::Private, match condition.eject_value() {
                 true => first.eject_value(),
                 false => second.eject_value(),
             });
@@ -176,10 +170,10 @@ mod tests {
             let condition = Boolean::new(Mode::Public, true);
             Circuit::scoped("Public(true) ? Constant : Constant", |scope| {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(1, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(1, scope.num_constraints_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -188,10 +182,10 @@ mod tests {
             let condition = Boolean::new(Mode::Public, false);
             Circuit::scoped("Public(false) ? Constant : Constant", |scope| {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(1, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(1, scope.num_constraints_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -206,10 +200,10 @@ mod tests {
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Constant", |scope| {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(1, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(1, scope.num_constraints_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -218,10 +212,10 @@ mod tests {
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Constant", |scope| {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(1, scope.num_constants_in_scope());
+                assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(1, scope.num_constraints_in_scope());
+                assert_eq!(0, scope.num_constraints_in_scope());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
