@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::TryInto;
+
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
@@ -120,10 +122,13 @@ fn test_uint16_to_bytes_be() {
         let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
 
         let bytes_from_gadget = byte
-            .to_bytes_be(cs.ns(|| "to_bytes_be"))
-            .expect("failed to get u16 bits be");
+            .to_bytes_le(cs.ns(|| "to_bytes_le"))
+            .expect("failed to get u16 bits le")
+            .iter()
+            .map(|v| v.value.unwrap())
+            .collect::<Vec<u8>>();
 
-        assert_eq!(bytes, bytes_from_gadget);
+        assert_eq!(bytes.to_vec(), bytes_from_gadget);
         assert!(!cs.is_satisfied());
     }
 }
@@ -141,9 +146,12 @@ fn test_uint16_to_bytes_le() {
 
         let bytes_from_gadget = byte
             .to_bytes_le(cs.ns(|| "to_bytes_le"))
-            .expect("failed to get u16 bits le");
+            .expect("failed to get u16 bits le")
+            .iter()
+            .map(|v| v.value.unwrap())
+            .collect::<Vec<u8>>();
 
-        assert_eq!(bytes, bytes_from_gadget);
+        assert_eq!(bytes.to_vec(), bytes_from_gadget);
         assert!(!cs.is_satisfied());
     }
 }
@@ -157,7 +165,11 @@ fn test_uint16_from_bits_be() {
         let mut v = (0..16).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
         v.reverse();
 
-        let b = UInt16::from_bits_be(&v, cs.ns(|| "from_bits_be")).expect("failed to create UInt16 from bits.");
+        let b = UInt16::from_bits_be(
+            v.clone().try_into().expect("failed to convert bits to array"),
+            cs.ns(|| "from_bits_be"),
+        )
+        .expect("failed to create UInt16 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().rev().enumerate() {
             match *bit_gadget {
@@ -190,7 +202,11 @@ fn test_uint16_from_bits_le() {
         let mut cs = TestConstraintSystem::<Fr>::new();
         let v = (0..16).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
 
-        let b = UInt16::from_bits_le(&v, cs.ns(|| "from_bits_le")).expect("failed to create UInt16 from bits.");
+        let b = UInt16::from_bits_le(
+            v.clone().try_into().expect("failed to convert bits to array"),
+            cs.ns(|| "from_bits_le"),
+        )
+        .expect("failed to create UInt16 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().enumerate() {
             match *bit_gadget {
@@ -278,14 +294,20 @@ fn test_uint16_to_bits_full() {
     let mut bits_be = byte
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get u16 bits be");
-    let u16_int_from_be =
-        UInt16::from_bits_be(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get u16 from bits be");
+    let u16_int_from_be = UInt16::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get u16 from bits be");
 
     let bits_le = byte
         .to_bits_le(cs.ns(|| "to_bits_le"))
         .expect("failed to get u16 bits le");
-    let u16_int_from_le =
-        UInt16::from_bits_le(&bits_le, cs.ns(|| "from_bits_le")).expect("failed to get u16 from bits le");
+    let u16_int_from_le = UInt16::from_bits_le(
+        bits_le.clone().try_into().expect("failed to convert bits to array"),
+        cs.ns(|| "from_bits_le"),
+    )
+    .expect("failed to get u16 from bits le");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -303,14 +325,20 @@ fn test_uint16_to_bytes_full() {
     let mut bytes_be = byte
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get u16 bytes be");
-    let u16_int_from_be =
-        UInt16::from_bytes_be(bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get u16 from bytes be");
+    let u16_int_from_be = UInt16::from_bytes_be(
+        bytes_be.clone().try_into().expect("failed to convert bytes to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get u16 from bytes be");
 
     let bytes_le = byte
         .to_bytes_le(cs.ns(|| "to_bits_le"))
         .expect("failed to get u16 bytes le");
-    let u16_int_from_le =
-        UInt16::from_bytes_le(bytes_le, cs.ns(|| "from_bytes_le")).expect("failed to get u16 from bytes le");
+    let u16_int_from_le = UInt16::from_bytes_le(
+        bytes_le.clone().try_into().expect("failed to convert bytes to array"),
+        cs.ns(|| "from_bytes_le"),
+    )
+    .expect("failed to get u16 from bytes le");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);

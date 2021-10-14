@@ -26,7 +26,17 @@ use snarkvm_fields::{
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
 use crate::{
-    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, FromBytesBEGadget, FromBytesLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
+    bits::{
+        Boolean,
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -748,7 +758,7 @@ where
     }
 }
 
-impl<P, F: PrimeField> FromBitsLEGadget<F, 253> for Fp6Gadget<P, F> 
+impl<P, F: PrimeField> FromBitsLEGadget<F, 253> for Fp6Gadget<P, F>
 where
     P: Fp6Parameters,
     P::Fp2Params: Fp2Parameters<Fp = F>,
@@ -762,7 +772,7 @@ where
     }
 }
 
-impl<P, F: PrimeField> FromBytesBEGadget<F, 32> for Fp6Gadget<P, F> 
+impl<P, F: PrimeField> FromBytesBEGadget<F, 32> for Fp6Gadget<P, F>
 where
     P: Fp6Parameters,
     P::Fp2Params: Fp2Parameters<Fp = F>,
@@ -776,7 +786,7 @@ where
     }
 }
 
-impl<P, F: PrimeField> FromBytesLEGadget<F, 32> for Fp6Gadget<P, F> 
+impl<P, F: PrimeField> FromBytesLEGadget<F, 32> for Fp6Gadget<P, F>
 where
     P: Fp6Parameters,
     P::Fp2Params: Fp2Parameters<Fp = F>,

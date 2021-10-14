@@ -20,7 +20,17 @@ use snarkvm_fields::{Field, Fp2, Fp2Parameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
 use crate::{
-    bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, FromBytesBEGadget, FromBytesLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
+    bits::{
+        Boolean,
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{

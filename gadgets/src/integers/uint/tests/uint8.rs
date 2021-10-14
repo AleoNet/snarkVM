@@ -193,7 +193,11 @@ fn test_uint8_from_bits_be() {
         let mut v = (0..8).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
         v.reverse();
 
-        let b = UInt8::from_bits_be(v.try_into().expect("failed to convert bits to array"), cs.ns(|| "from_bits_be")).expect("failed to create UInt8 from bits.");
+        let b = UInt8::from_bits_be(
+            v.clone().try_into().expect("failed to convert bits to array"),
+            cs.ns(|| "from_bits_be"),
+        )
+        .expect("failed to create UInt8 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().rev().enumerate() {
             match *bit_gadget {
@@ -226,7 +230,11 @@ fn test_uint8_from_bits_le() {
         let mut cs = TestConstraintSystem::<Fr>::new();
         let v = (0..8).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
 
-        let b = UInt8::from_bits_le(&v, cs.ns(|| "from_bits_le")).expect("failed to create UInt8 from bits.");
+        let b = UInt8::from_bits_le(
+            v.clone().try_into().expect("failed to convert bits to array"),
+            cs.ns(|| "from_bits_le"),
+        )
+        .expect("failed to create UInt8 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().enumerate() {
             match *bit_gadget {
@@ -314,14 +322,20 @@ fn test_uint8_to_bits_full() {
     let mut bits_be = byte
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get u8 bits be");
-    let u8_int_from_be =
-        UInt8::from_bits_be(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get u8 from bits be");
+    let u8_int_from_be = UInt8::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get u8 from bits be");
 
     let bits_le = byte
         .to_bits_le(cs.ns(|| "to_bits_le"))
         .expect("failed to get u8 bits le");
-    let u8_int_from_le =
-        UInt8::from_bits_le(&bits_le, cs.ns(|| "from_bits_le")).expect("failed to get u8 from bits le");
+    let u8_int_from_le = UInt8::from_bits_le(
+        bits_le.clone().try_into().expect("failed to convert bits to array"),
+        cs.ns(|| "from_bits_le"),
+    )
+    .expect("failed to get u8 from bits le");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -339,14 +353,20 @@ fn test_uint8_to_bytes_full() {
     let mut bytes_be = byte
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get u8 bytes be");
-    let u8_int_from_be =
-        UInt8::from_bytes_be(bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get u8 from bytes be");
+    let u8_int_from_be = UInt8::from_bytes_be(
+        bytes_be.clone().try_into().expect("failed to convert bytes to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get u8 from bytes be");
 
     let bytes_le = byte
         .to_bytes_le(cs.ns(|| "to_bits_le"))
         .expect("failed to get u8 bytes le");
-    let u8_int_from_le =
-        UInt8::from_bytes_le(bytes_le, cs.ns(|| "from_bytes_le")).expect("failed to get u8 from bytes le");
+    let u8_int_from_le = UInt8::from_bytes_le(
+        bytes_le.clone().try_into().expect("failed to convert bytes to array"),
+        cs.ns(|| "from_bytes_le"),
+    )
+    .expect("failed to get u8 from bytes le");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);

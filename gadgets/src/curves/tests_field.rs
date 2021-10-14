@@ -19,8 +19,8 @@ use rand::{
     SeedableRng,
     {self},
 };
-use std::convert::TryInto;
 use rand_xorshift::XorShiftRng;
+use std::convert::TryInto;
 
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
@@ -235,7 +235,7 @@ fn bls12_377_field_gadgets_test() {
 
     let a = FqGadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(Fq::rand(&mut rng))).unwrap();
     let b = FqGadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(Fq::rand(&mut rng))).unwrap();
-    field_test(cs.ns(|| "test_fq"), a, b);
+    field_test(cs.ns(|| "test_fq"), a.clone(), b);
     if !cs.is_satisfied() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
     }
@@ -243,14 +243,20 @@ fn bls12_377_field_gadgets_test() {
     let mut bits_be = a
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_be =
-        FqGadget::from_bits_be(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_be = FqGadget::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
-    let mut bits_le = a
+    let bits_le = a
         .to_bits_le(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_le =
-        FqGadget::from_bits_le(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_le = FqGadget::from_bits_le(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -261,14 +267,26 @@ fn bls12_377_field_gadgets_test() {
     let mut bytes_be = a
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_be =
-        FqGadget::from_bytes_be(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_be = FqGadget::from_bytes_be(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
-    let mut bytes_le = a
+    let bytes_le = a
         .to_bytes_le(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_le =
-        FqGadget::from_bytes_le(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_le = FqGadget::from_bytes_le(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);
@@ -278,7 +296,7 @@ fn bls12_377_field_gadgets_test() {
 
     let c = Fq2Gadget::alloc(&mut cs.ns(|| "generate_c"), || Ok(Fq2::rand(&mut rng))).unwrap();
     let d = Fq2Gadget::alloc(&mut cs.ns(|| "generate_d"), || Ok(Fq2::rand(&mut rng))).unwrap();
-    field_test(cs.ns(|| "test_fq2"), c, d);
+    field_test(cs.ns(|| "test_fq2"), c.clone(), d);
     random_frobenius_tests::<Fq2, _, Fq2Gadget, _>(cs.ns(|| "test_frob_fq2"), 13);
     if !cs.is_satisfied() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
@@ -287,14 +305,20 @@ fn bls12_377_field_gadgets_test() {
     let mut bits_be = c
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_be =
-        Fq2Gadget::from_bits_be(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_be = Fq2Gadget::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
-    let mut bits_le = c
+    let bits_le = c
         .to_bits_le(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_le =
-        Fq2Gadget::from_bits_le(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_le = Fq2Gadget::from_bits_le(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -305,14 +329,26 @@ fn bls12_377_field_gadgets_test() {
     let mut bytes_be = c
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_be =
-        Fq2Gadget::from_bytes_be(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_be = Fq2Gadget::from_bytes_be(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
-    let mut bytes_le = c
+    let bytes_le = c
         .to_bytes_le(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_le =
-        Fq2Gadget::from_bytes_le(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_le = Fq2Gadget::from_bytes_le(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);
@@ -322,7 +358,7 @@ fn bls12_377_field_gadgets_test() {
 
     let a = Fq6Gadget::alloc(&mut cs.ns(|| "generate_e"), || Ok(Fq6::rand(&mut rng))).unwrap();
     let b = Fq6Gadget::alloc(&mut cs.ns(|| "generate_f"), || Ok(Fq6::rand(&mut rng))).unwrap();
-    field_test(cs.ns(|| "test_fq6"), a, b);
+    field_test(cs.ns(|| "test_fq6"), a.clone(), b);
     random_frobenius_tests::<Fq6, _, Fq6Gadget, _>(cs.ns(|| "test_frob_fq6"), 13);
     if !cs.is_satisfied() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
@@ -331,14 +367,20 @@ fn bls12_377_field_gadgets_test() {
     let mut bits_be = a
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_be =
-        Fq6Gadget::from_bits_be(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_be = Fq6Gadget::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
-    let mut bits_le = a
+    let bits_le = a
         .to_bits_le(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_le =
-        Fq6Gadget::from_bits_le(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_le = Fq6Gadget::from_bits_le(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -349,14 +391,26 @@ fn bls12_377_field_gadgets_test() {
     let mut bytes_be = a
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_be =
-        Fq6Gadget::from_bytes_be(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_be = Fq6Gadget::from_bytes_be(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
-    let mut bytes_le = a
+    let bytes_le = a
         .to_bytes_le(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_le =
-        Fq6Gadget::from_bytes_le(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_le = Fq6Gadget::from_bytes_le(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);
@@ -366,7 +420,7 @@ fn bls12_377_field_gadgets_test() {
 
     let c = Fq12Gadget::alloc(&mut cs.ns(|| "generate_g"), || Ok(Fq12::rand(&mut rng))).unwrap();
     let d = Fq12Gadget::alloc(&mut cs.ns(|| "generate_h"), || Ok(Fq12::rand(&mut rng))).unwrap();
-    field_test(cs.ns(|| "test_fq12"), c, d);
+    field_test(cs.ns(|| "test_fq12"), c.clone(), d);
     random_frobenius_tests::<Fq12, _, Fq12Gadget, _>(cs.ns(|| "test_frob_fq12"), 13);
     if !cs.is_satisfied() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
@@ -375,14 +429,20 @@ fn bls12_377_field_gadgets_test() {
     let mut bits_be = c
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_be =
-        Fq12Gadget::from_bits_be(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_be = Fq12Gadget::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
-    let mut bits_le = c
+    let bits_le = c
         .to_bits_le(cs.ns(|| "to_bits_be"))
         .expect("failed to get Fq2Gadget bits be");
-    let from_bits_le =
-        Fq12Gadget::from_bits_le(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+    let from_bits_le = Fq12Gadget::from_bits_le(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get Fq2Gadget from bits be");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -393,14 +453,26 @@ fn bls12_377_field_gadgets_test() {
     let mut bytes_be = c
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_be =
-        Fq12Gadget::from_bytes_be(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_be = Fq12Gadget::from_bytes_be(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
-    let mut bytes_le = c
+    let bytes_le = c
         .to_bytes_le(cs.ns(|| "to_bytes_be"))
         .expect("failed to get Fq2Gadget bytes be");
-    let from_bytes_le =
-        Fq12Gadget::from_bytes_le(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+    let from_bytes_le = Fq12Gadget::from_bytes_le(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get Fq2Gadget from bytes be");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);
@@ -420,7 +492,7 @@ fn edwards_field_gadgets_test() {
 
     let a = FqGadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(Fq::rand(&mut rng))).unwrap();
     let b = FqGadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(Fq::rand(&mut rng))).unwrap();
-    field_test(cs.ns(|| "test_fq"), a, b);
+    field_test(cs.ns(|| "test_fq"), a.clone(), b);
     if !cs.is_satisfied() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
     }
@@ -428,14 +500,20 @@ fn edwards_field_gadgets_test() {
     let mut bits_be = a
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get FqGadget bits be");
-    let from_bits_be =
-        FqGadget::from_bits_be(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get FqGadget from bits be");
+    let from_bits_be = FqGadget::from_bits_be(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get FqGadget from bits be");
 
-    let mut bits_le = a
+    let bits_le = a
         .to_bits_le(cs.ns(|| "to_bits_be"))
         .expect("failed to get FqGadget bits be");
-    let from_bits_le =
-        FqGadget::from_bits_le(bits_be.try_into().expect("failed to convert bits vec to array"), cs.ns(|| "from_bits_be")).expect("failed to get FqGadget from bits be");
+    let from_bits_le = FqGadget::from_bits_le(
+        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
+        cs.ns(|| "from_bits_be"),
+    )
+    .expect("failed to get FqGadget from bits be");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
@@ -446,14 +524,26 @@ fn edwards_field_gadgets_test() {
     let mut bytes_be = a
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get FqGadget bytes be");
-    let from_bytes_be =
-        FqGadget::from_bytes_be(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get FqGadget from bytes be");
+    let from_bytes_be = FqGadget::from_bytes_be(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get FqGadget from bytes be");
 
-    let mut bytes_le = a
+    let bytes_le = a
         .to_bytes_le(cs.ns(|| "to_bytes_be"))
         .expect("failed to get FqGadget bytes be");
-    let from_bytes_le =
-        FqGadget::from_bytes_le(bytes_be.try_into().expect("failed to convert bytes vec to array"), cs.ns(|| "from_bytes_be")).expect("failed to get FqGadget from bytes be");
+    let from_bytes_le = FqGadget::from_bytes_le(
+        bytes_be
+            .clone()
+            .try_into()
+            .expect("failed to convert bytes vec to array"),
+        cs.ns(|| "from_bytes_be"),
+    )
+    .expect("failed to get FqGadget from bytes be");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);

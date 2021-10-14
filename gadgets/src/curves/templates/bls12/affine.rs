@@ -24,13 +24,28 @@ use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use crate::{bits::{Boolean, FromBitsBEGadget, FromBitsLEGadget, FromBytesBEGadget, FromBytesLEGadget, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget}, fields::FpGadget, integers::uint::UInt8, traits::{
+use crate::{
+    bits::{
+        Boolean,
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
         alloc::AllocGadget,
         curves::GroupGadget,
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
         select::CondSelectGadget,
-    }};
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
@@ -555,11 +570,11 @@ where
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
@@ -570,11 +585,11 @@ where
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
@@ -585,26 +600,26 @@ where
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<P, F, FG> FromBytesLEGadget<F, 64> for AffineGadget<P, F, FG> 
+impl<P, F, FG> FromBytesLEGadget<F, 64> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
