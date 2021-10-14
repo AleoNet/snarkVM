@@ -14,20 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod boolean;
-pub use boolean::*;
+pub mod base;
+pub use base::*;
 
-pub mod fields;
-pub use fields::*;
-
-pub mod group;
-pub use group::*;
-
-pub mod models;
-pub use models::*;
-
-pub mod programs;
-pub use programs::*;
-
-pub mod traits;
-pub use traits::*;
+pub mod scalar;
+pub use scalar::*;
