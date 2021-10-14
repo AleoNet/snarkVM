@@ -32,15 +32,25 @@ use crate::{
         eq::{EqGadget, NEqGadget},
         select::CondSelectGadget,
     },
+    FromBitsBEGadget,
+    FromBitsLEGadget,
+    FromBytesBEGadget,
+    FromBytesLEGadget,
+    ToBitsLEGadget,
 };
 
 pub trait GroupGadget<G: Group, F: Field>:
     Sized
+    + FromBitsBEGadget<F>
+    + FromBitsLEGadget<F>
+    + FromBytesBEGadget<F, 64> // Does # of bytes change based of curve?
+    + FromBytesLEGadget<F, 64>
     + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
     + NEqGadget<F>
     + EqGadget<F>
     + ToBitsBEGadget<F>
+    + ToBitsLEGadget<F>
     + CondSelectGadget<F>
     + AllocGadget<G, F>
     + Clone

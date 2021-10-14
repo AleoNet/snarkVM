@@ -26,7 +26,17 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
 use crate::{
-    bits::Boolean,
+    bits::{
+        Boolean,
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     traits::{alloc::AllocGadget, fields::FieldGadget},
 };
 
@@ -253,7 +263,41 @@ fn bls12_377_field_gadgets_test() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
     }
 
-    assert!(cs.is_satisfied());
+    let mut bits_be = a
+        .to_bits_be(cs.ns(|| "to_bits_be"))
+        .expect("failed to get Fq2Gadget bits be");
+    let from_bits_be =
+        Fq2Gadget::from_bits_be(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+
+    let mut bits_le = a
+        .to_bits_le(cs.ns(|| "to_bits_be"))
+        .expect("failed to get Fq2Gadget bits be");
+    let from_bits_le =
+        Fq2Gadget::from_bits_le(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get Fq2Gadget from bits be");
+
+    bits_be.reverse();
+    assert_eq!(bits_be, bits_le);
+    assert_eq!(a, from_bits_be);
+    assert_eq!(a, from_bits_le);
+    assert!(!cs.is_satisfied());
+
+    let mut bytes_be = a
+        .to_bytes_be(cs.ns(|| "to_bytes_be"))
+        .expect("failed to get Fq2Gadget bytes be");
+    let from_bytes_be =
+        Fq2Gadget::from_bytes_be(&bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+
+    let mut bytes_le = a
+        .to_bytes_le(cs.ns(|| "to_bytes_be"))
+        .expect("failed to get Fq2Gadget bytes be");
+    let from_bytes_le =
+        Fq2Gadget::from_bytes_le(&bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get Fq2Gadget from bytes be");
+
+    bytes_be.reverse();
+    assert_eq!(bytes_be, bytes_le);
+    assert_eq!(a, from_bytes_be);
+    assert_eq!(a, from_bytes_le);
+    assert!(!cs.is_satisfied());
 }
 
 #[test]
@@ -271,5 +315,40 @@ fn edwards_field_gadgets_test() {
     if !cs.is_satisfied() {
         println!("{:?}", cs.which_is_unsatisfied().unwrap());
     }
-    assert!(cs.is_satisfied());
+
+    let mut bits_be = a
+        .to_bits_be(cs.ns(|| "to_bits_be"))
+        .expect("failed to get FqGadget bits be");
+    let from_bits_be =
+        FqGadget::from_bits_be(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get FqGadget from bits be");
+
+    let mut bits_le = a
+        .to_bits_le(cs.ns(|| "to_bits_be"))
+        .expect("failed to get FqGadget bits be");
+    let from_bits_le =
+        FqGadget::from_bits_le(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get FqGadget from bits be");
+
+    bits_be.reverse();
+    assert_eq!(bits_be, bits_le);
+    assert_eq!(a, from_bits_be);
+    assert_eq!(a, from_bits_le);
+    assert!(!cs.is_satisfied());
+
+    let mut bytes_be = a
+        .to_bytes_be(cs.ns(|| "to_bytes_be"))
+        .expect("failed to get FqGadget bytes be");
+    let from_bytes_be =
+        FqGadget::from_bytes_be(&bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get FqGadget from bytes be");
+
+    let mut bytes_le = a
+        .to_bytes_le(cs.ns(|| "to_bytes_be"))
+        .expect("failed to get FqGadget bytes be");
+    let from_bytes_le =
+        FqGadget::from_bytes_le(&bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get FqGadget from bytes be");
+
+    bytes_be.reverse();
+    assert_eq!(bytes_be, bytes_le);
+    assert_eq!(a, from_bytes_be);
+    assert_eq!(a, from_bytes_le);
+    assert!(!cs.is_satisfied());
 }
