@@ -23,16 +23,17 @@ use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 use crate::{
     bits::{
         Boolean,
+        FromBitsBEGadget,
         FromBitsLEGadget,
         FromBytesBEGadget,
         FromBytesLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
+        ToBytesBEGadget,
         ToBytesLEGadget,
     },
-    integers::uint::{Sub, UInt, UInt16},
+    integers::uint::{Sub, UInt, UInt16, UInt8},
     traits::{alloc::AllocGadget, bits::Xor, integers::*},
-    UInt8,
 };
 
 fn check_all_constant_bits(mut expected: u16, actual: UInt16) {
@@ -66,56 +67,130 @@ fn check_all_allocated_bits(mut expected: u16, actual: UInt16) {
 }
 
 #[test]
-fn test_uint16_to_bits_le() {
-    let mut cs = TestConstraintSystem::<Fr>::new();
-    let byte_val = 0b01110001;
-    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
-    let bits = byte.to_bits_le(cs).expect("failed to get u16 bits le");
-    for (i, bit) in bits.iter().enumerate() {
-        assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
+fn test_uint16_to_bits_be() {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..1000 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let byte_val: u16 = rng.gen();
+        let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+
+        let bits = byte
+            .to_bits_be(cs.ns(|| "to_bits_be"))
+            .expect("failed to get u16 bits be");
+        for (i, bit) in bits.iter().rev().enumerate() {
+            assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1);
+        }
+
+        assert!(!cs.is_satisfied());
     }
 }
 
 #[test]
-fn test_uint16_to_bits_be() {
-    let mut cs = TestConstraintSystem::<Fr>::new();
-    let byte_val = 0b01110001;
-    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
-    let bits = byte.to_bits_be(cs).expect("failed to get u16 bits be");
-    for (i, bit) in bits.iter().rev().enumerate() {
-        assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
+fn test_uint16_to_bits_le() {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..1000 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let byte_val: u16 = rng.gen();
+        let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+
+        let bits = byte
+            .to_bits_be(cs.ns(|| "to_bits_be"))
+            .expect("failed to get u16 bits be");
+        for (i, bit) in bits.iter().enumerate() {
+            assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1);
+        }
+
+        assert!(!cs.is_satisfied());
+    }
+}
+
+#[test]
+fn test_uint16_to_bytes_be() {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..1000 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let byte_val: u16 = rng.gen();
+        let bytes = byte_val.to_be_bytes();
+        let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+
+        let bytes_from_gadget = byte
+            .to_bytes_be(cs.ns(|| "to_bytes_be"))
+            .expect("failed to get u16 bits be");
+
+        assert_eq!(bytes, bytes_from_gadget);
+        assert!(!cs.is_satisfied());
     }
 }
 
 #[test]
 fn test_uint16_to_bytes_le() {
-    let mut cs = TestConstraintSystem::<Fr>::new();
-    let byte_val = 0b01110001;
-    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
-    let bytes = byte
-        .to_bytes_le(cs)
-        .expect("failed to get u16 bits le")
-        .iter()
-        .map(|v| v.value.unwrap())
-        .collect::<Vec<u8>>();
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    assert_eq!(bytes.len(), 2);
-    assert_eq!(bytes[0], 113);
-    for byte in bytes.iter().skip(1) {
-        assert_eq!(*byte, 0);
+    for _ in 0..1000 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let byte_val: u16 = rng.gen();
+        let bytes = byte_val.to_le_bytes();
+        let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+
+        let bytes_from_gadget = byte
+            .to_bytes_le(cs.ns(|| "to_bytes_le"))
+            .expect("failed to get u16 bits le");
+
+        assert_eq!(bytes, bytes_from_gadget);
+        assert!(!cs.is_satisfied());
     }
 }
 
 #[test]
-fn test_uint16_from_bits() {
+fn test_uint16_from_bits_be() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..1000 {
-        let cs = TestConstraintSystem::<Fr>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
+        let mut v = (0..16).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
+        v.reverse();
 
+        let b = UInt16::from_bits_be(&v, cs.ns(|| "from_bits_be")).expect("failed to create UInt16 from bits.");
+
+        for (i, bit_gadget) in b.bits.iter().rev().enumerate() {
+            match *bit_gadget {
+                Boolean::Constant(bit_gadget) => {
+                    assert!(bit_gadget == ((b.value.unwrap() >> i) & 1 == 1));
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        let expected_to_be_same = b.bits.clone();
+
+        for x in v.iter().zip(expected_to_be_same.iter()) {
+            match x {
+                (&Boolean::Constant(true), &Boolean::Constant(true)) => {}
+                (&Boolean::Constant(false), &Boolean::Constant(false)) => {}
+                _ => unreachable!(),
+            }
+        }
+
+        assert!(!cs.is_satisfied());
+    }
+}
+
+#[test]
+fn test_uint16_from_bits_le() {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..1000 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
         let v = (0..16).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
 
-        let b = UInt16::from_bits_le(&v, cs).expect("failed to create UInt16 from bits.");
+        let b = UInt16::from_bits_le(&v, cs.ns(|| "from_bits_le")).expect("failed to create UInt16 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().enumerate() {
             match *bit_gadget {
@@ -126,7 +201,7 @@ fn test_uint16_from_bits() {
             }
         }
 
-        let expected_to_be_same = b.bits;
+        let expected_to_be_same = b.bits.clone();
 
         for x in v.iter().zip(expected_to_be_same.iter()) {
             match x {
@@ -135,6 +210,8 @@ fn test_uint16_from_bits() {
                 _ => unreachable!(),
             }
         }
+
+        assert!(!cs.is_satisfied());
     }
 }
 
@@ -144,11 +221,11 @@ fn test_uint16_from_bytes_be() {
 
     for _ in 0..1000 {
         let expected: u16 = rng.gen();
-        let v: [UInt8; 2] = expected.to_be_bytes().map(|byte| UInt8::constant(byte));
+        let v = expected.to_be_bytes().map(|byte| UInt8::constant(byte));
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let b = UInt16::from_bytes_be(v.clone(), cs.ns(|| "from_bytes_gadget"))
+        let b = UInt16::from_bytes_be(v.clone(), cs.ns(|| "from_bytes_be_gadget"))
             .expect("failed to create a UInt16 from a byte");
 
         // check bits
@@ -160,6 +237,8 @@ fn test_uint16_from_bytes_be() {
                 _ => unreachable!(),
             }
         }
+
+        assert!(!cs.is_satisfied());
     }
 }
 
@@ -169,11 +248,11 @@ fn test_uint16_from_bytes_le() {
 
     for _ in 0..1000 {
         let expected: u16 = rng.gen();
-        let v: [UInt8; 2] = expected.to_le_bytes().map(|byte| UInt8::constant(byte));
+        let v = expected.to_le_bytes().map(|byte| UInt8::constant(byte));
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let b = UInt16::from_bytes_le(v.clone(), cs.ns(|| "from_bytes_gadget"))
+        let b = UInt16::from_bytes_le(v.clone(), cs.ns(|| "from_bytes_le_gadget"))
             .expect("failed to create a UInt16 from a byte");
 
         // check bits
@@ -185,7 +264,59 @@ fn test_uint16_from_bytes_le() {
                 _ => unreachable!(),
             }
         }
+
+        assert!(!cs.is_satisfied());
     }
+}
+
+#[test]
+fn test_uint16_to_bits_full() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+
+    let mut bits_be = byte
+        .to_bits_be(cs.ns(|| "to_bits_be"))
+        .expect("failed to get u16 bits be");
+    let u16_int_from_be =
+        UInt16::from_bits_be(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get u16 from bits be");
+
+    let bits_le = byte
+        .to_bits_le(cs.ns(|| "to_bits_le"))
+        .expect("failed to get u16 bits le");
+    let u16_int_from_le =
+        UInt16::from_bits_le(&bits_le, cs.ns(|| "from_bits_le")).expect("failed to get u16 from bits le");
+
+    bits_be.reverse();
+    assert_eq!(bits_be, bits_le);
+    assert_eq!(byte, u16_int_from_be);
+    assert_eq!(byte, u16_int_from_le);
+    assert!(!cs.is_satisfied());
+}
+
+#[test]
+fn test_uint16_to_bytes_full() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+    let byte_val = 0b01110001;
+    let byte = UInt16::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
+
+    let mut bytes_be = byte
+        .to_bytes_be(cs.ns(|| "to_bytes_be"))
+        .expect("failed to get u16 bytes be");
+    let u16_int_from_be =
+        UInt16::from_bytes_be(bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get u16 from bytes be");
+
+    let bytes_le = byte
+        .to_bytes_le(cs.ns(|| "to_bits_le"))
+        .expect("failed to get u16 bytes le");
+    let u16_int_from_le =
+        UInt16::from_bytes_le(bytes_le, cs.ns(|| "from_bytes_le")).expect("failed to get u16 from bytes le");
+
+    bytes_be.reverse();
+    assert_eq!(bytes_be, bytes_le);
+    assert_eq!(byte, u16_int_from_be);
+    assert_eq!(byte, u16_int_from_le);
+    assert!(!cs.is_satisfied());
 }
 
 #[test]
