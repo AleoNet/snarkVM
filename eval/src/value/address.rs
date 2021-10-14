@@ -295,12 +295,8 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Address {
     }
 }
 
-impl<F: Field> FromBitsLEGadget<F> for Address {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _cs: CS) -> Result<Address, SynthesisError> {
-        if bits.len() != 256 {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
+impl<F: Field> FromBitsLEGadget<F, 256> for Address {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: [Boolean; 256], _cs: CS) -> Result<Address, SynthesisError> {
         let bytes = bits
             .chunks(8)
             .into_iter()
@@ -311,17 +307,13 @@ impl<F: Field> FromBitsLEGadget<F> for Address {
         Self::constant(&bytes).map_err(|_| SynthesisError::Unsatisfiable)
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
-        <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 256], cs: CS) -> Result<Address, SynthesisError> {
+        <Self as FromBitsLEGadget<F, 256>>::from_bits_le(bits, cs)
     }
 }
 
-impl<F: Field> FromBitsBEGadget<F> for Address {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _cs: CS) -> Result<Address, SynthesisError> {
-        if bits.len() != 256 {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
+impl<F: Field> FromBitsBEGadget<F, 256> for Address {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: [Boolean; 256], _cs: CS) -> Result<Address, SynthesisError> {
         let mut bits = bits.to_vec();
         bits.reverse();
 
@@ -335,8 +327,8 @@ impl<F: Field> FromBitsBEGadget<F> for Address {
         Self::constant(&bytes).map_err(|_| SynthesisError::Unsatisfiable)
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Address, SynthesisError> {
-        <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 256], cs: CS) -> Result<Address, SynthesisError> {
+        <Self as FromBitsBEGadget<F, 256>>::from_bits_be(bits, cs)
     }
 }
 

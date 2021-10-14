@@ -1313,11 +1313,11 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NE
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBitsBEGadget<F, 506>
     for AffineGadget<P, F, FG>
 {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
@@ -1325,11 +1325,11 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Fr
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBitsLEGadget<F, 506>
     for AffineGadget<P, F, FG>
 {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
@@ -1337,11 +1337,11 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Fr
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBytesBEGadget<F, 64>
     for AffineGadget<P, F, FG>
 {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
@@ -1349,11 +1349,11 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Fr
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBytesLEGadget<F, 64>
     for AffineGadget<P, F, FG>
 {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bits: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }

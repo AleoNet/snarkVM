@@ -51,8 +51,8 @@ pub trait GroupType<F: Field>:
     + ToBitsBEGadget<F>
     + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
-    + FromBitsBEGadget<F>
-    + FromBitsLEGadget<F>
+    + FromBitsBEGadget<F, 506>
+    + FromBitsLEGadget<F, 506>
 {
     fn constant(value: &Group) -> Result<Self, GroupError>;
 

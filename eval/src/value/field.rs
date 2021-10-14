@@ -284,26 +284,26 @@ impl<F: PrimeField> ToBytesBEGadget<F> for FieldType<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
+impl<F: PrimeField> FromBitsLEGadget<F, 253> for FieldType<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 
     fn from_bits_le_strict<CS: ConstraintSystem<F>>(
-        _bits: &[Boolean],
+        _bits: [Boolean; 253],
         _cs: CS,
     ) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
+impl<F: PrimeField> FromBitsBEGadget<F, 253> for FieldType<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 
     fn from_bits_be_strict<CS: ConstraintSystem<F>>(
-        _bits: &[Boolean],
+        _bits: [Boolean; 253],
         _cs: CS,
     ) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
