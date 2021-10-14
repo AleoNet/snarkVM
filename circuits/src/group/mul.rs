@@ -303,35 +303,81 @@ mod tests {
 
     #[test]
     fn test_public_times_scalar_constant() {
+        use snarkvm_fields::PrimeField;
+        use snarkvm_utilities::BigInteger;
+
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
+
+            let (num_constant, num_private, num_constraints) = {
+                const MODULUS_BITS: usize = 251;
+                let num_nonzero_bits = scalar.to_repr().to_biguint().bits() as usize;
+                let num_leading_zero_bits = MODULUS_BITS - num_nonzero_bits;
+
+                let num_constant = 2
+                    + (3 /* DOUBLE constant */ + 2/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                    + (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits; // Typically around 760.
+                let num_private = 2
+                    + (0 /* DOUBLE constant */ + 3/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                    + (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits
+                    - 10; // Typically around 2700.
+                let num_constraints = 2
+                    + (0 /* DOUBLE constant */ + 3/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                    + (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits
+                    - 10; // Typically around 2700.
+
+                (num_constant, num_private, num_constraints)
+            };
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
             let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 759, 0, 2737, 2745);
+            check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 759, 0, 2737, 2745);
+            check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
         }
     }
 
     #[test]
     fn test_private_times_scalar_constant() {
+        use snarkvm_fields::PrimeField;
+        use snarkvm_utilities::BigInteger;
+
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
+
+            let (num_constant, num_private, num_constraints) = {
+                const MODULUS_BITS: usize = 251;
+                let num_nonzero_bits = scalar.to_repr().to_biguint().bits() as usize;
+                let num_leading_zero_bits = MODULUS_BITS - num_nonzero_bits;
+
+                let num_constant = 2
+                    + (3 /* DOUBLE constant */ + 2/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                    + (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits; // Typically around 760.
+                let num_private = 2
+                    + (0 /* DOUBLE constant */ + 3/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                    + (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits
+                    - 10; // Typically around 2700.
+                let num_constraints = 2
+                    + (0 /* DOUBLE constant */ + 3/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                    + (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits
+                    - 10; // Typically around 2700.
+
+                (num_constant, num_private, num_constraints)
+            };
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
             let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 759, 0, 2737, 2745);
+            check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 759, 0, 2737, 2745);
+            check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
         }
     }
 
