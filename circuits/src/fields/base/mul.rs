@@ -59,9 +59,9 @@ impl<E: Environment> MulAssign<BaseField<E>> for BaseField<E> {
 impl<E: Environment> MulAssign<&BaseField<E>> for BaseField<E> {
     fn mul_assign(&mut self, other: &BaseField<E>) {
         match (self.is_constant(), other.is_constant()) {
-            (true, true) => *self = Self::new(Mode::Constant, self.eject_value() * other.eject_value()),
-            (true, false) => self.0 = other.0.clone() * self.eject_value(),
+            (true, true) => self.0 = self.0.clone() * other.eject_value(),
             (false, true) => self.0 = self.0.clone() * other.eject_value(),
+            (true, false) => self.0 = other.0.clone() * self.eject_value(),
             (false, false) => {
                 let product = BaseField::new(Mode::Private, self.eject_value() * other.eject_value());
 
@@ -95,7 +95,7 @@ mod tests {
                 candidate_product = candidate_product * BaseField::new(Mode::Constant, two);
                 expected_product = expected_product * &two;
 
-                assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
+                assert_eq!(i + 1, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());

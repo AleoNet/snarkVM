@@ -139,7 +139,7 @@ mod tests {
                 let affine = Affine::<Circuit>::new(Mode::Constant, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(8, scope.num_constants_in_scope());
+                assert_eq!(4, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());

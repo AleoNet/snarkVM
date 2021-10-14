@@ -134,9 +134,9 @@ mod tests {
             let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 8, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b, 4, 0, 0, 0);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 8, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b, 4, 0, 0, 0);
         }
     }
 

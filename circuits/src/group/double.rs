@@ -28,9 +28,11 @@ impl<E: Environment> Double for &Affine<E> {
     type Output = Affine<E>;
 
     fn double(self) -> Self::Output {
-        if self.is_constant() {
-            return self.clone() + self;
-        }
+        // Determine the variable mode.
+        let mode = match self.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        };
 
         let a = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_A);
         let two = BaseField::one() + BaseField::one();
@@ -54,7 +56,7 @@ impl<E: Environment> Double for &Affine<E> {
                 let t0 = xy.double();
                 let t1 = (E::AffineParameters::COEFF_A * x2) + y2;
                 let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
-                BaseField::new(Mode::Private, t0_div_t1)
+                BaseField::new(mode, t0_div_t1)
             };
 
             // Assign y3 = (y^2 - ax^2) / (2 - ax^2 - y^2)
@@ -62,7 +64,7 @@ impl<E: Environment> Double for &Affine<E> {
                 let t0 = y2 - ax2;
                 let t1 = two - ax2 - y2;
                 let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
-                BaseField::new(Mode::Private, t0_div_t1)
+                BaseField::new(mode, t0_div_t1)
             };
 
             (x3, y3)
@@ -109,7 +111,7 @@ mod tests {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(8, scope.num_constants_in_scope());
+                assert_eq!(3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());

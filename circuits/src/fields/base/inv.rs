@@ -35,7 +35,7 @@ impl<E: Environment> Inv for &BaseField<E> {
 
         let inverse = match self.eject_value().inverse() {
             Some(inverse) => inverse,
-            None => E::halt("Failed to compute the inverse"),
+            None => E::halt("Failed to compute the inverse for a base field element"),
         };
 
         let inverse = BaseField::new(mode, inverse);

@@ -68,7 +68,7 @@ mod tests {
                         BaseField::<Circuit>::new(Mode::Constant, dividend) / BaseField::new(Mode::Constant, divisor);
                     assert_eq!(expected_quotient, candidate_quotient.eject_value());
 
-                    assert_eq!(4, scope.num_constants_in_scope());
+                    assert_eq!(3, scope.num_constants_in_scope());
                     assert_eq!(0, scope.num_public_in_scope());
                     assert_eq!(0, scope.num_private_in_scope());
                     assert_eq!(0, scope.num_constraints_in_scope());

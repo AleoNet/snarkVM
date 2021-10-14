@@ -98,7 +98,7 @@ mod tests {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
-                assert_eq!(506, scope.num_constants_in_scope());
+                assert_eq!(253, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
@@ -163,7 +163,7 @@ mod tests {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
-                assert_eq!(506, scope.num_constants_in_scope());
+                assert_eq!(253, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());

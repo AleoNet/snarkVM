@@ -28,93 +28,74 @@ impl<E: Environment> Add<&Self> for Affine<E> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        if self.is_constant() && other.is_constant() {
-            let this = self.eject_value();
-            let that = other.eject_value();
+        // Determine the variable mode.
+        let mode = match self.is_constant() && other.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        };
 
-            let (x1, y1) = (this.to_x_coordinate(), this.to_y_coordinate());
-            let (x2, y2) = (that.to_x_coordinate(), that.to_y_coordinate());
+        // This swap reduces the number of constants by one.
+        let (this, that) = match other.is_constant() {
+            true => (&self, other),
+            false => (other, &self),
+        };
 
-            let y1y2 = y1 * y2;
-            let x1x2 = x1 * x2;
+        let a = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_A);
+        let d = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_D);
 
-            let ax1x2 = E::AffineParameters::COEFF_A * x1x2;
-            let dx1x2y1y2 = E::AffineParameters::COEFF_D * y1y2 * x1x2;
+        // Compute U = (-A * x1 + y1) * (x2 + y2)
+        let u1 = (&this.x * &-&a) + &this.y;
+        let u2 = &that.x + &that.y;
+        let u = u1 * u2;
 
-            let d1 = E::BaseField::one() + dx1x2y1y2;
-            let d2 = E::BaseField::one() - dx1x2y1y2;
+        // Compute v0 = x1 * y2
+        let v0 = &this.x * &that.y;
 
-            let x1y2 = x1 * y2;
-            let y1x2 = y1 * x2;
+        // Compute v1 = x2 * y1
+        let v1 = &that.x * &this.y;
 
-            let x = (x1y2 + y1x2) / &d1;
-            let y = (y1y2 - ax1x2) / &d2;
+        // Compute v2 = d * v0 * v1
+        let v2 = (&v0 * &v1) * d;
 
-            return Self::new(Mode::Constant, x, Some(y));
-        } else {
-            // This swap reduces the number of constants by one.
-            let (this, that) = match other.is_constant() {
-                true => (&self, other),
-                false => (other, &self),
+        // Compute x3 and y3.
+        let (x3, y3) = {
+            let v0 = v0.eject_value();
+            let v1 = v1.eject_value();
+            let v2 = v2.eject_value();
+
+            // Assign x3 = (v0 + v1) / (v2 + 1)
+            let x3 = {
+                let t0 = v0 + v1;
+                let t1 = v2 + E::BaseField::one();
+                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
+                BaseField::new(mode, t0_div_t1)
             };
 
-            let a = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_A);
-            let d = BaseField::new(Mode::Constant, E::AffineParameters::COEFF_D);
-
-            // Compute U = (-A * x1 + y1) * (x2 + y2)
-            let u1 = (&this.x * &-&a) + &this.y;
-            let u2 = &that.x + &that.y;
-            let u = u1 * u2;
-
-            // Compute v0 = x1 * y2
-            let v0 = &this.x * &that.y;
-
-            // Compute v1 = x2 * y1
-            let v1 = &that.x * &this.y;
-
-            // Compute v2 = d * v0 * v1
-            let v2 = (&v0 * &v1) * d;
-
-            // Compute x3 and y3.
-            let (x3, y3) = {
-                let v0 = v0.eject_value();
-                let v1 = v1.eject_value();
-                let v2 = v2.eject_value();
-
-                // Assign x3 = (v0 + v1) / (v2 + 1)
-                let x3 = {
-                    let t0 = v0 + v1;
-                    let t1 = v2 + E::BaseField::one();
-                    let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
-                    BaseField::new(Mode::Private, t0_div_t1)
-                };
-
-                // Assign y3 = (U + a * v0 - v1) / (1 - v2)
-                let y3 = {
-                    let t0 = u.eject_value() + (v0 * a.eject_value()) - v1;
-                    let t1 = E::BaseField::one() - v2;
-                    let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
-                    BaseField::new(Mode::Private, t0_div_t1)
-                };
-
-                (x3, y3)
+            // Assign y3 = (U + a * v0 - v1) / (1 - v2)
+            let y3 = {
+                let t0 = u.eject_value() + (v0 * a.eject_value()) - v1;
+                let t1 = E::BaseField::one() - v2;
+                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
+                BaseField::new(mode, t0_div_t1)
             };
 
-            // Ensure x3 is well-formed.
-            // x3 * (v2 + 1) = v0 + v1
-            let v2_plus_one = &v2 + &BaseField::one();
-            let v0_plus_v1 = &v0 + &v1;
-            E::enforce(|| (&x3, v2_plus_one, v0_plus_v1));
+            (x3, y3)
+        };
 
-            // Ensure y3 is well-formed.
-            // y3 * (1 - v2) = u + (a * v0) - v1
-            let one_minus_v2 = BaseField::one() - v2;
-            let a_v0 = v0 * a;
-            let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
-            E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));
+        // Ensure x3 is well-formed.
+        // x3 * (v2 + 1) = v0 + v1
+        let v2_plus_one = &v2 + &BaseField::one();
+        let v0_plus_v1 = &v0 + &v1;
+        E::enforce(|| (&x3, v2_plus_one, v0_plus_v1));
 
-            Self { x: x3, y: y3 }
-        }
+        // Ensure y3 is well-formed.
+        // y3 * (1 - v2) = u + (a * v0) - v1
+        let one_minus_v2 = BaseField::one() - v2;
+        let a_v0 = v0 * a;
+        let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
+        E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));
+
+        Self { x: x3, y: y3 }
     }
 }
 
@@ -220,9 +201,9 @@ mod tests {
             let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 8, 0, 0, 0);
+            check_add(&name, &expected, &a, &b, 4, 0, 0, 0);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 8, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b, 4, 0, 0, 0);
         }
     }
 
