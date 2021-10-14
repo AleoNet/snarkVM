@@ -17,7 +17,6 @@
 pub mod add;
 pub mod double;
 pub mod equal;
-// pub mod inv;
 pub mod mul;
 pub mod neg;
 // pub mod one;
@@ -32,8 +31,10 @@ use snarkvm_fields::{Field as F, One as O};
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
 
-// use num_traits::Inv;
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::{
+    fmt,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 
 #[derive(Clone)]
 pub struct Affine<E: Environment> {
@@ -110,6 +111,12 @@ impl<E: Environment> Affine<E> {
     }
 }
 
+impl<E: Environment> fmt::Debug for Affine<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.x.eject_value(), self.y.eject_value())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,6 +126,12 @@ mod tests {
     use rand::thread_rng;
 
     const ITERATIONS: usize = 250;
+
+    /// Attempts to construct an affine group element from the given x-coordinate and mode.
+    fn check_debug(mode: Mode, x: <Circuit as Environment>::BaseField, y: <Circuit as Environment>::BaseField) {
+        let candidate = Affine::<Circuit>::new(mode, x, None);
+        assert_eq!(format!("({}, {})", x, y), format!("{:?}", candidate));
+    }
 
     #[test]
     fn test_new() {
@@ -181,5 +194,39 @@ mod tests {
                 assert!(scope.is_satisfied());
             });
         }
+    }
+
+    #[test]
+    fn test_debug() {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+            let x_coordinate = point.to_x_coordinate();
+            let y_coordinate = point.to_y_coordinate();
+
+            // Constant
+            check_debug(Mode::Constant, x_coordinate, y_coordinate);
+            // Public
+            check_debug(Mode::Public, x_coordinate, y_coordinate);
+            // Private
+            check_debug(Mode::Private, x_coordinate, y_coordinate);
+        }
+    }
+
+    #[test]
+    fn test_debug_zero() {
+        let zero = <Circuit as Environment>::BaseField::zero();
+
+        // Constant
+        let candidate = Affine::<Circuit>::new(Mode::Constant, zero, None);
+        assert_eq!("(0, 1)", &format!("{:?}", candidate));
+
+        // Public
+        let candidate = Affine::<Circuit>::new(Mode::Public, zero, None);
+        assert_eq!("(0, 1)", &format!("{:?}", candidate));
+
+        // Private
+        let candidate = Affine::<Circuit>::new(Mode::Private, zero, None);
+        assert_eq!("(0, 1)", &format!("{:?}", candidate));
     }
 }
