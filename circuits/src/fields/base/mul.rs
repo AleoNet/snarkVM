@@ -78,107 +78,244 @@ impl<E: Environment> MulAssign<&BaseField<E>> for BaseField<E> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use snarkvm_utilities::UniformRand;
 
-    const ITERATIONS: usize = 500;
+    use rand::thread_rng;
+
+    const ITERATIONS: usize = 10;
+
+    fn check_mul(
+        name: &str,
+        expected: &<Circuit as Environment>::BaseField,
+        a: &BaseField<Circuit>,
+        b: &BaseField<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let candidate = a * b;
+            assert_eq!(
+                *expected,
+                candidate.eject_value(),
+                "{} != {} := ({} * {})",
+                expected,
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
+            );
+
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
+        });
+    }
+
+    fn check_mul_assign(
+        name: &str,
+        expected: &<Circuit as Environment>::BaseField,
+        a: &BaseField<Circuit>,
+        b: &BaseField<Circuit>,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let mut candidate = a.clone();
+            candidate *= b;
+            assert_eq!(
+                *expected,
+                candidate.eject_value(),
+                "{} != {} := ({} * {})",
+                expected,
+                candidate.eject_value(),
+                a.eject_value(),
+                b.eject_value()
+            );
+
+            assert_eq!(num_constants, scope.num_constants_in_scope());
+            assert_eq!(num_public, scope.num_public_in_scope());
+            assert_eq!(num_private, scope.num_private_in_scope());
+            assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            assert!(Circuit::is_satisfied());
+        });
+    }
 
     #[test]
-    fn test_mul() {
-        let one = <Circuit as Environment>::BaseField::one();
-        let two = one + one;
+    fn test_constant_times_constant() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-        // Constant * Constant
-        Circuit::scoped("Constant * Constant", |scope| {
-            let mut candidate_product = BaseField::<Circuit>::one();
-            let mut expected_product = one;
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Constant, first);
+            let b = BaseField::<Circuit>::new(Mode::Constant, second);
 
-            for i in 0..ITERATIONS {
-                candidate_product = candidate_product * BaseField::new(Mode::Constant, two);
-                expected_product = expected_product * &two;
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
 
-                assert_eq!(i + 1, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            }
+    #[test]
+    fn test_constant_times_public() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-            assert_eq!(expected_product, candidate_product.eject_value());
-        });
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Constant, first);
+            let b = BaseField::<Circuit>::new(Mode::Public, second);
 
-        // Constant * Public
-        Circuit::scoped("Constant * Public", |scope| {
-            let mut candidate_product = BaseField::<Circuit>::one();
-            let mut expected_product = one;
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
 
-            for i in 0..ITERATIONS {
-                candidate_product =
-                    BaseField::new(Mode::Constant, expected_product) * BaseField::new(Mode::Public, two);
-                expected_product = expected_product * &two;
+    #[test]
+    fn test_constant_times_private() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-                assert_eq!(i + 1, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            }
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Constant, first);
+            let b = BaseField::<Circuit>::new(Mode::Private, second);
 
-            assert_eq!(expected_product, candidate_product.eject_value());
-        });
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
 
-        // Public * Constant
-        Circuit::scoped("Public * Constant", |scope| {
-            let mut candidate_product = BaseField::<Circuit>::one();
-            let mut expected_product = one;
+    #[test]
+    fn test_public_times_constant() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-            for i in 0..ITERATIONS {
-                candidate_product =
-                    BaseField::new(Mode::Public, expected_product) * BaseField::new(Mode::Constant, two);
-                expected_product = expected_product * &two;
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Public, first);
+            let b = BaseField::<Circuit>::new(Mode::Constant, second);
 
-                assert_eq!(i + 1, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            }
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
 
-            assert_eq!(expected_product, candidate_product.eject_value());
-        });
+    #[test]
+    fn test_private_times_constant() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-        // Public * Public
-        Circuit::scoped("Public * Public", |scope| {
-            let mut candidate_product = BaseField::<Circuit>::new(Mode::Public, one);
-            let mut expected_product = one;
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Private, first);
+            let b = BaseField::<Circuit>::new(Mode::Constant, second);
 
-            for i in 0..ITERATIONS {
-                candidate_product = candidate_product * BaseField::new(Mode::Public, two);
-                expected_product = expected_product * &two;
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+        }
+    }
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(i + 2, scope.num_public_in_scope());
-                assert_eq!(i + 1, scope.num_private_in_scope());
-                assert_eq!(i + 1, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
-            }
+    #[test]
+    fn test_public_times_public() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-            assert_eq!(expected_product, candidate_product.eject_value());
-        });
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Public, first);
+            let b = BaseField::<Circuit>::new(Mode::Public, second);
 
-        // Private * Private
-        Circuit::scoped("Private * Private", |scope| {
-            let mut candidate_product = BaseField::<Circuit>::new(Mode::Private, one);
-            let mut expected_product = one;
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
+        }
+    }
 
-            for i in 0..ITERATIONS {
-                candidate_product = candidate_product * BaseField::new(Mode::Private, two);
-                expected_product = expected_product * &two;
+    #[test]
+    fn test_public_times_private() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(i * 2 + 3, scope.num_private_in_scope());
-                assert_eq!(i + 1, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
-            }
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Public, first);
+            let b = BaseField::<Circuit>::new(Mode::Private, second);
 
-            assert_eq!(expected_product, candidate_product.eject_value());
-        });
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
+        }
+    }
+
+    #[test]
+    fn test_private_times_public() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Private, first);
+            let b = BaseField::<Circuit>::new(Mode::Public, second);
+
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
+        }
+    }
+
+    #[test]
+    fn test_private_times_private() {
+        for i in 0..ITERATIONS {
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+
+            let expected = first * second;
+            let a = BaseField::<Circuit>::new(Mode::Private, first);
+            let b = BaseField::<Circuit>::new(Mode::Private, second);
+
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
+            let name = format!("MulAssign: a * b {}", i);
+            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
+        }
+    }
+
+    #[test]
+    fn test_mul_matches() {
+        // Sample two random elements.
+        let a: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+        let b: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+        let expected = a * b;
+
+        // Constant
+        let first = BaseField::<Circuit>::new(Mode::Constant, a);
+        let second = BaseField::<Circuit>::new(Mode::Constant, b);
+        let candidate_a = first * second;
+        assert_eq!(expected, candidate_a.eject_value());
+
+        // Private
+        let first = BaseField::<Circuit>::new(Mode::Private, a);
+        let second = BaseField::<Circuit>::new(Mode::Private, b);
+        let candidate_b = first * second;
+        assert_eq!(expected, candidate_b.eject_value());
     }
 
     #[test]
