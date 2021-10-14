@@ -124,6 +124,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         Ok(())
     }
 
+    /// returns to the previous state in the call stack and stores the result of the function call's evaluation
     fn finish_call(&mut self, data: &CallData) -> Result<()> {
         let res = self.unnest().result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![]));
         self.state_data.state.store(data.destination, res);
@@ -175,6 +176,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         Ok(())
     }
 
+    /// returns to the previous state in the call stack and updates variables from the mask instructions evaluation
     fn finish_mask<CS: ConstraintSystem<F>>(&mut self, condition: Boolean, cs: &mut CS) -> Result<()> {
         let inner_state = self.unnest();
         let assignments = inner_state.state.variables;
@@ -216,7 +218,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         Ok(())
     }
 
-    /// setup the state and call stack to start evaluating the target repeat instruction
+    /// setup the state and call stack to start evaluating the target repeat instruction.
+    /// creates a state for every iteration and adds them all to the call stack
     fn setup_repeat<CS: ConstraintSystem<F>>(&mut self, data: &'a RepeatData, cs: &mut CS) -> Result<()> {
         if data.instruction_count + self.state_data.state.instruction_index
             >= self.state_data.function.instructions.len() as u32
@@ -249,7 +252,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         };
 
         self.state_data.state.instruction_index += 1;
-        //todo: very memory intensive with large loops since all states get allocated at once
         let mut iter_state_data = Vec::new();
         //todo: max loop count (DOS vector)
         for i in iter {
@@ -306,6 +308,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         Ok(())
     }
 
+    /// returns to the previous state in the call stack and updates variables from the repeat instructions evaluation
     fn finish_repeat(&mut self, iter_variable: u32) -> Result<()> {
         let inner_state = self.unnest();
         for (variable, value) in inner_state.state.variables {
@@ -324,8 +327,14 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         Ok(())
     }
 
+    /// returns the output of the initial function call's evaluation. panics if the call stack isn't empty
     fn finish_evaluation(self) -> ConstrainedValue<F, G> {
-        assert!(self.call_stack.is_empty());
+        if !self.call_stack.is_empty() {
+            panic!(
+                "cant finish evaluation if call stack's not_empty. {:?} element(s) remain",
+                self.call_stack.len()
+            )
+        }
         let res = self
             .state_data
             .result
@@ -333,6 +342,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         res
     }
 
+    /// iterates over every instruction in the function's code block and evaluates it.
+    /// if a new code block is hit (via mask, repeat, or call instructions) then the current blocks state is stored on a call stack while the new code block is evaluated
     pub fn evaluate_function<CS: ConstraintSystem<F>>(
         function: &'a Function,
         state: EvaluatorState<'a, F, G>,
@@ -485,7 +496,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> StateData<'a, F, G> {
             Instruction::Call(_) | Instruction::Mask(_) | Instruction::Repeat(_) => {
                 Ok(ControlFlow::Recurse(instruction))
             }
-            instruction => match self.state.evaluate_instruction(instruction, cs) {
+            _ => match self.state.evaluate_instruction(instruction, cs) {
                 Ok(Some(returned)) => {
                     self.result = Some(returned);
                     Ok(ControlFlow::Return)
@@ -512,6 +523,7 @@ pub(super) struct EvaluatorState<'a, F: PrimeField, G: GroupType<F>> {
 }
 
 impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+    /// creates a new state with no information other than a reference to the program its evaluating
     pub fn new(program: &'a Program) -> Self {
         Self {
             program,
@@ -718,6 +730,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
         Ok(())
     }
 
+    /// loads the arguments for a function into the states variable list
     pub fn setup_evaluate_function(
         &mut self,
         index: u32,
