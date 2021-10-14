@@ -96,13 +96,12 @@ macro_rules! to_bytes_int_impl {
 }
 
 macro_rules! from_bits_int_impl {
-    ($name: ident, $type_: ty, $utype: ty, $size: expr) => {
-        impl<F: Field> FromBitsBEGadget<F> for $name {
-            fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
-                if bits.len() != $size {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
+    ($name: ident, $type_: ty, $utype: ty, $size_bits: expr) => {
+        impl<F: Field> FromBitsBEGadget<F, $size_bits> for $name {
+            fn from_bits_be<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                _: CS,
+            ) -> Result<$name, SynthesisError> {
                 let mut value = Some(0 as $utype);
                 for b in bits.iter() {
                     value.as_mut().map(|v| *v <<= 1);
@@ -136,17 +135,19 @@ macro_rules! from_bits_int_impl {
                 })
             }
 
-            fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
-                <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
+            fn from_bits_be_strict<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                cs: CS,
+            ) -> Result<$name, SynthesisError> {
+                <Self as FromBitsBEGadget<F, $size_bits>>::from_bits_be(bits, cs)
             }
         }
 
-        impl<F: Field> FromBitsLEGadget<F> for $name {
-            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
-                if bits.len() != $size {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
+        impl<F: Field> FromBitsLEGadget<F, $size_bits> for $name {
+            fn from_bits_le<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                _: CS,
+            ) -> Result<$name, SynthesisError> {
                 let mut value = Some(0 as $utype);
                 for b in bits.iter().rev() {
                     value.as_mut().map(|v| *v <<= 1);
@@ -180,19 +181,21 @@ macro_rules! from_bits_int_impl {
                 })
             }
 
-            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
-                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
+            fn from_bits_le_strict<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                cs: CS,
+            ) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget<F, $size_bits>>::from_bits_le(bits, cs)
             }
         }
     };
 
-    ($name: ident, $type_: ty, $size: expr) => {
-        impl<F: Field> FromBitsBEGadget<F> for $name {
-            fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
-                if bits.len() != $size {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
+    ($name: ident, $type_: ty, $size_bits: expr) => {
+        impl<F: Field> FromBitsBEGadget<F, $size_bits> for $name {
+            fn from_bits_be<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                _: CS,
+            ) -> Result<$name, SynthesisError> {
                 let mut value = Some(0 as $type_);
                 for b in bits.iter() {
                     value.as_mut().map(|v| *v <<= 1);
@@ -227,16 +230,18 @@ macro_rules! from_bits_int_impl {
                 })
             }
 
-            fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
-                <Self as FromBitsBEGadget<F>>::from_bits_be(bits, cs)
+            fn from_bits_be_strict<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                cs: CS,
+            ) -> Result<$name, SynthesisError> {
+                <Self as FromBitsBEGadget<F, $size_bits>>::from_bits_be(bits, cs)
             }
         }
         impl<F: Field> FromBitsLEGadget<F> for $name {
-            fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], _: CS) -> Result<$name, SynthesisError> {
-                if bits.len() != $size {
-                    return Err(SynthesisError::Unsatisfiable);
-                }
-
+            fn from_bits_le<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                _: CS,
+            ) -> Result<$name, SynthesisError> {
                 let mut value = Some(0 as $type_);
                 for b in bits.iter().rev() {
                     value.as_mut().map(|v| *v <<= 1);
@@ -271,8 +276,11 @@ macro_rules! from_bits_int_impl {
                 })
             }
 
-            fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<$name, SynthesisError> {
-                <Self as FromBitsLEGadget<F>>::from_bits_le(bits, cs)
+            fn from_bits_le_strict<CS: ConstraintSystem<F>>(
+                bits: [Boolean; $size_bits],
+                cs: CS,
+            ) -> Result<$name, SynthesisError> {
+                <Self as FromBitsLEGadget<F, $size_bits>>::from_bits_le(bits, cs)
             }
         }
     };
@@ -313,7 +321,7 @@ macro_rules! from_bytes_int_impl {
                     .flat_map(|byte| byte.u8_to_bits_le())
                     .collect::<Vec<_>>();
 
-                Self::from_bits_le(&bits, cs)
+                Self::from_bits_le(bits.try_into().expect("failed to convert vector to array"), cs)
             }
 
             fn from_bytes_be_strict<CS: ConstraintSystem<F>>(
@@ -334,7 +342,7 @@ macro_rules! from_bytes_int_impl {
                     .flat_map(|byte| byte.u8_to_bits_le())
                     .collect::<Vec<_>>();
 
-                Self::from_bits_le(&bits, cs)
+                Self::from_bits_le(bits.try_into().expect("failed to convert vector to array"), cs)
             }
 
             fn from_bytes_le_strict<CS: ConstraintSystem<F>>(

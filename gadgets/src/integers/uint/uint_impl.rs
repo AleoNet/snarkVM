@@ -41,6 +41,7 @@ use crate::{
     },
     UnsignedIntegerError,
 };
+use std::convert::TryInto;
 
 uint_impl!(UInt8, u8, 8);
 uint_impl!(UInt16, u16, 16);
