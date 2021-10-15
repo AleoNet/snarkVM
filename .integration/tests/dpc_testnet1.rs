@@ -75,14 +75,18 @@ fn dpc_testnet1_integration_test() {
 
     // Construct the new serial numbers root.
     let mut serial_numbers = SerialNumbers::<Testnet1>::new().unwrap();
-    serial_numbers.add_all(previous_block.serial_numbers()).unwrap();
-    serial_numbers.add_all(transactions.serial_numbers()).unwrap();
+    serial_numbers.add_all(&previous_block.serial_numbers()).unwrap();
+    serial_numbers
+        .add_all(&transactions.serial_numbers().collect::<Vec<_>>())
+        .unwrap();
     let serial_numbers_root = serial_numbers.root();
 
     // Construct the new commitments root.
     let mut commitments = Commitments::<Testnet1>::new().unwrap();
-    commitments.add_all(previous_block.commitments()).unwrap();
-    commitments.add_all(transactions.commitments()).unwrap();
+    commitments.add_all(&previous_block.commitments()).unwrap();
+    commitments
+        .add_all(&transactions.commitments().collect::<Vec<_>>())
+        .unwrap();
     let commitments_root = commitments.root();
 
     let timestamp = Utc::now().timestamp();
