@@ -32,13 +32,12 @@ use snarkvm_utilities::{FromBits, ToBits};
 use rand_core::{Error, RngCore};
 
 /// An RNG from any algebraic sponge
+#[derive(Clone, Debug)]
 pub struct FiatShamirAlgebraicSpongeRng<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>> {
     /// The algebraic sponge.
     pub(super) s: S,
     #[doc(hidden)]
-    _target_field: PhantomData<TargetField>,
-    #[doc(hidden)]
-    _base_field: PhantomData<BaseField>,
+    _phantom: PhantomData<(TargetField, BaseField)>,
 }
 
 impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>>
@@ -47,8 +46,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
     fn new() -> Self {
         Self {
             s: S::new(),
-            _target_field: PhantomData,
-            _base_field: PhantomData,
+            _phantom: PhantomData,
         }
     }
 

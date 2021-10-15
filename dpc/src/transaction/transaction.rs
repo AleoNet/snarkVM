@@ -33,7 +33,6 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
     collections::HashSet,
-    fmt,
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
 };
@@ -41,6 +40,7 @@ use std::{
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
@@ -325,20 +325,6 @@ impl<N: Network> Hash for Transaction<N> {
     }
 }
 
-// TODO add debug support for record ciphertexts
-impl<N: Network> fmt::Debug for Transaction<N> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transitions: {:?} }}",
-            self.network_id(),
-            self.inner_circuit_id(),
-            self.transitions()
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,7 +338,7 @@ mod tests {
     #[test]
     fn test_decrypt_records() {
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let dummy_account = Account::<Testnet2>::new(rng).unwrap();
+        let dummy_account = Account::<Testnet2>::new(rng);
 
         // Construct output records
         let mut payload = [0u8; PAYLOAD_SIZE];
@@ -371,7 +357,7 @@ mod tests {
         // Encrypt output records
         let (_encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
         let (_encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
-        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
+        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key());
 
         // Construct transaction with 1 output record and 1 dummy output record
         let transaction = Transaction::new_coinbase(dummy_account.address(), AleoAmount(1234), rng).unwrap();

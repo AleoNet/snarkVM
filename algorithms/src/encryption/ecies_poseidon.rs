@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonSponge},
+    crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
     hash_to_curve::hash_to_curve,
     EncryptionError,
     EncryptionScheme,
@@ -43,6 +43,7 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
+use std::sync::Arc;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
@@ -96,11 +97,14 @@ impl<TE: TwistedEdwardsParameters> Default for ECIESPoseidonPublicKey<TE> {
     Clone(bound = "TE: TwistedEdwardsParameters"),
     Debug(bound = "TE: TwistedEdwardsParameters"),
     PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters"),
-    Default(bound = "TE: TwistedEdwardsParameters")
+    Eq(bound = "TE: TwistedEdwardsParameters")
 )]
-pub struct ECIESPoseidonEncryption<TE: TwistedEdwardsParameters> {
+pub struct ECIESPoseidonEncryption<TE: TwistedEdwardsParameters>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     pub generator: TEAffine<TE>,
+    poseidon_parameters: Arc<PoseidonParameters<TE::BaseField>>,
 }
 
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
@@ -114,7 +118,14 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        Self { generator }
+        let poseidon_parameters = Arc::new(
+            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
+        );
+
+        Self {
+            generator,
+            poseidon_parameters,
+        }
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey {
@@ -124,12 +135,12 @@ where
     fn generate_public_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-    ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError> {
-        Ok(self.generator.into_projective().mul(*private_key).into_affine())
+    ) -> <Self as EncryptionScheme>::PublicKey {
+        self.generator.into_projective().mul(*private_key).into_affine()
     }
 
-    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Randomness, EncryptionError> {
-        Ok(Self::Randomness::rand(rng))
+    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::Randomness {
+        Self::Randomness::rand(rng)
     }
 
     fn encrypt(
@@ -155,9 +166,7 @@ where
             .to_x_coordinate();
 
         // Prepare the Poseidon sponge.
-        let poseidon_parameters =
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
-        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&poseidon_parameters);
+        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
         sponge.absorb(&[ecdh_value]);
 
         // Squeeze one element for the commitment randomness.
@@ -165,7 +174,7 @@ where
 
         // Add a commitment to the public key.
         let public_key_commitment = {
-            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&poseidon_parameters);
+            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
             sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
@@ -241,9 +250,7 @@ where
         let ecdh_value = random_elem.into_projective().mul((*private_key).clone()).into_affine();
 
         // Prepare the Poseidon sponge.
-        let params =
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
-        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
+        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
         // Squeeze one element for the commitment randomness.
@@ -251,8 +258,8 @@ where
 
         // Add a commitment to the public key.
         let public_key_commitment = {
-            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-            let public_key = self.generate_public_key(&private_key)?;
+            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
+            let public_key = self.generate_public_key(&private_key);
             sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
@@ -341,27 +348,45 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> From<TEAffine<TE>> for ECIESPoseidonEncryption<TE> {
+impl<TE: TwistedEdwardsParameters> From<TEAffine<TE>> for ECIESPoseidonEncryption<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     fn from(generator: TEAffine<TE>) -> Self {
-        Self { generator }
+        let poseidon_parameters = Arc::new(
+            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
+        );
+        Self {
+            generator,
+            poseidon_parameters,
+        }
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonEncryption<TE> {
+impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonEncryption<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.generator.write_le(&mut writer)
     }
 }
 
-impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonEncryption<TE> {
+impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonEncryption<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
         let generator = TEAffine::<TE>::read_le(reader)?;
-        Ok(Self { generator })
+        Ok(Self::from(generator))
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToConstraintField<TE::BaseField> for ECIESPoseidonEncryption<TE> {
+impl<TE: TwistedEdwardsParameters> ToConstraintField<TE::BaseField> for ECIESPoseidonEncryption<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<TE::BaseField>, ConstraintFieldError> {
         Ok(Vec::new())

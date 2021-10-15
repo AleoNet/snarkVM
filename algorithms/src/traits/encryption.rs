@@ -35,9 +35,9 @@ pub trait EncryptionScheme:
     fn generate_public_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-    ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError>;
+    ) -> <Self as EncryptionScheme>::PublicKey;
 
-    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Randomness, EncryptionError>;
+    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::Randomness;
 
     fn encrypt(
         &self,

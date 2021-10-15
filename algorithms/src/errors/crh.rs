@@ -27,9 +27,6 @@ pub enum CRHError {
     #[error("{}", _0)]
     ConstraintFieldError(#[from] snarkvm_fields::ConstraintFieldError),
 
-    #[error("{}", _0)]
-    CryptoHashError(#[from] crate::CryptoHashError),
-
     #[error("incorrect input length {} x 8 for window params {}x{}", _0, _1, _2)]
     IncorrectInputLength(usize, usize, usize),
 

@@ -39,10 +39,7 @@ fn dpc_testnet1_integration_test() {
 
     let mut ledger = Ledger::<Testnet1>::new().unwrap();
     assert_eq!(ledger.latest_block_height(), 0);
-    assert_eq!(
-        ledger.latest_block_hash(),
-        Testnet1::genesis_block().to_block_hash().unwrap()
-    );
+    assert_eq!(ledger.latest_block_hash(), Testnet1::genesis_block().block_hash());
     assert_eq!(&ledger.latest_block().unwrap(), Testnet1::genesis_block());
     assert_eq!((*ledger.latest_block_transactions().unwrap()).len(), 1);
     assert_eq!(
@@ -52,12 +49,12 @@ fn dpc_testnet1_integration_test() {
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
-    let previous_hash = previous_block.to_block_hash().unwrap();
+    let previous_hash = previous_block.block_hash();
     let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
     // Construct the new block transactions.
-    let recipient = Account::new(rng).unwrap();
+    let recipient = Account::new(rng);
     let amount = Block::<Testnet1>::block_reward(block_height);
     let coinbase_transaction = Transaction::<Testnet1>::new_coinbase(recipient.address(), amount, rng).unwrap();
     {
@@ -68,7 +65,7 @@ fn dpc_testnet1_integration_test() {
 
         // Check that coinbase record can be decrypted from the transaction.
         let encrypted_record = &coinbase_transaction.ciphertexts()[0];
-        let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
+        let view_key = ViewKey::from_private_key(recipient.private_key());
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
         assert_eq!(decrypted_record.value() as i64, Block::<Testnet1>::block_reward(1).0);
@@ -78,18 +75,18 @@ fn dpc_testnet1_integration_test() {
 
     // Construct the new serial numbers root.
     let mut serial_numbers = SerialNumbers::<Testnet1>::new().unwrap();
+    serial_numbers.add_all(&previous_block.serial_numbers()).unwrap();
     serial_numbers
-        .add_all(previous_block.to_serial_numbers().unwrap())
-        .unwrap();
-    serial_numbers
-        .add_all(transactions.to_serial_numbers().unwrap())
+        .add_all(&transactions.serial_numbers().collect::<Vec<_>>())
         .unwrap();
     let serial_numbers_root = serial_numbers.root();
 
     // Construct the new commitments root.
     let mut commitments = Commitments::<Testnet1>::new().unwrap();
-    commitments.add_all(previous_block.to_commitments().unwrap()).unwrap();
-    commitments.add_all(transactions.to_commitments().unwrap()).unwrap();
+    commitments.add_all(&previous_block.commitments()).unwrap();
+    commitments
+        .add_all(&transactions.commitments().collect::<Vec<_>>())
+        .unwrap();
     let commitments_root = commitments.root();
 
     let timestamp = Utc::now().timestamp();

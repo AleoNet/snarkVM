@@ -242,7 +242,7 @@ impl<N: Network> ResponseBuilder<N> {
 //             let (expected_record, expected_serial_number, expected_program_id) = {
 //                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 //
-//                 let account = Account::new(rng).unwrap();
+//                 let account = Account::new(rng);
 //                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
 //                 let serial_number = input_record
 //                     .to_serial_number(&account.private_key().to_compute_key().unwrap())

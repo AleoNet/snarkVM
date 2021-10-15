@@ -189,7 +189,7 @@ impl<N: Network> Record<N> {
 
     pub fn to_serial_number(&self, compute_key: &ComputeKey<N>) -> Result<N::SerialNumber, RecordError> {
         // Check that the compute key corresponds with the owner of the record.
-        if self.owner != Address::<N>::from_compute_key(compute_key)? {
+        if self.owner != Address::<N>::from_compute_key(compute_key) {
             return Err(RecordError::IncorrectComputeKey);
         }
 

@@ -36,24 +36,24 @@ fn aleo_signature_generate_private_key(c: &mut Criterion) {
     let parameters = SignatureScheme::setup("aleo_signature_generate_private_key");
 
     c.bench_function("Aleo Signature Generate Private Key", move |b| {
-        b.iter(|| SignatureScheme::generate_private_key(&parameters, rng).unwrap())
+        b.iter(|| SignatureScheme::generate_private_key(&parameters, rng))
     });
 }
 
 fn aleo_signature_generate_public_key(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let parameters = SignatureScheme::setup("aleo_signature_generate_public_key");
-    let private_key = SignatureScheme::generate_private_key(&parameters, rng).unwrap();
+    let private_key = SignatureScheme::generate_private_key(&parameters, rng);
 
     c.bench_function("Aleo Signature Generate Public Key", move |b| {
-        b.iter(|| SignatureScheme::generate_public_key(&parameters, &private_key).unwrap())
+        b.iter(|| SignatureScheme::generate_public_key(&parameters, &private_key))
     });
 }
 
 fn aleo_signature_sign(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let parameters = SignatureScheme::setup("aleo_signature_sign");
-    let private_key = SignatureScheme::generate_private_key(&parameters, rng).unwrap();
+    let private_key = SignatureScheme::generate_private_key(&parameters, rng);
     let message = [100u8; 128];
 
     c.bench_function("Aleo Signature Sign", move |b| {
@@ -64,8 +64,8 @@ fn aleo_signature_sign(c: &mut Criterion) {
 fn aleo_signature_verify(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let parameters = SignatureScheme::setup("aleo_signature_verify");
-    let private_key = SignatureScheme::generate_private_key(&parameters, rng).unwrap();
-    let public_key = SignatureScheme::generate_public_key(&parameters, &private_key).unwrap();
+    let private_key = SignatureScheme::generate_private_key(&parameters, rng);
+    let public_key = SignatureScheme::generate_public_key(&parameters, &private_key);
     let message = [100u8; 128];
     let signature = SignatureScheme::sign(&parameters, &private_key, &message, rng).unwrap();
 

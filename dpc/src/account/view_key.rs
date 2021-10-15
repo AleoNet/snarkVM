@@ -20,7 +20,6 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
 use std::{
-    convert::TryFrom,
     fmt,
     io::{Read, Result as IoResult, Write},
     ops::Deref,
@@ -29,8 +28,8 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "N: Network"),
     Clone(bound = "N: Network"),
+    Default(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
@@ -38,25 +37,21 @@ pub struct ViewKey<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>:
 
 impl<N: Network> ViewKey<N> {
     /// Creates a new account view key from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<N>) -> Result<Self, AccountError> {
-        Ok(Self(private_key.to_decryption_key()?))
+    pub fn from_private_key(private_key: &PrivateKey<N>) -> Self {
+        Self(private_key.to_decryption_key())
     }
 }
 
-impl<N: Network> TryFrom<PrivateKey<N>> for ViewKey<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<PrivateKey<N>> for ViewKey<N> {
     /// Creates a new account view key from an account private key.
-    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
-        Self::try_from(&private_key)
+    fn from(private_key: PrivateKey<N>) -> Self {
+        Self::from(&private_key)
     }
 }
 
-impl<N: Network> TryFrom<&PrivateKey<N>> for ViewKey<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<&PrivateKey<N>> for ViewKey<N> {
     /// Creates a new account view key from an account private key.
-    fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
+    fn from(private_key: &PrivateKey<N>) -> Self {
         Self::from_private_key(private_key)
     }
 }

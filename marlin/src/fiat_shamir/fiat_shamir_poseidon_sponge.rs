@@ -25,8 +25,10 @@ use crate::{fiat_shamir::AlgebraicSponge, Vec};
 use snarkvm_algorithms::crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField};
 use snarkvm_fields::PrimeField;
 
-#[derive(Clone)]
+use std::sync::Arc;
+
 /// The sponge for Poseidon
+#[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField + PoseidonDefaultParametersField> {
     /// The actual sponge element
     pub sponge: snarkvm_algorithms::crypto_hash::PoseidonSponge<F>,
@@ -34,7 +36,7 @@ pub struct PoseidonSponge<F: PrimeField + PoseidonDefaultParametersField> {
 
 impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSponge<F> for PoseidonSponge<F> {
     fn new() -> Self {
-        let params = F::get_default_poseidon_parameters(6, false).unwrap();
+        let params = Arc::new(F::get_default_poseidon_parameters(6, false).unwrap());
         let sponge = snarkvm_algorithms::crypto_hash::PoseidonSponge::<F>::new(&params);
         Self { sponge }
     }

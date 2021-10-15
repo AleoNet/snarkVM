@@ -51,12 +51,7 @@ pub struct MarlinVerificationGadget<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
->(
-    PhantomData<TargetField>,
-    PhantomData<BaseField>,
-    PhantomData<PC>,
-    PhantomData<PCG>,
-);
+>(PhantomData<(TargetField, BaseField, PC, PCG)>);
 
 /// Fiat Shamir Algebraic Sponge RNG type
 pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
@@ -74,7 +69,7 @@ where
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    V: ToConstraintField<TargetField>,
+    V: ToConstraintField<TargetField> + Clone,
 {
     type InputGadget = NonNativeFieldInputVar<TargetField, BaseField>;
     type PreparedVerificationKeyGadget = PreparedCircuitVerifyingKeyVar<

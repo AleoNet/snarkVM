@@ -155,7 +155,7 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for
 /// a sender to commit to multiple polynomials and later provide a succinct proof
 /// of evaluation for the corresponding commitments at a query set `Q`, while
 /// enforcing per-polynomial degree bounds.
-pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + Debug {
+pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + Debug + PartialEq + Eq {
     /// The universal parameters for the commitment scheme. These are "trimmed"
     /// down to `Self::CommitterKey` and `Self::VerifierKey` by `Self::trim`.
     type UniversalParams: PCUniversalParams + Clone;
@@ -172,6 +172,9 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         + ToConstraintField<CF>
         + ToMinimalBits
         + Clone
+        + Debug
+        + PartialEq
+        + Eq
         + Send
         + Sync;
     /// The prepared commitment to a polynomial.

@@ -17,8 +17,10 @@
 use crate::Vec;
 use snarkvm_fields::PrimeField;
 
+use core::fmt::Debug;
+
 /// Trait for an algebraic sponge.
-pub trait AlgebraicSponge<BaseField: PrimeField>: Clone {
+pub trait AlgebraicSponge<BaseField: PrimeField>: Clone + Debug {
     /// Initializes an algebraic sponge.
     fn new() -> Self;
     /// Takes in field elements.

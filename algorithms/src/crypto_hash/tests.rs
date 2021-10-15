@@ -18,6 +18,8 @@ use crate::crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, Po
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_utilities::str::FromStr;
 
+use std::sync::Arc;
+
 #[test]
 fn test_grain_lfsr_consistency() {
     let mut lfsr = PoseidonGrainLFSR::new(false, 253, 3, 8, 31);
@@ -34,7 +36,7 @@ fn test_grain_lfsr_consistency() {
 
 #[test]
 fn test_poseidon_sponge_consistency() {
-    let sponge_param = Fr::get_default_poseidon_parameters(2, false).unwrap();
+    let sponge_param = Arc::new(Fr::get_default_poseidon_parameters(2, false).unwrap());
 
     let mut sponge = PoseidonSponge::<Fr>::new(&sponge_param);
     sponge.absorb(&vec![Fr::from(0u8), Fr::from(1u8), Fr::from(2u8)]);

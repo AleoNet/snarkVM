@@ -26,8 +26,5 @@ pub use posw::*;
 pub mod record;
 pub use record::*;
 
-pub mod transaction;
-pub use transaction::*;
-
 pub mod virtual_machine;
 pub use virtual_machine::*;

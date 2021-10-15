@@ -45,22 +45,22 @@ impl<N: Network> ComputeKey<N> {
     ///
     /// This constructor is currently limited for internal use.
     /// The general convention for deriving a compute key should be from a private key.
-    pub(crate) fn new(pk_sig: N::ProgramAffineCurve, pr_sig: N::ProgramAffineCurve) -> Result<Self, AccountError> {
+    pub(crate) fn new(pk_sig: N::ProgramAffineCurve, pr_sig: N::ProgramAffineCurve) -> Self {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = N::account_signature_scheme()
-            .hash_to_scalar_field(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()])?;
+        let sk_prf =
+            N::account_signature_scheme().hash_to_scalar_field(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
         // Initialize the compute key.
-        Ok(Self { pk_sig, pr_sig, sk_prf })
+        Self { pk_sig, pr_sig, sk_prf }
     }
 
     /// Derives the account compute key from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<N>) -> Result<Self, AccountError> {
+    pub fn from_private_key(private_key: &PrivateKey<N>) -> Self {
         // Compute G^sk_sig.
-        let pk_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.sk_sig)?;
+        let pk_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.sk_sig);
 
         // Compute G^r_sig.
-        let pr_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.r_sig)?;
+        let pr_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.r_sig);
 
         Self::new(pk_sig, pr_sig)
     }
@@ -72,21 +72,16 @@ impl<N: Network> ComputeKey<N> {
         // Extract G^r_sig.
         let pr_sig = N::AccountSignatureScheme::pr_sig(signature)?;
 
-        Self::new(pk_sig, pr_sig)
+        Ok(Self::new(pk_sig, pr_sig))
     }
 
     /// Returns `true` if the compute key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(&self) -> bool {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        match N::account_signature_scheme()
-            .hash_to_scalar_field(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()])
-        {
-            Ok(candidate_sk_prf) => self.sk_prf == candidate_sk_prf,
-            Err(error) => {
-                eprintln!("Failed to validate compute key: {}", error);
-                false
-            }
-        }
+        let candidate_sk_prf = N::account_signature_scheme()
+            .hash_to_scalar_field(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()]);
+
+        self.sk_prf == candidate_sk_prf
     }
 
     /// Returns a reference to the signature root public key.
@@ -105,11 +100,11 @@ impl<N: Network> ComputeKey<N> {
     }
 
     /// Returns the encryption key.
-    pub fn to_encryption_key(&self) -> Result<N::ProgramAffineCurve, AccountError> {
+    pub fn to_encryption_key(&self) -> N::ProgramAffineCurve {
         // Compute G^sk_prf.
-        let pk_prf = N::account_signature_scheme().g_scalar_multiply(&self.sk_prf)?;
+        let pk_prf = N::account_signature_scheme().g_scalar_multiply(&self.sk_prf);
 
-        Ok(self.pk_sig + self.pr_sig + pk_prf)
+        self.pk_sig + self.pr_sig + pk_prf
     }
 }
 
@@ -119,7 +114,7 @@ impl<N: Network> FromBytes for ComputeKey<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let pk_sig = FromBytes::read_le(&mut reader)?;
         let pr_sig = FromBytes::read_le(&mut reader)?;
-        Ok(Self::new(pk_sig, pr_sig)?)
+        Ok(Self::new(pk_sig, pr_sig))
     }
 }
 
@@ -142,8 +137,6 @@ impl<N: Network> fmt::Debug for ComputeKey<N> {
 
 impl<N: Network> Default for ComputeKey<N> {
     fn default() -> Self {
-        PrivateKey::new(&mut thread_rng())
-            .to_compute_key()
-            .expect("Failed to generate a random compute key")
+        PrivateKey::new(&mut thread_rng()).to_compute_key()
     }
 }

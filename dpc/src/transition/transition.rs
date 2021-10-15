@@ -27,6 +27,7 @@ use std::{
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
@@ -47,7 +48,6 @@ pub struct Transition<N: Network> {
     value_balance: AleoAmount,
     /// The events emitted from this transition.
     events: Vec<Event<N>>,
-    #[derivative(PartialEq = "ignore")]
     /// The zero-knowledge proof attesting to the validity of this transition.
     proof: <N::OuterSNARK as SNARK>::Proof,
 }
@@ -153,61 +153,61 @@ impl<N: Network> Transition<N> {
 
     /// Returns the transition ID.
     #[inline]
-    pub(crate) fn transition_id(&self) -> N::TransitionID {
+    pub fn transition_id(&self) -> N::TransitionID {
         self.transition_id
     }
 
     /// Returns the block hash used to prove inclusion of ledger-consumed records.
     #[inline]
-    pub(crate) fn block_hash(&self) -> N::BlockHash {
+    pub fn block_hash(&self) -> N::BlockHash {
         self.block_hash
     }
 
     /// Returns the local commitments root used to prove inclusion of locally-consumed records.
     #[inline]
-    pub(crate) fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
+    pub fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
         self.local_commitments_root
     }
 
     /// Returns a reference to the serial numbers.
     #[inline]
-    pub(crate) fn serial_numbers(&self) -> &Vec<N::SerialNumber> {
+    pub fn serial_numbers(&self) -> &Vec<N::SerialNumber> {
         &self.serial_numbers
     }
 
     /// Returns a reference to the commitments.
     #[inline]
-    pub(crate) fn commitments(&self) -> &Vec<N::Commitment> {
+    pub fn commitments(&self) -> &Vec<N::Commitment> {
         &self.commitments
     }
 
     /// Returns a reference to the ciphertexts.
     #[inline]
-    pub(crate) fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
+    pub fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
         &self.ciphertexts
     }
 
     /// Returns a reference to the value balance.
     #[inline]
-    pub(crate) fn value_balance(&self) -> &AleoAmount {
+    pub fn value_balance(&self) -> &AleoAmount {
         &self.value_balance
     }
 
     /// Returns a reference to the events.
     #[inline]
-    pub(crate) fn events(&self) -> &Vec<Event<N>> {
+    pub fn events(&self) -> &Vec<Event<N>> {
         &self.events
     }
 
     /// Returns a reference to the transition proof.
     #[inline]
-    pub(crate) fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
+    pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
         &self.proof
     }
 
     /// Returns the ciphertext IDs.
     #[inline]
-    pub(crate) fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
+    pub fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
         self.ciphertexts.iter().map(RecordCiphertext::to_ciphertext_id)
     }
 
@@ -302,23 +302,5 @@ impl<N: Network> ToBytes for Transition<N> {
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
-    }
-}
-
-// TODO (raychu): add debug support for record ciphertexts
-impl<N: Network> fmt::Debug for Transition<N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Transition {{ transition_id: {:?}, block_hash: {:?}, local_commitments_root: {:?}, serial_numbers: {:?}, commitments: {:?}, ciphertext_ids: {:?}, value_balance: {:?}, proof: {:?} }}",
-            self.transition_id(),
-            self.block_hash(),
-            self.local_commitments_root(),
-            self.serial_numbers(),
-            self.commitments(),
-            self.to_ciphertext_ids(),
-            self.value_balance(),
-            self.proof()
-        )
     }
 }

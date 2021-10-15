@@ -17,7 +17,6 @@
 use crate::{
     crypto_hash::{CryptographicSponge, DuplexSpongeMode, PoseidonGrainLFSR},
     CryptoHash,
-    CryptoHashError,
 };
 use snarkvm_fields::{
     Fp256,
@@ -31,7 +30,10 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 /// Parameters and RNG used
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -160,16 +162,16 @@ impl<F: PrimeField> FromBytes for PoseidonParameters<F> {
     }
 }
 
-#[derive(Clone)]
 /// A duplex sponge based using the Poseidon permutation.
 ///
 /// This implementation of Poseidon is entirely from Fractal's implementation in [COS20][cos]
 /// with small syntax changes.
 ///
 /// [cos]: https://eprint.iacr.org/2019/1076
+#[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField> {
     // Sponge Parameters
-    pub parameters: PoseidonParameters<F>,
+    pub parameters: Arc<PoseidonParameters<F>>,
 
     // Sponge State
     /// current sponge's state (current elements in the permutation block)
@@ -303,7 +305,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
 }
 
 impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
-    type Parameters = PoseidonParameters<F>;
+    type Parameters = Arc<PoseidonParameters<F>>;
 
     fn new(parameters: &Self::Parameters) -> Self {
         let state = vec![F::zero(); parameters.rate + parameters.capacity];
@@ -368,7 +370,7 @@ pub struct PoseidonCryptoHash<
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
-    pub parameters: PoseidonParameters<F>,
+    parameters: Arc<PoseidonParameters<F>>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
@@ -376,13 +378,34 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 {
     type Input = F;
     type Output = F;
+    type Parameters = PoseidonParameters<F>;
 
-    fn evaluate(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
-        let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
-        let mut sponge = PoseidonSponge::<F>::new(&params);
+    /// Initializes a new instance of the cryptographic hash function.
+    fn setup() -> Self {
+        Self {
+            parameters: Arc::new(F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap()),
+        }
+    }
+
+    fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
+        let mut sponge = PoseidonSponge::<F>::new(&self.parameters);
         sponge.absorb(input);
         let res = sponge.squeeze_field_elements(1);
-        Ok(res[0].clone())
+        res[0]
+    }
+
+    fn parameters(&self) -> &Self::Parameters {
+        &self.parameters
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+    From<PoseidonParameters<F>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    fn from(parameters: PoseidonParameters<F>) -> Self {
+        Self {
+            parameters: Arc::new(parameters),
+        }
     }
 }
 
@@ -401,8 +424,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let parameters: PoseidonParameters<F> = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self { parameters })
+        Ok(Self::from(parameters))
     }
 }
 

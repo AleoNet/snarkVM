@@ -41,7 +41,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
@@ -131,8 +131,12 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
     PartialEq(bound = "TE: TwistedEdwardsParameters"),
     Eq(bound = "TE: TwistedEdwardsParameters")
 )]
-pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters> {
+pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     pub g_bases: Vec<TEProjective<TE>>,
+    crypto_hash: PoseidonCryptoHash<TE::BaseField, 4, false>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
@@ -162,7 +166,9 @@ where
             g_bases
         };
 
-        Self { g_bases }
+        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+
+        Self { g_bases, crypto_hash }
     }
 
     fn parameters(&self) -> Self::Parameters {
@@ -172,33 +178,33 @@ where
     ///
     /// Returns private key as (sk_sig, r_sig).
     ///
-    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
-        Ok((TE::ScalarField::rand(rng), TE::ScalarField::rand(rng)))
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey {
+        (TE::ScalarField::rand(rng), TE::ScalarField::rand(rng))
     }
 
     ///
     /// Returns public key as (G^sk_sig G^r_sig G^sk_prf).
     ///
-    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
+    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey {
         // Extract (sk_sig, r_sig).
         let (sk_sig, r_sig) = private_key;
 
         // Compute G^sk_sig.
-        let g_sk_sig = self.g_scalar_multiply(sk_sig)?;
+        let g_sk_sig = self.g_scalar_multiply(sk_sig);
 
         // Compute G^r_sig.
-        let g_r_sig = self.g_scalar_multiply(r_sig)?;
+        let g_r_sig = self.g_scalar_multiply(r_sig);
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x])?;
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
 
         // Compute G^sk_prf.
-        let g_sk_prf = self.g_scalar_multiply(&sk_prf)?;
+        let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
         let public_key = g_sk_sig + g_r_sig + g_sk_prf;
 
-        Ok(public_key)
+        public_key
     }
 
     ///
@@ -216,22 +222,22 @@ where
         let r = TE::ScalarField::rand(rng);
 
         // Compute G^r.
-        let g_r = self.g_scalar_multiply(&r)?;
+        let g_r = self.g_scalar_multiply(&r);
 
         // Extract (sk_sig, r_sig).
         let (sk_sig, r_sig) = private_key;
 
         // Compute G^sk_sig.
-        let g_sk_sig = self.g_scalar_multiply(sk_sig)?;
+        let g_sk_sig = self.g_scalar_multiply(sk_sig);
 
         // Compute G^r_sig.
-        let g_r_sig = self.g_scalar_multiply(r_sig)?;
+        let g_r_sig = self.g_scalar_multiply(r_sig);
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x])?;
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
 
         // Compute G^sk_prf.
-        let g_sk_prf = self.g_scalar_multiply(&sk_prf)?;
+        let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
         let public_key = g_sk_sig + g_r_sig + g_sk_prf;
@@ -246,7 +252,7 @@ where
             preimage.extend_from_slice(&message.to_field_elements()?);
 
             // Hash to derive the verifier challenge.
-            self.hash_to_scalar_field(&preimage)?
+            self.hash_to_scalar_field(&preimage)
         };
 
         // Compute the prover response.
@@ -277,10 +283,10 @@ where
         let g_sk_sig = Self::recover_from_x_coordinate(root_public_key)?;
 
         // Compute G^sk_sig^c.
-        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), &verifier_challenge)?;
+        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), &verifier_challenge);
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = self.g_scalar_multiply(&prover_response)? + g_sk_sig_c;
+        let g_r = self.g_scalar_multiply(&prover_response) + g_sk_sig_c;
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
@@ -292,7 +298,7 @@ where
             preimage.extend_from_slice(&message.to_field_elements()?);
 
             // Hash to derive the verifier challenge.
-            self.hash_to_scalar_field(&preimage)?
+            self.hash_to_scalar_field(&preimage)
         };
 
         // Recover G^r_sig.
@@ -301,10 +307,10 @@ where
         // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
         let candidate_public_key = {
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x])?;
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
 
             // Compute G^sk_prf.
-            let g_sk_prf = self.g_scalar_multiply(&sk_prf)?;
+            let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
             g_sk_sig + g_r_sig + g_sk_prf
@@ -331,9 +337,8 @@ where
         Self::recover_from_x_coordinate(&signature.root_randomizer)
     }
 
-    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Result<Self::AffineCurve> {
-        Ok(self
-            .g_bases
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Self::AffineCurve {
+        self.g_bases
             .iter()
             .zip_eq(&scalar.to_bits_le())
             .filter_map(|(base, bit)| match bit {
@@ -341,12 +346,12 @@ where
                 false => None,
             })
             .sum::<TEProjective<TE>>()
-            .into_affine())
+            .into_affine()
     }
 
-    fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Result<Self::ScalarField> {
+    fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField {
         // Use Poseidon as a random oracle.
-        let output = PoseidonCryptoHash::<TE::BaseField, 4, false>::evaluate(&input)?;
+        let output = self.crypto_hash.evaluate(&input);
 
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
         let mut bits = output.to_repr().to_bits_le();
@@ -355,8 +360,9 @@ where
         // Output the scalar field.
         let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
         match <TE::ScalarField as PrimeField>::from_repr(biginteger) {
-            Some(scalar) => Ok(scalar),
-            _ => Err(anyhow!("Failed to hash input into scalar field")),
+            // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
+            Some(scalar) => scalar,
+            _ => panic!("Failed to hash input into scalar field"),
         }
     }
 }
@@ -365,8 +371,8 @@ impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> Result<TEAffine<TE>> {
-        Ok(base.mul(*scalar).into_affine())
+    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> TEAffine<TE> {
+        base.mul(*scalar).into_affine()
     }
 
     fn recover_from_x_coordinate(x_coordinate: &TE::BaseField) -> Result<TEAffine<TE>> {
@@ -386,13 +392,20 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE> {
+impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
-        Self { g_bases }
+        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+        Self { g_bases, crypto_hash }
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
+impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.g_bases.len() as u32).write_le(&mut writer)?;
         for g in &self.g_bases {
@@ -403,7 +416,10 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
     }
 }
 
-impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE> {
+impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let g_bases_length: u32 = FromBytes::read_le(&mut reader)?;
@@ -413,11 +429,14 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE> {
             g_bases.push(g.into_projective());
         }
 
-        Ok(Self { g_bases })
+        Ok(Self::from(g_bases))
     }
 }
 
-impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE> {
+impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         Ok(Vec::new())

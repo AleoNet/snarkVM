@@ -21,7 +21,6 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
 use std::{
-    convert::TryFrom,
     fmt,
     io::{Read, Result as IoResult, Write},
     ops::Deref,
@@ -41,20 +40,20 @@ pub struct Address<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>:
 
 impl<N: Network> Address<N> {
     /// Derives the account address from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<N>) -> Result<Self, AccountError> {
-        Self::from_compute_key(&private_key.to_compute_key()?)
+    pub fn from_private_key(private_key: &PrivateKey<N>) -> Self {
+        Self::from_compute_key(&private_key.to_compute_key())
     }
 
     /// Derives the account address from an account compute key.
-    pub fn from_compute_key(compute_key: &ComputeKey<N>) -> Result<Self, AccountError> {
-        Ok(Self(compute_key.to_encryption_key()?))
+    pub fn from_compute_key(compute_key: &ComputeKey<N>) -> Self {
+        Self(compute_key.to_encryption_key())
     }
 
     /// Derives the account address from an account view key.
-    pub fn from_view_key(view_key: &ViewKey<N>) -> Result<Self, AccountError> {
+    pub fn from_view_key(view_key: &ViewKey<N>) -> Self {
         // TODO (howardwu): This operation can be optimized by precomputing powers in ECIES native impl.
         //  Optimizing this will also speed up encryption.
-        Ok(Self(N::account_encryption_scheme().generate_public_key(&*view_key)?))
+        Self(N::account_encryption_scheme().generate_public_key(&*view_key))
     }
 
     /// Verifies a signature on a message signed by the account view key.
@@ -64,56 +63,44 @@ impl<N: Network> Address<N> {
     }
 }
 
-impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<PrivateKey<N>> for Address<N> {
     /// Derives the account address from an account private key.
-    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
-        Self::try_from(&private_key)
+    fn from(private_key: PrivateKey<N>) -> Self {
+        Self::from(&private_key)
     }
 }
 
-impl<N: Network> TryFrom<&PrivateKey<N>> for Address<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<&PrivateKey<N>> for Address<N> {
     /// Derives the account address from an account private key.
-    fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
+    fn from(private_key: &PrivateKey<N>) -> Self {
         Self::from_private_key(private_key)
     }
 }
 
-impl<N: Network> TryFrom<ComputeKey<N>> for Address<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<ComputeKey<N>> for Address<N> {
     /// Derives the account address from an account compute key.
-    fn try_from(compute_key: ComputeKey<N>) -> Result<Self, Self::Error> {
-        Self::try_from(&compute_key)
+    fn from(compute_key: ComputeKey<N>) -> Self {
+        Self::from(&compute_key)
     }
 }
 
-impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<&ComputeKey<N>> for Address<N> {
     /// Derives the account address from an account compute key.
-    fn try_from(compute_key: &ComputeKey<N>) -> Result<Self, Self::Error> {
+    fn from(compute_key: &ComputeKey<N>) -> Self {
         Self::from_compute_key(compute_key)
     }
 }
 
-impl<N: Network> TryFrom<ViewKey<N>> for Address<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<ViewKey<N>> for Address<N> {
     /// Derives the account address from an account view key.
-    fn try_from(view_key: ViewKey<N>) -> Result<Self, Self::Error> {
-        Self::try_from(&view_key)
+    fn from(view_key: ViewKey<N>) -> Self {
+        Self::from(&view_key)
     }
 }
 
-impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<&ViewKey<N>> for Address<N> {
     /// Derives the account address from an account view key.
-    fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
+    fn from(view_key: &ViewKey<N>) -> Self {
         Self::from_view_key(view_key)
     }
 }

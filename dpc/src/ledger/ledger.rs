@@ -103,7 +103,7 @@ impl<N: Network> Ledger<N> {
     /// Adds the given orphan block, if it is well-formed and does not already exist.
     pub fn add_orphan_block(&mut self, block: &Block<N>) -> Result<()> {
         // Ensure the block does not exist in canon.
-        if self.canon_blocks.contains_block_hash(&block.to_block_hash()?) {
+        if self.canon_blocks.contains_block_hash(&block.block_hash()) {
             return Err(anyhow!("Orphan block already exists in canon chain"));
         }
 
@@ -167,12 +167,12 @@ impl<N: Network> Ledger<N> {
 
         // Construct the new serial numbers root.
         let mut serial_numbers = self.canon_blocks.latest_serial_numbers();
-        serial_numbers.add_all(transactions.to_serial_numbers()?)?;
+        serial_numbers.add_all(&transactions.serial_numbers().collect::<Vec<_>>())?;
         let serial_numbers_root = serial_numbers.root();
 
         // Construct the new commitments root.
         let mut commitments = self.canon_blocks.latest_commitments();
-        commitments.add_all(transactions.to_commitments()?)?;
+        commitments.add_all(&transactions.commitments().collect::<Vec<_>>())?;
         let commitments_root = commitments.root();
 
         // Mine the next block.
@@ -229,7 +229,7 @@ mod tests {
         let rng = &mut thread_rng();
         {
             let mut ledger = Ledger::<Testnet1>::new().unwrap();
-            let recipient = Account::<Testnet1>::new(rng).unwrap();
+            let recipient = Account::<Testnet1>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
             ledger
@@ -239,7 +239,7 @@ mod tests {
         }
         {
             let mut ledger = Ledger::<Testnet2>::new().unwrap();
-            let recipient = Account::<Testnet2>::new(rng).unwrap();
+            let recipient = Account::<Testnet2>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
             ledger

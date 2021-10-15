@@ -29,9 +29,6 @@ pub enum BlockError {
 
     #[error("{}", _0)]
     Message(String),
-
-    #[error("{}", _0)]
-    TransactionError(#[from] crate::TransactionError),
 }
 
 impl From<std::io::Error> for BlockError {

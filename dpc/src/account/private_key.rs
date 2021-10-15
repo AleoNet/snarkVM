@@ -52,13 +52,7 @@ impl<N: Network> PrivateKey<N> {
 
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(&self) -> bool {
-        match self.to_compute_key() {
-            Ok(compute_key) => compute_key.is_valid(),
-            Err(error) => {
-                eprintln!("Failed to validate private key: {}", error);
-                false
-            }
-        }
+        self.to_compute_key().is_valid()
     }
 
     /// Signs a message using the account private key.
@@ -67,18 +61,18 @@ impl<N: Network> PrivateKey<N> {
     }
 
     /// Returns the address from the private key.
-    pub fn to_address(&self) -> Result<Address<N>, AccountError> {
+    pub fn to_address(&self) -> Address<N> {
         Address::from_private_key(self)
     }
 
     /// Returns a reference to the account compute key.
-    pub fn to_compute_key(&self) -> Result<ComputeKey<N>, AccountError> {
-        Ok(ComputeKey::from_private_key(self)?)
+    pub fn to_compute_key(&self) -> ComputeKey<N> {
+        ComputeKey::from_private_key(self)
     }
 
     /// Returns the decryption key.
-    pub fn to_decryption_key(&self) -> Result<N::ProgramScalarField, AccountError> {
-        Ok(self.sk_sig + self.r_sig + self.to_compute_key()?.sk_prf())
+    pub fn to_decryption_key(&self) -> N::ProgramScalarField {
+        self.sk_sig + self.r_sig + self.to_compute_key().sk_prf()
     }
 }
 

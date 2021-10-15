@@ -16,9 +16,11 @@
 
 use crate::{ConstraintFieldError, Field};
 
+use core::fmt::Debug;
+
 /// Types that can be converted to a vector of `F` elements. Useful for specifying
 /// how public inputs to a constraint system should be represented inside
 /// that constraint system.
-pub trait ToConstraintField<F: Field> {
+pub trait ToConstraintField<F: Field>: Debug {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError>;
 }

@@ -24,8 +24,8 @@ fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let signature_scheme = S::setup("sign_and_verify");
 
-    let private_key = signature_scheme.generate_private_key(rng).unwrap();
-    let public_key = signature_scheme.generate_public_key(&private_key).unwrap();
+    let private_key = signature_scheme.generate_private_key(rng);
+    let public_key = signature_scheme.generate_public_key(&private_key);
     let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
     assert!(signature_scheme.verify(&public_key, &message, &signature).unwrap());
 }
@@ -34,8 +34,8 @@ fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let signature_scheme = S::setup("failed_verification");
 
-    let private_key = signature_scheme.generate_private_key(rng).unwrap();
-    let public_key = signature_scheme.generate_public_key(&private_key).unwrap();
+    let private_key = signature_scheme.generate_private_key(rng);
+    let public_key = signature_scheme.generate_public_key(&private_key);
     let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
     assert!(!signature_scheme.verify(&public_key, bad_message, &signature).unwrap());
 }
