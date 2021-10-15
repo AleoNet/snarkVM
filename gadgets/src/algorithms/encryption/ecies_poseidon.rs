@@ -179,13 +179,18 @@ where
     Eq(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField"),
     Debug(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField")
 )]
-pub struct ECIESPoseidonEncryptionGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> {
+pub struct ECIESPoseidonEncryptionGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     encryption: ECIESPoseidonEncryption<TE>,
     f_phantom: PhantomData<F>,
 }
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECIESPoseidonEncryption<TE>, F>
     for ECIESPoseidonEncryptionGadget<TE, F>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,

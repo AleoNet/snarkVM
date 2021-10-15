@@ -30,7 +30,7 @@ use std::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoseidonCRH<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>(
-    PoseidonParameters<F>,
+    PoseidonCryptoHash<F, 4, false>,
 );
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
@@ -38,7 +38,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     type Parameters = PoseidonParameters<F>;
 
     fn setup(_message: &str) -> Self {
-        Self(F::get_default_poseidon_parameters(4, false).unwrap())
+        Self(PoseidonCryptoHash::<F, 4, false>::setup())
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
@@ -58,7 +58,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
             input
         };
 
-        Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(&input.to_field_elements()?))
+        Ok(self.0.evaluate(&input.to_field_elements()?))
     }
 
     fn hash_field_elements<F2: PrimeField>(&self, input: &[F2]) -> Result<Self::Output, CRHError> {
@@ -79,14 +79,14 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
                 dest
             };
 
-            Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(&dest))
+            Ok(self.0.evaluate(&dest))
         } else {
             unimplemented!()
         }
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.0
+        &self.0.parameters()
     }
 }
 
@@ -94,7 +94,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     for PoseidonCRH<F, INPUT_SIZE_FE>
 {
     fn from(parameters: PoseidonParameters<F>) -> Self {
-        Self(parameters)
+        Self(PoseidonCryptoHash::<F, 4, false>::from(parameters))
     }
 }
 
@@ -104,7 +104,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let parameters: PoseidonParameters<F> = FromBytes::read_le(&mut reader)?;
-        Ok(Self(parameters))
+        Ok(Self::from(parameters))
     }
 }
 

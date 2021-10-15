@@ -131,8 +131,12 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
     PartialEq(bound = "TE: TwistedEdwardsParameters"),
     Eq(bound = "TE: TwistedEdwardsParameters")
 )]
-pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters> {
+pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     pub g_bases: Vec<TEProjective<TE>>,
+    crypto_hash: PoseidonCryptoHash<TE::BaseField, 4, false>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
@@ -162,7 +166,9 @@ where
             g_bases
         };
 
-        Self { g_bases }
+        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+
+        Self { g_bases, crypto_hash }
     }
 
     fn parameters(&self) -> Self::Parameters {
@@ -345,7 +351,7 @@ where
 
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField {
         // Use Poseidon as a random oracle.
-        let output = PoseidonCryptoHash::<TE::BaseField, 4, false>::evaluate(&input);
+        let output = self.crypto_hash.evaluate(&input);
 
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
         let mut bits = output.to_repr().to_bits_le();
@@ -386,13 +392,20 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE> {
+impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
-        Self { g_bases }
+        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+        Self { g_bases, crypto_hash }
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
+impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.g_bases.len() as u32).write_le(&mut writer)?;
         for g in &self.g_bases {
@@ -403,7 +416,10 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE> {
     }
 }
 
-impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE> {
+impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let g_bases_length: u32 = FromBytes::read_le(&mut reader)?;
@@ -413,11 +429,14 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE> {
             g_bases.push(g.into_projective());
         }
 
-        Ok(Self { g_bases })
+        Ok(Self::from(g_bases))
     }
 }
 
-impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE> {
+impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE>
+where
+    TE::BaseField: PoseidonDefaultParametersField,
+{
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         Ok(Vec::new())

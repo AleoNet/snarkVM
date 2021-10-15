@@ -25,6 +25,8 @@ use snarkvm_curves::bls12_377::Fr;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{test_rng, UniformRand};
 
+use std::sync::Arc;
+
 #[test]
 fn absorb_test() {
     let mut rng = test_rng();
@@ -38,7 +40,7 @@ fn absorb_test() {
         .map(|(i, v)| FpGadget::<Fr>::alloc_input(cs.ns(|| format!("alloc input {}", i)), || Ok((*v).clone())).unwrap())
         .collect();
 
-    let sponge_params = Fr::get_default_poseidon_parameters(2, false).unwrap();
+    let sponge_params = Arc::new(Fr::get_default_poseidon_parameters(2, false).unwrap());
 
     let mut native_sponge = PoseidonSponge::<Fr>::new(&sponge_params);
     let mut constraint_sponge = PoseidonSpongeGadget::<Fr>::new(cs.ns(|| "new sponge"), &sponge_params);

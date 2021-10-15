@@ -305,14 +305,14 @@ impl<F: PrimeField> PoseidonSponge<F> {
 }
 
 impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
-    type Parameters = PoseidonParameters<F>;
+    type Parameters = Arc<PoseidonParameters<F>>;
 
     fn new(parameters: &Self::Parameters) -> Self {
         let state = vec![F::zero(); parameters.rate + parameters.capacity];
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
         Self {
-            parameters: Arc::new(parameters.clone()),
+            parameters: parameters.clone(),
             state,
             mode,
         }
@@ -370,7 +370,7 @@ pub struct PoseidonCryptoHash<
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
-    pub parameters: PoseidonParameters<F>,
+    parameters: Arc<PoseidonParameters<F>>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
@@ -378,13 +378,34 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 {
     type Input = F;
     type Output = F;
+    type Parameters = PoseidonParameters<F>;
 
-    fn evaluate(input: &[Self::Input]) -> Self::Output {
-        let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
-        let mut sponge = PoseidonSponge::<F>::new(&params);
+    /// Initializes a new instance of the cryptographic hash function.
+    fn setup() -> Self {
+        Self {
+            parameters: Arc::new(F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap()),
+        }
+    }
+
+    fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
+        let mut sponge = PoseidonSponge::<F>::new(&self.parameters);
         sponge.absorb(input);
         let res = sponge.squeeze_field_elements(1);
         res[0]
+    }
+
+    fn parameters(&self) -> &Self::Parameters {
+        &self.parameters
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+    From<PoseidonParameters<F>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    fn from(parameters: PoseidonParameters<F>) -> Self {
+        Self {
+            parameters: Arc::new(parameters),
+        }
     }
 }
 
@@ -403,8 +424,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let parameters: PoseidonParameters<F> = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self { parameters })
+        Ok(Self::from(parameters))
     }
 }
 
