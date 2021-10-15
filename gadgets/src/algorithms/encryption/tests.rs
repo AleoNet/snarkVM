@@ -40,7 +40,7 @@ mod ecies_poseidon {
         let encryption_scheme = TestEncryptionScheme::setup("test_group_encryption_public_key_gadget");
 
         let private_key = encryption_scheme.generate_private_key(rng);
-        let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
+        let public_key = encryption_scheme.generate_public_key(&private_key);
 
         let encryption =
             TestEncryptionSchemeGadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme))
@@ -87,9 +87,9 @@ mod ecies_poseidon {
         let encryption_scheme = TestEncryptionScheme::setup("test_encryption_gadget");
 
         let private_key = encryption_scheme.generate_private_key(rng);
-        let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
+        let public_key = encryption_scheme.generate_public_key(&private_key);
 
-        let randomness = encryption_scheme.generate_randomness(rng).unwrap();
+        let randomness = encryption_scheme.generate_randomness(rng);
         let message: Vec<u8> = (0..10).map(|_| rand::random::<u8>()).collect();
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
 

@@ -128,8 +128,8 @@ where
         self.generator.into_projective().mul(*private_key).into_affine()
     }
 
-    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Randomness, EncryptionError> {
-        Ok(Self::Randomness::rand(rng))
+    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::Randomness {
+        Self::Randomness::rand(rng)
     }
 
     fn encrypt(

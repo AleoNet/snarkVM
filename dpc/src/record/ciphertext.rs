@@ -75,7 +75,7 @@ impl<N: Network> RecordCiphertext<N> {
         }
 
         // Encrypt the record bytes.
-        let randomizer = N::account_encryption_scheme().generate_randomness(rng)?;
+        let randomizer = N::account_encryption_scheme().generate_randomness(rng);
         let ciphertext = N::account_encryption_scheme().encrypt(&*record.owner(), &randomizer, &buffer)?;
 
         Ok((Self::new(ciphertext), randomizer))
