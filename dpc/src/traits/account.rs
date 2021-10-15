@@ -29,6 +29,9 @@ pub trait AccountScheme: Sized {
     /// Returns a reference to the private key.
     fn private_key(&self) -> &Self::PrivateKey;
 
+    /// Returns a reference to the view key.
+    fn view_key(&self) -> &Self::ViewKey;
+
     /// Returns a reference to the address.
     fn address(&self) -> Self::Address;
 }

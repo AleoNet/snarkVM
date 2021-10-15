@@ -16,22 +16,23 @@
 
 use crate::{Address, AleoAmount, BlockHeader, LedgerProof, Network, Transaction, Transactions};
 use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
-    hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
     sync::{atomic::AtomicBool, Arc},
     time::Instant,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block<N: Network> {
-    /// Hash of the previous block - 32 bytes
+    /// Hash of this block.
+    block_hash: N::BlockHash,
+    /// Hash of the previous block.
     previous_block_hash: N::BlockHash,
-    /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
+    /// The block header containing the state of the ledger at this block.
     header: BlockHeader<N>,
     /// The block transactions.
     transactions: Transactions<N>,
@@ -78,12 +79,12 @@ impl<N: Network> Block<N> {
         let transactions_root = transactions.to_transactions_root()?;
 
         // Compute the serial numbers root from the transactions.
-        let serial_numbers = transactions.to_serial_numbers()?;
+        let serial_numbers = transactions.serial_numbers();
         let serial_numbers_tree =
             MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
 
         // Compute the commitments root from the transactions.
-        let commitments = transactions.to_commitments()?;
+        let commitments = transactions.commitments();
         let commitments_tree = MerkleTree::new(Arc::new(N::commitments_tree_parameters().clone()), &commitments)?;
 
         // Construct the genesis block header metadata.
@@ -103,25 +104,32 @@ impl<N: Network> Block<N> {
             rng,
         )?;
 
-        // Construct the genesis block.
-        let block = Self {
-            previous_block_hash: LedgerProof::<N>::default().block_hash(),
-            header,
-            transactions,
-        };
+        // Construct the previous block hash.
+        let previous_block_hash = LedgerProof::<N>::default().block_hash();
 
-        // Ensure the genesis block is valid.
-        match block.is_genesis() && block.is_valid() {
+        // Construct the genesis block.
+        let block = Self::from(previous_block_hash, header, transactions)?;
+
+        // Ensure the block is valid genesis block.
+        match block.is_genesis() {
             true => Ok(block),
             false => Err(anyhow!("Failed to initialize a genesis block")),
         }
     }
 
     /// Initializes a new block from a given previous hash, header, and transactions list.
-    pub fn from(previous_hash: N::BlockHash, header: BlockHeader<N>, transactions: Transactions<N>) -> Result<Self> {
+    pub fn from(
+        previous_block_hash: N::BlockHash,
+        header: BlockHeader<N>,
+        transactions: Transactions<N>,
+    ) -> Result<Self> {
+        // Compute the block hash.
+        let block_hash = N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?;
+
         // Construct the block.
         let block = Self {
-            previous_block_hash: previous_hash,
+            block_hash,
+            previous_block_hash,
             header,
             transactions,
         };
@@ -218,6 +226,11 @@ impl<N: Network> Block<N> {
         self.header.is_genesis()
     }
 
+    /// Returns the hash of this block.
+    pub fn block_hash(&self) -> N::BlockHash {
+        self.block_hash
+    }
+
     /// Returns the previous block hash.
     pub fn previous_block_hash(&self) -> N::BlockHash {
         self.previous_block_hash
@@ -263,23 +276,14 @@ impl<N: Network> Block<N> {
         self.header.difficulty_target()
     }
 
-    /// Returns the hash of this block.
-    pub fn to_block_hash(&self) -> Result<N::BlockHash> {
-        // Construct the preimage.
-        let mut preimage = self.previous_block_hash.to_bytes_le()?;
-        preimage.extend_from_slice(&self.header.to_header_root()?.to_bytes_le()?);
-
-        Ok(N::block_hash_crh().hash(&preimage)?)
-    }
-
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
-    pub fn to_serial_numbers(&self) -> Result<Vec<N::SerialNumber>> {
-        self.transactions.to_serial_numbers()
+    pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
+        self.transactions.serial_numbers()
     }
 
     /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
-    pub fn to_commitments(&self) -> Result<Vec<N::Commitment>> {
-        self.transactions.to_commitments()
+    pub fn commitments(&self) -> Vec<N::Commitment> {
+        self.transactions.commitments()
     }
 
     /// Returns the coinbase transaction for the block.
@@ -332,15 +336,11 @@ impl<N: Network> Block<N> {
 impl<N: Network> FromBytes for Block<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let previous_hash = FromBytes::read_le(&mut reader)?;
+        let previous_block_hash = FromBytes::read_le(&mut reader)?;
         let header = FromBytes::read_le(&mut reader)?;
         let transactions = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            previous_block_hash: previous_hash,
-            header,
-            transactions,
-        })
+        Ok(Self::from(previous_block_hash, header, transactions).expect("Failed to deserialize a block"))
     }
 }
 
@@ -352,24 +352,6 @@ impl<N: Network> ToBytes for Block<N> {
         self.transactions.write_le(&mut writer)
     }
 }
-
-impl<N: Network> Hash for Block<N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.to_block_hash()
-            .expect("Failed to compute the block hash")
-            .hash(state);
-    }
-}
-
-impl<N: Network> PartialEq for Block<N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.previous_block_hash == other.previous_block_hash
-            && self.header == other.header
-            && self.transactions == other.transactions
-    }
-}
-
-impl<N: Network> Eq for Block<N> {}
 
 #[cfg(test)]
 mod tests {

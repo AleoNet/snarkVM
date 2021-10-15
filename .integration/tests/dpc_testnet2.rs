@@ -39,10 +39,7 @@ fn dpc_testnet2_integration_test() {
 
     let mut ledger = Ledger::<Testnet2>::new().unwrap();
     assert_eq!(ledger.latest_block_height(), 0);
-    assert_eq!(
-        ledger.latest_block_hash(),
-        Testnet2::genesis_block().to_block_hash().unwrap()
-    );
+    assert_eq!(ledger.latest_block_hash(), Testnet2::genesis_block().block_hash());
     assert_eq!(&ledger.latest_block().unwrap(), Testnet2::genesis_block());
     assert_eq!((*ledger.latest_block_transactions().unwrap()).len(), 1);
     assert_eq!(
@@ -52,7 +49,7 @@ fn dpc_testnet2_integration_test() {
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
-    let previous_hash = previous_block.to_block_hash().unwrap();
+    let previous_hash = previous_block.block_hash();
     let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
@@ -78,18 +75,14 @@ fn dpc_testnet2_integration_test() {
 
     // Construct the new serial numbers root.
     let mut serial_numbers = SerialNumbers::<Testnet2>::new().unwrap();
-    serial_numbers
-        .add_all(previous_block.to_serial_numbers().unwrap())
-        .unwrap();
-    serial_numbers
-        .add_all(transactions.to_serial_numbers().unwrap())
-        .unwrap();
+    serial_numbers.add_all(previous_block.serial_numbers()).unwrap();
+    serial_numbers.add_all(transactions.serial_numbers()).unwrap();
     let serial_numbers_root = serial_numbers.root();
 
     // Construct the new commitments root.
     let mut commitments = Commitments::<Testnet2>::new().unwrap();
-    commitments.add_all(previous_block.to_commitments().unwrap()).unwrap();
-    commitments.add_all(transactions.to_commitments().unwrap()).unwrap();
+    commitments.add_all(previous_block.commitments()).unwrap();
+    commitments.add_all(transactions.commitments()).unwrap();
     let commitments_root = commitments.root();
 
     let timestamp = Utc::now().timestamp();

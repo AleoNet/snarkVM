@@ -49,12 +49,12 @@ impl<N: Network> Blocks<N> {
     pub fn new() -> Result<Self> {
         let genesis_block = N::genesis_block().clone();
         let height = genesis_block.height();
-        let serial_numbers = genesis_block.to_serial_numbers()?;
-        let commitments = genesis_block.to_commitments()?;
+        let serial_numbers = genesis_block.serial_numbers();
+        let commitments = genesis_block.commitments();
 
         let mut blocks = Self {
             current_height: genesis_block.height(),
-            current_hash: genesis_block.to_block_hash()?,
+            current_hash: genesis_block.block_hash(),
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
@@ -224,7 +224,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the block hash does not already exist.
-        let block_hash = block.to_block_hash()?;
+        let block_hash = block.block_hash();
         if self.contains_block_hash(&block_hash) {
             return Err(anyhow!("The given block hash already exists in the ledger"));
         }
@@ -272,7 +272,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the ledger does not already contain a given serial numbers.
-        let serial_numbers = block.to_serial_numbers()?;
+        let serial_numbers = block.serial_numbers();
         for serial_number in &serial_numbers {
             if self.serial_numbers.contains_serial_number(serial_number) {
                 return Err(anyhow!("Serial number already exists in the ledger"));
@@ -280,7 +280,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the ledger does not already contain a given commitments.
-        let commitments = block.to_commitments()?;
+        let commitments = block.commitments();
         for commitment in &commitments {
             if self.commitments.contains_commitment(commitment) {
                 return Err(anyhow!("Commitment already exists in the ledger"));

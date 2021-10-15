@@ -41,8 +41,8 @@ mod testnet1 {
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
         let account = Account::<Testnet1>::new(&mut rng).unwrap();
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
-        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
-        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
+        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key().to_string());
+        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address().to_string());
 
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
@@ -56,8 +56,8 @@ mod testnet1 {
         let account = Account::<Testnet1>::try_from(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key().to_string());
-        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
-        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
+        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key().to_string());
+        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address().to_string());
     }
 
     #[test]
@@ -246,8 +246,8 @@ mod testnet2 {
         // Check the seeded derivation matches the hardcoded value, as a sanity check.
         let account = Account::<Testnet2>::new(&mut rng).unwrap();
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
-        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
-        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
+        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key().to_string());
+        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address().to_string());
 
         // Attempt to sample for a new account ITERATIONS times.
         for _ in 0..ITERATIONS {
@@ -261,8 +261,8 @@ mod testnet2 {
         let account = Account::<Testnet2>::try_from(private_key).unwrap();
 
         assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key().to_string());
-        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
-        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
+        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key().to_string());
+        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address().to_string());
     }
 
     #[test]

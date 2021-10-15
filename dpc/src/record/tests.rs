@@ -34,7 +34,7 @@ fn test_record_ciphertext() {
         rng.fill(&mut payload);
 
         let expected_record = Record::new_input(
-            account.address,
+            account.address(),
             value,
             Payload::from_bytes_le(&payload).unwrap(),
             *Testnet2::noop_program_id(),

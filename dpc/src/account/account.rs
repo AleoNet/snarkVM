@@ -26,8 +26,8 @@ use std::{
 #[derivative(Clone(bound = "N: Network"))]
 pub struct Account<N: Network> {
     private_key: PrivateKey<N>,
-    pub view_key: ViewKey<N>,
-    pub address: Address<N>,
+    view_key: ViewKey<N>,
+    address: Address<N>,
 }
 
 impl<N: Network> AccountScheme for Account<N> {
@@ -43,6 +43,11 @@ impl<N: Network> AccountScheme for Account<N> {
     /// Returns a reference to the private key.
     fn private_key(&self) -> &Self::PrivateKey {
         &self.private_key
+    }
+
+    /// Returns a reference to the view key.
+    fn view_key(&self) -> &Self::ViewKey {
+        &self.view_key
     }
 
     /// Returns a reference to the address.

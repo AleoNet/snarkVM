@@ -264,7 +264,7 @@ mod tests {
 
         // Create a ledger proof for two commitments.
         let ledger_proof = ledger.to_ledger_inclusion_proof(&expected_commitments)?;
-        assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
+        assert_eq!(ledger_proof.block_hash, expected_block.block_hash());
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
         assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
@@ -276,7 +276,7 @@ mod tests {
 
         // Create a ledger proof for one commitment and one noop.
         let ledger_proof = ledger.to_ledger_inclusion_proof(&[expected_commitments[0]])?;
-        assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
+        assert_eq!(ledger_proof.block_hash, expected_block.block_hash());
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
         assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());
@@ -289,7 +289,7 @@ mod tests {
 
         // Create a ledger proof for two noops.
         let ledger_proof = ledger.to_ledger_inclusion_proof(&[])?;
-        assert_eq!(ledger_proof.block_hash, expected_block.to_block_hash()?);
+        assert_eq!(ledger_proof.block_hash, expected_block.block_hash());
         assert_eq!(ledger_proof.previous_block_hash, expected_block.previous_block_hash());
         assert_eq!(ledger_proof.header_root, expected_block.header().to_header_root()?);
         assert_eq!(ledger_proof.commitments_root, expected_block.header().commitments_root());

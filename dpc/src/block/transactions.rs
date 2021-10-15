@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, BlockError, Network, Transaction, TransactionError};
+use crate::{AleoAmount, BlockError, Network, Transaction};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
@@ -72,13 +72,13 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure there are no duplicate serial numbers.
-        if has_duplicates(self.0.iter().map(Transaction::serial_numbers).flatten()) {
+        if has_duplicates(self.0.iter().flat_map(Transaction::serial_numbers)) {
             eprintln!("Found duplicate serial numbers in the transactions list");
             return false;
         }
 
         // Ensure there are no duplicate commitments.
-        if has_duplicates(self.0.iter().map(Transaction::commitments).flatten()) {
+        if has_duplicates(self.0.iter().flat_map(Transaction::commitments)) {
             eprintln!("Found duplicate commitments in the transactions list");
             return false;
         }
@@ -91,6 +91,16 @@ impl<N: Network> Transactions<N> {
         }
 
         true
+    }
+
+    /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
+    pub fn serial_numbers(&self) -> Vec<<N as Network>::SerialNumber> {
+        self.0.iter().flat_map(Transaction::serial_numbers).collect()
+    }
+
+    /// Returns the commitments, by constructing a flattened list of commitments from all transactions.
+    pub fn commitments(&self) -> Vec<<N as Network>::Commitment> {
+        self.0.iter().flat_map(Transaction::commitments).collect()
     }
 
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
@@ -108,22 +118,6 @@ impl<N: Network> Transactions<N> {
                 )?
                 .root())
             }
-            false => Err(anyhow!("The transactions list is invalid")),
-        }
-    }
-
-    /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
-    pub fn to_serial_numbers(&self) -> Result<Vec<<N as Network>::SerialNumber>> {
-        match self.is_valid() {
-            true => Ok(self.0.iter().flat_map(Transaction::serial_numbers).collect()),
-            false => Err(anyhow!("The transactions list is invalid")),
-        }
-    }
-
-    /// Returns the commitments, by constructing a flattened list of commitments from all transactions.
-    pub fn to_commitments(&self) -> Result<Vec<<N as Network>::Commitment>> {
-        match self.is_valid() {
-            true => Ok(self.0.iter().flat_map(Transaction::commitments).collect()),
             false => Err(anyhow!("The transactions list is invalid")),
         }
     }
@@ -158,13 +152,13 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Serializes the transactions into strings.
-    pub fn serialize_as_str(&self) -> Result<Vec<String>, TransactionError> {
+    pub fn serialize_as_str(&self) -> Result<Vec<String>> {
         match self.is_valid() {
             true => self
                 .0
                 .iter()
-                .map(|transaction| -> Result<String, TransactionError> { Ok(hex::encode(to_bytes_le![transaction]?)) })
-                .collect::<Result<Vec<String>, TransactionError>>(),
+                .map(|transaction| -> Result<String> { Ok(hex::encode(to_bytes_le![transaction]?)) })
+                .collect::<Result<Vec<String>>>(),
             false => Err(anyhow!("The transactions list is invalid").into()),
         }
     }

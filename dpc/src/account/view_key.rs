@@ -29,8 +29,8 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "N: Network"),
     Clone(bound = "N: Network"),
+    Default(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
