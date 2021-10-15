@@ -61,7 +61,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         assert_eq!(self.path.len(), P::DEPTH);
         // Check that the hash of the given leaf matches the leaf hash in the membership
         // proof.
-        let leaf_bits = leaf.to_bytes_le(&mut cs.ns(|| "leaf_to_bytes"))?;
+        let leaf_bits = leaf.to_bytes_le(cs.ns(|| "leaf_to_bytes"))?;
         let leaf_hash = HG::check_evaluation_gadget(cs.ns(|| "check_evaluation_gadget"), parameters, leaf_bits)?;
 
         // Check if leaf is one of the bottom-most siblings.

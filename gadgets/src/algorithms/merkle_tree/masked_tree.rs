@@ -82,8 +82,8 @@ where
     HG: MaskedCRHGadget<H, F>,
     TB: ToBytesLEGadget<F>,
 {
-    let left_bytes = left_child.to_bytes_le(&mut cs.ns(|| "left_to_bytes"))?;
-    let right_bytes = right_child.to_bytes_le(&mut cs.ns(|| "right_to_bytes"))?;
+    let left_bytes = left_child.to_bytes_le(cs.ns(|| "left_to_bytes"))?;
+    let right_bytes = right_child.to_bytes_le(cs.ns(|| "right_to_bytes"))?;
     let bytes = [left_bytes, right_bytes].concat();
 
     HG::check_evaluation_gadget_masked(cs, parameters, bytes, mask_parameters, mask)

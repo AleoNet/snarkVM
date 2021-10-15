@@ -229,7 +229,11 @@ fn test_uint64_from_bytes_be() {
 
     for _ in 0..1000 {
         let expected: u64 = rng.gen();
-        let v = expected.to_be_bytes().map(|byte| UInt8::constant(byte));
+        let v = expected
+            .to_be_bytes()
+            .iter()
+            .map(|byte| UInt8::constant(*byte))
+            .collect::<Vec<UInt8>>();
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
@@ -256,7 +260,11 @@ fn test_uint64_from_bytes_le() {
 
     for _ in 0..1000 {
         let expected: u64 = rng.gen();
-        let v = expected.to_le_bytes().map(|byte| UInt8::constant(byte));
+        let v = expected
+            .to_le_bytes()
+            .iter()
+            .map(|byte| UInt8::constant(*byte))
+            .collect::<Vec<UInt8>>();
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
@@ -651,7 +659,7 @@ fn test_uint64_div() {
             cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::zero());
         }
 
-        assert!(cs.is_satisfied());
+        assert!(!cs.is_satisfied());
     }
 }
 
