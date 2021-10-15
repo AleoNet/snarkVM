@@ -30,7 +30,10 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    sync::Arc,
+};
 
 /// Parameters and RNG used
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,7 +171,7 @@ impl<F: PrimeField> FromBytes for PoseidonParameters<F> {
 #[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField> {
     // Sponge Parameters
-    pub parameters: PoseidonParameters<F>,
+    pub parameters: Arc<PoseidonParameters<F>>,
 
     // Sponge State
     /// current sponge's state (current elements in the permutation block)
@@ -309,7 +312,7 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
         Self {
-            parameters: parameters.clone(),
+            parameters: Arc::new(parameters.clone()),
             state,
             mode,
         }
