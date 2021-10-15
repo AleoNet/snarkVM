@@ -33,6 +33,13 @@ version = "0.7.5"
 optional = true
 default-features = false
 
+[dependencies.snarkvm-dpc]
+path = "../dpc"
+version = "0.7.5"
+optional = true
+default-features = false
+features = ["wasm"]
+
 [dependencies.snarkvm-fields]
 path = "../fields"
 version = "0.7.5"
