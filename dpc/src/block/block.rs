@@ -279,6 +279,11 @@ impl<N: Network> Block<N> {
         self.header.difficulty_target()
     }
 
+    /// Returns the block nonce.
+    pub fn nonce(&self) -> N::InnerScalarField {
+        self.header.nonce()
+    }
+
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
     pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
         self.transactions.serial_numbers().collect()
