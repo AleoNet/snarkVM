@@ -1876,6 +1876,7 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
+ "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-polycommit",
