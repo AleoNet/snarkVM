@@ -52,6 +52,12 @@ version = "0.7.5"
 optional = true
 default-features = false
 
+[dependencies.snarkvm-marlin]
+path = "../marlin"
+version = "0.7.5"
+optional = true
+features = ["wasm"]
+
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.7.5"
@@ -100,14 +106,18 @@ default = [ "full" ]
 full = [
   "algorithms",
   "curves",
+  "dpc",
   "fields",
   "gadgets",
+  "marlin",
   "polycommit",
   "r1cs"
 ]
 algorithms = [ "snarkvm-algorithms" ]
 curves = [ "snarkvm-curves" ]
+dpc = ["snarkvm-dpc"]
 fields = [ "snarkvm-fields" ]
 gadgets = [ "snarkvm-gadgets" ]
+marlin = [ "snarkvm-marlin" ]
 polycommit = [ "snarkvm-polycommit" ]
 r1cs = [ "snarkvm-r1cs" ]
