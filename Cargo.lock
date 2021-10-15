@@ -1879,6 +1879,7 @@ dependencies = [
  "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-gadgets",
+ "snarkvm-marlin",
  "snarkvm-polycommit",
  "snarkvm-r1cs",
  "snarkvm-utilities",
