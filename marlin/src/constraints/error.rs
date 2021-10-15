@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ahp::AHPError, marlin::MarlinError, String};
-use alloc::string::ToString;
 
 use core::fmt::{Debug, Display, Formatter};
 
