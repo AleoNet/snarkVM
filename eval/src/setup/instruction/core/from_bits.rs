@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{Address, Char, FieldType, GroupType};
+use crate::{Address, GroupType};
 use snarkvm_gadgets::{
     integers::{int::*, uint::*},
     Boolean,
@@ -38,13 +38,11 @@ macro_rules! from_bits_impl {
                     Some(value) => Ok(value),
                 }?;
 
-                let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits_le")?
-                    .try_into()
-                    .map_err(|_| anyhow!("incorrect bits array length"))?;
+                let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits_le")?;
 
                 let cs = self.cs();
 
-                $le_call(bits, cs)
+                $le_call(&bits, cs)
             }
         }
 
@@ -60,13 +58,11 @@ macro_rules! from_bits_impl {
                     Some(value) => Ok(value),
                 }?;
 
-                let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits_be")?
-                    .try_into()
-                    .map_err(|_| anyhow!("incorrect bits array length"))?;
+                let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits_be")?;
 
                 let cs = self.cs();
 
-                $be_call(bits, cs)
+                $be_call(&bits, cs)
             }
         }
     };
@@ -76,13 +72,13 @@ from_bits_impl!(
     call_core_address_from_bits_le,
     ADDRESS_FROM_BITS_LE_CORE,
     "address_from_bits_le",
-    |bits: [Boolean; 256], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Address(Address::from_bits_le(bits, cs)?))
     },
     call_core_address_from_bits_be,
     ADDRESS_FROM_BITS_BE_CORE,
     "address_from_bits_be",
-    |bits: [Boolean; 256], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Address(Address::from_bits_be(bits, cs)?))
     },
     256
@@ -91,13 +87,13 @@ from_bits_impl!(
     call_core_bool_from_bits_le,
     BOOL_FROM_BITS_LE_CORE,
     "bool_from_bits_le",
-    |bits: [Boolean; 1], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Boolean(Boolean::from_bits_le(bits, cs)?))
     },
     call_core_bool_from_bits_be,
     BOOL_FROM_BITS_BE_CORE,
     "bool_from_bits_be",
-    |bits: [Boolean; 1], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Boolean(Boolean::from_bits_be(bits, cs)?))
     },
     1
@@ -106,14 +102,14 @@ from_bits_impl!(
     call_core_char_from_bits_le,
     CHAR_FROM_BITS_LE_CORE,
     "char_from_bits_le",
-    |bits: [Boolean; 253], cs| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Char(Char::from_bits_le(bits, cs)?))
+    |_bits: &[Boolean], _| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `char` does not implement the from_bits_le method"))
     },
     call_core_char_from_bits_be,
     CHAR_FROM_BITS_BE_CORE,
     "char_from_bits_be",
-    |bits: [Boolean; 253], cs| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Char(Char::from_bits_be(bits, cs)?))
+    |_bits: &[Boolean], _| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `char` does not implement the from_bits_be method"))
     },
     253
 );
@@ -121,14 +117,14 @@ from_bits_impl!(
     call_core_field_from_bits_le,
     FIELD_FROM_BITS_LE_CORE,
     "field_from_bits_le",
-    |bits: [Boolean; 253], cs| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Field(FieldType::from_bits_le(bits, cs)?))
+    |_bits: &[Boolean], _| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `field` does not implement the from_bits_le method"))
     },
     call_core_field_from_bits_be,
     FIELD_FROM_BITS_BE_CORE,
     "field_from_bits_be",
-    |bits: [Boolean; 253], cs| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Field(FieldType::from_bits_be(bits, cs)?))
+    |_bits: &[Boolean], _| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `field` does not implement the from_bits_be method"))
     },
     253
 );
@@ -136,14 +132,14 @@ from_bits_impl!(
     call_core_group_from_bits_le,
     GROUP_FROM_BITS_LE_CORE,
     "group_from_bits_le",
-    |bits: [Boolean; 506], cs| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Group(G::from_bits_le(bits, cs)?))
+    |_bits: &[Boolean], _| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `group` does not implement the from_bits_le method"))
     },
     call_core_group_from_bits_be,
     GROUP_FROM_BITS_BE_CORE,
     "group_from_bits_be",
-    |bits: [Boolean; 506], cs| -> Result<ConstrainedValue<F, G>> {
-        Ok(ConstrainedValue::Group(G::from_bits_be(bits, cs)?))
+    |_bits: &[Boolean], _| -> Result<ConstrainedValue<F, G>> {
+        Err(anyhow!("the type `group` does not implement the from_bits_be method"))
     },
     506
 );
@@ -151,13 +147,13 @@ from_bits_impl!(
     call_core_i8_from_bits_le,
     I8_FROM_BITS_LE_CORE,
     "i8_from_bits_le",
-    |bits: [Boolean; 8], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I8(Int8::from_bits_le(bits, cs)?)))
     },
     call_core_i8_from_bits_be,
     I8_FROM_BITS_BE_CORE,
     "i8_from_bits_be",
-    |bits: [Boolean; 8], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I8(Int8::from_bits_be(bits, cs)?)))
     },
     8
@@ -166,13 +162,13 @@ from_bits_impl!(
     call_core_i16_from_bits_le,
     I16_FROM_BITS_LE_CORE,
     "i16_from_bits_le",
-    |bits: [Boolean; 16], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_le(bits, cs)?)))
     },
     call_core_i16_from_bits_be,
     I16_FROM_BITS_BE_CORE,
     "i16_from_bits_be",
-    |bits: [Boolean; 16], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I16(Int16::from_bits_be(bits, cs)?)))
     },
     16
@@ -181,13 +177,13 @@ from_bits_impl!(
     call_core_i32_from_bits_le,
     I32_FROM_BITS_LE_CORE,
     "i32_from_bits_le",
-    |bits: [Boolean; 32], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I32(Int32::from_bits_le(bits, cs)?)))
     },
     call_core_i32_from_bits_be,
     I32_FROM_BITS_BE_CORE,
     "i32_from_bits_be",
-    |bits: [Boolean; 32], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I32(Int32::from_bits_be(bits, cs)?)))
     },
     32
@@ -196,13 +192,13 @@ from_bits_impl!(
     call_core_i64_from_bits_le,
     I64_FROM_BITS_LE_CORE,
     "i64_from_bits_le",
-    |bits: [Boolean; 64], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I64(Int64::from_bits_le(bits, cs)?)))
     },
     call_core_i64_from_bits_be,
     I64_FROM_BITS_BE_CORE,
     "i64_from_bits_be",
-    |bits: [Boolean; 64], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I64(Int64::from_bits_be(bits, cs)?)))
     },
     64
@@ -211,7 +207,7 @@ from_bits_impl!(
     call_core_i128_from_bits_le,
     I128_FROM_BITS_LE_CORE,
     "i128_from_bits_le",
-    |bits: [Boolean; 128], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I128(Int128::from_bits_le(
             bits, cs,
         )?)))
@@ -219,7 +215,7 @@ from_bits_impl!(
     call_core_i128_from_bits_be,
     I128_FROM_BITS_BE_CORE,
     "i128_from_bits_be",
-    |bits: [Boolean; 128], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::I128(Int128::from_bits_be(
             bits, cs,
         )?)))
@@ -230,13 +226,13 @@ from_bits_impl!(
     call_core_u8_from_bits_le,
     U8_FROM_BITS_LE_CORE,
     "u8_from_bits_le",
-    |bits: [Boolean; 8], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U8(UInt8::from_bits_le(bits, cs)?)))
     },
     call_core_u8_from_bits_be,
     U8_FROM_BITS_BE_CORE,
     "u8_from_bits_be",
-    |bits: [Boolean; 8], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U8(UInt8::from_bits_be(bits, cs)?)))
     },
     8
@@ -245,13 +241,13 @@ from_bits_impl!(
     call_core_u16_from_bits_le,
     U16_FROM_BITS_LE_CORE,
     "u16_from_bits_le",
-    |bits: [Boolean; 16], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U16(UInt16::from_bits_le(bits, cs)?)))
     },
     call_core_u16_from_bits_be,
     U16_FROM_BITS_BE_CORE,
     "u16_from_bits_be",
-    |bits: [Boolean; 16], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U16(UInt16::from_bits_be(bits, cs)?)))
     },
     16
@@ -260,13 +256,13 @@ from_bits_impl!(
     call_core_u32_from_bits_le,
     U32_FROM_BITS_LE_CORE,
     "u32_from_bits_le",
-    |bits: [Boolean; 32], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U32(UInt32::from_bits_le(bits, cs)?)))
     },
     call_core_u32_from_bits_be,
     U32_FROM_BITS_BE_CORE,
     "u32_from_bits_be",
-    |bits: [Boolean; 32], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U32(UInt32::from_bits_be(bits, cs)?)))
     },
     32
@@ -275,13 +271,13 @@ from_bits_impl!(
     call_core_u64_from_bits_le,
     U64_FROM_BITS_LE_CORE,
     "u64_from_bits_le",
-    |bits: [Boolean; 64], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U64(UInt64::from_bits_le(bits, cs)?)))
     },
     call_core_u64_from_bits_be,
     U64_FROM_BITS_BE_CORE,
     "u64_from_bits_be",
-    |bits: [Boolean; 64], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U64(UInt64::from_bits_be(bits, cs)?)))
     },
     64
@@ -290,7 +286,7 @@ from_bits_impl!(
     call_core_u128_from_bits_le,
     U128_FROM_BITS_LE_CORE,
     "u128_from_bits_le",
-    |bits: [Boolean; 128], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U128(UInt128::from_bits_le(
             bits, cs,
         )?)))
@@ -298,7 +294,7 @@ from_bits_impl!(
     call_core_u128_from_bits_be,
     U128_FROM_BITS_BE_CORE,
     "u128_from_bits_be",
-    |bits: [Boolean; 128], cs| -> Result<ConstrainedValue<F, G>> {
+    |bits: &[Boolean], cs| -> Result<ConstrainedValue<F, G>> {
         Ok(ConstrainedValue::Integer(Integer::U128(UInt128::from_bits_be(
             bits, cs,
         )?)))

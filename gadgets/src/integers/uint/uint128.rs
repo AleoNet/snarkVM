@@ -43,7 +43,6 @@ use crate::{
     uint_impl_common,
     UnsignedIntegerError,
 };
-use std::convert::TryInto;
 
 uint_impl_common!(UInt128, u128, 128);
 

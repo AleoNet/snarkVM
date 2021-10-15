@@ -564,62 +564,62 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
     }
 }
 
-impl<P, F, FG> FromBitsBEGadget<F, 506> for AffineGadget<P, F, FG>
+impl<P, F, FG> FromBitsBEGadget<F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<P, F, FG> FromBitsLEGadget<F, 506> for AffineGadget<P, F, FG>
+impl<P, F, FG> FromBitsLEGadget<F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 506], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<P, F, FG> FromBytesBEGadget<F, 64> for AffineGadget<P, F, FG>
+impl<P, F, FG> FromBytesBEGadget<F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<P, F, FG> FromBytesLEGadget<F, 64> for AffineGadget<P, F, FG>
+impl<P, F, FG> FromBytesLEGadget<F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 64], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }

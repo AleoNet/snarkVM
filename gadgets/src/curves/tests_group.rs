@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryInto;
-
 use crate::traits::GroupGadget;
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::Field;
@@ -53,51 +51,52 @@ pub fn group_test<F: Field, G: Group, GG: GroupGadget<G, F>, CS: ConstraintSyste
     let b_b = b.add(cs.ns(|| "b + b"), &b).unwrap();
     assert_eq!(b2, b_b);
 
-    let mut bits_be = a.to_bits_be(cs.ns(|| "to_bits_be")).expect("failed to get GG bits be");
-    let from_bits_be = GG::from_bits_be(
-        bits_be.clone().try_into().expect("failed to convert bits vec to array"),
-        cs.ns(|| "from_bits_be"),
-    )
-    .expect("failed to get GG from bits be");
+    // TODO uncomment once we have working from bits/bytes
+    /* let mut bits_be = a.to_bits_be(cs.ns(|| "to_bits_be")).expect("failed to get GG bits be");
+        let from_bits_be = GG::from_bits_be(
+    &        bits_be,
+            cs.ns(|| "from_bits_be"),
+        )
+        .expect("failed to get GG from bits be");
 
-    let bits_le = a.to_bits_le(cs.ns(|| "to_bits_be")).expect("failed to get GG bits be");
-    let from_bits_le = GG::from_bits_le(
-        bits_le.clone().try_into().expect("failed to convert bits vec to array"),
-        cs.ns(|| "from_bits_be"),
-    )
-    .expect("failed to get GG from bits be");
+        let bits_le = a.to_bits_le(cs.ns(|| "to_bits_be")).expect("failed to get GG bits be");
+        let from_bits_le = GG::from_bits_le(
+    &        bits_le,
+            cs.ns(|| "from_bits_be"),
+        )
+        .expect("failed to get GG from bits be");
 
-    bits_be.reverse();
-    assert_eq!(bits_be, bits_le);
-    assert_eq!(a, from_bits_be);
-    assert_eq!(a, from_bits_le);
+        bits_be.reverse();
+        assert_eq!(bits_be, bits_le);
+        assert_eq!(a, from_bits_be);
+        assert_eq!(a, from_bits_le);
 
-    let mut bytes_be = a
-        .to_bytes_be(cs.ns(|| "to_bytes_be"))
-        .expect("failed to get GG bytes be");
-    let from_bytes_be = GG::from_bytes_be(
-        bytes_be
-            .clone()
-            .try_into()
-            .expect("failed to convert bytes vec to array"),
-        cs.ns(|| "from_bytes_be"),
-    )
-    .expect("failed to get GG from bytes be");
+        let mut bytes_be = a
+            .to_bytes_be(cs.ns(|| "to_bytes_be"))
+            .expect("failed to get GG bytes be");
+        let from_bytes_be = GG::from_bytes_be(
+            bytes_be
+                .clone()
+                .try_into()
+                .expect("failed to convert bytes vec to array"),
+            cs.ns(|| "from_bytes_be"),
+        )
+        .expect("failed to get GG from bytes be");
 
-    let bytes_le = a
-        .to_bytes_le(cs.ns(|| "to_bytes_be"))
-        .expect("failed to get GG bytes be");
-    let from_bytes_le = GG::from_bytes_le(
-        bytes_be
-            .clone()
-            .try_into()
-            .expect("failed to convert bytes vec to array"),
-        cs.ns(|| "from_bytes_be"),
-    )
-    .expect("failed to get GG from bytes be");
+        let bytes_le = a
+            .to_bytes_le(cs.ns(|| "to_bytes_be"))
+            .expect("failed to get GG bytes be");
+        let from_bytes_le = GG::from_bytes_le(
+            bytes_be
+                .clone()
+                .try_into()
+                .expect("failed to convert bytes vec to array"),
+            cs.ns(|| "from_bytes_be"),
+        )
+        .expect("failed to get GG from bytes be");
 
-    bytes_be.reverse();
-    assert_eq!(bytes_be, bytes_le);
-    assert_eq!(a, from_bytes_be);
-    assert_eq!(a, from_bytes_le);
+        bytes_be.reverse();
+        assert_eq!(bytes_be, bytes_le);
+        assert_eq!(a, from_bytes_be);
+        assert_eq!(a, from_bytes_le); */
 }

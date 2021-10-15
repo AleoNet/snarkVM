@@ -25,7 +25,16 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{Fp256, One, PrimeField, Zero};
 use snarkvm_gadgets::{
-    bits::{ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
+    bits::{
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     boolean::Boolean,
     curves::edwards_bls12::EdwardsBls12Gadget,
     fields::{AllocatedFp, FpGadget},
@@ -37,9 +46,6 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
     },
     CondSelectGadget,
-    FromBitsBEGadget,
-    FromBitsLEGadget,
-    ToBitsLEGadget,
 };
 use snarkvm_ir::{Field, Group, GroupCoordinate};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -49,7 +55,6 @@ use core::{
     borrow::Borrow,
     ops::{Add, Mul, Neg, Sub},
 };
-use std::convert::TryInto;
 
 #[derive(Clone, Debug)]
 pub enum EdwardsGroupType {
@@ -477,67 +482,55 @@ impl ToBitsBEGadget<Fq> for EdwardsGroupType {
     }
 }
 
-impl FromBitsLEGadget<Fq, 506> for EdwardsGroupType {
-    fn from_bits_le<CS: ConstraintSystem<Fq>>(
-        bits: [Boolean; 506],
-        mut cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        // read first 253 bits as x coordinate
-        let mut iter = bits.chunks_exact(253);
-        let x_bits: [Boolean; 253] = iter
-            .next()
-            .ok_or(SynthesisError::AssignmentMissing)?
-            .try_into()
-            .map_err(|_| SynthesisError::Unsatisfiable)?;
-        let y_bits: [Boolean; 253] = iter
-            .next()
-            .ok_or(SynthesisError::AssignmentMissing)?
-            .try_into()
-            .map_err(|_| SynthesisError::Unsatisfiable)?;
-
-        let x = FpGadget::from_bits_le(x_bits, cs.ns(|| "x_coordinate"))?;
-        let y = FpGadget::from_bits_le(y_bits, cs.ns(|| "y_coordinate"))?;
-
-        Ok(EdwardsGroupType::Allocated(Box::new(EdwardsBls12Gadget::new(x, y))))
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<Fq>>(
-        bits: [Boolean; 506],
-        cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        <Self as FromBitsLEGadget<Fq, 506>>::from_bits_le(bits, cs)
-    }
-}
-
-impl FromBitsBEGadget<Fq, 506> for EdwardsGroupType {
-    fn from_bits_be<CS: ConstraintSystem<Fq>>(
-        bits: [Boolean; 506],
-        mut cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        // read first 253 bits as x coordinate
-        let mut iter = bits.chunks_exact(253);
-        let x_bits: [Boolean; 253] = iter
-            .next()
-            .ok_or(SynthesisError::AssignmentMissing)?
-            .try_into()
-            .map_err(|_| SynthesisError::Unsatisfiable)?;
-        let y_bits: [Boolean; 253] = iter
-            .next()
-            .ok_or(SynthesisError::AssignmentMissing)?
-            .try_into()
-            .map_err(|_| SynthesisError::Unsatisfiable)?;
-
-        let x = FpGadget::from_bits_be(x_bits, cs.ns(|| "x_coordinate"))?;
-        let y = FpGadget::from_bits_be(y_bits, cs.ns(|| "y_coordinate"))?;
-
-        Ok(EdwardsGroupType::Allocated(Box::new(EdwardsBls12Gadget::new(x, y))))
+impl FromBitsBEGadget<Fq> for EdwardsGroupType {
+    fn from_bits_be<CS: ConstraintSystem<Fq>>(_bits: &[Boolean], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
     }
 
     fn from_bits_be_strict<CS: ConstraintSystem<Fq>>(
-        bits: [Boolean; 506],
-        cs: CS,
+        _bits: &[Boolean],
+        _cs: CS,
     ) -> Result<EdwardsGroupType, SynthesisError> {
-        <Self as FromBitsBEGadget<Fq, 506>>::from_bits_be(bits, cs)
+        unimplemented!()
+    }
+}
+
+impl FromBitsLEGadget<Fq> for EdwardsGroupType {
+    fn from_bits_le<CS: ConstraintSystem<Fq>>(_bits: &[Boolean], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bits_le_strict<CS: ConstraintSystem<Fq>>(
+        _bits: &[Boolean],
+        _cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl FromBytesBEGadget<Fq> for EdwardsGroupType {
+    fn from_bytes_be<CS: ConstraintSystem<Fq>>(_bytes: &[UInt8], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_be_strict<CS: ConstraintSystem<Fq>>(
+        _bytes: &[UInt8],
+        _cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl FromBytesLEGadget<Fq> for EdwardsGroupType {
+    fn from_bytes_le<CS: ConstraintSystem<Fq>>(_bytes: &[UInt8], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_le_strict<CS: ConstraintSystem<Fq>>(
+        _bytes: &[UInt8],
+        _cs: CS,
+    ) -> Result<EdwardsGroupType, SynthesisError> {
+        unimplemented!()
     }
 }
 

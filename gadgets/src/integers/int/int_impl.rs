@@ -34,7 +34,7 @@ use crate::{
     traits::integers::Integer,
 };
 
-use std::{convert::TryInto, fmt::Debug};
+use std::fmt::Debug;
 
 /// Implements the base struct for a signed integer gadget
 macro_rules! int_impl {

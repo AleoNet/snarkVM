@@ -145,30 +145,30 @@ fn setup_test_item(
     let output = eval.evaluate(&deserialized, &input_data)?;
     Ok((cs, output))
 }
-//
-// #[test]
-// fn setup_test() {
-//     let tests = load_tests();
-//     let mut fail = 0usize;
-//     for (name, raw) in &tests {
-//         let input = fs::read(&*format!("{}.input", name)).expect("failed to read test input");
-//         match setup_test_item(&raw[..], &input[..]) {
-//             Ok((cs, output)) => {
-//                 if !cs.is_satisfied() {
-//                     eprintln!("<{}> failed (unsatisfied)", name);
-//                     fail += 1;
-//                 }
-//                 println!("<{}> {} constraints: {}", name, cs.num_constraints(), output);
-//             }
-//             Err(e) => {
-//                 eprintln!("<{}> failed due to: {:?}", name, e);
-//                 fail += 1;
-//             }
-//         }
-//     }
-//     if fail > 0 {
-//         panic!("{}/{} tests failed", fail, tests.len());
-//     } else {
-//         println!("{}/{} tests passed", tests.len(), tests.len());
-//     }
-// }
+
+#[test]
+fn setup_test() {
+    let tests = load_tests();
+    let mut fail = 0usize;
+    for (name, raw) in &tests {
+        let input = fs::read(&*format!("{}.input", name)).expect("failed to read test input");
+        match setup_test_item(&raw[..], &input[..]) {
+            Ok((cs, output)) => {
+                if !cs.is_satisfied() {
+                    eprintln!("<{}> failed (unsatisfied)", name);
+                    fail += 1;
+                }
+                println!("<{}> {} constraints: {}", name, cs.num_constraints(), output);
+            }
+            Err(e) => {
+                eprintln!("<{}> failed due to: {:?}", name, e);
+                fail += 1;
+            }
+        }
+    }
+    if fail > 0 {
+        panic!("{}/{} tests failed", fail, tests.len());
+    } else {
+        println!("{}/{} tests passed", tests.len(), tests.len());
+    }
+}

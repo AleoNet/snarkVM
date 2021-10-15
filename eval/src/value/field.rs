@@ -16,7 +16,15 @@
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
-    bits::{FromBitsBEGadget, FromBitsLEGadget, ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
+    bits::{
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     boolean::Boolean,
     fields::FpGadget,
     integers::uint::UInt8,
@@ -284,26 +292,52 @@ impl<F: PrimeField> ToBytesBEGadget<F> for FieldType<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F, 253> for FieldType<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
+impl<F: PrimeField> FromBitsBEGadget<F> for FieldType<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(
-        _bits: [Boolean; 253],
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(
+        _bits: &[Boolean],
         _cs: CS,
     ) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<F: PrimeField> FromBitsBEGadget<F, 253> for FieldType<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
+impl<F: PrimeField> FromBitsLEGadget<F> for FieldType<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(
-        _bits: [Boolean; 253],
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(
+        _bits: &[Boolean],
+        _cs: CS,
+    ) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<F: PrimeField> FromBytesBEGadget<F> for FieldType<F> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(
+        _bytes: &[UInt8],
+        _cs: CS,
+    ) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<F: PrimeField> FromBytesLEGadget<F> for FieldType<F> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _cs: CS) -> Result<FieldType<F>, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(
+        _bytes: &[UInt8],
         _cs: CS,
     ) -> Result<FieldType<F>, SynthesisError> {
         unimplemented!()

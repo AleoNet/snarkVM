@@ -474,42 +474,42 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> NEqGadget<F> for Fp2Gadget<P, F> {
     }
 }
 
-impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBitsBEGadget<F, 253> for Fp2Gadget<P, F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBitsBEGadget<F> for Fp2Gadget<P, F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBitsLEGadget<F, 253> for Fp2Gadget<P, F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: [Boolean; 253], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBytesBEGadget<F, 32> for Fp2Gadget<P, F> {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBitsLEGadget<F> for Fp2Gadget<P, F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }
 
-impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBytesLEGadget<F, 32> for Fp2Gadget<P, F> {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBytesBEGadget<F> for Fp2Gadget<P, F> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: [UInt8; 32], _: CS) -> Result<Self, SynthesisError> {
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FromBytesLEGadget<F> for Fp2Gadget<P, F> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
 }

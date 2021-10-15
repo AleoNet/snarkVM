@@ -123,10 +123,10 @@ to_bytes_impl!(
 to_bytes_impl!(
     call_core_i16_to_bytes_le,
     I16_TO_BYTES_LE_CORE,
-    "I16_to_bytes_le",
+    "i16_to_bytes_le",
     call_core_i16_to_bytes_be,
     I16_TO_BYTES_BE_CORE,
-    "I16_to_bytes_be"
+    "i16_to_bytes_be"
 );
 to_bytes_impl!(
     call_core_i32_to_bytes_le,

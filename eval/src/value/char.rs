@@ -24,6 +24,8 @@ use snarkvm_gadgets::{
     },
     FromBitsBEGadget,
     FromBitsLEGadget,
+    FromBytesBEGadget,
+    FromBytesLEGadget,
     ToBitsBEGadget,
     ToBitsLEGadget,
     ToBytesBEGadget,
@@ -176,9 +178,9 @@ impl<F: PrimeField> ToBitsBEGadget<F> for Char<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsLEGadget<F, 253> for Char<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(bits: [Boolean; 253], cs: CS) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsLEGadget<F, 253>>::from_bits_le(bits, cs)?;
+impl<F: PrimeField> FromBitsBEGadget<F> for Char<F> {
+    fn from_bits_be<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsBEGadget<F>>::from_bits_be(bits, cs)?;
 
         let gadget = field.get_value().unwrap();
         let big_integer = gadget.to_repr();
@@ -187,8 +189,8 @@ impl<F: PrimeField> FromBitsLEGadget<F, 253> for Char<F> {
         Ok(Self { character, field })
     }
 
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 253], cs: CS) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsLEGadget<F, 253>>::from_bits_le_strict(bits, cs)?;
+    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsBEGadget<F>>::from_bits_be_strict(bits, cs)?;
 
         let gadget = field.get_value().unwrap();
         let big_integer = gadget.to_repr();
@@ -198,9 +200,9 @@ impl<F: PrimeField> FromBitsLEGadget<F, 253> for Char<F> {
     }
 }
 
-impl<F: PrimeField> FromBitsBEGadget<F, 253> for Char<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(bits: [Boolean; 253], cs: CS) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsBEGadget<F, 253>>::from_bits_be(bits, cs)?;
+impl<F: PrimeField> FromBitsLEGadget<F> for Char<F> {
+    fn from_bits_le<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsLEGadget<F>>::from_bits_le(bits, cs)?;
 
         let gadget = field.get_value().unwrap();
         let big_integer = gadget.to_repr();
@@ -209,8 +211,52 @@ impl<F: PrimeField> FromBitsBEGadget<F, 253> for Char<F> {
         Ok(Self { character, field })
     }
 
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(bits: [Boolean; 253], cs: CS) -> Result<Char<F>, SynthesisError> {
-        let field = <FieldType<F> as FromBitsBEGadget<F, 253>>::from_bits_be_strict(bits, cs)?;
+    fn from_bits_le_strict<CS: ConstraintSystem<F>>(bits: &[Boolean], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBitsLEGadget<F>>::from_bits_le_strict(bits, cs)?;
+
+        let gadget = field.get_value().unwrap();
+        let big_integer = gadget.to_repr();
+        let character = big_integer.into() as u32;
+
+        Ok(Self { character, field })
+    }
+}
+
+impl<F: PrimeField> FromBytesBEGadget<F> for Char<F> {
+    fn from_bytes_be<CS: ConstraintSystem<F>>(bits: &[UInt8], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBytesBEGadget<F>>::from_bytes_be(bits, cs)?;
+
+        let gadget = field.get_value().unwrap();
+        let big_integer = gadget.to_repr();
+        let character = big_integer.into() as u32;
+
+        Ok(Self { character, field })
+    }
+
+    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(bits: &[UInt8], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBytesBEGadget<F>>::from_bytes_be_strict(bits, cs)?;
+
+        let gadget = field.get_value().unwrap();
+        let big_integer = gadget.to_repr();
+        let character = big_integer.into() as u32;
+
+        Ok(Self { character, field })
+    }
+}
+
+impl<F: PrimeField> FromBytesLEGadget<F> for Char<F> {
+    fn from_bytes_le<CS: ConstraintSystem<F>>(bits: &[UInt8], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBytesLEGadget<F>>::from_bytes_le(bits, cs)?;
+
+        let gadget = field.get_value().unwrap();
+        let big_integer = gadget.to_repr();
+        let character = big_integer.into() as u32;
+
+        Ok(Self { character, field })
+    }
+
+    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(bits: &[UInt8], cs: CS) -> Result<Char<F>, SynthesisError> {
+        let field = <FieldType<F> as FromBytesLEGadget<F>>::from_bytes_le_strict(bits, cs)?;
 
         let gadget = field.get_value().unwrap();
         let big_integer = gadget.to_repr();

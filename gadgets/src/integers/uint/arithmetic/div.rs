@@ -29,7 +29,6 @@ use crate::{
         select::CondSelectGadget,
     },
 };
-use std::convert::TryInto;
 
 /// Perform long division of two `UInt` objects.
 /// Reference: https://en.wikipedia.org/wiki/Division_algorithm
@@ -137,7 +136,7 @@ macro_rules! div_int_impl {
 
                 quotient_bits.reverse();
 
-                let quotient = Self::from_bits_le(quotient_bits.try_into().expect("failed to convert vector to array"), cs)?;
+                let quotient = Self::from_bits_le(&quotient_bits, cs)?;
                 Ok(quotient)
             }
         }

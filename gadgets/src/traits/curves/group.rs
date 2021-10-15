@@ -41,10 +41,10 @@ use crate::{
 
 pub trait GroupGadget<G: Group, F: Field>:
     Sized
-    + FromBitsBEGadget<F, 506> // This number changes with curve right?
-    + FromBitsLEGadget<F, 506>
-    + FromBytesBEGadget<F, 64> // Does # of bytes change based of curve?
-    + FromBytesLEGadget<F, 64>
+    + FromBitsBEGadget<F>
+    + FromBitsLEGadget<F>
+    + FromBytesBEGadget<F>
+    + FromBytesLEGadget<F>
     + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
     + NEqGadget<F>

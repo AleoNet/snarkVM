@@ -17,8 +17,6 @@
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
-use std::convert::TryInto;
-
 use crate::{
     bits::{boolean::Boolean, FromBitsLEGadget},
     errors::{SignedIntegerError, UnsignedIntegerError},
@@ -103,7 +101,7 @@ macro_rules! div_int_impl {
                         )?);
                     }
 
-                    <$gadget as Integer>::UnsignedGadget::from_bits_le(absolute_value_bits.try_into().expect("failed to convert vector to array"), cs.ns(||"a_absolute_value_bits"))?
+                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits, cs.ns(||"a_absolute_value_bits"))?
                 };
                 let b_absolute : <$gadget as Integer>::UnsignedGadget = {
                     let negated_bits = other.bits.neg(cs.ns(||"neg_other_bits"))?;
@@ -118,7 +116,7 @@ macro_rules! div_int_impl {
                         )?);
                     }
 
-                    <$gadget as Integer>::UnsignedGadget::from_bits_le(absolute_value_bits.try_into().expect("failed to convert vector to array"), cs.ns(||"b_absolute_value_bits"))?
+                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits, cs.ns(||"b_absolute_value_bits"))?
                 };
 
                 let quotient = a_absolute.div(cs.ns(||"div_absolute_value"), &b_absolute).map_err(
@@ -142,7 +140,7 @@ macro_rules! div_int_impl {
                     )?);
                 }
 
-                let quotient = Self::from_bits_le(result_bits.try_into().expect("failed to convert vector to array"), cs)?;
+                let quotient = Self::from_bits_le(&result_bits, cs)?;
                 Ok(quotient)
             }
         }

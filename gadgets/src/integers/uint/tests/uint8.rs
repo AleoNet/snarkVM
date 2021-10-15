@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryInto;
-
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
@@ -78,7 +76,7 @@ fn test_uint8_from_bits_to_bits() {
         assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1)
     }
 
-    assert!(!cs.is_satisfied());
+    assert!(cs.is_satisfied());
 }
 
 #[test]
@@ -93,7 +91,7 @@ fn test_uint8_alloc_input_vec() {
         }
     }
 
-    assert!(!cs.is_satisfied());
+    assert!(cs.is_satisfied());
 }
 
 #[test]
@@ -113,7 +111,7 @@ fn test_uint8_to_bits_be() {
             assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1);
         }
 
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -128,13 +126,13 @@ fn test_uint8_to_bits_le() {
         let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
 
         let bits = byte
-            .to_bits_be(cs.ns(|| "to_bits_be"))
+            .to_bits_le(cs.ns(|| "to_bits_le"))
             .expect("failed to get u8 bits be");
         for (i, bit) in bits.iter().enumerate() {
             assert_eq!(bit.get_value().unwrap(), (byte_val >> i) & 1 == 1);
         }
 
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -150,14 +148,14 @@ fn test_uint8_to_bytes_be() {
         let byte = UInt8::alloc(cs.ns(|| "alloc value"), || Ok(byte_val)).unwrap();
 
         let bytes_from_gadget = byte
-            .to_bytes_le(cs.ns(|| "to_bytes_le"))
+            .to_bytes_be(cs.ns(|| "to_bytes_be"))
             .expect("failed to get u8 bits le")
             .iter()
             .map(|v| v.value.unwrap())
             .collect::<Vec<u8>>();
 
         assert_eq!(bytes.to_vec(), bytes_from_gadget);
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -180,7 +178,7 @@ fn test_uint8_to_bytes_le() {
             .collect::<Vec<u8>>();
 
         assert_eq!(bytes.to_vec(), bytes_from_gadget);
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -193,11 +191,7 @@ fn test_uint8_from_bits_be() {
         let mut v = (0..8).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
         v.reverse();
 
-        let b = UInt8::from_bits_be(
-            v.clone().try_into().expect("failed to convert bits to array"),
-            cs.ns(|| "from_bits_be"),
-        )
-        .expect("failed to create UInt8 from bits.");
+        let b = UInt8::from_bits_be(&v, cs.ns(|| "from_bits_be")).expect("failed to create UInt8 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().rev().enumerate() {
             match *bit_gadget {
@@ -218,7 +212,7 @@ fn test_uint8_from_bits_be() {
             }
         }
 
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -230,11 +224,7 @@ fn test_uint8_from_bits_le() {
         let mut cs = TestConstraintSystem::<Fr>::new();
         let v = (0..8).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
 
-        let b = UInt8::from_bits_le(
-            v.clone().try_into().expect("failed to convert bits to array"),
-            cs.ns(|| "from_bits_le"),
-        )
-        .expect("failed to create UInt8 from bits.");
+        let b = UInt8::from_bits_le(&v, cs.ns(|| "from_bits_le")).expect("failed to create UInt8 from bits.");
 
         for (i, bit_gadget) in b.bits.iter().enumerate() {
             match *bit_gadget {
@@ -255,7 +245,7 @@ fn test_uint8_from_bits_le() {
             }
         }
 
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -269,8 +259,8 @@ fn test_uint8_from_bytes_be() {
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let b = UInt8::from_bytes_be(v.clone(), cs.ns(|| "from_bytes_be_gadget"))
-            .expect("failed to create a UInt8 from a byte");
+        let b =
+            UInt8::from_bytes_be(&v, cs.ns(|| "from_bytes_be_gadget")).expect("failed to create a UInt8 from a byte");
 
         // check bits
         for (i, bit_gadget) in b.bits.iter().enumerate() {
@@ -282,7 +272,7 @@ fn test_uint8_from_bytes_be() {
             }
         }
 
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -296,8 +286,8 @@ fn test_uint8_from_bytes_le() {
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let b = UInt8::from_bytes_le(v.clone(), cs.ns(|| "from_bytes_le_gadget"))
-            .expect("failed to create a UInt8 from a byte");
+        let b =
+            UInt8::from_bytes_le(&v, cs.ns(|| "from_bytes_le_gadget")).expect("failed to create a UInt8 from a byte");
 
         // check bits
         for (i, bit_gadget) in b.bits.iter().enumerate() {
@@ -309,7 +299,7 @@ fn test_uint8_from_bytes_le() {
             }
         }
 
-        assert!(!cs.is_satisfied());
+        assert!(cs.is_satisfied());
     }
 }
 
@@ -322,26 +312,20 @@ fn test_uint8_to_bits_full() {
     let mut bits_be = byte
         .to_bits_be(cs.ns(|| "to_bits_be"))
         .expect("failed to get u8 bits be");
-    let u8_int_from_be = UInt8::from_bits_be(
-        bits_be.clone().try_into().expect("failed to convert bits to array"),
-        cs.ns(|| "from_bits_be"),
-    )
-    .expect("failed to get u8 from bits be");
+    let u8_int_from_be =
+        UInt8::from_bits_be(&bits_be, cs.ns(|| "from_bits_be")).expect("failed to get u8 from bits be");
 
     let bits_le = byte
         .to_bits_le(cs.ns(|| "to_bits_le"))
         .expect("failed to get u8 bits le");
-    let u8_int_from_le = UInt8::from_bits_le(
-        bits_le.clone().try_into().expect("failed to convert bits to array"),
-        cs.ns(|| "from_bits_le"),
-    )
-    .expect("failed to get u8 from bits le");
+    let u8_int_from_le =
+        UInt8::from_bits_le(&bits_le, cs.ns(|| "from_bits_le")).expect("failed to get u8 from bits le");
 
     bits_be.reverse();
     assert_eq!(bits_be, bits_le);
     assert_eq!(byte, u8_int_from_be);
     assert_eq!(byte, u8_int_from_le);
-    assert!(!cs.is_satisfied());
+    assert!(cs.is_satisfied());
 }
 
 #[test]
@@ -353,26 +337,20 @@ fn test_uint8_to_bytes_full() {
     let mut bytes_be = byte
         .to_bytes_be(cs.ns(|| "to_bytes_be"))
         .expect("failed to get u8 bytes be");
-    let u8_int_from_be = UInt8::from_bytes_be(
-        bytes_be.clone().try_into().expect("failed to convert bytes to array"),
-        cs.ns(|| "from_bytes_be"),
-    )
-    .expect("failed to get u8 from bytes be");
+    let u8_int_from_be =
+        UInt8::from_bytes_be(&bytes_be, cs.ns(|| "from_bytes_be")).expect("failed to get u8 from bytes be");
 
     let bytes_le = byte
         .to_bytes_le(cs.ns(|| "to_bits_le"))
         .expect("failed to get u8 bytes le");
-    let u8_int_from_le = UInt8::from_bytes_le(
-        bytes_le.clone().try_into().expect("failed to convert bytes to array"),
-        cs.ns(|| "from_bytes_le"),
-    )
-    .expect("failed to get u8 from bytes le");
+    let u8_int_from_le =
+        UInt8::from_bytes_le(&bytes_le, cs.ns(|| "from_bytes_le")).expect("failed to get u8 from bytes le");
 
     bytes_be.reverse();
     assert_eq!(bytes_be, bytes_le);
     assert_eq!(byte, u8_int_from_be);
     assert_eq!(byte, u8_int_from_le);
-    assert!(!cs.is_satisfied());
+    assert!(cs.is_satisfied());
 }
 
 #[test]

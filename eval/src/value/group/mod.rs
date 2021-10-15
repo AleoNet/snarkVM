@@ -18,15 +18,21 @@ use crate::errors::GroupError;
 
 use snarkvm_fields::{Field, One};
 use snarkvm_gadgets::{
-    bits::{ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
+    bits::{
+        FromBitsBEGadget,
+        FromBitsLEGadget,
+        FromBytesBEGadget,
+        FromBytesLEGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesBEGadget,
+        ToBytesLEGadget,
+    },
     traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         select::CondSelectGadget,
     },
-    FromBitsBEGadget,
-    FromBitsLEGadget,
-    ToBitsLEGadget,
 };
 use snarkvm_ir::Group;
 use snarkvm_r1cs::ConstraintSystem;
@@ -51,8 +57,10 @@ pub trait GroupType<F: Field>:
     + ToBitsBEGadget<F>
     + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
-    + FromBitsBEGadget<F, 506>
-    + FromBitsLEGadget<F, 506>
+    + FromBitsBEGadget<F>
+    + FromBitsLEGadget<F>
+    + FromBytesBEGadget<F>
+    + FromBytesLEGadget<F>
 {
     fn constant(value: &Group) -> Result<Self, GroupError>;
 
