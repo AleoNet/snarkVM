@@ -55,7 +55,7 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the Groth16 SNARK.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,

@@ -43,14 +43,9 @@ pub struct MarlinSNARK<
     PC: PolynomialCommitment<F, FSF>,
     FS: FiatShamirRng<F, FSF>,
     MC: MarlinMode,
-    V: ToConstraintField<F>,
+    V: ToConstraintField<F> + Clone,
 > {
-    f_phantom: PhantomData<F>,
-    fsf_phantom: PhantomData<FSF>,
-    pc_phantom: PhantomData<PC>,
-    fs_phantom: PhantomData<FS>,
-    mc_phantom: PhantomData<MC>,
-    v_phantom: PhantomData<V>,
+    _phantom: PhantomData<(F, FSF, PC, FS, MC, V)>,
 }
 
 impl<TargetField, BaseField, PC, FS, MM, V> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>
@@ -60,7 +55,7 @@ where
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    V: ToConstraintField<TargetField>,
+    V: ToConstraintField<TargetField> + Clone,
 {
     type BaseField = BaseField;
     type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC>;

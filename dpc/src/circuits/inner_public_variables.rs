@@ -21,8 +21,7 @@ use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct InnerPublicVariables<N: Network> {
     /// Transition ID
     pub(super) transition_id: N::TransitionID,

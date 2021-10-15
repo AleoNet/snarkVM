@@ -160,13 +160,13 @@ impl<F: PrimeField> FromBytes for PoseidonParameters<F> {
     }
 }
 
-#[derive(Clone)]
 /// A duplex sponge based using the Poseidon permutation.
 ///
 /// This implementation of Poseidon is entirely from Fractal's implementation in [COS20][cos]
 /// with small syntax changes.
 ///
 /// [cos]: https://eprint.iacr.org/2019/1076
+#[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField> {
     // Sponge Parameters
     pub parameters: PoseidonParameters<F>,

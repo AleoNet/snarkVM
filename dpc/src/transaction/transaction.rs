@@ -33,7 +33,6 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
     collections::HashSet,
-    fmt,
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
 };
@@ -41,6 +40,7 @@ use std::{
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
@@ -322,20 +322,6 @@ impl<N: Network> Hash for Transaction<N> {
         self.to_transaction_id()
             .expect("Failed to compute the transaction ID")
             .hash(state);
-    }
-}
-
-// TODO add debug support for record ciphertexts
-impl<N: Network> fmt::Debug for Transaction<N> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Transaction {{ network_id: {:?}, inner_circuit_id: {:?}, transitions: {:?} }}",
-            self.network_id(),
-            self.inner_circuit_id(),
-            self.transitions()
-        )
     }
 }
 

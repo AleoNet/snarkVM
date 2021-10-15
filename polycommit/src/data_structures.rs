@@ -158,7 +158,7 @@ impl<F: Field> LabeledPolynomial<F> {
 }
 
 /// A commitment along with information about its degree bound (if any).
-#[derive(Clone, CanonicalSerialize)]
+#[derive(Clone, Debug, CanonicalSerialize)]
 pub struct LabeledCommitment<C: PCCommitment> {
     label: PolynomialLabel,
     commitment: C,

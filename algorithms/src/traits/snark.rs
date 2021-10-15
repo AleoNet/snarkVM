@@ -34,12 +34,12 @@ pub enum SRS<'a, R: Rng + CryptoRng, T> {
     Universal(&'a T),
 }
 
-pub trait SNARK {
+pub trait SNARK: Clone + Debug {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
 
     type PreparedVerifyingKey: Clone;
-    type Proof: Clone + Debug + ToBytes + FromBytes + Send + Sync;
+    type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust

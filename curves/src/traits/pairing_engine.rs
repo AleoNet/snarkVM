@@ -20,7 +20,7 @@ use snarkvm_utilities::{biginteger::BigInteger, serialize::*, BitIteratorBE, ToB
 
 use std::{fmt::Debug, iter};
 
-pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
+pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
     type Fr: PrimeField + SquareRootField + Into<<Self::Fr as PrimeField>::BigInteger>;
 

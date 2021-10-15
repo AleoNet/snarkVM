@@ -18,7 +18,7 @@ use crate::{fiat_shamir::FiatShamirRng, FiatShamirError, PhantomData, Vec};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 
-use core::num::NonZeroU32;
+use core::{fmt::Debug, num::NonZeroU32};
 use digest::Digest;
 use rand_chacha::ChaChaRng;
 use rand_core::{Error, RngCore, SeedableRng};
@@ -28,20 +28,16 @@ use rand_core::{Error, RngCore, SeedableRng};
 /// Use a ChaCha stream cipher to generate the actual pseudorandom bits.
 /// Use a digest function to do absorbing.
 #[derive(Clone, Debug)]
-pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D: Digest> {
+pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> {
     /// The ChaCha RNG.
     r: Option<ChaChaRng>,
     /// The initial seed for the RNG.
     seed: Option<Vec<u8>>,
     #[doc(hidden)]
-    _target_field: PhantomData<TargetField>,
-    #[doc(hidden)]
-    _base_field: PhantomData<BaseField>,
-    #[doc(hidden)]
-    _digest: PhantomData<D>,
+    _phantom: PhantomData<(TargetField, BaseField, D)>,
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> RngCore
+impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> RngCore
     for FiatShamirChaChaRng<TargetField, BaseField, D>
 {
     #[inline]
@@ -77,16 +73,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> RngCore
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> FiatShamirRng<TargetField, BaseField>
+impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> FiatShamirRng<TargetField, BaseField>
     for FiatShamirChaChaRng<TargetField, BaseField, D>
 {
     fn new() -> Self {
         Self {
             r: None,
             seed: None,
-            _target_field: PhantomData,
-            _base_field: PhantomData,
-            _digest: PhantomData,
+            _phantom: PhantomData,
         }
     }
 

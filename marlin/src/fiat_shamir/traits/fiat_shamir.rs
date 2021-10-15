@@ -18,12 +18,13 @@ use crate::{fiat_shamir::FiatShamirError, Vec};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 
+use core::fmt::Debug;
 use rand_core::RngCore;
 
 // TODO (raychu86): Remove unnecessary Result types
 
 /// Trait for a Fiat-Shamir RNG.
-pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore {
+pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone + Debug + RngCore {
     /// Initializes an RNG.
     fn new() -> Self;
 

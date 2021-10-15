@@ -107,14 +107,13 @@ where
     PairingE: PairingEngine,
     P: PairingGadget<PairingE>,
 {
-    _pairing_engine: PhantomData<PairingE>,
-    _pairing_gadget: PhantomData<P>,
+    _phantom: PhantomData<(PairingE, P)>,
 }
 
 impl<PairingE, P, V> SNARKVerifierGadget<Groth16<PairingE, V>> for Groth16VerifierGadget<PairingE, P>
 where
     PairingE: PairingEngine,
-    V: ToConstraintField<PairingE::Fr>,
+    V: ToConstraintField<PairingE::Fr> + Clone,
     P: PairingGadget<PairingE>,
 {
     type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;

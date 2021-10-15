@@ -21,8 +21,7 @@ use snarkvm_utilities::ToBits;
 
 use anyhow::Result;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct OuterPublicVariables<N: Network> {
     transition_id: N::TransitionID,
     inner_circuit_id: N::InnerCircuitID,
