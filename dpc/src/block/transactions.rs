@@ -94,13 +94,13 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
-    pub fn serial_numbers(&self) -> Vec<<N as Network>::SerialNumber> {
-        self.0.iter().flat_map(Transaction::serial_numbers).collect()
+    pub fn serial_numbers(&self) -> impl Iterator<Item = <N as Network>::SerialNumber> + '_ {
+        self.0.iter().flat_map(Transaction::serial_numbers)
     }
 
     /// Returns the commitments, by constructing a flattened list of commitments from all transactions.
-    pub fn commitments(&self) -> Vec<<N as Network>::Commitment> {
-        self.0.iter().flat_map(Transaction::commitments).collect()
+    pub fn commitments(&self) -> impl Iterator<Item = <N as Network>::Commitment> + '_ {
+        self.0.iter().flat_map(Transaction::commitments)
     }
 
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.

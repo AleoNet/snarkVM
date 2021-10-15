@@ -67,7 +67,7 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
 
     /// TODO (howardwu): Add safety checks for u64 (max 2^42).
     /// Adds all given serial numbers to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u64, u64)> {
+    fn add_all(&mut self, serial_numbers: &[N::SerialNumber]) -> Result<(u64, u64)> {
         // Ensure the list of given serial_numbers is non-empty.
         if serial_numbers.is_empty() {
             return Err(anyhow!("The list of given serial numbers must be non-empty"));
@@ -96,7 +96,7 @@ impl<N: Network> SerialNumbersTreeScheme<N> for SerialNumbers<N> {
             serial_numbers
                 .into_iter()
                 .enumerate()
-                .map(|(index, serial_number)| (serial_number, start_index + index as u64)),
+                .map(|(index, serial_number)| (*serial_number, start_index + index as u64)),
         );
 
         self.current_index += num_serial_numbers as u64;

@@ -79,13 +79,16 @@ impl<N: Network> Block<N> {
         let transactions_root = transactions.to_transactions_root()?;
 
         // Compute the serial numbers root from the transactions.
-        let serial_numbers = transactions.serial_numbers();
-        let serial_numbers_tree =
-            MerkleTree::new(Arc::new(N::serial_numbers_tree_parameters().clone()), &serial_numbers)?;
+        let serial_numbers_tree = MerkleTree::new(
+            Arc::new(N::serial_numbers_tree_parameters().clone()),
+            &transactions.serial_numbers().collect::<Vec<_>>(),
+        )?;
 
         // Compute the commitments root from the transactions.
-        let commitments = transactions.commitments();
-        let commitments_tree = MerkleTree::new(Arc::new(N::commitments_tree_parameters().clone()), &commitments)?;
+        let commitments_tree = MerkleTree::new(
+            Arc::new(N::commitments_tree_parameters().clone()),
+            &transactions.commitments().collect::<Vec<_>>(),
+        )?;
 
         // Construct the genesis block header metadata.
         let block_height = 0u32;
@@ -278,12 +281,12 @@ impl<N: Network> Block<N> {
 
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
     pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
-        self.transactions.serial_numbers()
+        self.transactions.serial_numbers().collect()
     }
 
     /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
     pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.transactions.commitments()
+        self.transactions.commitments().collect()
     }
 
     /// Returns the coinbase transaction for the block.

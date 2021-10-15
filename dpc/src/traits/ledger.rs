@@ -28,7 +28,7 @@ pub trait CommitmentsTreeScheme<N: Network>: Sized {
     fn add(&mut self, commitment: &N::Commitment) -> Result<u64>;
 
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u64, u64)>;
+    fn add_all(&mut self, commitments: &[N::Commitment]) -> Result<(u64, u64)>;
 
     /// Returns `true` if the given commitment exists.
     fn contains_commitment(&self, commitment: &N::Commitment) -> bool;
@@ -55,7 +55,7 @@ pub trait SerialNumbersTreeScheme<N: Network>: Sized {
     fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u64>;
 
     /// Adds all given serial numbers to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, serial_numbers: Vec<N::SerialNumber>) -> Result<(u64, u64)>;
+    fn add_all(&mut self, serial_numbers: &[N::SerialNumber]) -> Result<(u64, u64)>;
 
     /// Returns `true` if the given serial number exists.
     fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool;

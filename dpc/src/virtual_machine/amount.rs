@@ -21,7 +21,7 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
-/// Represents the amount of ALEOs in UNITS
+/// Represents the amount of ALEOs.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AleoAmount(pub i64);
 

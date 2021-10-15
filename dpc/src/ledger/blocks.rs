@@ -47,13 +47,11 @@ pub struct Blocks<N: Network> {
 impl<N: Network> Blocks<N> {
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
-        let genesis_block = N::genesis_block().clone();
+        let genesis_block = N::genesis_block();
         let height = genesis_block.height();
-        let serial_numbers = genesis_block.serial_numbers();
-        let commitments = genesis_block.commitments();
 
         let mut blocks = Self {
-            current_height: genesis_block.height(),
+            current_height: height,
             current_hash: genesis_block.block_hash(),
             previous_hashes: Default::default(),
             headers: Default::default(),
@@ -69,9 +67,9 @@ impl<N: Network> Blocks<N> {
             .insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
-        blocks.serial_numbers.add_all(serial_numbers)?;
+        blocks.serial_numbers.add_all(&genesis_block.serial_numbers())?;
         blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
-        blocks.commitments.add_all(commitments)?;
+        blocks.commitments.add_all(&genesis_block.commitments())?;
         blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
         Ok(blocks)
@@ -296,9 +294,9 @@ impl<N: Network> Blocks<N> {
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
-            blocks.serial_numbers.add_all(serial_numbers)?;
+            blocks.serial_numbers.add_all(&serial_numbers)?;
             blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
-            blocks.commitments.add_all(commitments)?;
+            blocks.commitments.add_all(&commitments)?;
             blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
             *self = blocks;

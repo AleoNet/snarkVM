@@ -65,7 +65,7 @@ impl<N: Network> CommitmentsTreeScheme<N> for Commitments<N> {
 
     /// TODO (howardwu): Add safety checks for u64 (max 2^42).
     /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, commitments: Vec<N::Commitment>) -> Result<(u64, u64)> {
+    fn add_all(&mut self, commitments: &[N::Commitment]) -> Result<(u64, u64)> {
         // Ensure the list of given commitments is non-empty.
         if commitments.is_empty() {
             return Err(anyhow!("The list of given commitments must be non-empty"));
@@ -91,7 +91,7 @@ impl<N: Network> CommitmentsTreeScheme<N> for Commitments<N> {
             commitments
                 .into_iter()
                 .enumerate()
-                .map(|(index, commitment)| (commitment, start_index + index as u64)),
+                .map(|(index, commitment)| (*commitment, start_index + index as u64)),
         );
 
         self.current_index += num_commitments as u64;

@@ -167,12 +167,12 @@ impl<N: Network> Ledger<N> {
 
         // Construct the new serial numbers root.
         let mut serial_numbers = self.canon_blocks.latest_serial_numbers();
-        serial_numbers.add_all(transactions.serial_numbers())?;
+        serial_numbers.add_all(&transactions.serial_numbers().collect::<Vec<_>>())?;
         let serial_numbers_root = serial_numbers.root();
 
         // Construct the new commitments root.
         let mut commitments = self.canon_blocks.latest_commitments();
-        commitments.add_all(transactions.commitments())?;
+        commitments.add_all(&transactions.commitments().collect::<Vec<_>>())?;
         let commitments_root = commitments.root();
 
         // Mine the next block.
