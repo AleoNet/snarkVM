@@ -27,7 +27,7 @@ fn test_record_ciphertext() {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let account = Account::<Testnet2>::new(rng).unwrap();
+        let account = Account::<Testnet2>::new(rng);
 
         let value = rng.gen();
         let mut payload = [0u8; PAYLOAD_SIZE];
@@ -47,7 +47,7 @@ fn test_record_ciphertext() {
         let (record_ciphertext, _) = RecordCiphertext::encrypt(&expected_record, rng).unwrap();
 
         // Decrypt the record.
-        let account_view_key = ViewKey::from_private_key(&account.private_key()).unwrap();
+        let account_view_key = ViewKey::from_private_key(&account.private_key());
         let candidate_record = record_ciphertext.decrypt(&account_view_key).unwrap();
         assert_eq!(expected_record, candidate_record);
     }

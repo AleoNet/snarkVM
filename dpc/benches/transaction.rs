@@ -25,7 +25,7 @@ use rand::thread_rng;
 fn testnet1_coinbase_transaction(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let address = Account::<Testnet1>::new(rng).unwrap().address();
+    let address = Account::<Testnet1>::new(rng).address();
     let amount = AleoAmount::from_aleo(100);
 
     c.bench_function("testnet1_coinbase_transaction", move |b| {
@@ -38,7 +38,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
 fn testnet2_coinbase_transaction(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let address = Account::<Testnet2>::new(rng).unwrap().address();
+    let address = Account::<Testnet2>::new(rng).address();
     let amount = AleoAmount::from_aleo(100);
 
     c.bench_function("testnet2_coinbase_transaction", move |b| {

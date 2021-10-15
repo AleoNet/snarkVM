@@ -124,8 +124,8 @@ where
     fn generate_public_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-    ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError> {
-        Ok(self.generator.into_projective().mul(*private_key).into_affine())
+    ) -> <Self as EncryptionScheme>::PublicKey {
+        self.generator.into_projective().mul(*private_key).into_affine()
     }
 
     fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Randomness, EncryptionError> {
@@ -252,7 +252,7 @@ where
         // Add a commitment to the public key.
         let public_key_commitment = {
             let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-            let public_key = self.generate_public_key(&private_key)?;
+            let public_key = self.generate_public_key(&private_key);
             sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };

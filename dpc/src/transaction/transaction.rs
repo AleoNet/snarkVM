@@ -338,7 +338,7 @@ mod tests {
     #[test]
     fn test_decrypt_records() {
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let dummy_account = Account::<Testnet2>::new(rng).unwrap();
+        let dummy_account = Account::<Testnet2>::new(rng);
 
         // Construct output records
         let mut payload = [0u8; PAYLOAD_SIZE];
@@ -357,7 +357,7 @@ mod tests {
         // Encrypt output records
         let (_encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
         let (_encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
-        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key()).unwrap();
+        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key());
 
         // Construct transaction with 1 output record and 1 dummy output record
         let transaction = Transaction::new_coinbase(dummy_account.address(), AleoAmount(1234), rng).unwrap();

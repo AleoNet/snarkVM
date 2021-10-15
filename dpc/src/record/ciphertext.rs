@@ -96,7 +96,7 @@ impl<N: Network> RecordCiphertext<N> {
         let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
         // Derive the record owner.
-        let owner = Address::from_view_key(&recipient_view_key)?;
+        let owner = Address::from_view_key(&recipient_view_key);
 
         Ok(Record::from(
             owner,

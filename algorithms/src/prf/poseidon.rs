@@ -53,7 +53,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         preimage.extend_from_slice(input);
 
         // Evaluate the preimage.
-        let output = PoseidonCryptoHash::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::evaluate(preimage.as_slice())?;
+        let output = PoseidonCryptoHash::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::evaluate(preimage.as_slice());
 
         end_timer!(timer);
         Ok(output)

@@ -39,7 +39,7 @@ fn account_view_key(c: &mut Criterion) {
         let private_key = PrivateKey::<Testnet2>::new(rng);
 
         b.iter(|| {
-            let _view_key = ViewKey::from_private_key(&private_key).unwrap();
+            let _view_key = ViewKey::from_private_key(&private_key);
         })
     });
 }
@@ -51,7 +51,7 @@ fn account_address(c: &mut Criterion) {
         let private_key = PrivateKey::<Testnet2>::new(rng);
 
         b.iter(|| {
-            let _address = Address::from_private_key(&private_key).unwrap();
+            let _address = Address::from_private_key(&private_key);
         })
     });
 }

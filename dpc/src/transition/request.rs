@@ -73,7 +73,7 @@ impl<N: Network> Request<N> {
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
-        let operation = Operation::Transfer(caller.to_address()?, recipient, amount);
+        let operation = Operation::Transfer(caller.to_address(), recipient, amount);
         Self::new(caller, records, ledger_proof, operation, fee, rng)
     }
 
@@ -81,7 +81,7 @@ impl<N: Network> Request<N> {
     pub fn new_noop<R: Rng + CryptoRng>(ledger_proof: LedgerProof<N>, rng: &mut R) -> Result<Self> {
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
-        let noop_address = Address::from_private_key(&noop_private_key)?;
+        let noop_address = Address::from_private_key(&noop_private_key);
 
         // Construct the noop records.
         let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -108,7 +108,7 @@ impl<N: Network> Request<N> {
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
-        let caller_address = Address::from_private_key(caller)?;
+        let caller_address = Address::from_private_key(caller);
 
         // Pad the records with noops if there is less than required.
         let mut records = records;

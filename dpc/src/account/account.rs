@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, AccountScheme, Address, Network, PrivateKey, ViewKey};
+use crate::{AccountScheme, Address, Network, PrivateKey, ViewKey};
 
 use rand::{CryptoRng, Rng};
-use std::{
-    convert::{TryFrom, TryInto},
-    fmt,
-};
+use std::fmt;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
@@ -36,8 +33,8 @@ impl<N: Network> AccountScheme for Account<N> {
     type ViewKey = ViewKey<N>;
 
     /// Creates a new account.
-    fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError> {
-        PrivateKey::new(rng).try_into()
+    fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+        PrivateKey::new(rng).into()
     }
 
     /// Returns a reference to the private key.
@@ -56,19 +53,17 @@ impl<N: Network> AccountScheme for Account<N> {
     }
 }
 
-impl<N: Network> TryFrom<PrivateKey<N>> for Account<N> {
-    type Error = AccountError;
-
+impl<N: Network> From<PrivateKey<N>> for Account<N> {
     /// Creates an account from a private key.
-    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
-        let view_key = ViewKey::try_from(&private_key)?;
-        let address = Address::try_from(&private_key)?;
+    fn from(private_key: PrivateKey<N>) -> Self {
+        let view_key = ViewKey::from(&private_key);
+        let address = Address::from(&private_key);
 
-        Ok(Self {
+        Self {
             private_key,
             view_key,
             address,
-        })
+        }
     }
 }
 

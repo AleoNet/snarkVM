@@ -58,9 +58,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
             input
         };
 
-        Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(
-            &input.to_field_elements()?,
-        )?)
+        Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(&input.to_field_elements()?))
     }
 
     fn hash_field_elements<F2: PrimeField>(&self, input: &[F2]) -> Result<Self::Output, CRHError> {
@@ -81,7 +79,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
                 dest
             };
 
-            Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(&dest)?)
+            Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(&dest))
         } else {
             unimplemented!()
         }

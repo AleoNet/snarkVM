@@ -366,7 +366,7 @@ mod tests {
     fn test_block_genesis() {
         let rng = &mut thread_rng();
 
-        let account = Account::<Testnet2>::new(rng).unwrap();
+        let account = Account::<Testnet2>::new(rng);
         let genesis_block = Block::<Testnet2>::new_genesis(account.address(), rng).unwrap();
         println!("{:?}", genesis_block);
     }

@@ -17,7 +17,6 @@
 use crate::{
     crypto_hash::{CryptographicSponge, DuplexSpongeMode, PoseidonGrainLFSR},
     CryptoHash,
-    CryptoHashError,
 };
 use snarkvm_fields::{
     Fp256,
@@ -377,12 +376,12 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     type Input = F;
     type Output = F;
 
-    fn evaluate(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
+    fn evaluate(input: &[Self::Input]) -> Self::Output {
         let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
         let mut sponge = PoseidonSponge::<F>::new(&params);
         sponge.absorb(input);
         let res = sponge.squeeze_field_elements(1);
-        Ok(res[0].clone())
+        res[0]
     }
 }
 

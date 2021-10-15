@@ -54,7 +54,7 @@ fn dpc_testnet2_integration_test() {
     assert_eq!(block_height, 1);
 
     // Construct the new block transactions.
-    let recipient = Account::new(rng).unwrap();
+    let recipient = Account::new(rng);
     let amount = Block::<Testnet2>::block_reward(block_height);
     let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, rng).unwrap();
     {
@@ -65,7 +65,7 @@ fn dpc_testnet2_integration_test() {
 
         // Check that coinbase record can be decrypted from the transaction.
         let encrypted_record = &coinbase_transaction.ciphertexts()[0];
-        let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
+        let view_key = ViewKey::from_private_key(recipient.private_key());
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
         assert_eq!(decrypted_record.value() as i64, Block::<Testnet2>::block_reward(1).0);

@@ -229,7 +229,7 @@ mod tests {
         let rng = &mut thread_rng();
         {
             let mut ledger = Ledger::<Testnet1>::new().unwrap();
-            let recipient = Account::<Testnet1>::new(rng).unwrap();
+            let recipient = Account::<Testnet1>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
             ledger
@@ -239,7 +239,7 @@ mod tests {
         }
         {
             let mut ledger = Ledger::<Testnet2>::new().unwrap();
-            let recipient = Account::<Testnet2>::new(rng).unwrap();
+            let recipient = Account::<Testnet2>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
             ledger

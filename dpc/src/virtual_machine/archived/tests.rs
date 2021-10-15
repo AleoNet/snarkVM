@@ -33,7 +33,7 @@ mod coinbase {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
                 // Generate the expected coinbase account.
-                let coinbase_account = Account::<Testnet2>::new(rng).unwrap();
+                let coinbase_account = Account::<Testnet2>::new(rng);
 
                 // Compute the padded inputs to keep the RNG in sync.
                 let mut inputs = Vec::with_capacity(Testnet2::NUM_INPUT_RECORDS);
@@ -70,7 +70,7 @@ mod coinbase {
             let (candidate_account, candidate_transition, candidate_serial_numbers) = {
                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 
-                let account = Account::new(rng).unwrap();
+                let account = Account::new(rng);
                 let transition = State::new_coinbase(account.address, AleoAmount::from_bytes(123456), rng).unwrap();
                 let serial_numbers = transition.transition().serial_numbers().clone();
 
@@ -114,7 +114,7 @@ mod transfer {
         // Generate the expected state transition.
         let (expected_recipient, expected_sender_record, expected_recipient_record, expected_serial_numbers) = {
             let rng = &mut ChaChaRng::seed_from_u64(seed);
-            let recipient = Account::new(rng).unwrap();
+            let recipient = Account::new(rng);
 
             // Generate sender input
             let sender_input = Input::new(
@@ -168,7 +168,7 @@ mod transfer {
         // Generate the candidate state transition.
         let (candidate_recipient, candidate_transition, candidate_serial_numbers) = {
             let rng = &mut ChaChaRng::seed_from_u64(seed);
-            let recipient = Account::new(rng).unwrap();
+            let recipient = Account::new(rng);
 
             let state = State::new_transfer(
                 sender.private_key(),

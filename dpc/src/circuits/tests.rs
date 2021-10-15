@@ -25,7 +25,7 @@ use rand_chacha::ChaChaRng;
 fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, expected_outer_num_constraints: usize) {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    let recipient = Account::new(&mut rng).unwrap();
+    let recipient = Account::new(&mut rng);
     let amount = AleoAmount::from_bytes(10);
     let request = Request::new_coinbase(recipient.address(), amount, &mut rng).unwrap();
     let response = ResponseBuilder::new()

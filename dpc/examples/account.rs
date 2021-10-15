@@ -19,6 +19,6 @@ use snarkvm_dpc::{testnet2::Testnet2, Account, AccountScheme};
 use rand::thread_rng;
 
 fn main() {
-    let account = Account::<Testnet2>::new(&mut thread_rng()).unwrap();
+    let account = Account::<Testnet2>::new(&mut thread_rng());
     println!("{}", account);
 }

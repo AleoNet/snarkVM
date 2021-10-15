@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SignatureError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -33,9 +32,9 @@ pub trait SignatureScheme:
 
     fn parameters(&self) -> Self::Parameters;
 
-    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError>;
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey;
 
-    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError>;
+    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey;
 
     fn sign<R: Rng + CryptoRng>(
         &self,
@@ -55,6 +54,6 @@ pub trait SignatureSchemeOperations {
 
     fn pk_sig(signature: &Self::Signature) -> Result<Self::AffineCurve>;
     fn pr_sig(signature: &Self::Signature) -> Result<Self::AffineCurve>;
-    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Result<Self::AffineCurve>;
-    fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Result<Self::ScalarField>;
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Self::AffineCurve;
+    fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField;
 }
