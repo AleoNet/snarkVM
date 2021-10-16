@@ -241,7 +241,6 @@ macro_rules! impl_primefield_serializer {
             fn serialize<S: serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 let mut bytes = Vec::with_capacity(Self::SERIALIZED_SIZE);
                 CanonicalSerialize::serialize(self, &mut bytes).map_err(serde::ser::Error::custom)?;
-                println!("{:?}, {}", bytes, bytes.len());
 
                 match serializer.is_human_readable() {
                     true => serializer.collect_str(self),
