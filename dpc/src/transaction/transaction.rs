@@ -51,6 +51,8 @@ pub struct Transaction<N: Network> {
     inner_circuit_id: N::InnerCircuitID,
     /// The state transition.
     transitions: Vec<Transition<N>>,
+    /// The events emitted from this transaction.
+    events: Vec<Event<N>>,
 }
 
 impl<N: Network> Transaction<N> {
@@ -69,11 +71,17 @@ impl<N: Network> Transaction<N> {
 
     /// Initializes an instance of `Transaction` from the given inputs.
     #[inline]
-    pub fn from(network_id: u16, inner_circuit_id: N::InnerCircuitID, transitions: Vec<Transition<N>>) -> Result<Self> {
+    pub fn from(
+        network_id: u16,
+        inner_circuit_id: N::InnerCircuitID,
+        transitions: Vec<Transition<N>>,
+        events: Vec<Event<N>>,
+    ) -> Result<Self> {
         let transaction = Self {
             network_id,
-            transitions,
             inner_circuit_id,
+            transitions,
+            events,
         };
 
         match transaction.is_valid() {
@@ -94,7 +102,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Ensure the number of events is less than `N::NUM_EVENTS`.
-        if self.events().len() > N::NUM_EVENTS {
+        if self.events.len() > N::NUM_EVENTS {
             eprintln!("Transaction contains an invalid number of events");
             return false;
         }
@@ -242,16 +250,16 @@ impl<N: Network> Transaction<N> {
             .fold(AleoAmount::ZERO, |a, b| a.add(*b))
     }
 
-    /// Returns the events.
-    #[inline]
-    pub fn events(&self) -> Vec<Event<N>> {
-        self.transitions.iter().flat_map(Transition::events).cloned().collect()
-    }
-
     /// Returns a reference to the state transitions.
     #[inline]
     pub fn transitions(&self) -> &Vec<Transition<N>> {
         &self.transitions
+    }
+
+    /// Returns a reference to the events.
+    #[inline]
+    pub fn events(&self) -> &Vec<Event<N>> {
+        &self.events
     }
 
     /// Returns the ciphertext IDs.
@@ -290,16 +298,6 @@ impl<N: Network> Transaction<N> {
     }
 }
 
-impl<N: Network> ToBytes for Transaction<N> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.network_id.write_le(&mut writer)?;
-        self.inner_circuit_id.write_le(&mut writer)?;
-        (self.transitions.len() as u16).write_le(&mut writer)?;
-        self.transitions.write_le(&mut writer)
-    }
-}
-
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -312,7 +310,25 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(network_id, inner_circuit_id, transitions).expect("Failed to deserialize a transaction"))
+        let num_events: u16 = FromBytes::read_le(&mut reader)?;
+        let mut events = Vec::with_capacity(num_events as usize);
+        for _ in 0..num_events {
+            events.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        Ok(Self::from(network_id, inner_circuit_id, transitions, events).expect("Failed to deserialize a transaction"))
+    }
+}
+
+impl<N: Network> ToBytes for Transaction<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.network_id.write_le(&mut writer)?;
+        self.inner_circuit_id.write_le(&mut writer)?;
+        (self.transitions.len() as u16).write_le(&mut writer)?;
+        self.transitions.write_le(&mut writer)?;
+        (self.events.len() as u16).write_le(&mut writer)?;
+        self.events.write_le(&mut writer)
     }
 }
 

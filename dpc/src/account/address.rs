@@ -17,16 +17,19 @@
 use crate::{account_format, AccountError, ComputeKey, Network, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_curves::AffineCurve;
-use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
-
-use bech32::{self, FromBase32, ToBase32};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
+use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},
     ops::Deref,
     str::FromStr,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
 };
+
+use bech32::{self, FromBase32, ToBase32};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Derivative)]
 #[derivative(

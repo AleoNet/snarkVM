@@ -35,6 +35,7 @@ use std::{
     PartialEq(bound = "N: Network")
 )]
 pub struct FunctionInputs<N: Network> {
+    #[serde(skip)]
     _unused: PhantomData<N>,
 }
 

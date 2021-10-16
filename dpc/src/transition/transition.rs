@@ -16,16 +16,17 @@
 
 use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::traits::{CRH, SNARK};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use anyhow::{anyhow, Result};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
+    str::FromStr,
 };
 
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -47,8 +48,6 @@ pub struct Transition<N: Network> {
     ciphertexts: Vec<RecordCiphertext<N>>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
-    /// The events emitted from this transition.
-    events: Vec<Event<N>>,
     /// The zero-knowledge proof attesting to the validity of this transition.
     proof: N::OuterProof,
 }
@@ -56,7 +55,7 @@ pub struct Transition<N: Network> {
 impl<N: Network> Transition<N> {
     /// Initializes a new instance of a transition.
     #[inline]
-    pub(crate) fn from(request: &Request<N>, response: &Response<N>, proof: N::OuterProof) -> Result<Self> {
+    pub(crate) fn new(request: &Request<N>, response: &Response<N>, proof: N::OuterProof) -> Result<Self> {
         // Fetch the block hash, local commitments root, and serial numbers.
         let block_hash = request.block_hash();
         let local_commitments_root = request.local_commitments_root();
@@ -66,8 +65,29 @@ impl<N: Network> Transition<N> {
         let commitments = response.commitments();
         let ciphertexts = response.ciphertexts().clone();
         let value_balance = response.value_balance();
-        let events = response.events().clone();
 
+        // Construct the transition.
+        Self::from(
+            block_hash,
+            local_commitments_root,
+            serial_numbers,
+            commitments,
+            ciphertexts,
+            value_balance,
+            proof,
+        )
+    }
+
+    /// Constructs an instance of a transition from the given inputs.
+    pub(crate) fn from(
+        block_hash: N::BlockHash,
+        local_commitments_root: N::LocalCommitmentsRoot,
+        serial_numbers: Vec<N::SerialNumber>,
+        commitments: Vec<N::Commitment>,
+        ciphertexts: Vec<RecordCiphertext<N>>,
+        value_balance: AleoAmount,
+        proof: N::OuterProof,
+    ) -> Result<Self> {
         // Compute the transition ID.
         let transition_id = Self::compute_transition_id(
             block_hash,
@@ -87,7 +107,6 @@ impl<N: Network> Transition<N> {
             commitments,
             ciphertexts,
             value_balance,
-            events,
             proof,
         })
     }
@@ -190,12 +209,6 @@ impl<N: Network> Transition<N> {
         &self.value_balance
     }
 
-    /// Returns a reference to the events.
-    #[inline]
-    pub fn events(&self) -> &Vec<Event<N>> {
-        &self.events
-    }
-
     /// Returns a reference to the transition proof.
     #[inline]
     pub fn proof(&self) -> &N::OuterProof {
@@ -254,36 +267,18 @@ impl<N: Network> FromBytes for Transition<N> {
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-
-        let num_events: u16 = FromBytes::read_le(&mut reader)?;
-        let mut events = Vec::with_capacity(num_events as usize);
-        for _ in 0..num_events {
-            events.push(FromBytes::read_le(&mut reader)?);
-        }
-
         let proof: N::OuterProof = FromBytes::read_le(&mut reader)?;
 
-        let transition_id = Self::compute_transition_id(
-            block_hash,
-            local_commitments_root,
-            &serial_numbers,
-            &commitments,
-            &ciphertexts,
-            value_balance,
-        )
-        .expect("Failed to compute the transition ID during deserialization");
-
-        Ok(Self {
-            transition_id,
+        Ok(Self::from(
             block_hash,
             local_commitments_root,
             serial_numbers,
             commitments,
             ciphertexts,
             value_balance,
-            events,
             proof,
-        })
+        )
+        .expect("Failed to deserialize a transition from bytes"))
     }
 }
 
@@ -296,33 +291,127 @@ impl<N: Network> ToBytes for Transition<N> {
         self.commitments.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
-        (self.events.len() as u16).write_le(&mut writer)?;
-        self.events.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
     }
 }
-//
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::testnet2::Testnet2;
-//
-//     use rand::thread_rng;
-//
-//     #[test]
-//     fn test_bincode() {
-//         let rng = &mut thread_rng();
-//
-//         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
-//         let expected_transition = transaction.transitions().first().unwrap().clone();
-//
-//         let expected_bytes = expected_transition.to_bytes_le().unwrap();
-//         assert_eq!(
-//             &expected_bytes[..],
-//             &bincode::serialize(&expected_transition).unwrap()[..]
-//         );
-//
-//         assert_eq!(expected_transition, Transition::read_le(&expected_bytes[..]).unwrap());
-//         assert_eq!(expected_transition, bincode::deserialize(&expected_bytes[..]).unwrap());
-//     }
-// }
+
+impl<N: Network> FromStr for Transition<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(transition: &str) -> Result<Self, Self::Err> {
+        let transition = serde_json::Value::from_str(transition)?;
+        let transition_id: N::TransitionID = serde_json::from_value(transition["transition_id"].clone())?;
+
+        // Recover the transition.
+        let transition = Self::from(
+            serde_json::from_value(transition["block_hash"].clone())?,
+            serde_json::from_value(transition["local_commitments_root"].clone())?,
+            serde_json::from_value(transition["serial_numbers"].clone())?,
+            serde_json::from_value(transition["commitments"].clone())?,
+            serde_json::from_value(transition["ciphertexts"].clone())?,
+            serde_json::from_value(transition["value_balance"].clone())?,
+            serde_json::from_value(transition["proof"].clone())?,
+        )?;
+
+        // Ensure the transition ID matches.
+        match transition_id == transition.transition_id() {
+            true => Ok(transition),
+            false => Err(anyhow!(
+                "Incorrect transition ID during deserialization. Expected {}, found {}",
+                transition_id,
+                transition.transition_id()
+            )),
+        }
+    }
+}
+
+impl<N: Network> fmt::Display for Transition<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let transition = serde_json::json!({
+           "transition_id": self.transition_id,
+           "block_hash": self.block_hash,
+           "local_commitments_root": self.local_commitments_root,
+           "serial_numbers": self.serial_numbers,
+           "commitments": self.commitments,
+           "ciphertext_ids": self.to_ciphertext_ids().collect::<Result<Vec<_>>>().expect("Failed to format ciphertext IDs"),
+           "ciphertexts": self.ciphertexts,
+           "value_balance": self.value_balance,
+           "proof": self.proof,
+        });
+        write!(f, "{}", transition)
+    }
+}
+
+impl<N: Network> Serialize for Transition<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Transition<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => {
+                FromBytesDeserializer::<Self>::deserialize(deserializer, "transition", N::TRANSITION_SIZE_IN_BYTES)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+
+    #[test]
+    fn test_size() {
+        let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+        let transition = transaction.transitions().first().unwrap().clone();
+        assert_eq!(
+            transition.to_bytes_le().unwrap().len(),
+            Testnet2::TRANSITION_SIZE_IN_BYTES
+        );
+    }
+
+    #[test]
+    fn test_serde_json() {
+        let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+        let expected_transition = transaction.transitions().first().unwrap().clone();
+
+        // Serialize
+        let expected_string = &expected_transition.to_string();
+        let candidate_string = serde_json::to_string(&expected_transition).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_transition, Transition::from_str(&expected_string).unwrap());
+        assert_eq!(expected_transition, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+        let expected_transition = transaction.transitions().first().unwrap().clone();
+
+        println!("{}", serde_json::to_string(&expected_transition).unwrap());
+
+        let expected_bytes = expected_transition.to_bytes_le().unwrap();
+        assert_eq!(
+            &expected_bytes[..],
+            &bincode::serialize(&expected_transition).unwrap()[..]
+        );
+
+        assert_eq!(expected_transition, Transition::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_transition, bincode::deserialize(&expected_bytes[..]).unwrap());
+    }
+}

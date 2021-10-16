@@ -49,8 +49,10 @@ pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Send + Sync {
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
+    const CIPHERTEXT_SIZE_IN_BYTES: usize;
     const PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
+    const TRANSITION_SIZE_IN_BYTES: usize;
     
     const POSW_PROOF_SIZE_IN_BYTES: usize;
     const POSW_NUM_LEAVES: usize;

@@ -84,14 +84,16 @@ impl Network for Testnet2 {
     const NETWORK_ID: u16 = 2u16;
     const NETWORK_NAME: &'static str = "testnet2";
 
-    const NUM_EVENTS: usize = 1024;
+    const NUM_EVENTS: usize = 512;
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
+    const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const PAYLOAD_SIZE_IN_BYTES: usize = 128;
-    
+    const TRANSITION_SIZE_IN_BYTES: usize = 1129;
+
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const POSW_NUM_LEAVES: usize = 8;
     const POSW_TREE_DEPTH: usize = 3;
