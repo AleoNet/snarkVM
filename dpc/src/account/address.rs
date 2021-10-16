@@ -234,7 +234,7 @@ mod tests {
         );
 
         // Deserialize
-        assert_eq!(expected_address, Address::from_str(&candidate_string).unwrap());
+        assert_eq!(expected_address, Address::from_str(&expected_string).unwrap());
         assert_eq!(expected_address, serde_json::from_str(&candidate_string).unwrap());
     }
 

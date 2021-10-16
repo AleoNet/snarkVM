@@ -139,14 +139,14 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     }
 }
 
-struct FromBytesVisitor<T: FromBytes>(String, Option<usize>, PhantomData<T>);
+pub struct FromBytesVisitor<T: FromBytes>(String, Option<usize>, PhantomData<T>);
 
 impl<'de, T: FromBytes> FromBytesVisitor<T> {
-    fn new(name: &str) -> Self {
+    pub fn new(name: &str) -> Self {
         Self(name.to_string(), None, PhantomData)
     }
 
-    fn new_with_size(name: &str, size: usize) -> Self {
+    pub fn new_with_size(name: &str, size: usize) -> Self {
         Self(name.to_string(), Some(size), PhantomData)
     }
 }
