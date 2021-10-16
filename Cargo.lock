@@ -1683,6 +1683,7 @@ dependencies = [
  "rand_chacha",
  "rayon",
  "serde",
+ "serde_json",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
@@ -1861,6 +1862,7 @@ dependencies = [
  "num-bigint",
  "rand",
  "rand_xorshift",
+ "serde",
  "snarkvm-derives",
  "thiserror",
 ]

@@ -16,8 +16,16 @@
 
 use crate::{
     error,
+    fmt,
     io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
     Vec,
+};
+use serde::{
+    de::{self, SeqAccess, Visitor},
+    ser::{self, SerializeTuple},
+    Deserializer,
+    Serializer,
 };
 
 #[inline]
@@ -105,6 +113,60 @@ pub trait FromBytes {
         Self: Sized,
     {
         Ok(Self::read_le(bytes)?)
+    }
+}
+
+pub struct ToBytesSerializer<T: ToBytes>(String, Option<usize>, PhantomData<T>);
+
+impl<T: ToBytes> ToBytesSerializer<T> {
+    /// Serializes a static-sized byte array (without length encoding).
+    pub fn serialize<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
+        let bytes = object.to_bytes_le().map_err(ser::Error::custom)?;
+        let mut tuple = serializer.serialize_tuple(bytes.len())?;
+        for byte in &bytes {
+            tuple.serialize_element(byte)?;
+        }
+        tuple.end()
+    }
+}
+
+pub struct FromBytesDeserializer<T: FromBytes>(String, Option<usize>, PhantomData<T>);
+
+impl<'de, T: FromBytes> FromBytesDeserializer<T> {
+    /// Deserializes a static-sized byte array (without length encoding).
+    pub fn deserialize<D: Deserializer<'de>>(deserializer: D, name: &str, size: usize) -> Result<T, D::Error> {
+        deserializer.deserialize_tuple(size, FromBytesVisitor::<T>::new_with_size(name, size))
+    }
+}
+
+struct FromBytesVisitor<T: FromBytes>(String, Option<usize>, PhantomData<T>);
+
+impl<'de, T: FromBytes> FromBytesVisitor<T> {
+    fn new(name: &str) -> Self {
+        Self(name.to_string(), None, PhantomData)
+    }
+
+    fn new_with_size(name: &str, size: usize) -> Self {
+        Self(name.to_string(), Some(size), PhantomData)
+    }
+}
+
+impl<'de, T: FromBytes> Visitor<'de> for FromBytesVisitor<T> {
+    type Value = T;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str(&format!("a valid {} ", self.0))
+    }
+
+    fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<Self::Value, S::Error> {
+        let mut buffer = match self.1 {
+            Some(size) => Vec::with_capacity(size),
+            None => Vec::with_capacity(32),
+        };
+        while let Some(byte) = seq.next_element()? {
+            buffer.push(byte);
+        }
+        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
     }
 }
 

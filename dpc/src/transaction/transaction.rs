@@ -328,7 +328,7 @@ impl<N: Network> Hash for Transaction<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Account, AccountScheme, Payload, PAYLOAD_SIZE};
+    use crate::{testnet2::Testnet2, Account, AccountScheme, Payload};
     use snarkvm_utilities::UniformRand;
 
     use rand::{Rng, SeedableRng};
@@ -341,7 +341,7 @@ mod tests {
         let dummy_account = Account::<Testnet2>::new(rng);
 
         // Construct output records
-        let mut payload = [0u8; PAYLOAD_SIZE];
+        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
         let record = Record::new_output(
             dummy_account.address(),

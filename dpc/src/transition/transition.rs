@@ -301,3 +301,28 @@ impl<N: Network> ToBytes for Transition<N> {
         self.proof.write_le(&mut writer)
     }
 }
+//
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::testnet2::Testnet2;
+//
+//     use rand::thread_rng;
+//
+//     #[test]
+//     fn test_bincode() {
+//         let rng = &mut thread_rng();
+//
+//         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+//         let expected_transition = transaction.transitions().first().unwrap().clone();
+//
+//         let expected_bytes = expected_transition.to_bytes_le().unwrap();
+//         assert_eq!(
+//             &expected_bytes[..],
+//             &bincode::serialize(&expected_transition).unwrap()[..]
+//         );
+//
+//         assert_eq!(expected_transition, Transition::read_le(&expected_bytes[..]).unwrap());
+//         assert_eq!(expected_transition, bincode::deserialize(&expected_bytes[..]).unwrap());
+//     }
+// }
