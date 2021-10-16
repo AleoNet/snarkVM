@@ -1643,6 +1643,7 @@ dependencies = [
 name = "snarkvm-curves"
 version = "0.7.5"
 dependencies = [
+ "bincode",
  "criterion",
  "derivative",
  "rand",
@@ -1701,10 +1702,8 @@ name = "snarkvm-fields"
 version = "0.7.5"
 dependencies = [
  "anyhow",
- "bincode",
  "derivative",
  "rand",
- "rand_xorshift",
  "serde",
  "snarkvm-utilities",
  "thiserror",
