@@ -19,13 +19,14 @@ use snarkvm_algorithms::traits::{CommitmentScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -40,7 +41,7 @@ pub struct Record<N: Network> {
     payload: Payload,
     program_id: N::ProgramID,
     serial_number_nonce: N::SerialNumber,
-    commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+    commitment_randomness: N::CommitmentRandomness,
     commitment: N::Commitment,
 }
 
@@ -64,7 +65,7 @@ impl<N: Network> Record<N> {
         payload: Payload,
         program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
-        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: N::CommitmentRandomness,
     ) -> Result<Self, RecordError> {
         Self::from(
             owner,
@@ -118,7 +119,7 @@ impl<N: Network> Record<N> {
         payload: Payload,
         program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
-        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: N::CommitmentRandomness,
     ) -> Result<Self, RecordError> {
         // Determine if the record is a dummy.
         let is_dummy = value == 0 && payload.is_empty() && program_id == *N::noop_program_id();
@@ -178,7 +179,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the randomness used for the commitment.
-    pub fn commitment_randomness(&self) -> <N::CommitmentScheme as CommitmentScheme>::Randomness {
+    pub fn commitment_randomness(&self) -> N::CommitmentRandomness {
         self.commitment_randomness.clone()
     }
 
@@ -223,8 +224,7 @@ impl<N: Network> FromBytes for Record<N> {
         let payload: Payload = FromBytes::read_le(&mut reader)?;
         let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
         let serial_number_nonce: N::SerialNumber = FromBytes::read_le(&mut reader)?;
-        let commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness =
-            FromBytes::read_le(&mut reader)?;
+        let commitment_randomness: N::CommitmentRandomness = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from(
             owner,

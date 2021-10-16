@@ -23,6 +23,7 @@ use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
 use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
+use serde::{Deserialize, Serialize};
 use std::io::{
     Read,
     Result as IoResult,
@@ -55,7 +56,7 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the Groth16 SNARK.
-#[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,

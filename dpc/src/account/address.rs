@@ -20,6 +20,7 @@ use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -177,6 +178,22 @@ impl<N: Network> fmt::Display for Address<N> {
 impl<N: Network> fmt::Debug for Address<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Address {{ encryption_key: {:?} }}", self.0)
+    }
+}
+
+impl<N: Network> Serialize for Address<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Address<N> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(de::Error::custom)
     }
 }
 

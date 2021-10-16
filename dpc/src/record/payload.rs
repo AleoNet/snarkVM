@@ -16,7 +16,22 @@
 
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use std::io::{Read, Result as IoResult, Write};
+use serde::{
+    de::{Error as DeserializeError, SeqAccess, Visitor},
+    ser::SerializeTuple,
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
+use std::{
+    fmt::{
+        Debug,
+        Formatter,
+        {self},
+    },
+    io::{Read, Result as IoResult, Write},
+};
 
 pub const PAYLOAD_SIZE: usize = 128;
 
@@ -62,6 +77,42 @@ impl FromBytes for Payload {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self(FromBytes::read_le(&mut reader)?))
+    }
+}
+
+impl Serialize for Payload {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut tuple = serializer.serialize_tuple(PAYLOAD_SIZE)?;
+        for byte in &self.to_bytes_le().expect("Failed to serialize proof") {
+            tuple.serialize_element(byte)?;
+        }
+        tuple.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Payload {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ArrayVisitor;
+
+        impl<'de> Visitor<'de> for ArrayVisitor {
+            type Value = Payload;
+
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+                formatter.write_str("a valid record payload")
+            }
+
+            fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<Payload, S::Error> {
+                let mut bytes = vec![0; PAYLOAD_SIZE];
+                for b in &mut bytes[..] {
+                    *b = seq
+                        .next_element()?
+                        .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
+                }
+                Ok(Payload::read_le(&bytes[..]).expect("Failed to deserialize record payload"))
+            }
+        }
+
+        deserializer.deserialize_tuple(PAYLOAD_SIZE, ArrayVisitor)
     }
 }
 

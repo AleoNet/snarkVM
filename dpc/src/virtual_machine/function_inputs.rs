@@ -20,12 +20,13 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
 };
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Copy(bound = "N: Network"),
     Clone(bound = "N: Network"),

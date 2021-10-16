@@ -44,8 +44,9 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Copy(bound = "TE: TwistedEdwardsParameters"),
     Clone(bound = "TE: TwistedEdwardsParameters"),

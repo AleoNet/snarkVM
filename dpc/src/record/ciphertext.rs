@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, Network, Payload, Record, ViewKey};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
+use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
@@ -28,8 +28,9 @@ use snarkvm_utilities::{
 
 use anyhow::{anyhow, Result};
 use rand::{thread_rng, CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -93,7 +94,7 @@ impl<N: Network> RecordCiphertext<N> {
         let payload = Payload::read_le(&mut cursor)?;
         let program_id = N::ProgramID::read_le(&mut cursor)?;
         let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
-        let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
+        let commitment_randomness = N::CommitmentRandomness::read_le(&mut cursor)?;
 
         // Derive the record owner.
         let owner = Address::from_view_key(&recipient_view_key);

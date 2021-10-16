@@ -112,6 +112,7 @@ impl Network for Testnet2 {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet2>>;
+    type OuterProof = <Self::OuterSNARK as SNARK>::Proof;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet2Mode, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>>;
@@ -148,6 +149,7 @@ impl Network for Testnet2 {
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
+    type CommitmentRandomness = <Self::CommitmentScheme as CommitmentScheme>::Randomness;
     type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
 
     type CommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;

@@ -19,12 +19,13 @@ use snarkvm_algorithms::traits::{CRH, SNARK};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
 };
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -49,17 +50,13 @@ pub struct Transition<N: Network> {
     /// The events emitted from this transition.
     events: Vec<Event<N>>,
     /// The zero-knowledge proof attesting to the validity of this transition.
-    proof: <N::OuterSNARK as SNARK>::Proof,
+    proof: N::OuterProof,
 }
 
 impl<N: Network> Transition<N> {
     /// Initializes a new instance of a transition.
     #[inline]
-    pub(crate) fn from(
-        request: &Request<N>,
-        response: &Response<N>,
-        proof: <N::OuterSNARK as SNARK>::Proof,
-    ) -> Result<Self> {
+    pub(crate) fn from(request: &Request<N>, response: &Response<N>, proof: N::OuterProof) -> Result<Self> {
         // Fetch the block hash, local commitments root, and serial numbers.
         let block_hash = request.block_hash();
         let local_commitments_root = request.local_commitments_root();
@@ -201,7 +198,7 @@ impl<N: Network> Transition<N> {
 
     /// Returns a reference to the transition proof.
     #[inline]
-    pub fn proof(&self) -> &<N::OuterSNARK as SNARK>::Proof {
+    pub fn proof(&self) -> &N::OuterProof {
         &self.proof
     }
 
@@ -264,7 +261,7 @@ impl<N: Network> FromBytes for Transition<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let proof: <N::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
+        let proof: N::OuterProof = FromBytes::read_le(&mut reader)?;
 
         let transition_id = Self::compute_transition_id(
             block_hash,

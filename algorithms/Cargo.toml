@@ -139,6 +139,11 @@ default-features = false
 [dependencies.rayon]
 version = "1"
 
+[dependencies.serde]
+version = "1.0"
+default-features = false
+features = ["derive"]
+
 [dependencies.sha2]
 version = "0.9"
 default-features = false
