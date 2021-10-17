@@ -353,7 +353,7 @@ impl<N: Network> Hash for Transaction<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Account, AccountScheme, Payload};
+    use crate::{testnet2::Testnet2, Account, AccountScheme};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -367,7 +367,7 @@ mod tests {
         let expected_record = Record::new_output(
             account.address(),
             1234,
-            Payload::default(),
+            Default::default(),
             *Testnet2::noop_program_id(),
             UniformRand::rand(rng),
             rng,
