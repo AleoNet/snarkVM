@@ -221,8 +221,8 @@ where
         Self { g_bases, crypto_hash }
     }
 
-    fn parameters(&self) -> Self::Parameters {
-        self.g_bases.clone()
+    fn parameters(&self) -> &Self::Parameters {
+        &self.g_bases
     }
 
     ///

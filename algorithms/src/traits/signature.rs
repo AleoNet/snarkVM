@@ -30,7 +30,7 @@ pub trait SignatureScheme:
 
     fn setup(message: &str) -> Self;
 
-    fn parameters(&self) -> Self::Parameters;
+    fn parameters(&self) -> &Self::Parameters;
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey;
 
