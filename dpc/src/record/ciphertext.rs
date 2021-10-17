@@ -143,7 +143,7 @@ impl<N: Network> FromStr for RecordCiphertext<N> {
     type Err = RecordError;
 
     fn from_str(payload_hex: &str) -> Result<Self, Self::Err> {
-        Ok(Self::read_le(&hex::decode(payload_hex)?[..])?)
+        Ok(Self::from_bytes_le(&hex::decode(payload_hex)?)?)
     }
 }
 

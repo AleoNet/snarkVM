@@ -23,7 +23,9 @@ use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
 use snarkvm_utilities::{
     errors::SerializationError,
+    fmt,
     serialize::*,
+    str::FromStr,
     FromBytes,
     FromBytesDeserializer,
     ToBytes,
@@ -31,7 +33,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{
     Read,
     Result as IoResult,
@@ -148,6 +150,13 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Self::read(&mut reader)
+    }
+}
+
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -158,24 +167,44 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> FromBytes for Proof<E> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Self::read(&mut reader)
+impl<E: PairingEngine> FromStr for Proof<E> {
+    type Err = anyhow::Error;
+
+    fn from_str(proof_hex: &str) -> Result<Self, Self::Err> {
+        Self::from_bytes_le(&hex::decode(proof_hex)?)
+    }
+}
+
+impl<E: PairingEngine> fmt::Display for Proof<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let proof_hex = hex::encode(self.to_bytes_le().expect("Failed to convert proof to bytes"));
+        write!(f, "{}", proof_hex)
     }
 }
 
 impl<E: PairingEngine> Serialize for Proof<E> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        ToBytesSerializer::serialize(self, serializer)
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
     }
 }
 
 impl<'de, E: PairingEngine> Deserialize<'de> for Proof<E> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let compressed_size = Self::compressed_proof_size().map_err(serde::de::Error::custom)?;
-        let uncompressed_size = Self::uncompressed_proof_size().map_err(serde::de::Error::custom)?;
-        FromBytesDeserializer::<Self>::try_deserialize(deserializer, "proof", compressed_size, uncompressed_size)
+        match deserializer.is_human_readable() {
+            true => {
+                let s: String = Deserialize::deserialize(deserializer)?;
+                FromStr::from_str(&s).map_err(de::Error::custom)
+            }
+            false => FromBytesDeserializer::<Self>::try_deserialize(
+                deserializer,
+                "proof",
+                Self::compressed_proof_size().map_err(de::Error::custom)?,
+                Self::uncompressed_proof_size().map_err(de::Error::custom)?,
+            ),
+        }
     }
 }
 

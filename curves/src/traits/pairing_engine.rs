@@ -18,6 +18,7 @@ use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
 use snarkvm_utilities::{biginteger::BigInteger, serialize::*, BitIteratorBE, ToBytes, ToMinimalBits};
 
+use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, iter};
 
 pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync + Send {
@@ -156,6 +157,8 @@ pub trait ProjectiveCurve:
 pub trait AffineCurve:
     Group
     + Sized
+    + Serialize
+    + DeserializeOwned
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize

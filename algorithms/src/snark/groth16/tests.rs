@@ -58,9 +58,8 @@ mod bls12_377 {
         Proof,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{str::FromStr, FromBytes, ToBytes, UniformRand};
 
-    use core::ops::MulAssign;
     use rand::thread_rng;
 
     #[test]
@@ -79,6 +78,33 @@ mod bls12_377 {
             assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
             assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
         }
+    }
+
+    #[test]
+    fn test_serde_json() {
+        let expected_proof = {
+            let rng = &mut thread_rng();
+            let parameters =
+                generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+            let (a, b) = (Fr::rand(rng), Fr::rand(rng));
+            create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap()
+        };
+
+        // Serialize
+        let expected_string = &expected_proof.to_string();
+        let candidate_string = serde_json::to_string(&expected_proof).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_proof, serde_json::from_str(&candidate_string).unwrap());
+        assert_eq!(expected_proof, Proof::from_str(&expected_string).unwrap());
     }
 
     #[test]
@@ -132,7 +158,7 @@ mod bw6_761 {
         Proof,
     };
     use snarkvm_curves::bw6_761::{Fr, BW6_761};
-    use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
+    use snarkvm_utilities::{rand::UniformRand, str::FromStr, FromBytes, ToBytes};
 
     use rand::thread_rng;
 
@@ -150,6 +176,33 @@ mod bw6_761 {
 
         assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
         assert!(!verify_proof(&pvk, &proof, &[Fr::zero()]).unwrap());
+    }
+
+    #[test]
+    fn test_serde_json() {
+        let expected_proof = {
+            let rng = &mut thread_rng();
+            let parameters =
+                generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+            let (a, b) = (Fr::rand(rng), Fr::rand(rng));
+            create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap()
+        };
+
+        // Serialize
+        let expected_string = &expected_proof.to_string();
+        let candidate_string = serde_json::to_string(&expected_proof).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_proof, serde_json::from_str(&candidate_string).unwrap());
+        assert_eq!(expected_proof, Proof::from_str(&expected_string).unwrap());
     }
 
     #[test]
