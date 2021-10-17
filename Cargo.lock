@@ -1611,6 +1611,7 @@ name = "snarkvm-algorithms"
 version = "0.7.5"
 dependencies = [
  "anyhow",
+ "bincode",
  "blake2",
  "blake2s_simd",
  "criterion",

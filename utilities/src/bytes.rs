@@ -28,43 +28,6 @@ use serde::{
     Serializer,
 };
 
-#[inline]
-pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
-    bytes
-        .iter()
-        .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
-        .flatten()
-}
-
-#[inline]
-pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
-    let desired_size = if bits.len() % 8 == 0 {
-        bits.len() / 8
-    } else {
-        bits.len() / 8 + 1
-    };
-
-    let mut bytes = Vec::with_capacity(desired_size);
-    for bits in bits.chunks(8) {
-        let mut result = 0u8;
-        for (i, bit) in bits.iter().enumerate() {
-            let bit_value = *bit as u8;
-            result += bit_value << i as u8;
-        }
-
-        // Pad the bits if their number doesn't correspond to full bytes
-        if bits.len() < 8 {
-            for i in bits.len()..8 {
-                let bit_value = false as u8;
-                result += bit_value << i as u8;
-            }
-        }
-        bytes.push(result);
-    }
-
-    bytes
-}
-
 /// Takes as input a sequence of structs, and converts them to a series of little-endian bytes.
 /// All traits that implement `ToBytes` can be automatically converted to bytes in this manner.
 #[macro_export]
@@ -133,139 +96,73 @@ impl<T: ToBytes> ToBytesSerializer<T> {
 pub struct FromBytesDeserializer<T: FromBytes>(String, Option<usize>, PhantomData<T>);
 
 impl<'de, T: FromBytes> FromBytesDeserializer<T> {
+    ///
     /// Deserializes a static-sized byte array (without length encoding).
+    ///
+    /// This method fails if `deserializer` is given an insufficient `size`.
+    ///
     pub fn deserialize<D: Deserializer<'de>>(deserializer: D, name: &str, size: usize) -> Result<T, D::Error> {
-        deserializer.deserialize_tuple(size, FromBytesVisitor::<T>::new_with_size(name, size))
+        let mut buffer = Vec::with_capacity(size);
+        deserializer.deserialize_tuple(size, FromBytesVisitor::new(&mut buffer, name))?;
+        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
+    }
+
+    ///
+    /// Attempts to deserialize a byte array (without length encoding).
+    ///
+    /// This method does *not* fail if `deserializer` is given an insufficient `size`,
+    /// however this method fails if `FromBytes` fails to read the value of `T`.
+    ///
+    pub fn try_deserialize<D: Deserializer<'de>>(
+        deserializer: D,
+        name: &str,
+        size_a: usize,
+        size_b: usize,
+    ) -> Result<T, D::Error> {
+        // Order the given sizes from smallest to largest.
+        let (size_a, size_b) = match size_a < size_b {
+            true => (size_a, size_b),
+            false => (size_b, size_a),
+        };
+
+        // Reserve a new `Vec` with the larger size capacity.
+        let mut buffer = Vec::with_capacity(size_b);
+
+        // Attempt to deserialize on the larger size, to load up to the maximum buffer size.
+        match deserializer.deserialize_tuple(size_b, FromBytesVisitor::new(&mut buffer, name)) {
+            // Deserialized a full buffer, attempt to read up to `size_b`.
+            Ok(()) => FromBytes::read_le(&buffer[..size_b]).map_err(de::Error::custom),
+            // Deserialized a partial buffer, attempt to read up to `size_a`, if exactly `size_a` was read.
+            Err(error) => match buffer.len() == size_a {
+                true => FromBytes::read_le(&buffer[..size_a]).map_err(de::Error::custom),
+                false => Err(error),
+            },
+        }
     }
 }
 
-pub struct FromBytesVisitor<T: FromBytes>(String, Option<usize>, PhantomData<T>);
+pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, String, Option<usize>);
 
-impl<'de, T: FromBytes> FromBytesVisitor<T> {
-    pub fn new(name: &str) -> Self {
-        Self(name.to_string(), None, PhantomData)
-    }
-
-    pub fn new_with_size(name: &str, size: usize) -> Self {
-        Self(name.to_string(), Some(size), PhantomData)
+impl<'a, 'de> FromBytesVisitor<'a> {
+    pub fn new(buffer: &'a mut Vec<u8>, name: &str) -> Self {
+        Self(buffer, name.to_string(), None)
     }
 }
 
-impl<'de, T: FromBytes> Visitor<'de> for FromBytesVisitor<T> {
-    type Value = T;
+impl<'a, 'de> Visitor<'de> for FromBytesVisitor<'a> {
+    type Value = ();
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str(&format!("a valid {} ", self.0))
+        formatter.write_str(&format!("a valid {} ", self.1))
     }
 
     fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<Self::Value, S::Error> {
-        let mut buffer = match self.1 {
-            Some(size) => Vec::with_capacity(size),
-            None => Vec::with_capacity(32),
-        };
         while let Some(byte) = seq.next_element()? {
-            buffer.push(byte);
+            self.0.push(byte);
         }
-        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
-    }
-}
-
-macro_rules! to_bytes_for_int_array {
-    ($int:ty) => {
-        impl<const N: usize> ToBytes for [$int; N] {
-            #[inline]
-            fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-                for num in self {
-                    writer.write_all(&num.to_le_bytes())?;
-                }
-                Ok(())
-            }
-        }
-
-        impl<const N: usize> FromBytes for [$int; N] {
-            #[inline]
-            fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-                let mut res: [$int; N] = [0; N];
-                for num in res.iter_mut() {
-                    let mut bytes = [0u8; core::mem::size_of::<$int>()];
-                    reader.read_exact(&mut bytes)?;
-                    *num = <$int>::from_le_bytes(bytes);
-                }
-                Ok(res)
-            }
-        }
-    };
-}
-
-// u8 has a dedicated, faster implementation
-to_bytes_for_int_array!(u16);
-to_bytes_for_int_array!(u32);
-to_bytes_for_int_array!(u64);
-
-impl<const N: usize> ToBytes for [u8; N] {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(self)
-    }
-}
-
-impl<const N: usize> FromBytes for [u8; N] {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut arr = [0u8; N];
-        reader.read_exact(&mut arr)?;
-        Ok(arr)
-    }
-}
-
-impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write_le(&mut writer)?;
-        self.1.write_le(&mut writer)?;
         Ok(())
     }
 }
-
-impl<L: FromBytes, R: FromBytes> FromBytes for (L, R) {
-    #[inline]
-    fn read_le<Reader: Read>(mut reader: Reader) -> IoResult<Self> {
-        let left: L = FromBytes::read_le(&mut reader)?;
-        let right: R = FromBytes::read_le(&mut reader)?;
-        Ok((left, right))
-    }
-}
-
-macro_rules! to_bytes_for_integer {
-    ($int:ty) => {
-        impl ToBytes for $int {
-            #[inline]
-            fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-                writer.write_all(&self.to_le_bytes())
-            }
-        }
-
-        impl FromBytes for $int {
-            #[inline]
-            fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-                let mut bytes = [0u8; core::mem::size_of::<$int>()];
-                reader.read_exact(&mut bytes)?;
-                Ok(<$int>::from_le_bytes(bytes))
-            }
-        }
-    };
-}
-
-to_bytes_for_integer!(u8);
-to_bytes_for_integer!(u16);
-to_bytes_for_integer!(u32);
-to_bytes_for_integer!(u64);
-to_bytes_for_integer!(u128);
-
-to_bytes_for_integer!(i8);
-to_bytes_for_integer!(i16);
-to_bytes_for_integer!(i32);
-to_bytes_for_integer!(i64);
-to_bytes_for_integer!(i128);
 
 impl ToBytes for () {
     #[inline]
@@ -300,6 +197,103 @@ impl FromBytes for bool {
     }
 }
 
+macro_rules! impl_bytes_for_integer {
+    ($int:ty) => {
+        impl ToBytes for $int {
+            #[inline]
+            fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+                writer.write_all(&self.to_le_bytes())
+            }
+        }
+
+        impl FromBytes for $int {
+            #[inline]
+            fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+                let mut bytes = [0u8; core::mem::size_of::<$int>()];
+                reader.read_exact(&mut bytes)?;
+                Ok(<$int>::from_le_bytes(bytes))
+            }
+        }
+    };
+}
+
+impl_bytes_for_integer!(u8);
+impl_bytes_for_integer!(u16);
+impl_bytes_for_integer!(u32);
+impl_bytes_for_integer!(u64);
+impl_bytes_for_integer!(u128);
+
+impl_bytes_for_integer!(i8);
+impl_bytes_for_integer!(i16);
+impl_bytes_for_integer!(i32);
+impl_bytes_for_integer!(i64);
+impl_bytes_for_integer!(i128);
+
+impl<const N: usize> ToBytes for [u8; N] {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        writer.write_all(self)
+    }
+}
+
+impl<const N: usize> FromBytes for [u8; N] {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut arr = [0u8; N];
+        reader.read_exact(&mut arr)?;
+        Ok(arr)
+    }
+}
+
+macro_rules! impl_bytes_for_integer_array {
+    ($int:ty) => {
+        impl<const N: usize> ToBytes for [$int; N] {
+            #[inline]
+            fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+                for num in self {
+                    writer.write_all(&num.to_le_bytes())?;
+                }
+                Ok(())
+            }
+        }
+
+        impl<const N: usize> FromBytes for [$int; N] {
+            #[inline]
+            fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+                let mut res: [$int; N] = [0; N];
+                for num in res.iter_mut() {
+                    let mut bytes = [0u8; core::mem::size_of::<$int>()];
+                    reader.read_exact(&mut bytes)?;
+                    *num = <$int>::from_le_bytes(bytes);
+                }
+                Ok(res)
+            }
+        }
+    };
+}
+
+// u8 has a dedicated, faster implementation above
+impl_bytes_for_integer_array!(u16);
+impl_bytes_for_integer_array!(u32);
+impl_bytes_for_integer_array!(u64);
+
+impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)?;
+        self.1.write_le(&mut writer)?;
+        Ok(())
+    }
+}
+
+impl<L: FromBytes, R: FromBytes> FromBytes for (L, R) {
+    #[inline]
+    fn read_le<Reader: Read>(mut reader: Reader) -> IoResult<Self> {
+        let left: L = FromBytes::read_le(&mut reader)?;
+        let right: R = FromBytes::read_le(&mut reader)?;
+        Ok((left, right))
+    }
+}
+
 impl<T: ToBytes> ToBytes for Vec<T> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -325,6 +319,45 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (*self).write_le(&mut writer)
     }
+}
+
+#[deprecated]
+#[inline]
+pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
+    bytes
+        .iter()
+        .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
+        .flatten()
+}
+
+#[deprecated]
+#[inline]
+pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
+    let desired_size = if bits.len() % 8 == 0 {
+        bits.len() / 8
+    } else {
+        bits.len() / 8 + 1
+    };
+
+    let mut bytes = Vec::with_capacity(desired_size);
+    for bits in bits.chunks(8) {
+        let mut result = 0u8;
+        for (i, bit) in bits.iter().enumerate() {
+            let bit_value = *bit as u8;
+            result += bit_value << i as u8;
+        }
+
+        // Pad the bits if their number doesn't correspond to full bytes
+        if bits.len() < 8 {
+            for i in bits.len()..8 {
+                let bit_value = false as u8;
+                result += bit_value << i as u8;
+            }
+        }
+        bytes.push(result);
+    }
+
+    bytes
 }
 
 #[cfg(test)]

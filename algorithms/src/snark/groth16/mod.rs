@@ -21,9 +21,17 @@
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{
+    errors::SerializationError,
+    serialize::*,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
+    ToMinimalBits,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{
     Read,
     Result as IoResult,
@@ -56,7 +64,7 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the Groth16 SNARK.
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
@@ -64,46 +72,16 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) compressed: bool,
 }
 
-impl<E: PairingEngine> ToBytes for Proof<E> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self.compressed {
-            true => self.write_compressed(&mut writer),
-            false => self.write_uncompressed(&mut writer),
-        }
-    }
-}
-
-impl<E: PairingEngine> FromBytes for Proof<E> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Self::read(&mut reader)
-    }
-}
-
-impl<E: PairingEngine> PartialEq for Proof<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.a == other.a && self.b == other.b && self.c == other.c
-    }
-}
-
-impl<E: PairingEngine> Default for Proof<E> {
-    fn default() -> Self {
-        Self {
-            a: E::G1Affine::default(),
-            b: E::G2Affine::default(),
-            c: E::G1Affine::default(),
-            compressed: true,
-        }
-    }
-}
-
 impl<E: PairingEngine> Proof<E> {
+    /// Returns `true` if the proof is in compressed form.
+    pub fn is_compressed(&self) -> bool {
+        self.compressed
+    }
+
     /// Serialize the proof into bytes in compressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_compressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
         CanonicalSerialize::serialize(self, &mut writer)?;
-
         Ok(())
     }
 
@@ -167,6 +145,54 @@ impl<E: PairingEngine> Proof<E> {
         let mut buffer = Vec::new();
         Self::default().write_uncompressed(&mut buffer)?;
         Ok(buffer.len())
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Proof<E> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self.compressed {
+            true => self.write_compressed(&mut writer),
+            false => self.write_uncompressed(&mut writer),
+        }
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Self::read(&mut reader)
+    }
+}
+
+impl<E: PairingEngine> Serialize for Proof<E> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ToBytesSerializer::serialize(self, serializer)
+    }
+}
+
+impl<'de, E: PairingEngine> Deserialize<'de> for Proof<E> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let compressed_size = Self::compressed_proof_size().map_err(serde::de::Error::custom)?;
+        let uncompressed_size = Self::uncompressed_proof_size().map_err(serde::de::Error::custom)?;
+        FromBytesDeserializer::<Self>::try_deserialize(deserializer, "proof", compressed_size, uncompressed_size)
+    }
+}
+
+impl<E: PairingEngine> PartialEq for Proof<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.a == other.a && self.b == other.b && self.c == other.c
+    }
+}
+
+impl<E: PairingEngine> Default for Proof<E> {
+    fn default() -> Self {
+        Self {
+            a: E::G1Affine::default(),
+            b: E::G2Affine::default(),
+            c: E::G1Affine::default(),
+            compressed: true,
+        }
     }
 }
 
