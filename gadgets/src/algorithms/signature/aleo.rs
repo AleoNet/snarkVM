@@ -514,7 +514,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             // Compute G^sk_prf.
             let g_sk_prf = {
                 let mut g_sk_prf = zero_affine.clone();
-                for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(sk_prf).enumerate() {
+                for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(sk_prf).enumerate() {
                     let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), base)?;
 
                     g_sk_prf = TEAffineGadget::<TE, F>::conditionally_select(

@@ -31,13 +31,14 @@ use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
 };
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -271,17 +272,15 @@ impl<N: Network> Transaction<N> {
             .collect::<Result<Vec<_>>>()
     }
 
-    /// Returns the records that can be decrypted with the given account view key.
-    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Result<Vec<Record<N>>> {
+    /// Returns records from the transaction belonging to the given account view key.
+    #[inline]
+    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Vec<Record<N>> {
         self.transitions
             .iter()
             .flat_map(Transition::ciphertexts)
-            .map(|c| c.decrypt(account_view_key))
-            .filter(|decryption_result| match decryption_result {
-                Ok(r) => !r.is_dummy(),
-                Err(_) => true,
-            })
-            .collect::<Result<Vec<Record<N>>>>()
+            .filter_map(|c| c.decrypt(account_view_key).ok())
+            .filter(|record| !record.is_dummy())
+            .collect()
     }
 
     /// Returns the transaction ID.
@@ -347,39 +346,33 @@ mod tests {
     use crate::{testnet2::Testnet2, Account, AccountScheme, Payload};
     use snarkvm_utilities::UniformRand;
 
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
+    use rand::thread_rng;
 
-    #[ignore]
     #[test]
     fn test_decrypt_records() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let dummy_account = Account::<Testnet2>::new(rng);
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
 
-        // Construct output records
-        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
-        rng.fill(&mut payload);
-        let record = Record::new_output(
-            dummy_account.address(),
+        // Craft the expected coinbase record.
+        let expected_record = Record::new_output(
+            account.address(),
             1234,
-            Payload::from_bytes_le(&payload).unwrap(),
+            Payload::default(),
             *Testnet2::noop_program_id(),
             UniformRand::rand(rng),
             rng,
         )
         .unwrap();
-        let dummy_record = Record::new_noop_output(dummy_account.address(), UniformRand::rand(rng), rng).unwrap();
 
-        // Encrypt output records
-        let (_encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
-        let (_encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
-        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key());
+        // Craft a transaction with 1 coinbase record.
+        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+        let decrypted_records = transaction.to_decrypted_records(&account.view_key());
+        assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
-        // Construct transaction with 1 output record and 1 dummy output record
-        let transaction = Transaction::new_coinbase(dummy_account.address(), AleoAmount(1234), rng).unwrap();
-
-        let decrypted_records = transaction.to_decrypted_records(&account_view_key).unwrap();
-        assert_eq!(decrypted_records.len(), 1); // Excludes dummy record upon decryption
-        assert_eq!(decrypted_records.first().unwrap(), &record);
+        let candidate_record = decrypted_records.first().unwrap();
+        assert_eq!(expected_record.owner(), candidate_record.owner());
+        assert_eq!(expected_record.value(), candidate_record.value());
+        assert_eq!(expected_record.payload(), candidate_record.payload());
+        assert_eq!(expected_record.program_id(), candidate_record.program_id());
     }
 }
