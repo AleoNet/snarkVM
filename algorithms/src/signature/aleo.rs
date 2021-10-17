@@ -31,22 +31,26 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
+    fmt,
     io::{Read, Result as IoResult, Write},
     ops::Mul,
     rand::UniformRand,
     serialize::*,
+    str::FromStr,
     FromBits,
     FromBytes,
+    FromBytesDeserializer,
     ToBits,
     ToBytes,
+    ToBytesSerializer,
 };
 
 use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative)]
 #[derivative(
     Copy(bound = "TE: TwistedEdwardsParameters"),
     Clone(bound = "TE: TwistedEdwardsParameters"),
@@ -63,6 +67,11 @@ pub struct AleoSignature<TE: TwistedEdwardsParameters> {
 }
 
 impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
+    #[inline]
+    pub fn size() -> usize {
+        2 * TE::ScalarField::SERIALIZED_SIZE + 2 * TE::BaseField::SERIALIZED_SIZE
+    }
+
     #[inline]
     pub fn root_public_key(&self) -> Result<TEAffine<TE>> {
         if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_public_key, true) {
@@ -98,16 +107,6 @@ impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.prover_response.write_le(&mut writer)?;
-        self.verifier_challenge.write_le(&mut writer)?;
-        self.root_public_key.write_le(&mut writer)?;
-        self.root_randomizer.write_le(&mut writer)
-    }
-}
-
 impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -125,6 +124,56 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
     }
 }
 
+impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.prover_response.write_le(&mut writer)?;
+        self.verifier_challenge.write_le(&mut writer)?;
+        self.root_public_key.write_le(&mut writer)?;
+        self.root_randomizer.write_le(&mut writer)
+    }
+}
+
+impl<TE: TwistedEdwardsParameters> FromStr for AleoSignature<TE> {
+    type Err = anyhow::Error;
+
+    #[inline]
+    fn from_str(signature_hex: &str) -> Result<Self, Self::Err> {
+        Self::from_bytes_le(&hex::decode(signature_hex)?)
+    }
+}
+
+impl<TE: TwistedEdwardsParameters> fmt::Display for AleoSignature<TE> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let signature_hex = hex::encode(self.to_bytes_le().expect("Failed to convert signature to bytes"));
+        write!(f, "{}", signature_hex)
+    }
+}
+
+impl<TE: TwistedEdwardsParameters> Serialize for AleoSignature<TE> {
+    #[inline]
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, TE: TwistedEdwardsParameters> Deserialize<'de> for AleoSignature<TE> {
+    #[inline]
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let s: String = Deserialize::deserialize(deserializer)?;
+                FromStr::from_str(&s).map_err(de::Error::custom)
+            }
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "signature", Self::size()),
+        }
+    }
+}
+
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters"),
@@ -136,7 +185,7 @@ pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    pub g_bases: Vec<TEProjective<TE>>,
+    g_bases: Vec<TEProjective<TE>>,
     crypto_hash: PoseidonCryptoHash<TE::BaseField, 4, false>,
 }
 

@@ -170,12 +170,14 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
 impl<E: PairingEngine> FromStr for Proof<E> {
     type Err = anyhow::Error;
 
+    #[inline]
     fn from_str(proof_hex: &str) -> Result<Self, Self::Err> {
         Self::from_bytes_le(&hex::decode(proof_hex)?)
     }
 }
 
 impl<E: PairingEngine> fmt::Display for Proof<E> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let proof_hex = hex::encode(self.to_bytes_le().expect("Failed to convert proof to bytes"));
         write!(f, "{}", proof_hex)
@@ -183,6 +185,7 @@ impl<E: PairingEngine> fmt::Display for Proof<E> {
 }
 
 impl<E: PairingEngine> Serialize for Proof<E> {
+    #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
@@ -192,6 +195,7 @@ impl<E: PairingEngine> Serialize for Proof<E> {
 }
 
 impl<'de, E: PairingEngine> Deserialize<'de> for Proof<E> {
+    #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
