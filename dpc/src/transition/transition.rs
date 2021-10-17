@@ -22,6 +22,7 @@ use anyhow::{anyhow, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
+    hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
@@ -359,6 +360,13 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                 FromBytesDeserializer::<Self>::deserialize(deserializer, "transition", N::TRANSITION_SIZE_IN_BYTES)
             }
         }
+    }
+}
+
+impl<N: Network> Hash for Transition<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.transition_id().hash(state);
     }
 }
 

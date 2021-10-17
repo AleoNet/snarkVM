@@ -107,10 +107,7 @@ impl<N: Network> Transactions<N> {
     pub fn to_transactions_root(&self) -> Result<N::TransactionsRoot> {
         match self.is_valid() {
             true => {
-                let transaction_ids = (*self)
-                    .iter()
-                    .map(Transaction::to_transaction_id)
-                    .collect::<Result<Vec<_>>>()?;
+                let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
 
                 Ok(*MerkleTree::<N::TransactionsTreeParameters>::new(
                     Arc::new(N::transactions_tree_parameters().clone()),

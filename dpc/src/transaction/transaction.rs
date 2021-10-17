@@ -27,7 +27,7 @@ use crate::{
     VirtualMachine,
 };
 use snarkvm_algorithms::CRH;
-use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -46,6 +46,8 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Transaction<N: Network> {
+    /// The ID of this transaction.
+    transaction_id: N::TransactionID,
     /// The network ID.
     network_id: u16,
     /// The ID of the inner circuit used to execute this transaction.
@@ -78,7 +80,10 @@ impl<N: Network> Transaction<N> {
         transitions: Vec<Transition<N>>,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
+        let transaction_id = Self::compute_transaction_id(&transitions)?;
+
         let transaction = Self {
+            transaction_id,
             network_id,
             inner_circuit_id,
             transitions,
@@ -194,6 +199,12 @@ impl<N: Network> Transaction<N> {
         true
     }
 
+    /// Returns the transaction ID.
+    #[inline]
+    pub fn transaction_id(&self) -> N::TransactionID {
+        self.transaction_id
+    }
+
     /// Returns the network ID.
     #[inline]
     pub fn network_id(&self) -> u16 {
@@ -257,6 +268,12 @@ impl<N: Network> Transaction<N> {
         &self.transitions
     }
 
+    /// Returns the transition IDs.
+    #[inline]
+    pub fn transition_ids(&self) -> Vec<N::TransitionID> {
+        self.transitions.iter().map(Transition::transition_id).collect()
+    }
+
     /// Returns a reference to the events.
     #[inline]
     pub fn events(&self) -> &Vec<Event<N>> {
@@ -283,17 +300,12 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
-    /// Returns the transaction ID.
+    /// Transaction ID := Hash(transition IDs)
     #[inline]
-    pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        let transition_ids = self
-            .transitions
-            .iter()
-            .map(|transition| Ok(transition.transition_id().to_bytes_le()?))
-            .collect::<Result<Vec<_>>>()?
-            .concat();
-
-        Ok(N::transaction_id_crh().hash(&transition_ids)?)
+    pub(crate) fn compute_transaction_id(transitions: &Vec<Transition<N>>) -> Result<N::TransactionID> {
+        Ok(N::transaction_id_crh().hash(&to_bytes_le![
+            transitions.iter().map(Transition::transition_id).collect::<Vec<_>>()
+        ]?)?)
     }
 }
 
@@ -334,9 +346,7 @@ impl<N: Network> ToBytes for Transaction<N> {
 impl<N: Network> Hash for Transaction<N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.to_transaction_id()
-            .expect("Failed to compute the transaction ID")
-            .hash(state);
+        self.transaction_id().hash(state);
     }
 }
 
