@@ -19,56 +19,26 @@ use snarkvm_algorithms::merkle_tree::MerklePath;
 
 use anyhow::Result;
 
-/// The state commitments tree is a core state tree of the ledger.
-pub trait CommitmentsTreeScheme<N: Network>: Sized {
-    /// Initializes an empty commitments tree.
+/// The ledger tree is a core state tree.
+pub trait LedgerTreeScheme<N: Network>: Sized {
+    /// Initializes an empty ledger tree.
     fn new() -> Result<Self>;
 
     /// Adds the given commitment to the tree, returning its index in the tree.
-    fn add(&mut self, commitment: &N::Commitment) -> Result<u64>;
+    fn add(&mut self, block_hash: &N::BlockHash) -> Result<u64>;
 
-    /// Adds all given commitments to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, commitments: &[N::Commitment]) -> Result<(u64, u64)>;
+    /// Adds all given block hashes to the tree, returning the start and ending index in the tree.
+    fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u64, u64)>;
 
-    /// Returns `true` if the given commitment exists.
-    fn contains_commitment(&self, commitment: &N::Commitment) -> bool;
+    /// Returns `true` if the given block hash exists.
+    fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool;
 
-    /// Returns the index for the given commitment, if it exists.
-    fn get_commitment_index(&self, commitment: &N::Commitment) -> Option<&u64>;
+    /// Returns the index for the given block hash, if it exists.
+    fn get_block_hash_index(&self, block_hash: &N::BlockHash) -> Option<&u64>;
 
-    /// Returns the commitments root.
-    fn root(&self) -> N::CommitmentsRoot;
+    /// Returns the ledger root.
+    fn root(&self) -> N::LedgerRoot;
 
-    /// Returns the Merkle path for a given commitment.
-    fn to_commitment_inclusion_proof(
-        &self,
-        commitment: &N::Commitment,
-    ) -> Result<MerklePath<N::CommitmentsTreeParameters>>;
-}
-
-/// The ledger serial numbers tree is a core state tree of the ledger.
-pub trait SerialNumbersTreeScheme<N: Network>: Sized {
-    /// Initializes an empty serial numbers tree.
-    fn new() -> Result<Self>;
-
-    /// Adds the given serial number to the tree, returning its index in the tree.
-    fn add(&mut self, serial_number: &N::SerialNumber) -> Result<u64>;
-
-    /// Adds all given serial numbers to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, serial_numbers: &[N::SerialNumber]) -> Result<(u64, u64)>;
-
-    /// Returns `true` if the given serial number exists.
-    fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool;
-
-    /// Returns the index for the given serial number, if it exists.
-    fn get_serial_number_index(&self, serial_number: &N::SerialNumber) -> Option<&u64>;
-
-    /// Returns the serial numbers root.
-    fn root(&self) -> N::SerialNumbersRoot;
-
-    /// Returns the Merkle path for a given serial number.
-    fn to_serial_number_inclusion_proof(
-        &self,
-        serial_number: &N::SerialNumber,
-    ) -> Result<MerklePath<N::SerialNumbersTreeParameters>>;
+    /// Returns the Merkle path for a given block hash.
+    fn to_ledger_inclusion_proof(&self, block_hash: &N::BlockHash) -> Result<MerklePath<N::LedgerRootParameters>>;
 }

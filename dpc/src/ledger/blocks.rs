@@ -18,6 +18,7 @@ use crate::prelude::*;
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
+use itertools::Itertools;
 use std::collections::HashMap;
 
 pub const TWO_HOURS_UNIX: i64 = 7200;
@@ -34,14 +35,6 @@ pub struct Blocks<N: Network> {
     headers: HashMap<u32, BlockHeader<N>>,
     /// The chain of block transactions.
     transactions: HashMap<u32, Transactions<N>>,
-    /// The tree of serial numbers.
-    serial_numbers: SerialNumbers<N>,
-    /// The roots of serial numbers trees.
-    serial_numbers_roots: HashMap<N::SerialNumbersRoot, u32>,
-    /// The tree of commitments.
-    commitments: Commitments<N>,
-    /// The roots of commitments trees.
-    commitments_roots: HashMap<N::CommitmentsRoot, u32>,
 }
 
 impl<N: Network> Blocks<N> {
@@ -56,10 +49,6 @@ impl<N: Network> Blocks<N> {
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
-            serial_numbers: SerialNumbers::new()?,
-            serial_numbers_roots: Default::default(),
-            commitments: Commitments::new()?,
-            commitments_roots: Default::default(),
         };
 
         blocks
@@ -67,10 +56,6 @@ impl<N: Network> Blocks<N> {
             .insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
-        blocks.serial_numbers.add_all(&genesis_block.serial_numbers())?;
-        blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
-        blocks.commitments.add_all(&genesis_block.commitments())?;
-        blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
         Ok(blocks)
     }
@@ -178,24 +163,26 @@ impl<N: Network> Blocks<N> {
             > 0
     }
 
-    /// Returns `true` if the given serial numbers root exists.
-    pub fn contains_serial_numbers_root(&self, serial_numbers_root: &N::SerialNumbersRoot) -> bool {
-        self.serial_numbers_roots.contains_key(serial_numbers_root)
-    }
-
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
-        self.serial_numbers.contains_serial_number(serial_number)
-    }
-
-    /// Returns `true` if the given commitments root exists.
-    pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
-        self.commitments_roots.contains_key(commitments_root)
+        // TODO (howardwu): Optimize this operation.
+        self.transactions
+            .values()
+            .flat_map(|transactions| (**transactions).iter().map(Transaction::serial_numbers))
+            .filter(|serial_numbers| serial_numbers.contains(serial_number))
+            .count()
+            > 0
     }
 
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
-        self.commitments.contains_commitment(commitment)
+        // TODO (howardwu): Optimize this operation.
+        self.transactions
+            .values()
+            .flat_map(|transactions| (**transactions).iter().map(Transaction::commitments))
+            .filter(|commitments| commitments.contains(commitment))
+            .count()
+            > 0
     }
 
     /// Adds the given block as the next block in the chain.
@@ -272,7 +259,7 @@ impl<N: Network> Blocks<N> {
         // Ensure the ledger does not already contain a given serial numbers.
         let serial_numbers = block.serial_numbers();
         for serial_number in &serial_numbers {
-            if self.serial_numbers.contains_serial_number(serial_number) {
+            if self.contains_serial_number(serial_number) {
                 return Err(anyhow!("Serial number already exists in the ledger"));
             }
         }
@@ -280,7 +267,7 @@ impl<N: Network> Blocks<N> {
         // Ensure the ledger does not already contain a given commitments.
         let commitments = block.commitments();
         for commitment in &commitments {
-            if self.commitments.contains_commitment(commitment) {
+            if self.contains_commitment(commitment) {
                 return Err(anyhow!("Commitment already exists in the ledger"));
             }
         }
@@ -294,10 +281,6 @@ impl<N: Network> Blocks<N> {
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
-            blocks.serial_numbers.add_all(&serial_numbers)?;
-            blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
-            blocks.commitments.add_all(&commitments)?;
-            blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
             *self = blocks;
         }
@@ -306,42 +289,96 @@ impl<N: Network> Blocks<N> {
     }
 
     ///
-    /// Returns the ledger proof for the given commitments with the current block hash.
+    /// Returns a ledger proof for the given commitment.
     ///
-    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
-    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
-    ///
-    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        // Ensure the correct number of commitments is given.
-        if commitments.len() > N::NUM_INPUT_RECORDS {
-            return Err(anyhow!(
-                "Incorrect number of given commitments. Expected up to {}, found {}",
-                N::NUM_INPUT_RECORDS,
-                commitments.len(),
-            ));
-        }
+    pub fn to_ledger_inclusion_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+        // TODO (howardwu): Optimize this operation.
+        let transaction = self
+            .transactions
+            .values()
+            .flat_map(|transactions| (**transactions))
+            .filter(|transaction| transaction.commitments().contains(&commitment))
+            .collect::<Vec<_>>();
+        assert_eq!(1, transaction.len()); // TODO (howardwu): Clean this up with a proper error handler.
+        let transaction = transaction[0];
+        let transaction_id = transaction.transaction_id();
 
-        let commitment_inclusion_proofs = commitments
+        // TODO (howardwu): Optimize this operation.
+        let block_height = self
+            .transactions
             .iter()
-            .map(|commitment| Ok(self.commitments.to_commitment_inclusion_proof(commitment)?))
-            .collect::<Result<Vec<_>>>()?;
-        let commitments_root = self.commitments.root();
+            .filter_map(
+                |(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
+                    true => Some(block_height),
+                    false => None,
+                },
+            )
+            .collect::<Vec<_>>();
+        assert_eq!(1, block_height.len()); // TODO (howardwu): Clean this up with a proper error handler.
+        let block_height = *block_height[0];
+        let transactions = self.get_block_transactions(block_height)?;
+        let block_header = self.get_block_header(block_height)?;
 
-        let header = self.get_block_header(self.current_height)?;
-        let header_inclusion_proof = header.to_header_inclusion_proof(2, commitments_root)?;
-        let header_root = header.to_header_root()?;
+        // TODO (howardwu): Optimize this operation.
+        let transition = transaction
+            .transitions()
+            .iter()
+            .filter(|transition| transition.commitments().contains(&commitment))
+            .collect::<Vec<_>>();
+        assert_eq!(1, transition.len()); // TODO (howardwu): Clean this up with a proper error handler.
+        let transition = transition[0].clone();
+        let transition_id = transition.transition_id();
 
+        // Compute the transition inclusion proof.
+        let transition_inclusion_proof = {
+            // TODO (howardwu): Optimize this operation.
+            // It is either leaf 3 or 4.
+            if let Ok(proof) = transition.to_transition_inclusion_proof(3, commitment) {
+                proof
+            } else if let Ok(proof) = transition.to_transition_inclusion_proof(4, commitment) {
+                proof
+            } else {
+                unreachable!() // TODO (howardwu): Clean this up with a proper error handler.
+            }
+        };
+
+        // Compute the transaction inclusion proof.
+        let transaction_inclusion_proof = transaction.to_transaction_inclusion_proof(transition_id)?;
+
+        // Compute the transactions inclusion proof.
+        let transactions_inclusion_proof = {
+            // TODO (howardwu): Optimize this operation.
+            let index = transactions
+                .transaction_ids()
+                .enumerate()
+                .filter_map(|(index, id)| match id == transaction_id {
+                    true => Some(index),
+                    false => None,
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(1, index.len()); // TODO (howardwu): Clean this up with a proper error handler.
+            transactions.to_transactions_inclusion_proof(index[0], transaction_id)?
+        };
+
+        // Compute the block header inclusion proof.
+        let transactions_root = transactions.to_transactions_root()?;
+        let block_header_inclusion_proof = block_header.to_header_inclusion_proof(0, transactions_root)?;
+        let block_header_root = block_header.to_header_root()?;
         let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
         let current_block_hash = self.current_hash;
 
         LedgerProof::new(
             current_block_hash,
             previous_block_hash,
-            header_root,
-            header_inclusion_proof,
-            commitments_root,
-            commitment_inclusion_proofs,
-            commitments.to_vec(),
+            block_header_root,
+            block_header_inclusion_proof,
+            transactions_root,
+            transactions_inclusion_proof,
+            transaction_id,
+            transaction_inclusion_proof,
+            transition_id,
+            transition_inclusion_proof,
+            commitment,
         )
     }
 
@@ -381,15 +418,5 @@ impl<N: Network> Blocks<N> {
             TARGET_BLOCK_TIME_IN_SECS,
             previous_difficulty_target,
         )
-    }
-
-    /// Returns the latest serial numbers.
-    pub(crate) fn latest_serial_numbers(&self) -> SerialNumbers<N> {
-        self.serial_numbers.clone()
-    }
-
-    /// Returns the latest commitments.
-    pub(crate) fn latest_commitments(&self) -> Commitments<N> {
-        self.commitments.clone()
     }
 }

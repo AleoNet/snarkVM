@@ -38,7 +38,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Fetch the block hash, local commitments root, and serial numbers.
     let block_hash = request.block_hash();
-    let local_commitments_root = request.local_commitments_root();
     let serial_numbers = request.to_serial_numbers().unwrap();
     let program_id = request.to_program_id().unwrap();
 
@@ -55,16 +54,15 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
         value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
     }
 
+    // Compute the local commitments root.
+    let mut commitments_tree = Transitions::<N>::new().unwrap();
+    commitments_tree.add_all(&commitments).unwrap();
+    let local_commitments_root = commitments_tree.root();
+
     // Compute the transition ID.
-    let transition_id = Transition::compute_transition_id(
-        block_hash,
-        local_commitments_root,
-        &serial_numbers,
-        &commitments,
-        &ciphertexts,
-        value_balance,
-    )
-    .unwrap();
+    let transition_id =
+        Transition::compute_transition_id(block_hash, &serial_numbers, &commitments, &ciphertexts, value_balance)
+            .unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -121,7 +119,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
 
     // Construct the outer circuit public and private variables.
-    let outer_public = OuterPublicVariables::new(transition_id, inner_circuit_id);
+    let outer_public = OuterPublicVariables::new(transition_id, local_commitments_root, inner_circuit_id);
     let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
 
     // Check that the proof check constraint system was satisfied.

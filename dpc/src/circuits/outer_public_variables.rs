@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
 
@@ -24,6 +23,7 @@ use anyhow::Result;
 #[derive(Clone, Debug)]
 pub struct OuterPublicVariables<N: Network> {
     transition_id: N::TransitionID,
+    local_transitions_root: N::TransactionID,
     inner_circuit_id: N::InnerCircuitID,
 }
 
@@ -31,13 +31,19 @@ impl<N: Network> OuterPublicVariables<N> {
     pub(crate) fn blank() -> Self {
         Self {
             transition_id: N::TransitionID::default(),
+            local_transitions_root: N::TransactionID::default(),
             inner_circuit_id: N::InnerCircuitID::default(),
         }
     }
 
-    pub(crate) fn new(transition_id: N::TransitionID, inner_circuit_id: N::InnerCircuitID) -> Self {
+    pub(crate) fn new(
+        transition_id: N::TransitionID,
+        local_transitions_root: N::TransactionID,
+        inner_circuit_id: N::InnerCircuitID,
+    ) -> Self {
         Self {
             transition_id,
+            local_transitions_root,
             inner_circuit_id,
         }
     }
@@ -46,15 +52,16 @@ impl<N: Network> OuterPublicVariables<N> {
         self.transition_id
     }
 
+    pub(crate) fn local_transitions_root(&self) -> N::TransactionID {
+        self.local_transitions_root
+    }
+
     pub(crate) fn inner_circuit_id(&self) -> N::InnerCircuitID {
         self.inner_circuit_id
     }
 }
 
-impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::OuterScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
 
@@ -68,6 +75,11 @@ where
         for transition_id_fe in &self.transition_id.to_field_elements()? {
             v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
                 transition_id_fe.to_bits_le().as_slice(),
+            )?);
+        }
+        for local_transitions_root_fe in &self.local_transitions_root.to_field_elements()? {
+            v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
+                local_transitions_root_fe.to_bits_le().as_slice(),
             )?);
         }
 

@@ -29,7 +29,7 @@ use std::{collections::HashMap, sync::Arc};
 #[derivative(Debug(bound = "N: Network"))]
 pub struct Program<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<N::ProgramFunctionsTreeParameters>,
+    tree: MerkleTree<N::ProgramIDParameters>,
     #[derivative(Debug = "ignore")]
     functions: HashMap<N::FunctionID, (u8, Arc<dyn Function<N>>)>,
     last_function_index: u8,
@@ -40,8 +40,8 @@ impl<N: Network> Program<N> {
     pub fn new(functions: Vec<Arc<dyn Function<N>>>) -> Result<Self> {
         // Initialize a new functions tree, and add all functions to the tree.
         let mut program = Self {
-            tree: MerkleTree::<N::ProgramFunctionsTreeParameters>::new::<N::FunctionID>(
-                Arc::new(N::program_functions_tree_parameters().clone()),
+            tree: MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
+                Arc::new(N::program_id_parameters().clone()),
                 &vec![],
             )?,
             functions: Default::default(),
@@ -56,8 +56,8 @@ impl<N: Network> Program<N> {
     pub fn new_noop() -> Result<Self> {
         // Initialize a new functions tree, and add all functions to the tree.
         let mut program = Self {
-            tree: MerkleTree::<N::ProgramFunctionsTreeParameters>::new::<N::FunctionID>(
-                Arc::new(N::program_functions_tree_parameters().clone()),
+            tree: MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
+                Arc::new(N::program_id_parameters().clone()),
                 &vec![],
             )?,
             functions: Default::default(),
@@ -90,10 +90,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the program path (the Merkle path for a given function ID).
-    pub fn to_program_path(
-        &self,
-        function_id: &N::FunctionID,
-    ) -> Result<MerklePath<N::ProgramFunctionsTreeParameters>> {
+    pub fn to_program_path(&self, function_id: &N::FunctionID) -> Result<MerklePath<N::ProgramIDParameters>> {
         match self.get_function_index(function_id) {
             Some(index) => Ok(self.tree.generate_proof(index as usize, function_id)?),
             _ => Err(MerkleError::MissingLeaf(format!("{}", function_id)).into()),

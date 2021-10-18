@@ -72,10 +72,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             record_commitment_parameters,
             ciphertext_id_crh,
             transition_id_crh,
-            ledger_commitments_tree_crh,
-            local_commitments_tree_crh,
-            block_header_tree_parameters,
+            transaction_id_crh,
+            transactions_root_crh,
+            block_header_root_crh,
             block_hash_crh,
+            ledger_root_crh,
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
 
@@ -94,46 +95,52 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     Ok(N::commitment_scheme().clone())
                 })?;
 
-            let ciphertext_id_crh_parameters = N::CiphertextIDCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare record ciphertext ID CRH parameters"),
+            let ciphertext_id_crh = N::CiphertextIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the record ciphertext ID CRH parameters"),
                 || Ok(N::ciphertext_id_crh().clone()),
             )?;
 
             let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare transition ID CRH parameters"),
-                || Ok(N::transition_id_crh().clone()),
+                &mut cs.ns(|| "Declare the transition ID CRH parameters"),
+                || Ok(N::transition_id_parameters().crh()),
             )?;
 
-            let ledger_commitments_tree_crh = N::CommitmentsTreeCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare ledger commitments tree CRH parameters"),
-                || Ok(N::commitments_tree_parameters().crh()),
+            let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transaction CRH parameters"),
+                || Ok(N::transaction_id_parameters().crh()),
             )?;
 
-            let local_commitments_tree_crh = N::LocalCommitmentsTreeCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare local commitments tree CRH parameters"),
-                || Ok(N::local_commitments_tree_parameters().crh()),
+            let transactions_root_crh = N::TransactionsRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transactions root CRH parameters"),
+                || Ok(N::transactions_root_parameters().crh()),
             )?;
 
-            let block_header_tree_parameters = N::BlockHeaderTreeCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare block header tree CRH parameters"),
-                || Ok(N::block_header_tree_parameters().crh()),
+            let block_header_root_crh = N::BlockHeaderRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the block header root CRH parameters"),
+                || Ok(N::block_header_root_parameters().crh()),
             )?;
 
             let block_hash_crh =
-                N::BlockHashCRHGadget::alloc_constant(&mut cs.ns(|| "Declare block hash CRH parameters"), || {
+                N::BlockHashCRHGadget::alloc_constant(&mut cs.ns(|| "Declare the block hash CRH parameters"), || {
                     Ok(N::block_hash_crh().clone())
                 })?;
+
+            let ledger_root_crh = N::LedgerRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the ledger root CRH parameters"),
+                || Ok(N::ledger_root_parameters().crh()),
+            )?;
 
             (
                 account_encryption_parameters,
                 account_signature_parameters,
                 record_commitment_parameters,
-                ciphertext_id_crh_parameters,
+                ciphertext_id_crh,
                 transition_id_crh,
-                ledger_commitments_tree_crh,
-                local_commitments_tree_crh,
-                block_header_tree_parameters,
+                transaction_id_crh,
+                transactions_root_crh,
+                block_header_root_crh,
                 block_hash_crh,
+                ledger_root_crh,
             )
         };
 
@@ -387,15 +394,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let ledger_cs = &mut cs.ns(|| "Check ledger proof");
 
             // Declare the ledger commitments root.
-            let ledger_commitments_root = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
-                &mut ledger_cs.ns(|| "Declare ledger commitments root"),
+            let ledger_root = <N::LedgerRootCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
+                &mut ledger_cs.ns(|| "Declare ledger root"),
                 || Ok(private.ledger_proof.commitments_root()),
             )?;
 
             // Declare the local commitments root.
             let local_commitments_root = <N::LocalCommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
                 &mut ledger_cs.ns(|| "Declare local commitments root"),
-                || Ok(private.local_proof.local_commitments_root()),
+                || Ok(private.local_proof.local_transitions_root()),
             )?;
 
             // Ensure each commitment is either 1) in the ledger, 2) from a prior local transition, or 3) a dummy.
@@ -407,7 +414,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             {
                 let inclusion_cs = &mut ledger_cs.ns(|| format!("Check commitment inclusion proof {}", i));
 
-                let ledger_commitment_inclusion_proof = MerklePathGadget::<_, N::CommitmentsTreeCRHGadget, _>::alloc(
+                let ledger_inclusion_proof = MerklePathGadget::<_, N::LedgerRootCRHGadget, _>::alloc(
                     &mut inclusion_cs.ns(|| "Declare ledger commitment inclusion proof"),
                     || Ok(&private.ledger_proof.commitment_inclusion_proofs()[i]),
                 )?;
@@ -418,23 +425,21 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         || Ok(&private.local_proof.commitment_inclusion_proofs()[i]),
                     )?;
 
-                let candidate_ledger_commitments_root = ledger_commitment_inclusion_proof.calculate_root(
-                    &mut inclusion_cs.ns(|| "calculate_root for candidate_ledger_commitments_root"),
-                    &ledger_commitments_tree_crh,
+                let candidate_ledger_root = ledger_inclusion_proof.calculate_root(
+                    &mut inclusion_cs.ns(|| "calculate_root for candidate_ledger_root"),
+                    &ledger_root_crh,
                     &commitment,
                 )?;
 
                 let candidate_local_commitments_root = local_commitment_inclusion_proof.calculate_root(
                     &mut inclusion_cs.ns(|| "calculate_root for candidate_local_commitments_root"),
-                    &local_commitments_tree_crh,
+                    &transaction_id_crh,
                     &commitment,
                 )?;
 
                 // First, check if the commitment is in the ledger commitments tree.
-                let is_ledger = candidate_ledger_commitments_root.is_eq(
-                    &mut inclusion_cs.ns(|| "ledger commitments root is_eq"),
-                    &ledger_commitments_root,
-                )?;
+                let is_ledger = candidate_ledger_root
+                    .is_eq(&mut inclusion_cs.ns(|| "ledger commitments root is_eq"), &ledger_root)?;
 
                 // Second, check if the commitment is in the local commitments tree.
                 let is_local = candidate_local_commitments_root.is_eq(
@@ -456,21 +461,21 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Ensure ledger commitments root exists in the claimed block.
             let candidate_block_hash_bytes = {
                 // Declare the block header root.
-                let header_root = <N::BlockHeaderTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
+                let header_root = <N::BlockHeaderRootCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
                     &mut ledger_cs.ns(|| "Declare block header root"),
                     || Ok(private.ledger_proof.header_root()),
                 )?;
 
                 // Ensure the header inclusion proof is valid.
-                let header_inclusion_proof = MerklePathGadget::<_, N::BlockHeaderTreeCRHGadget, _>::alloc(
+                let header_inclusion_proof = MerklePathGadget::<_, N::BlockHeaderRootCRHGadget, _>::alloc(
                     &mut ledger_cs.ns(|| "Declare block header inclusion proof"),
                     || Ok(private.ledger_proof.header_inclusion_proof()),
                 )?;
                 header_inclusion_proof.check_membership(
                     &mut ledger_cs.ns(|| "Perform block header inclusion proof check"),
-                    &block_header_tree_parameters,
+                    &block_header_root_crh,
                     &header_root,
-                    &ledger_commitments_root,
+                    &ledger_root,
                 )?;
 
                 // Declare the previous block hash.

@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
 
@@ -53,10 +52,7 @@ impl<N: Network> InnerPublicVariables<N> {
     }
 }
 
-impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
 

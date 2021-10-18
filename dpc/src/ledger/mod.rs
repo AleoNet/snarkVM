@@ -20,14 +20,11 @@ pub use blocks::*;
 pub mod ledger;
 pub use ledger::*;
 
-pub mod commitments;
-pub use commitments::*;
-
 pub mod ledger_proof;
 pub use ledger_proof::*;
 
+pub mod ledger_tree;
+pub use ledger_tree::*;
+
 pub mod memory_pool;
 pub use memory_pool::*;
-
-pub mod serial_numbers;
-pub use serial_numbers::*;

@@ -19,15 +19,20 @@ use crate::{
     Address,
     AleoAmount,
     Event,
-    LocalCommitments,
     Network,
     Request,
     Transition,
+    Transitions,
     ViewKey,
     VirtualMachine,
 };
-use snarkvm_algorithms::CRH;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_algorithms::merkle_tree::MerklePath;
+use snarkvm_utilities::{
+    has_duplicates,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    ToBytes,
+};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -35,7 +40,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     hash::{Hash, Hasher},
-    io::{Read, Result as IoResult, Write},
 };
 
 #[derive(Derivative, Serialize, Deserialize)]
@@ -48,9 +52,7 @@ use std::{
 pub struct Transaction<N: Network> {
     /// The ID of this transaction.
     transaction_id: N::TransactionID,
-    /// The network ID.
-    network_id: u16,
-    /// The ID of the inner circuit used to execute this transaction.
+    /// The ID of the inner circuit used to execute each transition.
     inner_circuit_id: N::InnerCircuitID,
     /// The state transition.
     transitions: Vec<Transition<N>>,
@@ -75,7 +77,6 @@ impl<N: Network> Transaction<N> {
     /// Initializes an instance of `Transaction` from the given inputs.
     #[inline]
     pub fn from(
-        network_id: u16,
         inner_circuit_id: N::InnerCircuitID,
         transitions: Vec<Transition<N>>,
         events: Vec<Event<N>>,
@@ -84,7 +85,6 @@ impl<N: Network> Transaction<N> {
 
         let transaction = Self {
             transaction_id,
-            network_id,
             inner_circuit_id,
             transitions,
             events,
@@ -101,22 +101,16 @@ impl<N: Network> Transaction<N> {
     /// correct ciphertext IDs, and a valid proof.
     #[inline]
     pub fn is_valid(&self) -> bool {
-        // Returns `false` if the network ID is incorrect.
-        if self.network_id != N::NETWORK_ID {
-            eprintln!("Transaction contains an incorrect network ID");
+        // Ensure the number of transitions is between 1 and 256 (inclusive).
+        let num_transitions = self.transitions.len();
+        if num_transitions < 1 || num_transitions > N::NUM_TRANSITIONS as usize {
+            eprintln!("Transaction contains invalid number of transitions");
             return false;
         }
 
         // Ensure the number of events is less than `N::NUM_EVENTS`.
-        if self.events.len() > N::NUM_EVENTS {
+        if self.events.len() > N::NUM_EVENTS as usize {
             eprintln!("Transaction contains an invalid number of events");
-            return false;
-        }
-
-        // Ensure the number of transitions is between 1 and 128 (inclusive).
-        let num_transitions = self.transitions.len();
-        if num_transitions < 1 || num_transitions > 128 {
-            eprintln!("Transaction contains invalid number of transitions");
             return false;
         }
 
@@ -156,44 +150,40 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
-        // Returns `false` if the transition is invalid.
-        if !self.transitions[0].verify(*N::inner_circuit_id(), Default::default()) {
-            eprintln!("Transaction contains an invalid transition");
+        // Initialize a local transitions tree.
+        let mut transitions = match Transitions::<N>::new() {
+            Ok(transitions) => transitions,
+            Err(error) => {
+                eprintln!("Transaction failed to initialize a local transitions tree: {}", error);
+                return false;
+            }
+        };
+
+        // Returns `false` if any transition is invalid.
+        for transition in self.transitions {
+            // Returns `false` if the transition is invalid.
+            if !transition.verify(self.inner_circuit_id, transitions.root()) {
+                eprintln!("Transaction contains an invalid transition");
+                return false;
+            }
+
+            // Update the local transitions tree.
+            if let Err(error) = transitions.add(&transition.transition_id()) {
+                eprintln!("Transaction failed to update local transitions tree: {}", error);
+                return false;
+            }
+        }
+
+        // Returns `false` if the size of the local commitments tree does not match the number of transitions.
+        if transitions.len() != num_transitions {
+            eprintln!("Transaction contains invalid local transitions tree state");
             return false;
         }
 
-        // Returns `false` if any transition is invalid.
-        if num_transitions > 1 {
-            // Initialize a local commitments tree.
-            let mut local_commitments_tree = match LocalCommitments::<N>::new() {
-                Ok(local_commitments_tree) => local_commitments_tree,
-                Err(error) => {
-                    eprintln!("Transaction failed to initialize a local commitments tree: {}", error);
-                    return false;
-                }
-            };
-
-            for window in self.transitions.windows(2) {
-                if let [previous_transition, current_transition] = window {
-                    // Update the local commitments tree.
-                    if let Err(error) = local_commitments_tree.add(previous_transition.commitments()) {
-                        eprintln!("Transaction failed to update local commitments tree: {}", error);
-                        return false;
-                    }
-
-                    // Returns `false` if the transition is invalid.
-                    if !current_transition.verify(*N::inner_circuit_id(), local_commitments_tree.root()) {
-                        eprintln!("Transaction contains an invalid transition");
-                        return false;
-                    }
-                }
-            }
-
-            // Returns `false` if the size of the local commitments tree does not match the number of transitions.
-            if local_commitments_tree.len() != (num_transitions - 1) * N::NUM_INPUT_RECORDS {
-                eprintln!("Transaction contains invalid local commitments tree state");
-                return false;
-            }
+        // Returns `false` if the final transitions root does not match the transaction ID.
+        if transitions.root() != self.transaction_id {
+            eprintln!("Transaction contains an invalid transaction ID");
+            return false;
         }
 
         true
@@ -205,16 +195,16 @@ impl<N: Network> Transaction<N> {
         self.transaction_id
     }
 
-    /// Returns the network ID.
-    #[inline]
-    pub fn network_id(&self) -> u16 {
-        self.network_id
-    }
-
     /// Returns the inner circuit ID.
     #[inline]
     pub fn inner_circuit_id(&self) -> N::InnerCircuitID {
         self.inner_circuit_id
+    }
+
+    /// Returns the transition IDs.
+    #[inline]
+    pub fn transition_ids(&self) -> Vec<N::TransitionID> {
+        self.transitions.iter().map(Transition::transition_id).collect()
     }
 
     /// Returns the block hashes used to execute the transitions.
@@ -268,12 +258,6 @@ impl<N: Network> Transaction<N> {
         &self.transitions
     }
 
-    /// Returns the transition IDs.
-    #[inline]
-    pub fn transition_ids(&self) -> Vec<N::TransitionID> {
-        self.transitions.iter().map(Transition::transition_id).collect()
-    }
-
     /// Returns a reference to the events.
     #[inline]
     pub fn events(&self) -> &Vec<Event<N>> {
@@ -300,19 +284,35 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
-    /// Transaction ID := Hash(transition IDs)
+    /// Returns an inclusion proof for the transaction tree.
+    #[inline]
+    pub fn to_transaction_inclusion_proof(
+        &self,
+        transition_id: N::TransitionID,
+    ) -> Result<MerklePath<N::TransactionIDParameters>> {
+        // Initialize a transitions tree.
+        let mut transitions_tree = Transitions::<N>::new()?;
+        // Add all given transition IDs to the tree.
+        transitions_tree.add_all(&self.transition_ids());
+        // Return the inclusion proof for the transitions tree.
+        Ok(transitions_tree.to_transition_path(transition_id)?)
+    }
+
+    /// Transaction ID := MerkleTree(transition IDs)
     #[inline]
     pub(crate) fn compute_transaction_id(transitions: &Vec<Transition<N>>) -> Result<N::TransactionID> {
-        Ok(N::transaction_id_crh().hash(&to_bytes_le![
-            transitions.iter().map(Transition::transition_id).collect::<Vec<_>>()
-        ]?)?)
+        // Initialize a transitions tree.
+        let mut transitions_tree = Transitions::<N>::new()?;
+        // Add all given transition IDs to the tree.
+        transitions_tree.add_all(&transitions.iter().map(Transition::transition_id).collect::<Vec<_>>());
+        // Return the root of the transitions tree.
+        Ok(transitions_tree.root())
     }
 }
 
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let network_id: u16 = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
 
         let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
@@ -327,14 +327,13 @@ impl<N: Network> FromBytes for Transaction<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(network_id, inner_circuit_id, transitions, events).expect("Failed to deserialize a transaction"))
+        Ok(Self::from(inner_circuit_id, transitions, events).expect("Failed to deserialize a transaction"))
     }
 }
 
 impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.network_id.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
         (self.transitions.len() as u16).write_le(&mut writer)?;
         self.transitions.write_le(&mut writer)?;
@@ -346,7 +345,7 @@ impl<N: Network> ToBytes for Transaction<N> {
 impl<N: Network> Hash for Transaction<N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.transaction_id().hash(state);
+        self.transaction_id.hash(state);
     }
 }
 

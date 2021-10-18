@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Function, FunctionType, Network, ProgramPublicVariables};
-use snarkvm_algorithms::SNARK;
+use snarkvm_algorithms::{MerkleParameters, SNARK};
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
@@ -86,7 +86,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
 
                 let _transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
                     &mut cs.ns(|| "Declare the transition ID CRH scheme"),
-                    || Ok(N::transition_id_crh().clone()),
+                    || Ok(N::transition_id_parameters().crh()),
                 )?;
 
                 let _transition_id = <N::TransitionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(

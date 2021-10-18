@@ -21,8 +21,8 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 
 pub struct VirtualMachine<N: Network> {
-    /// The local commitments tree.
-    local_commitments: LocalCommitments<N>,
+    /// The local transitions tree.
+    local_transitions: Transitions<N>,
     /// The current list of transitions.
     transitions: Vec<Transition<N>>,
     /// The current list of events.
@@ -33,7 +33,7 @@ impl<N: Network> VirtualMachine<N> {
     /// Initializes a new instance of the virtual machine, with the given request.
     pub fn new() -> Result<Self> {
         Ok(Self {
-            local_commitments: LocalCommitments::new()?,
+            local_transitions: Transitions::new()?,
             transitions: Default::default(),
             events: Default::default(),
         })
@@ -79,7 +79,8 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the outer circuit public and private variables.
-        let outer_public = OuterPublicVariables::new(transition_id, *N::inner_circuit_id());
+        let outer_public =
+            OuterPublicVariables::new(transition_id, self.local_transitions.root(), *N::inner_circuit_id());
         let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
         let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
@@ -94,7 +95,7 @@ impl<N: Network> VirtualMachine<N> {
         let transition = Transition::<N>::new(request, &response, outer_proof)?;
 
         // Update the state of the virtual machine.
-        self.local_commitments.add(transition.commitments())?;
+        self.local_transitions.add(&transition_id)?;
         self.transitions.push(transition);
         self.events.extend_from_slice(response.events());
 
@@ -103,12 +104,7 @@ impl<N: Network> VirtualMachine<N> {
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(
-            N::NETWORK_ID,
-            *N::inner_circuit_id(),
-            self.transitions.clone(),
-            self.events.clone(),
-        )
+        Transaction::from(*N::inner_circuit_id(), self.transitions.clone(), self.events.clone())
     }
 
     /// Performs a noop transition.

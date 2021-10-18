@@ -34,7 +34,7 @@ use anyhow::Result;
 pub struct PoSWCircuit<N: Network> {
     block_header_root: N::BlockHeaderRoot,
     nonce: N::InnerScalarField,
-    hashed_leaves: Vec<<<N::BlockHeaderTreeParameters as MerkleParameters>::H as CRH>::Output>,
+    hashed_leaves: Vec<<<N::BlockHeaderRootParameters as MerkleParameters>::H as CRH>::Output>,
 }
 
 impl<N: Network> PoSWCircuit<N> {
@@ -51,7 +51,7 @@ impl<N: Network> PoSWCircuit<N> {
 
     /// Creates a blank PoSW circuit for setup.
     pub fn blank() -> Result<Self> {
-        let empty_hash = N::block_header_tree_parameters()
+        let empty_hash = N::block_header_root_parameters()
             .hash_empty()
             .map_err(|_| SynthesisError::Unsatisfiable)?;
 
@@ -70,18 +70,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
     ) -> Result<(), SynthesisError> {
         assert_eq!(self.hashed_leaves.len(), N::POSW_NUM_LEAVES);
 
-        let crh_parameters = N::BlockHeaderTreeCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
-            Ok(N::block_header_tree_parameters().crh().clone())
+        let crh_parameters = N::BlockHeaderRootCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
+            Ok(N::block_header_root_parameters().crh())
         })?;
 
-        let mask_crh_parameters =
-            <N::BlockHeaderTreeCRHGadget as MaskedCRHGadget<
-                <N::BlockHeaderTreeParameters as MerkleParameters>::H,
-                N::InnerScalarField,
-            >>::MaskParametersGadget::alloc_constant(&mut cs.ns(|| "new_mask_parameters"), || {
-                let crh_parameters = N::block_header_tree_parameters().mask_crh();
-                Ok(crh_parameters)
-            })?;
+        let mask_crh_parameters = <N::BlockHeaderRootCRHGadget as MaskedCRHGadget<
+            <N::BlockHeaderRootParameters as MerkleParameters>::H,
+            N::InnerScalarField,
+        >>::MaskParametersGadget::alloc_constant(
+            &mut cs.ns(|| "new_mask_parameters"),
+            || Ok(N::block_header_root_parameters().mask_crh()),
+        )?;
 
         let block_header_root =
             <N::PoSWMaskPRFGadget as PRFGadget<N::PoSWMaskPRF, N::InnerScalarField>>::Seed::alloc_input(
@@ -108,8 +107,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
             .iter()
             .enumerate()
             .map(|(i, leaf)| {
-                <N::BlockHeaderTreeCRHGadget as CRHGadget<
-                    <N::BlockHeaderTreeParameters as MerkleParameters>::H,
+                <N::BlockHeaderRootCRHGadget as CRHGadget<
+                    <N::BlockHeaderRootParameters as MerkleParameters>::H,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || Ok(leaf))
             })
@@ -117,8 +116,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 
         // Compute the root using the masked tree.
         let candidate_root = compute_root::<
-            <N::BlockHeaderTreeParameters as MerkleParameters>::H,
-            N::BlockHeaderTreeCRHGadget,
+            <N::BlockHeaderRootParameters as MerkleParameters>::H,
+            N::BlockHeaderRootCRHGadget,
             _,
             _,
             _,
@@ -175,9 +174,9 @@ mod test {
         let (proving_key, verifying_key) = {
             let max_degree =
                 snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
-            let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
+            let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
-            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(
+            <<N as Network>::PoSWSNARK as SNARK>::setup::<_, R>(
                 &PoSWCircuit::<N>::blank().unwrap(),
                 &mut SRS::<R, _>::Universal(&universal_srs),
             )
@@ -190,7 +189,7 @@ mod test {
         // Compute the proof.
         let proof = {
             let timer = Instant::now();
-            let proof = <<N as Network>::PoswSNARK as SNARK>::prove(&proving_key, &assigned_circuit, rng).unwrap();
+            let proof = <<N as Network>::PoSWSNARK as SNARK>::prove(&proving_key, &assigned_circuit, rng).unwrap();
             println!("\nPosW elapsed time: {} ms\n", (Instant::now() - timer).as_millis());
             proof
         };
@@ -202,7 +201,7 @@ mod test {
             assigned_circuit.nonce,
         ];
         assert_eq!(2, inputs.len());
-        assert!(<<N as Network>::PoswSNARK as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap());
+        assert!(<<N as Network>::PoSWSNARK as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap());
     }
 
     #[test]

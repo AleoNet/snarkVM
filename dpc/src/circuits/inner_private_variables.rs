@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, LedgerProof, LocalProof, Network, Record, Request, Response};
+use crate::{FunctionType, LedgerProof, Network, Record, Request, Response};
 use snarkvm_algorithms::traits::EncryptionScheme;
 
 use anyhow::Result;
@@ -25,7 +25,6 @@ pub struct InnerPrivateVariables<N: Network> {
     // Inputs.
     pub(super) input_records: Vec<Record<N>>,
     pub(super) ledger_proof: LedgerProof<N>,
-    pub(super) local_proof: LocalProof<N>,
     pub(super) signature: N::AccountSignature,
     pub(super) function_type: FunctionType,
     // Outputs.
@@ -38,7 +37,6 @@ impl<N: Network> InnerPrivateVariables<N> {
         Self {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proof: Default::default(),
-            local_proof: Default::default(),
             signature: N::AccountSignature::default(),
             function_type: FunctionType::Noop,
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
@@ -53,7 +51,6 @@ impl<N: Network> InnerPrivateVariables<N> {
         Ok(Self {
             input_records: request.records().clone(),
             ledger_proof: request.ledger_proof().clone(),
-            local_proof: request.local_proof().clone(),
             signature: request.signature().clone(),
             function_type: request.function_type(),
             output_records: response.records().clone(),
