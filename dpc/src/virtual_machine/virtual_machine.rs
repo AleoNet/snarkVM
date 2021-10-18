@@ -60,7 +60,10 @@ impl<N: Network> VirtualMachine<N> {
             program_id: *N::noop_program_id(),
             program_path: N::noop_program_path().clone(),
             verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(ProgramPublicVariables::new(transition_id))?,
+            proof: Noop::<N>::new().execute(
+                ProgramPublicVariables::new(transition_id),
+                &NoopPrivateVariables::<N>::new_blank()?,
+            )?,
         };
 
         // Compute the inner circuit proof, and verify that the inner proof passes.

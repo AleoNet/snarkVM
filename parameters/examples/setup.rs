@@ -21,6 +21,7 @@ use snarkvm_dpc::{
     InnerCircuit,
     Network,
     Noop,
+    NoopPrivateVariables,
     OuterCircuit,
     PoSWScheme,
     ProgramPublicVariables,
@@ -196,7 +197,10 @@ pub fn outer_setup<N: Network>() -> Result<()> {
             program_id: *N::noop_program_id(),
             program_path: N::noop_program_path().clone(),
             verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(ProgramPublicVariables::blank())?,
+            proof: Noop::<N>::new().execute(
+                ProgramPublicVariables::blank(),
+                &NoopPrivateVariables::<N>::new_blank().unwrap(),
+            )?,
         }),
         &mut SRS::CircuitSpecific(&mut thread_rng()),
     )?;

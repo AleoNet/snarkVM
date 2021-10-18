@@ -74,7 +74,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
         program_path: N::noop_program_path().clone(),
         verifying_key: N::noop_circuit_verifying_key().clone(),
         proof: Noop::<N>::new()
-            .execute(ProgramPublicVariables::new(transition_id))
+            .execute(
+                ProgramPublicVariables::new(transition_id),
+                &NoopPrivateVariables::<N>::new_blank().unwrap(),
+            )
             .unwrap(),
     };
 
