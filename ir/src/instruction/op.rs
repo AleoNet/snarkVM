@@ -48,9 +48,6 @@ pub enum InstructionOp {
     Negate,
     BitNot,
 
-    // Cast
-    // Cast,
-
     // Arrays
     ArrayInitRepeat,
     ArrayInit,
@@ -82,6 +79,9 @@ pub enum InstructionOp {
 
     // FFI/Core
     CallCore,
+
+    // Cast
+    Cast,
 }
 
 impl InstructionOp {
@@ -128,6 +128,7 @@ impl InstructionOp {
             InstructionOp::Assert => "assert",
             InstructionOp::Log => "log",
             InstructionOp::CallCore => "ccall",
+            InstructionOp::Cast => "cast",
         }
     }
 }
