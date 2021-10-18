@@ -14,7 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, BlockHeader, LedgerProof, Network, Transaction, Transactions};
+use crate::{
+    Address,
+    AleoAmount,
+    BlockHeader,
+    LedgerProof,
+    LedgerTree,
+    LedgerTreeScheme,
+    Network,
+    Transaction,
+    Transactions,
+};
 use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -45,6 +55,7 @@ impl<N: Network> Block<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
+        ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
         terminator: &AtomicBool,
         rng: &mut R,
@@ -56,6 +67,7 @@ impl<N: Network> Block<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            ledger_root,
             transactions.to_transactions_root()?,
             terminator,
             rng,
@@ -84,6 +96,7 @@ impl<N: Network> Block<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            LedgerTree::<N>::new()?.root(),
             transactions_root,
             &AtomicBool::new(false),
             rng,

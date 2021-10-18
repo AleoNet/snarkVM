@@ -155,10 +155,8 @@ impl<N: Network> Ledger<N> {
         let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
-        // Construct the new ledger root.
-        let mut commitments = self.canon_blocks.latest_ledger();
-        commitments.add_all(&transactions.commitments().collect::<Vec<_>>())?;
-        let ledger_root = commitments.root();
+        // Construct the ledger root.
+        let ledger_root = self.canon_blocks.to_ledger_root()?;
 
         // Mine the next block.
         let block = Block::mine(

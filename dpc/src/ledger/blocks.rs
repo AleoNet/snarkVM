@@ -288,6 +288,20 @@ impl<N: Network> Blocks<N> {
         Ok(())
     }
 
+    // TODO (howardwu): Optimize this function.
+    pub fn to_ledger_root(&self) -> Result<N::LedgerRoot> {
+        let mut ledger = LedgerTree::<N>::new()?;
+        ledger.add_all(
+            self.previous_hashes
+                .values()
+                .chain(vec![self.current_hash].iter())
+                .cloned()
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        Ok(ledger.root())
+    }
+
     ///
     /// Returns a ledger proof for the given commitment.
     ///
