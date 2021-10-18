@@ -21,7 +21,7 @@
 use crate::{BlockHeader, Network};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::{
-    algorithms::merkle_tree::compute_root,
+    algorithms::merkle_tree::compute_masked_root,
     traits::{AllocGadget, CRHGadget, MaskedCRHGadget, PRFGadget},
     EqGadget,
     ToBytesGadget,
@@ -115,7 +115,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
             .collect::<Result<Vec<_>, _>>()?;
 
         // Compute the root using the masked tree.
-        let candidate_root = compute_root::<
+        let candidate_root = compute_masked_root::<
             <N::BlockHeaderRootParameters as MerkleParameters>::H,
             N::BlockHeaderRootCRHGadget,
             _,
