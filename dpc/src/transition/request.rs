@@ -31,8 +31,8 @@ use std::{
 pub struct Request<N: Network> {
     /// The records being consumed.
     records: Vec<Record<N>>,
-    /// The inclusion proof of ledger-consumed records.
-    ledger_proof: LedgerProof<N>,
+    /// The inclusion proofs of ledger-consumed records.
+    ledger_proofs: Vec<LedgerProof<N>>,
     /// The operation being performed.
     operation: Operation<N>,
     /// The network fee being paid.
@@ -47,25 +47,32 @@ impl<N: Network> Request<N> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
-        Self::new(&burner, vec![], LedgerProof::default(), operation, fee, rng)
+        Self::new(
+            &burner,
+            vec![],
+            vec![LedgerProof::default(); N::NUM_INPUT_RECORDS],
+            operation,
+            fee,
+            rng,
+        )
     }
 
     /// Initializes a new transfer request.
     pub fn new_transfer<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
         records: Vec<Record<N>>,
-        ledger_proof: LedgerProof<N>,
+        ledger_proofs: Vec<LedgerProof<N>>,
         recipient: Address<N>,
         amount: AleoAmount,
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
         let operation = Operation::Transfer(caller.to_address(), recipient, amount);
-        Self::new(caller, records, ledger_proof, operation, fee, rng)
+        Self::new(caller, records, ledger_proofs, operation, fee, rng)
     }
 
     /// Returns a new instance of a noop request.
-    pub fn new_noop<R: Rng + CryptoRng>(ledger_proof: LedgerProof<N>, rng: &mut R) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(ledger_proofs: Vec<LedgerProof<N>>, rng: &mut R) -> Result<Self> {
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = Address::from_private_key(&noop_private_key);
@@ -79,7 +86,7 @@ impl<N: Network> Request<N> {
         Self::new(
             &noop_private_key,
             records,
-            ledger_proof,
+            ledger_proofs,
             Operation::Noop,
             AleoAmount::ZERO,
             rng,
@@ -90,7 +97,7 @@ impl<N: Network> Request<N> {
     pub fn new<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
         records: Vec<Record<N>>,
-        ledger_proof: LedgerProof<N>,
+        ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
         fee: AleoAmount,
         rng: &mut R,
@@ -115,13 +122,13 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, ledger_proof, operation, fee, signature)
+        Self::from(records, ledger_proofs, operation, fee, signature)
     }
 
     /// Returns a new instance of a request.
     pub fn from(
         records: Vec<Record<N>>,
-        ledger_proof: LedgerProof<N>,
+        ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
         fee: AleoAmount,
         signature: N::AccountSignature,
@@ -129,7 +136,7 @@ impl<N: Network> Request<N> {
         let request = Self {
             records,
             operation,
-            ledger_proof,
+            ledger_proofs,
             fee,
             signature,
         };
@@ -148,6 +155,16 @@ impl<N: Network> Request<N> {
                 "Incorrect number of request records. Expected {}, found {}",
                 N::NUM_INPUT_RECORDS,
                 self.records.len()
+            );
+            return false;
+        }
+
+        // Ensure the number of ledger proofs is correct.
+        if self.ledger_proofs.len() != N::NUM_INPUT_RECORDS {
+            eprintln!(
+                "Incorrect number of request ledger proofs. Expected {}, found {}",
+                N::NUM_INPUT_RECORDS,
+                self.ledger_proofs.len()
             );
             return false;
         }
@@ -195,7 +212,7 @@ impl<N: Network> Request<N> {
         // Ensure the function ID is in the specified program.
         {}
 
-        // Ensure the given record commitments are in the specified ledger proof.
+        // Ensure the given record commitments are in the specified ledger proofs.
         {}
 
         // Prepare for signature verification.
@@ -229,13 +246,13 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the block hash used to prove inclusion of ledger-consumed records.
-    pub fn block_hash(&self) -> N::BlockHash {
-        self.ledger_proof.block_hash()
+    pub fn block_hashes(&self) -> Vec<N::BlockHash> {
+        self.ledger_proofs.iter().map(LedgerProof::block_hash).collect()
     }
 
     /// Returns a reference to the ledger proof.
-    pub fn ledger_proof(&self) -> &LedgerProof<N> {
-        &self.ledger_proof
+    pub fn ledger_proofs(&self) -> &Vec<LedgerProof<N>> {
+        &self.ledger_proofs
     }
 
     /// Returns the function ID.
@@ -315,12 +332,16 @@ impl<N: Network> FromBytes for Request<N> {
             records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let ledger_proof = FromBytes::read_le(&mut reader)?;
+        let mut ledger_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            ledger_proofs.push(FromBytes::read_le(&mut reader)?);
+        }
+
         let operation = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(records, ledger_proof, operation, fee, signature).expect("Failed to deserialize a request"))
+        Ok(Self::from(records, ledger_proofs, operation, fee, signature).expect("Failed to deserialize a request"))
     }
 }
 
@@ -328,7 +349,7 @@ impl<N: Network> ToBytes for Request<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.records.write_le(&mut writer)?;
-        self.ledger_proof.write_le(&mut writer)?;
+        self.ledger_proofs.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)

@@ -160,7 +160,7 @@ impl<N: Network> Transaction<N> {
         };
 
         // Returns `false` if any transition is invalid.
-        for transition in self.transitions {
+        for transition in &self.transitions {
             // Returns `false` if the transition is invalid.
             if !transition.verify(self.inner_circuit_id, transitions.root()) {
                 eprintln!("Transaction contains an invalid transition");
@@ -210,7 +210,11 @@ impl<N: Network> Transaction<N> {
     /// Returns the block hashes used to execute the transitions.
     #[inline]
     pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
-        self.transitions.iter().map(Transition::block_hash).collect()
+        self.transitions
+            .iter()
+            .flat_map(Transition::block_hashes)
+            .cloned()
+            .collect()
     }
 
     /// Returns the serial numbers.
@@ -293,7 +297,7 @@ impl<N: Network> Transaction<N> {
         // Initialize a transitions tree.
         let mut transitions_tree = Transitions::<N>::new()?;
         // Add all given transition IDs to the tree.
-        transitions_tree.add_all(&self.transition_ids());
+        transitions_tree.add_all(&self.transition_ids())?;
         // Return the inclusion proof for the transitions tree.
         Ok(transitions_tree.to_transition_path(transition_id)?)
     }
@@ -304,7 +308,7 @@ impl<N: Network> Transaction<N> {
         // Initialize a transitions tree.
         let mut transitions_tree = Transitions::<N>::new()?;
         // Add all given transition IDs to the tree.
-        transitions_tree.add_all(&transitions.iter().map(Transition::transition_id).collect::<Vec<_>>());
+        transitions_tree.add_all(&transitions.iter().map(Transition::transition_id).collect::<Vec<_>>())?;
         // Return the root of the transitions tree.
         Ok(transitions_tree.root())
     }

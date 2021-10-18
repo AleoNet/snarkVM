@@ -67,7 +67,7 @@ impl<N: Network> VirtualMachine<N> {
         };
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
-        let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
+        let inner_public = InnerPublicVariables::new(transition_id, self.local_transitions.root(), Some(program_id));
         let inner_private = InnerPrivateVariables::new(request, &response)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;

@@ -48,6 +48,7 @@ impl<N: Network> OuterPublicVariables<N> {
         }
     }
 
+    /// Returns the transition ID.
     pub(crate) fn transition_id(&self) -> N::TransitionID {
         self.transition_id
     }

@@ -96,7 +96,7 @@ impl Network for Testnet2 {
     const NUM_EVENTS: u16 = 512;
 
     const TRANSITION_SIZE_IN_BYTES: usize = 1129;
-    const TRANSITION_TREE_DEPTH: u32 = 3;
+    const TRANSITION_TREE_DEPTH: u32 = 4;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const POSW_NUM_LEAVES: usize = 4;
@@ -150,7 +150,7 @@ impl Network for Testnet2 {
 
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, 3>;
+    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, 2>;
     type BlockHeaderRoot = <Self::BlockHeaderRootCRH as CRH>::Output;
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
@@ -204,7 +204,7 @@ impl Network for Testnet2 {
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 3>;
+    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 4>;
     type TransitionID = <Self::TransitionIDCRH as CRH>::Output;
 
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

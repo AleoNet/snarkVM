@@ -310,7 +310,7 @@ impl<N: Network> Blocks<N> {
         let transaction = self
             .transactions
             .values()
-            .flat_map(|transactions| (**transactions))
+            .flat_map(|transactions| &**transactions)
             .filter(|transaction| transaction.commitments().contains(&commitment))
             .collect::<Vec<_>>();
         assert_eq!(1, transaction.len()); // TODO (howardwu): Clean this up with a proper error handler.
@@ -346,10 +346,10 @@ impl<N: Network> Blocks<N> {
         // Compute the transition inclusion proof.
         let transition_inclusion_proof = {
             // TODO (howardwu): Optimize this operation.
-            // It is either leaf 3 or 4.
-            if let Ok(proof) = transition.to_transition_inclusion_proof(3, commitment) {
+            // It is either leaf 4 or 5.
+            if let Ok(proof) = transition.to_transition_inclusion_proof(4, commitment) {
                 proof
-            } else if let Ok(proof) = transition.to_transition_inclusion_proof(4, commitment) {
+            } else if let Ok(proof) = transition.to_transition_inclusion_proof(5, commitment) {
                 proof
             } else {
                 unreachable!() // TODO (howardwu): Clean this up with a proper error handler.

@@ -36,8 +36,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Fetch the block hash, local commitments root, and serial numbers.
-    let block_hash = request.block_hash();
+    // Fetch the block hashes, local commitments root, and serial numbers.
+    let block_hashes = request.block_hashes();
     let serial_numbers = request.to_serial_numbers().unwrap();
     let program_id = request.to_program_id().unwrap();
 
@@ -58,9 +58,14 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let local_transitions_root = Transitions::<N>::new().unwrap().root();
 
     // Compute the transition ID.
-    let transition_id =
-        Transition::compute_transition_id(block_hash, &serial_numbers, &commitments, &ciphertexts, value_balance)
-            .unwrap();
+    let transition_id = Transition::compute_transition_id(
+        &block_hashes,
+        &serial_numbers,
+        &commitments,
+        &ciphertexts,
+        value_balance,
+    )
+    .unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +80,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     };
 
     // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(transition_id, Some(program_id));
+    let inner_public = InnerPublicVariables::new(transition_id, local_transitions_root, Some(program_id));
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
