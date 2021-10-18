@@ -25,16 +25,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use crate::{
-    bits::{
-        Boolean,
-        FromBitsBEGadget,
-        FromBitsLEGadget,
-        FromBytesBEGadget,
-        FromBytesLEGadget,
-        ToBitsBEGadget,
-        ToBytesBEGadget,
-        ToBytesLEGadget,
-    },
+    bits::{Boolean, ToBitsBEGadget, ToBytesBEGadget, ToBytesLEGadget},
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
@@ -1307,54 +1298,6 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NE
 
     fn cost() -> usize {
         2 * <FG as NEqGadget<F>>::cost()
-    }
-}
-
-impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBitsBEGadget<F>
-    for AffineGadget<P, F, FG>
-{
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBitsLEGadget<F>
-    for AffineGadget<P, F, FG>
-{
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBytesBEGadget<F>
-    for AffineGadget<P, F, FG>
-{
-    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> FromBytesLEGadget<F>
-    for AffineGadget<P, F, FG>
-{
-    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
     }
 }
 

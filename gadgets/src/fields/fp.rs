@@ -37,10 +37,6 @@ use snarkvm_utilities::{
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
-        FromBitsBEGadget,
-        FromBitsLEGadget,
-        FromBytesBEGadget,
-        FromBytesLEGadget,
         ToBitsBEGadget,
         ToBitsLEGadget,
         ToBytesBEGadget,
@@ -431,46 +427,6 @@ impl<F: PrimeField> NEqGadget<F> for AllocatedFp<F> {
 
     fn cost() -> usize {
         1
-    }
-}
-
-impl<F: PrimeField> FromBitsBEGadget<F> for AllocatedFp<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField> FromBitsLEGadget<F> for AllocatedFp<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField> FromBytesBEGadget<F> for AllocatedFp<F> {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField> FromBytesLEGadget<F> for AllocatedFp<F> {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
     }
 }
 
@@ -1166,46 +1122,6 @@ impl<F: PrimeField> NEqGadget<F> for FpGadget<F> {
 
     fn cost() -> usize {
         1
-    }
-}
-
-impl<F: PrimeField> FromBitsBEGadget<F> for FpGadget<F> {
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField> FromBitsLEGadget<F> for FpGadget<F> {
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField> FromBytesBEGadget<F> for FpGadget<F> {
-    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField> FromBytesLEGadget<F> for FpGadget<F> {
-    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
     }
 }
 
