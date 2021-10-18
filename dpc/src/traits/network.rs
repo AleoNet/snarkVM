@@ -35,7 +35,7 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
 #[rustfmt::skip]
