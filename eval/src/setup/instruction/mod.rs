@@ -25,17 +25,20 @@ use snarkvm_gadgets::{
     EqGadget,
     EvaluateEqGadget,
     Integer as IntegerTrait,
+    ToBitsLEGadget,
 };
 use snarkvm_ir::{
     ArrayInitRepeatData,
     CallCoreData,
     CallData,
+    CastData,
     Instruction,
     Integer as IrInteger,
     LogData,
     LogLevel,
     PredicateData,
     QueryData,
+    Type,
     Value,
     VarData,
 };
@@ -322,7 +325,10 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 for part in parts {
                     match part {
                         Value::Str(s) => out += &**s,
-                        x => out += &*x.to_string(),
+                        x => {
+                            let val = self.resolve(x)?;
+                            out += &*val.to_string()
+                        }
                     }
                 }
                 match log_level {
@@ -343,6 +349,43 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
 
                 let out = self.call_core(&**identifier, &arguments[..])?;
                 self.store(*destination, out);
+            }
+            Instruction::Cast(CastData { destination, arguments }) => {
+                let mut arguments = arguments.into_iter();
+                let from = match arguments.next().unwrap() {
+                    int @ Value::Integer(_) => self.resolve(int)?,
+                    reference @ Value::Ref(_) => self.resolve(reference)?,
+                    f => {
+                        dbg!(&f);
+                        todo!("not an int")
+                    }
+                };
+                let as_type = match arguments.next() {
+                    Some(Value::Str(x)) => match x.as_str() {
+                        "i8" => Type::i8,
+                        "i16" => Type::i16,
+                        "i32" => Type::i32,
+                        "i64" => Type::i64,
+                        "i128" => Type::i128,
+                        "u8" => Type::u8,
+                        "u16" => Type::u16,
+                        "u32" => Type::u32,
+                        "u64" => Type::u64,
+                        "u128" => Type::u128,
+                    },
+                    a => {
+                        dbg!(&a);
+                        todo!("not a string")
+                    }
+                };
+
+                // let from_as_bits: Vec<Boolean> = from.into_owned().to_bits_le();
+                todo!("you shall not pass till bits and bytes is merged ");
+
+                /*  let output = match as_type {
+
+                };
+                self.store(*destination, output) */
             }
         }
         Ok(None)

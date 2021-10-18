@@ -24,6 +24,8 @@ mod complex;
 pub use complex::*;
 mod call;
 pub use call::*;
+mod cast;
+pub use cast::*;
 mod predicate;
 pub use predicate::*;
 
@@ -66,9 +68,6 @@ pub enum Instruction {
     Negate(UnaryData),
     BitNot(UnaryData),
 
-    // Cast
-    // Cast,
-
     // Arrays
     ArrayInitRepeat(ArrayInitRepeatData),
     // flatten a single dimension of each argument and concatentes into an array
@@ -103,6 +102,9 @@ pub enum Instruction {
 
     // FFI/Core
     CallCore(CallCoreData),
+
+    // Cast
+    Cast(CastData),
 }
 
 fn decode_control_u32(operand: ir::Operand) -> Result<u32> {
@@ -175,6 +177,7 @@ impl fmt::Display for Instruction {
             Instruction::Assert(x) => x.fmt(f)?,
             Instruction::Log(x) => x.fmt(f)?,
             Instruction::CallCore(x) => x.fmt(f)?,
+            Instruction::Cast(x) => x.fmt(f)?,
         }
         Ok(())
     }
