@@ -35,11 +35,11 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
 #[rustfmt::skip]
-pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Send + Sync {
+pub trait Network: 'static + Clone + Debug + PartialEq + Eq + Serialize + Send + Sync {
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
