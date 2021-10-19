@@ -17,14 +17,18 @@
 use crate::{BlockError, Network, PoSWScheme, ProofOfSuccinctWork};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
+    fmt,
     io::{Read, Result as IoResult, Write},
+    str::FromStr,
     FromBytes,
+    FromBytesDeserializer,
     ToBytes,
+    ToBytesSerializer,
 };
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     mem::size_of,
     sync::{atomic::AtomicBool, Arc},
@@ -83,7 +87,7 @@ impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
 }
 
 /// Block header.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
     /// The Merkle root representing the blocks in the ledger - 32 bytes
     ledger_root: N::LedgerRoot,
@@ -92,7 +96,6 @@ pub struct BlockHeader<N: Network> {
     /// The block header metadata - 52 bytes
     metadata: BlockHeaderMetadata<N>,
     /// Proof of Succinct Work - 771 bytes
-    #[serde(with = "proof_serialization")]
     proof: Option<ProofOfSuccinctWork<N>>,
 }
 
@@ -333,6 +336,39 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 
         // Write the header proof.
         proof.write_le(&mut writer)
+    }
+}
+
+impl<N: Network> FromStr for BlockHeader<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(header_hex: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_bytes_le(&hex::decode(header_hex)?)?)
+    }
+}
+
+impl<N: Network> fmt::Display for BlockHeader<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bytes = self.to_bytes_le().expect("Failed to convert block header to bytes");
+        write!(f, "{}", hex::encode(bytes))
+    }
+}
+
+impl<N: Network> Serialize for BlockHeader<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "block header", Self::size()),
+        }
     }
 }
 
