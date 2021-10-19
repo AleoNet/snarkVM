@@ -20,7 +20,7 @@ use std::io::{Read, Result as IoResult, Write};
 
 pub const PAYLOAD_SIZE: usize = 128;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Payload([u8; PAYLOAD_SIZE]);
 
 impl Payload {

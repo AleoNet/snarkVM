@@ -107,6 +107,11 @@ impl AleoAmount {
     pub const fn is_negative(self) -> bool {
         self.0.is_negative()
     }
+
+    /// Returns `true` if the amount is zero and `false` if the amount is not zero.
+    pub const fn is_zero(self) -> bool {
+        self.0 == 0
+    }
 }
 
 impl ToBytes for AleoAmount {
