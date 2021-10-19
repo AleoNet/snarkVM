@@ -135,6 +135,21 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-dpc-cache
 
+  eval:
+    docker:
+      - image: cimg/rust:1.53.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-eval-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd eval && RUST_MIN_STACK=67108864 cargo test
+      - clear_environment:
+          cache_key: snarkvm-eval-cache
+
   fields:
     docker:
       - image: cimg/rust:1.53.0
@@ -164,6 +179,21 @@ jobs:
           command: cd gadgets && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-gadgets-cache
+
+  ir:
+    docker:
+      - image: cimg/rust:1.53.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-ir-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd ir && RUST_MIN_STACK=67108864 cargo test
+      - clear_environment:
+          cache_key: snarkvm-ir-cache
 
   marlin:
     docker:
