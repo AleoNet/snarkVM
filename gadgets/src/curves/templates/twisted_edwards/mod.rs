@@ -1345,15 +1345,19 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> To
     for AffineGadget<P, F, FG>
 {
     fn to_bytes_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut x_bytes = self.x.to_bytes_le(cs.ns(|| "x"))?;
-        let y_bytes = self.y.to_bytes_le(cs.ns(|| "y"))?;
+        let mut x_bytes = self.x.to_bytes_le(cs.ns(|| "to_bytes_le_affine_gadget_x"))?;
+        let y_bytes = self.y.to_bytes_le(cs.ns(|| "to_bytes_le_affine_gadget_y"))?;
         x_bytes.extend_from_slice(&y_bytes);
         Ok(x_bytes)
     }
 
     fn to_bytes_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut x_bytes = self.x.to_bytes_le_strict(cs.ns(|| "x"))?;
-        let y_bytes = self.y.to_bytes_le_strict(cs.ns(|| "y"))?;
+        let mut x_bytes = self
+            .x
+            .to_bytes_le_strict(cs.ns(|| "to_bytes_le_strict_affine_gadget_x"))?;
+        let y_bytes = self
+            .y
+            .to_bytes_le_strict(cs.ns(|| "to_bytes_le_strict_affine_gadget_y"))?;
         x_bytes.extend_from_slice(&y_bytes);
 
         Ok(x_bytes)
