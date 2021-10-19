@@ -50,7 +50,7 @@ macro_rules! to_bits_impl {
                 let cs = self.cs();
 
                 let bits = match arguments.get(0) {
-                    None => Err(anyhow!("illegal `to_bits_le` call, expected call on target")),
+                    None => Err(anyhow!("illegal `to_bits_be` call, expected call on target")),
                     Some(value) => (*value).to_bits_be(cs).map_err(|e| anyhow!(e)),
                 }?;
 

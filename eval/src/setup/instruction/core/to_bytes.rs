@@ -55,7 +55,7 @@ macro_rules! to_bytes_impl {
                 let cs = self.cs();
 
                 let bytes = match arguments.get(0) {
-                    None => Err(anyhow!("illegal `to_bytes_le` call, expected call on target")),
+                    None => Err(anyhow!("illegal `to_bytes_be` call, expected call on target")),
                     Some(value) => value.to_bytes_be(cs).map_err(|e| anyhow!(e)),
                 }?;
 
