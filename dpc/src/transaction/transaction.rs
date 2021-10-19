@@ -26,7 +26,6 @@ use crate::{
     ViewKey,
     VirtualMachine,
 };
-use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_utilities::{
     has_duplicates,
     io::{Read, Result as IoResult, Write},
@@ -35,6 +34,7 @@ use snarkvm_utilities::{
 };
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -174,7 +174,7 @@ impl<N: Network> Transaction<N> {
             }
 
             // Update the local transitions tree.
-            if let Err(error) = transitions.add(&transition.transition_id()) {
+            if let Err(error) = transitions.add(&transition) {
                 eprintln!("Transaction failed to update local transitions tree: {}", error);
                 return false;
             }
@@ -193,6 +193,26 @@ impl<N: Network> Transaction<N> {
         }
 
         true
+    }
+
+    /// Returns `true` if the given transition ID exists.
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
+        self.transitions
+            .iter()
+            .map(Transition::transition_id)
+            .contains(transition_id)
+    }
+
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
+        self.transitions
+            .iter()
+            .any(|t| (*t).contains_serial_number(serial_number))
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+        self.transitions.iter().any(|t| (*t).contains_commitment(commitment))
     }
 
     /// Returns the transaction ID.
@@ -294,27 +314,13 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
-    /// Returns an inclusion proof for the transaction tree.
-    #[inline]
-    pub fn to_transaction_inclusion_proof(
-        &self,
-        transition_id: N::TransitionID,
-    ) -> Result<MerklePath<N::TransactionIDParameters>> {
-        // Initialize a transitions tree.
-        let mut transitions_tree = Transitions::<N>::new()?;
-        // Add all given transition IDs to the tree.
-        transitions_tree.add_all(&self.transition_ids())?;
-        // Return the inclusion proof for the transitions tree.
-        Ok(transitions_tree.to_transition_path(transition_id)?)
-    }
-
     /// Transaction ID := MerkleTree(transition IDs)
     #[inline]
     pub(crate) fn compute_transaction_id(transitions: &Vec<Transition<N>>) -> Result<N::TransactionID> {
         // Initialize a transitions tree.
         let mut transitions_tree = Transitions::<N>::new()?;
         // Add all given transition IDs to the tree.
-        transitions_tree.add_all(&transitions.iter().map(Transition::transition_id).collect::<Vec<_>>())?;
+        transitions_tree.add_all(&transitions)?;
         // Return the root of the transitions tree.
         Ok(transitions_tree.root())
     }

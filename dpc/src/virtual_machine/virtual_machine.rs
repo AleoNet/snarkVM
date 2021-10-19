@@ -95,7 +95,7 @@ impl<N: Network> VirtualMachine<N> {
         let transition = Transition::<N>::new(request, &response, outer_proof)?;
 
         // Update the state of the virtual machine.
-        self.local_transitions.add(&transition_id)?;
+        self.local_transitions.add(&transition)?;
         self.transitions.push(transition);
         self.events.extend_from_slice(response.events());
 

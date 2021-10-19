@@ -344,7 +344,19 @@ impl<N: Network> Blocks<N> {
             .collect::<Vec<_>>();
         assert_eq!(1, transaction.len()); // TODO (howardwu): Clean this up with a proper error handler.
         let transaction = transaction[0];
-        let transaction_id = transaction.transaction_id();
+
+        let local_proof = {
+            // Initialize a transitions tree.
+            let mut transitions_tree = Transitions::<N>::new()?;
+            // Add all given transition IDs to the tree.
+            transitions_tree.add_all(&transaction.transitions())?;
+            // Return the local proof for the transitions tree.
+            transitions_tree.to_local_proof(commitment)?
+        };
+        let transition_id = local_proof.transition_id();
+        let transition_inclusion_proof = local_proof.local_transition_inclusion_proof().clone();
+        let transaction_id = local_proof.transaction_id();
+        let transaction_inclusion_proof = local_proof.local_transaction_inclusion_proof().clone();
 
         // TODO (howardwu): Optimize this operation.
         let block_height = self
@@ -361,32 +373,6 @@ impl<N: Network> Blocks<N> {
         let block_height = *block_height[0];
         let transactions = self.get_block_transactions(block_height)?;
         let block_header = self.get_block_header(block_height)?;
-
-        // TODO (howardwu): Optimize this operation.
-        let transition = transaction
-            .transitions()
-            .iter()
-            .filter(|transition| transition.commitments().contains(&commitment))
-            .collect::<Vec<_>>();
-        assert_eq!(1, transition.len()); // TODO (howardwu): Clean this up with a proper error handler.
-        let transition = transition[0].clone();
-        let transition_id = transition.transition_id();
-
-        // Compute the transition inclusion proof.
-        let transition_inclusion_proof = {
-            // TODO (howardwu): Optimize this operation.
-            // It is either leaf 4 or 5.
-            if let Ok(proof) = transition.to_transition_inclusion_proof(4, commitment) {
-                proof
-            } else if let Ok(proof) = transition.to_transition_inclusion_proof(5, commitment) {
-                proof
-            } else {
-                unreachable!() // TODO (howardwu): Clean this up with a proper error handler.
-            }
-        };
-
-        // Compute the transaction inclusion proof.
-        let transaction_inclusion_proof = transaction.to_transaction_inclusion_proof(transition_id)?;
 
         // Compute the transactions inclusion proof.
         let transactions_inclusion_proof = {

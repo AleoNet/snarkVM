@@ -155,6 +155,16 @@ impl<N: Network> Transition<N> {
         }
     }
 
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
+        self.serial_numbers.contains(serial_number)
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+        self.commitments.contains(commitment)
+    }
+
     /// Returns the transition ID.
     #[inline]
     pub fn transition_id(&self) -> N::TransitionID {
@@ -238,8 +248,6 @@ impl<N: Network> Transition<N> {
     ///
     /// Returns the transition ID, which is the root of transition tree.
     ///
-    /// Transition Tree := MerkleTree(ledger roots || serial numbers || commitments || ciphertext_ids || value balance)
-    ///
     #[inline]
     pub(crate) fn compute_transition_id(
         ledger_roots: &Vec<N::LedgerRoot>,
@@ -250,7 +258,6 @@ impl<N: Network> Transition<N> {
     ) -> Result<N::TransitionID> {
         let tree =
             Self::compute_transition_tree(ledger_roots, serial_numbers, commitments, ciphertexts, value_balance)?;
-
         Ok(*tree.root())
     }
 
@@ -272,21 +279,25 @@ impl<N: Network> Transition<N> {
             // Leaf 0, 1 := ledger roots
             ledger_roots
                 .iter()
+                .take(N::NUM_INPUT_RECORDS)
                 .map(ToBytes::to_bytes_le)
                 .collect::<Result<Vec<_>>>()?,
             // Leaf 2, 3 := serial numbers
             serial_numbers
                 .iter()
+                .take(N::NUM_INPUT_RECORDS)
                 .map(ToBytes::to_bytes_le)
                 .collect::<Result<Vec<_>>>()?,
             // Leaf 4, 5 := commitments
             commitments
                 .iter()
+                .take(N::NUM_OUTPUT_RECORDS)
                 .map(ToBytes::to_bytes_le)
                 .collect::<Result<Vec<_>>>()?,
             // Leaf 6, 7 := ciphertext IDs
             ciphertexts
                 .iter()
+                .take(N::NUM_OUTPUT_RECORDS)
                 .map(RecordCiphertext::to_ciphertext_id)
                 .map(|c| Ok(c?.to_bytes_le()?))
                 .collect::<Result<Vec<_>>>()?,
