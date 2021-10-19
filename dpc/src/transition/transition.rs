@@ -112,6 +112,12 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if the transition ID is well-formed and the transition proof is valid.
     #[inline]
     pub fn verify(&self, inner_circuit_id: N::InnerCircuitID, local_transitions_root: N::TransactionID) -> bool {
+        // Returns `false` if the number of ledger roots in the transition is incorrect.
+        if self.ledger_roots.len() != N::NUM_INPUT_RECORDS {
+            eprintln!("Transition contains incorrect number of ledger roots");
+            return false;
+        }
+
         // Returns `false` if the transition ID does not match the computed one.
         match Self::compute_transition_id(
             &self.ledger_roots,
@@ -462,7 +468,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2710, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2612, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)

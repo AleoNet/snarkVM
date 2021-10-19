@@ -114,12 +114,6 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
-        // Returns `false` if the number of ledger roots in the transaction is incorrect.
-        if self.ledger_roots().len() != num_transitions * N::NUM_INPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of ledger roots");
-            return false;
-        }
-
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
         if self.serial_numbers().len() != num_transitions * N::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");

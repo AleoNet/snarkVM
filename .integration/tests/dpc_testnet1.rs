@@ -73,14 +73,7 @@ fn dpc_testnet1_integration_test() {
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.to_transactions_root().unwrap();
 
-    // // Construct the new commitments root.
-    // let mut commitments = Commitments::<Testnet1>::new().unwrap();
-    // commitments.add_all(&previous_block.commitments()).unwrap();
-    // commitments
-    //     .add_all(&transactions.commitments().collect::<Vec<_>>())
-    //     .unwrap();
-    // let commitments_root = commitments.root();
-
+    let ledger_root = ledger.to_ledger_root().unwrap();
     let timestamp = Utc::now().timestamp();
     let difficulty_target = Blocks::<Testnet1>::compute_difficulty_target(
         previous_block.timestamp(),
@@ -93,6 +86,7 @@ fn dpc_testnet1_integration_test() {
         block_height,
         timestamp,
         difficulty_target,
+        ledger_root,
         transactions_root,
         &AtomicBool::new(false),
         &mut rng,
