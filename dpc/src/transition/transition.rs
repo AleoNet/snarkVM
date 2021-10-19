@@ -274,6 +274,11 @@ impl<N: Network> Transition<N> {
         ciphertexts: &Vec<RecordCiphertext<N>>,
         value_balance: AleoAmount,
     ) -> Result<MerkleTree<N::TransitionIDParameters>> {
+        let ciphertext_ids = ciphertexts
+            .iter()
+            .map(|c| Ok(c.to_ciphertext_id()?.to_bytes_le()?))
+            .collect::<Result<Vec<_>>>()?;
+
         // Construct the leaves of the transition tree.
         let leaves: Vec<Vec<u8>> = vec![
             // Leaf 0, 1 := ledger roots
@@ -294,23 +299,11 @@ impl<N: Network> Transition<N> {
                 .take(N::NUM_OUTPUT_RECORDS)
                 .map(ToBytes::to_bytes_le)
                 .collect::<Result<Vec<_>>>()?,
-            // Leaf 6, 7 := ciphertext IDs
-            ciphertexts
-                .iter()
-                .take(N::NUM_OUTPUT_RECORDS)
-                .map(RecordCiphertext::to_ciphertext_id)
-                .map(|c| Ok(c?.to_bytes_le()?))
-                .collect::<Result<Vec<_>>>()?,
-            // Leaf 8 := value balance
+            // Leaf 6 := ciphertext IDs
+            // TODO (howardwu): This is utilizing a bad trick with how our Merkle tree leaves are hashed.
+            vec![ciphertext_ids.concat()],
+            // Leaf 7 := value balance
             vec![value_balance.to_bytes_le()?],
-            // Leaf 9 - 15 := unallocated
-            vec![vec![0u8; 32]],
-            vec![vec![0u8; 32]],
-            vec![vec![0u8; 32]],
-            vec![vec![0u8; 32]],
-            vec![vec![0u8; 32]],
-            vec![vec![0u8; 32]],
-            vec![vec![0u8; 32]],
         ]
         .concat();
 

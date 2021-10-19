@@ -66,6 +66,8 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
 
+        v.extend_from_slice(&self.local_transitions_root.to_field_elements()?);
+
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         }

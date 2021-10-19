@@ -73,14 +73,14 @@ impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables
         // apply the follow a rule:
         //
         // Alloc the original inputs as bits, then pack them into the new field, in little-endian format.
-        for transition_id_fe in &self.transition_id.to_field_elements()? {
-            v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
-                transition_id_fe.to_bits_le().as_slice(),
-            )?);
-        }
         for local_transitions_root_fe in &self.local_transitions_root.to_field_elements()? {
             v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
                 local_transitions_root_fe.to_bits_le().as_slice(),
+            )?);
+        }
+        for transition_id_fe in &self.transition_id.to_field_elements()? {
+            v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
+                transition_id_fe.to_bits_le().as_slice(),
             )?);
         }
 

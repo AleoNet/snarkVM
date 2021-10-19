@@ -154,14 +154,12 @@ impl<N: Network> Blocks<N> {
         self.headers
             .values()
             .map(BlockHeader::ledger_root)
-            .filter(|root| root == ledger_root)
-            .count()
-            > 0
+            .any(|root| root == *ledger_root)
     }
 
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
-        self.current_hash == *block_hash || self.previous_hashes.values().filter(|hash| *hash == block_hash).count() > 0
+        self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
     }
 
     /// Returns `true` if the given transaction exists.
@@ -169,9 +167,7 @@ impl<N: Network> Blocks<N> {
         self.transactions
             .values()
             .flat_map(|transactions| &**transactions)
-            .filter(|tx| *tx == transaction)
-            .count()
-            > 0
+            .any(|tx| *tx == *transaction)
     }
 
     /// Returns `true` if the given serial number exists.
@@ -180,9 +176,7 @@ impl<N: Network> Blocks<N> {
         self.transactions
             .values()
             .flat_map(|transactions| (**transactions).iter().map(Transaction::serial_numbers))
-            .filter(|serial_numbers| serial_numbers.contains(serial_number))
-            .count()
-            > 0
+            .any(|serial_numbers| serial_numbers.contains(serial_number))
     }
 
     /// Returns `true` if the given commitment exists.
@@ -191,9 +185,7 @@ impl<N: Network> Blocks<N> {
         self.transactions
             .values()
             .flat_map(|transactions| (**transactions).iter().map(Transaction::commitments))
-            .filter(|commitments| commitments.contains(commitment))
-            .count()
-            > 0
+            .any(|commitments| commitments.contains(commitment))
     }
 
     /// Adds the given block as the next block in the chain.
@@ -344,7 +336,6 @@ impl<N: Network> Blocks<N> {
             .collect::<Vec<_>>();
         assert_eq!(1, transaction.len()); // TODO (howardwu): Clean this up with a proper error handler.
         let transaction = transaction[0];
-
         let local_proof = {
             // Initialize a transitions tree.
             let mut transitions_tree = Transitions::<N>::new()?;
@@ -353,10 +344,7 @@ impl<N: Network> Blocks<N> {
             // Return the local proof for the transitions tree.
             transitions_tree.to_local_proof(commitment)?
         };
-        let transition_id = local_proof.transition_id();
-        let transition_inclusion_proof = local_proof.local_transition_inclusion_proof().clone();
         let transaction_id = local_proof.transaction_id();
-        let transaction_inclusion_proof = local_proof.local_transaction_inclusion_proof().clone();
 
         // TODO (howardwu): Optimize this operation.
         let block_height = self
@@ -409,11 +397,7 @@ impl<N: Network> Blocks<N> {
             block_header_inclusion_proof,
             transactions_root,
             transactions_inclusion_proof,
-            transaction_id,
-            transaction_inclusion_proof,
-            transition_id,
-            transition_inclusion_proof,
-            commitment,
+            local_proof,
         )
     }
 

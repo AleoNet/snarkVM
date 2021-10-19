@@ -39,16 +39,23 @@ pub struct LedgerProof<N: Network> {
     block_header_inclusion_proof: MerklePath<N::BlockHeaderRootParameters>,
     transactions_root: N::TransactionsRoot,
     transactions_inclusion_proof: MerklePath<N::TransactionsRootParameters>,
-    transaction_id: N::TransactionID,
-    transaction_inclusion_proof: MerklePath<N::TransactionIDParameters>,
-    transition_id: N::TransitionID,
-    transition_inclusion_proof: MerklePath<N::TransitionIDParameters>,
-    commitment: N::Commitment,
+    local_proof: LocalProof<N>,
 }
 
 impl<N: Network> LedgerProof<N> {
     ///
-    /// Initializes a new instance of `LedgerProof`.
+    /// Initializes a new local instance of `LedgerProof`.
+    ///
+    pub fn new_local(ledger_root: N::LedgerRoot, local_proof: LocalProof<N>) -> Result<Self> {
+        let mut ledger_proof = Self::default();
+        ledger_proof.ledger_root = ledger_root;
+        ledger_proof.local_proof = local_proof;
+
+        Ok(ledger_proof)
+    }
+
+    ///
+    /// Initializes a new ledger instance of `LedgerProof`.
     ///
     pub fn new(
         ledger_root: N::LedgerRoot,
@@ -59,31 +66,10 @@ impl<N: Network> LedgerProof<N> {
         block_header_inclusion_proof: MerklePath<N::BlockHeaderRootParameters>,
         transactions_root: N::TransactionsRoot,
         transactions_inclusion_proof: MerklePath<N::TransactionsRootParameters>,
-        transaction_id: N::TransactionID,
-        transaction_inclusion_proof: MerklePath<N::TransactionIDParameters>,
-        transition_id: N::TransitionID,
-        transition_inclusion_proof: MerklePath<N::TransitionIDParameters>,
-        commitment: N::Commitment,
+        local_proof: LocalProof<N>,
     ) -> Result<Self> {
-        // Ensure the transition inclusion proof is valid.
-        if !transition_inclusion_proof.verify(&transition_id, &commitment)? {
-            return Err(anyhow!(
-                "Commitment {} does not belong to transition {}",
-                commitment,
-                transition_id
-            ));
-        }
-
-        // Ensure the transaction inclusion proof is valid.
-        if !transaction_inclusion_proof.verify(&transaction_id, &transition_id)? {
-            return Err(anyhow!(
-                "Transition {} does not belong to transaction {}",
-                transition_id,
-                transaction_id
-            ));
-        }
-
         // Ensure the transactions inclusion proof is valid.
+        let transaction_id = local_proof.transaction_id();
         if !transactions_inclusion_proof.verify(&transactions_root, &transaction_id)? {
             return Err(anyhow!(
                 "Transaction {} does not belong to transactions root {}",
@@ -121,11 +107,7 @@ impl<N: Network> LedgerProof<N> {
             block_header_inclusion_proof,
             transactions_root,
             transactions_inclusion_proof,
-            transaction_id,
-            transaction_inclusion_proof,
-            transition_id,
-            transition_inclusion_proof,
-            commitment,
+            local_proof,
         })
     }
 
@@ -171,27 +153,32 @@ impl<N: Network> LedgerProof<N> {
 
     /// Returns the transaction ID.
     pub fn transaction_id(&self) -> N::TransactionID {
-        self.transaction_id
+        self.local_proof.transaction_id()
     }
 
     /// Returns the transaction inclusion proof.
     pub fn transaction_inclusion_proof(&self) -> &MerklePath<N::TransactionIDParameters> {
-        &self.transaction_inclusion_proof
+        &self.local_proof.transaction_inclusion_proof()
     }
 
     /// Returns the transition ID.
     pub fn transition_id(&self) -> N::TransitionID {
-        self.transition_id
+        self.local_proof.transition_id()
     }
 
     /// Returns the transition inclusion proof.
     pub fn transition_inclusion_proof(&self) -> &MerklePath<N::TransitionIDParameters> {
-        &self.transition_inclusion_proof
+        &self.local_proof.transition_inclusion_proof()
     }
 
     /// Returns the commitment.
     pub fn commitment(&self) -> N::Commitment {
-        self.commitment
+        self.local_proof.commitment()
+    }
+
+    /// Returns the local proof.
+    pub fn local_proof(&self) -> &LocalProof<N> {
+        &self.local_proof
     }
 }
 
@@ -206,11 +193,7 @@ impl<N: Network> FromBytes for LedgerProof<N> {
         let block_header_inclusion_proof = FromBytes::read_le(&mut reader)?;
         let transactions_root = FromBytes::read_le(&mut reader)?;
         let transactions_inclusion_proof = FromBytes::read_le(&mut reader)?;
-        let transaction_id = FromBytes::read_le(&mut reader)?;
-        let transaction_inclusion_proof = FromBytes::read_le(&mut reader)?;
-        let transition_id = FromBytes::read_le(&mut reader)?;
-        let transition_inclusion_proof = FromBytes::read_le(&mut reader)?;
-        let commitment = FromBytes::read_le(&mut reader)?;
+        let local_proof = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::new(
             ledger_root,
@@ -221,11 +204,7 @@ impl<N: Network> FromBytes for LedgerProof<N> {
             block_header_inclusion_proof,
             transactions_root,
             transactions_inclusion_proof,
-            transaction_id,
-            transaction_inclusion_proof,
-            transition_id,
-            transition_inclusion_proof,
-            commitment,
+            local_proof,
         )
         .expect("Failed to deserialize a ledger inclusion proof"))
     }
@@ -242,11 +221,7 @@ impl<N: Network> ToBytes for LedgerProof<N> {
         self.block_header_inclusion_proof.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
         self.transactions_inclusion_proof.write_le(&mut writer)?;
-        self.transaction_id.write_le(&mut writer)?;
-        self.transaction_inclusion_proof.write_le(&mut writer)?;
-        self.transition_id.write_le(&mut writer)?;
-        self.transition_inclusion_proof.write_le(&mut writer)?;
-        self.commitment.write_le(&mut writer)
+        self.local_proof.write_le(&mut writer)
     }
 }
 
@@ -289,11 +264,7 @@ impl<N: Network> Default for LedgerProof<N> {
             block_header_inclusion_proof: header_inclusion_proof,
             transactions_root: Default::default(),
             transactions_inclusion_proof: MerklePath::default(),
-            transaction_id: Default::default(),
-            transaction_inclusion_proof: MerklePath::default(),
-            transition_id: Default::default(),
-            transition_inclusion_proof: MerklePath::default(),
-            commitment: empty_commitment,
+            local_proof: Default::default(),
         }
     }
 }

@@ -180,7 +180,7 @@ impl<N: Network> Transaction<N> {
             }
         }
 
-        // Returns `false` if the size of the local commitments tree does not match the number of transitions.
+        // Returns `false` if the size of the local transitions tree does not match the number of transitions.
         if transitions.len() != num_transitions {
             eprintln!("Transaction contains invalid local transitions tree state");
             return false;

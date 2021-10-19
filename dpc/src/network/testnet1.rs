@@ -92,7 +92,7 @@ impl Network for Testnet1 {
     const NUM_EVENTS: u16 = 512;
 
     const TRANSITION_SIZE_IN_BYTES: usize = 1129;
-    const TRANSITION_TREE_DEPTH: u32 = 4;
+    const TRANSITION_TREE_DEPTH: u32 = 3;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const POSW_NUM_LEAVES: usize = 4;
@@ -164,10 +164,10 @@ impl Network for Testnet1 {
 
     type FunctionInputsCRH = PoseidonCRH<Self::InnerScalarField, 128>;
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
-    type FunctionInputsDigest= <Self::FunctionInputsCRH as CRH>::Output;
+    type FunctionInputsDigest = <Self::FunctionInputsCRH as CRH>::Output;
 
-    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 68, 63>;
-    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 68, 63>;
+    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 79, 63>;
+    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 79, 63>;
     type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -200,7 +200,7 @@ impl Network for Testnet1 {
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 4>;
+    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 3>;
     type TransitionID = <Self::TransitionIDCRH as CRH>::Output;
 
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

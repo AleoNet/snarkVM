@@ -75,8 +75,8 @@ impl<N: Network> LocalProof<N> {
         self.transaction_id
     }
 
-    /// Returns the local transaction inclusion proof.
-    pub fn local_transaction_inclusion_proof(&self) -> &MerklePath<N::TransactionIDParameters> {
+    /// Returns the transaction inclusion proof.
+    pub fn transaction_inclusion_proof(&self) -> &MerklePath<N::TransactionIDParameters> {
         &self.transaction_inclusion_proof
     }
 
@@ -85,8 +85,8 @@ impl<N: Network> LocalProof<N> {
         self.transition_id
     }
 
-    /// Returns the local transition inclusion proof.
-    pub fn local_transition_inclusion_proof(&self) -> &MerklePath<N::TransitionIDParameters> {
+    /// Returns the transition inclusion proof.
+    pub fn transition_inclusion_proof(&self) -> &MerklePath<N::TransitionIDParameters> {
         &self.transition_inclusion_proof
     }
 
