@@ -32,19 +32,11 @@ use crate::{
         eq::{EqGadget, NEqGadget},
         select::CondSelectGadget,
     },
-    FromBitsBEGadget,
-    FromBitsLEGadget,
-    FromBytesBEGadget,
-    FromBytesLEGadget,
     ToBitsLEGadget,
 };
 
 pub trait GroupGadget<G: Group, F: Field>:
     Sized
-    + FromBitsBEGadget<F>
-    + FromBitsLEGadget<F>
-    + FromBytesBEGadget<F>
-    + FromBytesLEGadget<F>
     + ToBytesBEGadget<F>
     + ToBytesLEGadget<F>
     + NEqGadget<F>

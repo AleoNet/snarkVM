@@ -17,22 +17,26 @@
 macro_rules! to_bits_int_impl {
     ($name: ident) => {
         impl<F: Field> ToBitsBEGadget<F> for $name {
-            fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.to_bits_be(cs)
+            fn to_bits_be<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                let mut bits = self.bits.clone();
+                bits.reverse();
+                Ok(bits)
             }
 
-            fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.to_bits_be(cs)
+            fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                let mut bits = self.bits.clone();
+                bits.reverse();
+                Ok(bits)
             }
         }
 
         impl<F: Field> ToBitsLEGadget<F> for $name {
-            fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.to_bits_le(cs)
+            fn to_bits_le<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                Ok(self.bits.clone())
             }
 
-            fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.to_bits_le(cs)
+            fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+                Ok(self.bits.clone())
             }
         }
     };

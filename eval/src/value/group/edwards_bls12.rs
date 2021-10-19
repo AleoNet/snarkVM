@@ -25,16 +25,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{Fp256, One, PrimeField, Zero};
 use snarkvm_gadgets::{
-    bits::{
-        FromBitsBEGadget,
-        FromBitsLEGadget,
-        FromBytesBEGadget,
-        FromBytesLEGadget,
-        ToBitsBEGadget,
-        ToBitsLEGadget,
-        ToBytesBEGadget,
-        ToBytesLEGadget,
-    },
+    bits::{ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
     boolean::Boolean,
     curves::edwards_bls12::EdwardsBls12Gadget,
     fields::{AllocatedFp, FpGadget},
@@ -479,58 +470,6 @@ impl ToBitsBEGadget<Fq> for EdwardsGroupType {
     fn to_bits_be_strict<CS: ConstraintSystem<Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let self_gadget = self.allocated(&mut cs)?;
         self_gadget.to_bits_be_strict(cs)
-    }
-}
-
-impl FromBitsBEGadget<Fq> for EdwardsGroupType {
-    fn from_bits_be<CS: ConstraintSystem<Fq>>(_bits: &[Boolean], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<Fq>>(
-        _bits: &[Boolean],
-        _cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl FromBitsLEGadget<Fq> for EdwardsGroupType {
-    fn from_bits_le<CS: ConstraintSystem<Fq>>(_bits: &[Boolean], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<Fq>>(
-        _bits: &[Boolean],
-        _cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl FromBytesBEGadget<Fq> for EdwardsGroupType {
-    fn from_bytes_be<CS: ConstraintSystem<Fq>>(_bytes: &[UInt8], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_be_strict<CS: ConstraintSystem<Fq>>(
-        _bytes: &[UInt8],
-        _cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl FromBytesLEGadget<Fq> for EdwardsGroupType {
-    fn from_bytes_le<CS: ConstraintSystem<Fq>>(_bytes: &[UInt8], _cs: CS) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_le_strict<CS: ConstraintSystem<Fq>>(
-        _bytes: &[UInt8],
-        _cs: CS,
-    ) -> Result<EdwardsGroupType, SynthesisError> {
-        unimplemented!()
     }
 }
 

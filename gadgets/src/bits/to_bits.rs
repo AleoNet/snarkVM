@@ -35,47 +35,27 @@ impl<F: Field> ToBitsBEGadget<F> for Boolean {
     }
 }
 
+// Leo gadgets should not call these gadgets directly.
 impl<F: Field> ToBitsBEGadget<F> for [Boolean] {
+    /// Returns a vector of bits from the given slice - does not change endianness.
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut bits = self.to_vec();
-        bits.reverse();
-        Ok(bits)
+        Ok(self.to_vec())
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut bits = self.to_vec();
-        bits.reverse();
-        Ok(bits)
+        Ok(self.to_vec())
     }
 }
 
+// Leo gadgets should not call these gadgets on their bits directly.
 impl<F: Field> ToBitsBEGadget<F> for Vec<Boolean> {
+    /// Returns a vector of bits from the given self vector - does not change endianness.
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut bits = self.to_vec();
-        bits.reverse();
-        Ok(bits)
+        Ok(self.clone())
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut bits = self.to_vec();
-        bits.reverse();
-        Ok(bits)
-    }
-}
-
-impl<F: Field> ToBitsBEGadget<F> for [UInt8] {
-    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut result = Vec::with_capacity(&self.len() * 8);
-
-        // big endian byte order
-        for (i, byte) in self.iter().rev().enumerate() {
-            result.extend_from_slice(&byte.to_bits_be(cs.ns(|| format!("to_bits_be_{}", i)))?);
-        }
-        Ok(result)
-    }
-
-    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        self.to_bits_be(cs)
+        Ok(self.clone())
     }
 }
 

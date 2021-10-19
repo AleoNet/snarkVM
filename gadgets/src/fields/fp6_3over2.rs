@@ -26,17 +26,7 @@ use snarkvm_fields::{
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
 use crate::{
-    bits::{
-        Boolean,
-        FromBitsBEGadget,
-        FromBitsLEGadget,
-        FromBytesBEGadget,
-        FromBytesLEGadget,
-        ToBitsBEGadget,
-        ToBitsLEGadget,
-        ToBytesBEGadget,
-        ToBytesLEGadget,
-    },
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesBEGadget, ToBytesLEGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -741,62 +731,6 @@ where
 
     fn cost() -> usize {
         3 * <Fp2Gadget<P, F> as NEqGadget<F>>::cost()
-    }
-}
-
-impl<P, F: PrimeField> FromBitsBEGadget<F> for Fp6Gadget<P, F>
-where
-    P: Fp6Parameters,
-    P::Fp2Params: Fp2Parameters<Fp = F>,
-{
-    fn from_bits_be<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_be_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P, F: PrimeField> FromBitsLEGadget<F> for Fp6Gadget<P, F>
-where
-    P: Fp6Parameters,
-    P::Fp2Params: Fp2Parameters<Fp = F>,
-{
-    fn from_bits_le<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bits_le_strict<CS: ConstraintSystem<F>>(_bits: &[Boolean], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P, F: PrimeField> FromBytesBEGadget<F> for Fp6Gadget<P, F>
-where
-    P: Fp6Parameters,
-    P::Fp2Params: Fp2Parameters<Fp = F>,
-{
-    fn from_bytes_be<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_be_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
-
-impl<P, F: PrimeField> FromBytesLEGadget<F> for Fp6Gadget<P, F>
-where
-    P: Fp6Parameters,
-    P::Fp2Params: Fp2Parameters<Fp = F>,
-{
-    fn from_bytes_le<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn from_bytes_le_strict<CS: ConstraintSystem<F>>(_bytes: &[UInt8], _: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
     }
 }
 
