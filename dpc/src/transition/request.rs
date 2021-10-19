@@ -245,9 +245,9 @@ impl<N: Network> Request<N> {
         &self.records
     }
 
-    /// Returns the block hash used to prove inclusion of ledger-consumed records.
-    pub fn block_hashes(&self) -> Vec<N::BlockHash> {
-        self.ledger_proofs.iter().map(LedgerProof::block_hash).collect()
+    /// Returns the ledger roots used to prove inclusion of ledger-consumed records.
+    pub fn ledger_roots(&self) -> Vec<N::LedgerRoot> {
+        self.ledger_proofs.iter().map(LedgerProof::ledger_root).collect()
     }
 
     /// Returns a reference to the ledger proof.

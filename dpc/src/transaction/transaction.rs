@@ -101,7 +101,7 @@ impl<N: Network> Transaction<N> {
     /// correct ciphertext IDs, and a valid proof.
     #[inline]
     pub fn is_valid(&self) -> bool {
-        // Ensure the number of transitions is between 1 and 256 (inclusive).
+        // Ensure the number of transitions is between 1 and N::NUM_TRANSITIONS.
         let num_transitions = self.transitions.len();
         if num_transitions < 1 || num_transitions > N::NUM_TRANSITIONS as usize {
             eprintln!("Transaction contains invalid number of transitions");
@@ -111,6 +111,12 @@ impl<N: Network> Transaction<N> {
         // Ensure the number of events is less than `N::NUM_EVENTS`.
         if self.events.len() > N::NUM_EVENTS as usize {
             eprintln!("Transaction contains an invalid number of events");
+            return false;
+        }
+
+        // Returns `false` if the number of ledger roots in the transaction is incorrect.
+        if self.ledger_roots().len() != num_transitions * N::NUM_INPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of ledger roots");
             return false;
         }
 
@@ -207,12 +213,12 @@ impl<N: Network> Transaction<N> {
         self.transitions.iter().map(Transition::transition_id).collect()
     }
 
-    /// Returns the block hashes used to execute the transitions.
+    /// Returns the ledger roots used to execute the transitions.
     #[inline]
-    pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
+    pub fn ledger_roots(&self) -> HashSet<N::LedgerRoot> {
         self.transitions
             .iter()
-            .flat_map(Transition::block_hashes)
+            .flat_map(Transition::ledger_roots)
             .cloned()
             .collect()
     }

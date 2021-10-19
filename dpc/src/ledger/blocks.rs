@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use snarkvm_algorithms::merkle_tree::*;
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -148,6 +149,16 @@ impl<N: Network> Blocks<N> {
             || self.transactions.contains_key(&height)
     }
 
+    /// Returns `true` if the given ledger root exists.
+    pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
+        self.headers
+            .values()
+            .map(BlockHeader::ledger_root)
+            .filter(|root| root == ledger_root)
+            .count()
+            > 0
+    }
+
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
         self.current_hash == *block_hash || self.previous_hashes.values().filter(|hash| *hash == block_hash).count() > 0
@@ -245,12 +256,12 @@ impl<N: Network> Blocks<N> {
             if self.contains_transaction(transaction) {
                 return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
             }
-            // Ensure the transaction in the block references a valid past or current block hash.
-            for block_hash in &transaction.block_hashes() {
-                if !self.contains_block_hash(block_hash) {
+            // Ensure the transaction in the block references a valid past or current ledger root.
+            for ledger_root in &transaction.ledger_roots() {
+                if !self.contains_ledger_root(ledger_root) {
                     return Err(anyhow!(
-                        "The given transaction references a non-existent block hash {}",
-                        block_hash
+                        "The given transaction references a non-existent ledger root {}",
+                        ledger_root
                     ));
                 }
             }
@@ -300,6 +311,24 @@ impl<N: Network> Blocks<N> {
                 .as_slice(),
         )?;
         Ok(ledger.root())
+    }
+
+    // TODO (howardwu): Optimize this function.
+    /// Returns an inclusion proof for the ledger tree.
+    pub fn to_ledger_root_inclusion_proof(
+        &self,
+        block_hash: &N::BlockHash,
+    ) -> Result<MerklePath<N::LedgerRootParameters>> {
+        let mut ledger = LedgerTree::<N>::new()?;
+        ledger.add_all(
+            self.previous_hashes
+                .values()
+                .chain(vec![self.current_hash].iter())
+                .cloned()
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        Ok(ledger.to_ledger_inclusion_proof(block_hash)?)
     }
 
     ///
@@ -376,12 +405,18 @@ impl<N: Network> Blocks<N> {
 
         // Compute the block header inclusion proof.
         let transactions_root = transactions.to_transactions_root()?;
-        let block_header_inclusion_proof = block_header.to_header_inclusion_proof(0, transactions_root)?;
+        let block_header_inclusion_proof = block_header.to_header_inclusion_proof(1, transactions_root)?;
         let block_header_root = block_header.to_header_root()?;
         let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
         let current_block_hash = self.current_hash;
 
+        // TODO (howardwu): Optimize this operation.
+        let ledger_root = self.to_ledger_root()?;
+        let ledger_root_inclusion_proof = self.to_ledger_root_inclusion_proof(&current_block_hash)?;
+
         LedgerProof::new(
+            ledger_root,
+            ledger_root_inclusion_proof,
             current_block_hash,
             previous_block_hash,
             block_header_root,

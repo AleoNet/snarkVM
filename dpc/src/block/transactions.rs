@@ -98,6 +98,16 @@ impl<N: Network> Transactions<N> {
         self.0.iter().map(Transaction::transaction_id)
     }
 
+    /// Returns the transition IDs, by constructing a flattened list of transition IDs from all transactions.
+    pub fn transition_ids(&self) -> impl Iterator<Item = <N as Network>::TransitionID> + '_ {
+        self.0.iter().flat_map(Transaction::transition_ids)
+    }
+
+    /// Returns the ledger roots, by constructing a flattened list of ledger roots from all transactions.
+    pub fn ledger_roots(&self) -> impl Iterator<Item = <N as Network>::LedgerRoot> + '_ {
+        self.0.iter().flat_map(Transaction::ledger_roots)
+    }
+
     /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
     pub fn serial_numbers(&self) -> impl Iterator<Item = <N as Network>::SerialNumber> + '_ {
         self.0.iter().flat_map(Transaction::serial_numbers)

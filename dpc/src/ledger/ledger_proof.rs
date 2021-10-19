@@ -31,6 +31,8 @@ use std::{
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct LedgerProof<N: Network> {
+    ledger_root: N::LedgerRoot,
+    ledger_root_inclusion_proof: MerklePath<N::LedgerRootParameters>,
     block_hash: N::BlockHash,
     previous_block_hash: N::BlockHash,
     block_header_root: N::BlockHeaderRoot,
@@ -49,6 +51,8 @@ impl<N: Network> LedgerProof<N> {
     /// Initializes a new instance of `LedgerProof`.
     ///
     pub fn new(
+        ledger_root: N::LedgerRoot,
+        ledger_root_inclusion_proof: MerklePath<N::LedgerRootParameters>,
         block_hash: N::BlockHash,
         previous_block_hash: N::BlockHash,
         block_header_root: N::BlockHeaderRoot,
@@ -109,6 +113,8 @@ impl<N: Network> LedgerProof<N> {
         }
 
         Ok(Self {
+            ledger_root,
+            ledger_root_inclusion_proof,
             block_hash,
             previous_block_hash,
             block_header_root,
@@ -123,7 +129,17 @@ impl<N: Network> LedgerProof<N> {
         })
     }
 
-    /// Returns the block hash used to prove inclusion of ledger-consumed records.
+    /// Returns the ledger root used to prove inclusion of ledger-consumed records.
+    pub fn ledger_root(&self) -> N::LedgerRoot {
+        self.ledger_root
+    }
+
+    /// Returns the ledger root inclusion proof.
+    pub fn ledger_root_inclusion_proof(&self) -> &MerklePath<N::LedgerRootParameters> {
+        &self.ledger_root_inclusion_proof
+    }
+
+    /// Returns the block hash.
     pub fn block_hash(&self) -> N::BlockHash {
         self.block_hash
     }
@@ -182,6 +198,8 @@ impl<N: Network> LedgerProof<N> {
 impl<N: Network> FromBytes for LedgerProof<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let ledger_root = FromBytes::read_le(&mut reader)?;
+        let ledger_root_inclusion_proof = FromBytes::read_le(&mut reader)?;
         let block_hash = FromBytes::read_le(&mut reader)?;
         let previous_block_hash = FromBytes::read_le(&mut reader)?;
         let block_header_root = FromBytes::read_le(&mut reader)?;
@@ -195,6 +213,8 @@ impl<N: Network> FromBytes for LedgerProof<N> {
         let commitment = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::new(
+            ledger_root,
+            ledger_root_inclusion_proof,
             block_hash,
             previous_block_hash,
             block_header_root,
@@ -214,6 +234,8 @@ impl<N: Network> FromBytes for LedgerProof<N> {
 impl<N: Network> ToBytes for LedgerProof<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.ledger_root.write_le(&mut writer)?;
+        self.ledger_root_inclusion_proof.write_le(&mut writer)?;
         self.block_hash.write_le(&mut writer)?;
         self.previous_block_hash.write_le(&mut writer)?;
         self.block_header_root.write_le(&mut writer)?;
@@ -259,6 +281,8 @@ impl<N: Network> Default for LedgerProof<N> {
             .expect("Ledger proof failed to compute block hash");
 
         Self {
+            ledger_root: Default::default(),
+            ledger_root_inclusion_proof: MerklePath::default(),
             block_hash,
             previous_block_hash,
             block_header_root: header_root,

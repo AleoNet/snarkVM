@@ -114,7 +114,7 @@ impl<N: Network> ResponseBuilder<N> {
         };
 
         // Construct the state.
-        let block_hashes = request.block_hashes();
+        let block_hashes = request.ledger_roots();
         let function_type = request.function_type();
         let program_id = request.to_program_id()?;
 

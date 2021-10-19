@@ -37,7 +37,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     //////////////////////////////////////////////////////////////////////////
 
     // Fetch the block hashes, local commitments root, and serial numbers.
-    let block_hashes = request.block_hashes();
+    let block_hashes = request.ledger_roots();
     let serial_numbers = request.to_serial_numbers().unwrap();
     let program_id = request.to_program_id().unwrap();
 

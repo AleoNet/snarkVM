@@ -71,6 +71,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.latest_block()
     }
 
+    /// Returns `true` if the given ledger root exists on the canon chain.
+    pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
+        self.canon_blocks.contains_ledger_root(ledger_root)
+    }
+
     /// Returns `true` if the given block hash exists on the canon chain.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
         self.canon_blocks.contains_block_hash(block_hash)
@@ -105,10 +110,10 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add_unconfirmed_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction contains block hashes from the canon chain.
-        for block_hash in &transaction.block_hashes() {
-            if !self.canon_blocks.contains_block_hash(block_hash) {
-                return Err(anyhow!("Transaction references a non-existent block hash"));
+        // Ensure the transaction contains ledger roots from the canon chain.
+        for ledger_root in &transaction.ledger_roots() {
+            if !self.canon_blocks.contains_ledger_root(ledger_root) {
+                return Err(anyhow!("Transaction references a non-existent ledger root"));
             }
         }
 
