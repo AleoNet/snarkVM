@@ -88,7 +88,7 @@ impl<N: Network> ResponseBuilder<N> {
     /// Adds the given event into the builder.
     ///
     pub fn add_event(mut self, event: Event<N>) -> Self {
-        match self.events.len() < N::NUM_EVENTS {
+        match self.events.len() < N::NUM_EVENTS as usize {
             true => self.events.push(event),
             false => self.errors.push("Builder exceeded maximum number of events".into()),
         };
@@ -114,8 +114,7 @@ impl<N: Network> ResponseBuilder<N> {
         };
 
         // Construct the state.
-        let block_hash = request.block_hash();
-        let local_commitments_root = request.local_commitments_root();
+        let block_hashes = request.ledger_roots();
         let function_type = request.function_type();
         let program_id = request.to_program_id()?;
 
@@ -185,8 +184,7 @@ impl<N: Network> ResponseBuilder<N> {
 
         // Compute the transition ID.
         let transition_id = Transition::compute_transition_id(
-            block_hash,
-            local_commitments_root,
+            &block_hashes,
             &serial_numbers,
             &commitments,
             &ciphertexts,

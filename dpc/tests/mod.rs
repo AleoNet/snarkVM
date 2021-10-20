@@ -81,7 +81,7 @@ fn test_posw_verify_testnet1() {
     // let proof = {
     //     let bytes = hex::decode(POSW_PROOF).unwrap();
     //     assert_eq!(bytes.len(), 972); // NOTE: Marlin proofs use compressed serialization
-    //     <<Testnet1 as Network>::PoswSNARK as SNARK>::Proof::read_le(&bytes[..]).unwrap()
+    //     <<Testnet1 as Network>::PoSWSNARK as SNARK>::Proof::read_le(&bytes[..]).unwrap()
     // };
     //
     // let posw = PoswMarlin::<Testnet1>::load(true).unwrap();
@@ -95,7 +95,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         let rng = &mut thread_rng();
         // Run the universal setup.
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(70000, 70000, 70000).unwrap();
-        let universal_srs = <Testnet2 as Network>::PoswSNARK::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
         <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
             &universal_srs,

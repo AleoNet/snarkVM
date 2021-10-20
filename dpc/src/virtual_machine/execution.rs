@@ -25,7 +25,7 @@ use std::io::{Read, Result as IoResult, Write};
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct Execution<N: Network> {
     pub program_id: N::ProgramID,
-    pub program_path: MerklePath<N::ProgramFunctionsTreeParameters>,
+    pub program_path: MerklePath<N::ProgramIDParameters>,
     #[derivative(Debug = "ignore")]
     pub verifying_key: N::ProgramVerifyingKey,
     pub proof: <N::ProgramSNARK as SNARK>::Proof,

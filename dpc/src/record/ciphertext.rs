@@ -14,20 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Network, Payload, Record, ViewKey};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
+use crate::{Address, Network, Payload, Record, RecordError, ViewKey};
+use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
+    fmt,
     io::{Cursor, Result as IoResult},
     marker::PhantomData,
+    str::FromStr,
     to_bytes_le,
     FromBytes,
+    FromBytesDeserializer,
     Read,
     ToBytes,
+    ToBytesSerializer,
     Write,
 };
 
 use anyhow::{anyhow, Result};
 use rand::{thread_rng, CryptoRng, Rng};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Derivative)]
 #[derivative(
@@ -43,7 +48,8 @@ pub struct RecordCiphertext<N: Network> {
 }
 
 impl<N: Network> RecordCiphertext<N> {
-    pub fn new(ciphertext: Vec<u8>) -> Self {
+    pub fn from_vec(ciphertext: Vec<u8>) -> Self {
+        assert_eq!(N::CIPHERTEXT_SIZE_IN_BYTES, ciphertext.len());
         Self {
             ciphertext,
             phantom: PhantomData,
@@ -78,7 +84,7 @@ impl<N: Network> RecordCiphertext<N> {
         let randomizer = N::account_encryption_scheme().generate_randomness(rng);
         let ciphertext = N::account_encryption_scheme().encrypt(&*record.owner(), &randomizer, &buffer)?;
 
-        Ok((Self::new(ciphertext), randomizer))
+        Ok((Self::from_vec(ciphertext), randomizer))
     }
 
     /// Decrypt the record ciphertext using the view key of the recipient.
@@ -93,7 +99,7 @@ impl<N: Network> RecordCiphertext<N> {
         let payload = Payload::read_le(&mut cursor)?;
         let program_id = N::ProgramID::read_le(&mut cursor)?;
         let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
-        let commitment_randomness = <N::CommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
+        let commitment_randomness = N::CommitmentRandomness::read_le(&mut cursor)?;
 
         // Derive the record owner.
         let owner = Address::from_view_key(&recipient_view_key);
@@ -114,6 +120,60 @@ impl<N: Network> RecordCiphertext<N> {
     }
 }
 
+impl<N: Network> FromBytes for RecordCiphertext<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut ciphertext = Vec::with_capacity(N::CIPHERTEXT_SIZE_IN_BYTES);
+        for _ in 0..N::CIPHERTEXT_SIZE_IN_BYTES {
+            ciphertext.push(u8::read_le(&mut reader)?);
+        }
+
+        Ok(Self::from_vec(ciphertext))
+    }
+}
+
+impl<N: Network> ToBytes for RecordCiphertext<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.ciphertext.write_le(&mut writer)
+    }
+}
+
+impl<N: Network> FromStr for RecordCiphertext<N> {
+    type Err = RecordError;
+
+    fn from_str(payload_hex: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_bytes_le(&hex::decode(payload_hex)?)?)
+    }
+}
+
+impl<N: Network> fmt::Display for RecordCiphertext<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bytes = self.to_bytes_le().expect("Failed to convert ciphertext to bytes");
+        write!(f, "{}", hex::encode(bytes))
+    }
+}
+
+impl<N: Network> Serialize for RecordCiphertext<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for RecordCiphertext<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => {
+                FromBytesDeserializer::<Self>::deserialize(deserializer, "ciphertext", N::CIPHERTEXT_SIZE_IN_BYTES)
+            }
+        }
+    }
+}
+
 impl<N: Network> Default for RecordCiphertext<N> {
     fn default() -> Self {
         let (record, _randomness) = Self::encrypt(&Record::default(), &mut thread_rng()).unwrap();
@@ -121,23 +181,65 @@ impl<N: Network> Default for RecordCiphertext<N> {
     }
 }
 
-impl<N: Network> ToBytes for RecordCiphertext<N> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.ciphertext.len() as u16).write_le(&mut writer)?;
-        self.ciphertext.write_le(&mut writer)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
+
+    #[test]
+    fn test_serde_json() {
+        let rng = &mut thread_rng();
+
+        let expected_ciphertext = RecordCiphertext::<Testnet2>::from_vec(
+            (0..Testnet2::CIPHERTEXT_SIZE_IN_BYTES)
+                .map(|_| u8::rand(rng))
+                .collect::<Vec<u8>>(),
+        );
+
+        // Serialize
+        let expected_string = &expected_ciphertext.to_string();
+        let candidate_string = serde_json::to_string(&expected_ciphertext).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(
+            expected_ciphertext,
+            RecordCiphertext::from_str(&expected_string).unwrap()
+        );
+        assert_eq!(expected_ciphertext, serde_json::from_str(&candidate_string).unwrap());
     }
-}
 
-impl<N: Network> FromBytes for RecordCiphertext<N> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let ciphertext_len = u16::read_le(&mut reader)?;
-        let mut ciphertext = Vec::with_capacity(ciphertext_len as usize);
-        for _ in 0..ciphertext_len {
-            ciphertext.push(u8::read_le(&mut reader)?);
-        }
+    #[test]
+    fn test_bincode() {
+        let rng = &mut thread_rng();
 
-        Ok(Self::new(ciphertext))
+        let expected_ciphertext = RecordCiphertext::<Testnet2>::from_vec(
+            (0..Testnet2::CIPHERTEXT_SIZE_IN_BYTES)
+                .map(|_| u8::rand(rng))
+                .collect::<Vec<u8>>(),
+        );
+
+        // Serialize
+        let expected_bytes = expected_ciphertext.to_bytes_le().unwrap();
+        assert_eq!(
+            &expected_bytes[..],
+            &bincode::serialize(&expected_ciphertext).unwrap()[..]
+        );
+
+        // Deserialize
+        assert_eq!(
+            expected_ciphertext,
+            RecordCiphertext::read_le(&expected_bytes[..]).unwrap()
+        );
+        assert_eq!(expected_ciphertext, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 }

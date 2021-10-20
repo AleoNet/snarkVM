@@ -19,25 +19,30 @@ use crate::{
     Address,
     AleoAmount,
     Event,
-    LocalCommitments,
     Network,
     Request,
     Transition,
+    Transitions,
     ViewKey,
     VirtualMachine,
 };
-use snarkvm_algorithms::CRH;
-use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    has_duplicates,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    ToBytes,
+};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use rand::{CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     hash::{Hash, Hasher},
-    io::{Read, Result as IoResult, Write},
 };
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -45,12 +50,14 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Transaction<N: Network> {
-    /// The network ID.
-    network_id: u16,
-    /// The ID of the inner circuit used to execute this transaction.
+    /// The ID of this transaction.
+    transaction_id: N::TransactionID,
+    /// The ID of the inner circuit used to execute each transition.
     inner_circuit_id: N::InnerCircuitID,
     /// The state transition.
     transitions: Vec<Transition<N>>,
+    /// The events emitted from this transaction.
+    events: Vec<Event<N>>,
 }
 
 impl<N: Network> Transaction<N> {
@@ -69,11 +76,18 @@ impl<N: Network> Transaction<N> {
 
     /// Initializes an instance of `Transaction` from the given inputs.
     #[inline]
-    pub fn from(network_id: u16, inner_circuit_id: N::InnerCircuitID, transitions: Vec<Transition<N>>) -> Result<Self> {
+    pub fn from(
+        inner_circuit_id: N::InnerCircuitID,
+        transitions: Vec<Transition<N>>,
+        events: Vec<Event<N>>,
+    ) -> Result<Self> {
+        let transaction_id = Self::compute_transaction_id(&transitions)?;
+
         let transaction = Self {
-            network_id,
-            transitions,
+            transaction_id,
             inner_circuit_id,
+            transitions,
+            events,
         };
 
         match transaction.is_valid() {
@@ -87,22 +101,16 @@ impl<N: Network> Transaction<N> {
     /// correct ciphertext IDs, and a valid proof.
     #[inline]
     pub fn is_valid(&self) -> bool {
-        // Returns `false` if the network ID is incorrect.
-        if self.network_id != N::NETWORK_ID {
-            eprintln!("Transaction contains an incorrect network ID");
+        // Ensure the number of transitions is between 1 and N::NUM_TRANSITIONS.
+        let num_transitions = self.transitions.len();
+        if num_transitions < 1 || num_transitions > N::NUM_TRANSITIONS as usize {
+            eprintln!("Transaction contains invalid number of transitions");
             return false;
         }
 
         // Ensure the number of events is less than `N::NUM_EVENTS`.
-        if self.events().len() > N::NUM_EVENTS {
+        if self.events.len() > N::NUM_EVENTS as usize {
             eprintln!("Transaction contains an invalid number of events");
-            return false;
-        }
-
-        // Ensure the number of transitions is between 1 and 128 (inclusive).
-        let num_transitions = self.transitions.len();
-        if num_transitions < 1 || num_transitions > 128 {
-            eprintln!("Transaction contains invalid number of transitions");
             return false;
         }
 
@@ -142,53 +150,69 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
-        // Returns `false` if the transition is invalid.
-        if !self.transitions[0].verify(*N::inner_circuit_id(), Default::default()) {
-            eprintln!("Transaction contains an invalid transition");
+        // Initialize a local transitions tree.
+        let mut transitions = match Transitions::<N>::new() {
+            Ok(transitions) => transitions,
+            Err(error) => {
+                eprintln!("Transaction failed to initialize a local transitions tree: {}", error);
+                return false;
+            }
+        };
+
+        // Returns `false` if any transition is invalid.
+        for transition in &self.transitions {
+            // Returns `false` if the transition is invalid.
+            if !transition.verify(self.inner_circuit_id, transitions.root()) {
+                eprintln!("Transaction contains an invalid transition");
+                return false;
+            }
+
+            // Update the local transitions tree.
+            if let Err(error) = transitions.add(&transition) {
+                eprintln!("Transaction failed to update local transitions tree: {}", error);
+                return false;
+            }
+        }
+
+        // Returns `false` if the size of the local transitions tree does not match the number of transitions.
+        if transitions.len() != num_transitions {
+            eprintln!("Transaction contains invalid local transitions tree state");
             return false;
         }
 
-        // Returns `false` if any transition is invalid.
-        if num_transitions > 1 {
-            // Initialize a local commitments tree.
-            let mut local_commitments_tree = match LocalCommitments::<N>::new() {
-                Ok(local_commitments_tree) => local_commitments_tree,
-                Err(error) => {
-                    eprintln!("Transaction failed to initialize a local commitments tree: {}", error);
-                    return false;
-                }
-            };
-
-            for window in self.transitions.windows(2) {
-                if let [previous_transition, current_transition] = window {
-                    // Update the local commitments tree.
-                    if let Err(error) = local_commitments_tree.add(previous_transition.commitments()) {
-                        eprintln!("Transaction failed to update local commitments tree: {}", error);
-                        return false;
-                    }
-
-                    // Returns `false` if the transition is invalid.
-                    if !current_transition.verify(*N::inner_circuit_id(), local_commitments_tree.root()) {
-                        eprintln!("Transaction contains an invalid transition");
-                        return false;
-                    }
-                }
-            }
-
-            // Returns `false` if the size of the local commitments tree does not match the number of transitions.
-            if local_commitments_tree.len() != (num_transitions - 1) * N::NUM_INPUT_RECORDS {
-                eprintln!("Transaction contains invalid local commitments tree state");
-                return false;
-            }
+        // Returns `false` if the final transitions root does not match the transaction ID.
+        if transitions.root() != self.transaction_id {
+            eprintln!("Transaction contains an invalid transaction ID");
+            return false;
         }
 
         true
     }
 
-    /// Returns the network ID.
+    /// Returns `true` if the given transition ID exists.
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
+        self.transitions
+            .iter()
+            .map(Transition::transition_id)
+            .contains(transition_id)
+    }
+
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
+        self.transitions
+            .iter()
+            .any(|t| (*t).contains_serial_number(serial_number))
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+        self.transitions.iter().any(|t| (*t).contains_commitment(commitment))
+    }
+
+    /// Returns the transaction ID.
     #[inline]
-    pub fn network_id(&self) -> u16 {
-        self.network_id
+    pub fn transaction_id(&self) -> N::TransactionID {
+        self.transaction_id
     }
 
     /// Returns the inner circuit ID.
@@ -197,10 +221,20 @@ impl<N: Network> Transaction<N> {
         self.inner_circuit_id
     }
 
-    /// Returns the block hashes used to execute the transitions.
+    /// Returns the transition IDs.
     #[inline]
-    pub fn block_hashes(&self) -> HashSet<N::BlockHash> {
-        self.transitions.iter().map(Transition::block_hash).collect()
+    pub fn transition_ids(&self) -> Vec<N::TransitionID> {
+        self.transitions.iter().map(Transition::transition_id).collect()
+    }
+
+    /// Returns the ledger roots used to execute the transitions.
+    #[inline]
+    pub fn ledger_roots(&self) -> HashSet<N::LedgerRoot> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::ledger_roots)
+            .cloned()
+            .collect()
     }
 
     /// Returns the serial numbers.
@@ -242,16 +276,16 @@ impl<N: Network> Transaction<N> {
             .fold(AleoAmount::ZERO, |a, b| a.add(*b))
     }
 
-    /// Returns the events.
-    #[inline]
-    pub fn events(&self) -> Vec<Event<N>> {
-        self.transitions.iter().flat_map(Transition::events).cloned().collect()
-    }
-
     /// Returns a reference to the state transitions.
     #[inline]
     pub fn transitions(&self) -> &Vec<Transition<N>> {
         &self.transitions
+    }
+
+    /// Returns a reference to the events.
+    #[inline]
+    pub fn events(&self) -> &Vec<Event<N>> {
+        &self.events
     }
 
     /// Returns the ciphertext IDs.
@@ -263,47 +297,32 @@ impl<N: Network> Transaction<N> {
             .collect::<Result<Vec<_>>>()
     }
 
-    /// Returns the records that can be decrypted with the given account view key.
-    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Result<Vec<Record<N>>> {
+    /// Returns records from the transaction belonging to the given account view key.
+    #[inline]
+    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Vec<Record<N>> {
         self.transitions
             .iter()
             .flat_map(Transition::ciphertexts)
-            .map(|c| c.decrypt(account_view_key))
-            .filter(|decryption_result| match decryption_result {
-                Ok(r) => !r.is_dummy(),
-                Err(_) => true,
-            })
-            .collect::<Result<Vec<Record<N>>>>()
+            .filter_map(|c| c.decrypt(account_view_key).ok())
+            .filter(|record| !record.is_dummy())
+            .collect()
     }
 
-    /// Returns the transaction ID.
+    /// Transaction ID := MerkleTree(transition IDs)
     #[inline]
-    pub fn to_transaction_id(&self) -> Result<N::TransactionID> {
-        let transition_ids = self
-            .transitions
-            .iter()
-            .map(|transition| Ok(transition.transition_id().to_bytes_le()?))
-            .collect::<Result<Vec<_>>>()?
-            .concat();
-
-        Ok(N::transaction_id_crh().hash(&transition_ids)?)
-    }
-}
-
-impl<N: Network> ToBytes for Transaction<N> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.network_id.write_le(&mut writer)?;
-        self.inner_circuit_id.write_le(&mut writer)?;
-        (self.transitions.len() as u16).write_le(&mut writer)?;
-        self.transitions.write_le(&mut writer)
+    pub(crate) fn compute_transaction_id(transitions: &Vec<Transition<N>>) -> Result<N::TransactionID> {
+        // Initialize a transitions tree.
+        let mut transitions_tree = Transitions::<N>::new()?;
+        // Add all given transition IDs to the tree.
+        transitions_tree.add_all(&transitions)?;
+        // Return the root of the transitions tree.
+        Ok(transitions_tree.root())
     }
 }
 
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let network_id: u16 = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
 
         let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
@@ -312,58 +331,67 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(network_id, inner_circuit_id, transitions).expect("Failed to deserialize a transaction"))
+        let num_events: u16 = FromBytes::read_le(&mut reader)?;
+        let mut events = Vec::with_capacity(num_events as usize);
+        for _ in 0..num_events {
+            events.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        Ok(Self::from(inner_circuit_id, transitions, events).expect("Failed to deserialize a transaction"))
+    }
+}
+
+impl<N: Network> ToBytes for Transaction<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.inner_circuit_id.write_le(&mut writer)?;
+        (self.transitions.len() as u16).write_le(&mut writer)?;
+        self.transitions.write_le(&mut writer)?;
+        (self.events.len() as u16).write_le(&mut writer)?;
+        self.events.write_le(&mut writer)
     }
 }
 
 impl<N: Network> Hash for Transaction<N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.to_transaction_id()
-            .expect("Failed to compute the transaction ID")
-            .hash(state);
+        self.transaction_id.hash(state);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Account, AccountScheme, Payload, PAYLOAD_SIZE};
+    use crate::{testnet2::Testnet2, Account, AccountScheme};
     use snarkvm_utilities::UniformRand;
 
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
+    use rand::thread_rng;
 
-    #[ignore]
     #[test]
     fn test_decrypt_records() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-        let dummy_account = Account::<Testnet2>::new(rng);
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
 
-        // Construct output records
-        let mut payload = [0u8; PAYLOAD_SIZE];
-        rng.fill(&mut payload);
-        let record = Record::new_output(
-            dummy_account.address(),
+        // Craft the expected coinbase record.
+        let expected_record = Record::new_output(
+            account.address(),
             1234,
-            Payload::from_bytes_le(&payload).unwrap(),
+            Default::default(),
             *Testnet2::noop_program_id(),
             UniformRand::rand(rng),
             rng,
         )
         .unwrap();
-        let dummy_record = Record::new_noop_output(dummy_account.address(), UniformRand::rand(rng), rng).unwrap();
 
-        // Encrypt output records
-        let (_encrypted_record, _) = RecordCiphertext::encrypt(&record, rng).unwrap();
-        let (_encrypted_dummy_record, _) = RecordCiphertext::encrypt(&dummy_record, rng).unwrap();
-        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key());
+        // Craft a transaction with 1 coinbase record.
+        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+        let decrypted_records = transaction.to_decrypted_records(&account.view_key());
+        assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
-        // Construct transaction with 1 output record and 1 dummy output record
-        let transaction = Transaction::new_coinbase(dummy_account.address(), AleoAmount(1234), rng).unwrap();
-
-        let decrypted_records = transaction.to_decrypted_records(&account_view_key).unwrap();
-        assert_eq!(decrypted_records.len(), 1); // Excludes dummy record upon decryption
-        assert_eq!(decrypted_records.first().unwrap(), &record);
+        let candidate_record = decrypted_records.first().unwrap();
+        assert_eq!(expected_record.owner(), candidate_record.owner());
+        assert_eq!(expected_record.value(), candidate_record.value());
+        assert_eq!(expected_record.payload(), candidate_record.payload());
+        assert_eq!(expected_record.program_id(), candidate_record.program_id());
     }
 }

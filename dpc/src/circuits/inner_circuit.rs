@@ -34,6 +34,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use itertools::Itertools;
+use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
@@ -72,10 +73,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             record_commitment_parameters,
             ciphertext_id_crh,
             transition_id_crh,
-            ledger_commitments_tree_crh,
-            local_commitments_tree_crh,
-            block_header_tree_parameters,
+            transaction_id_crh,
+            transactions_root_crh,
+            block_header_root_crh,
             block_hash_crh,
+            ledger_root_crh,
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
 
@@ -94,53 +96,59 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     Ok(N::commitment_scheme().clone())
                 })?;
 
-            let ciphertext_id_crh_parameters = N::CiphertextIDCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare record ciphertext ID CRH parameters"),
+            let ciphertext_id_crh = N::CiphertextIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the record ciphertext ID CRH parameters"),
                 || Ok(N::ciphertext_id_crh().clone()),
             )?;
 
             let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare transition ID CRH parameters"),
-                || Ok(N::transition_id_crh().clone()),
+                &mut cs.ns(|| "Declare the transition ID CRH parameters"),
+                || Ok(N::transition_id_parameters().crh()),
             )?;
 
-            let ledger_commitments_tree_crh = N::CommitmentsTreeCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare ledger commitments tree CRH parameters"),
-                || Ok(N::commitments_tree_parameters().crh()),
+            let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transaction CRH parameters"),
+                || Ok(N::transaction_id_parameters().crh()),
             )?;
 
-            let local_commitments_tree_crh = N::LocalCommitmentsTreeCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare local commitments tree CRH parameters"),
-                || Ok(N::local_commitments_tree_parameters().crh()),
+            let transactions_root_crh = N::TransactionsRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transactions root CRH parameters"),
+                || Ok(N::transactions_root_parameters().crh()),
             )?;
 
-            let block_header_tree_parameters = N::BlockHeaderTreeCRHGadget::alloc_constant(
-                &mut cs.ns(|| "Declare block header tree CRH parameters"),
-                || Ok(N::block_header_tree_parameters().crh()),
+            let block_header_root_crh = N::BlockHeaderRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the block header root CRH parameters"),
+                || Ok(N::block_header_root_parameters().crh()),
             )?;
 
             let block_hash_crh =
-                N::BlockHashCRHGadget::alloc_constant(&mut cs.ns(|| "Declare block hash CRH parameters"), || {
+                N::BlockHashCRHGadget::alloc_constant(&mut cs.ns(|| "Declare the block hash CRH parameters"), || {
                     Ok(N::block_hash_crh().clone())
                 })?;
+
+            let ledger_root_crh = N::LedgerRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the ledger root CRH parameters"),
+                || Ok(N::ledger_root_parameters().crh()),
+            )?;
 
             (
                 account_encryption_parameters,
                 account_signature_parameters,
                 record_commitment_parameters,
-                ciphertext_id_crh_parameters,
+                ciphertext_id_crh,
                 transition_id_crh,
-                ledger_commitments_tree_crh,
-                local_commitments_tree_crh,
-                block_header_tree_parameters,
+                transaction_id_crh,
+                transactions_root_crh,
+                block_header_root_crh,
                 block_hash_crh,
+                ledger_root_crh,
             )
         };
 
         // Declares a constant for a 0 value in a record.
         let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
         // Declares a constant for an empty payload in a record.
-        let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
+        let empty_payload = UInt8::constant_vec(&Payload::<N>::default().to_bytes_le()?);
         // Declare the noop program ID as bytes.
         let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
 
@@ -151,16 +159,28 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let noop_program_id_field_elements =
             noop_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert noop program ID to field elements"))?;
 
+        // Declare the local transitions root.
+        let local_transitions_root = <N::TransactionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            &mut cs.ns(|| "Declare the local transitions root"),
+            || Ok(public.local_transitions_root()),
+        )?;
+
         let mut input_serial_numbers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32); // Serial numbers are 32 bytes
+        let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
         let mut input_owners = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_is_dummies = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_ledger_roots_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
 
-        for (i, record) in private.input_records.iter().enumerate() {
+        for (i, (record, ledger_proof)) in private
+            .input_records
+            .iter()
+            .zip_eq(private.ledger_proofs.iter())
+            .enumerate()
+        {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
             // Declare record contents
@@ -268,13 +288,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
 
                 input_serial_numbers.push(candidate_serial_number);
-                input_serial_numbers_bytes.extend_from_slice(&candidate_serial_number_bytes);
+                input_serial_numbers_bytes.push(candidate_serial_number_bytes);
             };
 
             // *******************************************************************
             // Check that the record is well-formed.
             // *******************************************************************
-            {
+            let (commitment, is_dummy) = {
                 let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
                 let given_value_bytes =
@@ -342,11 +362,120 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
 
                 input_owners.push(given_owner);
-                input_commitments.push(candidate_commitment);
+                input_commitments.push(candidate_commitment.clone());
                 input_commitments_bytes.extend_from_slice(&candidate_commitment_bytes);
-                input_is_dummies.push(given_is_dummy);
+                input_is_dummies.push(given_is_dummy.clone());
                 input_values.push(given_value);
+
+                (candidate_commitment, given_is_dummy)
+            };
+
+            // **********************************************************************************
+            // Check that the commitment appears on the ledger or prior transition,
+            // i.e., the membership witness is valid with respect to the ledger root.
+            // **********************************************************************************
+            {
+                // Ensure each commitment is either 1) in the ledger, 2) from a prior local transition, or 3) a dummy.
+                let ledger_cs = &mut cs.ns(|| "Check ledger proof");
+
+                // Compute the transition ID.
+                let transition_inclusion_proof = MerklePathGadget::<_, N::TransitionIDCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the transition ID inclusion proof"),
+                    || Ok(ledger_proof.transition_inclusion_proof()),
+                )?;
+                let candidate_transition_id = transition_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the transition inclusion proof computation"),
+                    &transition_id_crh,
+                    &commitment,
+                )?;
+
+                // Compute the transaction ID.
+                let transaction_id_inclusion_proof = MerklePathGadget::<_, N::TransactionIDCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the transaction ID inclusion proof"),
+                    || Ok(ledger_proof.transaction_inclusion_proof()),
+                )?;
+                let candidate_transaction_id = transaction_id_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the transaction ID inclusion proof computation"),
+                    &transaction_id_crh,
+                    &candidate_transition_id,
+                )?;
+
+                // Determine if the commitment is local.
+                let is_local = candidate_transaction_id.is_eq(
+                    &mut ledger_cs.ns(|| "Check if the local transitions root matches the candidate transaction ID"),
+                    &local_transitions_root,
+                )?;
+
+                // Determine if the commitment is local or dummy.
+                let is_local_or_dummy = Boolean::or(
+                    &mut ledger_cs.ns(|| "Determine if the commitment is local or dummy"),
+                    &is_local,
+                    &is_dummy,
+                )?;
+
+                // Compute the transactions root.
+                let ledger_transactions_root_inclusion_proof =
+                    MerklePathGadget::<_, N::TransactionsRootCRHGadget, _>::alloc(
+                        &mut ledger_cs.ns(|| "Declare the ledger transactions root inclusion proof"),
+                        || Ok(ledger_proof.transactions_inclusion_proof()),
+                    )?;
+                let candidate_ledger_transactions_root = ledger_transactions_root_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the ledger transactions root inclusion proof computation"),
+                    &transactions_root_crh,
+                    &candidate_transaction_id,
+                )?;
+
+                // Compute the block header root.
+                let block_header_root_inclusion_proof = MerklePathGadget::<_, N::BlockHeaderRootCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the block header root inclusion proof"),
+                    || Ok(ledger_proof.block_header_inclusion_proof()),
+                )?;
+                let candidate_block_header_root = block_header_root_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the block header root inclusion proof computation"),
+                    &block_header_root_crh,
+                    &candidate_ledger_transactions_root,
+                )?;
+
+                // Declare the previous block hash.
+                let previous_block_hash = UInt8::alloc_vec(
+                    &mut ledger_cs.ns(|| "Allocate network id"),
+                    &ledger_proof.previous_block_hash().to_bytes_le()?,
+                )?;
+
+                // Construct the block hash preimage.
+                let mut preimage = Vec::new();
+                preimage.extend_from_slice(&previous_block_hash);
+                preimage.extend_from_slice(
+                    &candidate_block_header_root.to_bytes(&mut ledger_cs.ns(|| "block_header_root"))?,
+                );
+
+                // Compute the block hash.
+                let candidate_block_hash =
+                    block_hash_crh.check_evaluation_gadget(&mut ledger_cs.ns(|| "Compute the block hash"), preimage)?;
+
+                // Declare the ledger root.
+                let ledger_root = <N::LedgerRootCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
+                    &mut ledger_cs.ns(|| "Declare the ledger root"),
+                    || Ok(ledger_proof.ledger_root()),
+                )?;
+
+                // Ensure the ledger root inclusion proof is valid.
+                let ledger_root_inclusion_proof = MerklePathGadget::<_, N::LedgerRootCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the ledger root inclusion proof"),
+                    || Ok(ledger_proof.ledger_root_inclusion_proof()),
+                )?;
+                ledger_root_inclusion_proof.conditionally_check_membership(
+                    &mut ledger_cs.ns(|| "Perform the ledger root inclusion proof check"),
+                    &ledger_root_crh,
+                    &ledger_root,
+                    &candidate_block_hash,
+                    &is_local_or_dummy.not(),
+                )?;
+
+                input_ledger_roots_bytes
+                    .push(ledger_root.to_bytes(&mut ledger_cs.ns(|| "Convert ledger root to bytes"))?);
             }
+            // ********************************************************************
         }
 
         // *******************************************************************
@@ -379,140 +508,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             signature_verification.enforce_equal(signature_cs.ns(|| "check_verification"), &Boolean::constant(true))?;
         }
 
-        // **********************************************************************************
-        // Check that the commitment appears on the ledger or prior transition,
-        // i.e., the membership witness is valid with respect to the record commitment root.
-        // **********************************************************************************
-        let (candidate_block_hash_bytes, local_commitments_root_bytes) = {
-            let ledger_cs = &mut cs.ns(|| "Check ledger proof");
-
-            // Declare the ledger commitments root.
-            let ledger_commitments_root = <N::CommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
-                &mut ledger_cs.ns(|| "Declare ledger commitments root"),
-                || Ok(private.ledger_proof.commitments_root()),
-            )?;
-
-            // Declare the local commitments root.
-            let local_commitments_root = <N::LocalCommitmentsTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
-                &mut ledger_cs.ns(|| "Declare local commitments root"),
-                || Ok(private.local_proof.local_commitments_root()),
-            )?;
-
-            // Ensure each commitment is either 1) in the ledger, 2) from a prior local transition, or 3) a dummy.
-            for (i, (commitment, is_dummy)) in input_commitments
-                .iter()
-                .zip_eq(input_is_dummies.iter())
-                .take(N::NUM_INPUT_RECORDS)
-                .enumerate()
-            {
-                let inclusion_cs = &mut ledger_cs.ns(|| format!("Check commitment inclusion proof {}", i));
-
-                let ledger_commitment_inclusion_proof = MerklePathGadget::<_, N::CommitmentsTreeCRHGadget, _>::alloc(
-                    &mut inclusion_cs.ns(|| "Declare ledger commitment inclusion proof"),
-                    || Ok(&private.ledger_proof.commitment_inclusion_proofs()[i]),
-                )?;
-
-                let local_commitment_inclusion_proof =
-                    MerklePathGadget::<_, N::LocalCommitmentsTreeCRHGadget, _>::alloc(
-                        &mut inclusion_cs.ns(|| "Declare local commitment inclusion proof"),
-                        || Ok(&private.local_proof.commitment_inclusion_proofs()[i]),
-                    )?;
-
-                let candidate_ledger_commitments_root = ledger_commitment_inclusion_proof.calculate_root(
-                    &mut inclusion_cs.ns(|| "calculate_root for candidate_ledger_commitments_root"),
-                    &ledger_commitments_tree_crh,
-                    &commitment,
-                )?;
-
-                let candidate_local_commitments_root = local_commitment_inclusion_proof.calculate_root(
-                    &mut inclusion_cs.ns(|| "calculate_root for candidate_local_commitments_root"),
-                    &local_commitments_tree_crh,
-                    &commitment,
-                )?;
-
-                // First, check if the commitment is in the ledger commitments tree.
-                let is_ledger = candidate_ledger_commitments_root.is_eq(
-                    &mut inclusion_cs.ns(|| "ledger commitments root is_eq"),
-                    &ledger_commitments_root,
-                )?;
-
-                // Second, check if the commitment is in the local commitments tree.
-                let is_local = candidate_local_commitments_root.is_eq(
-                    &mut inclusion_cs.ns(|| "local commitments root is_eq"),
-                    &local_commitments_root,
-                )?;
-
-                // Determine if the commitment exists in either the ledger or local.
-                let is_real_commitment = Boolean::or(
-                    &mut inclusion_cs.ns(|| "Determine if the commitment exists in either the ledger or local"),
-                    &is_ledger,
-                    &is_local,
-                )?;
-
-                // Ensure it is consistent with the record's is_dummy flag.
-                is_real_commitment.enforce_equal(&mut inclusion_cs.ns(|| "is_real_commitment"), &is_dummy.not())?;
-            }
-
-            // Ensure ledger commitments root exists in the claimed block.
-            let candidate_block_hash_bytes = {
-                // Declare the block header root.
-                let header_root = <N::BlockHeaderTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(
-                    &mut ledger_cs.ns(|| "Declare block header root"),
-                    || Ok(private.ledger_proof.header_root()),
-                )?;
-
-                // Ensure the header inclusion proof is valid.
-                let header_inclusion_proof = MerklePathGadget::<_, N::BlockHeaderTreeCRHGadget, _>::alloc(
-                    &mut ledger_cs.ns(|| "Declare block header inclusion proof"),
-                    || Ok(private.ledger_proof.header_inclusion_proof()),
-                )?;
-                header_inclusion_proof.check_membership(
-                    &mut ledger_cs.ns(|| "Perform block header inclusion proof check"),
-                    &block_header_tree_parameters,
-                    &header_root,
-                    &ledger_commitments_root,
-                )?;
-
-                // Declare the previous block hash.
-                let previous_block_hash = UInt8::alloc_vec(
-                    &mut ledger_cs.ns(|| "Allocate network id"),
-                    &private.ledger_proof.previous_block_hash().to_bytes_le()?,
-                )?;
-
-                // Construct the block hash preimage.
-                let mut preimage = Vec::new();
-                preimage.extend_from_slice(&previous_block_hash);
-                preimage.extend_from_slice(&header_root.to_bytes(&mut ledger_cs.ns(|| "header_root"))?);
-
-                let candidate_block_hash =
-                    block_hash_crh.check_evaluation_gadget(&mut ledger_cs.ns(|| "Compute the block hash"), preimage)?;
-
-                let given_block_hash =
-                    <N::BlockHashCRHGadget as CRHGadget<N::BlockHashCRH, N::InnerScalarField>>::OutputGadget::alloc(
-                        &mut ledger_cs.ns(|| "Allocate given block hash"),
-                        || Ok(private.ledger_proof.block_hash()),
-                    )?;
-
-                // Ensure the block hash is valid.
-                candidate_block_hash.enforce_equal(
-                    &mut ledger_cs.ns(|| "Check that the block hash is valid"),
-                    &given_block_hash,
-                )?;
-
-                candidate_block_hash.to_bytes(&mut ledger_cs.ns(|| "Convert block hash to bytes"))?
-            };
-
-            let local_commitments_root_bytes =
-                local_commitments_root.to_bytes(&mut ledger_cs.ns(|| "Convert local commitments root to bytes"))?;
-
-            (candidate_block_hash_bytes, local_commitments_root_bytes)
-        };
-        // ********************************************************************
-
-        let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS * 32); // Commitments are 32 bytes
+        let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut ciphertext_ids_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS * 32);
+        let mut ciphertext_ids_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
         for (j, (record, encryption_randomness)) in private
             .output_records
@@ -672,7 +671,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 output_commitments_bytes
-                    .extend_from_slice(&candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "commitment_bytes"))?);
+                    .push(candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "commitment_bytes"))?);
                 output_values.push(given_value);
 
                 given_value_bytes
@@ -866,17 +865,36 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let mut cs = cs.ns(|| "Check that the transition ID is valid.");
 
-            // Encode the preimage for the transition ID.
-            let mut message = Vec::new();
-            message.extend_from_slice(&candidate_block_hash_bytes);
-            message.extend_from_slice(&local_commitments_root_bytes);
-            message.extend_from_slice(&input_serial_numbers_bytes);
-            message.extend_from_slice(&output_commitments_bytes);
-            message.extend_from_slice(&ciphertext_ids_bytes);
-            message.extend_from_slice(&candidate_value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
+            // Encode the leaves for the transition ID.
+            let mut transition_leaves = input_ledger_roots_bytes.clone();
+            transition_leaves.extend_from_slice(&input_serial_numbers_bytes);
+            transition_leaves.extend_from_slice(&output_commitments_bytes);
+            // TODO (howardwu): This is utilizing a bad trick with how our Merkle tree leaves are hashed.
+            transition_leaves.push(ciphertext_ids_bytes);
+            transition_leaves.push(candidate_value_balance.to_bytes(&mut cs.ns(|| "value_balance_bytes"))?);
 
-            let candidate_transition_id = transition_id_crh
-                .check_evaluation_gadget(&mut cs.ns(|| "Compute the transition ID"), message.clone())?;
+            // Sanity check that the correct number of leaves are allocated.
+            // Note: This is *not* enforced in the circuit.
+            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), transition_leaves.len());
+
+            // Allocate the hashed leaves.
+            let hashed_transition_leaves = transition_leaves
+                .iter()
+                .enumerate()
+                .map(|(i, leaf)| {
+                    transition_id_crh.check_evaluation_gadget(
+                        &mut cs.ns(|| format!("Compute the transition leaf {}", i)),
+                        leaf.clone(),
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let candidate_transition_id =
+                compute_root::<<N::TransitionIDParameters as MerkleParameters>::H, N::TransitionIDCRHGadget, _, _>(
+                    &mut cs.ns(|| "Compute the transition ID"),
+                    &transition_id_crh,
+                    &hashed_transition_leaves,
+                )?;
 
             let given_transition_id = <N::TransitionIDCRHGadget as CRHGadget<
                 N::TransitionIDCRH,

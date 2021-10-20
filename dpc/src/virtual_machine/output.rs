@@ -28,7 +28,7 @@ pub struct Output<N: Network> {
     /// The balance of the recipient.
     value: AleoAmount,
     /// The program data of the recipient.
-    payload: Payload,
+    payload: Payload<N>,
     /// The program that was run.
     program_id: N::ProgramID,
 }
@@ -46,7 +46,7 @@ impl<N: Network> Output<N> {
     pub fn new(
         address: Address<N>,
         value: AleoAmount,
-        payload: Payload,
+        payload: Payload<N>,
         program_id: Option<N::ProgramID>,
     ) -> Result<Self> {
         // Retrieve the program ID. If `None` is provided, construct the noop program ID.
@@ -95,7 +95,7 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns a reference to the payload.
-    pub fn payload(&self) -> &Payload {
+    pub fn payload(&self) -> &Payload<N> {
         &self.payload
     }
 

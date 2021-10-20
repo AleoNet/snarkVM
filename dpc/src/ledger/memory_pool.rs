@@ -21,9 +21,15 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub struct MemoryPool<N: Network> {
+    /// The pool of unconfirmed blocks.
+    blocks: HashMap<N::BlockHash, Block<N>>,
+    /// The pool of unconfirmed transactions.
     transactions: HashMap<N::TransactionID, Transaction<N>>,
+    /// The list of unconfirmed serial numbers.
     serial_numbers: HashSet<N::SerialNumber>,
+    /// The list of unconfirmed commitments.
     commitments: HashSet<N::Commitment>,
+    /// The set of open requests.
     requests: HashSet<Request<N>>,
 }
 
@@ -31,6 +37,7 @@ impl<N: Network> MemoryPool<N> {
     /// Initializes a new instance of a memory pool.
     pub fn new() -> Self {
         Self {
+            blocks: Default::default(),
             transactions: Default::default(),
             serial_numbers: Default::default(),
             commitments: Default::default(),
@@ -40,13 +47,7 @@ impl<N: Network> MemoryPool<N> {
 
     /// Returns `true` if the given transaction exists in the memory pool.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        match transaction.to_transaction_id() {
-            Ok(id) => self.transactions.contains_key(&id),
-            Err(error) => {
-                eprintln!("Failed to lookup transaction ID: {}", error);
-                return false;
-            }
-        }
+        self.transactions.contains_key(&transaction.transaction_id())
     }
 
     /// Returns the transactions in the memory pool.
@@ -67,7 +68,7 @@ impl<N: Network> MemoryPool<N> {
         }
 
         // Ensure the transaction does not already exist in the memory pool.
-        let transaction_id = transaction.to_transaction_id()?;
+        let transaction_id = transaction.transaction_id();
         if self.transactions.contains_key(&transaction_id) {
             return Err(anyhow!("Transaction already exists in memory pool"));
         }

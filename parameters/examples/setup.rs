@@ -232,7 +232,7 @@ pub fn posw_setup<N: Network>() -> Result<()> {
 
     // TODO: decide the size of the universal setup
     let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(70000, 70000, 70000).unwrap();
-    let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
+    let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let srs_bytes = universal_srs.to_bytes_le()?;
     println!("srs\n\tsize - {}", srs_bytes.len());
 

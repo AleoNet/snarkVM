@@ -129,6 +129,38 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadge
     }
 }
 
+/// Computes a root given `leaves`. Assumes the number of leaves is
+/// for a full tree, so it hashes the leaves until there is only one element.
+pub fn compute_root<H: CRH, HG: CRHGadget<H, F>, F: PrimeField, CS: ConstraintSystem<F>>(
+    mut cs: CS,
+    crh: &HG,
+    leaves: &[HG::OutputGadget],
+) -> Result<HG::OutputGadget, SynthesisError> {
+    // Assume the leaves are already hashed.
+    let mut current_leaves = leaves.to_vec();
+    let mut level = 0;
+    // Keep hashing pairs until there is only one element - the root.
+    while current_leaves.len() != 1 {
+        current_leaves = current_leaves
+            .chunks(2)
+            .enumerate()
+            .map(|(i, left_right)| {
+                let inner_hash = hash_inner_node_gadget::<H, HG, F, _>(
+                    cs.ns(|| format!("hash left right {} on level {}", i, level)),
+                    crh,
+                    &left_right[0],
+                    &left_right[1],
+                );
+                inner_hash
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        level += 1;
+    }
+
+    let computed_root = current_leaves[0].clone();
+    Ok(computed_root)
+}
+
 pub(crate) fn hash_inner_node_gadget<H, HG, F, CS>(
     mut cs: CS,
     crh: &HG,

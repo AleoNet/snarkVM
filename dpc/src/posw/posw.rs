@@ -28,18 +28,18 @@ use rand::{CryptoRng, Rng};
 pub struct PoSW<N: Network> {
     /// The proving key. If not provided, PoSW will work in verify-only mode
     /// and the `mine` function will panic.
-    proving_key: Option<<<N as Network>::PoswSNARK as SNARK>::ProvingKey>,
+    proving_key: Option<<<N as Network>::PoSWSNARK as SNARK>::ProvingKey>,
     /// The verifying key.
-    verifying_key: <<N as Network>::PoswSNARK as SNARK>::VerifyingKey,
+    verifying_key: <<N as Network>::PoSWSNARK as SNARK>::VerifyingKey,
 }
 
 impl<N: Network> PoSWScheme<N> for PoSW<N> {
     /// Sets up an instance of PoSW using an SRS.
     fn setup<R: Rng + CryptoRng>(
-        srs: &mut SRS<R, <<N as Network>::PoswSNARK as SNARK>::UniversalSetupParameters>,
+        srs: &mut SRS<R, <<N as Network>::PoSWSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError> {
         let (proving_key, verifying_key) =
-            <<N as Network>::PoswSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N>::blank()?, srs)?;
+            <<N as Network>::PoSWSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N>::blank()?, srs)?;
 
         Ok(Self {
             proving_key: Some(proving_key),
@@ -59,12 +59,12 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     }
 
     /// Returns a reference to the PoSW circuit proving key.
-    fn proving_key(&self) -> &Option<<N::PoswSNARK as SNARK>::ProvingKey> {
+    fn proving_key(&self) -> &Option<<N::PoSWSNARK as SNARK>::ProvingKey> {
         &self.proving_key
     }
 
     /// Returns a reference to the PoSW circuit verifying key.
-    fn verifying_key(&self) -> &<N::PoswSNARK as SNARK>::VerifyingKey {
+    fn verifying_key(&self) -> &<N::PoSWSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
     }
 
@@ -87,7 +87,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
             // Generate the proof.
             block_header.set_proof(
-                (&<<N as Network>::PoswSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?).into(),
+                (&<<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?).into(),
             );
 
             if self.verify(block_header) {
@@ -135,7 +135,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         ];
 
         // Ensure the proof is valid.
-        if !<<N as Network>::PoswSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
+        if !<<N as Network>::PoSWSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
             eprintln!("PoSW proof verification failed");
             return false;
         }
@@ -167,7 +167,7 @@ mod tests {
             let max_degree =
                 AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
             let universal_srs =
-                <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
+                <<Testnet2 as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
                 &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
             )

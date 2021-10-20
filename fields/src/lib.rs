@@ -51,8 +51,6 @@ pub use fp12_2over3over2::*;
 mod legendre;
 pub use legendre::*;
 
-pub mod tests_field;
-
 mod to_field_vec;
 pub use to_field_vec::*;
 

@@ -25,17 +25,17 @@ use rand::{CryptoRng, Rng};
 pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     /// Sets up an instance of PoSW using an SRS.
     fn setup<R: Rng + CryptoRng>(
-        srs: &mut SRS<R, <<N as Network>::PoswSNARK as SNARK>::UniversalSetupParameters>,
+        srs: &mut SRS<R, <<N as Network>::PoSWSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError>;
 
     /// Loads an instance of PoSW using stored parameters.
     fn load(is_prover: bool) -> Result<Self, PoswError>;
 
     /// Returns a reference to the PoSW circuit proving key.
-    fn proving_key(&self) -> &Option<<N::PoswSNARK as SNARK>::ProvingKey>;
+    fn proving_key(&self) -> &Option<<N::PoSWSNARK as SNARK>::ProvingKey>;
 
     /// Returns a reference to the PoSW circuit verifying key.
-    fn verifying_key(&self) -> &<N::PoswSNARK as SNARK>::VerifyingKey;
+    fn verifying_key(&self) -> &<N::PoSWSNARK as SNARK>::VerifyingKey;
 
     /// Given the leaves of the block header, it will calculate a PoSW and nonce
     /// such that they are under the difficulty target.

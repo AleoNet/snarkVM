@@ -15,9 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use snarkvm_algorithms::merkle_tree::*;
 
 use anyhow::{anyhow, Result};
 use chrono::Utc;
+use itertools::Itertools;
 use std::collections::HashMap;
 
 pub const TWO_HOURS_UNIX: i64 = 7200;
@@ -34,14 +36,6 @@ pub struct Blocks<N: Network> {
     headers: HashMap<u32, BlockHeader<N>>,
     /// The chain of block transactions.
     transactions: HashMap<u32, Transactions<N>>,
-    /// The tree of serial numbers.
-    serial_numbers: SerialNumbers<N>,
-    /// The roots of serial numbers trees.
-    serial_numbers_roots: HashMap<N::SerialNumbersRoot, u32>,
-    /// The tree of commitments.
-    commitments: Commitments<N>,
-    /// The roots of commitments trees.
-    commitments_roots: HashMap<N::CommitmentsRoot, u32>,
 }
 
 impl<N: Network> Blocks<N> {
@@ -56,10 +50,6 @@ impl<N: Network> Blocks<N> {
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
-            serial_numbers: SerialNumbers::new()?,
-            serial_numbers_roots: Default::default(),
-            commitments: Commitments::new()?,
-            commitments_roots: Default::default(),
         };
 
         blocks
@@ -67,10 +57,6 @@ impl<N: Network> Blocks<N> {
             .insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
-        blocks.serial_numbers.add_all(&genesis_block.serial_numbers())?;
-        blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
-        blocks.commitments.add_all(&genesis_block.commitments())?;
-        blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
         Ok(blocks)
     }
@@ -163,9 +149,17 @@ impl<N: Network> Blocks<N> {
             || self.transactions.contains_key(&height)
     }
 
+    /// Returns `true` if the given ledger root exists.
+    pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
+        self.headers
+            .values()
+            .map(BlockHeader::ledger_root)
+            .any(|root| root == *ledger_root)
+    }
+
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
-        self.current_hash == *block_hash || self.previous_hashes.values().filter(|hash| *hash == block_hash).count() > 0
+        self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
     }
 
     /// Returns `true` if the given transaction exists.
@@ -173,29 +167,25 @@ impl<N: Network> Blocks<N> {
         self.transactions
             .values()
             .flat_map(|transactions| &**transactions)
-            .filter(|tx| *tx == transaction)
-            .count()
-            > 0
-    }
-
-    /// Returns `true` if the given serial numbers root exists.
-    pub fn contains_serial_numbers_root(&self, serial_numbers_root: &N::SerialNumbersRoot) -> bool {
-        self.serial_numbers_roots.contains_key(serial_numbers_root)
+            .any(|tx| *tx == *transaction)
     }
 
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
-        self.serial_numbers.contains_serial_number(serial_number)
-    }
-
-    /// Returns `true` if the given commitments root exists.
-    pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
-        self.commitments_roots.contains_key(commitments_root)
+        // TODO (howardwu): Optimize this operation.
+        self.transactions
+            .values()
+            .flat_map(|transactions| (**transactions).iter().map(Transaction::serial_numbers))
+            .any(|serial_numbers| serial_numbers.contains(serial_number))
     }
 
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
-        self.commitments.contains_commitment(commitment)
+        // TODO (howardwu): Optimize this operation.
+        self.transactions
+            .values()
+            .flat_map(|transactions| (**transactions).iter().map(Transaction::commitments))
+            .any(|commitments| commitments.contains(commitment))
     }
 
     /// Adds the given block as the next block in the chain.
@@ -258,12 +248,12 @@ impl<N: Network> Blocks<N> {
             if self.contains_transaction(transaction) {
                 return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
             }
-            // Ensure the transaction in the block references a valid past or current block hash.
-            for block_hash in &transaction.block_hashes() {
-                if !self.contains_block_hash(block_hash) {
+            // Ensure the transaction in the block references a valid past or current ledger root.
+            for ledger_root in &transaction.ledger_roots() {
+                if !self.contains_ledger_root(ledger_root) {
                     return Err(anyhow!(
-                        "The given transaction references a non-existent block hash {}",
-                        block_hash
+                        "The given transaction references a non-existent ledger root {}",
+                        ledger_root
                     ));
                 }
             }
@@ -272,7 +262,7 @@ impl<N: Network> Blocks<N> {
         // Ensure the ledger does not already contain a given serial numbers.
         let serial_numbers = block.serial_numbers();
         for serial_number in &serial_numbers {
-            if self.serial_numbers.contains_serial_number(serial_number) {
+            if self.contains_serial_number(serial_number) {
                 return Err(anyhow!("Serial number already exists in the ledger"));
             }
         }
@@ -280,7 +270,7 @@ impl<N: Network> Blocks<N> {
         // Ensure the ledger does not already contain a given commitments.
         let commitments = block.commitments();
         for commitment in &commitments {
-            if self.commitments.contains_commitment(commitment) {
+            if self.contains_commitment(commitment) {
                 return Err(anyhow!("Commitment already exists in the ledger"));
             }
         }
@@ -294,10 +284,6 @@ impl<N: Network> Blocks<N> {
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
-            blocks.serial_numbers.add_all(&serial_numbers)?;
-            blocks.serial_numbers_roots.insert(blocks.serial_numbers.root(), height);
-            blocks.commitments.add_all(&commitments)?;
-            blocks.commitments_roots.insert(blocks.commitments.root(), height);
 
             *self = blocks;
         }
@@ -305,43 +291,113 @@ impl<N: Network> Blocks<N> {
         Ok(())
     }
 
-    ///
-    /// Returns the ledger proof for the given commitments with the current block hash.
-    ///
-    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
-    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
-    ///
-    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        // Ensure the correct number of commitments is given.
-        if commitments.len() > N::NUM_INPUT_RECORDS {
-            return Err(anyhow!(
-                "Incorrect number of given commitments. Expected up to {}, found {}",
-                N::NUM_INPUT_RECORDS,
-                commitments.len(),
-            ));
-        }
+    // TODO (howardwu): Optimize this function.
+    pub fn to_ledger_root(&self) -> Result<N::LedgerRoot> {
+        let mut ledger = LedgerTree::<N>::new()?;
+        ledger.add_all(
+            self.previous_hashes
+                .values()
+                .chain(vec![self.current_hash].iter())
+                .cloned()
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        Ok(ledger.root())
+    }
 
-        let commitment_inclusion_proofs = commitments
+    // TODO (howardwu): Optimize this function.
+    /// Returns an inclusion proof for the ledger tree.
+    pub fn to_ledger_root_inclusion_proof(
+        &self,
+        block_hash: &N::BlockHash,
+    ) -> Result<MerklePath<N::LedgerRootParameters>> {
+        let mut ledger = LedgerTree::<N>::new()?;
+        ledger.add_all(
+            self.previous_hashes
+                .values()
+                .chain(vec![self.current_hash].iter())
+                .cloned()
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        Ok(ledger.to_ledger_inclusion_proof(block_hash)?)
+    }
+
+    ///
+    /// Returns a ledger proof for the given commitment.
+    ///
+    pub fn to_ledger_inclusion_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+        // TODO (howardwu): Optimize this operation.
+        let transaction = self
+            .transactions
+            .values()
+            .flat_map(|transactions| &**transactions)
+            .filter(|transaction| transaction.commitments().contains(&commitment))
+            .collect::<Vec<_>>();
+        assert_eq!(1, transaction.len()); // TODO (howardwu): Clean this up with a proper error handler.
+        let transaction = transaction[0];
+        let local_proof = {
+            // Initialize a transitions tree.
+            let mut transitions_tree = Transitions::<N>::new()?;
+            // Add all given transition IDs to the tree.
+            transitions_tree.add_all(&transaction.transitions())?;
+            // Return the local proof for the transitions tree.
+            transitions_tree.to_local_proof(commitment)?
+        };
+        let transaction_id = local_proof.transaction_id();
+
+        // TODO (howardwu): Optimize this operation.
+        let block_height = self
+            .transactions
             .iter()
-            .map(|commitment| Ok(self.commitments.to_commitment_inclusion_proof(commitment)?))
-            .collect::<Result<Vec<_>>>()?;
-        let commitments_root = self.commitments.root();
+            .filter_map(
+                |(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
+                    true => Some(block_height),
+                    false => None,
+                },
+            )
+            .collect::<Vec<_>>();
+        assert_eq!(1, block_height.len()); // TODO (howardwu): Clean this up with a proper error handler.
+        let block_height = *block_height[0];
+        let transactions = self.get_block_transactions(block_height)?;
+        let block_header = self.get_block_header(block_height)?;
 
-        let header = self.get_block_header(self.current_height)?;
-        let header_inclusion_proof = header.to_header_inclusion_proof(2, commitments_root)?;
-        let header_root = header.to_header_root()?;
+        // Compute the transactions inclusion proof.
+        let transactions_inclusion_proof = {
+            // TODO (howardwu): Optimize this operation.
+            let index = transactions
+                .transaction_ids()
+                .enumerate()
+                .filter_map(|(index, id)| match id == transaction_id {
+                    true => Some(index),
+                    false => None,
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(1, index.len()); // TODO (howardwu): Clean this up with a proper error handler.
+            transactions.to_transactions_inclusion_proof(index[0], transaction_id)?
+        };
 
+        // Compute the block header inclusion proof.
+        let transactions_root = transactions.to_transactions_root()?;
+        let block_header_inclusion_proof = block_header.to_header_inclusion_proof(1, transactions_root)?;
+        let block_header_root = block_header.to_header_root()?;
         let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
         let current_block_hash = self.current_hash;
 
+        // TODO (howardwu): Optimize this operation.
+        let ledger_root = self.to_ledger_root()?;
+        let ledger_root_inclusion_proof = self.to_ledger_root_inclusion_proof(&current_block_hash)?;
+
         LedgerProof::new(
+            ledger_root,
+            ledger_root_inclusion_proof,
             current_block_hash,
             previous_block_hash,
-            header_root,
-            header_inclusion_proof,
-            commitments_root,
-            commitment_inclusion_proofs,
-            commitments.to_vec(),
+            block_header_root,
+            block_header_inclusion_proof,
+            transactions_root,
+            transactions_inclusion_proof,
+            local_proof,
         )
     }
 
@@ -381,15 +437,5 @@ impl<N: Network> Blocks<N> {
             TARGET_BLOCK_TIME_IN_SECS,
             previous_difficulty_target,
         )
-    }
-
-    /// Returns the latest serial numbers.
-    pub(crate) fn latest_serial_numbers(&self) -> SerialNumbers<N> {
-        self.serial_numbers.clone()
-    }
-
-    /// Returns the latest commitments.
-    pub(crate) fn latest_commitments(&self) -> Commitments<N> {
-        self.commitments.clone()
     }
 }

@@ -20,27 +20,29 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
 type Caller<N> = Address<N>;
 type Recipient<N> = Address<N>;
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
-    Copy(bound = "N: Network"),
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
     PartialEq(bound = "N: Network")
 )]
 pub struct FunctionInputs<N: Network> {
+    #[serde(skip)]
     pub(crate) caller: Caller<N>,
+    #[serde(skip)]
     pub(crate) recipient: Recipient<N>,
     pub(crate) amount: AleoAmount,
-    pub(crate) record_payload: Payload,
+    pub(crate) record_payload: Payload<N>,
 }
 
 impl<N: Network> FunctionInputs<N> {
-    pub fn new(caller: &Caller<N>, recipient: &Recipient<N>, amount: AleoAmount, record_payload: Payload) -> Self {
+    pub fn new(caller: &Caller<N>, recipient: &Recipient<N>, amount: AleoAmount, record_payload: Payload<N>) -> Self {
         Self {
             caller: *caller,
             recipient: *recipient,

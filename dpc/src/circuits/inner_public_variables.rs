@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
 
@@ -24,8 +23,8 @@ use anyhow::Result;
 #[derive(Clone, Debug)]
 pub struct InnerPublicVariables<N: Network> {
     /// Transition ID
-    pub(super) transition_id: N::TransitionID,
-
+    transition_id: N::TransitionID,
+    local_transitions_root: N::TransactionID,
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
     /// Program ID
@@ -36,29 +35,38 @@ impl<N: Network> InnerPublicVariables<N> {
     pub(crate) fn blank() -> Self {
         Self {
             transition_id: Default::default(),
+            local_transitions_root: Default::default(),
             program_id: Some(N::ProgramID::default()),
         }
     }
 
-    pub(crate) fn new(transition_id: N::TransitionID, program_id: Option<N::ProgramID>) -> Self {
+    pub(crate) fn new(
+        transition_id: N::TransitionID,
+        local_transitions_root: N::TransactionID,
+        program_id: Option<N::ProgramID>,
+    ) -> Self {
         Self {
             transition_id,
+            local_transitions_root,
             program_id,
         }
     }
 
-    /// Returns the transaction ID.
+    /// Returns the transition ID.
     pub(crate) fn transition_id(&self) -> N::TransitionID {
         self.transition_id
     }
+
+    pub(crate) fn local_transitions_root(&self) -> N::TransactionID {
+        self.local_transitions_root
+    }
 }
 
-impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
+
+        v.extend_from_slice(&self.local_transitions_root.to_field_elements()?);
 
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);

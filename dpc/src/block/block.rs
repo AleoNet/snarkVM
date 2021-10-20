@@ -14,15 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, BlockHeader, LedgerProof, Network, Transaction, Transactions};
-use snarkvm_algorithms::{merkle_tree::MerkleTree, CRH};
+use crate::{
+    Address,
+    AleoAmount,
+    BlockHeader,
+    LedgerProof,
+    LedgerTree,
+    LedgerTreeScheme,
+    Network,
+    Transaction,
+    Transactions,
+};
+use snarkvm_algorithms::CRH;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::{
     io::{Read, Result as IoResult, Write},
-    sync::{atomic::AtomicBool, Arc},
+    sync::atomic::AtomicBool,
     time::Instant,
 };
 
@@ -45,9 +55,8 @@ impl<N: Network> Block<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
+        ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
-        serial_numbers_root: N::SerialNumbersRoot,
-        commitments_root: N::CommitmentsRoot,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self> {
@@ -58,9 +67,8 @@ impl<N: Network> Block<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            ledger_root,
             transactions.to_transactions_root()?,
-            serial_numbers_root,
-            commitments_root,
             terminator,
             rng,
         )?;
@@ -78,18 +86,6 @@ impl<N: Network> Block<N> {
         // Compute the transactions root from the transactions.
         let transactions_root = transactions.to_transactions_root()?;
 
-        // Compute the serial numbers root from the transactions.
-        let serial_numbers_tree = MerkleTree::new(
-            Arc::new(N::serial_numbers_tree_parameters().clone()),
-            &transactions.serial_numbers().collect::<Vec<_>>(),
-        )?;
-
-        // Compute the commitments root from the transactions.
-        let commitments_tree = MerkleTree::new(
-            Arc::new(N::commitments_tree_parameters().clone()),
-            &transactions.commitments().collect::<Vec<_>>(),
-        )?;
-
         // Construct the genesis block header metadata.
         let block_height = 0u32;
         let block_timestamp = 0i64;
@@ -100,9 +96,8 @@ impl<N: Network> Block<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            LedgerTree::<N>::new()?.root(),
             transactions_root,
-            *serial_numbers_tree.root(),
-            *commitments_tree.root(),
             &AtomicBool::new(false),
             rng,
         )?;
@@ -249,19 +244,14 @@ impl<N: Network> Block<N> {
         &self.transactions
     }
 
+    /// Returns the ledger root in the block header.
+    pub fn ledger_root(&self) -> N::LedgerRoot {
+        self.header.ledger_root()
+    }
+
     /// Returns the transactions root in the block header.
     pub fn transactions_root(&self) -> N::TransactionsRoot {
         self.header.transactions_root()
-    }
-
-    /// Returns the serial numbers root in the block header.
-    pub fn serial_numbers_root(&self) -> N::SerialNumbersRoot {
-        self.header.serial_numbers_root()
-    }
-
-    /// Returns the commitments root in the block header.
-    pub fn commitments_root(&self) -> N::CommitmentsRoot {
-        self.header.commitments_root()
     }
 
     /// Returns the block height.

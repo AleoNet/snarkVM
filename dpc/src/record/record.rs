@@ -16,9 +16,10 @@
 
 use crate::{Address, ComputeKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{CommitmentScheme, PRF};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer, UniformRand};
 
 use rand::{CryptoRng, Rng};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -37,10 +38,10 @@ pub struct Record<N: Network> {
     owner: Address<N>,
     // TODO (raychu86) use AleoAmount which will guard the value range
     value: u64,
-    payload: Payload,
+    payload: Payload<N>,
     program_id: N::ProgramID,
     serial_number_nonce: N::SerialNumber,
-    commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+    commitment_randomness: N::CommitmentRandomness,
     commitment: N::Commitment,
 }
 
@@ -50,7 +51,7 @@ impl<N: Network> Record<N> {
         Self::new_input(
             owner,
             0,
-            Payload::default(),
+            Payload::<N>::default(),
             *N::noop_program_id(),
             UniformRand::rand(rng),
             UniformRand::rand(rng),
@@ -61,10 +62,10 @@ impl<N: Network> Record<N> {
     pub fn new_input(
         owner: Address<N>,
         value: u64,
-        payload: Payload,
+        payload: Payload<N>,
         program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
-        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: N::CommitmentRandomness,
     ) -> Result<Self, RecordError> {
         Self::from(
             owner,
@@ -85,7 +86,7 @@ impl<N: Network> Record<N> {
         Self::new_output(
             owner,
             0,
-            Payload::default(),
+            Payload::<N>::default(),
             *N::noop_program_id(),
             serial_number_nonce,
             rng,
@@ -96,7 +97,7 @@ impl<N: Network> Record<N> {
     pub fn new_output<R: Rng + CryptoRng>(
         owner: Address<N>,
         value: u64,
-        payload: Payload,
+        payload: Payload<N>,
         program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
         rng: &mut R,
@@ -111,14 +112,13 @@ impl<N: Network> Record<N> {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn from(
         owner: Address<N>,
         value: u64,
-        payload: Payload,
+        payload: Payload<N>,
         program_id: N::ProgramID,
         serial_number_nonce: N::SerialNumber,
-        commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness,
+        commitment_randomness: N::CommitmentRandomness,
     ) -> Result<Self, RecordError> {
         // Determine if the record is a dummy.
         let is_dummy = value == 0 && payload.is_empty() && program_id == *N::noop_program_id();
@@ -163,7 +163,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the record payload.
-    pub fn payload(&self) -> &Payload {
+    pub fn payload(&self) -> &Payload<N> {
         &self.payload
     }
 
@@ -178,7 +178,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the randomness used for the commitment.
-    pub fn commitment_randomness(&self) -> <N::CommitmentScheme as CommitmentScheme>::Randomness {
+    pub fn commitment_randomness(&self) -> N::CommitmentRandomness {
         self.commitment_randomness.clone()
     }
 
@@ -220,11 +220,10 @@ impl<N: Network> FromBytes for Record<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<N> = FromBytes::read_le(&mut reader)?;
         let value: u64 = FromBytes::read_le(&mut reader)?;
-        let payload: Payload = FromBytes::read_le(&mut reader)?;
+        let payload: Payload<N> = FromBytes::read_le(&mut reader)?;
         let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
         let serial_number_nonce: N::SerialNumber = FromBytes::read_le(&mut reader)?;
-        let commitment_randomness: <N::CommitmentScheme as CommitmentScheme>::Randomness =
-            FromBytes::read_le(&mut reader)?;
+        let commitment_randomness: N::CommitmentRandomness = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from(
             owner,
@@ -241,16 +240,170 @@ impl<N: Network> FromStr for Record<N> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
-        Ok(Self::read_le(&hex::decode(record)?[..])?)
+        let record = serde_json::Value::from_str(record)?;
+        let commitment: N::Commitment = serde_json::from_value(record["commitment"].clone())?;
+
+        // Recover the record.
+        let record = Self::from(
+            serde_json::from_value(record["owner"].clone())?,
+            serde_json::from_value(record["value"].clone())?,
+            serde_json::from_value(record["payload"].clone())?,
+            serde_json::from_value(record["program_id"].clone())?,
+            serde_json::from_value(record["serial_number_nonce"].clone())?,
+            serde_json::from_value(record["commitment_randomness"].clone())?,
+        )?;
+
+        // Ensure the commitment matches.
+        match commitment == record.commitment() {
+            true => Ok(record),
+            false => Err(RecordError::InvalidCommitment(
+                commitment.to_string(),
+                record.commitment().to_string(),
+            )),
+        }
     }
 }
 
 impl<N: Network> fmt::Display for Record<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            hex::encode(to_bytes_le![self].expect("serialization to bytes failed"))
+        let record = serde_json::json!({
+           "owner": self.owner,
+           "value": self.value,
+           "payload": self.payload,
+           "program_id": self.program_id,
+           "serial_number_nonce": self.serial_number_nonce,
+           "commitment_randomness": self.commitment_randomness,
+           "commitment": self.commitment
+        });
+        write!(f, "{}", record)
+    }
+}
+
+impl<N: Network> Serialize for Record<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Record<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "record", N::RECORD_SIZE_IN_BYTES),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{testnet2::Testnet2, Address, PrivateKey};
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
+
+    #[test]
+    fn test_serde_json_noop() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Noop output record
+        let expected_record = Record::new_noop_output(address, UniformRand::rand(rng), rng).unwrap();
+
+        // Serialize
+        let expected_string = &expected_record.to_string();
+        let candidate_string = serde_json::to_string(&expected_record).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_record, Record::from_str(&expected_string).unwrap());
+        assert_eq!(expected_record, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_serde_json() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Output record
+        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
+        rng.fill(&mut payload);
+        let expected_record = Record::new_output(
+            address,
+            1234,
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            UniformRand::rand(rng),
+            rng,
         )
+        .unwrap();
+
+        // Serialize
+        let expected_string = &expected_record.to_string();
+        let candidate_string = serde_json::to_string(&expected_record).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_record, Record::from_str(&expected_string).unwrap());
+        assert_eq!(expected_record, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode_noop() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Noop output record
+        let expected_record = Record::new_noop_output(address, UniformRand::rand(rng), rng).unwrap();
+
+        // Serialize
+        let expected_bytes = expected_record.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_record).unwrap()[..]);
+
+        // Deserialize
+        assert_eq!(expected_record, Record::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_record, bincode::deserialize(&expected_bytes[..]).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Output record
+        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
+        rng.fill(&mut payload);
+        let expected_record = Record::new_output(
+            address,
+            1234,
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            UniformRand::rand(rng),
+            rng,
+        )
+        .unwrap();
+
+        // Serialize
+        let expected_bytes = expected_record.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_record).unwrap()[..]);
+
+        // Deserialize
+        assert_eq!(expected_record, Record::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_record, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 }
