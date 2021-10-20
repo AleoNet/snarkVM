@@ -30,8 +30,8 @@ use std::{collections::HashMap, sync::Arc};
 pub struct LedgerTree<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: Arc<MerkleTree<N::LedgerRootParameters>>,
-    block_hashes: HashMap<N::BlockHash, u64>,
-    current_index: u64,
+    block_hashes: HashMap<N::BlockHash, u32>,
+    current_index: u32,
 }
 
 impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
@@ -49,7 +49,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
     /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds the given block hash to the tree, returning its index in the tree.
-    fn add(&mut self, block_hash: &N::BlockHash) -> Result<u64> {
+    fn add(&mut self, block_hash: &N::BlockHash) -> Result<u32> {
         // Ensure the block_hash does not already exist in the tree.
         if self.contains_block_hash(block_hash) {
             return Err(MerkleError::Message(format!("{} already exists in the ledger tree", block_hash)).into());
@@ -64,7 +64,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
     /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds all given block hashes to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u64, u64)> {
+    fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u32, u32)> {
         // Ensure the list of given block hashes is non-empty.
         if block_hashes.is_empty() {
             return Err(anyhow!("The list of given block hashes must be non-empty"));
@@ -88,9 +88,9 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
             block_hashes
                 .into_iter()
                 .enumerate()
-                .map(|(index, block_hash)| (*block_hash, start_index + index as u64)),
+                .map(|(index, block_hash)| (*block_hash, start_index + index as u32)),
         );
-        self.current_index += num_block_hashes as u64;
+        self.current_index += num_block_hashes as u32;
         let end_index = self.current_index - 1;
 
         Ok((start_index, end_index))
@@ -102,7 +102,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
     }
 
     /// Returns the index for the given block hash, if it exists.
-    fn get_block_hash_index(&self, block_hash: &N::BlockHash) -> Option<&u64> {
+    fn get_block_hash_index(&self, block_hash: &N::BlockHash) -> Option<&u32> {
         self.block_hashes.get(block_hash)
     }
 

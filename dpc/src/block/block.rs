@@ -244,6 +244,11 @@ impl<N: Network> Block<N> {
         &self.transactions
     }
 
+    /// Returns the ledger root in the block header.
+    pub fn ledger_root(&self) -> N::LedgerRoot {
+        self.header.ledger_root()
+    }
+
     /// Returns the transactions root in the block header.
     pub fn transactions_root(&self) -> N::TransactionsRoot {
         self.header.transactions_root()

@@ -25,16 +25,16 @@ pub trait LedgerTreeScheme<N: Network>: Sized {
     fn new() -> Result<Self>;
 
     /// Adds the given commitment to the tree, returning its index in the tree.
-    fn add(&mut self, block_hash: &N::BlockHash) -> Result<u64>;
+    fn add(&mut self, block_hash: &N::BlockHash) -> Result<u32>;
 
     /// Adds all given block hashes to the tree, returning the start and ending index in the tree.
-    fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u64, u64)>;
+    fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u32, u32)>;
 
     /// Returns `true` if the given block hash exists.
     fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool;
 
     /// Returns the index for the given block hash, if it exists.
-    fn get_block_hash_index(&self, block_hash: &N::BlockHash) -> Option<&u64>;
+    fn get_block_hash_index(&self, block_hash: &N::BlockHash) -> Option<&u32>;
 
     /// Returns the ledger root.
     fn root(&self) -> N::LedgerRoot;
