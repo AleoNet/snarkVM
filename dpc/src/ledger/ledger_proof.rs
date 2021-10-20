@@ -15,17 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{
-    merkle_tree::{MerklePath, MerkleTree},
-    prelude::*,
-};
+use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    sync::Arc,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// A ledger proof of inclusion.
 #[derive(Derivative)]
@@ -227,41 +221,13 @@ impl<N: Network> ToBytes for LedgerProof<N> {
 
 impl<N: Network> Default for LedgerProof<N> {
     fn default() -> Self {
-        let empty_commitment = N::Commitment::default();
-
-        let header_tree = MerkleTree::<N::BlockHeaderRootParameters>::new(
-            Arc::new(N::block_header_root_parameters().clone()),
-            &vec![empty_commitment; N::POSW_NUM_LEAVES],
-        )
-        .expect("Ledger proof failed to create default header tree");
-
-        let previous_block_hash = N::BlockHash::default();
-        let header_root = *header_tree.root();
-        let header_inclusion_proof = header_tree
-            .generate_proof(2, &empty_commitment)
-            .expect("Ledger proof failed to create default header inclusion proof");
-
-        let block_hash = N::block_hash_crh()
-            .hash(
-                &[
-                    previous_block_hash
-                        .to_bytes_le()
-                        .expect("Ledger proof failed to convert previous block hash to bytes"),
-                    header_root
-                        .to_bytes_le()
-                        .expect("Ledger proof failed to convert header root to bytes"),
-                ]
-                .concat(),
-            )
-            .expect("Ledger proof failed to compute block hash");
-
         Self {
-            ledger_root: Default::default(),
+            ledger_root: LedgerTree::<N>::new().expect("Failed to create ledger tree").root(),
             ledger_root_inclusion_proof: MerklePath::default(),
-            block_hash,
-            previous_block_hash,
-            block_header_root: header_root,
-            block_header_inclusion_proof: header_inclusion_proof,
+            block_hash: Default::default(),
+            previous_block_hash: Default::default(),
+            block_header_root: Default::default(),
+            block_header_inclusion_proof: MerklePath::default(),
             transactions_root: Default::default(),
             transactions_inclusion_proof: MerklePath::default(),
             local_proof: Default::default(),
