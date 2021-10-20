@@ -42,11 +42,20 @@ pub enum RecordError {
     #[error("Given compute key does not correspond to the record owner")]
     IncorrectComputeKey,
 
+    #[error("Invalid commitment. Expected {}, found {}", _0, _1)]
+    InvalidCommitment(String, String),
+
     #[error("{}", _0)]
     PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),
+}
+
+impl From<serde_json::Error> for RecordError {
+    fn from(error: serde_json::Error) -> Self {
+        RecordError::Crate("serde_json::Error", format!("{:?}", error))
+    }
 }
 
 impl From<std::io::Error> for RecordError {

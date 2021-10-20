@@ -25,6 +25,8 @@ pub struct VirtualMachine<N: Network> {
     local_commitments: LocalCommitments<N>,
     /// The current list of transitions.
     transitions: Vec<Transition<N>>,
+    /// The current list of events.
+    events: Vec<Event<N>>,
 }
 
 impl<N: Network> VirtualMachine<N> {
@@ -33,6 +35,7 @@ impl<N: Network> VirtualMachine<N> {
         Ok(Self {
             local_commitments: LocalCommitments::new()?,
             transitions: Default::default(),
+            events: Default::default(),
         })
     }
 
@@ -88,18 +91,24 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the transition.
-        let transition = Transition::<N>::from(request, &response, outer_proof)?;
+        let transition = Transition::<N>::new(request, &response, outer_proof)?;
 
         // Update the state of the virtual machine.
         self.local_commitments.add(transition.commitments())?;
         self.transitions.push(transition);
+        self.events.extend_from_slice(response.events());
 
         Ok(self)
     }
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(N::NETWORK_ID, *N::inner_circuit_id(), self.transitions.clone())
+        Transaction::from(
+            N::NETWORK_ID,
+            *N::inner_circuit_id(),
+            self.transitions.clone(),
+            self.events.clone(),
+        )
     }
 
     /// Performs a noop transition.

@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FunctionType {
     Noop,
     Add,
@@ -49,7 +51,7 @@ impl FunctionType {
             Self::Update => 1,
             Self::Remove => 0,
             Self::DoubleAdd => 2,
-            Self::DoubleRemove => 2,
+            Self::DoubleRemove => 0,
             Self::Join => 1,
             Self::Split => 2,
             Self::Full => 2,

@@ -80,9 +80,15 @@ impl Network for Testnet1 {
     const NETWORK_ID: u16 = 1u16;
     const NETWORK_NAME: &'static str = "testnet1";
 
-    const NUM_EVENTS: usize = 1024;
+    const NUM_EVENTS: usize = 512;
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
+
+    const ADDRESS_SIZE_IN_BYTES: usize = 32;
+    const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const RECORD_SIZE_IN_BYTES: usize = 280;
+    const PAYLOAD_SIZE_IN_BYTES: usize = 128;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1129;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const POSW_NUM_LEAVES: usize = 8;
@@ -108,6 +114,7 @@ impl Network for Testnet1 {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1>>;
+    type OuterProof = <Self::OuterSNARK as SNARK>::Proof;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
@@ -144,6 +151,7 @@ impl Network for Testnet1 {
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
+    type CommitmentRandomness = <Self::CommitmentScheme as CommitmentScheme>::Randomness;
     type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
 
     type CommitmentsTreeCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;

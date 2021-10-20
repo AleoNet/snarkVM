@@ -16,13 +16,14 @@
 
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
 };
 
 /// Represents the amount of ALEOs.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AleoAmount(pub i64);
 
 pub enum Denomination {

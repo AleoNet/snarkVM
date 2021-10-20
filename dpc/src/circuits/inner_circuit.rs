@@ -140,7 +140,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // Declares a constant for a 0 value in a record.
         let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
         // Declares a constant for an empty payload in a record.
-        let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
+        let empty_payload = UInt8::constant_vec(&Payload::<N>::default().to_bytes_le()?);
         // Declare the noop program ID as bytes.
         let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
 

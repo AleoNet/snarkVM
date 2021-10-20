@@ -33,6 +33,7 @@ use crate::{
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     signature::{AleoSignature, AleoSignatureScheme},
+    SignatureScheme,
 };
 use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
 use snarkvm_fields::{FieldParameters, PrimeField};
@@ -411,7 +412,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Compute G^s.
         let g_s = {
             let mut g_s = zero_affine.clone();
-            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(s).enumerate() {
+            for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(s).enumerate() {
                 let added = g_s.add_constant(cs.ns(|| format!("add_g_s_{}", i)), base)?;
 
                 g_s = TEAffineGadget::<TE, F>::conditionally_select(
@@ -513,7 +514,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             // Compute G^sk_prf.
             let g_sk_prf = {
                 let mut g_sk_prf = zero_affine.clone();
-                for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(sk_prf).enumerate() {
+                for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(sk_prf).enumerate() {
                     let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), base)?;
 
                     g_sk_prf = TEAffineGadget::<TE, F>::conditionally_select(

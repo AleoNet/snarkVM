@@ -19,12 +19,13 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
 type Caller<N> = Address<N>;
 type Recipient<N> = Address<N>;
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),

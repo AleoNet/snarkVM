@@ -17,15 +17,19 @@
 use crate::{account_format, AccountError, ComputeKey, Network, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_curves::AffineCurve;
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use bech32::{self, FromBase32, ToBase32};
-use std::{
+use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},
     ops::Deref,
     str::FromStr,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
 };
+
+use bech32::{self, FromBase32, ToBase32};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Derivative)]
 #[derivative(
@@ -159,10 +163,8 @@ impl<N: Network> FromStr for Address<N> {
 
 impl<N: Network> fmt::Display for Address<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Write the encryption key to a buffer.
-        let mut encryption_key = [0u8; 32];
-        self.write_le(&mut encryption_key[0..32])
-            .expect("Failed to write encryption key as bytes");
+        // Convert the encryption key to bytes.
+        let encryption_key = self.to_bytes_le().expect("Failed to write encryption key as bytes");
 
         bech32::encode(
             &account_format::ADDRESS_PREFIX.to_string(),
@@ -180,10 +182,75 @@ impl<N: Network> fmt::Debug for Address<N> {
     }
 }
 
+impl<N: Network> Serialize for Address<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Address<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "address", N::ADDRESS_SIZE_IN_BYTES),
+        }
+    }
+}
+
 impl<N: Network> Deref for Address<N> {
     type Target = <N::AccountEncryptionScheme as EncryptionScheme>::PublicKey;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+
+    use rand::thread_rng;
+
+    #[test]
+    fn test_serde_json() {
+        let rng = &mut thread_rng();
+
+        let private_key = PrivateKey::new(rng);
+        let expected_address: Address<Testnet2> = private_key.into();
+
+        // Serialize
+        let expected_string = &expected_address.to_string();
+        let candidate_string = serde_json::to_string(&expected_address).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_address, Address::from_str(&expected_string).unwrap());
+        assert_eq!(expected_address, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let rng = &mut thread_rng();
+
+        let private_key = PrivateKey::new(rng);
+        let expected_address: Address<Testnet2> = private_key.into();
+
+        // Serialize
+        let expected_bytes = expected_address.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_address).unwrap()[..]);
+
+        // Deserialize
+        assert_eq!(expected_address, Address::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_address, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 }

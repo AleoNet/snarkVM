@@ -17,9 +17,10 @@
 use crate::{Network, Operation};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Event<N: Network> {
     /// Emits publicly-visible arbitrary data.
     Custom(Vec<u8>),

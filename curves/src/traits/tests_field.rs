@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::FftParameters, FftField, Field, LegendreSymbol, PrimeField, SquareRootField};
+use snarkvm_fields::{traits::FftParameters, FftField, Field, LegendreSymbol, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     io::Cursor,
     serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags},
@@ -408,11 +408,10 @@ pub fn frobenius_test<F: Field, C: AsRef<[u64]>>(characteristic: C, maxpower: us
     }
 }
 
-// Taken from https://github.com/scipr-lab/zexe/blob/master/algebra/src/tests/fields.rs#L381
 pub fn field_serialization_test<F: Field>() {
     let buf_size = F::SERIALIZED_SIZE;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = &mut rand::thread_rng();
 
     for _ in 0..ITERATIONS {
         let a = F::rand(&mut rng);
