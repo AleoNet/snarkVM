@@ -75,7 +75,7 @@ use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
 
 // TODO (raychu86): Optimize each of the window sizes in the type declarations below.
