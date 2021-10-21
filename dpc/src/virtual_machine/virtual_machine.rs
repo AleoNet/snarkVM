@@ -19,6 +19,7 @@ use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
+use std::sync::Arc;
 
 pub struct VirtualMachine<N: Network> {
     /// The local transitions tree.
@@ -227,7 +228,7 @@ impl<N: Network> VirtualMachine<N> {
     pub fn execute_program<R: Rng + CryptoRng>(
         mut self,
         request: &Request<N>,
-        function: &dyn Function<N>,
+        function: &Arc<dyn Function<N>>,
         function_path: &MerklePath<<N as Network>::ProgramIDParameters>,
         function_verifying_key: <<N as Network>::ProgramSNARK as SNARK>::VerifyingKey,
         private_variables: &dyn ProgramPrivateVariables<N>,
