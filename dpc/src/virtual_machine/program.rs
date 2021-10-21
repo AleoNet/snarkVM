@@ -159,7 +159,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the function given the function index, if it exists.
-    fn find_function_by_index(&self, function_index: u8) -> Option<&Arc<dyn Function<N>>> {
+    pub fn find_function_by_index(&self, function_index: u8) -> Option<&Arc<dyn Function<N>>> {
         self.functions
             .iter()
             .find_map(|(_, (index, function))| match *index == function_index {
