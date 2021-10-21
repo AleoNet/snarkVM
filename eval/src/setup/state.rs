@@ -56,23 +56,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         mem::replace(&mut self.state_data, last_state)
     }
 
-    /// if run condition `false`, returns error; else returns to last state with `true` run condition
-    fn unwind(&mut self, e: Error) -> Result<()> {
-        if self.state_data.condition {
-            return Err(anyhow!(
-                "f#{} i#{}: {:?}",
-                self.state_data.function_index,
-                self.state_data.state.instruction_index,
-                e
-            ));
-        } else {
-            self.call_stack = self.call_stack.drain(..).rev().skip_while(|s| !s.condition).collect();
-            self.call_stack.reverse();
-            self.state_data = self.call_stack.pop().expect("no state to return to");
-            Ok(())
-        }
-    }
-
     /// setup the state and call stack to start evaluating the target call instruction
     fn setup_call<CS: ConstraintSystem<F>>(&mut self, data: &'a CallData, cs: &mut CS) -> Result<()> {
         let arguments = data
@@ -108,20 +91,20 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::Call(data),
             result: None,
-            condition: self.state_data.condition,
         };
 
         self.state_data.state.instruction_index += 1;
         self.nest(state_data);
         if self.state_data.state.call_depth > self.state_data.state.program.header.inline_limit {
-            self.unwind(anyhow!("max inline limit hit"))?;
+            Err(anyhow!("max inline limit hit"))
         } else if self.call_stack.iter().any(|old_state| {
             old_state.arguments == self.state_data.arguments
                 && old_state.function_index == self.state_data.function_index
         }) {
-            self.unwind(anyhow!("infinite recursion detected"))?;
+            Err(anyhow!("infinite recursion detected"))
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     /// returns to the previous state in the call stack and stores the result of the function call's evaluation
@@ -139,40 +122,46 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             return Err(anyhow!("illegal mask block length"));
         }
 
-        let condition = self.state_data.state.resolve(&data.condition, cs)?.into_owned();
-        let condition = condition
+        let condition = self
+            .state_data
+            .state
+            .resolve(&data.condition, cs)?
+            .into_owned()
             .extract_bool()
             .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
             .clone();
         self.state_data.state.instruction_index += 1;
-        self.namespace_id_counter += 1;
-        let state = EvaluatorState {
-            program: self.state_data.state.program,
-            variables: HashMap::new(),
-            call_depth: self.state_data.state.call_depth,
-            parent_variables: self
-                .state_data
-                .state
-                .variables
-                .clone()
-                .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
-            function_index: self.state_data.state.function_index,
-            instruction_index: self.state_data.state.instruction_index,
-            namespace_id: self.namespace_id_counter,
-        };
-        let state_data = StateData {
-            arguments: self.state_data.arguments.clone(),
-            function: self.state_data.function,
-            function_index: self.state_data.function_index,
-            block_start: self.state_data.state.instruction_index,
-            block_instruction_count: data.instruction_count,
-            state,
-            parent_instruction: ParentInstruction::Mask(condition),
-            result: self.state_data.result.clone(),
-            condition: self.state_data.condition && condition.get_value().unwrap_or(true),
-        };
-        self.state_data.state.instruction_index += data.instruction_count;
-        self.nest(state_data);
+        if condition.get_const_value().unwrap_or(true) {
+            self.namespace_id_counter += 1;
+            let state = EvaluatorState {
+                program: self.state_data.state.program,
+                variables: HashMap::new(),
+                call_depth: self.state_data.state.call_depth,
+                parent_variables: self
+                    .state_data
+                    .state
+                    .variables
+                    .clone()
+                    .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                function_index: self.state_data.state.function_index,
+                instruction_index: self.state_data.state.instruction_index,
+                namespace_id: self.namespace_id_counter,
+            };
+            let state_data = StateData {
+                arguments: self.state_data.arguments.clone(),
+                function: self.state_data.function,
+                function_index: self.state_data.function_index,
+                block_start: self.state_data.state.instruction_index,
+                block_instruction_count: data.instruction_count,
+                state,
+                parent_instruction: ParentInstruction::Mask(condition),
+                result: self.state_data.result.clone(),
+            };
+            self.state_data.state.instruction_index += data.instruction_count;
+            self.nest(state_data);
+        } else {
+            self.state_data.state.instruction_index += data.instruction_count;
+        }
         Ok(())
     }
 
@@ -294,7 +283,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 state,
                 parent_instruction: ParentInstruction::Repeat(data.iter_variable),
                 result: self.state_data.result.clone(),
-                condition: self.state_data.condition,
             };
             iter_state_data.push(new_state_data);
         }
@@ -382,7 +370,12 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                     }
                 },
                 Err(e) => {
-                    evaluator.unwind(e)?;
+                    return Err(anyhow!(
+                        "f#{} i#{}: {:?}",
+                        evaluator.state_data.function_index,
+                        evaluator.state_data.state.instruction_index,
+                        e
+                    ));
                 }
             }
         }
@@ -405,8 +398,6 @@ struct StateData<'a, F: PrimeField, G: GroupType<F>> {
     state: EvaluatorState<'a, F, G>,
     /// the value returned by the scope, if anything has been returned yet
     result: Option<ConstrainedValue<F, G>>,
-    /// if the code doesnt always execute
-    condition: bool,
 }
 
 /// implemented this so i could easily debug execution flow
@@ -432,7 +423,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for StateData<'a, F, G> {
                 ...
             }}
             result: {:?},
-            condition: {},
         }}",
             self.function.instructions,
             self.function_index,
@@ -442,7 +432,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for StateData<'a, F, G> {
             self.state.instruction_index,
             self.state.call_depth,
             self.result,
-            self.condition,
         )
     }
 }
@@ -465,7 +454,6 @@ impl<'a, F: PrimeField, G: GroupType<F>> StateData<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::None,
             result: None,
-            condition: true,
         })
     }
 
@@ -672,7 +660,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         .get(i)
                         .or(self.parent_variables.get(i))
                         // .expect("reference to unknown variable")
-                        .ok_or_else(|| anyhow!("reference to unknown variable"))?,
+                        .ok_or_else(|| anyhow!("reference to unknown variable")).unwrap(),
                 ));
             }
         }))
