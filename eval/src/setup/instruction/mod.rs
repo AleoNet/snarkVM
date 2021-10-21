@@ -19,32 +19,17 @@ use std::{borrow::Cow, convert::TryInto};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     integers::{UInt16, UInt32, UInt8},
-    Boolean,
-    CondSelectGadget,
-    EqGadget,
-    EvaluateEqGadget,
-    Integer as IntegerTrait,
+    Boolean, CondSelectGadget, EqGadget, EvaluateEqGadget, Integer as IntegerTrait,
 };
 use snarkvm_ir::{
-    ArrayInitRepeatData,
-    CallCoreData,
-    Instruction,
-    Integer as IrInteger,
-    LogData,
-    LogLevel,
-    PredicateData,
-    QueryData,
-    Value,
-    VarData,
+    ArrayInitRepeatData, CallCoreData, Instruction, Integer as IrInteger, LogData, LogLevel, PredicateData, QueryData,
+    Value, VarData,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
     errors::{ArrayError, ValueError},
-    operations,
-    ConstrainedValue,
-    GroupType,
-    Integer,
+    operations, ConstrainedValue, GroupType, Integer,
 };
 
 use anyhow::*;
@@ -74,6 +59,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
     pub(super) fn evaluate_instruction<'b, CS: ConstraintSystem<F>>(
         &mut self,
         instruction: &'b Instruction,
+        branch_condition: bool,
         cs: &mut CS,
     ) -> Result<Option<ConstrainedValue<F, G>>> {
         match instruction {
@@ -300,6 +286,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         if !b
                             .get_value()
                             .ok_or_else(|| anyhow!("cannot have input-based assertion with no known value"))?
+                            && branch_condition
                         {
                             return Err(anyhow!("assertion failed"));
                         }

@@ -56,6 +56,23 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         mem::replace(&mut self.state_data, last_state)
     }
 
+    // /// if run condition `false`, returns error; else returns to last state with `true` run condition
+    // fn unwind(&mut self, e: Error) -> Result<()> {
+    //     if self.state_data.condition {
+    //         return Err(anyhow!(
+    //             "f#{} i#{}: {:?}",
+    //             self.state_data.function_index,
+    //             self.state_data.state.instruction_index,
+    //             e
+    //         ));
+    //     } else {
+    //         self.call_stack = self.call_stack.drain(..).rev().skip_while(|s| !s.condition).collect();
+    //         self.call_stack.reverse();
+    //         self.state_data = self.call_stack.pop().expect("no state to return to");
+    //         Ok(())
+    //     }
+    // }
+
     /// setup the state and call stack to start evaluating the target call instruction
     fn setup_call<CS: ConstraintSystem<F>>(&mut self, data: &'a CallData, cs: &mut CS) -> Result<()> {
         let arguments = data
@@ -91,6 +108,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::Call(data),
             result: None,
+            condition: self.state_data.condition,
         };
 
         self.state_data.state.instruction_index += 1;
@@ -130,8 +148,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             .extract_bool()
             .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
             .clone();
-        self.state_data.state.instruction_index += 1;
         if condition.get_const_value().unwrap_or(true) {
+            self.state_data.state.instruction_index += 1;
             self.namespace_id_counter += 1;
             let state = EvaluatorState {
                 program: self.state_data.state.program,
@@ -156,6 +174,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 state,
                 parent_instruction: ParentInstruction::Mask(condition),
                 result: self.state_data.result.clone(),
+                condition: self.state_data.condition && condition.get_value().unwrap_or(true),
             };
             self.state_data.state.instruction_index += data.instruction_count;
             self.nest(state_data);
@@ -283,6 +302,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
                 state,
                 parent_instruction: ParentInstruction::Repeat(data.iter_variable),
                 result: self.state_data.result.clone(),
+                condition: self.state_data.condition,
             };
             iter_state_data.push(new_state_data);
         }
@@ -398,6 +418,8 @@ struct StateData<'a, F: PrimeField, G: GroupType<F>> {
     state: EvaluatorState<'a, F, G>,
     /// the value returned by the scope, if anything has been returned yet
     result: Option<ConstrainedValue<F, G>>,
+    /// if the code doesnt always execute
+    condition: bool,
 }
 
 /// implemented this so i could easily debug execution flow
@@ -423,6 +445,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for StateData<'a, F, G> {
                 ...
             }}
             result: {:?},
+            condition: {},
         }}",
             self.function.instructions,
             self.function_index,
@@ -432,6 +455,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> fmt::Debug for StateData<'a, F, G> {
             self.state.instruction_index,
             self.state.call_depth,
             self.result,
+            self.condition,
         )
     }
 }
@@ -454,6 +478,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> StateData<'a, F, G> {
             state,
             parent_instruction: ParentInstruction::None,
             result: None,
+            condition: true,
         })
     }
 
@@ -484,7 +509,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> StateData<'a, F, G> {
             Instruction::Call(_) | Instruction::Mask(_) | Instruction::Repeat(_) => {
                 Ok(ControlFlow::Recurse(instruction))
             }
-            _ => match self.state.evaluate_instruction(instruction, cs) {
+            _ => match self.state.evaluate_instruction(instruction, self.condition, cs) {
                 Ok(Some(returned)) => {
                     self.result = Some(returned);
                     Ok(ControlFlow::Return)
@@ -660,7 +685,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         .get(i)
                         .or(self.parent_variables.get(i))
                         // .expect("reference to unknown variable")
-                        .ok_or_else(|| anyhow!("reference to unknown variable")).unwrap(),
+                        .ok_or_else(|| anyhow!("reference to unknown variable"))?,
                 ));
             }
         }))
