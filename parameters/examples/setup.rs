@@ -24,6 +24,7 @@ use snarkvm_dpc::{
     NoopPrivateVariables,
     OuterCircuit,
     PoSWScheme,
+    ProgramPrivateVariables,
     ProgramPublicVariables,
     SynthesizedCircuit,
 };
