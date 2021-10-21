@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{circuits::*, prelude::*};
-use snarkvm_algorithms::prelude::*;
+use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
@@ -226,8 +226,11 @@ impl<N: Network> VirtualMachine<N> {
     /// Executes the request of a particular program execution and returns a transaction.
     pub fn execute_program<R: Rng + CryptoRng>(
         mut self,
-        execution: Execution<N>,
         request: &Request<N>,
+        function: &dyn Function<N>,
+        function_path: &MerklePath<<N as Network>::ProgramIDParameters>,
+        function_verifying_key: <<N as Network>::ProgramSNARK as SNARK>::VerifyingKey,
+        private_variables: &dyn ProgramPrivateVariables<N>,
         rng: &mut R,
     ) -> Result<(Self, Response<N>)> {
         // Ensure the request is valid.
@@ -246,6 +249,14 @@ impl<N: Network> VirtualMachine<N> {
 
         let program_id = request.to_program_id()?;
         let transition_id = response.transition_id();
+
+        // Compute the execution.
+        let execution = Execution {
+            program_id,
+            program_path: function_path.clone(),
+            verifying_key: function_verifying_key,
+            proof: function.execute(ProgramPublicVariables::new(transition_id), private_variables)?,
+        };
 
         // Check the execution is valid.
         if execution.program_id != program_id {
