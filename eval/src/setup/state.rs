@@ -148,8 +148,8 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             .extract_bool()
             .map_err(|value| anyhow!("illegal condition type for conditional block: {}", value))?
             .clone();
+        self.state_data.state.instruction_index += 1;
         if condition.get_const_value().unwrap_or(true) {
-            self.state_data.state.instruction_index += 1;
             self.namespace_id_counter += 1;
             let state = EvaluatorState {
                 program: self.state_data.state.program,
