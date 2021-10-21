@@ -28,7 +28,12 @@ use crate::{
 };
 use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{
-    errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, Variable,
+    errors::SynthesisError,
+    Assignment,
+    ConstraintSystem,
+    ConstraintVariable,
+    LinearCombination,
+    Variable,
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
@@ -273,11 +278,7 @@ impl<F: Field> AllocGadget<bool, F> for AllocatedBit {
             || "boolean",
             || {
                 value = Some(*value_gen()?.borrow());
-                if value.get()? {
-                    Ok(F::one())
-                } else {
-                    Ok(F::zero())
-                }
+                if value.get()? { Ok(F::one()) } else { Ok(F::zero()) }
             },
         )?;
 
@@ -304,11 +305,7 @@ impl<F: Field> AllocGadget<bool, F> for AllocatedBit {
             || "boolean",
             || {
                 value = Some(*value_gen()?.borrow());
-                if value.get()? {
-                    Ok(F::one())
-                } else {
-                    Ok(F::zero())
-                }
+                if value.get()? { Ok(F::one()) } else { Ok(F::zero()) }
             },
         )?;
 
