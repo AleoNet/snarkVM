@@ -229,7 +229,7 @@ impl<N: Network> VirtualMachine<N> {
         execution: Execution<N>,
         request: &Request<N>,
         rng: &mut R,
-    ) -> Result<Self> {
+    ) -> Result<(Self, Response<N>)> {
         // Ensure the request is valid.
         if !request.is_valid() {
             return Err(anyhow!("Virtual machine received an invalid request"));
@@ -285,6 +285,6 @@ impl<N: Network> VirtualMachine<N> {
         self.transitions.push(transition);
         self.events.extend_from_slice(response.events());
 
-        Ok(self)
+        Ok((self, response))
     }
 }
