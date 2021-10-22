@@ -25,7 +25,7 @@ use crate::{fiat_shamir::AlgebraicSponge, Vec};
 use snarkvm_algorithms::crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField};
 use snarkvm_fields::PrimeField;
 
-use std::sync::Arc;
+use snarkvm_utilities::sync::Arc;
 
 /// The sponge for Poseidon
 #[derive(Clone, Debug)]
