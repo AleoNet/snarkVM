@@ -282,7 +282,12 @@ impl<N: Network> VirtualMachine<N> {
         }
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
-        let inner_public = InnerPublicVariables::new(transition_id, self.local_transitions.root(), Some(program_id));
+        let inner_public = InnerPublicVariables::new(
+            transition_id,
+            self.ledger.root(),
+            self.local_transitions.root(),
+            Some(program_id),
+        );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
@@ -294,8 +299,12 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the outer circuit public and private variables.
-        let outer_public =
-            OuterPublicVariables::new(transition_id, self.local_transitions.root(), *N::inner_circuit_id());
+        let outer_public = OuterPublicVariables::new(
+            transition_id,
+            self.ledger.root(),
+            self.local_transitions.root(),
+            *N::inner_circuit_id(),
+        );
         let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
         let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
