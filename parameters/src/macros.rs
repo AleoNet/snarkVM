@@ -131,7 +131,7 @@ macro_rules! impl_remote {
 
                     // Load remote file
                     cfg_if::cfg_if! {
-                        if #[cfg(not(target_family = "wasm"))] {
+                        if #[cfg(not(feature = "wasm"))] {
                             println!("{} - Downloading parameters...", module_path!());
                             let mut buffer = vec![];
                             Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, filename))?;
@@ -153,7 +153,7 @@ macro_rules! impl_remote {
                                     buffer
                                 }
                             }
-                        } else if #[cfg(target_family = "wasm")] {
+                        } else if #[cfg(feature = "wasm")] {
                             let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
                             let url = String::from($remote_url);
 
@@ -196,7 +196,7 @@ macro_rules! impl_remote {
                 return Ok(buffer)
             }
 
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(not(feature = "wasm"))]
             fn store_bytes(
                 buffer: &[u8],
                 relative_path: &std::path::Path,
@@ -215,7 +215,7 @@ macro_rules! impl_remote {
                 Ok(())
             }
 
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(not(feature = "wasm"))]
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
@@ -240,7 +240,7 @@ macro_rules! impl_remote {
                 Ok(transfer.perform()?)
             }
 
-            #[cfg(target_family = "wasm")]
+            #[cfg(feature = "wasm")]
             fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), crate::errors::ParameterError> {
                 // NOTE(julesdesmit): We spawn a local thread here in order to be
                 // able to accommodate the async syntax from reqwest.
