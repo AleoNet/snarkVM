@@ -150,6 +150,17 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
+        // Returns `false` if the transaction is not a coinbase, and has a transition with a negative value balance.
+        if self.transitions.len() > 1
+            && self
+                .transitions
+                .iter()
+                .any(|transition| transition.value_balance().is_negative())
+        {
+            eprintln!("Transaction contains a transition with a negative value balance");
+            return false;
+        }
+
         // Initialize a local transitions tree.
         let mut transitions = match Transitions::<N>::new() {
             Ok(transitions) => transitions,

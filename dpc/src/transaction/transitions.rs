@@ -123,7 +123,7 @@ impl<N: Network> Transitions<N> {
 
     /// Returns the local proof for a given commitment.
     pub(crate) fn to_local_proof(&self, commitment: N::Commitment) -> Result<LocalProof<N>> {
-        let (_, (index, transition)) = match self
+        let (_, (_, transition)) = match self
             .transitions
             .iter()
             .filter(|(_, (_, transition))| transition.contains_commitment(&commitment))
