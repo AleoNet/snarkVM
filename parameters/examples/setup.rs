@@ -77,7 +77,7 @@ pub fn universal_setup<N: Network>() -> Result<()> {
     const UNIVERSAL_METADATA: &str = "universal.metadata";
     const UNIVERSAL_SRS: &str = "universal.srs";
 
-    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(10000000, 10000000, 10000000).unwrap();
+    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(5000000, 5000000, 5000000).unwrap();
     let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let universal_srs = universal_srs.to_bytes_le()?;
 
