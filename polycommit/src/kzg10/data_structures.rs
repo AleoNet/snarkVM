@@ -139,19 +139,13 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
         // Serialize `powers_of_g`.
         (self.powers_of_g.len() as u32).write_le(&mut writer)?;
         for power in &self.powers_of_g {
-            if !power.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             power.write_le(&mut writer)?;
         }
 
         // Serialize `powers_of_gamma_g`.
         (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
-        for (key, power_of_gamma_g) in self.powers_of_gamma_g {
+        for (key, power_of_gamma_g) in &self.powers_of_gamma_g {
             (*key as u32).write_le(&mut writer)?;
-            if !power_of_gamma_g.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             power_of_gamma_g.write_le(&mut writer)?;
         }
 
@@ -169,21 +163,15 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
         // Serialize `inverse_powers_of_g`.
         (self.inverse_powers_of_g.len() as u32).write_le(&mut writer)?;
-        for (key, inverse_power_of_g) in self.inverse_powers_of_g {
+        for (key, inverse_power_of_g) in &self.inverse_powers_of_g {
             (*key as u32).write_le(&mut writer)?;
-            if !inverse_power_of_g.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             inverse_power_of_g.write_le(&mut writer)?;
         }
 
         // Serialize `inverse_neg_powers_of_h`.
         (self.inverse_neg_powers_of_h.len() as u32).write_le(&mut writer)?;
-        for (key, inverse_neg_power_of_g) in self.inverse_neg_powers_of_h {
+        for (key, inverse_neg_power_of_g) in &self.inverse_neg_powers_of_h {
             (*key as u32).write_le(&mut writer)?;
-            if !inverse_neg_power_of_g.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             inverse_neg_power_of_g.write_le(&mut writer)?;
         }
 

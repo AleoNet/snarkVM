@@ -552,6 +552,20 @@ mod tests {
     }
 
     #[test]
+    fn kzg10_universal_params_serialization_test() {
+        let rng = &mut test_rng();
+
+        let degree = 4;
+        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
+
+        let pp_bytes = pp.to_bytes_le().unwrap();
+        let pp_recovered: UniversalParams<Bls12_377> = FromBytes::read_le(&pp_bytes[..]).unwrap();
+        let pp_recovered_bytes = pp_recovered.to_bytes_le().unwrap();
+
+        assert_eq!(&pp_bytes, &pp_recovered_bytes);
+    }
+
+    #[test]
     fn add_commitments_test() {
         let rng = &mut test_rng();
         let p = Polynomial::from_coefficients_slice(&[
