@@ -114,7 +114,6 @@ impl<N: Network> ResponseBuilder<N> {
         };
 
         // Construct the state.
-        let block_hashes = request.ledger_roots();
         let function_type = request.function_type();
         let program_id = request.to_program_id()?;
 
@@ -183,13 +182,8 @@ impl<N: Network> ResponseBuilder<N> {
         let events = self.events.clone();
 
         // Compute the transition ID.
-        let transition_id = Transition::compute_transition_id(
-            &block_hashes,
-            &serial_numbers,
-            &commitments,
-            &ciphertexts,
-            value_balance,
-        )?;
+        let transition_id =
+            Transition::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance)?;
 
         // Construct the response.
         Response::new(

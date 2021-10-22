@@ -249,13 +249,11 @@ impl<N: Network> Blocks<N> {
                 return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
             }
             // Ensure the transaction in the block references a valid past or current ledger root.
-            for ledger_root in &transaction.ledger_roots() {
-                if !self.contains_ledger_root(ledger_root) {
-                    return Err(anyhow!(
-                        "The given transaction references a non-existent ledger root {}",
-                        ledger_root
-                    ));
-                }
+            if !self.contains_ledger_root(&transaction.ledger_root()) {
+                return Err(anyhow!(
+                    "The given transaction references a non-existent ledger root {}",
+                    &transaction.ledger_root()
+                ));
             }
         }
 
@@ -384,13 +382,7 @@ impl<N: Network> Blocks<N> {
         let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
         let current_block_hash = self.current_hash;
 
-        // TODO (howardwu): Optimize this operation.
-        let ledger_root = self.to_ledger_root()?;
-        let ledger_root_inclusion_proof = self.to_ledger_root_inclusion_proof(&current_block_hash)?;
-
-        LedgerProof::new(
-            ledger_root,
-            ledger_root_inclusion_proof,
+        let record_proof = RecordProof::new(
             current_block_hash,
             previous_block_hash,
             block_header_root,
@@ -398,7 +390,13 @@ impl<N: Network> Blocks<N> {
             transactions_root,
             transactions_inclusion_proof,
             local_proof,
-        )
+        )?;
+
+        // TODO (howardwu): Optimize this operation.
+        let ledger_root = self.to_ledger_root()?;
+        let ledger_root_inclusion_proof = self.to_ledger_root_inclusion_proof(&current_block_hash)?;
+
+        LedgerProof::new(ledger_root, ledger_root_inclusion_proof, record_proof)
     }
 
     /// Returns the expected difficulty target given the previous block and expected next block details.

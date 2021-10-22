@@ -23,5 +23,8 @@ pub use payload::*;
 pub mod record;
 pub use record::*;
 
+pub mod record_proof;
+pub use record_proof::*;
+
 #[cfg(test)]
 mod tests;

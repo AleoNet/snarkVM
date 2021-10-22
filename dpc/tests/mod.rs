@@ -94,7 +94,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
-        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(70000, 70000, 70000).unwrap();
+        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(40000, 40000, 60000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
         <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
