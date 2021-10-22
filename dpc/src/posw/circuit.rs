@@ -131,9 +131,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 
         // Enforce the input root is the same as the computed root.
         candidate_root.enforce_equal(cs.ns(|| "enforce equal"), &block_header_root)?;
-        // let candidate_root_bytes = candidate_root.to_bytes(cs.ns(|| "masked root to bytes"))?;
-        // let expected_root_bytes = block_header_root.to_bytes(cs.ns(|| "block header root to bytes"))?;
-        // candidate_root_bytes.enforce_equal(cs.ns(|| "enforce equal"), &expected_root_bytes)?;
 
         Ok(())
     }
