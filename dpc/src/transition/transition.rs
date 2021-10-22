@@ -219,36 +219,33 @@ impl<N: Network> Transition<N> {
         self.ciphertexts.iter().map(RecordCiphertext::to_ciphertext_id)
     }
 
-    ///
-    /// Returns an instance of the transition tree.
-    ///
-    /// Transition Tree := MerkleTree(ledger roots || serial numbers || commitments || ciphertext_ids || value balance)
-    ///
+    /// Returns an inclusion proof for the transition tree.
     #[inline]
-    pub fn to_transition_tree(&self) -> Result<MerkleTree<N::TransitionIDParameters>> {
-        Ok(Self::compute_transition_tree(
+    pub fn to_transition_inclusion_proof(&self, leaf: impl ToBytes) -> Result<MerklePath<N::TransitionIDParameters>> {
+        // Convert the leaf into bytes.
+        let leaf = leaf.to_bytes_le()?;
+
+        // Retrieve the transition leaves.
+        let leaves = Self::compute_transition_leaves(
             &self.ledger_roots,
             &self.serial_numbers,
             &self.commitments,
             &self.ciphertexts,
             self.value_balance,
-        )?)
-    }
+        )?;
 
-    /// Returns an inclusion proof for the transition tree.
-    #[inline]
-    pub fn to_transition_inclusion_proof(
-        &self,
-        index: usize,
-        leaf: impl ToBytes,
-    ) -> Result<MerklePath<N::TransitionIDParameters>> {
-        Ok(self.to_transition_tree()?.generate_proof(index, &leaf)?)
-    }
+        // Find the index of the given leaf.
+        for (index, candidate_leaf) in leaves.iter().enumerate() {
+            if *candidate_leaf == leaf {
+                let tree = MerkleTree::<N::TransitionIDParameters>::new(
+                    Arc::new(N::transition_id_parameters().clone()),
+                    &leaves,
+                )?;
+                return Ok(tree.generate_proof(index, &leaf)?);
+            }
+        }
 
-    /// Returns the transition ID, which is the root of transition tree.
-    #[inline]
-    pub fn to_transition_id(&self) -> Result<N::TransitionID> {
-        Ok(*self.to_transition_tree()?.root())
+        Err(anyhow!("Failed to find the given element in the transition"))
     }
 
     ///
@@ -262,8 +259,10 @@ impl<N: Network> Transition<N> {
         ciphertexts: &Vec<RecordCiphertext<N>>,
         value_balance: AleoAmount,
     ) -> Result<N::TransitionID> {
+        let leaves =
+            Self::compute_transition_leaves(ledger_roots, serial_numbers, commitments, ciphertexts, value_balance)?;
         let tree =
-            Self::compute_transition_tree(ledger_roots, serial_numbers, commitments, ciphertexts, value_balance)?;
+            MerkleTree::<N::TransitionIDParameters>::new(Arc::new(N::transition_id_parameters().clone()), &leaves)?;
         Ok(*tree.root())
     }
 
@@ -273,13 +272,13 @@ impl<N: Network> Transition<N> {
     /// Transition Tree := MerkleTree(ledger roots || serial numbers || commitments || ciphertext_ids || value balance)
     ///
     #[inline]
-    pub(crate) fn compute_transition_tree(
+    pub(crate) fn compute_transition_leaves(
         ledger_roots: &Vec<N::LedgerRoot>,
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
         ciphertexts: &Vec<RecordCiphertext<N>>,
         value_balance: AleoAmount,
-    ) -> Result<MerkleTree<N::TransitionIDParameters>> {
+    ) -> Result<Vec<Vec<u8>>> {
         let ciphertext_ids = ciphertexts
             .iter()
             .map(|c| Ok(c.to_ciphertext_id()?.to_bytes_le()?))
@@ -316,10 +315,7 @@ impl<N: Network> Transition<N> {
         // Ensure the correct number of leaves are allocated.
         assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), leaves.len());
 
-        Ok(MerkleTree::<N::TransitionIDParameters>::new(
-            Arc::new(N::transition_id_parameters().clone()),
-            &leaves,
-        )?)
+        Ok(leaves)
     }
 }
 
@@ -468,7 +464,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2612, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2762, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)

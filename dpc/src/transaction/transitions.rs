@@ -134,7 +134,7 @@ impl<N: Network> Transitions<N> {
         };
 
         let transition_id = transition.transition_id();
-        let transition_inclusion_proof = transition.to_transition_inclusion_proof(*index as usize, commitment)?;
+        let transition_inclusion_proof = transition.to_transition_inclusion_proof(commitment)?;
         let transaction_id = self.root();
         let transaction_inclusion_proof = self.to_transition_path(transition_id)?;
 
