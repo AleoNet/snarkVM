@@ -21,6 +21,8 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 
 pub struct VirtualMachine<N: Network> {
+    /// The ledger tree used to prove inclusion of ledger-consumed records.
+    ledger: LedgerTree<N>,
     /// The local transitions tree.
     local_transitions: Transitions<N>,
     /// The current list of transitions.
@@ -31,8 +33,9 @@ pub struct VirtualMachine<N: Network> {
 
 impl<N: Network> VirtualMachine<N> {
     /// Initializes a new instance of the virtual machine, with the given request.
-    pub fn new() -> Result<Self> {
+    pub fn new(ledger: LedgerTree<N>) -> Result<Self> {
         Ok(Self {
+            ledger,
             local_transitions: Transitions::new()?,
             transitions: Default::default(),
             events: Default::default(),
@@ -67,7 +70,12 @@ impl<N: Network> VirtualMachine<N> {
         };
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
-        let inner_public = InnerPublicVariables::new(transition_id, self.local_transitions.root(), Some(program_id));
+        let inner_public = InnerPublicVariables::new(
+            transition_id,
+            self.ledger.root(),
+            self.local_transitions.root(),
+            Some(program_id),
+        );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
@@ -79,8 +87,12 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the outer circuit public and private variables.
-        let outer_public =
-            OuterPublicVariables::new(transition_id, self.local_transitions.root(), *N::inner_circuit_id());
+        let outer_public = OuterPublicVariables::new(
+            transition_id,
+            self.ledger.root(),
+            self.local_transitions.root(),
+            *N::inner_circuit_id(),
+        );
         let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
         let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
@@ -104,7 +116,12 @@ impl<N: Network> VirtualMachine<N> {
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(*N::inner_circuit_id(), self.transitions.clone(), self.events.clone())
+        Transaction::from(
+            *N::inner_circuit_id(),
+            self.ledger.root(),
+            self.transitions.clone(),
+            self.events.clone(),
+        )
     }
 
     /// Performs a noop transition.

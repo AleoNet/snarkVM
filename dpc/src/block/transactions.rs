@@ -105,7 +105,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the ledger roots, by constructing a flattened list of ledger roots from all transactions.
     pub fn ledger_roots(&self) -> impl Iterator<Item = <N as Network>::LedgerRoot> + '_ {
-        self.0.iter().flat_map(Transaction::ledger_roots)
+        self.0.iter().map(Transaction::ledger_root)
     }
 
     /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.

@@ -93,7 +93,7 @@ impl Network for Testnet2 {
     const PAYLOAD_SIZE_IN_BYTES: usize = 128;
 
     const NUM_TRANSITIONS: u8 = 128;
-    const NUM_EVENTS: u16 = 512;
+    const NUM_EVENTS: u16 = 256;
 
     const TRANSITION_SIZE_IN_BYTES: usize = 1129;
     const TRANSITION_TREE_DEPTH: u32 = 3;
@@ -199,7 +199,7 @@ impl Network for Testnet2 {
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, 8>;
+    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, 7>;
     type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;

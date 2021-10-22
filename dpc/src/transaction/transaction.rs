@@ -19,6 +19,8 @@ use crate::{
     Address,
     AleoAmount,
     Event,
+    LedgerTree,
+    LedgerTreeScheme,
     Network,
     Request,
     Transition,
@@ -37,10 +39,7 @@ use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashSet,
-    hash::{Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
@@ -54,6 +53,8 @@ pub struct Transaction<N: Network> {
     transaction_id: N::TransactionID,
     /// The ID of the inner circuit used to execute each transition.
     inner_circuit_id: N::InnerCircuitID,
+    /// The ledger root used to prove inclusion of ledger-consumed records.
+    ledger_root: N::LedgerRoot,
     /// The state transition.
     transitions: Vec<Transition<N>>,
     /// The events emitted from this transaction.
@@ -63,21 +64,24 @@ pub struct Transaction<N: Network> {
 impl<N: Network> Transaction<N> {
     /// Initializes a new transaction from a request.
     #[inline]
-    pub fn new<R: Rng + CryptoRng>(request: &Request<N>, rng: &mut R) -> Result<Self> {
-        VirtualMachine::<N>::new()?.execute(request, rng)?.finalize()
+    pub fn new<R: Rng + CryptoRng>(ledger: LedgerTree<N>, request: &Request<N>, rng: &mut R) -> Result<Self> {
+        VirtualMachine::<N>::new(ledger)?.execute(request, rng)?.finalize()
     }
 
     /// Initializes a new coinbase transaction.
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let request = Request::new_coinbase(recipient, amount, rng)?;
-        VirtualMachine::<N>::new()?.execute(&request, rng)?.finalize()
+        VirtualMachine::<N>::new(LedgerTree::new()?)?
+            .execute(&request, rng)?
+            .finalize()
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
     #[inline]
     pub fn from(
         inner_circuit_id: N::InnerCircuitID,
+        ledger_root: N::LedgerRoot,
         transitions: Vec<Transition<N>>,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
@@ -86,6 +90,7 @@ impl<N: Network> Transaction<N> {
         let transaction = Self {
             transaction_id,
             inner_circuit_id,
+            ledger_root,
             transitions,
             events,
         };
@@ -173,7 +178,7 @@ impl<N: Network> Transaction<N> {
         // Returns `false` if any transition is invalid.
         for transition in &self.transitions {
             // Returns `false` if the transition is invalid.
-            if !transition.verify(self.inner_circuit_id, transitions.root()) {
+            if !transition.verify(self.inner_circuit_id, self.ledger_root, transitions.root()) {
                 eprintln!("Transaction contains an invalid transition");
                 return false;
             }
@@ -232,20 +237,16 @@ impl<N: Network> Transaction<N> {
         self.inner_circuit_id
     }
 
+    /// Returns the ledger root used to execute the transitions.
+    #[inline]
+    pub fn ledger_root(&self) -> N::LedgerRoot {
+        self.ledger_root
+    }
+
     /// Returns the transition IDs.
     #[inline]
     pub fn transition_ids(&self) -> Vec<N::TransitionID> {
         self.transitions.iter().map(Transition::transition_id).collect()
-    }
-
-    /// Returns the ledger roots used to execute the transitions.
-    #[inline]
-    pub fn ledger_roots(&self) -> HashSet<N::LedgerRoot> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::ledger_roots)
-            .cloned()
-            .collect()
     }
 
     /// Returns the serial numbers.
@@ -335,6 +336,7 @@ impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let inner_circuit_id = FromBytes::read_le(&mut reader)?;
+        let ledger_root = FromBytes::read_le(&mut reader)?;
 
         let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
         let mut transitions = Vec::with_capacity(num_transitions as usize);
@@ -348,7 +350,10 @@ impl<N: Network> FromBytes for Transaction<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(inner_circuit_id, transitions, events).expect("Failed to deserialize a transaction"))
+        Ok(
+            Self::from(inner_circuit_id, ledger_root, transitions, events)
+                .expect("Failed to deserialize a transaction"),
+        )
     }
 }
 
@@ -356,6 +361,7 @@ impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.inner_circuit_id.write_le(&mut writer)?;
+        self.ledger_root.write_le(&mut writer)?;
         (self.transitions.len() as u16).write_le(&mut writer)?;
         self.transitions.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;

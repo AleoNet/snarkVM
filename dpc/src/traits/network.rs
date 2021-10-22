@@ -52,8 +52,6 @@ pub trait Network: 'static + Clone + Debug + Default + PartialEq + Eq + Serializ
     const PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
 
-    /// The number of transitions allowed per transaction, enforced in software.
-    /// Note that this number is less than the size of its corresponding Merkle tree.
     const NUM_TRANSITIONS: u8;
     const NUM_EVENTS: u16;
 

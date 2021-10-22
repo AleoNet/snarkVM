@@ -94,6 +94,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // Declare inner circuit public variables as inner circuit field elements
 
+    let ledger_root_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.ledger_root(), "ledger root inner snark")?;
+
     let local_transitions_root_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
         cs,
         &public.local_transitions_root(),
@@ -121,6 +124,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
+            ledger_root_fe_inner_snark,
             local_transitions_root_fe_inner_snark,
             program_id_fe,
             transition_id_fe_inner_snark,

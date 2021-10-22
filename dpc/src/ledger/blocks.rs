@@ -249,13 +249,11 @@ impl<N: Network> Blocks<N> {
                 return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
             }
             // Ensure the transaction in the block references a valid past or current ledger root.
-            for ledger_root in &transaction.ledger_roots() {
-                if !self.contains_ledger_root(ledger_root) {
-                    return Err(anyhow!(
-                        "The given transaction references a non-existent ledger root {}",
-                        ledger_root
-                    ));
-                }
+            if !self.contains_ledger_root(&transaction.ledger_root()) {
+                return Err(anyhow!(
+                    "The given transaction references a non-existent ledger root {}",
+                    &transaction.ledger_root()
+                ));
             }
         }
 
