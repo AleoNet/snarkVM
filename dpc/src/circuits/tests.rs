@@ -36,8 +36,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Fetch the block hashes, local commitments root, and serial numbers.
-    let block_hashes = request.ledger_roots();
+    // Fetch the ledger root, serial numbers, and program ID.
+    let ledger_root = LedgerTree::<N>::new().unwrap().root();
     let serial_numbers = request.to_serial_numbers().unwrap();
     let program_id = request.to_program_id().unwrap();
 
@@ -58,14 +58,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let local_transitions_root = Transitions::<N>::new().unwrap().root();
 
     // Compute the transition ID.
-    let transition_id = Transition::compute_transition_id(
-        &block_hashes,
-        &serial_numbers,
-        &commitments,
-        &ciphertexts,
-        value_balance,
-    )
-    .unwrap();
+    let transition_id =
+        Transition::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +77,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     };
 
     // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(transition_id, local_transitions_root, Some(program_id));
+    let inner_public = InnerPublicVariables::new(transition_id, ledger_root, local_transitions_root, Some(program_id));
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
@@ -125,7 +119,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
 
     // Construct the outer circuit public and private variables.
-    let outer_public = OuterPublicVariables::new(transition_id, local_transitions_root, inner_circuit_id);
+    let outer_public = OuterPublicVariables::new(transition_id, ledger_root, local_transitions_root, inner_circuit_id);
     let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
 
     // Check that the proof check constraint system was satisfied.
@@ -156,7 +150,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(277775, 144018);
+        dpc_execute_circuits_test::<Testnet1>(274298, 147941);
     }
 }
 
@@ -166,6 +160,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(277775, 236354);
+        dpc_execute_circuits_test::<Testnet2>(274298, 240277);
     }
 }

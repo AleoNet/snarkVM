@@ -56,6 +56,7 @@ default-features = false
 path = "../marlin"
 version = "0.7.5"
 optional = true
+default-features = false
 features = ["wasm"]
 
 [dependencies.snarkvm-polycommit]

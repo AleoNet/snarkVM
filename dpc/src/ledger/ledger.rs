@@ -111,10 +111,8 @@ impl<N: Network> Ledger<N> {
     /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add_unconfirmed_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction contains ledger roots from the canon chain.
-        for ledger_root in &transaction.ledger_roots() {
-            if !self.canon_blocks.contains_ledger_root(ledger_root) {
-                return Err(anyhow!("Transaction references a non-existent ledger root"));
-            }
+        if !self.canon_blocks.contains_ledger_root(&transaction.ledger_root()) {
+            return Err(anyhow!("Transaction references a non-existent ledger root"));
         }
 
         // Ensure the transaction does not contain serial numbers already in the canon chain.

@@ -55,7 +55,7 @@ impl<N: Network> Transitions<N> {
         }
 
         // Ensure the current index has not reached the maximum number of transitions permitted in software.
-        if self.current_index == N::NUM_TRANSITIONS {
+        if self.current_index >= N::NUM_TRANSITIONS {
             return Err(anyhow!("The transitions tree has reached its maximum size"));
         }
 
@@ -70,7 +70,9 @@ impl<N: Network> Transitions<N> {
     /// Adds all given transitions to the tree, returning the start and ending index in the tree.
     pub(crate) fn add_all(&mut self, transitions: &Vec<Transition<N>>) -> Result<(u8, u8)> {
         // Ensure the current index has not reached the maximum number of transitions permitted in software.
-        if self.current_index == N::NUM_TRANSITIONS {
+        if self.current_index >= N::NUM_TRANSITIONS
+            || self.current_index + transitions.len() as u8 >= N::NUM_TRANSITIONS
+        {
             return Err(anyhow!("The transitions tree has reached its maximum size"));
         }
 
@@ -123,7 +125,7 @@ impl<N: Network> Transitions<N> {
 
     /// Returns the local proof for a given commitment.
     pub(crate) fn to_local_proof(&self, commitment: N::Commitment) -> Result<LocalProof<N>> {
-        let (_, (index, transition)) = match self
+        let (_, (_, transition)) = match self
             .transitions
             .iter()
             .filter(|(_, (_, transition))| transition.contains_commitment(&commitment))
@@ -134,7 +136,7 @@ impl<N: Network> Transitions<N> {
         };
 
         let transition_id = transition.transition_id();
-        let transition_inclusion_proof = transition.to_transition_inclusion_proof(*index as usize, commitment)?;
+        let transition_inclusion_proof = transition.to_transition_inclusion_proof(commitment)?;
         let transaction_id = self.root();
         let transaction_inclusion_proof = self.to_transition_path(transition_id)?;
 
