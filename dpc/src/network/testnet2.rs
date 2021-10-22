@@ -95,7 +95,7 @@ impl Network for Testnet2 {
     const NUM_TRANSITIONS: u8 = 128;
     const NUM_EVENTS: u16 = 256;
 
-    const TRANSITION_SIZE_IN_BYTES: usize = 1129;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
     const TRANSITION_TREE_DEPTH: u32 = 3;
 
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;

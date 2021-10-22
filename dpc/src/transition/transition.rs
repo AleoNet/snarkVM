@@ -407,8 +407,8 @@ mod tests {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
         let transition = transaction.transitions().first().unwrap().clone();
         assert_eq!(
+            Testnet2::TRANSITION_SIZE_IN_BYTES,
             transition.to_bytes_le().unwrap().len(),
-            Testnet2::TRANSITION_SIZE_IN_BYTES
         );
     }
 
@@ -420,7 +420,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2762, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2580, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)
