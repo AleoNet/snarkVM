@@ -119,7 +119,11 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ConditionalEqGa
     }
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F> for AleoSignaturePublicKeyGadget<TE, F> {}
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F> for AleoSignaturePublicKeyGadget<TE, F> {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        Ok(self.0.is_eq(&mut cs.ns(|| "is_eq"), &other.0)?)
+    }
+}
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F>
     for AleoSignaturePublicKeyGadget<TE, F>

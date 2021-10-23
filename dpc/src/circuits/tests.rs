@@ -69,7 +69,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
         program_path: N::noop_program_path().clone(),
         verifying_key: N::noop_circuit_verifying_key().clone(),
         proof: Noop::<N>::new()
-            .execute(ProgramPublicVariables::new(transition_id))
+            .execute(
+                ProgramPublicVariables::new(transition_id),
+                &NoopPrivateVariables::<N>::new_blank().unwrap(),
+            )
             .unwrap(),
     };
 
@@ -157,6 +160,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(274298, 240277);
+        dpc_execute_circuits_test::<Testnet2>(274298, 243613);
     }
 }
