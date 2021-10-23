@@ -152,7 +152,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     )
     .unwrap();
 
-    let computed_root = compute_root::<_, HG, _, _, _>(
+    let computed_root = compute_masked_root::<_, HG, _, _, _>(
         cs.ns(|| "compute masked root"),
         &crh_parameters,
         &mask_crh_parameters,

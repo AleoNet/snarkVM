@@ -71,6 +71,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.latest_block()
     }
 
+    /// Returns `true` if the given ledger root exists on the canon chain.
+    pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
+        self.canon_blocks.contains_ledger_root(ledger_root)
+    }
+
     /// Returns `true` if the given block hash exists on the canon chain.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
         self.canon_blocks.contains_block_hash(block_hash)
@@ -79,16 +84,6 @@ impl<N: Network> Ledger<N> {
     /// Returns `true` if the given transaction exists on the canon chain.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
         self.canon_blocks.contains_transaction(transaction)
-    }
-
-    /// Returns `true` if the given serial numbers root exists.
-    pub fn contains_serial_numbers_root(&self, serial_numbers_root: &N::SerialNumbersRoot) -> bool {
-        self.canon_blocks.contains_serial_numbers_root(serial_numbers_root)
-    }
-
-    /// Returns `true` if the given commitments root exists.
-    pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
-        self.canon_blocks.contains_commitments_root(commitments_root)
     }
 
     /// Adds the given canon block, if it is well-formed and does not already exist.
@@ -115,11 +110,9 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add_unconfirmed_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction contains block hashes from the canon chain.
-        for block_hash in &transaction.block_hashes() {
-            if !self.canon_blocks.contains_block_hash(block_hash) {
-                return Err(anyhow!("Transaction references a non-existent block hash"));
-            }
+        // Ensure the transaction contains ledger roots from the canon chain.
+        if !self.canon_blocks.contains_ledger_root(&transaction.ledger_root()) {
+            return Err(anyhow!("Transaction references a non-existent ledger root"));
         }
 
         // Ensure the transaction does not contain serial numbers already in the canon chain.
@@ -165,15 +158,8 @@ impl<N: Network> Ledger<N> {
         let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
-        // Construct the new serial numbers root.
-        let mut serial_numbers = self.canon_blocks.latest_serial_numbers();
-        serial_numbers.add_all(&transactions.serial_numbers().collect::<Vec<_>>())?;
-        let serial_numbers_root = serial_numbers.root();
-
-        // Construct the new commitments root.
-        let mut commitments = self.canon_blocks.latest_commitments();
-        commitments.add_all(&transactions.commitments().collect::<Vec<_>>())?;
-        let commitments_root = commitments.root();
+        // Construct the ledger root.
+        let ledger_root = self.canon_blocks.to_ledger_root()?;
 
         // Mine the next block.
         let block = Block::mine(
@@ -181,9 +167,8 @@ impl<N: Network> Ledger<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            ledger_root,
             transactions,
-            serial_numbers_root,
-            commitments_root,
             terminator,
             rng,
         )?;
@@ -197,14 +182,16 @@ impl<N: Network> Ledger<N> {
         Ok(())
     }
 
+    // TODO (howardwu): Optimize this function.
+    pub fn to_ledger_root(&self) -> Result<N::LedgerRoot> {
+        self.canon_blocks.to_ledger_root()
+    }
+
     ///
-    /// Returns the ledger proof for the given commitments with the current block hash.
+    /// Returns the ledger proof for the given commitment with the current ledger root.
     ///
-    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
-    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
-    ///
-    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        self.canon_blocks.to_ledger_inclusion_proof(commitments)
+    pub fn to_ledger_inclusion_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+        self.canon_blocks.to_ledger_inclusion_proof(commitment)
     }
 }
 

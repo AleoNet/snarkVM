@@ -16,13 +16,20 @@
 
 use crate::{BlockError, Network, PoSWScheme, ProofOfSuccinctWork};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+    str::FromStr,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
+};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    io::{Read, Result as IoResult, Write},
     mem::size_of,
     sync::{atomic::AtomicBool, Arc},
 };
@@ -80,18 +87,15 @@ impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
 }
 
 /// Block header.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
+    /// The Merkle root representing the blocks in the ledger - 32 bytes
+    ledger_root: N::LedgerRoot,
     /// The Merkle root representing the transactions in the block - 32 bytes
     transactions_root: N::TransactionsRoot,
-    /// The Merkle root representing the ledger serial numbers - 32 bytes
-    serial_numbers_root: N::SerialNumbersRoot,
-    /// The Merkle root representing the ledger commitments - 32 bytes
-    commitments_root: N::CommitmentsRoot,
     /// The block header metadata - 52 bytes
     metadata: BlockHeaderMetadata<N>,
     /// Proof of Succinct Work - 771 bytes
-    #[serde(with = "proof_serialization")]
     proof: Option<ProofOfSuccinctWork<N>>,
 }
 
@@ -101,9 +105,8 @@ impl<N: Network> BlockHeader<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
+        ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
-        serial_numbers_root: N::SerialNumbersRoot,
-        commitments_root: N::CommitmentsRoot,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self> {
@@ -120,9 +123,8 @@ impl<N: Network> BlockHeader<N> {
 
         // Construct a candidate block header.
         let mut block_header = Self {
+            ledger_root,
             transactions_root,
-            serial_numbers_root,
-            commitments_root,
             metadata,
             proof: None,
         };
@@ -140,21 +142,15 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
+        // Ensure the ledger root is nonzero.
+        if self.ledger_root == Default::default() {
+            eprintln!("Invalid ledger root in block header");
+            return false;
+        }
+
         // Ensure the transactions root is nonzero.
         if self.transactions_root == Default::default() {
             eprintln!("Invalid transactions root in block header");
-            return false;
-        }
-
-        // Ensure the serial numbers root is nonzero.
-        if self.serial_numbers_root == Default::default() {
-            eprintln!("Invalid serial numbers root in block header");
-            return false;
-        }
-
-        // Ensure the commitments root is nonzero.
-        if self.commitments_root == Default::default() {
-            eprintln!("Invalid commitments root in block header");
             return false;
         }
 
@@ -183,19 +179,14 @@ impl<N: Network> BlockHeader<N> {
             && N::posw().verify(&self)
     }
 
+    /// Returns the ledger root in the block header.
+    pub fn ledger_root(&self) -> N::LedgerRoot {
+        self.ledger_root
+    }
+
     /// Returns the transactions root in the block header.
     pub fn transactions_root(&self) -> N::TransactionsRoot {
         self.transactions_root
-    }
-
-    /// Returns the serial numbers root in the block header.
-    pub fn serial_numbers_root(&self) -> N::SerialNumbersRoot {
-        self.serial_numbers_root
-    }
-
-    /// Returns the commitments root in the block header.
-    pub fn commitments_root(&self) -> N::CommitmentsRoot {
-        self.commitments_root
     }
 
     /// Returns the block height.
@@ -223,42 +214,34 @@ impl<N: Network> BlockHeader<N> {
         &self.proof
     }
 
-    /// Returns the block header size in bytes - 919 bytes.
+    /// Returns the block header size in bytes - 887 bytes.
     pub fn size() -> usize {
-        32 // TransactionsRoot
-            + 32 // SerialNumbersRoot
-            + 32 // CommitmentsRoot
+        32 // LedgerRoot
+            + 32 // TransactionsRoot
             + BlockHeaderMetadata::<N>::size()
             + N::POSW_PROOF_SIZE_IN_BYTES
     }
 
     /// Returns an instance of the block header tree.
-    pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderTreeParameters>> {
+    pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
+        let ledger_root = self.ledger_root.to_bytes_le()?;
+        assert_eq!(ledger_root.len(), 32);
+
         let transactions_root = self.transactions_root.to_bytes_le()?;
         assert_eq!(transactions_root.len(), 32);
-
-        let serial_numbers_root = self.serial_numbers_root.to_bytes_le()?;
-        assert_eq!(serial_numbers_root.len(), 32);
-
-        let commitments_root = self.commitments_root.to_bytes_le()?;
-        assert_eq!(commitments_root.len(), 32);
 
         let metadata = self.metadata.to_bytes_le()?;
         assert_eq!(metadata.len(), 52);
 
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(N::POSW_NUM_LEAVES);
+        leaves.push(ledger_root);
         leaves.push(transactions_root);
-        leaves.push(serial_numbers_root);
-        leaves.push(commitments_root);
-        leaves.push(vec![0u8; 32]);
-        leaves.push(vec![0u8; 32]);
-        leaves.push(vec![0u8; 32]);
         leaves.push(vec![0u8; 32]);
         leaves.push(metadata);
         assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
 
-        Ok(MerkleTree::<N::BlockHeaderTreeParameters>::new(
-            Arc::new(N::block_header_tree_parameters().clone()),
+        Ok(MerkleTree::<N::BlockHeaderRootParameters>::new(
+            Arc::new(N::block_header_root_parameters().clone()),
             &leaves,
         )?)
     }
@@ -268,7 +251,7 @@ impl<N: Network> BlockHeader<N> {
         &self,
         index: usize,
         leaf: impl ToBytes,
-    ) -> Result<MerklePath<N::BlockHeaderTreeParameters>> {
+    ) -> Result<MerklePath<N::BlockHeaderRootParameters>> {
         let leaf_bytes = leaf.to_bytes_le()?;
         assert_eq!(leaf_bytes.len(), 32);
 
@@ -297,9 +280,8 @@ impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the header core variables.
+        let ledger_root = FromBytes::read_le(&mut reader)?;
         let transactions_root = FromBytes::read_le(&mut reader)?;
-        let serial_numbers_root = FromBytes::read_le(&mut reader)?;
-        let commitments_root = FromBytes::read_le(&mut reader)?;
 
         // Read the header metadata.
         let height = <[u8; 4]>::read_le(&mut reader)?;
@@ -319,9 +301,8 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 
         // Construct the block header.
         let block_header = Self {
+            ledger_root,
             transactions_root,
-            serial_numbers_root,
-            commitments_root,
             metadata,
             proof: Some(proof),
         };
@@ -344,9 +325,8 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         };
 
         // Write the header core variables.
+        self.ledger_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
-        self.serial_numbers_root.write_le(&mut writer)?;
-        self.commitments_root.write_le(&mut writer)?;
 
         // Write the header metadata.
         self.metadata.height.to_le_bytes().write_le(&mut writer)?;
@@ -356,6 +336,39 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 
         // Write the header proof.
         proof.write_le(&mut writer)
+    }
+}
+
+impl<N: Network> FromStr for BlockHeader<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(header_hex: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_bytes_le(&hex::decode(header_hex)?)?)
+    }
+}
+
+impl<N: Network> fmt::Display for BlockHeader<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bytes = self.to_bytes_le().expect("Failed to convert block header to bytes");
+        write!(f, "{}", hex::encode(bytes))
+    }
+}
+
+impl<N: Network> Serialize for BlockHeader<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "block header", Self::size()),
+        }
     }
 }
 
@@ -380,9 +393,8 @@ mod tests {
         assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
+        assert_ne!(block_header.ledger_root, Default::default());
         assert_ne!(block_header.transactions_root, Default::default());
-        assert_ne!(block_header.serial_numbers_root, Default::default());
-        assert_ne!(block_header.commitments_root, Default::default());
     }
 
     #[test]
@@ -392,7 +404,7 @@ mod tests {
             let max_degree =
                 AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
             let universal_srs =
-                <<Testnet2 as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
+                <<Testnet2 as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
                 &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
             )

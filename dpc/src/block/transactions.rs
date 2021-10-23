@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AleoAmount, BlockError, Network, Transaction};
-use snarkvm_algorithms::merkle_tree::MerkleTree;
+use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
@@ -93,6 +93,21 @@ impl<N: Network> Transactions<N> {
         true
     }
 
+    /// Returns the transaction IDs, by constructing a flattened list of transaction IDs from all transactions.
+    pub fn transaction_ids(&self) -> impl Iterator<Item = <N as Network>::TransactionID> + '_ {
+        self.0.iter().map(Transaction::transaction_id)
+    }
+
+    /// Returns the transition IDs, by constructing a flattened list of transition IDs from all transactions.
+    pub fn transition_ids(&self) -> impl Iterator<Item = <N as Network>::TransitionID> + '_ {
+        self.0.iter().flat_map(Transaction::transition_ids)
+    }
+
+    /// Returns the ledger roots, by constructing a flattened list of ledger roots from all transactions.
+    pub fn ledger_roots(&self) -> impl Iterator<Item = <N as Network>::LedgerRoot> + '_ {
+        self.0.iter().map(Transaction::ledger_root)
+    }
+
     /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
     pub fn serial_numbers(&self) -> impl Iterator<Item = <N as Network>::SerialNumber> + '_ {
         self.0.iter().flat_map(Transaction::serial_numbers)
@@ -105,18 +120,33 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
     pub fn to_transactions_root(&self) -> Result<N::TransactionsRoot> {
+        // TODO (howardwu): Optimize this design.
         match self.is_valid() {
             true => {
                 let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
-
-                Ok(*MerkleTree::<N::TransactionsTreeParameters>::new(
-                    Arc::new(N::transactions_tree_parameters().clone()),
+                Ok(*MerkleTree::<N::TransactionsRootParameters>::new(
+                    Arc::new(N::transactions_root_parameters().clone()),
                     &transaction_ids,
                 )?
                 .root())
             }
             false => Err(anyhow!("The transactions list is invalid")),
         }
+    }
+
+    /// Returns an inclusion proof for the transactions tree.
+    pub fn to_transactions_inclusion_proof(
+        &self,
+        index: usize,
+        leaf: impl ToBytes,
+    ) -> Result<MerklePath<N::TransactionsRootParameters>> {
+        // TODO (howardwu): Optimize this design.
+        let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
+        Ok(MerkleTree::<N::TransactionsRootParameters>::new(
+            Arc::new(N::transactions_root_parameters().clone()),
+            &transaction_ids,
+        )?
+        .generate_proof(index, &leaf)?)
     }
 
     /// Returns the total transaction fees, by summing the value balance from all positive transactions.

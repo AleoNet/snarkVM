@@ -15,9 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{FunctionType, Network, ProgramPublicVariables};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
+use std::fmt::Debug;
 
 pub trait Function<N: Network>: Send + Sync {
     /// Returns the function ID.
@@ -27,7 +29,11 @@ pub trait Function<N: Network>: Send + Sync {
     fn function_type(&self) -> FunctionType;
 
     /// Executes the function, returning an proof.
-    fn execute(&self, public: ProgramPublicVariables<N>) -> Result<N::ProgramProof>;
+    fn execute(
+        &self,
+        public: ProgramPublicVariables<N>,
+        private: &dyn ProgramPrivateVariables<N>,
+    ) -> Result<N::ProgramProof>;
 
     /// Returns true if the execution of the function is valid.
     fn verify(&self, public: &ProgramPublicVariables<N>, proof: &N::ProgramProof) -> bool;
@@ -42,13 +48,13 @@ pub trait Function<N: Network>: Send + Sync {
         Self: Sized;
 }
 
-// pub trait PrivateVariables<N: Network>:
-//     ToConstraintField<N::InnerScalarField> + Debug + ToBytes + FromBytes + Send + Sync
-// {
-//     /// Initializes a blank instance of the private variables, typically used for a SNARK setup.
-//     fn new_blank() -> Result<Self>
-//     where
-//         Self: Sized;
-//
-//     fn as_any(&self) -> &dyn std::any::Any;
-// }
+pub trait ProgramPrivateVariables<N: Network>:
+    ToConstraintField<N::InnerScalarField> + Debug + ToBytes + FromBytes + Send + Sync
+{
+    /// Initializes a blank instance of the private variables, typically used for a SNARK setup.
+    fn new_blank() -> Result<Self>
+    where
+        Self: Sized;
+
+    fn as_any(&self) -> &dyn std::any::Any;
+}

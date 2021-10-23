@@ -26,8 +26,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        97, 126, 67, 232, 51, 95, 34, 79, 70, 219, 66, 254, 122, 189, 153, 155, 107, 238, 119, 124, 249, 29, 39, 205,
-        26, 127, 72, 143, 188, 35, 180, 221, 134, 40, 251, 12, 125, 140, 99, 72, 120, 121, 164, 9, 11, 191, 205, 0,
+        54, 34, 86, 46, 21, 17, 172, 61, 120, 77, 171, 10, 29, 16, 238, 230, 28, 46, 110, 55, 243, 196, 55, 5, 146,
+        243, 31, 246, 44, 184, 238, 214, 200, 195, 216, 17, 86, 241, 206, 110, 198, 148, 104, 145, 151, 233, 50, 0,
     ];
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -73,22 +73,7 @@ fn dpc_testnet1_integration_test() {
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.to_transactions_root().unwrap();
 
-    // Construct the new serial numbers root.
-    let mut serial_numbers = SerialNumbers::<Testnet1>::new().unwrap();
-    serial_numbers.add_all(&previous_block.serial_numbers()).unwrap();
-    serial_numbers
-        .add_all(&transactions.serial_numbers().collect::<Vec<_>>())
-        .unwrap();
-    let serial_numbers_root = serial_numbers.root();
-
-    // Construct the new commitments root.
-    let mut commitments = Commitments::<Testnet1>::new().unwrap();
-    commitments.add_all(&previous_block.commitments()).unwrap();
-    commitments
-        .add_all(&transactions.commitments().collect::<Vec<_>>())
-        .unwrap();
-    let commitments_root = commitments.root();
-
+    let ledger_root = ledger.to_ledger_root().unwrap();
     let timestamp = Utc::now().timestamp();
     let difficulty_target = Blocks::<Testnet1>::compute_difficulty_target(
         previous_block.timestamp(),
@@ -101,9 +86,8 @@ fn dpc_testnet1_integration_test() {
         block_height,
         timestamp,
         difficulty_target,
+        ledger_root,
         transactions_root,
-        serial_numbers_root,
-        commitments_root,
         &AtomicBool::new(false),
         &mut rng,
     )

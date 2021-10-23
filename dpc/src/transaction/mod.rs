@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(crate) mod local_commitments;
-pub(crate) use local_commitments::*;
-
-pub mod local_proof;
-pub use local_proof::*;
+pub(crate) mod local_proof;
+pub(crate) use local_proof::*;
 
 pub mod transaction;
 pub use transaction::*;
+
+pub(crate) mod transitions;
+pub(crate) use transitions::*;

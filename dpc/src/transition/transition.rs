@@ -15,8 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{circuits::*, prelude::*};
-use snarkvm_algorithms::traits::{CRH, SNARK};
-use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTree},
+    traits::SNARK,
+};
+use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -25,6 +28,7 @@ use std::{
     hash::{Hash, Hasher},
     io::{Read, Result as IoResult, Write},
     str::FromStr,
+    sync::Arc,
 };
 
 #[derive(Derivative)]
@@ -37,10 +41,6 @@ use std::{
 pub struct Transition<N: Network> {
     /// The ID of this transition.
     transition_id: N::TransitionID,
-    /// The block hash used to prove inclusion of ledger-consumed records.
-    block_hash: N::BlockHash,
-    /// The local commitments root used to prove inclusion of locally-consumed records.
-    local_commitments_root: N::LocalCommitmentsRoot,
     /// The serial numbers of the input records.
     serial_numbers: Vec<N::SerialNumber>,
     /// The commitments of the output records.
@@ -57,9 +57,7 @@ impl<N: Network> Transition<N> {
     /// Initializes a new instance of a transition.
     #[inline]
     pub(crate) fn new(request: &Request<N>, response: &Response<N>, proof: N::OuterProof) -> Result<Self> {
-        // Fetch the block hash, local commitments root, and serial numbers.
-        let block_hash = request.block_hash();
-        let local_commitments_root = request.local_commitments_root();
+        // Fetch the serial numbers.
         let serial_numbers = request.to_serial_numbers()?;
 
         // Fetch the commitments and ciphertexts.
@@ -68,21 +66,11 @@ impl<N: Network> Transition<N> {
         let value_balance = response.value_balance();
 
         // Construct the transition.
-        Self::from(
-            block_hash,
-            local_commitments_root,
-            serial_numbers,
-            commitments,
-            ciphertexts,
-            value_balance,
-            proof,
-        )
+        Self::from(serial_numbers, commitments, ciphertexts, value_balance, proof)
     }
 
     /// Constructs an instance of a transition from the given inputs.
     pub(crate) fn from(
-        block_hash: N::BlockHash,
-        local_commitments_root: N::LocalCommitmentsRoot,
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
         ciphertexts: Vec<RecordCiphertext<N>>,
@@ -90,20 +78,11 @@ impl<N: Network> Transition<N> {
         proof: N::OuterProof,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let transition_id = Self::compute_transition_id(
-            block_hash,
-            local_commitments_root,
-            &serial_numbers,
-            &commitments,
-            &ciphertexts,
-            value_balance,
-        )?;
+        let transition_id = Self::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance)?;
 
         // Construct the transition.
         Ok(Self {
             transition_id,
-            block_hash,
-            local_commitments_root,
             serial_numbers,
             commitments,
             ciphertexts,
@@ -112,22 +91,16 @@ impl<N: Network> Transition<N> {
         })
     }
 
-    /// Returns `true` if the transition proof is valid, and the local commitments root matches.
+    /// Returns `true` if the transition ID is well-formed and the transition proof is valid.
     #[inline]
-    pub fn verify(&self, inner_circuit_id: N::InnerCircuitID, local_commitments_root: N::LocalCommitmentsRoot) -> bool {
-        // Returns `false` if the local commitments root does not match the given one.
-        if self.local_commitments_root != local_commitments_root {
-            eprintln!(
-                "Transition contains incorrect local commitments root: {} != {}",
-                self.local_commitments_root, local_commitments_root
-            );
-            return false;
-        }
-
+    pub fn verify(
+        &self,
+        inner_circuit_id: N::InnerCircuitID,
+        ledger_root: N::LedgerRoot,
+        local_transitions_root: N::TransactionID,
+    ) -> bool {
         // Returns `false` if the transition ID does not match the computed one.
         match Self::compute_transition_id(
-            self.block_hash,
-            self.local_commitments_root,
             &self.serial_numbers,
             &self.commitments,
             &self.ciphertexts,
@@ -151,7 +124,12 @@ impl<N: Network> Transition<N> {
         // Returns `false` if the transition proof is invalid.
         match N::OuterSNARK::verify(
             N::outer_verifying_key(),
-            &OuterPublicVariables::new(self.transition_id, inner_circuit_id),
+            &OuterPublicVariables::new(
+                self.transition_id,
+                ledger_root,
+                local_transitions_root,
+                inner_circuit_id,
+            ),
             &self.proof,
         ) {
             Ok(is_valid) => match is_valid {
@@ -168,22 +146,20 @@ impl<N: Network> Transition<N> {
         }
     }
 
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
+        self.serial_numbers.contains(serial_number)
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
+        self.commitments.contains(commitment)
+    }
+
     /// Returns the transition ID.
     #[inline]
     pub fn transition_id(&self) -> N::TransitionID {
         self.transition_id
-    }
-
-    /// Returns the block hash used to prove inclusion of ledger-consumed records.
-    #[inline]
-    pub fn block_hash(&self) -> N::BlockHash {
-        self.block_hash
-    }
-
-    /// Returns the local commitments root used to prove inclusion of locally-consumed records.
-    #[inline]
-    pub fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
-        self.local_commitments_root
     }
 
     /// Returns a reference to the serial numbers.
@@ -222,36 +198,99 @@ impl<N: Network> Transition<N> {
         self.ciphertexts.iter().map(RecordCiphertext::to_ciphertext_id)
     }
 
-    /// Transition ID := Hash(block hash || local commitments root || serial numbers || commitments || ciphertext_ids || value balance)
+    /// Returns an inclusion proof for the transition tree.
+    #[inline]
+    pub fn to_transition_inclusion_proof(&self, leaf: impl ToBytes) -> Result<MerklePath<N::TransitionIDParameters>> {
+        // Convert the leaf into bytes.
+        let leaf = leaf.to_bytes_le()?;
+
+        // Retrieve the transition leaves.
+        let leaves = Self::compute_transition_leaves(
+            &self.serial_numbers,
+            &self.commitments,
+            &self.ciphertexts,
+            self.value_balance,
+        )?;
+
+        // Find the index of the given leaf.
+        for (index, candidate_leaf) in leaves.iter().enumerate() {
+            if *candidate_leaf == leaf {
+                let tree = MerkleTree::<N::TransitionIDParameters>::new(
+                    Arc::new(N::transition_id_parameters().clone()),
+                    &leaves,
+                )?;
+                return Ok(tree.generate_proof(index, &leaf)?);
+            }
+        }
+
+        Err(anyhow!("Failed to find the given element in the transition"))
+    }
+
+    ///
+    /// Returns the transition ID, which is the root of transition tree.
+    ///
     #[inline]
     pub(crate) fn compute_transition_id(
-        block_hash: N::BlockHash,
-        local_commitments_root: N::LocalCommitmentsRoot,
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
         ciphertexts: &Vec<RecordCiphertext<N>>,
         value_balance: AleoAmount,
     ) -> Result<N::TransitionID> {
-        Ok(N::transition_id_crh().hash(&to_bytes_le![
-            block_hash,
-            local_commitments_root,
-            serial_numbers,
-            commitments,
+        let leaves = Self::compute_transition_leaves(serial_numbers, commitments, ciphertexts, value_balance)?;
+        let tree =
+            MerkleTree::<N::TransitionIDParameters>::new(Arc::new(N::transition_id_parameters().clone()), &leaves)?;
+        Ok(*tree.root())
+    }
+
+    ///
+    /// Returns an instance of the transition tree.
+    ///
+    /// Transition Tree := MerkleTree(serial numbers || commitments || ciphertext_ids || value balance)
+    ///
+    #[inline]
+    pub(crate) fn compute_transition_leaves(
+        serial_numbers: &Vec<N::SerialNumber>,
+        commitments: &Vec<N::Commitment>,
+        ciphertexts: &Vec<RecordCiphertext<N>>,
+        value_balance: AleoAmount,
+    ) -> Result<Vec<Vec<u8>>> {
+        // Construct the leaves of the transition tree.
+        let leaves: Vec<Vec<u8>> = vec![
+            // Leaf 0, 1 := serial numbers
+            serial_numbers
+                .iter()
+                .take(N::NUM_INPUT_RECORDS)
+                .map(ToBytes::to_bytes_le)
+                .collect::<Result<Vec<_>>>()?,
+            // Leaf 2, 3 := commitments
+            commitments
+                .iter()
+                .take(N::NUM_OUTPUT_RECORDS)
+                .map(ToBytes::to_bytes_le)
+                .collect::<Result<Vec<_>>>()?,
+            // Leaf 4, 5 := ciphertext IDs
             ciphertexts
                 .iter()
-                .map(RecordCiphertext::to_ciphertext_id)
+                .take(N::NUM_OUTPUT_RECORDS)
+                .map(|c| Ok(c.to_ciphertext_id()?.to_bytes_le()?))
                 .collect::<Result<Vec<_>>>()?,
-            value_balance
-        ]?)?)
+            // Leaf 6 := value balance
+            vec![value_balance.to_bytes_le()?],
+            // Leaf 7 := unallocated
+            vec![vec![0u8; 32]],
+        ]
+        .concat();
+
+        // Ensure the correct number of leaves are allocated.
+        assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), leaves.len());
+
+        Ok(leaves)
     }
 }
 
 impl<N: Network> FromBytes for Transition<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let block_hash = FromBytes::read_le(&mut reader)?;
-        let local_commitments_root = FromBytes::read_le(&mut reader)?;
-
         let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
@@ -270,24 +309,16 @@ impl<N: Network> FromBytes for Transition<N> {
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
         let proof: N::OuterProof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
-            block_hash,
-            local_commitments_root,
-            serial_numbers,
-            commitments,
-            ciphertexts,
-            value_balance,
-            proof,
+        Ok(
+            Self::from(serial_numbers, commitments, ciphertexts, value_balance, proof)
+                .expect("Failed to deserialize a transition from bytes"),
         )
-        .expect("Failed to deserialize a transition from bytes"))
     }
 }
 
 impl<N: Network> ToBytes for Transition<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.block_hash.write_le(&mut writer)?;
-        self.local_commitments_root.write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
@@ -305,8 +336,6 @@ impl<N: Network> FromStr for Transition<N> {
 
         // Recover the transition.
         let transition = Self::from(
-            serde_json::from_value(transition["block_hash"].clone())?,
-            serde_json::from_value(transition["local_commitments_root"].clone())?,
             serde_json::from_value(transition["serial_numbers"].clone())?,
             serde_json::from_value(transition["commitments"].clone())?,
             serde_json::from_value(transition["ciphertexts"].clone())?,
@@ -330,8 +359,6 @@ impl<N: Network> fmt::Display for Transition<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let transition = serde_json::json!({
            "transition_id": self.transition_id,
-           "block_hash": self.block_hash,
-           "local_commitments_root": self.local_commitments_root,
            "serial_numbers": self.serial_numbers,
            "commitments": self.commitments,
            "ciphertext_ids": self.to_ciphertext_ids().collect::<Result<Vec<_>>>().expect("Failed to format ciphertext IDs"),
@@ -366,7 +393,7 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
 impl<N: Network> Hash for Transition<N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.transition_id().hash(state);
+        self.transition_id.hash(state);
     }
 }
 
@@ -380,8 +407,8 @@ mod tests {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
         let transition = transaction.transitions().first().unwrap().clone();
         assert_eq!(
+            Testnet2::TRANSITION_SIZE_IN_BYTES,
             transition.to_bytes_le().unwrap().len(),
-            Testnet2::TRANSITION_SIZE_IN_BYTES
         );
     }
 
@@ -393,7 +420,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2710, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2579, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)

@@ -22,9 +22,9 @@ use crate::{
     traits::pairing_engine::AffineCurve,
 };
 use snarkvm_fields::Zero;
-use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use std::io::{Result as IoResult, Write};
+use std::io::{Read, Result as IoResult, Write};
 
 pub type G1Affine<P> = Affine<<P as BW6Parameters>::G1Parameters>;
 pub type G1Projective<P> = Projective<<P as BW6Parameters>::G1Parameters>;
@@ -59,5 +59,11 @@ impl<P: BW6Parameters> Default for G1Prepared<P> {
 impl<P: BW6Parameters> ToBytes for G1Prepared<P> {
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         self.0.write_le(writer)
+    }
+}
+
+impl<P: BW6Parameters> FromBytes for G1Prepared<P> {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        Ok(Self(G1Affine::<P>::read_le(reader)?))
     }
 }

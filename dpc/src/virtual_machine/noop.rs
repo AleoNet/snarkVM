@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, FunctionType, Network, ProgramPublicVariables};
-use snarkvm_algorithms::SNARK;
+use crate::{Function, FunctionType, Network, ProgramPrivateVariables, ProgramPublicVariables};
+use snarkvm_algorithms::{MerkleParameters, SNARK};
+use snarkvm_fields::ConstraintFieldError;
 use snarkvm_gadgets::prelude::*;
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
-use std::marker::PhantomData;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 pub struct Noop<N: Network>(PhantomData<N>);
 
@@ -53,7 +58,11 @@ impl<N: Network> Function<N> for Noop<N> {
     }
 
     /// Executes the function, returning an proof.
-    fn execute(&self, public: ProgramPublicVariables<N>) -> Result<N::ProgramProof> {
+    fn execute(
+        &self,
+        public: ProgramPublicVariables<N>,
+        _private: &dyn ProgramPrivateVariables<N>,
+    ) -> Result<N::ProgramProof> {
         let circuit = SynthesizedCircuit::Noop(public.clone());
         let proof =
             <N::ProgramSNARK as SNARK>::prove(N::noop_circuit_proving_key(), &circuit, &mut rand::thread_rng())?;
@@ -86,7 +95,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
 
                 let _transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
                     &mut cs.ns(|| "Declare the transition ID CRH scheme"),
-                    || Ok(N::transition_id_crh().clone()),
+                    || Ok(N::transition_id_parameters().crh()),
                 )?;
 
                 let _transition_id = <N::TransitionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
@@ -109,40 +118,40 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for SynthesizedCircu
 }
 
 //
-// #[derive(Clone, Debug)]
-// pub struct NoopVariables<N: Network>(PhantomData<N>);
-// impl<N: Network> PrivateVariables<N> for NoopVariables<N> {
-//     fn new_blank() -> Result<Self> {
-//         Ok(Self(PhantomData))
-//     }
-//
-//     fn as_any(&self) -> &dyn std::any::Any {
-//         self
-//     }
-// }
-//
-// impl<N: Network> FromBytes for NoopVariables<N> {
-//     #[inline]
-//     fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
-//         Ok(Self(PhantomData))
-//     }
-// }
-//
-// impl<N: Network> ToBytes for NoopVariables<N> {
-//     fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
-//         Ok(())
-//     }
-// }
-//
-// // impl<N: Network> From<NoopVariables<N>> for Arc<NoopVariables<N>> {
-// //     fn from(variables: NoopVariables<N>) -> Arc<NoopVariables<N>> {
-// //         Arc::new(variables)
-// //     }
-// // }
-//
-// impl<N: Network> ToConstraintField<N::InnerScalarField> for NoopVariables<N> {
-//     #[inline]
-//     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
-//         Ok(Vec::new())
+#[derive(Clone, Debug)]
+pub struct NoopPrivateVariables<N: Network>(PhantomData<N>);
+impl<N: Network> ProgramPrivateVariables<N> for NoopPrivateVariables<N> {
+    fn new_blank() -> Result<Self> {
+        Ok(Self(PhantomData))
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl<N: Network> FromBytes for NoopPrivateVariables<N> {
+    #[inline]
+    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
+        Ok(Self(PhantomData))
+    }
+}
+
+impl<N: Network> ToBytes for NoopPrivateVariables<N> {
+    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
+        Ok(())
+    }
+}
+
+// impl<N: Network> From<NoopVariables<N>> for Arc<NoopVariables<N>> {
+//     fn from(variables: NoopVariables<N>) -> Arc<NoopVariables<N>> {
+//         Arc::new(variables)
 //     }
 // }
+
+impl<N: Network> ToConstraintField<N::InnerScalarField> for NoopPrivateVariables<N> {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
+        Ok(Vec::new())
+    }
+}

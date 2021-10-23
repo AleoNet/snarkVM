@@ -21,9 +21,15 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub struct MemoryPool<N: Network> {
+    /// The pool of unconfirmed blocks.
+    blocks: HashMap<N::BlockHash, Block<N>>,
+    /// The pool of unconfirmed transactions.
     transactions: HashMap<N::TransactionID, Transaction<N>>,
+    /// The list of unconfirmed serial numbers.
     serial_numbers: HashSet<N::SerialNumber>,
+    /// The list of unconfirmed commitments.
     commitments: HashSet<N::Commitment>,
+    /// The set of open requests.
     requests: HashSet<Request<N>>,
 }
 
@@ -31,6 +37,7 @@ impl<N: Network> MemoryPool<N> {
     /// Initializes a new instance of a memory pool.
     pub fn new() -> Self {
         Self {
+            blocks: Default::default(),
             transactions: Default::default(),
             serial_numbers: Default::default(),
             commitments: Default::default(),

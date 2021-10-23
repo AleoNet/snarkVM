@@ -67,17 +67,50 @@ impl<P: BW6Parameters> Default for G2Prepared<P> {
 
 impl<P: BW6Parameters> ToBytes for G2Prepared<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.ell_coeffs_1.len() as u32).write_le(&mut writer)?;
         for coeff_1 in &self.ell_coeffs_1 {
             coeff_1.0.write_le(&mut writer)?;
             coeff_1.1.write_le(&mut writer)?;
             coeff_1.2.write_le(&mut writer)?;
         }
+
+        (self.ell_coeffs_2.len() as u32).write_le(&mut writer)?;
         for coeff_2 in &self.ell_coeffs_2 {
             coeff_2.0.write_le(&mut writer)?;
             coeff_2.1.write_le(&mut writer)?;
             coeff_2.2.write_le(&mut writer)?;
         }
         self.infinity.write_le(writer)
+    }
+}
+
+impl<P: BW6Parameters> FromBytes for G2Prepared<P> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let ell_coeffs_1_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut ell_coeffs_1 = Vec::with_capacity(ell_coeffs_1_len as usize);
+        for _ in 0..ell_coeffs_1_len {
+            let coeff_1: P::Fp = FromBytes::read_le(&mut reader)?;
+            let coeff_2: P::Fp = FromBytes::read_le(&mut reader)?;
+            let coeff_3: P::Fp = FromBytes::read_le(&mut reader)?;
+            ell_coeffs_1.push((coeff_1, coeff_2, coeff_3));
+        }
+
+        let ell_coeffs_2_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut ell_coeffs_2 = Vec::with_capacity(ell_coeffs_2_len as usize);
+        for _ in 0..ell_coeffs_2_len {
+            let coeff_1: P::Fp = FromBytes::read_le(&mut reader)?;
+            let coeff_2: P::Fp = FromBytes::read_le(&mut reader)?;
+            let coeff_3: P::Fp = FromBytes::read_le(&mut reader)?;
+            ell_coeffs_2.push((coeff_1, coeff_2, coeff_3));
+        }
+
+        let infinity: bool = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self {
+            ell_coeffs_1,
+            ell_coeffs_2,
+            infinity,
+        })
     }
 }
 

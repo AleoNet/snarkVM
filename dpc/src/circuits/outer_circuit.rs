@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, Network, OuterPrivateVariables, OuterPublicVariables};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{MerkleParameters, SNARK},
-};
+use snarkvm_algorithms::traits::{MerkleParameters, SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
@@ -58,10 +55,7 @@ impl<N: Network> OuterCircuit<N> {
     }
 }
 
-impl<N: Network> ConstraintSynthesizer<N::OuterScalarField> for OuterCircuit<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ConstraintSynthesizer<N::OuterScalarField> for OuterCircuit<N> {
     fn generate_constraints<CS: ConstraintSystem<N::OuterScalarField>>(
         &self,
         cs: &mut CS,
@@ -84,10 +78,10 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             Ok(N::function_id_crh().clone())
         })?;
 
-    let program_functions_tree_crh = N::ProgramFunctionsTreeCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_functions_tree_crh_parameters"),
-        || Ok(N::program_functions_tree_parameters().crh().clone()),
-    )?;
+    let program_functions_tree_crh =
+        N::ProgramIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare program_functions_tree_crh_parameters"), || {
+            Ok(N::program_id_parameters().crh().clone())
+        })?;
 
     let inner_circuit_id_crh =
         N::InnerCircuitIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
@@ -99,6 +93,15 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     // ************************************************************************
 
     // Declare inner circuit public variables as inner circuit field elements
+
+    let ledger_root_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.ledger_root(), "ledger root inner snark")?;
+
+    let local_transitions_root_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &public.local_transitions_root(),
+        "local transitions root inner snark",
+    )?;
 
     let program_id_fe =
         alloc_inner_snark_field_element::<N, _, _>(cs, &private.execution.program_id.to_bytes_le()?[..], "program ID")?;
@@ -121,6 +124,8 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
+            ledger_root_fe_inner_snark,
+            local_transitions_root_fe_inner_snark,
             program_id_fe,
             transition_id_fe_inner_snark,
         ])?;
@@ -169,7 +174,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 program_circuit_verifying_key_bits,
             )?;
 
-            let program_path_gadget = MerklePathGadget::<_, N::ProgramFunctionsTreeCRHGadget, _>::alloc(
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramIDCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
                 || Ok(&private.execution.program_path),
             )?;
@@ -180,11 +185,10 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 claimed_circuit_id,
             )?;
 
-            let given_program_id =
-                <N::ProgramFunctionsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
-                    &mut cs.ns(|| "Given program ID"),
-                    || Ok(&private.execution.program_id),
-                )?;
+            let given_program_id = <N::ProgramIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
+                &mut cs.ns(|| "Given program ID"),
+                || Ok(&private.execution.program_id),
+            )?;
 
             claimed_program_id.enforce_equal(
                 &mut cs.ns(|| "Check that declared and computed program IDs are equal"),
