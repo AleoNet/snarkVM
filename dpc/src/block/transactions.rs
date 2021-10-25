@@ -20,13 +20,14 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
+use serde::{Serialize, Deserialize};
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::Deref,
     sync::Arc,
 };
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Transactions<N: Network>(Vec<Transaction<N>>);
 
 impl<N: Network> Transactions<N> {

@@ -30,13 +30,14 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
+use serde::{Serialize, Deserialize};
 use std::{
     io::{Read, Result as IoResult, Write},
     sync::atomic::AtomicBool,
     time::Instant,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Block<N: Network> {
     /// Hash of this block.
     block_hash: N::BlockHash,

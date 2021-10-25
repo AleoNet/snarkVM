@@ -45,6 +45,11 @@ impl<N: Network> MemoryPool<N> {
         }
     }
 
+    /// Returns `true` if the given block hash exists in the memory pool.
+    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
+        self.blocks.contains_key(block_hash)
+    }
+
     /// Returns `true` if the given transaction exists in the memory pool.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
         self.transactions.contains_key(&transaction.transaction_id())
@@ -53,6 +58,23 @@ impl<N: Network> MemoryPool<N> {
     /// Returns the transactions in the memory pool.
     pub fn transactions(&self) -> Vec<Transaction<N>> {
         self.transactions.values().cloned().collect()
+    }
+
+    /// Adds the given unconfirmed block to the memory pool.
+    pub fn add_block(&mut self, block: Block<N>) -> Result<()> {
+        // Ensure the unconfirmed block itself is valid.
+        if !block.is_valid() {
+            return Err(anyhow!("Unconfirmed block {} is invalid", block.height()));
+        }
+        // Ensure the unconfirmed block is not already in the memory pool.
+        else if self.contains_block_hash(&block.block_hash()) {
+            return Err(anyhow!("Unconfirmed block {} already exists in the memory pool", block.height()));
+        }
+        // Add the given block to the memory pool.
+        else {
+            self.blocks.insert(block.block_hash(), block);
+            Ok(())
+        }
     }
 
     /// Adds the given unconfirmed transaction to the memory pool.
