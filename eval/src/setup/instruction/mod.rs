@@ -372,6 +372,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                         "u32" => Type::U32,
                         "u64" => Type::U64,
                         "u128" => Type::U128,
+                        _ => return Err(anyhow!("Can only cast to int type but recieved: {}", x)),
                     },
                     a => {
                         dbg!(&a);
