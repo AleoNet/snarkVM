@@ -402,31 +402,28 @@ impl<N: Network> Blocks<N> {
     /// Returns the expected difficulty target given the previous block and expected next block details.
     pub fn compute_difficulty_target(previous_timestamp: i64, previous_difficulty_target: u64, timestamp: i64) -> u64 {
         const TARGET_BLOCK_TIME_IN_SECS: i64 = 20i64;
+        const NUM_BLOCKS_PER_RETARGET: i64 = 1i64;
 
         /// Bitcoin difficulty retarget algorithm.
+        ///     T_{i+1} = T_i * (S / (M * B)).
+        ///     M = Number of blocks per retarget.
+        ///     B = Expected time per block.
+        ///     S = Time elapsed between the last M blocks.
         fn bitcoin_retarget(
             block_timestamp: i64,
             parent_timestamp: i64,
             target_block_time: i64,
             parent_difficulty: u64,
         ) -> u64 {
-            let mut time_elapsed = block_timestamp - parent_timestamp;
+            let time_elapsed = block_timestamp - parent_timestamp;
+            let difficulty_factor = time_elapsed as f64 / (NUM_BLOCKS_PER_RETARGET * target_block_time) as f64;
 
-            // Limit difficulty adjustment by factor of 2
-            if time_elapsed < target_block_time / 2 {
-                time_elapsed = target_block_time / 2
-            } else if time_elapsed > target_block_time * 2 {
-                time_elapsed = target_block_time * 2
+            let new_difficulty = (parent_difficulty as f64) * difficulty_factor;
+
+            match new_difficulty.is_finite() {
+                true => new_difficulty as u64,
+                false => u64::MAX,
             }
-
-            let mut x: u64;
-            x = match parent_difficulty.checked_mul(time_elapsed as u64) {
-                Some(x) => x,
-                None => u64::max_value(),
-            };
-
-            x /= target_block_time as u64;
-            x
         }
 
         bitcoin_retarget(
@@ -435,5 +432,46 @@ impl<N: Network> Blocks<N> {
             TARGET_BLOCK_TIME_IN_SECS,
             previous_difficulty_target,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn test_retargeting_algorithm_increased() {
+        const TARGET_BLOCK_TIME_IN_SECS: i64 = 20i64;
+
+        let rng = &mut thread_rng();
+
+        let mut block_difficulty_target = u64::MAX;
+        let mut current_timestamp = 0;
+
+        for _ in 0..1000 {
+            // Simulate a random block time.
+            let simulated_block_time = rng.gen_range(TARGET_BLOCK_TIME_IN_SECS / 2..TARGET_BLOCK_TIME_IN_SECS * 2);
+            let new_timestamp = current_timestamp + simulated_block_time;
+
+            let new_target = Blocks::<Testnet2>::compute_difficulty_target(
+                current_timestamp,
+                block_difficulty_target,
+                new_timestamp,
+            );
+
+            if simulated_block_time < TARGET_BLOCK_TIME_IN_SECS {
+                // If the block was found faster than expected, the difficulty should increase.
+                assert!(new_target < block_difficulty_target);
+            } else if simulated_block_time >= TARGET_BLOCK_TIME_IN_SECS {
+                // If the block was found slower than expected, the difficulty should decrease.
+                assert!(new_target >= block_difficulty_target);
+            }
+
+            current_timestamp = new_timestamp;
+            block_difficulty_target = new_target;
+        }
     }
 }
