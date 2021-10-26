@@ -185,14 +185,11 @@ impl<N: Network> VirtualMachine<N> {
         &self,
         request: &Request<N>,
         function_id: &N::FunctionID,
-        function_type: &FunctionType,
+        _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
         rng: &mut R,
     ) -> Result<Response<N>> {
-        // TODO (raychu86): Handle function types. Currently assume it's just update.
-        if function_type != &FunctionType::Update {
-            return Err(VMError::BalanceInsufficient.into());
-        }
+        // TODO (raychu86): Do function type checks.
 
         // Check that the function id exists in the program.
 
@@ -245,6 +242,7 @@ impl<N: Network> VirtualMachine<N> {
     pub fn execute_program<R: Rng + CryptoRng>(
         mut self,
         request: &Request<N>,
+        program_id: <N as Network>::ProgramID,
         function: &Arc<dyn Function<N>>,
         function_path: &MerklePath<<N as Network>::ProgramIDParameters>,
         function_verifying_key: <<N as Network>::ProgramSNARK as SNARK>::VerifyingKey,
@@ -265,7 +263,6 @@ impl<N: Network> VirtualMachine<N> {
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
-        let program_id = request.to_program_id()?;
         let transition_id = response.transition_id();
 
         // Compute the execution.
@@ -275,11 +272,6 @@ impl<N: Network> VirtualMachine<N> {
             verifying_key: function_verifying_key,
             proof: function.execute(ProgramPublicVariables::new(transition_id), private_variables)?,
         };
-
-        // Check the execution is valid.
-        if execution.program_id != program_id {
-            return Err(anyhow!("Invalid execution program id"));
-        }
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
