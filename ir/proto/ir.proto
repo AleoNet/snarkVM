@@ -181,6 +181,7 @@ message Header {
     repeated Input public_states = 8;
     repeated Input private_record_states = 9;
     repeated Input private_leaf_states = 10;
+    uint32 inline_limit = 11;
 }
 
 message Function {

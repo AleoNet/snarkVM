@@ -21,12 +21,13 @@ macro_rules! to_bytes_impl {
     ($le_function_name:ident, $le_constant_name:ident, $le_constant_value:literal, $be_function_name:ident, $be_constant_name:ident, $be_constant_value:literal) => {
         pub const $le_constant_name: &str = $le_constant_value;
 
-        impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-            pub fn $le_function_name(
+        impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+            pub fn $le_function_name<CS: ConstraintSystem<F>>(
                 &mut self,
                 arguments: &[ConstrainedValue<F, G>],
+                cs: &mut CS,
             ) -> Result<ConstrainedValue<F, G>> {
-                let _cs = self.cs();
+                let _cs = self.cs(cs);
 
                 let bytes = match arguments.get(0) {
                     None => return Err(anyhow!("illegal `to_bytes_le` call, expected call on target")),
@@ -50,12 +51,13 @@ macro_rules! to_bytes_impl {
 
         pub const $be_constant_name: &str = $be_constant_value;
 
-        impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-            pub fn $be_function_name(
+        impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+            pub fn $be_function_name<CS: ConstraintSystem<F>>(
                 &mut self,
                 arguments: &[ConstrainedValue<F, G>],
+                cs: &mut CS,
             ) -> Result<ConstrainedValue<F, G>> {
-                let _cs = self.cs();
+                let _cs = self.cs(cs);
 
                 let bytes = match arguments.get(0) {
                     None => return Err(anyhow!("illegal `to_bytes_be` call, expected call on target")),

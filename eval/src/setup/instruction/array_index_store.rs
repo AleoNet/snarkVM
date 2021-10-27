@@ -16,8 +16,12 @@
 
 use super::*;
 
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub(super) fn evaluate_array_index_store(&mut self, instruction: &Instruction) -> Result<()> {
+impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+    pub(super) fn evaluate_array_index_store<CS: ConstraintSystem<F>>(
+        &mut self,
+        instruction: &Instruction,
+        cs: &mut CS,
+    ) -> Result<()> {
         let (destination, values) = if let Instruction::ArrayIndexStore(QueryData { destination, values }) = instruction
         {
             (destination, values)
@@ -27,9 +31,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
 
         //todo: optimize array copies here
 
-        let index = self.resolve(values.get(0).unwrap())?.into_owned();
-        let target = self.resolve(values.get(1).unwrap())?.into_owned();
-        let array = self.resolve(&Value::Ref(*destination))?.into_owned();
+        let index = self.resolve(values.get(0).unwrap(), cs)?.into_owned();
+        let target = self.resolve(values.get(1).unwrap(), cs)?.into_owned();
+        let array = self.resolve(&Value::Ref(*destination), cs)?.into_owned();
 
         let index_resolved = index
             .extract_integer()
@@ -48,7 +52,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         } else if array.is_empty() {
             return Err(ArrayError::array_index_out_of_bounds(0, 0).into());
         } else {
-            let mut cs = self.cs();
+            let mut cs = self.cs(cs);
             {
                 let array_len: u32 = array
                     .len()

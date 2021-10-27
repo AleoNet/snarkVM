@@ -23,10 +23,11 @@ macro_rules! from_bits_impl {
     ($le_function_name:ident, $le_constant_name:ident, $le_constant_value:literal, $le_call:expr, $be_function_name:ident, $be_constant_name:ident, $be_constant_value:literal, $be_call:expr, $num_of_expected_bits:literal) => {
         pub const $le_constant_name: &str = $le_constant_value;
 
-        impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-            pub fn $le_function_name(
+        impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+            pub fn $le_function_name<CS: ConstraintSystem<F>>(
                 &mut self,
                 arguments: &[ConstrainedValue<F, G>],
+                cs: &mut CS,
             ) -> Result<ConstrainedValue<F, G>> {
                 let arg = match arguments.get(0) {
                     None => Err(anyhow!("illegal `from_bits_le` call, expected 1 argument")),
@@ -35,7 +36,7 @@ macro_rules! from_bits_impl {
 
                 let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits_le")?;
 
-                let cs = self.cs();
+                let cs = self.cs(cs);
 
                 $le_call(&bits, cs)
             }
@@ -43,10 +44,11 @@ macro_rules! from_bits_impl {
 
         pub const $be_constant_name: &str = $be_constant_value;
 
-        impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-            pub fn $be_function_name(
+        impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+            pub fn $be_function_name<CS: ConstraintSystem<F>>(
                 &mut self,
                 arguments: &[ConstrainedValue<F, G>],
+                cs: &mut CS,
             ) -> Result<ConstrainedValue<F, G>> {
                 let arg = match arguments.get(0) {
                     None => Err(anyhow!("illegal `from_bits_be` call, expected 1 argument")),
@@ -55,7 +57,7 @@ macro_rules! from_bits_impl {
 
                 let bits = unwrap_boolean_array_argument(arg, $num_of_expected_bits, "from_bits_be")?;
 
-                let cs = self.cs();
+                let cs = self.cs(cs);
 
                 $be_call(&bits, cs)
             }

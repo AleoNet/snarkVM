@@ -14,18 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{borrow::Cow, convert::TryInto, marker::PhantomData};
+use std::{borrow::Cow, marker::PhantomData};
 
 use anyhow::*;
 use indexmap::IndexMap;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    integers::{UInt16, UInt32, UInt8},
-    Boolean,
-    CondSelectGadget,
-    Integer as IntegerTrait,
-};
-use snarkvm_ir::{Input as IrInput, InputData, Instruction, MaskData, Program, RepeatData, Type, Value};
+use snarkvm_gadgets::{Boolean, CondSelectGadget};
+use snarkvm_ir::{Input as IrInput, InputData, Instruction, Program, Type, Value};
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
@@ -38,7 +33,6 @@ use crate::{
     FieldType,
     GroupType,
     Integer,
-    IntegerType,
 };
 use im::HashMap;
 
@@ -65,24 +59,36 @@ impl<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> Evaluator<F, G> fo
     type Output = ConstrainedValue<F, G>;
 
     fn evaluate(&mut self, program: &Program, input: &InputData) -> Result<Self::Output, Self::Error> {
-        let mut state = EvaluatorState::new(program, &mut self.cs);
+        let mut state = EvaluatorState::new(program);
 
-        state.handle_input_block("main", &program.header.main_inputs, &input.main)?;
-        state.handle_const_input_block(&program.header.constant_inputs, &input.constants)?;
-        state.handle_input_block("register", &program.header.register_inputs, &input.registers)?;
-        state.handle_input_block("public_states", &program.header.public_states, &input.public_states)?;
+        state.handle_input_block("main", &program.header.main_inputs, &input.main, &mut self.cs)?;
+        state.handle_const_input_block(&program.header.constant_inputs, &input.constants, &mut self.cs)?;
+        state.handle_input_block(
+            "register",
+            &program.header.register_inputs,
+            &input.registers,
+            &mut self.cs,
+        )?;
+        state.handle_input_block(
+            "public_states",
+            &program.header.public_states,
+            &input.public_states,
+            &mut self.cs,
+        )?;
         state.handle_input_block(
             "private_record_states",
             &program.header.private_record_states,
             &input.private_record_states,
+            &mut self.cs,
         )?;
         state.handle_input_block(
             "private_leaf_states",
             &program.header.private_leaf_states,
             &input.private_leaf_states,
+            &mut self.cs,
         )?;
-
-        let output = state.evaluate_function(0, &[])?; // arguments assigned via input system for entrypoint
+        let function = state.setup_evaluate_function(0, &[])?;
+        let output = FunctionEvaluator::evaluate_function(function, state, 0, &mut self.cs)?; // arguments assigned via input system for entrypoint
         Ok(output)
     }
 }
