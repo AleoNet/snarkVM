@@ -51,6 +51,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.latest_block_hash()
     }
 
+    /// Returns the latest ledger root.
+    pub fn latest_ledger_root(&self) -> N::LedgerRoot {
+        self.canon_blocks.latest_ledger_root()
+    }
+
     /// Returns the latest block timestamp.
     pub fn latest_block_timestamp(&self) -> Result<i64> {
         self.canon_blocks.latest_block_timestamp()
@@ -158,8 +163,8 @@ impl<N: Network> Ledger<N> {
         let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
-        // Construct the ledger root.
-        let ledger_root = self.canon_blocks.to_ledger_root()?;
+        // Retrieve the ledger root.
+        let ledger_root = self.canon_blocks.latest_ledger_root();
 
         // Mine the next block.
         let block = Block::mine(
@@ -182,13 +187,8 @@ impl<N: Network> Ledger<N> {
         Ok(())
     }
 
-    // TODO (howardwu): Optimize this function.
-    pub fn to_ledger_root(&self) -> Result<N::LedgerRoot> {
-        self.canon_blocks.to_ledger_root()
-    }
-
-    // TODO (howardwu): Optimize this function.
-    pub fn to_ledger_tree(&self) -> Result<LedgerTree<N>> {
+    /// Returns the ledger tree.
+    pub fn to_ledger_tree(&self) -> &LedgerTree<N> {
         self.canon_blocks.to_ledger_tree()
     }
 
