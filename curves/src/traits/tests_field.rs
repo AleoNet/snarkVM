@@ -17,7 +17,7 @@
 use snarkvm_fields::{traits::FftParameters, FftField, Field, LegendreSymbol, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     io::Cursor,
-    serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags},
+    serialize::{CanonicalDeserialize, Flags, SWFlags},
 };
 
 use rand::{Rng, SeedableRng};
