@@ -151,10 +151,12 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given ledger root exists.
     pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
-        self.headers
-            .values()
-            .map(BlockHeader::ledger_root)
-            .any(|root| root == *ledger_root)
+        ledger_root == &self.to_ledger_root().unwrap()
+            || self
+                .headers
+                .values()
+                .map(BlockHeader::ledger_root)
+                .any(|root| root == *ledger_root)
     }
 
     /// Returns `true` if the given block hash exists.
@@ -301,6 +303,20 @@ impl<N: Network> Blocks<N> {
                 .as_slice(),
         )?;
         Ok(ledger.root())
+    }
+
+    // TODO (howardwu): Optimize this function.
+    pub fn to_ledger_tree(&self) -> Result<LedgerTree<N>> {
+        let mut ledger = LedgerTree::<N>::new()?;
+        ledger.add_all(
+            self.previous_hashes
+                .values()
+                .chain(vec![self.current_hash].iter())
+                .cloned()
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        Ok(ledger)
     }
 
     // TODO (howardwu): Optimize this function.

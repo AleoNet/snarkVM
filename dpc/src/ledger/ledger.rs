@@ -187,6 +187,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.to_ledger_root()
     }
 
+    // TODO (howardwu): Optimize this function.
+    pub fn to_ledger_tree(&self) -> Result<LedgerTree<N>> {
+        self.canon_blocks.to_ledger_tree()
+    }
+
     ///
     /// Returns the ledger proof for the given commitment with the current ledger root.
     ///
