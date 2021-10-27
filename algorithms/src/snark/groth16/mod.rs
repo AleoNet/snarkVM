@@ -66,24 +66,80 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the Groth16 SNARK.
-#[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Eq)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
     pub c: E::G1Affine,
-    pub(crate) compressed: bool,
+    pub(crate) should_compress: bool,
+}
+
+impl<E:PairingEngine>CanonicalSerialize for Proof<E>{
+  #[allow(unused_mut,unused_variables)]
+  fn serialize_with_mode<W:Write>(&self,mut writer: W, compress: Compress) -> Result<(),SerializationError>{
+    CanonicalSerialize::serialize_with_mode(&self.a, &mut writer,compress)? ;
+    CanonicalSerialize::serialize_with_mode(&self.b, &mut writer,compress)? ;
+    CanonicalSerialize::serialize_with_mode(&self.c, &mut writer,compress)? ;
+    Ok(())
+  }
+  #[allow(unused_mut,unused_variables)]
+  fn serialized_size(&self,compress: Compress) -> usize {
+    let mut size = 0;
+    size += CanonicalSerialize::serialized_size(&self.a,compress);
+    size += CanonicalSerialize::serialized_size(&self.b,compress);
+    size += CanonicalSerialize::serialized_size(&self.c,compress);
+    size
+  }
+  
+}
+impl<E:PairingEngine>CanonicalDeserialize for Proof<E>{
+  #[allow(unused_mut,unused_variables)]
+  fn deserialize_with_mode<R:Read>(
+      mut reader:R,
+      compress: Compress,
+      validate: Validate,
+    ) -> Result<Self,SerializationError>{
+        Ok(
+            Proof{
+                a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, 
+                b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, 
+                c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, 
+                should_compress: compress == Compress::Yes,
+            })
+  }
+  
+}
+impl<E:PairingEngine>Valid for Proof<E>{
+  #[allow(unused_mut,unused_variables)]
+  fn check(&self) -> Result<(),SerializationError>{
+    Valid::check(&self.a)? ;
+    Valid::check(&self.b)? ;
+    Valid::check(&self.c)? ;
+    Ok(())
+  }
+  #[allow(unused_mut,unused_variables)]
+  fn batch_check< 'a>(batch:impl Iterator<Item =  & 'a Self>) -> Result<(),SerializationError>where Self: 'a{
+    let batch:Vec<_>  = batch.collect();
+    Valid::batch_check(batch.iter().map(|v| &v.a))? ;
+    Valid::batch_check(batch.iter().map(|v| &v.b))? ;
+    Valid::batch_check(batch.iter().map(|v| &v.c))? ;
+    Ok(())
+  }
+  
 }
 
 impl<E: PairingEngine> Proof<E> {
     /// Returns `true` if the proof is in compressed form.
-    pub fn is_compressed(&self) -> bool {
-        self.compressed
+    pub fn should_compress(&self) -> bool {
+        self.should_compress
     }
 
     /// Serialize the proof into bytes in compressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_compressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        CanonicalSerialize::serialize_compressed(self, &mut writer)?;
+        self.a.serialize_compressed(&mut writer)?;
+        self.b.serialize_compressed(&mut writer)?;
+        self.c.serialize_compressed(&mut writer)?;
         Ok(())
     }
 
@@ -98,14 +154,28 @@ impl<E: PairingEngine> Proof<E> {
 
     /// Deserialize the proof from compressed bytes.
     pub fn read_compressed<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(CanonicalDeserialize::deserialize_compressed(&mut reader)?)
+        let a = E::G1Affine::deserialize_compressed(&mut reader)?;
+        let b = E::G2Affine::deserialize_compressed(&mut reader)?;
+        let c = E::G1Affine::deserialize_compressed(&mut reader)?;
+        Ok(Self {
+            a,
+            b,
+            c,
+            should_compress: true,
+        })
     }
 
     /// Deserialize the proof from uncompressed bytes.
-    pub fn read_uncompressed<R: Read>(reader: R) -> IoResult<Self> {
-        let mut g = Self::deserialize_uncompressed(reader)?;
-        g.compressed = false;
-        Ok(g)
+    pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
+        let a = E::G1Affine::deserialize_uncompressed(&mut reader)?;
+        let b = E::G2Affine::deserialize_uncompressed(&mut reader)?;
+        let c = E::G1Affine::deserialize_uncompressed(&mut reader)?;
+        Ok(Self {
+            a,
+            b,
+            c,
+            should_compress: false,
+        })
     }
 
     /// Deserialize a proof from compressed or uncompressed bytes.
@@ -154,9 +224,10 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self.compressed {
-            true => self.write_compressed(&mut writer),
-            false => self.write_uncompressed(&mut writer),
+        if self.should_compress {
+            self.write_compressed(&mut writer)
+        } else {
+            self.write_uncompressed(&mut writer)
         }
     }
 }
@@ -218,7 +289,7 @@ impl<E: PairingEngine> Default for Proof<E> {
             a: E::G1Affine::default(),
             b: E::G2Affine::default(),
             c: E::G1Affine::default(),
-            compressed: true,
+            should_compress: true,
         }
     }
 }

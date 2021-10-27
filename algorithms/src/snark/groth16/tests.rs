@@ -94,7 +94,7 @@ mod bls12_377 {
         // Serialize
         let expected_string = &expected_proof.to_string();
         let candidate_string = serde_json::to_string(&expected_proof).unwrap();
-        assert_eq!(388, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(386, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)
@@ -193,7 +193,7 @@ mod bw6_761 {
         // Serialize
         let expected_string = &expected_proof.to_string();
         let candidate_string = serde_json::to_string(&expected_proof).unwrap();
-        assert_eq!(580, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(578, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)
@@ -277,7 +277,7 @@ mod serialization {
 
         // Deserialize
         let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&compressed_serialization[..]).unwrap();
-        assert_eq!(recovered_proof.compressed, true);
+        assert_eq!(recovered_proof.should_compress, true);
     }
 
     #[test]
@@ -300,6 +300,6 @@ mod serialization {
 
         // Deserialize
         let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&uncompressed_serialization[..]).unwrap();
-        assert_eq!(recovered_proof.compressed, false);
+        assert_eq!(recovered_proof.should_compress, false);
     }
 }
