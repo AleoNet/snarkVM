@@ -207,18 +207,12 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `powers`.
         (self.powers.len() as u32).write_le(&mut writer)?;
         for power in &self.powers {
-            if !power.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             power.write_le(&mut writer)?;
         }
 
         // Serialize `powers_of_gamma_g`.
         (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
         for power_of_gamma_g in &self.powers_of_gamma_g {
-            if !power_of_gamma_g.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             power_of_gamma_g.write_le(&mut writer)?;
         }
 
@@ -227,9 +221,6 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         if let Some(shifted_powers) = &self.shifted_powers {
             (shifted_powers.len() as u32).write_le(&mut writer)?;
             for shifted_power in shifted_powers {
-                if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
-                    return Err(error("invalid data"));
-                }
                 shifted_power.write_le(&mut writer)?;
             }
         }
@@ -242,9 +233,6 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
                 (*key as u32).write_le(&mut writer)?;
                 (shifted_powers.len() as u32).write_le(&mut writer)?;
                 for shifted_power in shifted_powers {
-                    if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
-                        return Err(error("invalid data"));
-                    }
                     shifted_power.write_le(&mut writer)?;
                 }
             }

@@ -160,11 +160,12 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given ledger root exists.
     pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
-        *ledger_root == self.latest_ledger_root() || self
-            .headers
-            .values()
-            .map(BlockHeader::ledger_root)
-            .any(|root| root == *ledger_root)
+        *ledger_root == self.latest_ledger_root()
+            || self
+                .headers
+                .values()
+                .map(BlockHeader::ledger_root)
+                .any(|root| root == *ledger_root)
     }
 
     /// Returns `true` if the given block hash exists.

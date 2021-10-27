@@ -313,30 +313,36 @@ impl<N: Network> VirtualMachine<N> {
         let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private.clone());
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
 
-        use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-        let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
+        {
+            use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
+            let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
+            outer_circuit
+                .generate_constraints(&mut outer_cs.ns(|| "Outer circuit"))
+                .unwrap();
 
-        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
-        outer_circuit
-            .generate_constraints(&mut outer_cs.ns(|| "Outer circuit"))
-            .unwrap();
+            let candidate_outer_num_constraints = outer_cs.num_constraints();
 
-        let candidate_outer_num_constraints = outer_cs.num_constraints();
-
-        if !outer_cs.is_satisfied() {
-            println!("=========================================================");
-            println!("Outer circuit num constraints: {}", candidate_outer_num_constraints);
-            println!("Unsatisfied constraints:\n{}", outer_cs.which_is_unsatisfied().unwrap());
-            println!("=========================================================");
-        } else {
-            println!("\n Outer Test constraint system check passed. \n\n");
+            if !outer_cs.is_satisfied() {
+                println!("=========================================================");
+                println!("Outer circuit num constraints: {}", candidate_outer_num_constraints);
+                println!("Unsatisfied constraints:\n{}", outer_cs.which_is_unsatisfied().unwrap());
+                println!("=========================================================");
+            } else {
+                println!("\n Outer Test constraint system check passed. \n\n");
+            }
         }
 
-        assert!(N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &outer_public,
-            &outer_proof
-        )?);
+        {
+            use snarkvm_fields::ToConstraintField;
+            let input = outer_public.to_field_elements()?;
+            println!("{:?}", input);
+
+            assert!(N::OuterSNARK::verify(
+                N::outer_verifying_key(),
+                &outer_public,
+                &outer_proof
+            )?);
+        }
 
         // Construct the transition.
         let transition = Transition::<N>::new(&request, &response, outer_proof)?;
