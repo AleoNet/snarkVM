@@ -83,35 +83,29 @@ impl<E: PairingEngine> Proof<E> {
     /// Serialize the proof into bytes in compressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_compressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        CanonicalSerialize::serialize(self, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(self, &mut writer)?;
         Ok(())
     }
 
     /// Serialize the proof into bytes in uncompressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_uncompressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.a.write_le(&mut writer)?;
-        self.b.write_le(&mut writer)?;
-        self.c.write_le(&mut writer)
+        self.a.serialize_uncompressed(&mut writer)?;
+        self.b.serialize_uncompressed(&mut writer)?;
+        self.c.serialize_uncompressed(&mut writer)?;
+        Ok(())
     }
 
     /// Deserialize the proof from compressed bytes.
     pub fn read_compressed<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(CanonicalDeserialize::deserialize(&mut reader)?)
+        Ok(CanonicalDeserialize::deserialize_compressed(&mut reader)?)
     }
 
     /// Deserialize the proof from uncompressed bytes.
-    pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
-        let a: E::G1Affine = FromBytes::read_le(&mut reader)?;
-        let b: E::G2Affine = FromBytes::read_le(&mut reader)?;
-        let c: E::G1Affine = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self {
-            a,
-            b,
-            c,
-            compressed: false,
-        })
+    pub fn read_uncompressed<R: Read>(reader: R) -> IoResult<Self> {
+        let mut g = Self::deserialize_uncompressed(reader)?;
+        g.compressed = false;
+        Ok(g)
     }
 
     /// Deserialize a proof from compressed or uncompressed bytes.

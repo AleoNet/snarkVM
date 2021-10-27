@@ -39,9 +39,9 @@ pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommit
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitProvingKey<F, CF, PC> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        CanonicalSerialize::serialize(&self.circuit_verifying_key, &mut writer)?;
-        CanonicalSerialize::serialize(&self.circuit_commitment_randomness, &mut writer)?;
-        CanonicalSerialize::serialize(&self.circuit, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit_verifying_key, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit_commitment_randomness, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit, &mut writer)?;
 
         self.committer_key.write_le(&mut writer)
     }
@@ -50,9 +50,9 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for CircuitProvingKey<F, CF, PC> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let circuit_verifying_key = CanonicalDeserialize::deserialize(&mut reader)?;
-        let circuit_commitment_randomness = CanonicalDeserialize::deserialize(&mut reader)?;
-        let circuit = CanonicalDeserialize::deserialize(&mut reader)?;
+        let circuit_verifying_key = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
+        let circuit_commitment_randomness = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
+        let circuit = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
         let committer_key: PC::CommitterKey = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {

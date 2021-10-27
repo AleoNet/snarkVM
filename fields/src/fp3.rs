@@ -529,47 +529,63 @@ impl<P: Fp3Parameters> ::std::fmt::Display for Fp3<P> {
 
 impl<P: Fp3Parameters> CanonicalSerializeWithFlags for Fp3<P> {
     #[inline]
-    fn serialize_with_flags<W: Write, F: Flags>(&self, writer: &mut W, flags: F) -> Result<(), SerializationError> {
-        CanonicalSerialize::serialize(&self.c0, writer)?;
-        CanonicalSerialize::serialize(&self.c1, writer)?;
-        self.c2.serialize_with_flags(writer, flags)?;
+    fn serialize_with_flags<W: Write, F: Flags>(&self, mut writer: W, flags: F) -> Result<(), SerializationError> {
+        self.c0.serialize_uncompressed(&mut writer)?;
+        self.c1.serialize_uncompressed(&mut writer)?;
+        self.c2.serialize_with_flags(&mut writer, flags)?;
         Ok(())
+    }
+
+    fn serialized_size_with_flags<F: Flags>(&self) -> usize {
+        self.c0.uncompressed_size() + self.c1.uncompressed_size() + self.c2.serialized_size_with_flags::<F>()
     }
 }
 
 impl<P: Fp3Parameters> CanonicalSerialize for Fp3<P> {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+    fn serialize_with_mode<W: Write>(&self, writer: W, _compress: Compress) -> Result<(), SerializationError> {
         self.serialize_with_flags(writer, EmptyFlags)
     }
 
     #[inline]
-    fn serialized_size(&self) -> usize {
-        Self::SERIALIZED_SIZE
+    fn serialized_size(&self, compress: Compress) -> usize {
+        self.c0.serialized_size(compress) + self.c1.serialized_size(compress) + self.c2.serialized_size(compress)
     }
-}
-
-impl<P: Fp3Parameters> ConstantSerializedSize for Fp3<P> {
-    const SERIALIZED_SIZE: usize = 3 * <P::Fp as ConstantSerializedSize>::SERIALIZED_SIZE;
-    const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
 }
 
 impl<P: Fp3Parameters> CanonicalDeserializeWithFlags for Fp3<P> {
     #[inline]
-    fn deserialize_with_flags<R: Read, F: Flags>(reader: &mut R) -> Result<(Self, F), SerializationError> {
-        let c0: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        let c1: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        let (c2, flags): (P::Fp, _) = CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
+    fn deserialize_with_flags<R: Read, F: Flags>(mut reader: R) -> Result<(Self, F), SerializationError> {
+        let c0 = CanonicalDeserialize::deserialize_uncompressed(&mut reader)?;
+        let c1 = CanonicalDeserialize::deserialize_uncompressed(&mut reader)?;
+        let (c2, flags): (_, _) = CanonicalDeserializeWithFlags::deserialize_with_flags(&mut reader)?;
         Ok((Fp3::new(c0, c1, c2), flags))
+    }
+}
+
+impl<P: Fp3Parameters> Valid for Fp3<P> {
+    fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
+        Ok(())
+    }
+
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self>) -> Result<(), snarkvm_utilities::SerializationError>
+    where
+        Self: 'a,
+    {
+        Ok(())
     }
 }
 
 impl<P: Fp3Parameters> CanonicalDeserialize for Fp3<P> {
     #[inline]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let c0: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        let c1: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        let c2: P::Fp = CanonicalDeserialize::deserialize(reader)?;
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let c0: P::Fp = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let c1: P::Fp = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let c2: P::Fp = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         Ok(Fp3::new(c0, c1, c2))
     }
 }

@@ -45,7 +45,8 @@ pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialComm
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitVerifyingKey<F, CF, PC> {
     fn write_le<W: Write>(&self, mut w: W) -> crate::io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
+        CanonicalSerialize::serialize_compressed(self, &mut w)
+            .map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 
@@ -83,7 +84,8 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToMinimalBi
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for CircuitVerifyingKey<F, CF, PC> {
     fn read_le<R: Read>(mut r: R) -> crate::io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
+        CanonicalDeserialize::deserialize_compressed(&mut r)
+            .map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }
 

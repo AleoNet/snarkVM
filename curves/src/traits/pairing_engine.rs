@@ -101,12 +101,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync 
 /// Projective representation of an elliptic curve point guaranteed to be
 /// in the correct prime order subgroup.
 pub trait ProjectiveCurve:
-    Group
-    + Sized
-    + CanonicalSerialize
-    + ConstantSerializedSize
-    + CanonicalDeserialize
-    + From<<Self as ProjectiveCurve>::Affine>
+    Group + Sized + CanonicalSerialize + CanonicalDeserialize + From<<Self as ProjectiveCurve>::Affine>
 {
     type BaseField: Field;
     type Affine: AffineCurve<Projective = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
@@ -160,7 +155,6 @@ pub trait AffineCurve:
     + Serialize
     + DeserializeOwned
     + CanonicalSerialize
-    + ConstantSerializedSize
     + CanonicalDeserialize
     + From<<Self as AffineCurve>::Projective>
     + ToMinimalBits

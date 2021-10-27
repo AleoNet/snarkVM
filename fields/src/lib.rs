@@ -64,7 +64,7 @@ use snarkvm_utilities::{
         CanonicalDeserializeWithFlags,
         CanonicalSerialize,
         CanonicalSerializeWithFlags,
-        ConstantSerializedSize,
+        Valid,
     },
     FromBytes,
     ToBytes,

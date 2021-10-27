@@ -69,7 +69,11 @@ pub struct AleoSignature<TE: TwistedEdwardsParameters> {
 impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
     #[inline]
     pub fn size() -> usize {
-        2 * TE::ScalarField::SERIALIZED_SIZE + 2 * TE::BaseField::SERIALIZED_SIZE
+        let sig = Self::default();
+        sig.prover_response.compressed_size()
+            + sig.verifier_challenge.compressed_size()
+            + sig.root_public_key.compressed_size()
+            + sig.root_randomizer.compressed_size()
     }
 
     #[inline]

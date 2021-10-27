@@ -177,7 +177,8 @@ impl<F: Field, C: PCCommitment + ToConstraintField<F>> ToConstraintField<F> for 
 // deserializing the Commitment.
 impl<C: PCCommitment> ToBytes for LabeledCommitment<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(&self.commitment, &mut writer).map_err(|_| error_fn("could not serialize struct"))
+        CanonicalSerialize::serialize_compressed(&self.commitment, &mut writer)
+            .map_err(|_| error_fn("could not serialize struct"))
     }
 }
 
@@ -372,13 +373,15 @@ macro_rules! impl_bytes {
     ($ty: ident) => {
         impl<E: PairingEngine> FromBytes for $ty<E> {
             fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-                CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize struct"))
+                CanonicalDeserialize::deserialize_compressed(&mut reader)
+                    .map_err(|_| error("could not deserialize struct"))
             }
         }
 
         impl<E: PairingEngine> ToBytes for $ty<E> {
             fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-                CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize struct"))
+                CanonicalSerialize::serialize_compressed(self, &mut writer)
+                    .map_err(|_| error("could not serialize struct"))
             }
         }
     };

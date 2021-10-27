@@ -61,17 +61,17 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF
         for c in self.commitments.iter().flatten() {
             if !c.has_degree_bound() {
                 num_comms_without_degree_bounds += 1;
-                size_bytes_comms_without_degree_bounds += c.serialized_size();
+                size_bytes_comms_without_degree_bounds += c.compressed_size();
             } else {
                 num_comms_with_degree_bounds += 1;
-                size_bytes_comms_with_degree_bounds += c.serialized_size();
+                size_bytes_comms_with_degree_bounds += c.compressed_size();
             }
         }
 
         let proofs: Vec<PC::Proof> = self.pc_proof.proof.clone().into();
         let num_proofs = proofs.len();
         for proof in &proofs {
-            size_bytes_proofs += proof.serialized_size();
+            size_bytes_proofs += proof.compressed_size();
         }
 
         let num_evaluations = self.evaluations.len();
@@ -113,12 +113,12 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for Proof<F, CF, PC> {
     fn write_le<W: Write>(&self, mut w: W) -> crate::io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
+        CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for Proof<F, CF, PC> {
     fn read_le<R: Read>(mut r: R) -> crate::io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
+        CanonicalDeserialize::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }
 }

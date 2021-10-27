@@ -24,24 +24,17 @@ macro_rules! impl_sw_curve_serializer {
         impl<P: $params> CanonicalSerialize for Projective<P> {
             #[allow(unused_qualifications)]
             #[inline]
-            fn serialize<W: snarkvm_utilities::io::Write>(
+            fn serialize_with_mode<W: snarkvm_utilities::io::Write>(
                 &self,
-                writer: &mut W,
+                writer: W,
+                compress: Compress,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize(&Affine::<P>::from(*self), writer)
-            }
-
-            #[allow(unused_qualifications)]
-            fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
-                &self,
-                writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize_uncompressed(&Affine::<P>::from(*self), writer)
+                CanonicalSerialize::serialize_with_mode(&Affine::<P>::from(*self), writer, compress)
             }
 
             #[inline]
-            fn serialized_size(&self) -> usize {
-                Affine::<P>::from(*self).serialized_size()
+            fn serialized_size(&self, compress: Compress) -> usize {
+                Affine::<P>::from(*self).serialized_size(compress)
             }
 
             #[inline]
@@ -50,117 +43,109 @@ macro_rules! impl_sw_curve_serializer {
             }
         }
 
-        impl<P: $params> CanonicalDeserialize for Projective<P> {
-            #[allow(unused_qualifications)]
-            fn deserialize<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: Affine<P> = CanonicalDeserialize::deserialize(reader)?;
-                Ok(el.into())
-            }
-
-            #[allow(unused_qualifications)]
-            fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: Affine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
-                Ok(el.into())
+        impl<P: $params> Valid for Projective<P> {
+            fn check(&self) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+                let point = Affine::<P>::from(*self);
+                if point.is_on_curve() & point.is_in_correct_subgroup_assuming_on_curve() {
+                    Ok(())
+                } else {
+                    Err(snarkvm_utilities::errors::SerializationError::InvalidData)
+                }
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for Projective<P> {
-            const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
-            const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
+        impl<P: $params> CanonicalDeserialize for Projective<P> {
+            #[allow(unused_qualifications)]
+            fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
+                reader: R,
+                compress: Compress,
+                validate: Validate,
+            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+                Affine::<P>::deserialize_with_mode(reader, compress, validate).map(Into::into)
+            }
         }
 
         impl<P: $params> CanonicalSerialize for Affine<P> {
             #[allow(unused_qualifications)]
             #[inline]
-            fn serialize<W: snarkvm_utilities::io::Write>(
+            fn serialize_with_mode<W: snarkvm_utilities::io::Write>(
                 &self,
-                writer: &mut W,
+                mut writer: W,
+                compress: Compress,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                if self.is_zero() {
-                    let flags = snarkvm_utilities::serialize::SWFlags::infinity();
-                    // Serialize 0.
-                    P::BaseField::zero().serialize_with_flags(writer, flags)
-                } else {
-                    let flags = snarkvm_utilities::serialize::SWFlags::from_y_sign(self.y > -self.y);
-                    self.x.serialize_with_flags(writer, flags)
+                match compress {
+                    Compress::Yes => {
+                        if self.is_zero() {
+                            let flags = snarkvm_utilities::serialize::SWFlags::infinity();
+                            // Serialize 0.
+                            P::BaseField::zero().serialize_with_flags(writer, flags)
+                        } else {
+                            let flags = snarkvm_utilities::serialize::SWFlags::from_y_sign(self.y > -self.y);
+                            self.x.serialize_with_flags(writer, flags)
+                        }
+                    }
+                    Compress::No => {
+                        let flags = if self.is_zero() {
+                            snarkvm_utilities::serialize::SWFlags::infinity()
+                        } else {
+                            snarkvm_utilities::serialize::SWFlags::default()
+                        };
+                        self.x.serialize_uncompressed(&mut writer)?;
+                        self.y.serialize_with_flags(&mut writer, flags)?;
+                        Ok(())
+                    }
                 }
             }
 
             #[inline]
-            fn serialized_size(&self) -> usize {
-                Self::SERIALIZED_SIZE
-            }
-
-            #[allow(unused_qualifications)]
-            #[inline]
-            fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
-                &self,
-                writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                let flags = if self.is_zero() {
-                    snarkvm_utilities::serialize::SWFlags::infinity()
-                } else {
-                    snarkvm_utilities::serialize::SWFlags::default()
-                };
-                CanonicalSerialize::serialize(&self.x, writer)?;
-                self.y.serialize_with_flags(writer, flags)?;
-                Ok(())
-            }
-
-            #[inline]
-            fn uncompressed_size(&self) -> usize {
-                Self::UNCOMPRESSED_SIZE
+            fn serialized_size(&self, compress: Compress) -> usize {
+                match compress {
+                    Compress::Yes => self.x.serialized_size_with_flags::<SWFlags>(),
+                    Compress::No => self.x.serialized_size(compress) + self.y.serialized_size_with_flags::<SWFlags>(),
+                }
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for Affine<P> {
-            const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
-            const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
+        impl<P: $params> Valid for Affine<P> {
+            fn check(&self) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+                if self.is_on_curve() & self.is_in_correct_subgroup_assuming_on_curve() {
+                    Ok(())
+                } else {
+                    Err(snarkvm_utilities::errors::SerializationError::InvalidData)
+                }
+            }
         }
 
         impl<P: $params> CanonicalDeserialize for Affine<P> {
             #[allow(unused_qualifications)]
-            fn deserialize<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
+            fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
+                mut reader: R,
+                compress: Compress,
+                validate: Validate,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let (x, flags): (P::BaseField, snarkvm_utilities::serialize::SWFlags) =
-                    CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
-                if flags.is_infinity() {
-                    Ok(Self::zero())
-                } else {
-                    let p = Affine::<P>::from_x_coordinate(x, flags.is_positive().unwrap())
-                        .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?;
-                    if !snarkvm_utilities::PROCESSING_SNARK_PARAMS
-                        .with(|p| p.load(std::sync::atomic::Ordering::Relaxed))
-                    {
-                        if !p.is_in_correct_subgroup_assuming_on_curve() {
-                            return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
-                        }
+                use snarkvm_utilities::serialize::SWFlags;
+                let point = if let Compress::Yes = compress {
+                    let (x, flags) = P::BaseField::deserialize_with_flags::<_, SWFlags>(&mut reader)?;
+                    if flags.is_infinity() {
+                        Self::zero()
                     } else {
-                        snarkvm_utilities::SNARK_PARAMS_AFFINE_COUNT
-                            .with(|p| p.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+                        Affine::<P>::from_x_coordinate(x, flags.is_positive().unwrap())
+                            .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?
                     }
-                    Ok(p)
+                } else {
+                    let x = P::BaseField::deserialize_uncompressed(&mut reader)?;
+                    let (y, flags) = P::BaseField::deserialize_with_flags::<_, SWFlags>(&mut reader)?;
+                    Affine::<P>::new(x, y, flags.is_infinity())
+                };
+                if !snarkvm_utilities::PROCESSING_SNARK_PARAMS.with(|p| p.load(std::sync::atomic::Ordering::Relaxed))
+                    && validate == Validate::Yes
+                {
+                    point.check()?;
+                } else {
+                    snarkvm_utilities::SNARK_PARAMS_AFFINE_COUNT
+                        .with(|p| p.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
                 }
-            }
-
-            #[allow(unused_qualifications)]
-            fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let x: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
-                let (y, flags): (P::BaseField, snarkvm_utilities::serialize::SWFlags) =
-                    CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
-
-                let p = Affine::<P>::new(x, y, flags.is_infinity());
-                if !p.is_in_correct_subgroup_assuming_on_curve() {
-                    return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
-                }
-                Ok(p)
+                Ok(point)
             }
         }
     };
@@ -172,130 +157,115 @@ macro_rules! impl_edwards_curve_serializer {
         impl<P: $params> CanonicalSerialize for Projective<P> {
             #[allow(unused_qualifications)]
             #[inline]
-            fn serialize<W: snarkvm_utilities::io::Write>(
+            fn serialize_with_mode<W: snarkvm_utilities::io::Write>(
                 &self,
-                writer: &mut W,
+                writer: W,
+                compress: Compress,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize(&Affine::<P>::from(*self), writer)
-            }
-
-            #[allow(unused_qualifications)]
-            fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
-                &self,
-                writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize_uncompressed(&Affine::<P>::from(*self), writer)
+                Affine::<P>::from(*self).serialize_with_mode(writer, compress)
             }
 
             #[inline]
-            fn serialized_size(&self) -> usize {
-                Affine::<P>::from(*self).serialized_size()
-            }
-
-            #[inline]
-            fn uncompressed_size(&self) -> usize {
-                Affine::<P>::from(*self).uncompressed_size()
+            fn serialized_size(&self, compress: Compress) -> usize {
+                Affine::<P>::from(*self).serialized_size(compress)
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for Projective<P> {
-            const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
-            const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
+        impl<P: $params> Valid for Projective<P> {
+            fn check(&self) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+                let point = Affine::<P>::from(*self);
+                if point.is_on_curve() & point.is_in_correct_subgroup_assuming_on_curve() {
+                    Ok(())
+                } else {
+                    Err(snarkvm_utilities::errors::SerializationError::InvalidData)
+                }
+            }
         }
 
         impl<P: $params> CanonicalDeserialize for Projective<P> {
             #[allow(unused_qualifications)]
-            fn deserialize<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
+            fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
+                reader: R,
+                compress: Compress,
+                validate: Validate,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: Affine<P> = CanonicalDeserialize::deserialize(reader)?;
-                Ok(el.into())
-            }
-
-            #[allow(unused_qualifications)]
-            fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: Affine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
-                Ok(el.into())
+                Affine::<P>::deserialize_with_mode(reader, compress, validate).map(Into::into)
             }
         }
 
         impl<P: $params> CanonicalSerialize for Affine<P> {
             #[allow(unused_qualifications)]
             #[inline]
-            fn serialize<W: snarkvm_utilities::io::Write>(
+            fn serialize_with_mode<W: snarkvm_utilities::io::Write>(
                 &self,
-                writer: &mut W,
+                mut writer: W,
+                compress: Compress,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                if self.is_zero() {
-                    let flags = snarkvm_utilities::serialize::EdwardsFlags::default();
-                    // Serialize 0.
-                    P::BaseField::zero().serialize_with_flags(writer, flags)
+                if let Compress::Yes = compress {
+                    if self.is_zero() {
+                        let flags = snarkvm_utilities::serialize::EdwardsFlags::default();
+                        // Serialize 0.
+                        P::BaseField::zero().serialize_with_flags(&mut writer, flags)
+                    } else {
+                        let flags = snarkvm_utilities::serialize::EdwardsFlags::from_y_sign(self.y > -self.y);
+                        self.x.serialize_with_flags(writer, flags)
+                    }
                 } else {
-                    let flags = snarkvm_utilities::serialize::EdwardsFlags::from_y_sign(self.y > -self.y);
-                    self.x.serialize_with_flags(writer, flags)
+                    self.x.serialize_uncompressed(&mut writer)?;
+                    self.y.serialize_uncompressed(&mut writer)?;
+                    Ok(())
                 }
             }
 
             #[inline]
-            fn serialized_size(&self) -> usize {
-                Self::SERIALIZED_SIZE
-            }
-
-            #[allow(unused_qualifications)]
-            #[inline]
-            fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
-                &self,
-                writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                self.x.serialize_uncompressed(writer)?;
-                self.y.serialize_uncompressed(writer)?;
-                Ok(())
-            }
-
-            #[inline]
-            fn uncompressed_size(&self) -> usize {
-                Self::UNCOMPRESSED_SIZE
+            fn serialized_size(&self, compress: Compress) -> usize {
+                if let Compress::Yes = compress {
+                    use snarkvm_utilities::serialize::EdwardsFlags;
+                    self.x.serialized_size_with_flags::<EdwardsFlags>()
+                } else {
+                    self.x.uncompressed_size() + self.y.uncompressed_size()
+                }
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for Affine<P> {
-            const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
-            const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
+        impl<P: $params> Valid for Affine<P> {
+            #[allow(unused_qualifications)]
+            fn check(&self) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+                if self.is_on_curve() & self.is_in_correct_subgroup_assuming_on_curve() {
+                    Ok(())
+                } else {
+                    Err(snarkvm_utilities::errors::SerializationError::InvalidData)
+                }
+            }
         }
 
         impl<P: $params> CanonicalDeserialize for Affine<P> {
             #[allow(unused_qualifications)]
-            fn deserialize<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
+            fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
+                mut reader: R,
+                compress: Compress,
+                validate: Validate,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let (x, flags): (P::BaseField, snarkvm_utilities::serialize::EdwardsFlags) =
-                    CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
-                if x == P::BaseField::zero() {
-                    Ok(Self::zero())
-                } else {
-                    let p = Affine::<P>::from_x_coordinate(x, flags.is_positive())
-                        .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?;
-                    if !p.is_in_correct_subgroup_assuming_on_curve() {
-                        return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
+                use snarkvm_utilities::{errors::SerializationError, serialize::EdwardsFlags};
+                let point = if let Compress::Yes = compress {
+                    let (x, flags): (P::BaseField, EdwardsFlags) = P::BaseField::deserialize_with_flags(&mut reader)?;
+
+                    if x == P::BaseField::zero() {
+                        Self::zero()
+                    } else {
+                        Affine::<P>::from_x_coordinate(x, flags.is_positive()).ok_or(SerializationError::InvalidData)?
                     }
-                    Ok(p)
-                }
-            }
+                } else {
+                    let x = P::BaseField::deserialize_uncompressed(&mut reader)?;
+                    let y = P::BaseField::deserialize_uncompressed(&mut reader)?;
+                    Affine::<P>::new(x, y)
+                };
 
-            #[allow(unused_qualifications)]
-            fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let x: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
-                let y: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
-
-                let p = Affine::<P>::new(x, y);
-                if !p.is_in_correct_subgroup_assuming_on_curve() {
-                    return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
+                if let Validate::Yes = validate {
+                    Valid::check(&point)?;
                 }
-                Ok(p)
+
+                Ok(point)
             }
         }
     };

@@ -38,11 +38,10 @@ pub fn hash_to_curve<G: AffineCurve>(input: &str) -> (G, String, usize) {
 /// Executes one round of hash-to-curve and returns a generator on success.
 #[inline]
 pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
-    debug_assert!(G::SERIALIZED_SIZE > 0);
-
+    let serialized_size = G::prime_subgroup_generator().compressed_size();
     // Compute the digest for sampling the generator.
-    let digest = Blake2Xs::evaluate(input.as_bytes(), G::SERIALIZED_SIZE as u16, "AleoHtC0".as_bytes());
-    debug_assert!(digest.len() == G::SERIALIZED_SIZE);
+    let digest = Blake2Xs::evaluate(input.as_bytes(), serialized_size as u16, "AleoHtC0".as_bytes());
+    debug_assert!(digest.len() == serialized_size);
 
     // Attempt to use the digest to derive a generator.
     G::from_random_bytes(&digest).and_then(|g| {

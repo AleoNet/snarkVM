@@ -155,136 +155,166 @@ macro_rules! impl_primefield_serializer {
             #[allow(unused_qualifications)]
             fn serialize_with_flags<W: snarkvm_utilities::io::Write, F: snarkvm_utilities::Flags>(
                 &self,
-                writer: &mut W,
+                mut writer: W,
                 flags: F,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                const BYTE_SIZE: usize = $byte_size;
-
-                let (output_bit_size, output_byte_size) =
-                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
-                if F::num_bits() > (output_bit_size - P::MODULUS_BITS as usize) {
-                    return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
+                use snarkvm_utilities::{errors::SerializationError, serialize::number_of_bits_and_bytes};
+                // All reasonable `Flags` should be less than 8 bits in size
+                // (256 values are enough for anyone!)
+                if F::BIT_SIZE > 8 {
+                    return Err(SerializationError::NotEnoughSpace);
                 }
 
-                let mut bytes = [0u8; BYTE_SIZE];
-                self.write_le(&mut bytes[..])?;
+                // Calculate the number of bytes required to represent a field element
+                // serialized with `flags`. If `F::BIT_SIZE < 8`,
+                // this is at most `$byte_size + 1`
+                let output_byte_size = number_of_bits_and_bytes(P::MODULUS_BITS as usize + F::BIT_SIZE).1;
 
+                // Write out `self` to a temporary buffer.
+                // The size of the buffer is $byte_size + 1 because `F::BIT_SIZE`
+                // is at most 8 bits.
+                let mut bytes = [0u8; $byte_size + 1];
+                self.write_le(&mut bytes[..$byte_size])?;
+
+                // Mask out the bits of the last byte that correspond to the flag.
                 bytes[output_byte_size - 1] |= flags.u8_bitmask();
 
                 writer.write_all(&bytes[..output_byte_size])?;
                 Ok(())
             }
-        }
 
-        impl<P: $params> ConstantSerializedSize for $field<P> {
-            const SERIALIZED_SIZE: usize = snarkvm_utilities::serialize::number_of_bits_to_number_of_bytes(
-                <$field<P> as crate::PrimeField>::Parameters::MODULUS_BITS as usize,
-            );
-            const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
+            // Let `m = 8 * n` for some `n` be the smallest multiple of 8 greater
+            // than `P::MODULUS_BITS`.
+            // If `(m - P::MODULUS_BITS) >= F::BIT_SIZE` , then this method returns `n`;
+            // otherwise, it returns `n + 1`.
+            fn serialized_size_with_flags<F: snarkvm_utilities::Flags>(&self) -> usize {
+                snarkvm_utilities::serialize::number_of_bits_and_bytes(P::MODULUS_BITS as usize + F::BIT_SIZE).1
+            }
         }
 
         impl<P: $params> CanonicalSerialize for $field<P> {
             #[allow(unused_qualifications)]
             #[inline]
-            fn serialize<W: snarkvm_utilities::io::Write>(
+            fn serialize_with_mode<W: snarkvm_utilities::io::Write>(
                 &self,
-                writer: &mut W,
+                writer: W,
+                _compress: snarkvm_utilities::serialize::Compress,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
                 self.serialize_with_flags(writer, snarkvm_utilities::serialize::EmptyFlags)
             }
 
             #[inline]
-            fn serialized_size(&self) -> usize {
-                Self::SERIALIZED_SIZE
+            fn serialized_size(&self, _compress: snarkvm_utilities::serialize::Compress) -> usize {
+                use snarkvm_utilities::EmptyFlags;
+                self.serialized_size_with_flags::<EmptyFlags>()
             }
+        }
+
+        impl<P: $params> $field<P> {
+            const SERIALIZED_SIZE: usize =
+                snarkvm_utilities::serialize::number_of_bits_to_number_of_bytes(P::MODULUS_BITS as usize);
         }
 
         impl<P: $params> CanonicalDeserializeWithFlags for $field<P> {
             #[allow(unused_qualifications)]
             fn deserialize_with_flags<R: snarkvm_utilities::io::Read, F: snarkvm_utilities::Flags>(
-                reader: &mut R,
+                mut reader: R,
             ) -> Result<(Self, F), snarkvm_utilities::errors::SerializationError> {
-                const BYTE_SIZE: usize = $byte_size;
-
-                let (output_bit_size, output_byte_size) =
-                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
-                if F::num_bits() > (output_bit_size - P::MODULUS_BITS as usize) {
-                    return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
+                use snarkvm_utilities::errors::SerializationError;
+                // All reasonable `Flags` should be less than 8 bits in size
+                // (256 values are enough for anyone!)
+                if F::BIT_SIZE > 8 {
+                    return Err(SerializationError::NotEnoughSpace);
                 }
+                // Calculate the number of bytes required to represent a field element
+                // serialized with `flags`. If `F::BIT_SIZE < 8`,
+                // this is at most `$byte_size + 1`
+                let output_byte_size = Self::SERIALIZED_SIZE;
 
-                let mut masked_bytes = [0; BYTE_SIZE];
+                let mut masked_bytes = [0; $byte_size + 1];
                 reader.read_exact(&mut masked_bytes[..output_byte_size])?;
 
-                let flags = F::from_u8_remove_flags(&mut masked_bytes[output_byte_size - 1]);
+                let flags = F::from_u8_remove_flags(&mut masked_bytes[output_byte_size - 1])
+                    .ok_or(SerializationError::UnexpectedFlags)?;
 
                 Ok((Self::read_le(&masked_bytes[..])?, flags))
             }
         }
 
+        impl<P: $params> Valid for $field<P> {
+            fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
+                Ok(())
+            }
+
+            fn batch_check<'a>(
+                _batch: impl Iterator<Item = &'a Self>,
+            ) -> Result<(), snarkvm_utilities::SerializationError>
+            where
+                Self: 'a,
+            {
+                Ok(())
+            }
+        }
+
         impl<P: $params> CanonicalDeserialize for $field<P> {
             #[allow(unused_qualifications)]
-            fn deserialize<R: snarkvm_utilities::io::Read>(
-                reader: &mut R,
+            fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
+                reader: R,
+                _compress: snarkvm_utilities::serialize::Compress,
+                _validate: snarkvm_utilities::serialize::Validate,
             ) -> Result<Self, snarkvm_utilities::SerializationError> {
-                const BYTE_SIZE: usize = $byte_size;
-
-                let (_, output_byte_size) =
-                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
-
-                let mut masked_bytes = [0; BYTE_SIZE];
-                reader.read_exact(&mut masked_bytes[..output_byte_size])?;
-                Ok(Self::read_le(&masked_bytes[..])?)
+                use snarkvm_utilities::serialize::EmptyFlags;
+                Self::deserialize_with_flags::<R, EmptyFlags>(reader).map(|(r, _)| r)
             }
         }
 
         impl<P: $params> serde::Serialize for $field<P> {
             fn serialize<S: serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 let mut bytes = Vec::with_capacity(Self::SERIALIZED_SIZE);
-                CanonicalSerialize::serialize(self, &mut bytes).map_err(serde::ser::Error::custom)?;
+                self.serialize_uncompressed(&mut bytes)
+                    .map_err(serde::ser::Error::custom)?;
 
-                match serializer.is_human_readable() {
-                    true => serializer.collect_str(self),
-                    false => snarkvm_utilities::ToBytesSerializer::serialize(&bytes, serializer),
+                if serializer.is_human_readable() {
+                    serializer.collect_str(self)
+                } else {
+                    snarkvm_utilities::ToBytesSerializer::serialize(&bytes, serializer)
                 }
             }
         }
 
         impl<'de, P: $params> serde::Deserialize<'de> for $field<P> {
             fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                match deserializer.is_human_readable() {
-                    true => {
-                        let s: String = serde::Deserialize::deserialize(deserializer)?;
-                        core::str::FromStr::from_str(&s).map_err(serde::de::Error::custom)
-                    }
-                    false => {
-                        struct SerVisitor<P>(std::marker::PhantomData<P>);
+                if deserializer.is_human_readable() {
+                    let s: String = serde::Deserialize::deserialize(deserializer)?;
+                    core::str::FromStr::from_str(&s).map_err(serde::de::Error::custom)
+                } else {
+                    struct SerVisitor<P>(std::marker::PhantomData<P>);
 
-                        impl<'de, P: $params> serde::de::Visitor<'de> for SerVisitor<P> {
-                            type Value = $field<P>;
+                    impl<'de, P: $params> serde::de::Visitor<'de> for SerVisitor<P> {
+                        type Value = $field<P>;
 
-                            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                                formatter.write_str("a valid field element")
-                            }
-
-                            fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
-                            where
-                                S: serde::de::SeqAccess<'de>,
-                            {
-                                let len = <Self::Value as ConstantSerializedSize>::SERIALIZED_SIZE;
-                                let bytes: Vec<u8> = (0..len)
-                                    .map(|_| {
-                                        seq.next_element()?
-                                            .ok_or_else(|| serde::de::Error::custom("could not read bytes"))
-                                    })
-                                    .collect::<Result<Vec<_>, _>>()?;
-
-                                CanonicalDeserialize::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
-                            }
+                        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                            formatter.write_str("a valid field element")
                         }
 
-                        let visitor = SerVisitor(std::marker::PhantomData);
-                        deserializer.deserialize_tuple(Self::SERIALIZED_SIZE, visitor)
+                        fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+                        where
+                            S: serde::de::SeqAccess<'de>,
+                        {
+                            let len = $field::<P>::SERIALIZED_SIZE;
+                            let bytes = (0..len)
+                                .map(|_| {
+                                    seq.next_element()?
+                                        .ok_or_else(|| serde::de::Error::custom("could not read bytes"))
+                                })
+                                .collect::<Result<Vec<_>, _>>()?;
+
+                            CanonicalDeserialize::deserialize_uncompressed(&*bytes).map_err(serde::de::Error::custom)
+                        }
                     }
+
+                    let visitor = SerVisitor(std::marker::PhantomData);
+                    deserializer.deserialize_tuple(Self::SERIALIZED_SIZE, visitor)
                 }
             }
         }
@@ -295,46 +325,48 @@ macro_rules! impl_field_from_random_bytes_with_flags {
     ($u64_limbs: expr) => {
         #[inline]
         fn from_random_bytes_with_flags<F: snarkvm_utilities::Flags>(bytes: &[u8]) -> Option<(Self, F)> {
-            // Copy the input into a temporary buffer.
-            let mut result_bytes = [0u8; $u64_limbs * 8 + 1];
-            result_bytes.iter_mut().zip(bytes).for_each(|(result, input)| {
-                *result = *input;
-            });
+            if F::BIT_SIZE > 8 {
+                return None;
+            } else {
+                let mut result_bytes = [0u8; $u64_limbs * 8 + 1];
+                // Copy the input into a temporary buffer.
+                result_bytes.iter_mut().zip(bytes).for_each(|(result, input)| {
+                    *result = *input;
+                });
+                // This mask retains everything in the last limb
+                // that is below `P::MODULUS_BITS`.
+                let last_limb_mask = (u64::MAX >> P::REPR_SHAVE_BITS).to_le_bytes();
+                let mut last_bytes_mask = [0u8; 9];
+                last_bytes_mask[..8].copy_from_slice(&last_limb_mask);
 
-            // The `last_limb_mask` retains everything in the final limb up to `P::MODULUS_BITS`.
-            let last_limb_mask = u64::MAX >> P::REPR_SHAVE_BITS;
+                // Length of the buffer containing the field element and the flag.
+                let output_byte_size = Self::SERIALIZED_SIZE;
+                // Location of the flag is the last byte of the serialized
+                // form of the field element.
+                let flag_location = output_byte_size - 1;
 
-            let mut last_bytes_mask = [0u8; 9];
-            last_bytes_mask[..8].copy_from_slice(&last_limb_mask.to_le_bytes());
+                // At which byte is the flag located in the last limb?
+                let flag_location_in_last_limb = flag_location - (8 * ($u64_limbs - 1));
 
-            // Length of the buffer containing the field element and the flag.
-            let output_byte_size =
-                snarkvm_utilities::number_of_bits_to_number_of_bytes(P::MODULUS_BITS as usize + F::num_bits());
+                // Take all but the last 9 bytes.
+                let last_bytes = &mut result_bytes[8 * ($u64_limbs - 1)..];
 
-            // Flags are located in the final byte of the serialized field representation.
-            let flag_location = output_byte_size - 1;
+                // The mask only has the last `F::BIT_SIZE` bits set
+                let flags_mask = u8::MAX.checked_shl(8 - (F::BIT_SIZE as u32)).unwrap_or(0);
 
-            // At which byte is the flag located in the last limb?
-            let flag_location_in_last_limb = flag_location - (8 * ($u64_limbs - 1));
-
-            // Take all but the last 9 bytes.
-            let last_bytes = &mut result_bytes[8 * ($u64_limbs - 1)..];
-
-            // The mask only has the last `F::num_bits()` bits set.
-            let flags_mask = u8::MAX.checked_shl(8 - (F::num_bits() as u32)).unwrap_or(0);
-
-            // Mask away the remaining bytes, and try to reconstruct the flag.
-            let mut flags: u8 = 0;
-            for (i, (b, m)) in last_bytes.iter_mut().zip(&last_bytes_mask).enumerate() {
-                if i == flag_location_in_last_limb {
-                    flags = *b & flags_mask
+                // Mask away the remaining bytes, and try to reconstruct the
+                // flag
+                let mut flags: u8 = 0;
+                for (i, (b, m)) in last_bytes.iter_mut().zip(&last_bytes_mask).enumerate() {
+                    if i == flag_location_in_last_limb {
+                        flags = *b & flags_mask
+                    }
+                    *b &= m;
                 }
-                *b &= m;
+                Self::deserialize_uncompressed(&result_bytes[..($u64_limbs * 8)])
+                    .ok()
+                    .and_then(|f| F::from_u8(flags).map(|flag| (f, flag)))
             }
-
-            <Self as CanonicalDeserialize>::deserialize(&mut &result_bytes[..($u64_limbs * 8)])
-                .ok()
-                .map(|f| (f, F::from_u8(flags)))
         }
     };
 }

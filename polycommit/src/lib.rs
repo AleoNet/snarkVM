@@ -141,13 +141,13 @@ pub struct BatchLCProof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for BatchLCProof<F, CF, PC> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
     }
 }
 
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for BatchLCProof<F, CF, PC> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error_fn("could not serialize struct"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error_fn("could not serialize struct"))
     }
 }
 

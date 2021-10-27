@@ -105,37 +105,38 @@ impl Ord for Index {
 
 impl CanonicalSerialize for Index {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        let inner = match *self {
-            Index::Public(inner) => {
-                true.serialize(writer)?;
-                inner
-            }
-            Index::Private(inner) => {
-                false.serialize(writer)?;
-                inner
-            }
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, _: Compress) -> Result<(), SerializationError> {
+        let (is_public, inner) = match *self {
+            Index::Public(inner) => (true, inner),
+            Index::Private(inner) => (false, inner),
         };
-        inner.serialize(writer)?;
+        // we use uncompressed here because the serialization of bool and usize
+        // don't change whether we use uncompressed or not.
+        is_public.serialize_uncompressed(&mut writer)?;
+        inner.serialize_uncompressed(&mut writer)?;
         Ok(())
     }
 
     #[inline]
-    fn serialized_size(&self) -> usize {
-        Self::SERIALIZED_SIZE
+    fn serialized_size(&self, _: Compress) -> usize {
+        // we use uncompressed here because the serialization of bool and usize
+        // don't change whether we use uncompressed or not.
+        0usize.uncompressed_size() + true.uncompressed_size()
     }
 }
 
-impl ConstantSerializedSize for Index {
-    const SERIALIZED_SIZE: usize = usize::SERIALIZED_SIZE + 1;
-    const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
+impl Valid for Index {
+    fn check(&self) -> Result<(), SerializationError> {
+        Ok(())
+    }
 }
-
 impl CanonicalDeserialize for Index {
     #[inline]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let is_input = bool::deserialize(reader)?;
-        let inner = usize::deserialize(reader)?;
+    fn deserialize_with_mode<R: Read>(mut reader: R, _: Compress, _: Validate) -> Result<Self, SerializationError> {
+        // we use uncompressed here because the serialization of bool and usize
+        // don't change whether we use uncompressed or not.
+        let is_input = bool::deserialize_uncompressed(&mut reader)?;
+        let inner = usize::deserialize_uncompressed(&mut reader)?;
         Ok(if is_input {
             Index::Public(inner)
         } else {
@@ -158,8 +159,8 @@ mod test {
         let idx = if input { Index::Public(32) } else { Index::Private(32) };
 
         let mut v = vec![];
-        idx.serialize(&mut v).unwrap();
-        let idx2 = Index::deserialize(&mut &v[..]).unwrap();
+        idx.serialize_compressed(&mut v).unwrap();
+        let idx2 = Index::deserialize_compressed(&mut &v[..]).unwrap();
         assert_eq!(idx, idx2);
     }
 }

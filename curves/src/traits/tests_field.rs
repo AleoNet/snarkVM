@@ -409,21 +409,26 @@ pub fn frobenius_test<F: Field, C: AsRef<[u64]>>(characteristic: C, maxpower: us
 }
 
 pub fn field_serialization_test<F: Field>() {
-    let buf_size = F::SERIALIZED_SIZE;
-
     let mut rng = &mut rand::thread_rng();
+    use snarkvm_utilities::serialize::{Compress, Validate};
+    let modes = [
+        (Compress::No, Validate::No),
+        (Compress::Yes, Validate::No),
+        (Compress::Yes, Validate::Yes),
+        (Compress::No, Validate::Yes),
+    ];
 
     for _ in 0..ITERATIONS {
         let a = F::rand(&mut rng);
-        {
-            let mut serialized = vec![0u8; buf_size];
+        for (compress, validate) in modes {
+            let mut serialized = Vec::with_capacity(32);
             let mut cursor = Cursor::new(&mut serialized[..]);
-            CanonicalSerialize::serialize(&a, &mut cursor).unwrap();
+            a.serialize_with_mode(&mut cursor, compress).unwrap();
             let serialized2 = bincode::serialize(&a).unwrap();
             assert_eq!(serialized, serialized2);
 
             let mut cursor = Cursor::new(&serialized[..]);
-            let b: F = CanonicalDeserialize::deserialize(&mut cursor).unwrap();
+            let b = F::deserialize_with_mode(&mut cursor, compress, validate).unwrap();
             let c: F = bincode::deserialize(&serialized).unwrap();
             assert_eq!(a, b);
             assert_eq!(a, c);
@@ -440,7 +445,7 @@ pub fn field_serialization_test<F: Field>() {
         }
 
         {
-            let mut serialized = vec![0u8; buf_size];
+            let mut serialized = vec![0u8; 48];
             let mut cursor = Cursor::new(&mut serialized[..]);
             a.serialize_with_flags(&mut cursor, SWFlags::from_y_sign(true)).unwrap();
             let mut cursor = Cursor::new(&serialized[..]);
@@ -453,26 +458,24 @@ pub fn field_serialization_test<F: Field>() {
         #[derive(Default, Clone, Copy, Debug)]
         struct DummyFlags;
         impl Flags for DummyFlags {
+            const BIT_SIZE: usize = 200;
+
             fn u8_bitmask(&self) -> u8 {
                 0
             }
 
-            fn from_u8(_value: u8) -> Self {
-                DummyFlags
+            fn from_u8(_value: u8) -> Option<Self> {
+                Some(DummyFlags)
             }
 
-            fn from_u8_remove_flags(_value: &mut u8) -> Self {
-                DummyFlags
-            }
-
-            fn num_bits() -> usize {
-                200
+            fn from_u8_remove_flags(_value: &mut u8) -> Option<Self> {
+                Some(DummyFlags)
             }
         }
 
         use snarkvm_utilities::errors::SerializationError;
         {
-            let mut serialized = vec![0; buf_size];
+            let mut serialized = vec![0; 48];
             assert!(matches!(
                 a.serialize_with_flags(&mut &mut serialized[..], DummyFlags)
                     .unwrap_err(),
@@ -485,12 +488,13 @@ pub fn field_serialization_test<F: Field>() {
         }
 
         {
-            let mut serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            CanonicalSerialize::serialize(&a, &mut cursor).unwrap_err();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            <F as CanonicalDeserialize>::deserialize(&mut cursor).unwrap_err();
+            for (compress, validate) in modes {
+                let mut serialized = vec![0; 32];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a.serialize_with_mode(&mut cursor, compress).unwrap_err();
+                let mut cursor = Cursor::new(&serialized[..]);
+                <F as CanonicalDeserialize>::deserialize_with_mode(&mut cursor, compress, validate).unwrap_err();
+            }
         }
     }
 }
