@@ -395,13 +395,6 @@ impl Boolean {
         }
     }
 
-    pub fn get_const_value(&self) -> Option<bool> {
-        match self {
-            &Boolean::Constant(c) => Some(c),
-            _ => None,
-        }
-    }
-
     pub fn is_allocated(&self) -> bool {
         match self {
             Boolean::Constant(_) => false,
