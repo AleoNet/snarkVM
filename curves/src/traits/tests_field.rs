@@ -421,8 +421,9 @@ pub fn field_serialization_test<F: Field>() {
     for _ in 0..ITERATIONS {
         let a = F::rand(&mut rng);
         for (compress, validate) in modes {
-            let mut serialized = Vec::with_capacity(32);
-            let mut cursor = Cursor::new(&mut serialized[..]);
+            let serialized_size = a.serialized_size(compress);
+            let mut serialized = vec![0u8; serialized_size];
+            let mut cursor = Cursor::new(&mut serialized);
             a.serialize_with_mode(&mut cursor, compress).unwrap();
             let serialized2 = bincode::serialize(&a).unwrap();
             assert_eq!(serialized, serialized2);
@@ -445,7 +446,7 @@ pub fn field_serialization_test<F: Field>() {
         }
 
         {
-            let mut serialized = vec![0u8; 48];
+            let mut serialized = vec![0u8; F::one().serialized_size_with_flags::<SWFlags>()];
             let mut cursor = Cursor::new(&mut serialized[..]);
             a.serialize_with_flags(&mut cursor, SWFlags::from_y_sign(true)).unwrap();
             let mut cursor = Cursor::new(&serialized[..]);
@@ -475,10 +476,9 @@ pub fn field_serialization_test<F: Field>() {
 
         use snarkvm_utilities::errors::SerializationError;
         {
-            let mut serialized = vec![0; 48];
+            let mut serialized = vec![0; F::one().serialized_size_with_flags::<DummyFlags>()];
             assert!(matches!(
-                a.serialize_with_flags(&mut &mut serialized[..], DummyFlags)
-                    .unwrap_err(),
+                a.serialize_with_flags(&mut serialized[..], DummyFlags).unwrap_err(),
                 SerializationError::NotEnoughSpace
             ));
             assert!(matches!(
@@ -489,7 +489,7 @@ pub fn field_serialization_test<F: Field>() {
 
         {
             for (compress, validate) in modes {
-                let mut serialized = vec![0; 32];
+                let mut serialized = vec![0; F::one().serialized_size(compress) - 1];
                 let mut cursor = Cursor::new(&mut serialized[..]);
                 a.serialize_with_mode(&mut cursor, compress).unwrap_err();
                 let mut cursor = Cursor::new(&serialized[..]);

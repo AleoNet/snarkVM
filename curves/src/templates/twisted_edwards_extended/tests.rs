@@ -74,7 +74,7 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
 
         for _ in 0..10 {
             let a = Projective::<P>::rand(&mut rng);
-            let mut a = a.into_affine();
+            let a = a.into_affine();
             {
                 let mut serialized = vec![0; buf_size];
                 let mut cursor = Cursor::new(&mut serialized[..]);
@@ -86,13 +86,21 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
             }
 
             {
-                a.y = -a.y;
+                let mut a_copy = a;
+                // If we negate the y-coordinate, the point is no longer in the prime-order subgroup,
+                // and so this should error when `validate == Validate::Yes`.
+                a_copy.y = -a.y;
                 let mut serialized = vec![0; buf_size];
                 let mut cursor = Cursor::new(&mut serialized[..]);
-                a.serialize_with_mode(&mut cursor, compress).unwrap();
+                a_copy.serialize_with_mode(&mut cursor, compress).unwrap();
                 let mut cursor = Cursor::new(&serialized[..]);
-                let b = Affine::<P>::deserialize_with_mode(&mut cursor, compress, validate).unwrap();
-                assert_eq!(a, b);
+
+                let b = Affine::<P>::deserialize_with_mode(&mut cursor, compress, validate);
+                if validate == Validate::Yes {
+                    b.unwrap_err();
+                } else {
+                    assert_eq!(a_copy, b.unwrap());
+                }
             }
 
             {
@@ -129,13 +137,15 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
             }
 
             {
-                a.y = -a.y;
+                let mut a_copy = a;
+                a_copy.y = -a.y;
                 let mut serialized = vec![0; a.uncompressed_size()];
                 let mut cursor = Cursor::new(&mut serialized[..]);
-                a.serialize_uncompressed(&mut cursor).unwrap();
+                a_copy.serialize_uncompressed(&mut cursor).unwrap();
                 let mut cursor = Cursor::new(&serialized[..]);
-                let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-                assert_eq!(a, b);
+                let _ = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap_err();
+                let b = Affine::<P>::deserialize_uncompressed_unchecked(&*serialized).unwrap();
+                assert_eq!(a_copy, b);
             }
 
             {
