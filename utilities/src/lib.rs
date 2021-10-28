@@ -77,6 +77,9 @@ pub use self::rand::*;
 pub mod serialize;
 pub use serialize::*;
 
+mod par_iter;
+pub use par_iter::*;
+
 #[cfg(not(feature = "std"))]
 pub mod io;
 

@@ -18,7 +18,7 @@
 
 use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use std::{

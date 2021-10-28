@@ -28,7 +28,7 @@
 
 use crate::fft::{DomainCoeff, SparsePolynomial};
 use snarkvm_fields::{batch_inversion, FftField, FftParameters};
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::{cfg_iter_mut, errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use std::fmt;

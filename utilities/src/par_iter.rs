@@ -98,3 +98,10 @@ macro_rules! cfg_reduce {
         result
     }};
 }
+
+pub use cfg_chunks;
+pub use cfg_chunks_mut;
+pub use cfg_into_iter;
+pub use cfg_iter;
+pub use cfg_iter_mut;
+pub use cfg_reduce;

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
-use crate::{cfg_iter, cfg_iter_mut, fft::EvaluationDomain};
+use crate::fft::EvaluationDomain;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Zero;
 use snarkvm_r1cs::{
@@ -23,6 +23,7 @@ use snarkvm_r1cs::{
     ConstraintSystem,
     Index,
 };
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

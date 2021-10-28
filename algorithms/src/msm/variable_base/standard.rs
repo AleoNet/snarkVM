@@ -16,7 +16,7 @@
 
 use snarkvm_curves::{traits::AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{FieldParameters, One, PrimeField, Zero};
-use snarkvm_utilities::BigInteger;
+use snarkvm_utilities::{cfg_into_iter, BigInteger};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

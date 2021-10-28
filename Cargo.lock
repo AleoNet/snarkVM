@@ -1862,6 +1862,7 @@ dependencies = [
  "num-bigint",
  "rand",
  "rand_xorshift",
+ "rayon",
  "serde",
  "snarkvm-derives",
  "thiserror",

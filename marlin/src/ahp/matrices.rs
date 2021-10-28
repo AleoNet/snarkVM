@@ -20,14 +20,11 @@ use crate::{
     ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
     BTreeMap,
 };
-use snarkvm_algorithms::{
-    cfg_iter_mut,
-    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
-};
+use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::{cfg_iter_mut, errors::SerializationError, serialize::*};
 
 use derivative::Derivative;
 

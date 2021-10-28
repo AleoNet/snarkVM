@@ -78,15 +78,23 @@ pub enum Validate {
     No,
 }
 
-pub trait Valid: Sized {
+pub trait Valid: Sized + Sync {
     fn check(&self) -> Result<(), SerializationError>;
 
-    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self>) -> Result<(), SerializationError>
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
     where
         Self: 'a,
     {
-        for item in batch {
-            item.check()?;
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::{iter::ParallelBridge, prelude::ParallelIterator};
+            batch.par_bridge().try_for_each(|e| e.check())?;
+        }
+        #[cfg(not(feature = "parallel"))]
+        {
+            for item in batch {
+                item.check()?;
+            }
         }
         Ok(())
     }

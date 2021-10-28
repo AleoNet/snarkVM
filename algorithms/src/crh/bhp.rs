@@ -17,7 +17,7 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::{cfg_iter, BigInteger, FromBytes, ToBytes};
 
 use once_cell::sync::OnceCell;
 use std::{

@@ -27,17 +27,13 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::{
-    cfg_into_iter,
-    cfg_iter,
-    cfg_iter_mut,
-    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
-};
+use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
 use rand_core::RngCore;
 

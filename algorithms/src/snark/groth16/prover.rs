@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
-use crate::{cfg_into_iter, msm::VariableBaseMSM};
+use crate::msm::VariableBaseMSM;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::{cfg_into_iter, rand::UniformRand};
 
 use core::ops::Mul;
 use rand::Rng;

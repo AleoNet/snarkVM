@@ -247,7 +247,7 @@ macro_rules! impl_primefield_serializer {
             }
 
             fn batch_check<'a>(
-                _batch: impl Iterator<Item = &'a Self>,
+                _batch: impl Iterator<Item = &'a Self> + Send,
             ) -> Result<(), snarkvm_utilities::SerializationError>
             where
                 Self: 'a,

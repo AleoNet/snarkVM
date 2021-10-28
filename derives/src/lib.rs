@@ -201,7 +201,7 @@ fn impl_valid(ast: &syn::DeriveInput) -> TokenStream {
                 Ok(())
             }
             #[allow(unused_mut, unused_variables)]
-            fn batch_check<'a>(batch: impl Iterator<Item = &'a Self>) -> Result<(), SerializationError>
+            fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
                 where
             Self: 'a
             {

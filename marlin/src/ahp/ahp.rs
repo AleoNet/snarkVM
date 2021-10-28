@@ -20,9 +20,10 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
+use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_utilities::cfg_iter_mut;
 
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 

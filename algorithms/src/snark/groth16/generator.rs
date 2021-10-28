@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, ProvingKey, VerifyingKey};
-use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
+use crate::{fft::EvaluationDomain, msm::FixedBaseMSM};
 use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, errors::SerializationError, rand::UniformRand, serialize::*};
 
 use core::ops::Mul;
 use rand::Rng;

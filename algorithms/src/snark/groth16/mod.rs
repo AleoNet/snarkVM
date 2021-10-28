@@ -74,58 +74,59 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) should_compress: bool,
 }
 
-impl<E:PairingEngine>CanonicalSerialize for Proof<E>{
-  #[allow(unused_mut,unused_variables)]
-  fn serialize_with_mode<W:Write>(&self,mut writer: W, compress: Compress) -> Result<(),SerializationError>{
-    CanonicalSerialize::serialize_with_mode(&self.a, &mut writer,compress)? ;
-    CanonicalSerialize::serialize_with_mode(&self.b, &mut writer,compress)? ;
-    CanonicalSerialize::serialize_with_mode(&self.c, &mut writer,compress)? ;
-    Ok(())
-  }
-  #[allow(unused_mut,unused_variables)]
-  fn serialized_size(&self,compress: Compress) -> usize {
-    let mut size = 0;
-    size += CanonicalSerialize::serialized_size(&self.a,compress);
-    size += CanonicalSerialize::serialized_size(&self.b,compress);
-    size += CanonicalSerialize::serialized_size(&self.c,compress);
-    size
-  }
-  
+impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
+    #[allow(unused_mut, unused_variables)]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        CanonicalSerialize::serialize_with_mode(&self.a, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.b, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.c, &mut writer, compress)?;
+        Ok(())
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn serialized_size(&self, compress: Compress) -> usize {
+        let mut size = 0;
+        size += CanonicalSerialize::serialized_size(&self.a, compress);
+        size += CanonicalSerialize::serialized_size(&self.b, compress);
+        size += CanonicalSerialize::serialized_size(&self.c, compress);
+        size
+    }
 }
-impl<E:PairingEngine>CanonicalDeserialize for Proof<E>{
-  #[allow(unused_mut,unused_variables)]
-  fn deserialize_with_mode<R:Read>(
-      mut reader:R,
-      compress: Compress,
-      validate: Validate,
-    ) -> Result<Self,SerializationError>{
-        Ok(
-            Proof{
-                a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, 
-                b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, 
-                c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, 
-                should_compress: compress == Compress::Yes,
-            })
-  }
-  
+impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
+    #[allow(unused_mut, unused_variables)]
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        Ok(Proof {
+            a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            should_compress: compress == Compress::Yes,
+        })
+    }
 }
-impl<E:PairingEngine>Valid for Proof<E>{
-  #[allow(unused_mut,unused_variables)]
-  fn check(&self) -> Result<(),SerializationError>{
-    Valid::check(&self.a)? ;
-    Valid::check(&self.b)? ;
-    Valid::check(&self.c)? ;
-    Ok(())
-  }
-  #[allow(unused_mut,unused_variables)]
-  fn batch_check< 'a>(batch:impl Iterator<Item =  & 'a Self>) -> Result<(),SerializationError>where Self: 'a{
-    let batch:Vec<_>  = batch.collect();
-    Valid::batch_check(batch.iter().map(|v| &v.a))? ;
-    Valid::batch_check(batch.iter().map(|v| &v.b))? ;
-    Valid::batch_check(batch.iter().map(|v| &v.c))? ;
-    Ok(())
-  }
-  
+impl<E: PairingEngine> Valid for Proof<E> {
+    #[allow(unused_mut, unused_variables)]
+    fn check(&self) -> Result<(), SerializationError> {
+        Valid::check(&self.a)?;
+        Valid::check(&self.b)?;
+        Valid::check(&self.c)?;
+        Ok(())
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        let batch: Vec<_> = batch.collect();
+        Valid::batch_check(batch.iter().map(|v| &v.a))?;
+        Valid::batch_check(batch.iter().map(|v| &v.b))?;
+        Valid::batch_check(batch.iter().map(|v| &v.c))?;
+        Ok(())
+    }
 }
 
 impl<E: PairingEngine> Proof<E> {

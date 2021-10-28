@@ -16,7 +16,7 @@
 
 use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::ToBits;
+use snarkvm_utilities::{cfg_iter, ToBits};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

@@ -19,7 +19,7 @@ use crate::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{MerkleParameters, CRH},
 };
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{cfg_chunks, ToBytes};
 use std::sync::Arc;
 
 #[cfg(feature = "parallel")]
