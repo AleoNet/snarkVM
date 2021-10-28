@@ -123,4 +123,4 @@ default = [
 wasm = ["snarkvm-algorithms/wasm", "snarkvm-gadgets/full"]
 std = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
-parallel = [ "std", "rayon" ]
+parallel = [ "std", "rayon", "snarkvm-utilities/parallel" ]

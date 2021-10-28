@@ -218,7 +218,7 @@ impl<T> CanonicalSerialize for std::marker::PhantomData<T> {
     }
 }
 
-impl<T: Send + Sync> Valid for PhantomData<T> {
+impl<T: Sync> Valid for PhantomData<T> {
     #[inline]
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())

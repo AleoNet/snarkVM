@@ -27,7 +27,7 @@ use derivative::Derivative;
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""), Copy(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CircuitInfo<F> {
+pub struct CircuitInfo<F: PrimeField> {
     /// The total number of variables in the constraint system.
     pub num_variables: usize,
     /// The number of constraints.
