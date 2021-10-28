@@ -18,39 +18,22 @@ use snarkvm_gadgets::{algorithms::prf::Blake2sGadget, PRFGadget, ToBytesGadget};
 
 use super::*;
 
-pub const BLAKE2S_CORE: &str = "blake2s";
-
-fn unwrap_argument<F: PrimeField, G: GroupType<F>>(arg: &ConstrainedValue<F, G>) -> Result<Vec<UInt8>> {
-    if let ConstrainedValue::Array(args) = arg {
-        if args.len() != 32 {
-            return Err(anyhow!("illegal blake2s parameter length, expected 32"));
-        }
-        args.iter()
-            .map(|item| {
-                if let ConstrainedValue::Integer(Integer::U8(item)) = item {
-                    Ok(item.clone())
-                } else {
-                    Err(anyhow!("illegal non-u8 type in blake2s call"))
-                }
-            })
-            .collect::<Result<Vec<_>>>()
-    } else {
-        Err(anyhow!("illegal non-array type in blake2s call"))
-    }
-}
+pub const BLAKE2S_HASH_CORE: &str = "hash";
 
 impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
-    pub fn call_core_blake2s<CS: ConstraintSystem<F>>(
+    pub fn call_core_blake2s_hash<CS: ConstraintSystem<F>>(
         &mut self,
         arguments: &[ConstrainedValue<F, G>],
         cs: &mut CS,
     ) -> Result<ConstrainedValue<F, G>> {
         if arguments.len() != 2 {
-            return Err(anyhow!("illegal blake2s call, expected 2 arguments"));
+            return Err(anyhow!("illegal blake2s hash call, expected 2 arguments"));
         }
-        let input = unwrap_argument(&arguments[1])?;
-        let seed = unwrap_argument(&arguments[0])?;
+
+        let input = unwrap_u8_array_argument(&arguments[1], 32, "hash")?;
+        let seed = unwrap_u8_array_argument(&arguments[0], 32, "hash")?;
         let mut cs = self.cs(cs);
+
         let digest = Blake2sGadget::check_evaluation_gadget(cs.ns(|| "blake2s hash"), &seed[..], &input[..])
             .map_err(|e| ValueError::cannot_enforce("Blake2s check evaluation gadget", e))?;
 

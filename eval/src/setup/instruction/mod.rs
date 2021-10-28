@@ -314,7 +314,10 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                 for part in parts {
                     match part {
                         Value::Str(s) => out += &**s,
-                        x => out += &*x.to_string(),
+                        x => {
+                            let val = self.resolve(x, cs)?;
+                            out += &*val.to_string()
+                        }
                     }
                 }
                 match log_level {

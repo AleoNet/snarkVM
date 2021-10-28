@@ -8,3 +8,8 @@
 **posw_snark_pk*.params
 **universal_srs*.params
 **testnet2_program_vk_crh*.params
+
+# Emacs gitignore files
+*~
+\#*\#
+.\#*
