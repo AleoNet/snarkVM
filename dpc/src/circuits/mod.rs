@@ -34,3 +34,6 @@ pub(crate) use outer_public_variables::*;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod marlin_outer_snark_test;

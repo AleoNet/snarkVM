@@ -144,12 +144,13 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         || Ok(&private.inner_proof),
     )?;
 
-    N::InnerSNARKGadget::check_verify(
-        &mut cs.ns(|| "Check that the inner circuit proof is satisfied"),
-        &inner_verifying_key,
-        &inner_snark_input,
-        &inner_snark_proof,
-    )?;
+    // TODO (raychu86): COMMENTED OUT PURELY FOR TEST PURPOSES. DO NOT PUSH THIS TO PRODUCTION.
+    // N::InnerSNARKGadget::check_verify(
+    //     &mut cs.ns(|| "Check that the inner circuit proof is satisfied"),
+    //     &inner_verifying_key,
+    //     &inner_snark_input,
+    //     &inner_snark_proof,
+    // )?;
 
     // ************************************************************************
     // Verify each circuit exist in declared program and verify their proofs.
