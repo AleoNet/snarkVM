@@ -99,7 +99,7 @@ impl PoseidonGrainLFSR {
     }
 
     pub fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(num_bits);
 
         for _ in 0..num_bits {
             // Obtain the first bit
