@@ -132,9 +132,14 @@ macro_rules! impl_remote {
                     // Load remote file
                     cfg_if::cfg_if! {
                         if #[cfg(not(feature = "wasm"))] {
+                            #[cfg(not(feature = "no_std_out"))]
                             println!("{} - Downloading parameters...", module_path!());
+
+
                             let mut buffer = vec![];
                             Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, filename))?;
+
+                            #[cfg(not(feature = "no_std_out"))]
                             println!("\n{} - Download complete", module_path!());
 
                             // Ensure the checksum matches.
@@ -205,7 +210,9 @@ macro_rules! impl_remote {
             ) -> Result<(), crate::errors::ParameterError> {
                 use snarkvm_utilities::Write;
 
+                #[cfg(not(feature = "no_std_out"))]
                 println!("{} - Storing parameters ({:?})", module_path!(), file_path);
+
                 // Attempt to write the parameter buffer to a file.
                 if let Ok(mut file) = std::fs::File::create(relative_path) {
                     file.write_all(&buffer)?;
@@ -223,12 +230,15 @@ macro_rules! impl_remote {
                 easy.progress_function(|total_download, current_download, _, _| {
                     let percent = (current_download / total_download) * 100.0;
                     let size_in_megabytes = total_download as u64 / 1_048_576;
+
+                    #[cfg(not(feature = "no_std_out"))]
                     print!(
                         "\r{} - {:.2}% complete ({:#} MB total)",
                         module_path!(),
                         percent,
                         size_in_megabytes
                     );
+
                     true
                 })?;
 
