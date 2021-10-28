@@ -326,7 +326,7 @@ fn testnet2_marlin_outer_multiple_functions_test() -> Result<()> {
 
         let new_proof = <<Testnet2 as Network>::ProgramSNARK as SNARK>::prove(
             &new_circuit.proving_key,
-            &NewCircuitLogic::new(&ProgramPublicVariables::blank()),
+            &NewCircuitLogic::new(&ProgramPublicVariables::new(transition_id)),
             rng,
         )?;
 
