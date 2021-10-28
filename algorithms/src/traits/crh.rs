@@ -42,7 +42,7 @@ pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as
     fn hash_field_elements<F: PrimeField>(&self, input: &[F]) -> Result<Self::Output, CRHError> {
         let mut input_bytes = vec![];
         for elem in input.iter() {
-            input_bytes.append(&mut elem.to_bytes_le()?);
+            input_bytes.extend_from_slice(&elem.to_bytes_le()?);
         }
         self.hash(&input_bytes)
     }
