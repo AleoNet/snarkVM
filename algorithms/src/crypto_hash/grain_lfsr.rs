@@ -146,7 +146,7 @@ impl PoseidonGrainLFSR {
     pub fn get_field_elements_mod_p<F: PrimeField>(&mut self, num_elems: usize) -> Vec<F> {
         assert_eq!(F::Parameters::MODULUS_BITS as u64, self.prime_num_bits);
 
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(num_elems);
         for _ in 0..num_elems {
             // Obtain n bits and make it most-significant-bit first
             let mut bits = self.get_bits(self.prime_num_bits as usize);
@@ -163,9 +163,10 @@ impl PoseidonGrainLFSR {
                     }
                     sum
                 })
+                .rev()
                 .collect::<Vec<u8>>();
 
-            res.push(F::from_bytes_le_mod_order(&bytes));
+            res.push(F::from_bytes_be_mod_order(&bytes));
         }
 
         res
