@@ -394,13 +394,37 @@ mod tests {
     use rand::{rngs::ThreadRng, thread_rng};
 
     #[test]
-    fn test_to_string() {
+    fn test_serde_json() {
         let block_header = Testnet2::genesis_block().header().to_owned();
 
-        let header_json = block_header.to_string();
-        let deserialized_header = BlockHeader::<Testnet2>::from_str(&header_json).unwrap();
+        // Serialize
+        let expected_string = &block_header.to_string();
+        let candidate_string = serde_json::to_string(&block_header).unwrap();
+        assert_eq!(1947, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
 
-        assert_eq!(block_header, deserialized_header);
+        // Deserialize
+        assert_eq!(block_header, BlockHeader::from_str(&expected_string).unwrap());
+        assert_eq!(block_header, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let block_header = Testnet2::genesis_block().header().to_owned();
+
+        println!("{}", serde_json::to_string(&block_header).unwrap());
+
+        let expected_bytes = block_header.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&block_header).unwrap()[..]);
+
+        assert_eq!(block_header, BlockHeader::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(block_header, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 
     #[test]
