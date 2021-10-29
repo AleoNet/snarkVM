@@ -19,10 +19,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FunctionType {
     Noop,
-    Add,
+    Insert,
     Update,
     Remove,
-    DoubleAdd,
+    DoubleInsert,
     DoubleRemove,
     Join,
     Split,
@@ -30,13 +30,14 @@ pub enum FunctionType {
 }
 
 impl FunctionType {
+    /// Returns the number of expected input records in a transition.
     pub fn input_count(&self) -> u8 {
         match self {
             Self::Noop => 0,
-            Self::Add => 0,
+            Self::Insert => 0,
             Self::Update => 1,
             Self::Remove => 1,
-            Self::DoubleAdd => 0,
+            Self::DoubleInsert => 0,
             Self::DoubleRemove => 2,
             Self::Join => 2,
             Self::Split => 1,
@@ -44,13 +45,14 @@ impl FunctionType {
         }
     }
 
+    /// Returns the number of expected output records in a transition.
     pub fn output_count(&self) -> u8 {
         match self {
             Self::Noop => 0,
-            Self::Add => 1,
+            Self::Insert => 1,
             Self::Update => 1,
             Self::Remove => 0,
-            Self::DoubleAdd => 2,
+            Self::DoubleInsert => 2,
             Self::DoubleRemove => 0,
             Self::Join => 1,
             Self::Split => 2,

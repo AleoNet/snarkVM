@@ -30,6 +30,8 @@ pub struct Blocks<N: Network> {
     current_height: u32,
     /// The current block hash.
     current_hash: N::BlockHash,
+    /// The current ledger tree.
+    ledger_tree: LedgerTree<N>,
     /// The chain of previous block hashes.
     previous_hashes: HashMap<u32, N::BlockHash>,
     /// The chain of block headers.
@@ -47,11 +49,13 @@ impl<N: Network> Blocks<N> {
         let mut blocks = Self {
             current_height: height,
             current_hash: genesis_block.block_hash(),
+            ledger_tree: LedgerTree::<N>::new()?,
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
         };
 
+        blocks.ledger_tree.add(&genesis_block.block_hash())?;
         blocks
             .previous_hashes
             .insert(height, genesis_block.previous_block_hash());
@@ -69,6 +73,11 @@ impl<N: Network> Blocks<N> {
     /// Returns the latest block hash.
     pub fn latest_block_hash(&self) -> N::BlockHash {
         self.current_hash
+    }
+
+    /// Returns the latest ledger root.
+    pub fn latest_ledger_root(&self) -> N::LedgerRoot {
+        self.ledger_tree.root()
     }
 
     /// Returns the latest block timestamp.
@@ -151,10 +160,12 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given ledger root exists.
     pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
-        self.headers
-            .values()
-            .map(BlockHeader::ledger_root)
-            .any(|root| root == *ledger_root)
+        *ledger_root == self.latest_ledger_root()
+            || self
+                .headers
+                .values()
+                .map(BlockHeader::previous_ledger_root)
+                .any(|root| root == *ledger_root)
     }
 
     /// Returns `true` if the given block hash exists.
@@ -279,6 +290,7 @@ impl<N: Network> Blocks<N> {
 
             blocks.current_height = height;
             blocks.current_hash = block_hash;
+            blocks.ledger_tree.add(&block.block_hash())?;
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
@@ -289,42 +301,23 @@ impl<N: Network> Blocks<N> {
         Ok(())
     }
 
-    // TODO (howardwu): Optimize this function.
-    pub fn to_ledger_root(&self) -> Result<N::LedgerRoot> {
-        let mut ledger = LedgerTree::<N>::new()?;
-        ledger.add_all(
-            self.previous_hashes
-                .values()
-                .chain(vec![self.current_hash].iter())
-                .cloned()
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )?;
-        Ok(ledger.root())
+    /// Returns the ledger tree.
+    pub fn to_ledger_tree(&self) -> &LedgerTree<N> {
+        &self.ledger_tree
     }
 
-    // TODO (howardwu): Optimize this function.
     /// Returns an inclusion proof for the ledger tree.
     pub fn to_ledger_root_inclusion_proof(
         &self,
         block_hash: &N::BlockHash,
     ) -> Result<MerklePath<N::LedgerRootParameters>> {
-        let mut ledger = LedgerTree::<N>::new()?;
-        ledger.add_all(
-            self.previous_hashes
-                .values()
-                .chain(vec![self.current_hash].iter())
-                .cloned()
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )?;
-        Ok(ledger.to_ledger_inclusion_proof(block_hash)?)
+        Ok(self.ledger_tree.to_ledger_inclusion_proof(block_hash)?)
     }
 
     ///
     /// Returns a ledger proof for the given commitment.
     ///
-    pub fn to_ledger_inclusion_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+    pub fn to_ledger_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
         // TODO (howardwu): Optimize this operation.
         let transaction = self
             .transactions
@@ -392,8 +385,7 @@ impl<N: Network> Blocks<N> {
             local_proof,
         )?;
 
-        // TODO (howardwu): Optimize this operation.
-        let ledger_root = self.to_ledger_root()?;
+        let ledger_root = self.latest_ledger_root();
         let ledger_root_inclusion_proof = self.to_ledger_root_inclusion_proof(&current_block_hash)?;
 
         LedgerProof::new(ledger_root, ledger_root_inclusion_proof, record_proof)

@@ -26,8 +26,8 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id = vec![
-        130, 1, 194, 156, 214, 78, 206, 204, 118, 109, 93, 105, 25, 74, 25, 198, 110, 127, 248, 179, 68, 94, 74, 12,
-        109, 71, 170, 225, 49, 129, 115, 182, 227, 233, 22, 73, 44, 122, 214, 112, 8, 179, 15, 159, 94, 60, 4, 0,
+        30, 194, 18, 101, 217, 127, 95, 56, 1, 16, 100, 166, 24, 193, 5, 246, 138, 62, 201, 223, 78, 91, 206, 192, 37,
+        207, 190, 61, 194, 184, 218, 113, 29, 159, 166, 20, 29, 24, 83, 93, 167, 231, 108, 57, 56, 81, 125, 0,
     ];
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
@@ -73,7 +73,7 @@ fn dpc_testnet2_integration_test() {
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.to_transactions_root().unwrap();
 
-    let ledger_root = ledger.to_ledger_root().unwrap();
+    let previous_ledger_root = ledger.latest_ledger_root();
     let timestamp = Utc::now().timestamp();
     let difficulty_target = Blocks::<Testnet2>::compute_difficulty_target(
         previous_block.timestamp(),
@@ -86,7 +86,7 @@ fn dpc_testnet2_integration_test() {
         block_height,
         timestamp,
         difficulty_target,
-        ledger_root,
+        previous_ledger_root,
         transactions_root,
         &AtomicBool::new(false),
         &mut rng,

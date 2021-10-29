@@ -64,7 +64,7 @@ impl<N: Network> Operation<N> {
     pub fn function_type(&self) -> FunctionType {
         match self {
             Self::Noop => FunctionType::Noop,
-            Self::Coinbase(..) => FunctionType::Add,
+            Self::Coinbase(..) => FunctionType::Insert,
             Self::Transfer(..) => FunctionType::Full,
             Self::Evaluate(_, function_type, _) => *function_type,
         }
