@@ -17,7 +17,7 @@
 use crate::{Block, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, ProgramPublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     GroupGadget,
@@ -38,14 +38,36 @@ use rand::{CryptoRng, Rng};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
+pub trait Bech32Scheme<F: Field>:
+    ToConstraintField<F>
+    + Copy
+    + Clone
+    + Default
+    + Debug
+    + Display
+    + ToBytes
+    + FromBytes
+    + Serialize
+    + DeserializeOwned
+    + PartialEq
+    + Eq
+    + Hash
+    + Sync
+    + Send
+{
+    fn new(data: F) -> Self;
+}
+
 #[rustfmt::skip]
-pub trait Network: 'static + Clone + Debug + Default + PartialEq + Eq + Serialize + Send + Sync {
+pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + Serialize + Send + Sync {
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
     const NUM_INPUT_RECORDS: usize;
     const NUM_OUTPUT_RECORDS: usize;
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
+
+    const BLOCK_HASH_PREFIX: u16;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -116,10 +138,10 @@ pub trait Network: 'static + Clone + Debug + Default + PartialEq + Eq + Serializ
     type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Serialize + DeserializeOwned + Send + Sync + PartialEq + Eq;
 
     /// CRH schemes for the block hash. Invoked only over `Self::InnerScalarField`.
-    type BlockHashCRH: CRH<Output = Self::BlockHash>;
+    type BlockHashCRH: CRH<Output = Self::InnerScalarField>;
     type BlockHashCRHGadget: CRHGadget<Self::BlockHashCRH, Self::InnerScalarField>;
-    type BlockHash: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
-    
+    type BlockHash: Bech32Scheme<Self::InnerScalarField>;
+
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderRootCRH: CRH<Output = Self::BlockHeaderRoot>;
     type BlockHeaderRootCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::H, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;

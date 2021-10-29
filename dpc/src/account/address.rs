@@ -167,7 +167,7 @@ impl<N: Network> fmt::Display for Address<N> {
         let encryption_key = self.to_bytes_le().expect("Failed to write encryption key as bytes");
 
         bech32::encode(
-            &account_format::ADDRESS_PREFIX.to_string(),
+            account_format::ADDRESS_PREFIX,
             encryption_key.to_base32(),
             bech32::Variant::Bech32,
         )

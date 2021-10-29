@@ -38,3 +38,14 @@ macro_rules! dpc_snark_setup {
         }
     };
 }
+
+/// Converts a string of 2 characters into a `u16` for a human-readable prefix in Bech32.
+#[macro_export]
+macro_rules! hrp {
+    ( $persona: expr ) => {{
+        // panic!("HRP must be exactly 2 characters")
+        snarkvm_algorithms::const_assert!($persona.len() == 2);
+        let p = $persona.as_bytes();
+        u16::from_le_bytes([p[0], p[1]])
+    }};
+}

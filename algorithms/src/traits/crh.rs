@@ -24,7 +24,7 @@ use std::{
 };
 
 pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as CRH>::Parameters> {
-    type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync + Copy;
+    type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync;
     type Parameters: Clone + Debug + Eq;
 
     fn setup(message: &str) -> Self;

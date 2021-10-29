@@ -16,6 +16,7 @@
 
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
+    bech32::Bech32,
     posw::PoSW,
     Block,
     InnerPublicVariables,
@@ -72,7 +73,7 @@ use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet1;
 
 #[rustfmt::skip]
@@ -82,6 +83,8 @@ impl Network for Testnet1 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
+
+    const BLOCK_HASH_PREFIX: u16 = hrp!("ab");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
@@ -142,7 +145,7 @@ impl Network for Testnet1 {
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type BlockHash = <Self::BlockHashCRH as CRH>::Output;
+    type BlockHash = Bech32<<<Self as Network>::BlockHashCRH as CRH>::Output, { Self::BLOCK_HASH_PREFIX }, 32>;
 
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;

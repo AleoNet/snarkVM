@@ -21,11 +21,23 @@ pub enum BlockError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
+    #[error("{}", _0)]
+    Bech32Error(#[from] bech32::Error),
+
     #[error("block already exists {}", _0)]
     BlockExists(String),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
+
+    #[error("invalid byte length: {}", _0)]
+    InvalidByteLength(usize),
+
+    #[error("invalid character length: {}", _0)]
+    InvalidCharacterLength(usize),
+
+    #[error("invalid prefix: {:?}", _0)]
+    InvalidPrefix(String),
 
     #[error("{}", _0)]
     Message(String),

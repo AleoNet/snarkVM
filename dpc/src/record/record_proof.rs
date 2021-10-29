@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use std::io::{Read, Result as IoResult, Write};
@@ -76,8 +76,8 @@ impl<N: Network> RecordProof<N> {
         }
 
         // Ensure the block hash is valid.
-        let candidate_block_hash = N::block_hash_crh()
-            .hash(&[previous_block_hash.to_bytes_le()?, block_header_root.to_bytes_le()?].concat())?;
+        let candidate_block_hash =
+            N::BlockHash::new(N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, block_header_root]?)?);
         if candidate_block_hash != block_hash {
             return Err(anyhow!(
                 "Candidate block hash {} does not match given block hash {}",

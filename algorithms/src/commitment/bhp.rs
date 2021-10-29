@@ -22,6 +22,7 @@ use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +35,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = (Vec<Vec<G>>, Vec<G>);
+    type Parameters = (Arc<Vec<Vec<G>>>, Vec<G>);
     type Randomness = G::ScalarField;
 
     fn setup(message: &str) -> Self {
@@ -93,10 +94,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Vec<Vec<G>>, Vec<G>)>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Arc<Vec<Vec<G>>>, Vec<G>)>
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn from((bases, random_base): (Vec<Vec<G>>, Vec<G>)) -> Self {
+    fn from((bases, random_base): (Arc<Vec<Vec<G>>>, Vec<G>)) -> Self {
         Self {
             bhp_crh: bases.into(),
             random_base,

@@ -21,6 +21,9 @@ pub enum AccountError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
+    #[error("{}", _0)]
+    Bech32Error(#[from] bech32::Error),
+
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
@@ -52,12 +55,6 @@ pub enum AccountError {
 impl From<base58::FromBase58Error> for AccountError {
     fn from(error: base58::FromBase58Error) -> Self {
         AccountError::Crate("base58", format!("{:?}", error))
-    }
-}
-
-impl From<bech32::Error> for AccountError {
-    fn from(error: bech32::Error) -> Self {
-        AccountError::Crate("bech32", format!("{:?}", error))
     }
 }
 
