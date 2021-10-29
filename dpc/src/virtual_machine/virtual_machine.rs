@@ -45,6 +45,11 @@ impl<N: Network> VirtualMachine<N> {
         })
     }
 
+    /// Returns the local proof for a given commitment.
+    pub fn to_local_proof(&self, commitment: N::Commitment) -> Result<LocalProof<N>> {
+        self.local_transitions.to_local_proof(commitment)
+    }
+
     /// Executes the request, returning a transaction.
     pub fn execute<R: Rng + CryptoRng>(mut self, request: &Request<N>, rng: &mut R) -> Result<Self> {
         // Ensure the request is valid.
