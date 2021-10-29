@@ -277,12 +277,12 @@ impl<E: PairingEngine> ToMinimalBits for VerifyingKey<E> {
 impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifyingKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let mut res = vec![];
-        res.append(&mut self.alpha_g1.to_field_elements()?);
-        res.append(&mut self.beta_g2.to_field_elements()?);
-        res.append(&mut self.gamma_g2.to_field_elements()?);
-        res.append(&mut self.delta_g2.to_field_elements()?);
+        res.extend_from_slice(&self.alpha_g1.to_field_elements()?);
+        res.extend_from_slice(&self.beta_g2.to_field_elements()?);
+        res.extend_from_slice(&self.gamma_g2.to_field_elements()?);
+        res.extend_from_slice(&self.delta_g2.to_field_elements()?);
         for elem in self.gamma_abc_g1.iter() {
-            res.append(&mut elem.to_field_elements()?);
+            res.extend_from_slice(&elem.to_field_elements()?);
         }
 
         Ok(res)
