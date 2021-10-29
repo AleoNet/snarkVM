@@ -342,15 +342,27 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 impl<N: Network> FromStr for BlockHeader<N> {
     type Err = anyhow::Error;
 
-    fn from_str(header_hex: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from_bytes_le(&hex::decode(header_hex)?)?)
+    fn from_str(header: &str) -> Result<Self, Self::Err> {
+        let header = serde_json::Value::from_str(header)?;
+
+        Ok(Self {
+            previous_ledger_root: serde_json::from_value(header["previous_ledger_root"].clone())?,
+            transactions_root: serde_json::from_value(header["transactions_root"].clone())?,
+            metadata: serde_json::from_value(header["metadata"].clone())?,
+            proof: serde_json::from_value(header["proof"].clone())?,
+        })
     }
 }
 
 impl<N: Network> fmt::Display for BlockHeader<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let bytes = self.to_bytes_le().expect("Failed to convert block header to bytes");
-        write!(f, "{}", hex::encode(bytes))
+        let header = serde_json::json!({
+            "previous_ledger_root": self.previous_ledger_root,
+            "transactions_root": self.transactions_root,
+            "metadata": self.metadata,
+            "proof": self.proof,
+        });
+        write!(f, "{}", header)
     }
 }
 
@@ -380,6 +392,16 @@ mod tests {
     use snarkvm_marlin::ahp::AHPForR1CS;
 
     use rand::{rngs::ThreadRng, thread_rng};
+
+    #[test]
+    fn test_to_string() {
+        let block_header = Testnet2::genesis_block().header().to_owned();
+
+        let header_json = block_header.to_string();
+        let deserialized_header = BlockHeader::<Testnet2>::from_str(&header_json).unwrap();
+
+        assert_eq!(block_header, deserialized_header);
+    }
 
     #[test]
     fn test_block_header_genesis() {
