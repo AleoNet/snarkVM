@@ -195,8 +195,8 @@ impl<N: Network> Ledger<N> {
     ///
     /// Returns the ledger proof for the given commitment with the current ledger root.
     ///
-    pub fn to_ledger_inclusion_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
-        self.canon_blocks.to_ledger_inclusion_proof(commitment)
+    pub fn to_ledger_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+        self.canon_blocks.to_ledger_proof(commitment)
     }
 }
 

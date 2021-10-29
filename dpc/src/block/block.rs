@@ -30,7 +30,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
     sync::atomic::AtomicBool,

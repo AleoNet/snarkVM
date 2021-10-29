@@ -20,7 +20,7 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::Deref,

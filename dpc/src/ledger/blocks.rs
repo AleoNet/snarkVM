@@ -317,7 +317,7 @@ impl<N: Network> Blocks<N> {
     ///
     /// Returns a ledger proof for the given commitment.
     ///
-    pub fn to_ledger_inclusion_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+    pub fn to_ledger_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
         // TODO (howardwu): Optimize this operation.
         let transaction = self
             .transactions
