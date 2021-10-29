@@ -89,8 +89,8 @@ impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
-    /// The Merkle root representing the blocks in the ledger - 32 bytes
-    ledger_root: N::LedgerRoot,
+    /// The Merkle root representing the blocks in the ledger up to the previous block - 32 bytes
+    previous_ledger_root: N::LedgerRoot,
     /// The Merkle root representing the transactions in the block - 32 bytes
     transactions_root: N::TransactionsRoot,
     /// The block header metadata - 52 bytes
@@ -105,7 +105,7 @@ impl<N: Network> BlockHeader<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
-        ledger_root: N::LedgerRoot,
+        previous_ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
         terminator: &AtomicBool,
         rng: &mut R,
@@ -123,7 +123,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Construct a candidate block header.
         let mut block_header = Self {
-            ledger_root,
+            previous_ledger_root,
             transactions_root,
             metadata,
             proof: None,
@@ -143,7 +143,7 @@ impl<N: Network> BlockHeader<N> {
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
         // Ensure the ledger root is nonzero.
-        if self.ledger_root == Default::default() {
+        if self.previous_ledger_root == Default::default() {
             eprintln!("Invalid ledger root in block header");
             return false;
         }
@@ -179,9 +179,9 @@ impl<N: Network> BlockHeader<N> {
             && N::posw().verify(&self)
     }
 
-    /// Returns the ledger root in the block header.
-    pub fn ledger_root(&self) -> N::LedgerRoot {
-        self.ledger_root
+    /// Returns the previous ledger root from the block header.
+    pub fn previous_ledger_root(&self) -> N::LedgerRoot {
+        self.previous_ledger_root
     }
 
     /// Returns the transactions root in the block header.
@@ -224,8 +224,8 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns an instance of the block header tree.
     pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
-        let ledger_root = self.ledger_root.to_bytes_le()?;
-        assert_eq!(ledger_root.len(), 32);
+        let previous_ledger_root = self.previous_ledger_root.to_bytes_le()?;
+        assert_eq!(previous_ledger_root.len(), 32);
 
         let transactions_root = self.transactions_root.to_bytes_le()?;
         assert_eq!(transactions_root.len(), 32);
@@ -234,7 +234,7 @@ impl<N: Network> BlockHeader<N> {
         assert_eq!(metadata.len(), 52);
 
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(N::POSW_NUM_LEAVES);
-        leaves.push(ledger_root);
+        leaves.push(previous_ledger_root);
         leaves.push(transactions_root);
         leaves.push(vec![0u8; 32]);
         leaves.push(metadata);
@@ -280,7 +280,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the header core variables.
-        let ledger_root = FromBytes::read_le(&mut reader)?;
+        let previous_ledger_root = FromBytes::read_le(&mut reader)?;
         let transactions_root = FromBytes::read_le(&mut reader)?;
 
         // Read the header metadata.
@@ -301,7 +301,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 
         // Construct the block header.
         let block_header = Self {
-            ledger_root,
+            previous_ledger_root,
             transactions_root,
             metadata,
             proof: Some(proof),
@@ -325,7 +325,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         };
 
         // Write the header core variables.
-        self.ledger_root.write_le(&mut writer)?;
+        self.previous_ledger_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
 
         // Write the header metadata.
@@ -393,7 +393,7 @@ mod tests {
         assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.ledger_root, Default::default());
+        assert_ne!(block_header.previous_ledger_root, Default::default());
         assert_ne!(block_header.transactions_root, Default::default());
     }
 

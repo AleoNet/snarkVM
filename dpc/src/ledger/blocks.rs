@@ -164,7 +164,7 @@ impl<N: Network> Blocks<N> {
             || self
                 .headers
                 .values()
-                .map(BlockHeader::ledger_root)
+                .map(BlockHeader::previous_ledger_root)
                 .any(|root| root == *ledger_root)
     }
 

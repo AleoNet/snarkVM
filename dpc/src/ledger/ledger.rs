@@ -163,8 +163,8 @@ impl<N: Network> Ledger<N> {
         let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
-        // Retrieve the ledger root.
-        let ledger_root = self.canon_blocks.latest_ledger_root();
+        // Retrieve the current ledger root.
+        let previous_ledger_root = self.canon_blocks.latest_ledger_root();
 
         // Mine the next block.
         let block = Block::mine(
@@ -172,7 +172,7 @@ impl<N: Network> Ledger<N> {
             block_height,
             block_timestamp,
             difficulty_target,
-            ledger_root,
+            previous_ledger_root,
             transactions,
             terminator,
             rng,

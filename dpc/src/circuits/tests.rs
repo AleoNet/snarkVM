@@ -19,19 +19,18 @@ use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToMinimalBits;
 
-use rand::SeedableRng;
-use rand_chacha::ChaChaRng;
+use rand::thread_rng;
 
 fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, expected_outer_num_constraints: usize) {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+    let rng = &mut thread_rng();
 
-    let recipient = Account::new(&mut rng);
+    let recipient = Account::new(rng);
     let amount = AleoAmount::from_bytes(10);
-    let request = Request::new_coinbase(recipient.address(), amount, &mut rng).unwrap();
+    let request = Request::new_coinbase(recipient.address(), amount, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
         .add_output(Output::new(recipient.address(), amount, Default::default(), None).unwrap())
-        .build(&mut rng)
+        .build(rng)
         .unwrap();
 
     //////////////////////////////////////////////////////////////////////////
@@ -106,14 +105,14 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Generate inner circuit parameters and proof for verification in the outer circuit.
     let (inner_proving_key, inner_verifying_key) =
-        <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(&mut rng)).unwrap();
+        <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
     // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <N as Network>::inner_circuit_id_crh()
         .hash_bits(&inner_verifying_key.to_minimal_bits())
         .unwrap();
 
-    let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, &mut rng).unwrap();
+    let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, rng).unwrap();
 
     // Verify that the inner circuit proof passes.
     assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());

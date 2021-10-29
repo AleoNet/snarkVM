@@ -56,7 +56,7 @@ impl<N: Network> Block<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
-        ledger_root: N::LedgerRoot,
+        previous_ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
         terminator: &AtomicBool,
         rng: &mut R,
@@ -68,7 +68,7 @@ impl<N: Network> Block<N> {
             block_height,
             block_timestamp,
             difficulty_target,
-            ledger_root,
+            previous_ledger_root,
             transactions.to_transactions_root()?,
             terminator,
             rng,
@@ -245,9 +245,9 @@ impl<N: Network> Block<N> {
         &self.transactions
     }
 
-    /// Returns the ledger root in the block header.
-    pub fn ledger_root(&self) -> N::LedgerRoot {
-        self.header.ledger_root()
+    /// Returns the previous ledger root from the block header.
+    pub fn previous_ledger_root(&self) -> N::LedgerRoot {
+        self.header.previous_ledger_root()
     }
 
     /// Returns the transactions root in the block header.
