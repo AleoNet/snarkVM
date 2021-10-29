@@ -59,8 +59,8 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
         //  One needs to define a `LeafCRH` and a `TwoToOneCRH` in order to set proper size expectations.
         //  64 bytes was chosen as a temporary fix, to at least ensure the `TwoToOneCRH` preimage size fits,
         //  however this temporary fix does not technically address the issue in a meaningful sense.
-        let empty_buffer = vec![0u8; 64];
-        Ok(self.crh().hash(&empty_buffer)?)
+        let empty_buffer = &[0u8; 64];
+        Ok(self.crh().hash(&*empty_buffer)?)
     }
 }
 

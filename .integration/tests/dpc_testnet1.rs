@@ -73,7 +73,7 @@ fn dpc_testnet1_integration_test() {
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.to_transactions_root().unwrap();
 
-    let ledger_root = ledger.to_ledger_root().unwrap();
+    let ledger_root = ledger.latest_ledger_root();
     let timestamp = Utc::now().timestamp();
     let difficulty_target = Blocks::<Testnet1>::compute_difficulty_target(
         previous_block.timestamp(),

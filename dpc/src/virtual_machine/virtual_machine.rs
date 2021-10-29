@@ -21,6 +21,8 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
+#[derive(Derivative)]
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct VirtualMachine<N: Network> {
     /// The ledger tree used to prove inclusion of ledger-consumed records.
     ledger: LedgerTree<N>,
@@ -56,9 +58,14 @@ impl<N: Network> VirtualMachine<N> {
             Operation::Noop => Self::noop(request, rng)?,
             Operation::Coinbase(recipient, amount) => Self::coinbase(request, recipient, amount, rng)?,
             Operation::Transfer(caller, recipient, amount) => Self::transfer(request, caller, recipient, amount, rng)?,
-            Operation::Evaluate(function_id, function_type, function_inputs) => {
-                self.evaluate(request, &function_id, &function_type, &function_inputs, rng)?
-            }
+            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+                request,
+                request.to_program_id()?,
+                &function_id,
+                &function_type,
+                &function_inputs,
+                rng,
+            )?,
         };
 
         let program_id = request.to_program_id()?;
@@ -184,6 +191,7 @@ impl<N: Network> VirtualMachine<N> {
     fn evaluate<R: Rng + CryptoRng>(
         &self,
         request: &Request<N>,
+        program_id: N::ProgramID,
         function_id: &N::FunctionID,
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
@@ -221,7 +229,7 @@ impl<N: Network> VirtualMachine<N> {
                 function_inputs.recipient.clone(),
                 function_inputs.amount,
                 function_inputs.record_payload.clone(),
-                Some(request.to_program_id()?),
+                Some(program_id),
             )?);
 
         // Add the change address if the balance is not zero.
@@ -258,20 +266,12 @@ impl<N: Network> VirtualMachine<N> {
         let operation = request.operation().clone();
         let response = match operation {
             Operation::Evaluate(function_id, function_type, function_inputs) => {
-                self.evaluate(request, &function_id, &function_type, &function_inputs, rng)?
+                self.evaluate(request, program_id, &function_id, &function_type, &function_inputs, rng)?
             }
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
         let transition_id = response.transition_id();
-
-        // Compute the execution.
-        let execution = Execution {
-            program_id,
-            program_path: function_path.clone(),
-            verifying_key: function_verifying_key,
-            proof: function.execute(ProgramPublicVariables::new(transition_id), private_variables)?,
-        };
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
@@ -281,7 +281,7 @@ impl<N: Network> VirtualMachine<N> {
             Some(program_id),
         );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
+        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private.clone());
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
         assert!(N::InnerSNARK::verify(
@@ -289,6 +289,20 @@ impl<N: Network> VirtualMachine<N> {
             &inner_public,
             &inner_proof
         )?);
+
+        // Compute the execution.
+        let proof = function.execute(ProgramPublicVariables::new(transition_id), private_variables)?;
+        let public_variables = ProgramPublicVariables::new(transition_id);
+
+        assert!(function.verify(&public_variables, &proof));
+        assert!(function_path.verify(&program_id, &function.function_id())?);
+
+        let execution = Execution {
+            program_id,
+            program_path: function_path.clone(),
+            verifying_key: function_verifying_key,
+            proof,
+        };
 
         // Construct the outer circuit public and private variables.
         let outer_public = OuterPublicVariables::new(
@@ -298,14 +312,39 @@ impl<N: Network> VirtualMachine<N> {
             *N::inner_circuit_id(),
         );
         let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
-        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
+        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private.clone());
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
 
-        assert!(N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &outer_public,
-            &outer_proof
-        )?);
+        {
+            use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
+            let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
+            outer_circuit
+                .generate_constraints(&mut outer_cs.ns(|| "Outer circuit"))
+                .unwrap();
+
+            let candidate_outer_num_constraints = outer_cs.num_constraints();
+
+            if !outer_cs.is_satisfied() {
+                println!("=========================================================");
+                println!("Outer circuit num constraints: {}", candidate_outer_num_constraints);
+                println!("Unsatisfied constraints:\n{}", outer_cs.which_is_unsatisfied().unwrap());
+                println!("=========================================================");
+            } else {
+                println!("\n Outer Test constraint system check passed. \n\n");
+            }
+        }
+
+        {
+            use snarkvm_fields::ToConstraintField;
+            let input = outer_public.to_field_elements()?;
+            println!("{:?}", input);
+
+            assert!(N::OuterSNARK::verify(
+                N::outer_verifying_key(),
+                &outer_public,
+                &outer_proof
+            )?);
+        }
 
         // Construct the transition.
         let transition = Transition::<N>::new(&request, &response, outer_proof)?;
