@@ -210,6 +210,9 @@ macro_rules! impl_remote {
             ) -> Result<(), crate::errors::ParameterError> {
                 use snarkvm_utilities::Write;
 
+                // Hide compilation warning.
+                let _ = file_path;
+
                 #[cfg(not(feature = "no_std_out"))]
                 println!("{} - Storing parameters ({:?})", module_path!(), file_path);
 
@@ -226,21 +229,21 @@ macro_rules! impl_remote {
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
-                easy.progress(true)?;
-                easy.progress_function(|total_download, current_download, _, _| {
-                    let percent = (current_download / total_download) * 100.0;
-                    let size_in_megabytes = total_download as u64 / 1_048_576;
-
-                    #[cfg(not(feature = "no_std_out"))]
-                    print!(
-                        "\r{} - {:.2}% complete ({:#} MB total)",
-                        module_path!(),
-                        percent,
-                        size_in_megabytes
-                    );
-
-                    true
-                })?;
+                #[cfg(not(feature = "no_std_out"))]
+                {
+                    easy.progress(true)?;
+                    easy.progress_function(|total_download, current_download, _, _| {
+                        let percent = (current_download / total_download) * 100.0;
+                        let size_in_megabytes = total_download as u64 / 1_048_576;
+                        print!(
+                            "\r{} - {:.2}% complete ({:#} MB total)",
+                            module_path!(),
+                            percent,
+                            size_in_megabytes
+                        );
+                        true
+                    })?;
+                }
 
                 let mut transfer = easy.transfer();
                 transfer.write_function(|data| {
