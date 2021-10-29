@@ -50,6 +50,11 @@ impl<N: Network> VirtualMachine<N> {
         self.local_transitions.to_local_proof(commitment)
     }
 
+    /// Returns the number of transitions in the virtual machine.
+    pub fn num_transitions(&self) -> usize {
+        self.transitions.len()
+    }
+
     /// Executes the request, returning a transaction.
     pub fn execute<R: Rng + CryptoRng>(mut self, request: &Request<N>, rng: &mut R) -> Result<Self> {
         // Ensure the request is valid.
