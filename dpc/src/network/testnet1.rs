@@ -85,20 +85,20 @@ impl Network for Testnet1 {
     const NUM_OUTPUT_RECORDS: usize = 2;
 
     const BLOCK_HASH_PREFIX: u16 = hrp!("ab");
-
-    const ADDRESS_SIZE_IN_BYTES: usize = 32;
-
+    const RECORD_CIPHERTEXT_PREFIX: u16 = hrp!("ar");
+    const TRANSITION_ID_PREFIX: u16 = hrp!("as");
+    const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
+
+    const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const PAYLOAD_SIZE_IN_BYTES: usize = 128;
 
-    const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const NUM_TRANSITIONS: u8 = 128;
     const NUM_EVENTS: u16 = 256;
 
-    const TRANSITION_ID_PREFIX: u16 = hrp!("as");
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
     const TRANSITION_TREE_DEPTH: u32 = 3;
 
@@ -159,7 +159,7 @@ impl Network for Testnet1 {
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
     type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = <Self::CiphertextIDCRH as CRH>::Output;
+    type CiphertextID = Bech32<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_PREFIX }, 32>;
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;

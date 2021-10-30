@@ -116,7 +116,7 @@ impl<N: Network> RecordCiphertext<N> {
 
     /// Returns the record ciphertext ID. The preimage is the ciphertext x-coordinates appended with the selector bits.
     pub fn to_ciphertext_id(&self) -> Result<N::CiphertextID> {
-        Ok(N::ciphertext_id_crh().hash(&self.ciphertext)?)
+        Ok(N::ciphertext_id_crh().hash(&self.ciphertext)?.into())
     }
 }
 

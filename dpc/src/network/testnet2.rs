@@ -92,6 +92,7 @@ impl Network for Testnet2 {
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
 
+    const RECORD_CIPHERTEXT_PREFIX: u16 = hrp!("ar");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
@@ -163,7 +164,7 @@ impl Network for Testnet2 {
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
     type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = <Self::CiphertextIDCRH as CRH>::Output;
+    type CiphertextID = Bech32<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_PREFIX }, 32>;
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;

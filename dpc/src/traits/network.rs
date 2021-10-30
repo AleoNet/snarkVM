@@ -72,21 +72,20 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     const BLOCK_HASH_PREFIX: u16;
-
-    const ADDRESS_SIZE_IN_BYTES: usize;
-
+    const RECORD_CIPHERTEXT_PREFIX: u16;
+    const TRANSITION_ID_PREFIX: u16;
+    const TRANSACTION_ID_PREFIX: u16;
     const COMMITMENT_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
+    const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
     const PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
 
-    const TRANSACTION_ID_PREFIX: u16;
     const NUM_TRANSITIONS: u8;
     const NUM_EVENTS: u16;
 
-    const TRANSITION_ID_PREFIX: u16;
     const TRANSITION_SIZE_IN_BYTES: usize;
     const TRANSITION_TREE_DEPTH: u32;
 
@@ -159,9 +158,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHeaderRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
 
     /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
-    type CiphertextIDCRH: CRH<Output = Self::CiphertextID>;
+    type CiphertextIDCRH: CRH<Output = Self::InnerScalarField>;
     type CiphertextIDCRHGadget: CRHGadget<Self::CiphertextIDCRH, Self::InnerScalarField>;
-    type CiphertextID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type CiphertextID: Bech32Scheme<<Self::CiphertextIDCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
     type CommitmentScheme: CommitmentScheme<Randomness = Self::CommitmentRandomness, Output = Self::InnerScalarField>;
