@@ -36,10 +36,13 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{cell::RefCell, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, ops::Deref, rc::Rc};
 
 pub trait Bech32Scheme<F: Field>:
-    ToConstraintField<F>
+    From<F>
+    + Borrow<F>
+    + Deref<Target = F>
+    + ToConstraintField<F>
     + Copy
     + Clone
     + Default
@@ -74,9 +77,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
 
+    const TRANSACTION_ID_PREFIX: u16;
     const NUM_TRANSITIONS: u8;
     const NUM_EVENTS: u16;
 
+    const TRANSITION_ID_PREFIX: u16;
     const TRANSITION_SIZE_IN_BYTES: usize;
     const TRANSITION_TREE_DEPTH: u32;
 
@@ -140,7 +145,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// CRH schemes for the block hash. Invoked only over `Self::InnerScalarField`.
     type BlockHashCRH: CRH<Output = Self::InnerScalarField>;
     type BlockHashCRHGadget: CRHGadget<Self::BlockHashCRH, Self::InnerScalarField>;
-    type BlockHash: Bech32Scheme<Self::InnerScalarField>;
+    type BlockHash: Bech32Scheme<<Self::BlockHashCRH as CRH>::Output>;
 
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderRootCRH: CRH<Output = Self::BlockHeaderRoot>;
@@ -204,16 +209,16 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransactionsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
 
     /// Merkle scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
-    type TransactionIDCRH: CRH<Output = Self::TransactionID>;
+    type TransactionIDCRH: CRH<Output = Self::InnerScalarField>;
     type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField>;
     type TransactionIDParameters: MerkleParameters<H = Self::TransactionIDCRH>;
-    type TransactionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type TransactionID: Bech32Scheme<<Self::TransactionIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the transition ID. Invoked only over `Self::InnerScalarField`.
-    type TransitionIDCRH: CRH<Output = Self::TransitionID>;
+    type TransitionIDCRH: CRH<Output = Self::InnerScalarField>;
     type TransitionIDCRHGadget: CRHGadget<Self::TransitionIDCRH, Self::InnerScalarField>;
     type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
-    type TransitionID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type TransitionID: Bech32Scheme<<Self::TransitionIDCRH as CRH>::Output>;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;

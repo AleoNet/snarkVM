@@ -95,9 +95,11 @@ impl Network for Testnet2 {
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const PAYLOAD_SIZE_IN_BYTES: usize = 128;
 
+    const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const NUM_TRANSITIONS: u8 = 128;
     const NUM_EVENTS: u16 = 256;
 
+    const TRANSITION_ID_PREFIX: u16 = hrp!("as");
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
     const TRANSITION_TREE_DEPTH: u32 = 3;
 
@@ -203,12 +205,12 @@ impl Network for Testnet2 {
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, 7>;
-    type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
+    type TransactionID = Bech32<<<Self as Network>::TransactionIDCRH as CRH>::Output, { Self::TRANSACTION_ID_PREFIX }, 32>;
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 3>;
-    type TransitionID = <Self::TransitionIDCRH as CRH>::Output;
+    type TransitionID = Bech32<<<Self as Network>::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }, 32>;
 
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

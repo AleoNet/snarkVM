@@ -31,7 +31,10 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use bech32::{self, FromBase32, ToBase32};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::hash::{Hash, Hasher};
+use std::{
+    borrow::Borrow,
+    hash::{Hash, Hasher},
+};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct Bech32<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>(F);
@@ -41,6 +44,15 @@ impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
 {
     #[inline]
     fn new(data: F) -> Self {
+        Self(data)
+    }
+}
+
+impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> From<F>
+    for Bech32<F, PREFIX, DATA_SIZE>
+{
+    #[inline]
+    fn from(data: F) -> Self {
         Self(data)
     }
 }
@@ -165,6 +177,15 @@ impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
 
     #[inline]
     fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Borrow<F>
+    for Bech32<F, PREFIX, DATA_SIZE>
+{
+    #[inline]
+    fn borrow(&self) -> &F {
         &self.0
     }
 }
