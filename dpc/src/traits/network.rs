@@ -81,6 +81,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
     const COMMITMENT_PREFIX: u16;
+    const COMMITMENT_RANDOMNESS_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
@@ -171,9 +172,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type CiphertextID: Bech32Scheme<<Self::CiphertextIDCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
-    type CommitmentScheme: CommitmentScheme<Randomness = Self::CommitmentRandomness, Output = Self::InnerScalarField>;
+    type CommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::InnerScalarField>;
     type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
-    type CommitmentRandomness: Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + UniformRand + Sync + Send;
+    type CommitmentRandomness: Bech32Scheme<<Self::CommitmentScheme as CommitmentScheme>::Randomness>;
     type Commitment: Bech32Scheme<<Self::CommitmentScheme as CommitmentScheme>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.

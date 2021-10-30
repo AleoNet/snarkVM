@@ -181,7 +181,7 @@ impl<N: Network> Record<N> {
 
     /// Returns the randomness used for the commitment.
     pub fn commitment_randomness(&self) -> N::CommitmentRandomness {
-        self.commitment_randomness.clone()
+        self.commitment_randomness
     }
 
     /// Returns the commitment of this record.

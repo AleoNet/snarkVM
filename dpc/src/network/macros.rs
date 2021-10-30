@@ -43,7 +43,6 @@ macro_rules! dpc_snark_setup {
 #[macro_export]
 macro_rules! hrp {
     ( $persona: expr ) => {{
-        // panic!("HRP must be exactly 2 characters")
         snarkvm_algorithms::const_assert!($persona.len() == 2);
         let p = $persona.as_bytes();
         u16::from_le_bytes([p[0], p[1]])

@@ -95,6 +95,7 @@ impl Network for Testnet2 {
     const TRANSITION_ID_PREFIX: u16 = hrp!("as");
     const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
+    const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp!("cr");
     const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp!("ic");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
@@ -172,7 +173,7 @@ impl Network for Testnet2 {
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
-    type CommitmentRandomness = <Self::CommitmentScheme as CommitmentScheme>::Randomness;
+    type CommitmentRandomness = Bech32<<Self::CommitmentScheme as CommitmentScheme>::Randomness, { Self::COMMITMENT_RANDOMNESS_PREFIX }>;
     type Commitment = Bech32<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
