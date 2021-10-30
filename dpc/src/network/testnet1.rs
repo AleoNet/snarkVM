@@ -92,6 +92,7 @@ impl Network for Testnet1 {
     const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
     const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp!("cr");
+    const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp!("fi");
     const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
     const HEADER_ROOT_PREFIX: u16 = hrp!("hr");
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp!("ht");
@@ -179,7 +180,7 @@ impl Network for Testnet1 {
 
     type FunctionInputsCRH = PoseidonCRH<Self::InnerScalarField, 128>;
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
-    type FunctionInputsDigest = <Self::FunctionInputsCRH as CRH>::Output;
+    type FunctionInputsHash = Bech32m<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 79, 63>;
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 79, 63>;

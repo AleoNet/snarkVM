@@ -82,6 +82,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_ID_PREFIX: u16;
     const COMMITMENT_PREFIX: u16;
     const COMMITMENT_RANDOMNESS_PREFIX: u16;
+    const FUNCTION_INPUTS_HASH_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
@@ -183,11 +184,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::OuterScalarField>;
     type FunctionID: Bech32Scheme<<Self::FunctionIDCRH as CRH>::Output>;
 
-    /// Crypto hash for deriving the function inputs digest. Invoked only over `Self::InnerScalarField`.
-    type FunctionInputsCRH: CRH<Output = Self::FunctionInputsDigest>;
+    /// Crypto hash for deriving the function inputs hash. Invoked only over `Self::InnerScalarField`.
+    type FunctionInputsCRH: CRH<Output = Self::InnerScalarField>;
     type FunctionInputsCRHGadget: CRHGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
-    type FunctionInputsDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
-    
+    type FunctionInputsHash: Bech32Scheme<<Self::FunctionInputsCRH as CRH>::Output>;
+
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InnerCircuitIDCRH: CRH<Output = Self::OuterScalarField>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
