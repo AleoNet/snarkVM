@@ -94,6 +94,7 @@ impl Network for Testnet1 {
     const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp!("ic");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
+    const TRANSACTIONS_ROOT_PREFIX: u16 = hrp!("tr");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
@@ -203,7 +204,7 @@ impl Network for Testnet1 {
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, 16>;
-    type TransactionsRoot = <Self::TransactionsRootCRH as CRH>::Output;
+    type TransactionsRoot = Bech32<<Self::TransactionsRootCRH as CRH>::Output, { Self::TRANSACTIONS_ROOT_PREFIX }>;
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;

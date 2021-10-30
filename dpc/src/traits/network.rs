@@ -84,6 +84,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const FUNCTION_ID_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
+    const TRANSACTIONS_ROOT_PREFIX: u16;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -213,10 +214,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type SerialNumber: Bech32Scheme<<Self::SerialNumberPRF as PRF>::Output>;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
-    type TransactionsRootCRH: CRH<Output = Self::TransactionsRoot>;
+    type TransactionsRootCRH: CRH<Output = Self::InnerScalarField>;
     type TransactionsRootCRHGadget: CRHGadget<Self::TransactionsRootCRH, Self::InnerScalarField>;
     type TransactionsRootParameters: MerkleParameters<H = Self::TransactionsRootCRH>;
-    type TransactionsRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type TransactionsRoot: Bech32Scheme<<Self::TransactionsRootCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::InnerScalarField>;
