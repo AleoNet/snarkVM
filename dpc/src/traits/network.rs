@@ -60,6 +60,9 @@ pub trait Bech32Scheme<F: Field>:
     + Sync
     + Send
 {
+    fn prefix() -> String;
+    fn data_size_in_bytes() -> usize;
+    fn data_string_length() -> usize;
 }
 
 #[rustfmt::skip]

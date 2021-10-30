@@ -155,7 +155,7 @@ impl Network for Testnet2 {
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type BlockHash = Bech32<<Self::BlockHashCRH as CRH>::Output, { Self::BLOCK_HASH_PREFIX }, 32>;
+    type BlockHash = Bech32<<Self::BlockHashCRH as CRH>::Output, { Self::BLOCK_HASH_PREFIX }>;
 
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
@@ -164,12 +164,12 @@ impl Network for Testnet2 {
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
     type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = Bech32<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_PREFIX }, 32>;
+    type CiphertextID = Bech32<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_PREFIX }>;
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
     type CommitmentRandomness = <Self::CommitmentScheme as CommitmentScheme>::Randomness;
-    type Commitment = Bech32<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }, 32>;
+    type Commitment = Bech32<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
     type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;
@@ -186,7 +186,7 @@ impl Network for Testnet2 {
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, 32>;
-    type LedgerRoot = Bech32<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }, 32>;
+    type LedgerRoot = Bech32<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }>;
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
@@ -199,7 +199,7 @@ impl Network for Testnet2 {
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
-    type SerialNumber = Bech32<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }, 32>;
+    type SerialNumber = Bech32<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }>;
 
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
@@ -209,12 +209,12 @@ impl Network for Testnet2 {
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, 7>;
-    type TransactionID = Bech32<<Self::TransactionIDCRH as CRH>::Output, { Self::TRANSACTION_ID_PREFIX }, 32>;
+    type TransactionID = Bech32<<Self::TransactionIDCRH as CRH>::Output, { Self::TRANSACTION_ID_PREFIX }>;
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 3>;
-    type TransitionID = Bech32<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }, 32>;
+    type TransitionID = Bech32<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

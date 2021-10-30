@@ -39,25 +39,33 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Borrow;
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
-pub struct Bech32<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>(F);
+pub struct Bech32<F: PrimeField + ToConstraintField<F>, const PREFIX: u16>(F);
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Bech32Scheme<F>
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Bech32Scheme<F> for Bech32<F, PREFIX> {
+    #[inline]
+    fn prefix() -> String {
+        String::from_utf8(PREFIX.to_le_bytes().to_vec()).expect("Failed to convert prefix to string")
+    }
+
+    #[inline]
+    fn data_size_in_bytes() -> usize {
+        (F::size_in_bits() + 7) / 8
+    }
+
+    #[inline]
+    fn data_string_length() -> usize {
+        ((Self::data_size_in_bytes() * 8) + 4) / 5
+    }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> From<F>
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> From<F> for Bech32<F, PREFIX> {
     #[inline]
     fn from(data: F) -> Self {
         Self(data)
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> FromBytes
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromBytes for Bech32<F, PREFIX> {
     /// Reads data into a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -65,9 +73,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: u
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> ToBytes
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToBytes for Bech32<F, PREFIX> {
     /// Writes the data to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -75,17 +81,14 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: u
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> FromStr
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for Bech32<F, PREFIX> {
     type Err = BlockError;
 
     /// Reads in a bech32 string.
     #[inline]
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        const CHECKSUM_SIZE: usize = 6;
-
-        if string.len() != 3 + ((DATA_SIZE * 8) + 4) / 5 + CHECKSUM_SIZE {
+        const CHECKSUM_STRING_LENGTH: usize = 6;
+        if string.len() != 3 + Self::data_string_length() + CHECKSUM_STRING_LENGTH {
             return Err(BlockError::InvalidCharacterLength(string.len()));
         }
 
@@ -102,14 +105,12 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: u
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> fmt::Display
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Display for Bech32<F, PREFIX> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         bech32::encode_to_fmt(
             f,
-            str::from_utf8(&PREFIX.to_le_bytes()).expect("Failed to convert prefix to string"),
+            &Self::prefix(),
             self.0.to_bytes_le().expect("Failed to write data as bytes").to_base32(),
             bech32::Variant::Bech32,
         )
@@ -117,18 +118,14 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: u
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> fmt::Debug
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Debug for Bech32<F, PREFIX> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Bech32 {{ hrp: {:?}, data: {:?} }}", PREFIX, self.0)
+        write!(f, "Bech32 {{ hrp: {:?}, data: {:?} }}", &Self::prefix(), self.0)
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Serialize
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Serialize for Bech32<F, PREFIX> {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -138,34 +135,26 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: u
     }
 }
 
-impl<'de, F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Deserialize<'de>
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<'de, F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deserialize<'de> for Bech32<F, PREFIX> {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize(
-                deserializer,
-                str::from_utf8(&PREFIX.to_le_bytes()).expect("Failed to convert prefix to string"),
-                (F::size_in_bits() + 7) / 8,
-            ),
+            false => {
+                FromBytesDeserializer::<Self>::deserialize(deserializer, &Self::prefix(), Self::data_size_in_bytes())
+            }
         }
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> ToConstraintField<F>
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToConstraintField<F> for Bech32<F, PREFIX> {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.0.to_field_elements()
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Deref
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deref for Bech32<F, PREFIX> {
     type Target = F;
 
     #[inline]
@@ -174,29 +163,23 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: u
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Borrow<F>
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Borrow<F> for Bech32<F, PREFIX> {
     #[inline]
     fn borrow(&self) -> &F {
         &self.0
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Into<Vec<F>>
-    for Bech32<F, PREFIX, DATA_SIZE>
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Into<Vec<F>> for Bech32<F, PREFIX> {
     #[inline]
     fn into(self) -> Vec<F> {
         vec![self.0]
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
-    Distribution<Bech32<F, PREFIX, DATA_SIZE>> for Standard
-{
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Distribution<Bech32<F, PREFIX>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Bech32<F, PREFIX, DATA_SIZE> {
-        Bech32::<F, PREFIX, DATA_SIZE>(UniformRand::rand(rng))
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Bech32<F, PREFIX> {
+        Bech32::<F, PREFIX>(UniformRand::rand(rng))
     }
 }
