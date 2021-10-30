@@ -198,7 +198,7 @@ impl Network for Testnet2 {
     
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
-    type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
+    type SerialNumber = Bech32<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }, 32>;
 
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;

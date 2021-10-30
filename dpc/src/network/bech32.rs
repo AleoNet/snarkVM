@@ -36,21 +36,14 @@ use rand::{
     Rng,
 };
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
-    borrow::Borrow,
-    hash::{Hash, Hasher},
-};
+use std::borrow::Borrow;
 
-#[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Bech32<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>(F);
 
 impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Bech32Scheme<F>
     for Bech32<F, PREFIX, DATA_SIZE>
 {
-    #[inline]
-    fn new(data: F) -> Self {
-        Self(data)
-    }
 }
 
 impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> From<F>
@@ -168,13 +161,6 @@ impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
     }
 }
 
-impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Hash for Bech32<F, PREFIX, DATA_SIZE> {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-
 impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Deref
     for Bech32<F, PREFIX, DATA_SIZE>
 {
@@ -194,6 +180,16 @@ impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
         &self.0
     }
 }
+
+impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize> Into<Vec<F>>
+    for Bech32<F, PREFIX, DATA_SIZE>
+{
+    #[inline]
+    fn into(self) -> Vec<F> {
+        vec![self.0]
+    }
+}
+
 impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
     Distribution<Bech32<F, PREFIX, DATA_SIZE>> for Standard
 {

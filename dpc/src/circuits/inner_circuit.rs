@@ -231,7 +231,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Input::alloc(
                         &mut declare_cs.ns(|| "given_serial_number_nonce"),
-                        || Ok(vec![record.serial_number_nonce().clone()]),
+                        || Ok(record.serial_number_nonce().into()),
                     )?;
 
                 let given_commitment = <N::CommitmentGadget as CommitmentGadget<

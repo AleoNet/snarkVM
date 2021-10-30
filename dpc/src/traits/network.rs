@@ -43,6 +43,7 @@ pub trait Bech32Scheme<F: Field>:
     + Borrow<F>
     + Deref<Target = F>
     + ToConstraintField<F>
+    + Into<Vec<F>>
     + UniformRand
     + Copy
     + Clone
@@ -59,7 +60,6 @@ pub trait Bech32Scheme<F: Field>:
     + Sync
     + Send
 {
-    fn new(data: F) -> Self;
 }
 
 #[rustfmt::skip]
@@ -202,10 +202,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
     
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    // TODO (howardwu): TEMPORARY - Revisit Vec<Self::SerialNumberNonce> after upgrading serial number construction.
-    type SerialNumberPRF: PRF<Input = Vec<Self::SerialNumber>, Seed = Self::InnerScalarField, Output = Self::SerialNumber>;
+    // TODO (howardwu): TEMPORARY - Revisit Vec<Self::InnerScalarField> after upgrading serial number construction.
+    type SerialNumberPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
-    type SerialNumber: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + Serialize + DeserializeOwned + UniformRand + PartialEq + Eq + Hash + Sync + Send;
+    type SerialNumber: Bech32Scheme<<Self::SerialNumberPRF as PRF>::Output>;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
     type TransactionsRootCRH: CRH<Output = Self::TransactionsRoot>;

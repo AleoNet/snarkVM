@@ -420,7 +420,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2566, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2506, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)
