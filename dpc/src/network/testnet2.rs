@@ -89,21 +89,21 @@ impl Network for Testnet2 {
     const NUM_OUTPUT_RECORDS: usize = 2;
 
     const BLOCK_HASH_PREFIX: u16 = hrp!("ab");
-
-    const ADDRESS_SIZE_IN_BYTES: usize = 32;
-
+    const LEDGER_ROOT_PREFIX: u16 = hrp!("al");
     const RECORD_CIPHERTEXT_PREFIX: u16 = hrp!("ar");
+    const TRANSITION_ID_PREFIX: u16 = hrp!("as");
+    const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
+
+    const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const PAYLOAD_SIZE_IN_BYTES: usize = 128;
 
-    const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const NUM_TRANSITIONS: u8 = 128;
     const NUM_EVENTS: u16 = 256;
 
-    const TRANSITION_ID_PREFIX: u16 = hrp!("as");
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
     const TRANSITION_TREE_DEPTH: u32 = 3;
 
@@ -186,7 +186,7 @@ impl Network for Testnet2 {
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, 32>;
-    type LedgerRoot = <Self::LedgerRootCRH as CRH>::Output;
+    type LedgerRoot = Bech32<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }, 32>;
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;

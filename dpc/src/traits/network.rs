@@ -72,6 +72,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     const BLOCK_HASH_PREFIX: u16;
+    const LEDGER_ROOT_PREFIX: u16;
     const RECORD_CIPHERTEXT_PREFIX: u16;
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
@@ -184,10 +185,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
-    type LedgerRootCRH: CRH<Output = Self::LedgerRoot>;
+    type LedgerRootCRH: CRH<Output = Self::InnerScalarField>;
     type LedgerRootCRHGadget: CRHGadget<Self::LedgerRootCRH, Self::InnerScalarField>;
     type LedgerRootParameters: MerkleParameters<H = Self::LedgerRootCRH>;
-    type LedgerRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type LedgerRoot: Bech32Scheme<<Self::LedgerRootCRH as CRH>::Output>;
 
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
     type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::BlockHeaderRoot, Output = Self::InnerScalarField>;
