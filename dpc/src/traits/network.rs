@@ -74,6 +74,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const BLOCK_HASH_PREFIX: u16;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
+
+    const COMMITMENT_PREFIX: u16;
+    const SERIAL_NUMBER_PREFIX: u16;
+
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
     const PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
@@ -160,10 +164,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type CiphertextID: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
-    type CommitmentScheme: CommitmentScheme<Randomness = Self::CommitmentRandomness, Output = Self::Commitment>;
+    type CommitmentScheme: CommitmentScheme<Randomness = Self::CommitmentRandomness, Output = Self::InnerScalarField>;
     type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
     type CommitmentRandomness: Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + UniformRand + Sync + Send;
-    type Commitment: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Debug + Display + Default + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type Commitment: Bech32Scheme<<Self::CommitmentScheme as CommitmentScheme>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
     type FunctionIDCRH: CRH<Output = Self::FunctionID>;

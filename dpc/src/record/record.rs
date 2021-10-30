@@ -134,7 +134,9 @@ impl<N: Network> Record<N> {
         ]?;
 
         // Compute the record commitment.
-        let commitment = N::commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = N::commitment_scheme()
+            .commit(&commitment_input, &commitment_randomness)?
+            .into();
 
         Ok(Self {
             program_id,
