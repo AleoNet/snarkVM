@@ -86,7 +86,8 @@ impl Network for Testnet1 {
 
     const BLOCK_HASH_PREFIX: u16 = hrp!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp!("al");
-    const RECORD_CIPHERTEXT_PREFIX: u16 = hrp!("ar");
+    const PROGRAM_ID_PREFIX: u16 = hrp!("ap");
+    const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp!("ar");
     const TRANSITION_ID_PREFIX: u16 = hrp!("as");
     const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
@@ -160,7 +161,7 @@ impl Network for Testnet1 {
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
     type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = Bech32<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_PREFIX }>;
+    type CiphertextID = Bech32<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_ID_PREFIX }>;
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
@@ -191,7 +192,7 @@ impl Network for Testnet1 {
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, 8>;
-    type ProgramID = <Self::ProgramIDCRH as CRH>::Output;
+    type ProgramID = Bech32<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;

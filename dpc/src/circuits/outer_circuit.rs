@@ -187,7 +187,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
             let given_program_id = <N::ProgramIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
                 &mut cs.ns(|| "Given program ID"),
-                || Ok(&private.execution.program_id),
+                || Ok(private.execution.program_id),
             )?;
 
             claimed_program_id.enforce_equal(

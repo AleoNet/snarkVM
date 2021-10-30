@@ -76,7 +76,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     const BLOCK_HASH_PREFIX: u16;
     const LEDGER_ROOT_PREFIX: u16;
-    const RECORD_CIPHERTEXT_PREFIX: u16;
+    const PROGRAM_ID_PREFIX: u16;
+    const RECORD_CIPHERTEXT_ID_PREFIX: u16;
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
     const COMMITMENT_PREFIX: u16;
@@ -199,13 +200,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSW: PoSWScheme<Self>;
     
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramIDCRH: CRH<Output = Self::ProgramID>;
+    type ProgramIDCRH: CRH<Output = Self::OuterScalarField>;
     type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
     type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
-    type ProgramID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
-    
+    type ProgramID: Bech32Scheme<<Self::ProgramIDCRH as CRH>::Output>;
+
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    // TODO (howardwu): TEMPORARY - Revisit Vec<Self::InnerScalarField> after upgrading serial number construction.
     type SerialNumberPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
     type SerialNumber: Bech32Scheme<<Self::SerialNumberPRF as PRF>::Output>;
