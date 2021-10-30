@@ -110,7 +110,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <N as Network>::inner_circuit_id_crh()
         .hash_bits(&inner_verifying_key.to_minimal_bits())
-        .unwrap();
+        .unwrap()
+        .into();
 
     let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, rng).unwrap();
 

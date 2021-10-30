@@ -82,6 +82,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_ID_PREFIX: u16;
     const COMMITMENT_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
+    const INNER_CIRCUIT_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
@@ -185,9 +186,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type FunctionInputsDigest: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
     
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
-    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
+    type InnerCircuitIDCRH: CRH<Output = Self::OuterScalarField>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
-    type InnerCircuitID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type InnerCircuitID: Bech32Scheme<<Self::InnerCircuitIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
     type LedgerRootCRH: CRH<Output = Self::InnerScalarField>;

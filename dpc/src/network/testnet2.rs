@@ -96,6 +96,7 @@ impl Network for Testnet2 {
     const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
     const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
+    const INNER_CIRCUIT_ID_PREFIX: u16 = hrp!("ic");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
@@ -183,7 +184,7 @@ impl Network for Testnet2 {
 
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 79, 63>;
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 79, 63>;
-    type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
+    type InnerCircuitID = Bech32<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
@@ -248,7 +249,7 @@ impl Network for Testnet2 {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
             .hash_bits(&Self::inner_verifying_key().to_minimal_bits())
-            .expect("Failed to hash inner circuit verifying key elements"))
+            .expect("Failed to hash inner circuit verifying key elements").into())
     }
     
     fn noop_program() -> &'static Program<Self> {
@@ -317,7 +318,8 @@ mod tests {
             Testnet2::inner_circuit_id(),
             &Testnet2::inner_circuit_id_crh()
                 .hash_bits(&Testnet2::inner_verifying_key().to_minimal_bits())
-                .expect("Failed to hash inner circuit ID"),
+                .expect("Failed to hash inner circuit ID")
+                .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
         );
     }
