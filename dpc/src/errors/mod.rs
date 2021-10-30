@@ -17,6 +17,9 @@
 pub mod account;
 pub use account::*;
 
+pub mod bech32m;
+pub use bech32m::*;
+
 pub mod block;
 pub use block::*;
 

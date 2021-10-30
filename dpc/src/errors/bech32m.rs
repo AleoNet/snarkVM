@@ -17,28 +17,37 @@
 use std::fmt::Debug;
 
 #[derive(Debug, Error)]
-pub enum BlockError {
+pub enum Bech32mError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
-    #[error("block already exists {}", _0)]
-    BlockExists(String),
+    #[error("{}", _0)]
+    Bech32Error(#[from] bech32::Error),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
+
+    #[error("invalid byte length: {}", _0)]
+    InvalidByteLength(usize),
+
+    #[error("invalid character length: {}", _0)]
+    InvalidCharacterLength(usize),
+
+    #[error("invalid prefix: {:?}", _0)]
+    InvalidPrefix(String),
 
     #[error("{}", _0)]
     Message(String),
 }
 
-impl From<std::io::Error> for BlockError {
+impl From<std::io::Error> for Bech32mError {
     fn from(error: std::io::Error) -> Self {
-        BlockError::Crate("std::io", format!("{:?}", error))
+        Bech32mError::Crate("std::io", format!("{:?}", error))
     }
 }
 
-impl From<BlockError> for std::io::Error {
-    fn from(error: BlockError) -> Self {
+impl From<Bech32mError> for std::io::Error {
+    fn from(error: Bech32mError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
     }
 }
