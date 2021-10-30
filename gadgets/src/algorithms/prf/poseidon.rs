@@ -48,7 +48,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         // Construct the input length as a field element.
         let input_length = {
             let mut buffer = input.len().to_le_bytes().to_vec();
-            buffer.resize(F::size_in_bits() + 7 / 8, 0u8);
+            buffer.resize((F::size_in_bits() + 7) / 8, 0u8);
             F::from_bytes_le(&buffer)?
         };
 
