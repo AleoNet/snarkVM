@@ -83,7 +83,9 @@ impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
     /// Reads in a bech32 string.
     #[inline]
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        if string.len() != 61 {
+        const CHECKSUM_SIZE: usize = 6;
+
+        if string.len() != 3 + ((DATA_SIZE * 8) + 4) / 5 + CHECKSUM_SIZE {
             return Err(BlockError::InvalidCharacterLength(string.len()));
         }
 
