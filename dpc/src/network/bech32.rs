@@ -26,10 +26,15 @@ use snarkvm_utilities::{
     FromBytesDeserializer,
     ToBytes,
     ToBytesSerializer,
+    UniformRand,
 };
 
 use anyhow::Result;
 use bech32::{self, FromBase32, ToBase32};
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     borrow::Borrow,
@@ -187,5 +192,13 @@ impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
     #[inline]
     fn borrow(&self) -> &F {
         &self.0
+    }
+}
+impl<F: Field + ToConstraintField<F>, const PREFIX: u16, const DATA_SIZE: usize>
+    Distribution<Bech32<F, PREFIX, DATA_SIZE>> for Standard
+{
+    #[inline]
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Bech32<F, PREFIX, DATA_SIZE> {
+        Bech32::<F, PREFIX, DATA_SIZE>(UniformRand::rand(rng))
     }
 }

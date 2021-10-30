@@ -43,6 +43,7 @@ pub trait Bech32Scheme<F: Field>:
     + Borrow<F>
     + Deref<Target = F>
     + ToConstraintField<F>
+    + UniformRand
     + Copy
     + Clone
     + Default

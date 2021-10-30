@@ -239,7 +239,7 @@ impl<N: Network> Transition<N> {
         let leaves = Self::compute_transition_leaves(serial_numbers, commitments, ciphertexts, value_balance)?;
         let tree =
             MerkleTree::<N::TransitionIDParameters>::new(Arc::new(N::transition_id_parameters().clone()), &leaves)?;
-        Ok(N::TransitionID::new(*tree.root()))
+        Ok((*tree.root()).into())
     }
 
     ///

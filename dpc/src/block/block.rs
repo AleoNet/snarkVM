@@ -17,7 +17,6 @@
 use crate::{
     Address,
     AleoAmount,
-    Bech32Scheme,
     BlockHeader,
     LedgerProof,
     LedgerTree,
@@ -124,8 +123,9 @@ impl<N: Network> Block<N> {
         transactions: Transactions<N>,
     ) -> Result<Self> {
         // Compute the block hash.
-        let block_hash =
-            N::BlockHash::new(N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?);
+        let block_hash = N::block_hash_crh()
+            .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
+            .into();
 
         // Construct the block.
         let block = Self {
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn test_block_hash_serde_json() {
         let rng = &mut thread_rng();
-        let expected_block_hash = <Testnet2 as Network>::BlockHash::new(UniformRand::rand(rng));
+        let expected_block_hash: <Testnet2 as Network>::BlockHash = UniformRand::rand(rng);
 
         // Serialize
         let expected_string = &expected_block_hash.to_string();
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn test_block_hash_bincode() {
         let rng = &mut thread_rng();
-        let expected_block_hash = <Testnet2 as Network>::BlockHash::new(UniformRand::rand(rng));
+        let expected_block_hash: <Testnet2 as Network>::BlockHash = UniformRand::rand(rng);
 
         // Serialize
         let expected_bytes = expected_block_hash.to_bytes_le().unwrap();

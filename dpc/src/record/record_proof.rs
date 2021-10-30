@@ -76,8 +76,9 @@ impl<N: Network> RecordProof<N> {
         }
 
         // Ensure the block hash is valid.
-        let candidate_block_hash =
-            N::BlockHash::new(N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, block_header_root]?)?);
+        let candidate_block_hash: N::BlockHash = N::block_hash_crh()
+            .hash(&to_bytes_le![previous_block_hash, block_header_root]?)?
+            .into();
         if candidate_block_hash != block_hash {
             return Err(anyhow!(
                 "Candidate block hash {} does not match given block hash {}",
