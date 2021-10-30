@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Scheme, Bech32mError};
+use crate::{Bech32Locator, Bech32mError};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     fmt,
@@ -39,9 +39,9 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Borrow;
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
-pub struct Bech32m<F: PrimeField + ToConstraintField<F>, const PREFIX: u16>(F);
+pub struct AleoLocator<F: PrimeField + ToConstraintField<F>, const PREFIX: u16>(F);
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Bech32Scheme<F> for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Bech32Locator<F> for AleoLocator<F, PREFIX> {
     #[inline]
     fn prefix() -> String {
         String::from_utf8(PREFIX.to_le_bytes().to_vec()).expect("Failed to convert prefix to string")
@@ -58,14 +58,14 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Bech32Scheme<F> fo
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> From<F> for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> From<F> for AleoLocator<F, PREFIX> {
     #[inline]
     fn from(data: F) -> Self {
         Self(data)
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromBytes for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromBytes for AleoLocator<F, PREFIX> {
     /// Reads data into a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -73,7 +73,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromBytes for Bech
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToBytes for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToBytes for AleoLocator<F, PREFIX> {
     /// Writes the data to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -81,7 +81,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToBytes for Bech32
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for AleoLocator<F, PREFIX> {
     type Err = Bech32mError;
 
     /// Reads in a bech32m string.
@@ -108,7 +108,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for Bech32
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Display for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Display for AleoLocator<F, PREFIX> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         bech32::encode_to_fmt(
@@ -121,14 +121,14 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Display for B
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Debug for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> fmt::Debug for AleoLocator<F, PREFIX> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Bech32m {{ hrp: {:?}, data: {:?} }}", &Self::prefix(), self.0)
+        write!(f, "AleoLocator {{ hrp: {:?}, data: {:?} }}", &Self::prefix(), self.0)
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Serialize for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Serialize for AleoLocator<F, PREFIX> {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -138,7 +138,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Serialize for Bech
     }
 }
 
-impl<'de, F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deserialize<'de> for Bech32m<F, PREFIX> {
+impl<'de, F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deserialize<'de> for AleoLocator<F, PREFIX> {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
@@ -150,14 +150,14 @@ impl<'de, F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deserialize<'
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToConstraintField<F> for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> ToConstraintField<F> for AleoLocator<F, PREFIX> {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.0.to_field_elements()
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deref for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deref for AleoLocator<F, PREFIX> {
     type Target = F;
 
     #[inline]
@@ -166,23 +166,23 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deref for Bech32m<
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Borrow<F> for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Borrow<F> for AleoLocator<F, PREFIX> {
     #[inline]
     fn borrow(&self) -> &F {
         &self.0
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Into<Vec<F>> for Bech32m<F, PREFIX> {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Into<Vec<F>> for AleoLocator<F, PREFIX> {
     #[inline]
     fn into(self) -> Vec<F> {
         vec![self.0]
     }
 }
 
-impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Distribution<Bech32m<F, PREFIX>> for Standard {
+impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Distribution<AleoLocator<F, PREFIX>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Bech32m<F, PREFIX> {
-        Bech32m::<F, PREFIX>(UniformRand::rand(rng))
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> AleoLocator<F, PREFIX> {
+        AleoLocator::<F, PREFIX>(UniformRand::rand(rng))
     }
 }
