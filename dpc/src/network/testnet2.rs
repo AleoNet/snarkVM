@@ -97,9 +97,10 @@ impl Network for Testnet2 {
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
     const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp!("cr");
     const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
+    const HEADER_ROOT_PREFIX: u16 = hrp!("hr");
+    const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp!("ht");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp!("ic");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
-    const TRANSACTIONS_ROOT_PREFIX: u16 = hrp!("tr");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
@@ -165,7 +166,7 @@ impl Network for Testnet2 {
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, 2>;
-    type BlockHeaderRoot = <Self::BlockHeaderRootCRH as CRH>::Output;
+    type BlockHeaderRoot = Bech32m<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
     type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
@@ -209,7 +210,7 @@ impl Network for Testnet2 {
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
     type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, 16>;
-    type TransactionsRoot = Bech32m<<Self::TransactionsRootCRH as CRH>::Output, { Self::TRANSACTIONS_ROOT_PREFIX }>;
+    type TransactionsRoot = Bech32m<<Self::TransactionsRootCRH as CRH>::Output, { Self::HEADER_TRANSACTIONS_ROOT_PREFIX }>;
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;

@@ -260,7 +260,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block header root.
     pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
-        Ok(*self.to_header_tree()?.root())
+        Ok((*self.to_header_tree()?.root()).into())
     }
 
     /// Sets the block header nonce to the given nonce.

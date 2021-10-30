@@ -43,7 +43,7 @@ impl<N: Network> PoSWCircuit<N> {
         let tree = block_header.to_header_tree()?;
 
         Ok(Self {
-            block_header_root: *tree.root(),
+            block_header_root: (*tree.root()).into(),
             nonce: block_header.nonce(),
             hashed_leaves: tree.hashed_leaves().to_vec(),
         })

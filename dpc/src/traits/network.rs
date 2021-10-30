@@ -83,9 +83,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const COMMITMENT_PREFIX: u16;
     const COMMITMENT_RANDOMNESS_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
+    const HEADER_ROOT_PREFIX: u16;
+    const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
-    const TRANSACTIONS_ROOT_PREFIX: u16;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -161,10 +162,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHash: Bech32Scheme<<Self::BlockHashCRH as CRH>::Output>;
 
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
-    type BlockHeaderRootCRH: CRH<Output = Self::BlockHeaderRoot>;
+    type BlockHeaderRootCRH: CRH<Output = Self::InnerScalarField>;
     type BlockHeaderRootCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::H, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
     type BlockHeaderRootParameters: MaskedMerkleParameters<H = Self::BlockHeaderRootCRH>;
-    type BlockHeaderRoot: ToConstraintField<Self::InnerScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type BlockHeaderRoot: Bech32Scheme<<Self::BlockHeaderRootCRH as CRH>::Output>;
 
     /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
     type CiphertextIDCRH: CRH<Output = Self::InnerScalarField>;
@@ -199,7 +200,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type LedgerRoot: Bech32Scheme<<Self::LedgerRootCRH as CRH>::Output>;
 
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
-    type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::BlockHeaderRoot, Output = Self::InnerScalarField>;
+    type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type PoSWMaskPRFGadget: PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>;
     type PoSW: PoSWScheme<Self>;
     
