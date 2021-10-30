@@ -342,15 +342,27 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 impl<N: Network> FromStr for BlockHeader<N> {
     type Err = anyhow::Error;
 
-    fn from_str(header_hex: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from_bytes_le(&hex::decode(header_hex)?)?)
+    fn from_str(header: &str) -> Result<Self, Self::Err> {
+        let header = serde_json::Value::from_str(header)?;
+
+        Ok(Self {
+            previous_ledger_root: serde_json::from_value(header["previous_ledger_root"].clone())?,
+            transactions_root: serde_json::from_value(header["transactions_root"].clone())?,
+            metadata: serde_json::from_value(header["metadata"].clone())?,
+            proof: serde_json::from_value(header["proof"].clone())?,
+        })
     }
 }
 
 impl<N: Network> fmt::Display for BlockHeader<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let bytes = self.to_bytes_le().expect("Failed to convert block header to bytes");
-        write!(f, "{}", hex::encode(bytes))
+        let header = serde_json::json!({
+            "previous_ledger_root": self.previous_ledger_root,
+            "transactions_root": self.transactions_root,
+            "metadata": self.metadata,
+            "proof": self.proof,
+        });
+        write!(f, "{}", header)
     }
 }
 
@@ -380,6 +392,40 @@ mod tests {
     use snarkvm_marlin::ahp::AHPForR1CS;
 
     use rand::{rngs::ThreadRng, thread_rng};
+
+    #[test]
+    fn test_serde_json() {
+        let block_header = Testnet2::genesis_block().header().to_owned();
+
+        // Serialize
+        let expected_string = &block_header.to_string();
+        let candidate_string = serde_json::to_string(&block_header).unwrap();
+        assert_eq!(1947, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(block_header, BlockHeader::from_str(&expected_string).unwrap());
+        assert_eq!(block_header, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let block_header = Testnet2::genesis_block().header().to_owned();
+
+        println!("{}", serde_json::to_string(&block_header).unwrap());
+
+        let expected_bytes = block_header.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&block_header).unwrap()[..]);
+
+        assert_eq!(block_header, BlockHeader::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(block_header, bincode::deserialize(&expected_bytes[..]).unwrap());
+    }
 
     #[test]
     fn test_block_header_genesis() {

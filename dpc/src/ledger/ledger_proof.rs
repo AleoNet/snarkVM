@@ -55,6 +55,14 @@ impl<N: Network> LedgerProof<N> {
         })
     }
 
+    /// Create a new dummy ledger proof.
+    pub fn new_dummy(local_proof: LocalProof<N>) -> Result<Self> {
+        let mut ledger_proof: Self = Default::default();
+        ledger_proof.record_proof = RecordProof::new_dummy(local_proof)?;
+
+        Ok(ledger_proof)
+    }
+
     /// Returns the ledger root used to prove inclusion of ledger-consumed records.
     pub fn ledger_root(&self) -> N::LedgerRoot {
         self.ledger_root
