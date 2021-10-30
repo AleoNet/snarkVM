@@ -91,6 +91,7 @@ impl Network for Testnet1 {
     const TRANSITION_ID_PREFIX: u16 = hrp!("as");
     const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
     const COMMITMENT_PREFIX: u16 = hrp!("cm");
+    const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
     const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
@@ -170,7 +171,7 @@ impl Network for Testnet1 {
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
     type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;
-    type FunctionID = <Self::FunctionIDCRH as CRH>::Output;
+    type FunctionID = Bech32<<Self::FunctionIDCRH as CRH>::Output, { Self::FUNCTION_ID_PREFIX }>;
 
     type FunctionInputsCRH = PoseidonCRH<Self::InnerScalarField, 128>;
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;

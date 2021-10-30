@@ -81,6 +81,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
     const COMMITMENT_PREFIX: u16;
+    const FUNCTION_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
@@ -174,9 +175,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type Commitment: Bech32Scheme<<Self::CommitmentScheme as CommitmentScheme>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
-    type FunctionIDCRH: CRH<Output = Self::FunctionID>;
+    type FunctionIDCRH: CRH<Output = Self::OuterScalarField>;
     type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::OuterScalarField>;
-    type FunctionID: ToConstraintField<Self::OuterScalarField> + Copy + Clone + Default + Debug + Display + ToBytes + FromBytes + Serialize + DeserializeOwned + PartialEq + Eq + Hash + Sync + Send;
+    type FunctionID: Bech32Scheme<<Self::FunctionIDCRH as CRH>::Output>;
 
     /// Crypto hash for deriving the function inputs digest. Invoked only over `Self::InnerScalarField`.
     type FunctionInputsCRH: CRH<Output = Self::FunctionInputsDigest>;
@@ -266,7 +267,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn function_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
     ) -> Result<Self::FunctionID> {
-        Ok(Self::function_id_crh().hash_bits(&verifying_key.to_minimal_bits())?)
+        Ok(Self::function_id_crh().hash_bits(&verifying_key.to_minimal_bits())?.into())
     }
 
     /// Returns the program SRS for Aleo applications.
