@@ -42,6 +42,9 @@ pub enum AccountError {
     #[error("invalid prefix bytes: {:?}", _0)]
     InvalidPrefixBytes(Vec<u8>),
 
+    #[error("invalid variant")]
+    InvalidVariant,
+
     #[error("{}", _0)]
     Message(String),
 

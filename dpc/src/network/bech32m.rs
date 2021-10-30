@@ -92,12 +92,15 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for Bech32
             return Err(Bech32mError::InvalidCharacterLength(string.len()));
         }
 
-        let (hrp, data, _variant) = bech32::decode(&string)?;
+        let (hrp, data, variant) = bech32::decode(&string)?;
         if hrp.as_bytes() != &PREFIX.to_le_bytes() {
             return Err(Bech32mError::InvalidPrefix(string.to_lowercase()[0..2].to_string()));
         };
         if data.is_empty() {
             return Err(Bech32mError::InvalidByteLength(0));
+        }
+        if variant != bech32::Variant::Bech32m {
+            return Err(Bech32mError::InvalidVariant);
         }
 
         let buffer = Vec::from_base32(&data)?;

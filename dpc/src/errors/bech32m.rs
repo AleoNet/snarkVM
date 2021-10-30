@@ -36,6 +36,9 @@ pub enum Bech32mError {
     #[error("invalid prefix: {:?}", _0)]
     InvalidPrefix(String),
 
+    #[error("invalid variant")]
+    InvalidVariant,
+
     #[error("{}", _0)]
     Message(String),
 }

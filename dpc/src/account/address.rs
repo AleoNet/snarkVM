@@ -146,18 +146,25 @@ impl<N: Network> FromStr for Address<N> {
             return Err(AccountError::InvalidCharacterLength(address.len()));
         }
 
-        let prefix = &address.to_lowercase()[0..4];
-        if prefix != account_format::ADDRESS_PREFIX {
-            return Err(AccountError::InvalidPrefix(prefix.to_string()));
-        };
-
-        let (_hrp, data, _variant) = bech32::decode(&address)?;
+        let (hrp, data, variant) = bech32::decode(&address)?;
+        if hrp != account_format::ADDRESS_PREFIX {
+            return Err(AccountError::InvalidPrefix(address.to_lowercase()[0..4].to_string()));
+        }
         if data.is_empty() {
             return Err(AccountError::InvalidByteLength(0));
         }
 
         let buffer = Vec::from_base32(&data)?;
-        Ok(Self::read_le(&buffer[..])?)
+        let address = Self::read_le(&buffer[..])?;
+
+        if variant != bech32::Variant::Bech32m {
+            eprintln!(
+                "[Warning] This Aleo address is in bech32 (deprecated) and should be encoded in bech32m as:\n{}",
+                address
+            );
+        }
+
+        Ok(address)
     }
 }
 
@@ -169,9 +176,9 @@ impl<N: Network> fmt::Display for Address<N> {
         bech32::encode(
             account_format::ADDRESS_PREFIX,
             encryption_key.to_base32(),
-            bech32::Variant::Bech32,
+            bech32::Variant::Bech32m,
         )
-        .expect("Failed to encode in bech32")
+        .expect("Failed to encode in bech32m")
         .fmt(f)
     }
 }
