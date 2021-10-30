@@ -94,7 +94,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for AleoLo
 
         let (hrp, data, variant) = bech32::decode(&string)?;
         if hrp.as_bytes() != &PREFIX.to_le_bytes() {
-            return Err(Bech32mError::InvalidPrefix(string.to_lowercase()[0..2].to_string()));
+            return Err(Bech32mError::InvalidPrefix(hrp));
         };
         if data.is_empty() {
             return Err(Bech32mError::InvalidByteLength(0));

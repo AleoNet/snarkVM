@@ -19,6 +19,8 @@ pub mod locator;
 #[macro_use]
 pub mod macros;
 
+pub mod object;
+
 #[cfg(feature = "testnet1")]
 pub mod testnet1;
 

@@ -148,7 +148,7 @@ impl<N: Network> FromStr for Address<N> {
 
         let (hrp, data, variant) = bech32::decode(&address)?;
         if hrp != account_format::ADDRESS_PREFIX {
-            return Err(AccountError::InvalidPrefix(address.to_lowercase()[0..4].to_string()));
+            return Err(AccountError::InvalidPrefix(hrp));
         }
         if data.is_empty() {
             return Err(AccountError::InvalidByteLength(0));
