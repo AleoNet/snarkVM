@@ -65,11 +65,7 @@ pub trait Bech32Locator<F: Field>:
     fn data_string_length() -> usize;
 }
 
-pub trait Bech32Prefix: Clone + Debug + Display + PartialEq + Eq + Hash + Sync + Send {
-    const PREFIX: &'static str;
-}
-
-pub trait Bech32Object<P: Bech32Prefix, T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send>:
+pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send>:
     From<T>
     + Borrow<T>
     + Deref<Target = T>
@@ -87,7 +83,6 @@ pub trait Bech32Object<P: Bech32Prefix, T: Clone + Debug + ToBytes + FromBytes +
     + Send
 {
     fn prefix() -> String;
-    fn prefix_length() -> usize;
 }
 
 #[rustfmt::skip]

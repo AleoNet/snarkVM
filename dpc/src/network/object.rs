@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Object, Bech32Prefix, Bech32mError};
+use crate::{Bech32Object, Bech32mError};
 use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -30,63 +30,57 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use bech32::{self, FromBase32, ToBase32};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use snarkvm_utilities::marker::PhantomData;
 use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct AleoObject<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
->(T, PhantomData<P>);
+>(T);
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> Bech32Object<P, T> for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> Bech32Object<T> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn prefix() -> String {
-        P::PREFIX.to_string()
-    }
-
-    #[inline]
-    fn prefix_length() -> usize {
-        P::PREFIX.len()
+        String::from_utf8(PREFIX.to_le_bytes().to_vec()).expect("Failed to convert prefix to string")
     }
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> From<T> for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> From<T> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn from(data: T) -> Self {
-        Self(data, PhantomData)
+        Self(data)
     }
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> FromBytes for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> FromBytes for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     /// Reads data into a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(FromBytes::read_le(&mut reader)?, PhantomData))
+        Ok(Self(FromBytes::read_le(&mut reader)?))
     }
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> ToBytes for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> ToBytes for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     /// Writes the data to a buffer.
     #[inline]
@@ -96,10 +90,10 @@ impl<
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> FromStr for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> FromStr for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     type Err = Bech32mError;
 
@@ -123,10 +117,10 @@ impl<
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> fmt::Display for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> fmt::Display for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -141,10 +135,10 @@ impl<
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> Debug for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> Debug for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -153,10 +147,10 @@ impl<
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> Serialize for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> Serialize for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -169,10 +163,10 @@ impl<
 
 impl<
     'de,
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> Deserialize<'de> for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> Deserialize<'de> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -184,10 +178,10 @@ impl<
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> Deref for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> Deref for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     type Target = T;
 
@@ -198,10 +192,10 @@ impl<
 }
 
 impl<
-    P: Bech32Prefix,
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
-> Borrow<T> for AleoObject<P, T, DATA_SIZE_IN_BYTES>
+> Borrow<T> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
 {
     #[inline]
     fn borrow(&self) -> &T {
