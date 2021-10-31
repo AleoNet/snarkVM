@@ -65,7 +65,7 @@ pub trait Bech32Locator<F: Field>:
     fn data_string_length() -> usize;
 }
 
-pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send>:
+pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send>:
     From<T>
     + Borrow<T>
     + Deref<Target = T>
@@ -76,7 +76,6 @@ pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq +
     + FromBytes
     + PartialEq
     + Eq
-    + Hash
     + Serialize
     + DeserializeOwned
     + Sync
@@ -108,6 +107,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
+
+    const FUNCTION_PROOF_PREFIX: u32;
+    const HEADER_POSW_PROOF_PREFIX: u32;
+    const INNER_PROOF_PREFIX: u32;
+    const OUTER_PROOF_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -148,8 +152,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
 
     /// SNARK for proof-verification checks.
-    type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>, Proof = Self::OuterProof>;
-    type OuterProof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Serialize + DeserializeOwned + Sync + Send;
+    type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
+    type OuterProof: Bech32Object<<Self::OuterSNARK as SNARK>::Proof>;
 
     /// SNARK for Aleo programs.
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, Proof = Self::ProgramProof, UniversalSetupConfig = usize>;

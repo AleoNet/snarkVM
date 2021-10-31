@@ -127,7 +127,7 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the transition.
-        let transition = Transition::<N>::new(request, &response, outer_proof)?;
+        let transition = Transition::<N>::new(request, &response, outer_proof.into())?;
 
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;
@@ -332,7 +332,7 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the transition.
-        let transition = Transition::<N>::new(&request, &response, outer_proof)?;
+        let transition = Transition::<N>::new(&request, &response, outer_proof.into())?;
 
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;

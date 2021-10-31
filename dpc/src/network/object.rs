@@ -34,13 +34,13 @@ use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct AleoObject<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 >(T);
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > Bech32Object<T> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -52,7 +52,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > From<T> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -64,7 +64,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > FromBytes for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -77,7 +77,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > ToBytes for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -90,7 +90,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > FromStr for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -117,7 +117,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > fmt::Display for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -135,7 +135,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > Debug for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -147,7 +147,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > Serialize for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -163,7 +163,7 @@ impl<
 
 impl<
     'de,
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > Deserialize<'de> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -178,7 +178,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > Deref for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
@@ -192,7 +192,7 @@ impl<
 }
 
 impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send,
+    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,
 > Borrow<T> for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>

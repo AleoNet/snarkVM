@@ -15,11 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod locator;
+pub use locator::*;
 
 #[macro_use]
 pub mod macros;
 
 pub mod object;
+pub use object::*;
 
 #[cfg(feature = "testnet1")]
 pub mod testnet1;

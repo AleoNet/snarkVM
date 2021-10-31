@@ -16,8 +16,9 @@
 
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
-    network::locator::AleoLocator,
     posw::PoSW,
+    AleoLocator,
+    AleoObject,
     Block,
     InnerPublicVariables,
     Network,
@@ -84,20 +85,25 @@ impl Network for Testnet1 {
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 
-    const BLOCK_HASH_PREFIX: u16 = hrp!("ab");
-    const LEDGER_ROOT_PREFIX: u16 = hrp!("al");
-    const PROGRAM_ID_PREFIX: u16 = hrp!("ap");
-    const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp!("ar");
-    const TRANSITION_ID_PREFIX: u16 = hrp!("as");
-    const TRANSACTION_ID_PREFIX: u16 = hrp!("at");
-    const COMMITMENT_PREFIX: u16 = hrp!("cm");
-    const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp!("cr");
-    const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp!("fi");
-    const FUNCTION_ID_PREFIX: u16 = hrp!("fn");
-    const HEADER_ROOT_PREFIX: u16 = hrp!("hr");
-    const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp!("ht");
-    const INNER_CIRCUIT_ID_PREFIX: u16 = hrp!("ic");
-    const SERIAL_NUMBER_PREFIX: u16 = hrp!("sn");
+    const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
+    const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
+    const PROGRAM_ID_PREFIX: u16 = hrp2!("ap");
+    const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp2!("ar");
+    const TRANSITION_ID_PREFIX: u16 = hrp2!("as");
+    const TRANSACTION_ID_PREFIX: u16 = hrp2!("at");
+    const COMMITMENT_PREFIX: u16 = hrp2!("cm");
+    const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp2!("cr");
+    const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
+    const FUNCTION_ID_PREFIX: u16 = hrp2!("fn");
+    const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
+    const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
+    const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
+    const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
+
+    const FUNCTION_PROOF_PREFIX: u32 = hrp4!("fzkp");
+    const HEADER_POSW_PROOF_PREFIX: u32 = hrp4!("hzkp");
+    const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
+    const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
@@ -134,7 +140,7 @@ impl Network for Testnet1 {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1>>;
-    type OuterProof = <Self::OuterSNARK as SNARK>::Proof;
+    type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, 144>;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
