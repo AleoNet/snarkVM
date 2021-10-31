@@ -282,7 +282,7 @@ impl<N: Network> Transition<N> {
         .concat();
 
         // Ensure the correct number of leaves are allocated.
-        assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), leaves.len());
+        assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), leaves.len());
 
         Ok(leaves)
     }

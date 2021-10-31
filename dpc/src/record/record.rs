@@ -337,7 +337,7 @@ mod tests {
         let address: Address<Testnet2> = PrivateKey::new(rng).into();
 
         // Output record
-        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
         let expected_record = Record::new_output(
             address,
@@ -388,7 +388,7 @@ mod tests {
         let address: Address<Testnet2> = PrivateKey::new(rng).into();
 
         // Output record
-        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
         let expected_record = Record::new_output(
             address,

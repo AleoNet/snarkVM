@@ -92,6 +92,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const NUM_INPUT_RECORDS: usize;
     const NUM_OUTPUT_RECORDS: usize;
     const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
+    const NUM_TRANSITIONS: u8;
+    const NUM_EVENTS: u16;
 
     const BLOCK_HASH_PREFIX: u16;
     const LEDGER_ROOT_PREFIX: u16;
@@ -109,26 +111,22 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const SERIAL_NUMBER_PREFIX: u16;
 
     const FUNCTION_PROOF_PREFIX: u32;
-    const HEADER_POSW_PROOF_PREFIX: u32;
     const INNER_PROOF_PREFIX: u32;
     const OUTER_PROOF_PREFIX: u32;
+    const POSW_PROOF_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
-    const PAYLOAD_SIZE_IN_BYTES: usize;
-    const RECORD_SIZE_IN_BYTES: usize;
-
-    const NUM_TRANSITIONS: u8;
-    const NUM_EVENTS: u16;
-
-    const TRANSITION_SIZE_IN_BYTES: usize;
-    const TRANSITION_TREE_DEPTH: u32;
-
     const POSW_PROOF_SIZE_IN_BYTES: usize;
-    const POSW_NUM_LEAVES: usize;
+    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
+    const RECORD_SIZE_IN_BYTES: usize;
+    const SIGNATURE_SIZE_IN_BYTES: usize;
+    const TRANSITION_SIZE_IN_BYTES: usize;
+
     const POSW_TREE_DEPTH: usize;
-    
+    const TRANSITION_TREE_DEPTH: usize;
+
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
     /// Inner curve type declarations.
@@ -164,9 +162,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramProof: Clone + Debug + ToBytes + FromBytes + Sync + Send;
 
     /// SNARK for PoSW.
-    type PoSWSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, Proof = Self::PoSWProof, UniversalSetupConfig = usize>;
-    type PoSWProof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send;
-    
+    type PoSWSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, UniversalSetupConfig = usize>;
+    type PoSWProof: Bech32Object<<Self::PoSWSNARK as SNARK>::Proof>;
+    type PoSW: PoSWScheme<Self>;
+
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
@@ -228,8 +227,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
     type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type PoSWMaskPRFGadget: PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>;
-    type PoSW: PoSWScheme<Self>;
-    
+
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH<Output = Self::OuterScalarField>;
     type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;

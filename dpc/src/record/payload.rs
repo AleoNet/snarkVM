@@ -30,23 +30,23 @@ pub struct Payload<N: Network>(Vec<u8>, PhantomData<N>);
 
 impl<N: Network> Payload<N> {
     pub fn from(bytes: &[u8]) -> Self {
-        assert!(bytes.len() <= N::PAYLOAD_SIZE_IN_BYTES);
+        assert!(bytes.len() <= N::RECORD_PAYLOAD_SIZE_IN_BYTES);
 
         // Pad the bytes up to PAYLOAD_SIZE.
         let mut buffer = bytes.to_vec();
-        buffer.resize(N::PAYLOAD_SIZE_IN_BYTES, 0u8);
+        buffer.resize(N::RECORD_PAYLOAD_SIZE_IN_BYTES, 0u8);
 
         Self(buffer, PhantomData)
     }
 
     pub fn is_empty(&self) -> bool {
-        let mut payload = vec![0u8; N::PAYLOAD_SIZE_IN_BYTES];
+        let mut payload = vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES];
         payload.copy_from_slice(&self.0);
-        payload == vec![0u8; N::PAYLOAD_SIZE_IN_BYTES]
+        payload == vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]
     }
 
     pub fn size() -> usize {
-        N::PAYLOAD_SIZE_IN_BYTES
+        N::RECORD_PAYLOAD_SIZE_IN_BYTES
     }
 
     pub fn as_any(&self) -> &dyn std::any::Any {
@@ -57,7 +57,7 @@ impl<N: Network> Payload<N> {
 impl<N: Network> FromBytes for Payload<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut buffer = vec![0u8; N::PAYLOAD_SIZE_IN_BYTES];
+        let mut buffer = vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES];
         reader.read_exact(&mut buffer)?;
         Ok(Self::from(&buffer))
     }
@@ -98,7 +98,9 @@ impl<'de, N: Network> Deserialize<'de> for Payload<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "payload", N::PAYLOAD_SIZE_IN_BYTES),
+            false => {
+                FromBytesDeserializer::<Self>::deserialize(deserializer, "payload", N::RECORD_PAYLOAD_SIZE_IN_BYTES)
+            }
         }
     }
 }
@@ -122,11 +124,14 @@ mod tests {
         let rng = &mut thread_rng();
 
         // Create a random byte array, construct a payload from it, and check its byte array matches.
-        for i in 0..Testnet2::PAYLOAD_SIZE_IN_BYTES {
+        for i in 0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES {
             let expected_payload = (0..i).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
             let candidate_payload = Payload::<Testnet2>::from(&expected_payload).to_bytes_le().unwrap();
             assert_eq!(expected_payload, candidate_payload[0..i]);
-            assert_eq!(vec![0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES - i], candidate_payload[i..]);
+            assert_eq!(
+                vec![0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES - i],
+                candidate_payload[i..]
+            );
         }
     }
 
@@ -135,7 +140,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_payload = Payload::<Testnet2>::from(
-            &(0..Testnet2::PAYLOAD_SIZE_IN_BYTES)
+            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
                 .map(|_| u8::rand(rng))
                 .collect::<Vec<u8>>(),
         );
@@ -161,7 +166,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_payload = Payload::<Testnet2>::from(
-            &(0..Testnet2::PAYLOAD_SIZE_IN_BYTES)
+            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
                 .map(|_| u8::rand(rng))
                 .collect::<Vec<u8>>(),
         );

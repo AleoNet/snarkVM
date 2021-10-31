@@ -88,6 +88,8 @@ impl Network for Testnet2 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
+    const NUM_TRANSITIONS: u8 = 128;
+    const NUM_EVENTS: u16 = 256;
 
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
@@ -105,26 +107,22 @@ impl Network for Testnet2 {
     const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
 
     const FUNCTION_PROOF_PREFIX: u32 = hrp4!("fzkp");
-    const HEADER_POSW_PROOF_PREFIX: u32 = hrp4!("hzkp");
     const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
     const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
+    const POSW_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
-    const RECORD_SIZE_IN_BYTES: usize = 280;
-    const PAYLOAD_SIZE_IN_BYTES: usize = 128;
-
-    const NUM_TRANSITIONS: u8 = 128;
-    const NUM_EVENTS: u16 = 256;
-
-    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
-    const TRANSITION_TREE_DEPTH: u32 = 3;
-
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    const POSW_NUM_LEAVES: usize = 4;
+    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
+    const RECORD_SIZE_IN_BYTES: usize = 280;
+    const SIGNATURE_SIZE_IN_BYTES: usize = 128;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
+
     const POSW_TREE_DEPTH: usize = 2;
-    
+    const TRANSITION_TREE_DEPTH: usize = 3;
+
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
     type InnerCurve = Bls12_377;
@@ -154,7 +152,8 @@ impl Network for Testnet2 {
     type ProgramProof = <Self::ProgramSNARK as SNARK>::Proof;
 
     type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
-    type PoSWProof = <Self::PoSWSNARK as SNARK>::Proof;
+    type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::POSW_PROOF_PREFIX }, { Self::POSW_PROOF_SIZE_IN_BYTES }>;
+    type PoSW = PoSW<Self>;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
@@ -165,7 +164,7 @@ impl Network for Testnet2 {
     type AccountSignatureScheme = AleoSignatureScheme<Self::ProgramCurveParameters>;
     type AccountSignatureGadget = AleoSignatureSchemeGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
-    type AccountSignature = AleoObject<<Self::AccountSignatureScheme as SignatureScheme>::Signature, { Self::SIGNATURE_PREFIX }, 128>;
+    type AccountSignature = AleoObject<<Self::AccountSignatureScheme as SignatureScheme>::Signature, { Self::SIGNATURE_PREFIX }, { Self::SIGNATURE_SIZE_IN_BYTES }>;
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
@@ -173,7 +172,7 @@ impl Network for Testnet2 {
 
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, 2>;
+    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::POSW_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
@@ -204,7 +203,6 @@ impl Network for Testnet2 {
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
-    type PoSW = PoSW<Self>;
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
@@ -227,7 +225,7 @@ impl Network for Testnet2 {
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 3>;
+    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
@@ -353,9 +351,5 @@ mod tests {
             Testnet2::POSW_TREE_DEPTH,
             <<Testnet2 as Network>::BlockHeaderRootParameters as MerkleParameters>::DEPTH
         );
-
-        // Verify the number of leaves corresponds to the correct tree depth.
-        let num_leaves = 2u32.pow(Testnet2::POSW_TREE_DEPTH as u32) as usize;
-        assert_eq!(Testnet2::POSW_NUM_LEAVES, num_leaves);
     }
 }

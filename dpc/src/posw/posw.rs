@@ -87,7 +87,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
             // Generate the proof.
             block_header.set_proof(
-                (&<<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?).into(),
+                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
             );
 
             if self.verify(block_header) {

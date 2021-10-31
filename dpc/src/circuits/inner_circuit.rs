@@ -873,7 +873,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Sanity check that the correct number of leaves are allocated.
             // Note: This is *not* enforced in the circuit.
-            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), transition_leaves.len());
+            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), transition_leaves.len());
 
             // Allocate the hashed leaves.
             let hashed_transition_leaves = transition_leaves
