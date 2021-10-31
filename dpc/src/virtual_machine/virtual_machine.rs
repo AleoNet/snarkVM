@@ -116,7 +116,7 @@ impl<N: Network> VirtualMachine<N> {
             self.local_transitions.root(),
             *N::inner_circuit_id(),
         );
-        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
+        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof.into(), execution);
         let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
 
@@ -321,7 +321,7 @@ impl<N: Network> VirtualMachine<N> {
             self.local_transitions.root(),
             *N::inner_circuit_id(),
         );
-        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof, execution);
+        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof.into(), execution);
         let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private.clone());
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
 

@@ -111,6 +111,8 @@ impl Network for Testnet1 {
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const INNER_PROOF_SIZE_IN_BYTES: usize = 96;
+    const OUTER_PROOF_SIZE_IN_BYTES: usize = 144;
     const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_SIZE_IN_BYTES: usize = 280;
@@ -142,9 +144,10 @@ impl Network for Testnet1 {
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+    type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1>>;
-    type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, 144>;
+    type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, { Self::OUTER_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;

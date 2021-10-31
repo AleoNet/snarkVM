@@ -41,7 +41,7 @@ pub struct OuterCircuit<N: Network> {
 impl<N: Network> OuterCircuit<N> {
     pub fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: N::InnerProof,
         execution: Execution<N>,
     ) -> Self {
         Self {
@@ -141,7 +141,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(&private.inner_proof),
+        || Ok(&*private.inner_proof),
     )?;
 
     N::InnerSNARKGadget::check_verify(

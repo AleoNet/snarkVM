@@ -120,7 +120,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Construct the outer circuit public and private variables.
     let outer_public = OuterPublicVariables::new(transition_id, ledger_root, local_transitions_root, inner_circuit_id);
-    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
+    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof.into(), execution);
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();

@@ -119,6 +119,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
+    const INNER_PROOF_SIZE_IN_BYTES: usize;
+    const OUTER_PROOF_SIZE_IN_BYTES: usize;
     const POSW_PROOF_SIZE_IN_BYTES: usize;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
@@ -154,6 +156,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = InnerPublicVariables<Self>>;
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
+    type InnerProof: Bech32Object<<Self::InnerSNARK as SNARK>::Proof>;
 
     /// SNARK for proof-verification checks.
     type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
