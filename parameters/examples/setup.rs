@@ -177,7 +177,7 @@ pub fn outer_setup<N: Network>() -> Result<()> {
                 <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
             let inner_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), &mut thread_rng())?;
 
-            (inner_proof, inner_verifying_key)
+            (inner_proof.into(), inner_verifying_key)
         }
         "testnet2" => {
             use snarkvm_parameters::testnet2::{InnerProvingKeyBytes, InnerVerifyingKeyBytes};
@@ -188,7 +188,7 @@ pub fn outer_setup<N: Network>() -> Result<()> {
                 <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
             let inner_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), &mut thread_rng())?;
 
-            (inner_proof, inner_verifying_key)
+            (inner_proof.into(), inner_verifying_key)
         }
         _ => panic!("Invalid network for outer setup"),
     };
