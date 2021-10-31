@@ -116,9 +116,9 @@ impl Network for Testnet2 {
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
-    const INNER_PROOF_SIZE_IN_BYTES: usize = 96;
-    const OUTER_PROOF_SIZE_IN_BYTES: usize = 144;
-    const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 968;
+    const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
+    const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
+    const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
@@ -131,6 +131,7 @@ impl Network for Testnet2 {
     const TRANSITION_TREE_DEPTH: usize = 3;
     const TRANSACTION_TREE_DEPTH: usize = 7;
 
+    const ALEO_BLOCK_TIME_IN_SECS: i64 = 15i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
     type InnerCurve = Bls12_377;

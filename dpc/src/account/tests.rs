@@ -272,6 +272,7 @@ mod testnet1 {
 
             // Serialize
             let expected_bytes = expected_signature.to_bytes_le().unwrap();
+            assert_eq!(Testnet1::SIGNATURE_SIZE_IN_BYTES, expected_bytes.len());
             assert_eq!(
                 &expected_bytes[..],
                 &bincode::serialize(&expected_signature).unwrap()[..]
@@ -546,6 +547,7 @@ mod testnet2 {
 
             // Serialize
             let expected_bytes = expected_signature.to_bytes_le().unwrap();
+            assert_eq!(Testnet2::SIGNATURE_SIZE_IN_BYTES, expected_bytes.len());
             assert_eq!(
                 &expected_bytes[..],
                 &bincode::serialize(&expected_signature).unwrap()[..]
