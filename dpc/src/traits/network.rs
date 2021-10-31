@@ -111,25 +111,26 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const INNER_CIRCUIT_ID_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
-    const FUNCTION_PROOF_PREFIX: u32;
+    const HEADER_PROOF_PREFIX: u32;
     const INNER_PROOF_PREFIX: u32;
     const OUTER_PROOF_PREFIX: u32;
-    const POSW_PROOF_PREFIX: u32;
+    const PROGRAM_PROOF_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const CIPHERTEXT_SIZE_IN_BYTES: usize;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize;
     const INNER_PROOF_SIZE_IN_BYTES: usize;
     const OUTER_PROOF_SIZE_IN_BYTES: usize;
-    const POSW_PROOF_SIZE_IN_BYTES: usize;
+    const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
     const TRANSITION_SIZE_IN_BYTES: usize;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
+    const HEADER_TREE_DEPTH: usize;
     const LEDGER_TREE_DEPTH: usize;
-    const POSW_TREE_DEPTH: usize;
     const PROGRAM_TREE_DEPTH: usize;
     const TRANSITION_TREE_DEPTH: usize;
     const TRANSACTION_TREE_DEPTH: usize;
@@ -162,12 +163,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
     type OuterProof: Bech32Object<<Self::OuterSNARK as SNARK>::Proof>;
 
-    /// SNARK for Aleo programs.
-    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, Proof = Self::ProgramProof, UniversalSetupConfig = usize>;
+    /// SNARK for Aleo program functions.
+    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
     type ProgramProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
     type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + ToBytes + FromBytes + ToMinimalBits + Send + Sync;
-    type ProgramProof: Clone + Debug + ToBytes + FromBytes + Sync + Send;
+    type ProgramProof: Bech32Object<<Self::ProgramSNARK as SNARK>::Proof>;
 
     /// SNARK for PoSW.
     type PoSWSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, UniversalSetupConfig = usize>;

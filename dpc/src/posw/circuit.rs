@@ -58,7 +58,7 @@ impl<N: Network> PoSWCircuit<N> {
         Ok(Self {
             block_header_root: Default::default(),
             nonce: Default::default(),
-            hashed_leaves: vec![empty_hash; usize::pow(2, N::POSW_TREE_DEPTH as u32)],
+            hashed_leaves: vec![empty_hash; usize::pow(2, N::HEADER_TREE_DEPTH as u32)],
         })
     }
 }
@@ -70,7 +70,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
     ) -> Result<(), SynthesisError> {
         // Sanity check that the correct number of leaves are allocated.
         // Note: This is *not* enforced in the circuit.
-        assert_eq!(usize::pow(2, N::POSW_TREE_DEPTH as u32), self.hashed_leaves.len());
+        assert_eq!(usize::pow(2, N::HEADER_TREE_DEPTH as u32), self.hashed_leaves.len());
 
         let crh_parameters = N::BlockHeaderRootCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
             Ok(N::block_header_root_parameters().crh())
@@ -192,7 +192,7 @@ mod test {
             println!("\nPosW elapsed time: {} ms\n", (Instant::now() - timer).as_millis());
             proof
         };
-        assert_eq!(proof.to_bytes_le().unwrap().len(), N::POSW_PROOF_SIZE_IN_BYTES);
+        assert_eq!(proof.to_bytes_le().unwrap().len(), N::HEADER_PROOF_SIZE_IN_BYTES);
 
         // Verify the proof is valid on the public inputs.
         let inputs = vec![

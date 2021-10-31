@@ -107,25 +107,26 @@ impl Network for Testnet2 {
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
     const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
 
-    const FUNCTION_PROOF_PREFIX: u32 = hrp4!("fzkp");
+    const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
     const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
     const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
-    const POSW_PROOF_PREFIX: u32 = hrp4!("pzkp");
+    const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 96;
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 144;
-    const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
+    const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 968;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 16;
+    const HEADER_TREE_DEPTH: usize = 2;
     const LEDGER_TREE_DEPTH: usize = 32;
-    const POSW_TREE_DEPTH: usize = 2;
     const PROGRAM_TREE_DEPTH: usize = 8;
     const TRANSITION_TREE_DEPTH: usize = 3;
     const TRANSACTION_TREE_DEPTH: usize = 7;
@@ -157,10 +158,10 @@ impl Network for Testnet2 {
     type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
-    type ProgramProof = <Self::ProgramSNARK as SNARK>::Proof;
+    type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
     type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
-    type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::POSW_PROOF_PREFIX }, { Self::POSW_PROOF_SIZE_IN_BYTES }>;
+    type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
@@ -180,7 +181,7 @@ impl Network for Testnet2 {
 
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::POSW_TREE_DEPTH }>;
+    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
@@ -354,9 +355,9 @@ mod tests {
     #[test]
     fn test_posw_tree_sanity_check() {
         // Verify the PoSW tree depth matches the declared depth.
-        assert_eq!(Testnet2::POSW_TREE_DEPTH, 2); // Testnet2 has a tree depth of 2.
+        assert_eq!(Testnet2::HEADER_TREE_DEPTH, 2); // Testnet2 has a tree depth of 2.
         assert_eq!(
-            Testnet2::POSW_TREE_DEPTH,
+            Testnet2::HEADER_TREE_DEPTH,
             <<Testnet2 as Network>::BlockHeaderRootParameters as MerkleParameters>::DEPTH
         );
     }

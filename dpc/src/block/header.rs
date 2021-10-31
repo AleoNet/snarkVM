@@ -219,7 +219,7 @@ impl<N: Network> BlockHeader<N> {
         32 // LedgerRoot
             + 32 // TransactionsRoot
             + BlockHeaderMetadata::<N>::size()
-            + N::POSW_PROOF_SIZE_IN_BYTES
+            + N::HEADER_PROOF_SIZE_IN_BYTES
     }
 
     /// Returns an instance of the block header tree.
@@ -233,7 +233,7 @@ impl<N: Network> BlockHeader<N> {
         let metadata = self.metadata.to_bytes_le()?;
         assert_eq!(metadata.len(), 52);
 
-        let num_leaves = usize::pow(2, N::POSW_TREE_DEPTH as u32);
+        let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
         leaves.push(previous_ledger_root);
         leaves.push(transactions_root);
