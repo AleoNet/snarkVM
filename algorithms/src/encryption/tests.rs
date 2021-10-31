@@ -19,8 +19,7 @@ mod ecies {
     use snarkvm_curves::edwards_bls12::EdwardsParameters;
     use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
+    use rand::{thread_rng, Rng};
 
     pub const ITERATIONS: usize = 1000;
 
@@ -28,23 +27,22 @@ mod ecies {
 
     #[test]
     fn test_encrypt_and_decrypt() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let rng = &mut thread_rng();
 
         let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key);
+        let (_ciphertext_randomizer, symmetric_key) = encryption_scheme.generate_asymmetric_key(&public_key, rng);
 
-        let randomness = encryption_scheme.generate_randomness(rng);
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
-        let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
-
-        let candidate_message = encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
+        let candidate_message = encryption_scheme.decrypt(&symmetric_key, &ciphertext).unwrap();
         assert_eq!(message, candidate_message);
     }
 
     #[test]
     fn test_encryption_public_key_to_bytes_le() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let rng = &mut thread_rng();
 
         let encryption_scheme = TestEncryptionScheme::setup("encryption_public_key_serialization");
 
@@ -62,21 +60,22 @@ mod ecies {
     #[test]
     #[should_panic]
     fn test_ciphertext_random_manipulation() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let rng = &mut thread_rng();
 
         let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
 
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key);
+        let (_ciphertext_randomizer, symmetric_key) = encryption_scheme.generate_asymmetric_key(&public_key, rng);
 
-        let randomness = encryption_scheme.generate_randomness(rng);
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
+        let mut ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
 
-        let mut ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
-        let idx = rng.gen_range(0..ciphertext.len());
+        // let idx = rng.gen_range(0..ciphertext.len());
+        let idx = ciphertext.len() - 1;
         ciphertext[idx] = ciphertext[idx].wrapping_add(1u8);
 
         // This should fail due to a MAC mismatch.
-        encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
+        encryption_scheme.decrypt(&symmetric_key, &ciphertext).unwrap();
     }
 }

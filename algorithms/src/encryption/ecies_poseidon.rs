@@ -111,63 +111,74 @@ impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
+    type CiphertextRandomizer = TE::BaseField;
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = TEAffine<TE>;
+    type PublicKeyCommitment = TE::BaseField;
     type Randomness = TE::ScalarField;
+    type SymmetricKey = TEAffine<TE>;
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        let poseidon_parameters = Arc::new(
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
-        );
-
         Self {
             generator,
-            poseidon_parameters,
+            poseidon_parameters: Arc::new(
+                <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
+            ),
         }
     }
 
-    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey {
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey {
         Self::PrivateKey::rand(rng)
     }
 
-    fn generate_public_key(
-        &self,
-        private_key: &<Self as EncryptionScheme>::PrivateKey,
-    ) -> <Self as EncryptionScheme>::PublicKey {
+    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey {
         self.generator.into_projective().mul(*private_key).into_affine()
     }
 
-    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::Randomness {
-        Self::Randomness::rand(rng)
-    }
-
-    fn encrypt(
+    ///
+    /// Given an RNG, returns the following:
+    ///
+    ///       ciphertext_randomizer := G^r
+    ///               symmetric_key := public_key^r == G^ar
+    ///
+    fn generate_asymmetric_key<R: Rng + CryptoRng>(
         &self,
-        public_key: &<Self as EncryptionScheme>::PublicKey,
-        randomness: &Self::Randomness,
-        message: &[u8],
-    ) -> Result<Vec<u8>, EncryptionError> {
+        public_key: &Self::PublicKey,
+        rng: &mut R,
+    ) -> (Self::CiphertextRandomizer, Self::SymmetricKey) {
+        // Sample randomness.
+        let randomness: Self::Randomness = UniformRand::rand(rng);
+
         // Compute the randomizer := G^r
-        let randomizer = self
+        let ciphertext_randomizer = self
             .generator
             .into_projective()
-            .mul(*randomness)
+            .mul(randomness)
             .into_affine()
             .to_x_coordinate();
 
         // Compute the ECDH value := public_key^r.
         // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is on the curve.
-        let ecdh_value = public_key
-            .into_projective()
-            .mul(*randomness)
-            .into_affine()
-            .to_x_coordinate();
+        let symmetric_key = public_key.into_projective().mul(randomness).into_affine();
 
+        (ciphertext_randomizer, symmetric_key)
+    }
+
+    ///
+    /// Given a public key and symmetric key, return the following:
+    ///
+    ///     public_key_commitment := H(R_0 || public_key) == H(H_0(public_key^r) || public_key) == H(H_0(G^ar) || G^a)
+    ///
+    fn generate_public_key_commitment(
+        &self,
+        public_key: &Self::PublicKey,
+        symmetric_key: &Self::SymmetricKey,
+    ) -> Self::PublicKeyCommitment {
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[ecdh_value]);
+        sponge.absorb(&[symmetric_key.to_x_coordinate()]);
 
         // Squeeze one element for the commitment randomness.
         let commitment_randomness = sponge.squeeze_field_elements(1)[0];
@@ -178,6 +189,54 @@ where
             sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
+
+        public_key_commitment
+    }
+
+    ///
+    /// Given the private key and ciphertext randomizer, return the following:
+    ///
+    ///    symmetric_key := public_key^r == (G^r)^private_key
+    ///
+    fn generate_symmetric_key(
+        &self,
+        private_key: &<Self as EncryptionScheme>::PrivateKey,
+        ciphertext_randomizer: Self::CiphertextRandomizer,
+    ) -> Result<<Self as EncryptionScheme>::SymmetricKey, EncryptionError> {
+        // Recover the ciphertext randomizer group element.
+        let randomizer = {
+            let mut first = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, true);
+            if first.is_some() && !first.unwrap().is_in_correct_subgroup_assuming_on_curve() {
+                first = None;
+            }
+            let mut second = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, false);
+            if second.is_some() && !second.unwrap().is_in_correct_subgroup_assuming_on_curve() {
+                second = None;
+            }
+            let randomizer = first.or(second);
+            if randomizer.is_none() {
+                return Err(EncryptionError::Message(
+                    "The ciphertext randomizer is malformed.".to_string(),
+                ));
+            }
+            randomizer.unwrap()
+        };
+
+        // Compute the ECDH value.
+        Ok(randomizer.into_projective().mul(*private_key).into_affine())
+    }
+
+    ///
+    /// Encrypts the given message, and returns the following:
+    ///
+    ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
+    ///
+    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
+        // Prepare the Poseidon sponge.
+        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
+        sponge.absorb(&[symmetric_key.to_x_coordinate()]);
+        // Squeeze one element for the public key commitment, which was already computed in the randomness method above.
+        let _commitment_randomness = sponge.squeeze_field_elements(1)[0];
 
         // Convert the message into bits.
         let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
@@ -211,66 +270,24 @@ where
             })
             .collect();
 
-        // Combine the randomizer, public key commitment, and ciphertext elements.
-        Ok([
-            randomizer.to_bytes_le()?,
-            public_key_commitment.to_bytes_le()?,
-            ciphertext,
-        ]
-        .concat())
+        Ok(ciphertext)
     }
 
-    fn decrypt(
-        &self,
-        private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &[u8],
-    ) -> Result<Vec<u8>, EncryptionError> {
+    ///
+    /// Decrypts the given ciphertext with the given symmetric key.
+    ///
+    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
         let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
         assert!(ciphertext.len() >= per_field_element_bytes);
 
-        // Recover the randomness group element.
-        let random_elem_x = TE::BaseField::from_bytes_le(&ciphertext[..per_field_element_bytes])?;
-        let random_elem = {
-            let mut first = TEAffine::<TE>::from_x_coordinate(random_elem_x.clone(), true);
-            if first.is_some() && !first.unwrap().is_in_correct_subgroup_assuming_on_curve() {
-                first = None;
-            }
-            let mut second = TEAffine::<TE>::from_x_coordinate(random_elem_x, false);
-            if second.is_some() && !second.unwrap().is_in_correct_subgroup_assuming_on_curve() {
-                second = None;
-            }
-            let random_elem = first.or(second);
-            if random_elem.is_none() {
-                return Err(EncryptionError::Message("The ciphertext is malformed.".to_string()));
-            }
-            random_elem.unwrap()
-        };
-
-        // Compute the ECDH value
-        let ecdh_value = random_elem.into_projective().mul((*private_key).clone()).into_affine();
-
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
-
-        // Squeeze one element for the commitment randomness.
-        let commitment_randomness = sponge.squeeze_field_elements(1)[0];
-
-        // Add a commitment to the public key.
-        let public_key_commitment = {
-            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-            let public_key = self.generate_public_key(&private_key);
-            sponge.absorb(&[commitment_randomness, public_key.x]);
-            sponge.squeeze_field_elements(1)[0]
-        };
-        let given_public_key_commitment =
-            TE::BaseField::from_bytes_le(&ciphertext[per_field_element_bytes..2 * per_field_element_bytes])?;
-        if given_public_key_commitment != public_key_commitment {
-            return Err(EncryptionError::MismatchingAddress);
-        }
+        sponge.absorb(&[symmetric_key.to_x_coordinate()]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
+        // Squeeze one element for the public key commitment, which was already computed in the randomness method above.
+        let _commitment_randomness = sponge.squeeze_field_elements(1)[0];
 
         // Compute the number of sponge elements needed.
-        let num_field_elements = (ciphertext.len() - 2 * per_field_element_bytes) / per_field_element_bytes;
+        let num_field_elements = ciphertext.len() / per_field_element_bytes;
 
         // Obtain random field elements from Poseidon.
         let sponge_field_elements = sponge.squeeze_field_elements(num_field_elements);
@@ -279,8 +296,7 @@ where
         let mut res_field_elements = Vec::with_capacity(num_field_elements);
         for i in 0..num_field_elements {
             res_field_elements.push(TE::BaseField::from_bytes_le(
-                &ciphertext[(2 * per_field_element_bytes + i * per_field_element_bytes)
-                    ..(2 * per_field_element_bytes + (i + 1) * per_field_element_bytes)],
+                &ciphertext[(i * per_field_element_bytes)..((i + 1) * per_field_element_bytes)],
             )?);
         }
         for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
@@ -353,12 +369,11 @@ where
     TE::BaseField: PoseidonDefaultParametersField,
 {
     fn from(generator: TEAffine<TE>) -> Self {
-        let poseidon_parameters = Arc::new(
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
-        );
         Self {
             generator,
-            poseidon_parameters,
+            poseidon_parameters: Arc::new(
+                <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
+            ),
         }
     }
 }
@@ -378,8 +393,7 @@ where
 {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        let generator = TEAffine::<TE>::read_le(reader)?;
-        Ok(Self::from(generator))
+        Ok(Self::from(TEAffine::<TE>::read_le(reader)?))
     }
 }
 
