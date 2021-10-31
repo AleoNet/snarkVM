@@ -488,7 +488,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 N::AccountSignatureScheme,
                 N::InnerScalarField,
             >>::SignatureGadget::alloc(
-                signature_cs.ns(|| "alloc_signature"), || Ok(&private.signature)
+                signature_cs.ns(|| "alloc_signature"), || Ok(&*private.signature)
             )?;
 
             let mut signature_message = Vec::new();

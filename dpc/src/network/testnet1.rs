@@ -104,6 +104,7 @@ impl Network for Testnet1 {
     const HEADER_POSW_PROOF_PREFIX: u32 = hrp4!("hzkp");
     const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
     const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
+    const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
@@ -160,7 +161,7 @@ impl Network for Testnet1 {
     type AccountSignatureScheme = AleoSignatureScheme<Self::ProgramCurveParameters>;
     type AccountSignatureGadget = AleoSignatureSchemeGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
-    type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
+    type AccountSignature = AleoObject<<Self::AccountSignatureScheme as SignatureScheme>::Signature, { Self::SIGNATURE_PREFIX }, 128>;
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;

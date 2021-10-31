@@ -194,7 +194,8 @@ mod testnet1 {
             let expected_signature = private_key.sign(&message, &mut rng.clone()).unwrap();
             let candidate_signature = Testnet1::account_signature_scheme()
                 .sign(&signature_private_key, &message, &mut rng.clone())
-                .unwrap();
+                .unwrap()
+                .into();
             assert_eq!(expected_signature, candidate_signature);
 
             // Ensure the Aleo signatures verify.
@@ -395,7 +396,8 @@ mod testnet2 {
             let expected_signature = private_key.sign(&message, &mut rng.clone()).unwrap();
             let candidate_signature = Testnet2::account_signature_scheme()
                 .sign(&signature_private_key, &message, &mut rng.clone())
-                .unwrap();
+                .unwrap()
+                .into();
             assert_eq!(expected_signature, candidate_signature);
 
             // Ensure the Aleo signatures verify.
