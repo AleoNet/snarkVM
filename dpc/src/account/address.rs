@@ -40,7 +40,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
     Eq(bound = "N: Network"),
     Hash(bound = "N: Network")
 )]
-pub struct Address<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
+pub struct Address<N: Network>(<N::RecordCiphertextScheme as EncryptionScheme>::PublicKey);
 
 impl<N: Network> Address<N> {
     /// Derives the account address from an account private key.
@@ -208,7 +208,7 @@ impl<'de, N: Network> Deserialize<'de> for Address<N> {
 }
 
 impl<N: Network> Deref for Address<N> {
-    type Target = <N::AccountEncryptionScheme as EncryptionScheme>::PublicKey;
+    type Target = <N::RecordCiphertextScheme as EncryptionScheme>::PublicKey;
 
     fn deref(&self) -> &Self::Target {
         &self.0

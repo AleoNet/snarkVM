@@ -49,7 +49,7 @@ pub struct RecordCiphertext<N: Network> {
 
 impl<N: Network> RecordCiphertext<N> {
     pub fn from_vec(ciphertext: Vec<u8>) -> Self {
-        assert_eq!(N::CIPHERTEXT_SIZE_IN_BYTES, ciphertext.len());
+        assert_eq!(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, ciphertext.len());
         Self {
             ciphertext,
             phantom: PhantomData,
@@ -64,7 +64,7 @@ impl<N: Network> RecordCiphertext<N> {
         rng: &mut R,
     ) -> Result<(
         Self,
-        <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
+        <<N as Network>::RecordCiphertextScheme as EncryptionScheme>::Randomness,
     )> {
         // Convert the record into bytes.
         let buffer = to_bytes_le![
@@ -123,8 +123,8 @@ impl<N: Network> RecordCiphertext<N> {
 impl<N: Network> FromBytes for RecordCiphertext<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut ciphertext = Vec::with_capacity(N::CIPHERTEXT_SIZE_IN_BYTES);
-        for _ in 0..N::CIPHERTEXT_SIZE_IN_BYTES {
+        let mut ciphertext = Vec::with_capacity(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES);
+        for _ in 0..N::RECORD_CIPHERTEXT_SIZE_IN_BYTES {
             ciphertext.push(u8::read_le(&mut reader)?);
         }
 
@@ -167,9 +167,11 @@ impl<'de, N: Network> Deserialize<'de> for RecordCiphertext<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => {
-                FromBytesDeserializer::<Self>::deserialize(deserializer, "ciphertext", N::CIPHERTEXT_SIZE_IN_BYTES)
-            }
+            false => FromBytesDeserializer::<Self>::deserialize(
+                deserializer,
+                "ciphertext",
+                N::RECORD_CIPHERTEXT_SIZE_IN_BYTES,
+            ),
         }
     }
 }
@@ -194,7 +196,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_ciphertext = RecordCiphertext::<Testnet2>::from_vec(
-            (0..Testnet2::CIPHERTEXT_SIZE_IN_BYTES)
+            (0..Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES)
                 .map(|_| u8::rand(rng))
                 .collect::<Vec<u8>>(),
         );
@@ -223,7 +225,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_ciphertext = RecordCiphertext::<Testnet2>::from_vec(
-            (0..Testnet2::CIPHERTEXT_SIZE_IN_BYTES)
+            (0..Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES)
                 .map(|_| u8::rand(rng))
                 .collect::<Vec<u8>>(),
         );

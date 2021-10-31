@@ -26,6 +26,7 @@ use crate::{
     PoSWScheme,
     Program,
     ProgramPublicVariables,
+    RecordCiphertext,
 };
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
@@ -111,16 +112,17 @@ impl Network for Testnet2 {
     const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
     const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
     const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
+    const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
-    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_SIZE_IN_BYTES: usize = 280;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
 
@@ -164,9 +166,6 @@ impl Network for Testnet2 {
     type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
-
-    type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
-    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
 
     type AccountSeedPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
     type AccountSeed = <Self::AccountSeedPRF as PRF>::Seed;
@@ -218,7 +217,11 @@ impl Network for Testnet2 {
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
-    
+
+    type RecordCiphertextScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
+    type RecordCiphertextGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
+    type RecordCiphertext = AleoObject<RecordCiphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
+
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type SerialNumber = AleoLocator<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }>;
@@ -238,7 +241,7 @@ impl Network for Testnet2 {
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
-    dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet2, account_encryption_scheme, RecordCiphertextScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet2, block_header_root_parameters, BlockHeaderRootParameters, "AleoBlockHeaderRootCRH0"}

@@ -25,7 +25,7 @@ use std::{
 
 // TODO (howardwu): TEMPORARY - Merge this into the Network trait.
 use snarkvm_algorithms::traits::*;
-pub type CiphertextRandomizer<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
+pub type CiphertextRandomizer<N> = <<N as Network>::RecordCiphertextScheme as EncryptionScheme>::Randomness;
 
 #[derive(Clone, Debug)]
 pub struct Response<N: Network> {

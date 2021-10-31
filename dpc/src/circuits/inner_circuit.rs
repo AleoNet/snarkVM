@@ -81,7 +81,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
 
-            let account_encryption_parameters = N::AccountEncryptionGadget::alloc_constant(
+            let account_encryption_parameters = N::RecordCiphertextGadget::alloc_constant(
                 &mut cs.ns(|| "Declare account encryption parameters"),
                 || Ok(N::account_encryption_scheme().clone()),
             )?;
@@ -532,8 +532,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             ) = {
                 let declare_cs = &mut cs.ns(|| "Declare output record");
 
-                let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
+                let given_owner = <N::RecordCiphertextGadget as EncryptionGadget<
+                    N::RecordCiphertextScheme,
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
@@ -703,8 +703,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // *******************************************************************
                 // Compute the record ciphertext and ciphertext ID.
 
-                let encryption_randomness_gadget = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
+                let encryption_randomness_gadget = <N::RecordCiphertextGadget as EncryptionGadget<
+                    N::RecordCiphertextScheme,
                     N::InnerScalarField,
                 >>::RandomnessGadget::alloc(
                     &mut encryption_cs.ns(|| format!("output record {} encryption_randomness", j)),

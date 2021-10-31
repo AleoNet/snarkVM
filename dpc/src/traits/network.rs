@@ -14,7 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Block, InnerPublicVariables, OuterPublicVariables, PoSWScheme, Program, ProgramPublicVariables};
+use crate::{
+    Block,
+    InnerPublicVariables,
+    OuterPublicVariables,
+    PoSWScheme,
+    Program,
+    ProgramPublicVariables,
+    RecordCiphertext,
+};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
@@ -115,16 +123,17 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const INNER_PROOF_PREFIX: u32;
     const OUTER_PROOF_PREFIX: u32;
     const PROGRAM_PROOF_PREFIX: u32;
+    const RECORD_CIPHERTEXT_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
-    const CIPHERTEXT_SIZE_IN_BYTES: usize;
     const HEADER_PROOF_SIZE_IN_BYTES: usize;
     const INNER_PROOF_SIZE_IN_BYTES: usize;
     const OUTER_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
-    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
+    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
     const TRANSITION_SIZE_IN_BYTES: usize;
 
@@ -175,10 +184,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSWSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, UniversalSetupConfig = usize>;
     type PoSWProof: Bech32Object<<Self::PoSWSNARK as SNARK>::Proof>;
     type PoSW: PoSWScheme<Self>;
-
-    /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
-    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
     type AccountSeedPRF: PRF<Input = Vec<Self::ProgramScalarField>, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
@@ -244,6 +249,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
+    /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
+    type RecordCiphertextScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
+    type RecordCiphertextGadget: EncryptionGadget<Self::RecordCiphertextScheme, Self::InnerScalarField>;
+    type RecordCiphertext: Bech32Object<RecordCiphertext<Self>>;
+
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
@@ -267,7 +277,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
-    fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
+    fn account_encryption_scheme() -> &'static Self::RecordCiphertextScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_root_parameters() -> &'static Self::BlockHeaderRootParameters;

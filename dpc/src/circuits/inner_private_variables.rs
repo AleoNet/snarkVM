@@ -30,7 +30,7 @@ pub struct InnerPrivateVariables<N: Network> {
 
     // Outputs.
     pub(super) output_records: Vec<Record<N>>,
-    pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+    pub(super) ciphertext_randomizers: Vec<<N::RecordCiphertextScheme as EncryptionScheme>::Randomness>,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -42,7 +42,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             function_type: FunctionType::Noop,
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             ciphertext_randomizers: vec![
-                <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
+                <N::RecordCiphertextScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
         }
