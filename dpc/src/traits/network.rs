@@ -101,6 +101,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_CIPHERTEXT_ID_PREFIX: u16;
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
+
     const COMMITMENT_PREFIX: u16;
     const COMMITMENT_RANDOMNESS_PREFIX: u16;
     const FUNCTION_INPUTS_HASH_PREFIX: u16;
@@ -124,8 +125,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const SIGNATURE_SIZE_IN_BYTES: usize;
     const TRANSITION_SIZE_IN_BYTES: usize;
 
+    const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
+    const LEDGER_TREE_DEPTH: usize;
     const POSW_TREE_DEPTH: usize;
+    const PROGRAM_TREE_DEPTH: usize;
     const TRANSITION_TREE_DEPTH: usize;
+    const TRANSACTION_TREE_DEPTH: usize;
 
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 

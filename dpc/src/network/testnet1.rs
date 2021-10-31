@@ -93,6 +93,7 @@ impl Network for Testnet1 {
     const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp2!("ar");
     const TRANSITION_ID_PREFIX: u16 = hrp2!("as");
     const TRANSACTION_ID_PREFIX: u16 = hrp2!("at");
+
     const COMMITMENT_PREFIX: u16 = hrp2!("cm");
     const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp2!("cr");
     const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
@@ -116,8 +117,12 @@ impl Network for Testnet1 {
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
 
+    const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 16;
+    const LEDGER_TREE_DEPTH: usize = 32;
     const POSW_TREE_DEPTH: usize = 2;
+    const PROGRAM_TREE_DEPTH: usize = 8;
     const TRANSITION_TREE_DEPTH: usize = 3;
+    const TRANSACTION_TREE_DEPTH: usize = 7;
 
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
@@ -194,7 +199,7 @@ impl Network for Testnet1 {
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, 32>;
+    type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, { Self::LEDGER_TREE_DEPTH }>;
     type LedgerRoot = AleoLocator<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }>;
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
@@ -202,7 +207,7 @@ impl Network for Testnet1 {
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
-    type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, 8>;
+    type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
@@ -211,12 +216,12 @@ impl Network for Testnet1 {
 
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, 16>;
+    type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, { Self::HEADER_TRANSACTIONS_TREE_DEPTH }>;
     type TransactionsRoot = AleoLocator<<Self::TransactionsRootCRH as CRH>::Output, { Self::HEADER_TRANSACTIONS_ROOT_PREFIX }>;
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, 7>;
+    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, { Self::TRANSACTION_TREE_DEPTH }>;
     type TransactionID = AleoLocator<<Self::TransactionIDCRH as CRH>::Output, { Self::TRANSACTION_ID_PREFIX }>;
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
