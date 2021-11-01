@@ -129,6 +129,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         } = pcs;
 
         assert_eq!(padded_public_variables.len(), num_public_variables);
+        assert!(padded_public_variables[0].is_one());
         assert_eq!(private_variables.len(), num_private_variables);
 
         if cfg!(debug_assertions) {

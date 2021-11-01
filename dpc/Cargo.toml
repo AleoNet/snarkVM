@@ -72,6 +72,11 @@ path = "../polycommit"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-profiler]
+path = "../profiler"
+version = "0.7.5"
+default-features = false
+
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -146,5 +151,6 @@ default = [
 ]
 wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full", "snarkvm-marlin/wasm", "snarkvm-parameters/wasm" ]
 full = [ "testnet1", "testnet2" ]
+print-trace = [ "snarkvm-profiler/print-trace" ]
 testnet1 = []
 testnet2 = []

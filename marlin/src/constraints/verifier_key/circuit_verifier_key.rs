@@ -170,7 +170,9 @@ impl<
         }
 
         // `alloc_constant` regardless of the mode.
-        let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
+        // TODO(pratyush): investigate if this can be alloc_constant or not.
+        // (I think it cannot).
+        let verifier_key = PCG::VerifierKeyVar::alloc(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
         let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -213,7 +215,9 @@ impl<
         }
 
         // `alloc_constant` regardless of the mode.
-        let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
+        // TODO(pratyush): investigate if this can be alloc_constant or not.
+        // (I think it cannot).
+        let verifier_key = PCG::VerifierKeyVar::alloc_input(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
         let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;

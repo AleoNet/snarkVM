@@ -36,12 +36,7 @@ use crate::{
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    bits::Boolean,
-    nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar},
-    traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
-    PrepareGadget,
-};
+use snarkvm_gadgets::{PrepareGadget, ToBytesGadget, bits::Boolean, nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar}, traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget}};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
@@ -139,21 +134,19 @@ where
         eprintln!("before AHP: constraints: {}", cs.num_constraints());
 
         let public_input = {
-            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
 
-            let mut new_input = public_input.to_vec();
+            let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
+            new_input.extend_from_slice(public_input);
+            let domain_x = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();
             new_input.resize(
-                core::cmp::max(public_input.len(), domain_x.size() - 1),
+                core::cmp::max(new_input.len(), domain_x.size()),
                 NonNativeFieldVar::<TargetField, BaseField>::Constant(TargetField::zero()),
             );
             new_input
         };
 
-        fs_rng.absorb_nonnative_field_elements(
-            cs.ns(|| "initial_absorb_nonnative_field_elements"),
-            &public_input,
-            OptimizationType::Weight,
-        )?;
+        let input_bytes = public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
+        fs_rng.absorb_bytes(&mut cs.ns(|| "absorb_input_bytes"), &input_bytes)?;
 
         let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_first_round(
             cs.ns(|| "verifier_first_round"),

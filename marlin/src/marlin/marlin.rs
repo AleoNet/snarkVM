@@ -603,7 +603,9 @@ impl<
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
                 circuit_verifying_key,
             )?);
-            fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
+            let input_bytes = to_bytes_le![public_input].unwrap();
+            eprintln!("Native input bytes length: {}", input_bytes.len());
+            fs_rng.absorb_bytes(&input_bytes);
         } else {
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
         }
