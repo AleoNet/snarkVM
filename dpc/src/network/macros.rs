@@ -38,3 +38,23 @@ macro_rules! dpc_snark_setup {
         }
     };
 }
+
+/// Converts a string of 2 characters into a `u16` for a human-readable prefix in Bech32.
+#[macro_export]
+macro_rules! hrp2 {
+    ( $persona: expr ) => {{
+        snarkvm_algorithms::const_assert!($persona.len() == 2);
+        let p = $persona.as_bytes();
+        u16::from_le_bytes([p[0], p[1]])
+    }};
+}
+
+/// Converts a string of 4 characters into a `u32` for a human-readable prefix in Bech32.
+#[macro_export]
+macro_rules! hrp4 {
+    ( $persona: expr ) => {{
+        snarkvm_algorithms::const_assert!($persona.len() == 4);
+        let p = $persona.as_bytes();
+        u32::from_le_bytes([p[0], p[1], p[2], p[3]])
+    }};
+}

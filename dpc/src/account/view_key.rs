@@ -33,7 +33,7 @@ use std::{
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
-pub struct ViewKey<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey);
+pub struct ViewKey<N: Network>(<N::RecordCiphertextScheme as EncryptionScheme>::PrivateKey);
 
 impl<N: Network> ViewKey<N> {
     /// Creates a new account view key from an account private key.
@@ -106,7 +106,7 @@ impl<N: Network> fmt::Debug for ViewKey<N> {
 }
 
 impl<N: Network> Deref for ViewKey<N> {
-    type Target = <N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey;
+    type Target = <N::RecordCiphertextScheme as EncryptionScheme>::PrivateKey;
 
     fn deref(&self) -> &Self::Target {
         &self.0

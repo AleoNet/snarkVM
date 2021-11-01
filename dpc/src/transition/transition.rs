@@ -239,7 +239,7 @@ impl<N: Network> Transition<N> {
         let leaves = Self::compute_transition_leaves(serial_numbers, commitments, ciphertexts, value_balance)?;
         let tree =
             MerkleTree::<N::TransitionIDParameters>::new(Arc::new(N::transition_id_parameters().clone()), &leaves)?;
-        Ok(*tree.root())
+        Ok((*tree.root()).into())
     }
 
     ///
@@ -282,7 +282,7 @@ impl<N: Network> Transition<N> {
         .concat();
 
         // Ensure the correct number of leaves are allocated.
-        assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), leaves.len());
+        assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), leaves.len());
 
         Ok(leaves)
     }
@@ -420,7 +420,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2581, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2372, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)

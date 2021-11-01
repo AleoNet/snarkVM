@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, Network, PoSWScheme, ProofOfSuccinctWork};
+use crate::{BlockError, Network, PoSWScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
     fmt,
@@ -96,7 +96,7 @@ pub struct BlockHeader<N: Network> {
     /// The block header metadata - 52 bytes
     metadata: BlockHeaderMetadata<N>,
     /// Proof of Succinct Work - 771 bytes
-    proof: Option<ProofOfSuccinctWork<N>>,
+    proof: Option<N::PoSWProof>,
 }
 
 impl<N: Network> BlockHeader<N> {
@@ -210,7 +210,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns the proof, if it is set.
-    pub fn proof(&self) -> &Option<ProofOfSuccinctWork<N>> {
+    pub fn proof(&self) -> &Option<N::PoSWProof> {
         &self.proof
     }
 
@@ -219,7 +219,7 @@ impl<N: Network> BlockHeader<N> {
         32 // LedgerRoot
             + 32 // TransactionsRoot
             + BlockHeaderMetadata::<N>::size()
-            + N::POSW_PROOF_SIZE_IN_BYTES
+            + N::HEADER_PROOF_SIZE_IN_BYTES
     }
 
     /// Returns an instance of the block header tree.
@@ -233,12 +233,14 @@ impl<N: Network> BlockHeader<N> {
         let metadata = self.metadata.to_bytes_le()?;
         assert_eq!(metadata.len(), 52);
 
-        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(N::POSW_NUM_LEAVES);
+        let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
+        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
         leaves.push(previous_ledger_root);
         leaves.push(transactions_root);
         leaves.push(vec![0u8; 32]);
         leaves.push(metadata);
-        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
+        // Sanity check that the correct number of leaves are allocated.
+        assert_eq!(num_leaves, leaves.len());
 
         Ok(MerkleTree::<N::BlockHeaderRootParameters>::new(
             Arc::new(N::block_header_root_parameters().clone()),
@@ -260,7 +262,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block header root.
     pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
-        Ok(*self.to_header_tree()?.root())
+        Ok((*self.to_header_tree()?.root()).into())
     }
 
     /// Sets the block header nonce to the given nonce.
@@ -271,7 +273,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Sets the block header proof to the given proof.
     /// This method is used by PoSW to iterate over candidate block headers.
-    pub(crate) fn set_proof(&mut self, proof: ProofOfSuccinctWork<N>) {
+    pub(crate) fn set_proof(&mut self, proof: N::PoSWProof) {
         self.proof = Some(proof);
     }
 }
@@ -400,7 +402,7 @@ mod tests {
         // Serialize
         let expected_string = &block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1947, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1620, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(
             expected_string,
             serde_json::Value::from_str(&candidate_string)

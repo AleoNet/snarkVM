@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::errors::{EncryptionError, PRFError, SignatureError};
+use std::fmt::Debug;
 
 #[derive(Debug, Error)]
-pub enum AccountError {
+pub enum Bech32mError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
@@ -26,9 +26,6 @@ pub enum AccountError {
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
-
-    #[error("{}", _0)]
-    EncryptionError(#[from] EncryptionError),
 
     #[error("invalid byte length: {}", _0)]
     InvalidByteLength(usize),
@@ -39,36 +36,21 @@ pub enum AccountError {
     #[error("invalid prefix: {:?}", _0)]
     InvalidPrefix(String),
 
-    #[error("invalid prefix bytes: {:?}", _0)]
-    InvalidPrefixBytes(Vec<u8>),
-
     #[error("invalid variant")]
     InvalidVariant,
 
     #[error("{}", _0)]
     Message(String),
-
-    #[error("{}", _0)]
-    PRFError(#[from] PRFError),
-
-    #[error("{}", _0)]
-    SignatureError(#[from] SignatureError),
 }
 
-impl From<base58::FromBase58Error> for AccountError {
-    fn from(error: base58::FromBase58Error) -> Self {
-        AccountError::Crate("base58", format!("{:?}", error))
-    }
-}
-
-impl From<std::io::Error> for AccountError {
+impl From<std::io::Error> for Bech32mError {
     fn from(error: std::io::Error) -> Self {
-        AccountError::Crate("std::io", format!("{:?}", error))
+        Bech32mError::Crate("std::io", format!("{:?}", error))
     }
 }
 
-impl From<AccountError> for std::io::Error {
-    fn from(error: AccountError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+impl From<Bech32mError> for std::io::Error {
+    fn from(error: Bech32mError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
     }
 }

@@ -21,14 +21,14 @@ use snarkvm_algorithms::traits::SNARK;
 #[derivative(Clone(bound = "N: Network"))]
 pub struct OuterPrivateVariables<N: Network> {
     pub(super) inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-    pub(super) inner_proof: <N::InnerSNARK as SNARK>::Proof,
+    pub(super) inner_proof: N::InnerProof,
     pub(super) execution: Execution<N>,
 }
 
 impl<N: Network> OuterPrivateVariables<N> {
     pub(crate) fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: N::InnerProof,
         execution: Execution<N>,
     ) -> Self {
         Self {
@@ -40,7 +40,7 @@ impl<N: Network> OuterPrivateVariables<N> {
 
     pub(crate) fn new(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: N::InnerProof,
         execution: Execution<N>,
     ) -> Self {
         Self {

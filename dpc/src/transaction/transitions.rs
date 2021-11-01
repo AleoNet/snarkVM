@@ -115,7 +115,7 @@ impl<N: Network> Transitions<N> {
 
     /// Returns the local transitions root.
     pub(crate) fn root(&self) -> N::TransactionID {
-        *self.tree.root()
+        (*self.tree.root()).into()
     }
 
     /// Returns the size of the local transitions tree.

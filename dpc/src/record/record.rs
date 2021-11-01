@@ -134,7 +134,9 @@ impl<N: Network> Record<N> {
         ]?;
 
         // Compute the record commitment.
-        let commitment = N::commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = N::commitment_scheme()
+            .commit(&commitment_input, &commitment_randomness)?
+            .into();
 
         Ok(Self {
             program_id,
@@ -179,7 +181,7 @@ impl<N: Network> Record<N> {
 
     /// Returns the randomness used for the commitment.
     pub fn commitment_randomness(&self) -> N::CommitmentRandomness {
-        self.commitment_randomness.clone()
+        self.commitment_randomness
     }
 
     /// Returns the commitment of this record.
@@ -196,8 +198,8 @@ impl<N: Network> Record<N> {
         // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
         let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
-        let input = &vec![self.serial_number_nonce.clone()];
-        let serial_number = N::SerialNumberPRF::evaluate(&seed, input)?;
+        let input = self.serial_number_nonce;
+        let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
 
         Ok(serial_number)
     }
@@ -335,7 +337,7 @@ mod tests {
         let address: Address<Testnet2> = PrivateKey::new(rng).into();
 
         // Output record
-        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
         let expected_record = Record::new_output(
             address,
@@ -386,7 +388,7 @@ mod tests {
         let address: Address<Testnet2> = PrivateKey::new(rng).into();
 
         // Output record
-        let mut payload = [0u8; Testnet2::PAYLOAD_SIZE_IN_BYTES];
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
         let expected_record = Record::new_output(
             address,

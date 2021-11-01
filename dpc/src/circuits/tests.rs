@@ -17,7 +17,7 @@
 use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::ToMinimalBits;
+use snarkvm_utilities::{ToBytes, ToMinimalBits};
 
 use rand::thread_rng;
 
@@ -74,6 +74,12 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
             )
             .unwrap(),
     };
+    assert_eq!(
+        N::PROGRAM_PROOF_SIZE_IN_BYTES,
+        N::ProgramProof::to_bytes_le(&execution.proof).unwrap().len()
+    );
+
+    //////////////////////////////////////////////////////////////////////////
 
     // Construct the inner circuit public and private variables.
     let inner_public = InnerPublicVariables::new(transition_id, ledger_root, local_transitions_root, Some(program_id));
@@ -103,6 +109,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     assert!(inner_cs.is_satisfied());
 
+    //////////////////////////////////////////////////////////////////////////
+
     // Generate inner circuit parameters and proof for verification in the outer circuit.
     let (inner_proving_key, inner_verifying_key) =
         <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
@@ -110,16 +118,20 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <N as Network>::inner_circuit_id_crh()
         .hash_bits(&inner_verifying_key.to_minimal_bits())
-        .unwrap();
+        .unwrap()
+        .into();
 
     let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, rng).unwrap();
+    assert_eq!(N::INNER_PROOF_SIZE_IN_BYTES, inner_proof.to_bytes_le().unwrap().len());
 
     // Verify that the inner circuit proof passes.
     assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
 
+    //////////////////////////////////////////////////////////////////////////
+
     // Construct the outer circuit public and private variables.
     let outer_public = OuterPublicVariables::new(transition_id, ledger_root, local_transitions_root, inner_circuit_id);
-    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof, execution);
+    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof.into(), execution);
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
@@ -141,6 +153,26 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     println!("=========================================================");
 
     assert!(outer_cs.is_satisfied());
+
+    //////////////////////////////////////////////////////////////////////////
+
+    let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
+
+    // Generate outer circuit parameters and proof.
+    let (outer_proving_key, outer_verifying_key) =
+        <N as Network>::OuterSNARK::setup(&outer_circuit, &mut SRS::CircuitSpecific(rng)).unwrap();
+
+    // // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
+    // let inner_circuit_id = <N as Network>::inner_circuit_id_crh()
+    //     .hash_bits(&outer_verifying_key.to_minimal_bits())
+    //     .unwrap()
+    //     .into();
+
+    let outer_proof = <N as Network>::OuterSNARK::prove(&outer_proving_key, &outer_circuit, rng).unwrap();
+    assert_eq!(N::OUTER_PROOF_SIZE_IN_BYTES, outer_proof.to_bytes_le().unwrap().len());
+
+    // Verify that the outer circuit proof passes.
+    assert!(<N as Network>::OuterSNARK::verify(&outer_verifying_key, &outer_public, &outer_proof).unwrap());
 }
 
 mod testnet1 {

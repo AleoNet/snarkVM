@@ -123,7 +123,9 @@ impl<N: Network> Block<N> {
         transactions: Transactions<N>,
     ) -> Result<Self> {
         // Compute the block hash.
-        let block_hash = N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?;
+        let block_hash = N::block_hash_crh()
+            .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
+            .into();
 
         // Construct the block.
         let block = Self {
@@ -356,8 +358,10 @@ impl<N: Network> ToBytes for Block<N> {
 mod tests {
     use super::*;
     use crate::{testnet2::Testnet2, Account, AccountScheme};
+    use snarkvm_utilities::UniformRand;
 
     use rand::{thread_rng, Rng};
+    use std::str::FromStr;
 
     const ITERATIONS: usize = 1000;
 
@@ -415,5 +419,53 @@ mod tests {
             let block_num: u32 = rng.gen_range(second_halving..u32::MAX);
             assert_eq!(Block::<Testnet2>::block_reward(block_num).0, block_reward);
         }
+    }
+
+    /// A bech32-encoded representation of the block hash.
+    #[test]
+    fn test_block_hash_serde_json() {
+        let rng = &mut thread_rng();
+        let expected_block_hash: <Testnet2 as Network>::BlockHash = UniformRand::rand(rng);
+
+        // Serialize
+        let expected_string = &expected_block_hash.to_string();
+        let candidate_string = serde_json::to_string(&expected_block_hash).unwrap();
+        let sanitized_candidate_string = serde_json::Value::from_str(&candidate_string).unwrap();
+        let sanitized_candidate_string = sanitized_candidate_string.as_str().unwrap();
+        println!("{} == {}", expected_string, sanitized_candidate_string);
+        assert_eq!(
+            61,
+            sanitized_candidate_string.len(),
+            "Update me if serialization has changed"
+        );
+        assert_eq!(expected_string, sanitized_candidate_string);
+
+        // Deserialize
+        assert_eq!(
+            expected_block_hash,
+            <Testnet2 as Network>::BlockHash::from_str(&expected_string).unwrap()
+        );
+        assert_eq!(expected_block_hash, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_block_hash_bincode() {
+        let rng = &mut thread_rng();
+        let expected_block_hash: <Testnet2 as Network>::BlockHash = UniformRand::rand(rng);
+
+        // Serialize
+        let expected_bytes = expected_block_hash.to_bytes_le().unwrap();
+        assert_eq!(32, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(
+            &expected_bytes[..],
+            &bincode::serialize(&expected_block_hash).unwrap()[..]
+        );
+
+        // Deserialize
+        assert_eq!(
+            expected_block_hash,
+            <Testnet2 as Network>::BlockHash::read_le(&expected_bytes[..]).unwrap()
+        );
+        assert_eq!(expected_block_hash, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 }

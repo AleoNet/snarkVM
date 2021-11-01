@@ -81,7 +81,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
 
-            let account_encryption_parameters = N::AccountEncryptionGadget::alloc_constant(
+            let account_encryption_parameters = N::RecordCiphertextGadget::alloc_constant(
                 &mut cs.ns(|| "Declare account encryption parameters"),
                 || Ok(N::account_encryption_scheme().clone()),
             )?;
@@ -231,7 +231,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_serial_number_nonce =
                     <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Input::alloc(
                         &mut declare_cs.ns(|| "given_serial_number_nonce"),
-                        || Ok(vec![record.serial_number_nonce().clone()]),
+                        || Ok(record.serial_number_nonce().into()),
                     )?;
 
                 let given_commitment = <N::CommitmentGadget as CommitmentGadget<
@@ -488,7 +488,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 N::AccountSignatureScheme,
                 N::InnerScalarField,
             >>::SignatureGadget::alloc(
-                signature_cs.ns(|| "alloc_signature"), || Ok(&private.signature)
+                signature_cs.ns(|| "alloc_signature"), || Ok(&*private.signature)
             )?;
 
             let mut signature_message = Vec::new();
@@ -532,8 +532,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             ) = {
                 let declare_cs = &mut cs.ns(|| "Declare output record");
 
-                let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
+                let given_owner = <N::RecordCiphertextGadget as EncryptionGadget<
+                    N::RecordCiphertextScheme,
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
@@ -703,8 +703,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // *******************************************************************
                 // Compute the record ciphertext and ciphertext ID.
 
-                let encryption_randomness_gadget = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
+                let encryption_randomness_gadget = <N::RecordCiphertextGadget as EncryptionGadget<
+                    N::RecordCiphertextScheme,
                     N::InnerScalarField,
                 >>::RandomnessGadget::alloc(
                     &mut encryption_cs.ns(|| format!("output record {} encryption_randomness", j)),
@@ -873,7 +873,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Sanity check that the correct number of leaves are allocated.
             // Note: This is *not* enforced in the circuit.
-            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH), transition_leaves.len());
+            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), transition_leaves.len());
 
             // Allocate the hashed leaves.
             let hashed_transition_leaves = transition_leaves

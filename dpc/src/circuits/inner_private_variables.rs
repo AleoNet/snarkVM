@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{FunctionType, LedgerProof, Network, Record, Request, Response};
-use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::traits::{EncryptionScheme, SignatureScheme};
 
 use anyhow::Result;
 
@@ -30,7 +30,7 @@ pub struct InnerPrivateVariables<N: Network> {
 
     // Outputs.
     pub(super) output_records: Vec<Record<N>>,
-    pub(super) ciphertext_randomizers: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+    pub(super) ciphertext_randomizers: Vec<<N::RecordCiphertextScheme as EncryptionScheme>::Randomness>,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -38,11 +38,11 @@ impl<N: Network> InnerPrivateVariables<N> {
         Self {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proofs: vec![Default::default(); N::NUM_INPUT_RECORDS],
-            signature: N::AccountSignature::default(),
+            signature: <N::AccountSignatureScheme as SignatureScheme>::Signature::default().into(),
             function_type: FunctionType::Noop,
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             ciphertext_randomizers: vec![
-                <N::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
+                <N::RecordCiphertextScheme as EncryptionScheme>::Randomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
         }

@@ -125,11 +125,12 @@ impl<N: Network> Transactions<N> {
         match self.is_valid() {
             true => {
                 let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
-                Ok(*MerkleTree::<N::TransactionsRootParameters>::new(
+                let root = *MerkleTree::<N::TransactionsRootParameters>::new(
                     Arc::new(N::transactions_root_parameters().clone()),
                     &transaction_ids,
                 )?
-                .root())
+                .root();
+                Ok(root.into())
             }
             false => Err(anyhow!("The transactions list is invalid")),
         }

@@ -23,6 +23,7 @@ use once_cell::sync::OnceCell;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
 
 #[cfg(feature = "parallel")]
@@ -38,7 +39,7 @@ pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE a
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub bases: Vec<Vec<G>>,
+    pub bases: Arc<Vec<Vec<G>>>,
     base_lookup: OnceCell<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
 }
 
@@ -46,7 +47,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = Vec<Vec<G>>;
+    type Parameters = Arc<Vec<Vec<G>>>;
 
     fn setup(message: &str) -> Self {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
@@ -76,7 +77,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             WINDOW_SIZE,
             WINDOW_SIZE * NUM_WINDOWS * BOWE_HOPWOOD_CHUNK_SIZE
         ));
-        let bases = Self::create_generators(message);
+        let bases = Arc::new(Self::create_generators(message));
         end_timer!(time);
 
         Self {
@@ -208,10 +209,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Arc<Vec<Vec<G>>>>
     for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn from(bases: Vec<Vec<G>>) -> Self {
+    fn from(bases: Arc<Vec<Vec<G>>>) -> Self {
         Self {
             bases,
             base_lookup: OnceCell::new(),
@@ -224,7 +225,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToB
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.bases.len() as u32).write_le(&mut writer)?;
-        for base in &self.bases {
+        for base in self.bases.iter() {
             (base.len() as u32).write_le(&mut writer)?;
             for g in base {
                 g.write_le(&mut writer)?;
@@ -254,7 +255,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
         }
 
         Ok(Self {
-            bases,
+            bases: Arc::new(bases),
             base_lookup: OnceCell::new(),
         })
     }

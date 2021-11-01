@@ -236,7 +236,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the next block timestamp is after the current block timestamp.
         let current_block = self.latest_block()?;
-        if block.timestamp() < current_block.timestamp() {
+        if block.timestamp() <= current_block.timestamp() {
             return Err(anyhow!("The given block timestamp is before the current timestamp"));
         }
 
@@ -393,7 +393,6 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the expected difficulty target given the previous block and expected next block details.
     pub fn compute_difficulty_target(previous_timestamp: i64, previous_difficulty_target: u64, timestamp: i64) -> u64 {
-        const TARGET_BLOCK_TIME_IN_SECS: i64 = 20i64;
         const NUM_BLOCKS_PER_RETARGET: i64 = 1i64;
 
         /// Bitcoin difficulty retarget algorithm.
@@ -421,7 +420,7 @@ impl<N: Network> Blocks<N> {
         bitcoin_retarget(
             timestamp,
             previous_timestamp,
-            TARGET_BLOCK_TIME_IN_SECS,
+            N::ALEO_BLOCK_TIME_IN_SECS,
             previous_difficulty_target,
         )
     }
@@ -436,8 +435,6 @@ mod tests {
 
     #[test]
     fn test_retargeting_algorithm_increased() {
-        const TARGET_BLOCK_TIME_IN_SECS: i64 = 20i64;
-
         let rng = &mut thread_rng();
 
         let mut block_difficulty_target = u64::MAX;
@@ -445,7 +442,8 @@ mod tests {
 
         for _ in 0..1000 {
             // Simulate a random block time.
-            let simulated_block_time = rng.gen_range(TARGET_BLOCK_TIME_IN_SECS / 2..TARGET_BLOCK_TIME_IN_SECS * 2);
+            let simulated_block_time =
+                rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS / 2..Testnet2::ALEO_BLOCK_TIME_IN_SECS * 2);
             let new_timestamp = current_timestamp + simulated_block_time;
 
             let new_target = Blocks::<Testnet2>::compute_difficulty_target(
@@ -454,10 +452,10 @@ mod tests {
                 new_timestamp,
             );
 
-            if simulated_block_time < TARGET_BLOCK_TIME_IN_SECS {
+            if simulated_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
                 // If the block was found faster than expected, the difficulty should increase.
                 assert!(new_target < block_difficulty_target);
-            } else if simulated_block_time >= TARGET_BLOCK_TIME_IN_SECS {
+            } else if simulated_block_time >= Testnet2::ALEO_BLOCK_TIME_IN_SECS {
                 // If the block was found slower than expected, the difficulty should decrease.
                 assert!(new_target >= block_difficulty_target);
             }
