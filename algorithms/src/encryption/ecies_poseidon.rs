@@ -116,7 +116,7 @@ where
     type PrivateKey = TE::ScalarField;
     type PublicKey = TEAffine<TE>;
     type PublicKeyCommitment = TE::BaseField;
-    type Randomness = TE::ScalarField;
+    type ScalarRandomness = TE::ScalarField;
     type SymmetricKey = TEAffine<TE>;
 
     fn setup(message: &str) -> Self {
@@ -140,6 +140,7 @@ where
     ///
     /// Given an RNG, returns the following:
     ///
+    ///                  randomness := r
     ///       ciphertext_randomizer := G^r
     ///               symmetric_key := public_key^r == G^ar
     ///
@@ -147,9 +148,9 @@ where
         &self,
         public_key: &Self::PublicKey,
         rng: &mut R,
-    ) -> (Self::CiphertextRandomizer, Self::SymmetricKey) {
+    ) -> (Self::ScalarRandomness, Self::CiphertextRandomizer, Self::SymmetricKey) {
         // Sample randomness.
-        let randomness: Self::Randomness = UniformRand::rand(rng);
+        let randomness: Self::ScalarRandomness = UniformRand::rand(rng);
 
         // Compute the randomizer := G^r
         let ciphertext_randomizer = self
@@ -163,7 +164,7 @@ where
         // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is on the curve.
         let symmetric_key = public_key.into_projective().mul(randomness).into_affine();
 
-        (ciphertext_randomizer, symmetric_key)
+        (randomness, ciphertext_randomizer, symmetric_key)
     }
 
     ///

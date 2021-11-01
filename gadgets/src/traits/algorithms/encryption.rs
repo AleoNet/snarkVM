@@ -27,6 +27,12 @@ use crate::{
 use snarkvm_fields::PrimeField;
 
 pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F> + Clone {
+    type CiphertextRandomizer: AllocGadget<<E as EncryptionScheme>::CiphertextRandomizer, F>
+        + EqGadget<F>
+        + ToBytesGadget<F>
+        + Clone
+        + Sized
+        + Debug;
     type PrivateKeyGadget: AllocGadget<<E as EncryptionScheme>::PrivateKey, F>
         + ToBytesGadget<F>
         + Clone
@@ -38,7 +44,8 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         + Clone
         + Sized
         + Debug;
-    type RandomnessGadget: AllocGadget<E::Randomness, F> + Clone + Sized + Debug;
+    type PublicKeyCommitment;
+    type ScalarRandomnessGadget: AllocGadget<E::ScalarRandomness, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
         &self,
@@ -46,11 +53,19 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         private_key: &Self::PrivateKeyGadget,
     ) -> Result<Self::PublicKeyGadget, SynthesisError>;
 
-    fn check_encryption_gadget<CS: ConstraintSystem<F>>(
+    fn check_encryption_from_scalar_randomness<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        randomness: &Self::RandomnessGadget,
+        randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         input: &[UInt8],
-    ) -> Result<Vec<UInt8>, SynthesisError>;
+    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::PublicKeyCommitment), SynthesisError>;
+
+    fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        ciphertext_randomizer: &Self::CiphertextRandomizer,
+        private_key: &Self::PrivateKeyGadget,
+        message: &[UInt8],
+    ) -> Result<(Vec<UInt8>, Self::PublicKeyCommitment), SynthesisError>;
 }

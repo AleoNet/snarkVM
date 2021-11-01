@@ -32,7 +32,8 @@ mod ecies {
         let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key);
-        let (_ciphertext_randomizer, symmetric_key) = encryption_scheme.generate_asymmetric_key(&public_key, rng);
+        let (_randomness, _ciphertext_randomizer, symmetric_key) =
+            encryption_scheme.generate_asymmetric_key(&public_key, rng);
 
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
         let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
@@ -66,7 +67,8 @@ mod ecies {
 
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key);
-        let (_ciphertext_randomizer, symmetric_key) = encryption_scheme.generate_asymmetric_key(&public_key, rng);
+        let (_randomness, _ciphertext_randomizer, symmetric_key) =
+            encryption_scheme.generate_asymmetric_key(&public_key, rng);
 
         let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
         let mut ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();

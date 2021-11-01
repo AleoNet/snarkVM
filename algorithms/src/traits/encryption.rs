@@ -28,7 +28,7 @@ pub trait EncryptionScheme:
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type PublicKeyCommitment: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes;
-    type Randomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
+    type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes;
 
     fn setup(message: &str) -> Self;
@@ -41,7 +41,7 @@ pub trait EncryptionScheme:
         &self,
         public_key: &Self::PublicKey,
         rng: &mut R,
-    ) -> (Self::CiphertextRandomizer, Self::SymmetricKey);
+    ) -> (Self::ScalarRandomness, Self::CiphertextRandomizer, Self::SymmetricKey);
 
     fn generate_public_key_commitment(
         &self,
