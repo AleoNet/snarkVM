@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use snarkvm_algorithms::EncryptionScheme;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -69,19 +70,19 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns the output record, given the previous serial number.
-    pub fn to_record<R: Rng + CryptoRng>(
-        &self,
-        serial_number_nonce: N::SerialNumber,
-        rng: &mut R,
-    ) -> Result<Record<N>> {
-        Ok(Record::new_output(
+    pub fn to_record<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<(Record<N>, EncryptionRandomness<N>)> {
+        // Generate the ciphertext parameters.
+        let (randomness, randomizer, record_view_key) =
+            N::account_encryption_scheme().generate_asymmetric_key(&*self.address, rng);
+        let record = Record::from(
             self.address,
             self.value.0 as u64,
             self.payload.clone(),
             self.program_id,
-            serial_number_nonce,
-            rng,
-        )?)
+            randomizer.into(),
+            record_view_key.into(),
+        )?;
+        Ok((record, randomness))
     }
 
     /// Returns the address.

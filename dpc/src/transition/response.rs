@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Event, Network, Record, RecordCiphertext};
+use crate::{AleoAmount, Event, Network, Record};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -25,7 +25,7 @@ use std::{
 
 // TODO (howardwu): TEMPORARY - Merge this into the Network trait.
 use snarkvm_algorithms::traits::*;
-pub type CiphertextRandomizer<N> = <<N as Network>::RecordCiphertextScheme as EncryptionScheme>::Randomness;
+pub type EncryptionRandomness<N> = <<N as Network>::AccountEncryptionScheme as EncryptionScheme>::ScalarRandomness;
 
 #[derive(Clone, Debug)]
 pub struct Response<N: Network> {
@@ -34,9 +34,9 @@ pub struct Response<N: Network> {
     /// The records being produced.
     records: Vec<Record<N>>,
     /// The record ciphertexts.
-    ciphertexts: Vec<RecordCiphertext<N>>,
-    /// The record ciphertext randomizers.
-    ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
+    ciphertexts: Vec<N::RecordCiphertext>,
+    /// The record encryption randomness.
+    encryption_randomness: Vec<EncryptionRandomness<N>>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
     /// The events emitted from the execution.
@@ -48,8 +48,8 @@ impl<N: Network> Response<N> {
     pub fn new(
         transition_id: N::TransitionID,
         records: Vec<Record<N>>,
-        ciphertexts: Vec<RecordCiphertext<N>>,
-        ciphertext_randomizers: Vec<CiphertextRandomizer<N>>,
+        ciphertexts: Vec<N::RecordCiphertext>,
+        encryption_randomness: Vec<EncryptionRandomness<N>>,
         value_balance: AleoAmount,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
@@ -57,7 +57,7 @@ impl<N: Network> Response<N> {
             transition_id,
             records,
             ciphertexts,
-            ciphertext_randomizers,
+            encryption_randomness,
             value_balance,
             events,
         })
@@ -87,14 +87,19 @@ impl<N: Network> Response<N> {
         &self.records
     }
 
+    /// Returns the ciphertext IDs.
+    pub fn ciphertext_ids(&self) -> Vec<N::CiphertextID> {
+        self.ciphertexts.iter().map(|c| c.ciphertext_id()).collect()
+    }
+
     /// Returns a reference to the ciphertexts.
-    pub fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
+    pub fn ciphertexts(&self) -> &Vec<N::RecordCiphertext> {
         &self.ciphertexts
     }
 
-    /// Returns a reference to the ciphertext randomizers.
-    pub fn ciphertext_randomizers(&self) -> &Vec<CiphertextRandomizer<N>> {
-        &self.ciphertext_randomizers
+    /// Returns a reference to the encryption randomness.
+    pub fn encryption_randomness(&self) -> &Vec<EncryptionRandomness<N>> {
+        &self.encryption_randomness
     }
 
     /// Returns the value balance.
@@ -105,11 +110,6 @@ impl<N: Network> Response<N> {
     /// Returns a reference to the events.
     pub fn events(&self) -> &Vec<Event<N>> {
         &self.events
-    }
-
-    /// Returns the commitments.
-    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
-        self.ciphertexts.iter().map(|c| Ok(c.to_ciphertext_id()?)).collect()
     }
 }
 
@@ -128,9 +128,9 @@ impl<N: Network> FromBytes for Response<N> {
             ciphertexts.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut ciphertext_randomizers = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut encryption_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
-            ciphertext_randomizers.push(FromBytes::read_le(&mut reader)?);
+            encryption_randomness.push(FromBytes::read_le(&mut reader)?);
         }
 
         let value_balance = FromBytes::read_le(&mut reader)?;
@@ -145,7 +145,7 @@ impl<N: Network> FromBytes for Response<N> {
             transition_id,
             records,
             ciphertexts,
-            ciphertext_randomizers,
+            encryption_randomness,
             value_balance,
             events,
         })
@@ -158,7 +158,7 @@ impl<N: Network> ToBytes for Response<N> {
         self.transition_id.write_le(&mut writer)?;
         self.records.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
-        self.ciphertext_randomizers.write_le(&mut writer)?;
+        self.encryption_randomness.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)

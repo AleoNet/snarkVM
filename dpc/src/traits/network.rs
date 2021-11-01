@@ -111,7 +111,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_ID_PREFIX: u16;
 
     const COMMITMENT_PREFIX: u16;
-    const COMMITMENT_RANDOMNESS_PREFIX: u16;
+    const RECORD_RANDOMIZER_PREFIX: u16;
     const FUNCTION_INPUTS_HASH_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
@@ -124,6 +124,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const OUTER_PROOF_PREFIX: u32;
     const PROGRAM_PROOF_PREFIX: u32;
     const RECORD_CIPHERTEXT_PREFIX: u32;
+    const RECORD_VIEW_KEY_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
@@ -134,6 +135,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
+    const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
     const TRANSITION_SIZE_IN_BYTES: usize;
 
@@ -185,6 +187,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSWProof: Bech32Object<<Self::PoSWSNARK as SNARK>::Proof>;
     type PoSW: PoSWScheme<Self>;
 
+    /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, PublicKeyCommitment = Self::ProgramBaseField, CiphertextRandomizer = Self::ProgramBaseField>;
+    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
+
     /// PRF for deriving the account private key from a seed.
     type AccountSeedPRF: PRF<Input = Vec<Self::ProgramScalarField>, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
     type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
@@ -213,9 +219,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type CiphertextID: Bech32Locator<<Self::CiphertextIDCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
-    type CommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::InnerScalarField>;
+    type CommitmentScheme: CommitmentScheme<Randomness = <Self::AccountEncryptionScheme as EncryptionScheme>::PublicKeyCommitment, Output = Self::InnerScalarField>;
     type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
-    type CommitmentRandomness: Bech32Locator<<Self::CommitmentScheme as CommitmentScheme>::Randomness>;
     type Commitment: Bech32Locator<<Self::CommitmentScheme as CommitmentScheme>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
@@ -250,12 +255,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
     /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
-    type RecordCiphertextScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
-    type RecordCiphertextGadget: EncryptionGadget<Self::RecordCiphertextScheme, Self::InnerScalarField>;
-    type RecordCiphertext: Bech32Object<RecordCiphertext<Self>>;
+    type RecordCiphertext: Bech32Object<RecordCiphertext<Self>> + Hash;
+    type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
+    type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
+    type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CommitmentScheme>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
     type SerialNumber: Bech32Locator<<Self::SerialNumberPRF as PRF>::Output>;
 
@@ -277,7 +282,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
-    fn account_encryption_scheme() -> &'static Self::RecordCiphertextScheme;
+    fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_root_parameters() -> &'static Self::BlockHeaderRootParameters;

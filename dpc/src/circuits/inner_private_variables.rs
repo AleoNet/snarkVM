@@ -30,7 +30,7 @@ pub struct InnerPrivateVariables<N: Network> {
 
     // Outputs.
     pub(super) output_records: Vec<Record<N>>,
-    pub(super) ciphertext_randomizers: Vec<<N::RecordCiphertextScheme as EncryptionScheme>::Randomness>,
+    pub(super) encryption_randomness: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::ScalarRandomness>,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -41,8 +41,8 @@ impl<N: Network> InnerPrivateVariables<N> {
             signature: <N::AccountSignatureScheme as SignatureScheme>::Signature::default().into(),
             function_type: FunctionType::Noop,
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
-            ciphertext_randomizers: vec![
-                <N::RecordCiphertextScheme as EncryptionScheme>::Randomness::default();
+            encryption_randomness: vec![
+                <N::AccountEncryptionScheme as EncryptionScheme>::ScalarRandomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
         }
@@ -55,7 +55,7 @@ impl<N: Network> InnerPrivateVariables<N> {
             signature: request.signature().clone(),
             function_type: request.function_type(),
             output_records: response.records().clone(),
-            ciphertext_randomizers: response.ciphertext_randomizers().clone(),
+            encryption_randomness: response.encryption_randomness().clone(),
         })
     }
 }

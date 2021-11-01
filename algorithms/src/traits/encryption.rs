@@ -29,7 +29,7 @@ pub trait EncryptionScheme:
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type PublicKeyCommitment: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes;
     type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
-    type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes;
+    type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
 
     fn setup(message: &str) -> Self;
 

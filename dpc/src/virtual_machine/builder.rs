@@ -118,7 +118,7 @@ impl<N: Network> ResponseBuilder<N> {
         let program_id = request.to_program_id()?;
 
         // Construct the inputs.
-        let input_records = request.records().clone();
+        let input_records = request.records();
         let serial_numbers = request.to_serial_numbers()?;
 
         // Construct the outputs.
@@ -129,12 +129,15 @@ impl<N: Network> ResponseBuilder<N> {
         }
 
         // Compute the output records.
-        let output_records = outputs
+        let (output_records, encryption_randomness): (Vec<_>, Vec<_>) = outputs
             .iter()
             .enumerate()
             .take(N::NUM_OUTPUT_RECORDS)
-            .map(|(i, output)| Ok(output.to_record(serial_numbers[i], rng)?))
-            .collect::<Result<Vec<_>>>()?;
+            .map(|(i, output)| output.to_record(rng))
+            .collect::<Result<Vec<(_, _)>>>()?
+            .iter()
+            .cloned()
+            .unzip();
 
         // Ensure the input records have the correct program ID.
         for i in 0..(function_type.input_count() as usize) {
@@ -158,8 +161,12 @@ impl<N: Network> ResponseBuilder<N> {
             .map(Record::commitment)
             .collect();
 
-        // Compute the encrypted records.
-        let (ciphertexts, ciphertext_randomizers) = Self::encrypt_records(&output_records, rng)?;
+        // Compute the ciphertexts.
+        let ciphertexts = output_records
+            .iter()
+            .take(N::NUM_OUTPUT_RECORDS)
+            .map(Record::encrypt)
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
@@ -184,34 +191,17 @@ impl<N: Network> ResponseBuilder<N> {
 
         // Compute the transition ID.
         let transition_id =
-            Transition::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance)?;
+            Transition::<N>::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance)?;
 
         // Construct the response.
         Response::new(
             transition_id,
             output_records,
             ciphertexts,
-            ciphertext_randomizers,
+            encryption_randomness,
             value_balance,
             events,
         )
-    }
-
-    #[inline]
-    fn encrypt_records<R: Rng + CryptoRng>(
-        output_records: &Vec<Record<N>>,
-        rng: &mut R,
-    ) -> Result<(Vec<RecordCiphertext<N>>, Vec<CiphertextRandomizer<N>>)> {
-        let mut ciphertexts = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut ciphertext_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-
-        for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
-            let (ciphertext, ciphertext_randomizer) = RecordCiphertext::encrypt(record, rng)?;
-            ciphertexts.push(ciphertext);
-            ciphertext_randomizers.push(ciphertext_randomizer);
-        }
-
-        Ok((ciphertexts, ciphertext_randomizers))
     }
 }
 

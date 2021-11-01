@@ -269,9 +269,18 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
+    /// Returns the ciphertext IDs.
+    #[inline]
+    pub fn ciphertext_ids(&self) -> Vec<N::CiphertextID> {
+        self.transitions
+            .iter()
+            .flat_map(Transition::ciphertext_ids)
+            .collect::<Vec<_>>()
+    }
+
     /// Returns the output record ciphertexts.
     #[inline]
-    pub fn ciphertexts(&self) -> Vec<RecordCiphertext<N>> {
+    pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {
         self.transitions
             .iter()
             .flat_map(Transition::ciphertexts)
@@ -300,22 +309,13 @@ impl<N: Network> Transaction<N> {
         &self.events
     }
 
-    /// Returns the ciphertext IDs.
-    #[inline]
-    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::to_ciphertext_ids)
-            .collect::<Result<Vec<_>>>()
-    }
-
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
     pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Vec<Record<N>> {
         self.transitions
             .iter()
             .flat_map(Transition::ciphertexts)
-            .filter_map(|c| c.decrypt(account_view_key).ok())
+            .filter_map(|c| Record::from_account_view_key(account_view_key, c).ok())
             .filter(|record| !record.is_dummy())
             .collect()
     }
@@ -380,7 +380,6 @@ impl<N: Network> Hash for Transaction<N> {
 mod tests {
     use super::*;
     use crate::{testnet2::Testnet2, Account, AccountScheme};
-    use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
 
@@ -390,12 +389,11 @@ mod tests {
         let account = Account::<Testnet2>::new(rng);
 
         // Craft the expected coinbase record.
-        let expected_record = Record::new_output(
+        let expected_record = Record::new(
             account.address(),
             1234,
             Default::default(),
             *Testnet2::noop_program_id(),
-            UniformRand::rand(rng),
             rng,
         )
         .unwrap();

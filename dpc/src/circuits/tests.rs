@@ -58,7 +58,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Compute the transition ID.
     let transition_id =
-        Transition::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance).unwrap();
+        Transition::<N>::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 

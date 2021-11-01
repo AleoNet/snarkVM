@@ -46,7 +46,7 @@ pub struct Transition<N: Network> {
     /// The commitments of the output records.
     commitments: Vec<N::Commitment>,
     /// The ciphertexts of the output records.
-    ciphertexts: Vec<RecordCiphertext<N>>,
+    ciphertexts: Vec<N::RecordCiphertext>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
     /// The zero-knowledge proof attesting to the validity of this transition.
@@ -73,7 +73,7 @@ impl<N: Network> Transition<N> {
     pub(crate) fn from(
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
-        ciphertexts: Vec<RecordCiphertext<N>>,
+        ciphertexts: Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
         proof: N::OuterProof,
     ) -> Result<Self> {
@@ -174,9 +174,15 @@ impl<N: Network> Transition<N> {
         &self.commitments
     }
 
+    /// Returns the ciphertext IDs.
+    #[inline]
+    pub fn ciphertext_ids(&self) -> impl Iterator<Item = N::CiphertextID> + fmt::Debug + '_ {
+        self.ciphertexts.iter().map(|c| (*c).ciphertext_id())
+    }
+
     /// Returns a reference to the ciphertexts.
     #[inline]
-    pub fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
+    pub fn ciphertexts(&self) -> &Vec<N::RecordCiphertext> {
         &self.ciphertexts
     }
 
@@ -190,12 +196,6 @@ impl<N: Network> Transition<N> {
     #[inline]
     pub fn proof(&self) -> &N::OuterProof {
         &self.proof
-    }
-
-    /// Returns the ciphertext IDs.
-    #[inline]
-    pub fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
-        self.ciphertexts.iter().map(RecordCiphertext::to_ciphertext_id)
     }
 
     /// Returns an inclusion proof for the transition tree.
@@ -233,7 +233,7 @@ impl<N: Network> Transition<N> {
     pub(crate) fn compute_transition_id(
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
-        ciphertexts: &Vec<RecordCiphertext<N>>,
+        ciphertexts: &Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
     ) -> Result<N::TransitionID> {
         let leaves = Self::compute_transition_leaves(serial_numbers, commitments, ciphertexts, value_balance)?;
@@ -251,7 +251,7 @@ impl<N: Network> Transition<N> {
     pub(crate) fn compute_transition_leaves(
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
-        ciphertexts: &Vec<RecordCiphertext<N>>,
+        ciphertexts: &Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
     ) -> Result<Vec<Vec<u8>>> {
         // Construct the leaves of the transition tree.
@@ -272,7 +272,7 @@ impl<N: Network> Transition<N> {
             ciphertexts
                 .iter()
                 .take(N::NUM_OUTPUT_RECORDS)
-                .map(|c| Ok(c.to_ciphertext_id()?.to_bytes_le()?))
+                .map(|c| Ok(c.ciphertext_id().to_bytes_le()?))
                 .collect::<Result<Vec<_>>>()?,
             // Leaf 6 := value balance
             vec![value_balance.to_bytes_le()?],
@@ -301,7 +301,7 @@ impl<N: Network> FromBytes for Transition<N> {
             commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut ciphertexts = Vec::<RecordCiphertext<N>>::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut ciphertexts = Vec::<N::RecordCiphertext>::with_capacity(N::NUM_OUTPUT_RECORDS);
         for _ in 0..N::NUM_OUTPUT_RECORDS {
             ciphertexts.push(FromBytes::read_le(&mut reader)?);
         }
@@ -361,7 +361,7 @@ impl<N: Network> fmt::Display for Transition<N> {
            "transition_id": self.transition_id,
            "serial_numbers": self.serial_numbers,
            "commitments": self.commitments,
-           "ciphertext_ids": self.to_ciphertext_ids().collect::<Result<Vec<_>>>().expect("Failed to format ciphertext IDs"),
+           "ciphertext_ids": self.ciphertext_ids().collect::<Vec<_>>(),
            "ciphertexts": self.ciphertexts,
            "value_balance": self.value_balance,
            "proof": self.proof,

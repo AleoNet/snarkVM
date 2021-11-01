@@ -96,12 +96,12 @@ impl Network for Testnet1 {
     const TRANSACTION_ID_PREFIX: u16 = hrp2!("at");
 
     const COMMITMENT_PREFIX: u16 = hrp2!("cm");
-    const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp2!("cr");
     const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
     const FUNCTION_ID_PREFIX: u16 = hrp2!("fn");
     const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
+    const RECORD_RANDOMIZER_PREFIX: u16 = hrp2!("rr");
     const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
 
     const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
@@ -109,6 +109,7 @@ impl Network for Testnet1 {
     const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
     const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
+    const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
@@ -119,6 +120,7 @@ impl Network for Testnet1 {
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
+    const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
 
@@ -163,6 +165,9 @@ impl Network for Testnet1 {
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 
+    type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
+    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
+
     type AccountSeedPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
     type AccountSeed = <Self::AccountSeedPRF as PRF>::Seed;
     
@@ -186,7 +191,6 @@ impl Network for Testnet1 {
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
-    type CommitmentRandomness = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Randomness, { Self::COMMITMENT_RANDOMNESS_PREFIX }>;
     type Commitment = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
@@ -214,9 +218,9 @@ impl Network for Testnet1 {
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
-    type RecordCiphertextScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
-    type RecordCiphertextGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
     type RecordCiphertext = AleoObject<RecordCiphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
+    type RecordRandomizer = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer, { Self::RECORD_RANDOMIZER_PREFIX }>;
+    type RecordViewKey = AleoObject<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey, { Self::RECORD_VIEW_KEY_PREFIX }, { Self::RECORD_VIEW_KEY_SIZE_IN_BYTES }>;
 
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
@@ -237,7 +241,7 @@ impl Network for Testnet1 {
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
-    dpc_setup!{Testnet1, account_encryption_scheme, RecordCiphertextScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet1, block_header_root_parameters, BlockHeaderRootParameters, "AleoBlockHeaderRootCRH0"}
