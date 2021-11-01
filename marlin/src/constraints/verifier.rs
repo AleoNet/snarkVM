@@ -36,7 +36,13 @@ use crate::{
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{PrepareGadget, ToBytesGadget, bits::Boolean, nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar}, traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget}};
+use snarkvm_gadgets::{
+    bits::Boolean,
+    nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar},
+    traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
+    PrepareGadget,
+    ToBytesGadget,
+};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
@@ -134,7 +140,6 @@ where
         eprintln!("before AHP: constraints: {}", cs.num_constraints());
 
         let public_input = {
-
             let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
             new_input.extend_from_slice(public_input);
             let domain_x = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();

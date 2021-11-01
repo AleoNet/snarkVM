@@ -726,7 +726,7 @@ impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
         let variable = ConstraintVariable::from((value, CS::one()));
         Ok(Self {
             value: Some(value),
-            variable
+            variable,
         })
     }
 
