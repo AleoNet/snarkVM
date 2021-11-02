@@ -21,6 +21,7 @@ use crate::{
     Event,
     LedgerTree,
     LedgerTreeScheme,
+    LocalProof,
     Network,
     Request,
     Transition,
@@ -320,6 +321,17 @@ impl<N: Network> Transaction<N> {
             .filter_map(|c| c.decrypt(account_view_key).ok())
             .filter(|record| !record.is_dummy())
             .collect()
+    }
+
+    /// Returns the local proof for a given commitment.
+    #[inline]
+    pub fn to_local_proof(&self, record_commitment: N::Commitment) -> Result<LocalProof<N>> {
+        // Initialize a transitions tree.
+        let mut transitions_tree = Transitions::<N>::new()?;
+        // Add all given transition IDs to the tree.
+        transitions_tree.add_all(&self.transitions())?;
+        // Return the local proof for the transitions tree.
+        transitions_tree.to_local_proof(record_commitment)
     }
 
     /// Transaction ID := MerkleTree(transition IDs)
