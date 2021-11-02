@@ -24,8 +24,8 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct VirtualMachine<N: Network> {
-    /// The ledger tree used to prove inclusion of ledger-consumed records.
-    ledger: LedgerTree<N>,
+    /// The root of the ledger tree used to prove inclusion of ledger-consumed records.
+    ledger_root: N::LedgerRoot,
     /// The local transitions tree.
     local_transitions: Transitions<N>,
     /// The current list of transitions.
@@ -36,9 +36,9 @@ pub struct VirtualMachine<N: Network> {
 
 impl<N: Network> VirtualMachine<N> {
     /// Initializes a new instance of the virtual machine, with the given request.
-    pub fn new(ledger: LedgerTree<N>) -> Result<Self> {
+    pub fn new(ledger_root: N::LedgerRoot) -> Result<Self> {
         Ok(Self {
-            ledger,
+            ledger_root,
             local_transitions: Transitions::new()?,
             transitions: Default::default(),
             events: Default::default(),
@@ -95,7 +95,7 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
             transition_id,
-            self.ledger.root(),
+            self.ledger_root,
             self.local_transitions.root(),
             Some(program_id),
         );
@@ -112,7 +112,7 @@ impl<N: Network> VirtualMachine<N> {
         // Construct the outer circuit public and private variables.
         let outer_public = OuterPublicVariables::new(
             transition_id,
-            self.ledger.root(),
+            self.ledger_root,
             self.local_transitions.root(),
             *N::inner_circuit_id(),
         );
@@ -141,7 +141,7 @@ impl<N: Network> VirtualMachine<N> {
     pub fn finalize(&self) -> Result<Transaction<N>> {
         Transaction::from(
             *N::inner_circuit_id(),
-            self.ledger.root(),
+            self.ledger_root,
             self.transitions.clone(),
             self.events.clone(),
         )
@@ -286,7 +286,7 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
             transition_id,
-            self.ledger.root(),
+            self.ledger_root,
             self.local_transitions.root(),
             Some(program_id),
         );
@@ -317,7 +317,7 @@ impl<N: Network> VirtualMachine<N> {
         // Construct the outer circuit public and private variables.
         let outer_public = OuterPublicVariables::new(
             transition_id,
-            self.ledger.root(),
+            self.ledger_root,
             self.local_transitions.root(),
             *N::inner_circuit_id(),
         );
