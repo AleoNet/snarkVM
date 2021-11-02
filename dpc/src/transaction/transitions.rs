@@ -24,7 +24,7 @@ use std::{collections::HashMap, sync::Arc};
 /// A local transitions tree contains all the transitions for one transaction.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
-pub(crate) struct Transitions<N: Network> {
+pub struct Transitions<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: Arc<MerkleTree<N::TransactionIDParameters>>,
     transitions: HashMap<N::TransitionID, (u8, Transition<N>)>,
@@ -33,7 +33,7 @@ pub(crate) struct Transitions<N: Network> {
 
 impl<N: Network> Transitions<N> {
     /// Initializes an empty local transitions tree.
-    pub(crate) fn new() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             tree: Arc::new(MerkleTree::<N::TransactionIDParameters>::new::<N::TransitionID>(
                 Arc::new(N::transaction_id_parameters().clone()),
@@ -45,7 +45,7 @@ impl<N: Network> Transitions<N> {
     }
 
     /// Adds the given transition to the tree, returning its index in the tree.
-    pub(crate) fn add(&mut self, transition: &Transition<N>) -> Result<u8> {
+    pub fn add(&mut self, transition: &Transition<N>) -> Result<u8> {
         // Ensure the transition does not already exist in the tree.
         let transition_id = transition.transition_id();
         if self.contains_transition(&transition_id) {
@@ -68,7 +68,7 @@ impl<N: Network> Transitions<N> {
     }
 
     /// Adds all given transitions to the tree, returning the start and ending index in the tree.
-    pub(crate) fn add_all(&mut self, transitions: &Vec<Transition<N>>) -> Result<(u8, u8)> {
+    pub fn add_all(&mut self, transitions: &Vec<Transition<N>>) -> Result<(u8, u8)> {
         // Ensure the current index has not reached the maximum number of transitions permitted in software.
         if self.current_index >= N::NUM_TRANSITIONS
             || self.current_index + transitions.len() as u8 >= N::NUM_TRANSITIONS
@@ -104,27 +104,27 @@ impl<N: Network> Transitions<N> {
     }
 
     /// Returns `true` if the given transition exists.
-    pub(crate) fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
+    pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
         self.transitions.contains_key(transition_id)
     }
 
     /// Returns the index for the given transition, if it exists.
-    pub(crate) fn get_transition_index(&self, transition_id: &N::TransitionID) -> Option<&u8> {
+    pub fn get_transition_index(&self, transition_id: &N::TransitionID) -> Option<&u8> {
         self.transitions.get(transition_id).and_then(|(index, _)| Some(index))
     }
 
     /// Returns the local transitions root.
-    pub(crate) fn root(&self) -> N::TransactionID {
+    pub fn root(&self) -> N::TransactionID {
         (*self.tree.root()).into()
     }
 
     /// Returns the size of the local transitions tree.
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.current_index as usize
     }
 
     /// Returns the local proof for a given commitment.
-    pub(crate) fn to_local_proof(&self, commitment: N::Commitment) -> Result<LocalProof<N>> {
+    pub fn to_local_proof(&self, commitment: N::Commitment) -> Result<LocalProof<N>> {
         let (_, (_, transition)) = match self
             .transitions
             .iter()

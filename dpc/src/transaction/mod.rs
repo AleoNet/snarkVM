@@ -20,5 +20,5 @@ pub(crate) use local_proof::*;
 pub mod transaction;
 pub use transaction::*;
 
-pub(crate) mod transitions;
-pub(crate) use transitions::*;
+pub mod transitions;
+pub use transitions::*;
