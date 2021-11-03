@@ -28,6 +28,7 @@ use crate::{
     ProgramPublicVariables,
     RecordCiphertext,
 };
+use blake2::Blake2s;
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
@@ -64,6 +65,7 @@ use snarkvm_marlin::{
     constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
     marlin::MarlinTestnet2Mode,
     FiatShamirAlgebraicSpongeRng,
+    FiatShamirChaChaRng,
     PoseidonSponge,
 };
 use snarkvm_parameters::{testnet2::*, Genesis};
@@ -163,7 +165,7 @@ impl Network for Testnet2 {
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 

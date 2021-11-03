@@ -32,7 +32,7 @@ fn block_from_bytes(c: &mut Criterion) {
 
 criterion_group! {
     name = block;
-    config = Criterion::default().sample_size(50);
+    config = Criterion::default().sample_size(10);
     targets = block_from_bytes
 }
 
