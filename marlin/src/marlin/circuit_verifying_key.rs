@@ -16,7 +16,6 @@
 
 use crate::{
     ahp::indexer::*,
-    fiat_shamir::{FiatShamirError, FiatShamirRng},
     marlin::{CircuitProvingKey, PreparedCircuitVerifyingKey},
     Vec,
 };
