@@ -139,7 +139,7 @@ where
 
         eprintln!("before AHP: constraints: {}", cs.num_constraints());
 
-        let public_input = {
+        let padded_public_input = {
             let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
             new_input.extend_from_slice(public_input);
             let domain_x = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();
@@ -150,7 +150,8 @@ where
             new_input
         };
 
-        let input_bytes = public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
+        let input_bytes = padded_public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
+        println!("Constraints input byte length: {:?}", input_bytes.len());
         fs_rng.absorb_bytes(&mut cs.ns(|| "absorb_input_bytes"), &input_bytes)?;
 
         let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_first_round(
@@ -178,14 +179,9 @@ where
             &proof.prover_messages[2].field_elements,
         )?;
 
-        let mut formatted_public_input = vec![NonNativeFieldVar::one(cs.ns(|| "nonnative_one"))?];
-        for elem in public_input.iter().cloned() {
-            formatted_public_input.push(elem);
-        }
-
         let lc = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_decision(
             cs.ns(|| "verifier_decision"),
-            &formatted_public_input,
+            &padded_public_input,
             &proof.evaluations,
             verifier_state.clone(),
             &prepared_verifying_key.domain_k_size_gadget,
@@ -227,7 +223,7 @@ where
             num_batching_rands,
         )?;
 
-        eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        // eprintln!("before PC checks: constraints: {}", cs.num_constraints());
 
         let rand_data = PCCheckRandomDataVar::<TargetField, BaseField> {
             opening_challenges,

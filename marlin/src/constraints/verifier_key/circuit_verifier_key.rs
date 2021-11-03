@@ -161,13 +161,12 @@ impl<
         let tmp = value_gen()?;
         let ivk = tmp.borrow();
 
-        let mut index_comms = Vec::<PCG::CommitmentVar>::new();
-        for (i, index_comm) in ivk.circuit_commitments.iter().enumerate() {
-            index_comms.push(PCG::CommitmentVar::alloc(
-                cs.ns(|| format!("index_comm_{}", i)),
-                || Ok(index_comm),
-            )?);
-        }
+        let index_comms: Vec<_> = ivk
+            .circuit_commitments
+            .iter()
+            .enumerate()
+            .map(|(i, index_comm)| PCG::CommitmentVar::alloc(cs.ns(|| format!("index_comm_{}", i)), || Ok(index_comm)))
+            .collect::<Result<_, _>>()?;
 
         // `alloc_constant` regardless of the mode.
         // TODO(pratyush): investigate if this can be alloc_constant or not.
@@ -206,13 +205,14 @@ impl<
         let tmp = value_gen()?;
         let ivk = tmp.borrow();
 
-        let mut index_comms = Vec::<PCG::CommitmentVar>::new();
-        for (i, index_comm) in ivk.circuit_commitments.iter().enumerate() {
-            index_comms.push(PCG::CommitmentVar::alloc_input(
-                cs.ns(|| format!("index_comm_{}", i)),
-                || Ok(index_comm),
-            )?);
-        }
+        let index_comms: Vec<_> = ivk
+            .circuit_commitments
+            .iter()
+            .enumerate()
+            .map(|(i, index_comm)| {
+                PCG::CommitmentVar::alloc_input(cs.ns(|| format!("index_comm_{}", i)), || Ok(index_comm))
+            })
+            .collect::<Result<_, _>>()?;
 
         // `alloc_constant` regardless of the mode.
         // TODO(pratyush): investigate if this can be alloc_constant or not.
@@ -322,28 +322,21 @@ where
         &self,
         mut cs: CS,
     ) -> Result<PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>, SynthesisError> {
-        let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes_le![
-            &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
-        ]?);
+        let mut fs_rng = R::new(cs.ns(|| "Init rng"));
+        let protocol_bytes =
+            UInt8::constant_vec(MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME);
+        fs_rng.absorb_bytes(cs.ns(|| "absorb protocol name"), &protocol_bytes)?;
 
-        let index_vk_hash = {
-            let mut vk_hash_rng = PR::new();
-
-            let mut vk_elems = Vec::<BaseField>::new();
-            self.origin_verifier_key
-                .circuit_commitments
-                .iter()
-                .for_each(|index_comm| {
-                    vk_elems.append(&mut index_comm.to_field_elements().unwrap());
-                });
-            vk_hash_rng.absorb_native_field_elements(&vk_elems);
-            vk_hash_rng.squeeze_native_field_elements(1).unwrap()
-        };
-
-        fs_rng_raw.absorb_native_field_elements(&index_vk_hash);
-
-        let fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
+        let comm_fe = self
+            .index_comms
+            .iter()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                c.to_constraint_field(cs.ns(|| format!("to_constraint_field {}", i)))
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+        fs_rng.absorb_native_field_elements(cs.ns(|| "absorb index commitments"), &comm_fe)?;
 
         let mut prepared_index_comms = Vec::<PCG::PreparedCommitmentVar>::new();
         for (i, comm) in self.index_comms.iter().enumerate() {
@@ -351,9 +344,7 @@ where
         }
 
         // instead of running the prepare algorithm, allocate the constant version.
-        let prepared_verifier_key = PCG::PreparedVerifierKeyVar::alloc_constant(cs.ns(|| "allocate pvk"), || {
-            Ok(self.origin_verifier_key.verifier_key.prepare())
-        })?;
+        let prepared_verifier_key = self.verifier_key.prepare(cs.ns(|| "Prepare PC"))?;
 
         Ok(
             PreparedCircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG, PR, R> {

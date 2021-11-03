@@ -128,6 +128,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Construct the linear combinations that are checked by the AHP.
+    /// Public input should be unformatted.
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],

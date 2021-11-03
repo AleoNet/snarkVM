@@ -140,14 +140,14 @@ impl<
     > {
         // absorb the first commitments and messages
         {
-            let mut elems = Vec::<FpGadget<BaseField>>::new();
-            comms.iter().enumerate().for_each(|(i, comm)| {
-                elems.append(
-                    &mut comm
-                        .to_constraint_field(cs.ns(|| format!("comm_to_constraint_field_{}", i)))
-                        .unwrap(),
-                );
-            });
+            let elems: Vec<_> = comms
+                .iter()
+                .enumerate()
+                .flat_map(|(i, comm)| {
+                    comm.to_constraint_field(cs.ns(|| format!("comm_to_constraint_field_{}", i)))
+                        .unwrap()
+                })
+                .collect();
             fs_rng.absorb_native_field_elements(cs.ns(|| "absorb_native_field_elements"), &elems)?;
 
             if !message.is_empty() {
@@ -851,7 +851,7 @@ mod test {
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
     };
-    use snarkvm_fields::{Field, Zero};
+    use snarkvm_fields::{Field, One, Zero};
     use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
     use snarkvm_polycommit::{
         sonic_pc::{
@@ -876,6 +876,7 @@ mod test {
             MarlinSNARK,
             Proof,
         },
+        prover::ProverConstraintSystem,
         FiatShamirAlgebraicSpongeRng,
         FiatShamirAlgebraicSpongeRngVar,
         PoseidonSponge,
@@ -1505,14 +1506,16 @@ mod test {
 
         // Attempt verification.
 
-        let public_input = {
+        let padded_public_input = {
             let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
 
-            let mut unpadded_input = public_input.to_vec();
-            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+            let mut unpadded_input = vec![Fr::one()];
+            unpadded_input.extend_from_slice(&public_input);
+            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size()), Fr::zero());
 
             unpadded_input
         };
+        let unpadded_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
 
         let is_recursion = MarlinRecursiveMode::RECURSION;
         let fs_rng = &mut FS::new();
@@ -1520,9 +1523,9 @@ mod test {
         if is_recursion {
             fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
-            fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
+            fs_rng.absorb_bytes(&to_bytes_le![padded_public_input].unwrap());
         } else {
-            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &padded_public_input].unwrap());
         }
 
         // Start first round.

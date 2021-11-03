@@ -133,7 +133,10 @@ impl<F: PrimeField> AHPForR1CS<F> {
         assert_eq!(private_variables.len(), num_private_variables);
 
         if cfg!(debug_assertions) {
-            println!("Number of padded public variables: {}", num_public_variables);
+            println!(
+                "Number of padded public variables in Prover::Init: {}",
+                num_public_variables
+            );
             println!("Number of private variables: {}", num_private_variables);
             println!("Number of constraints: {}", num_constraints);
             println!("Number of num_non_zero: {}", num_non_zero);

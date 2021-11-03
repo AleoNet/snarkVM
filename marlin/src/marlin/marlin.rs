@@ -17,7 +17,8 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
-    marlin::{compute_vk_hash, CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
+    prover::ProverConstraintSystem,
     String,
     ToString,
     Vec,
@@ -271,6 +272,7 @@ impl<
 
         let prover_init_state = AHPForR1CS::prover_init(&circuit_proving_key.circuit, circuit)?;
         let public_input = prover_init_state.public_input();
+        let padded_public_input = prover_init_state.padded_public_input();
 
         let mut fs_rng = FS::new();
 
@@ -278,16 +280,16 @@ impl<
 
         if is_recursion {
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-            fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
-                &circuit_proving_key.circuit_verifying_key,
-            )?);
-            fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
+            fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
+            let input_bytes = to_bytes_le![padded_public_input].unwrap();
+            eprintln!("Native input bytes length in prover: {}", input_bytes.len());
+            fs_rng.absorb_bytes(&input_bytes);
         } else {
             fs_rng.absorb_bytes(
                 &to_bytes_le![
                     &Self::PROTOCOL_NAME,
                     &circuit_proving_key.circuit_verifying_key,
-                    &public_input
+                    padded_public_input
                 ]
                 .unwrap(),
             );
@@ -574,7 +576,7 @@ impl<
     ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
-        let public_input = {
+        let padded_public_input = {
             let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
 
             if cfg!(debug_assertions) {
@@ -582,16 +584,16 @@ impl<
                 println!("Size of evaluation domain x: {}", domain_x.size());
             }
 
-            let mut new_input = public_input.to_vec();
-            new_input.resize(
-                core::cmp::max(public_input.len(), domain_x.size() - 1),
-                TargetField::zero(),
-            );
+            let mut new_input = vec![TargetField::one()];
+            new_input.extend_from_slice(&public_input);
+            new_input.resize(core::cmp::max(public_input.len(), domain_x.size()), TargetField::zero());
+            assert!(new_input.first().unwrap().is_one());
             new_input
         };
+        let public_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
 
         if cfg!(debug_assertions) {
-            println!("Number of padded public variables: {}", public_input.len());
+            println!("Number of padded public variables: {}", padded_public_input.len());
         }
 
         let is_recursion = MM::RECURSION;
@@ -600,14 +602,14 @@ impl<
 
         if is_recursion {
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-            fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
-                circuit_verifying_key,
-            )?);
-            let input_bytes = to_bytes_le![public_input].unwrap();
-            eprintln!("Native input bytes length: {}", input_bytes.len());
+            fs_rng.absorb_native_field_elements(&circuit_verifying_key.circuit_commitments);
+            let input_bytes = to_bytes_le![padded_public_input].unwrap();
+            eprintln!("Native input bytes length in prover: {}", input_bytes.len());
             fs_rng.absorb_bytes(&input_bytes);
         } else {
-            fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
+            fs_rng.absorb_bytes(
+                &to_bytes_le![&Self::PROTOCOL_NAME, &circuit_verifying_key, padded_public_input].unwrap(),
+            );
         }
 
         // --------------------------------------------------------------------
