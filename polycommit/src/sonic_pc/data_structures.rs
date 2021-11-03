@@ -17,7 +17,7 @@
 use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
 use snarkvm_algorithms::{crh::sha256::sha256, Prepare};
 use snarkvm_curves::{
-    traits::{AffineCurve, PairingCurve, PairingEngine},
+    traits::{PairingCurve, PairingEngine},
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};

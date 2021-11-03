@@ -247,7 +247,7 @@ impl<F: PrimeField> AllocatedFp<F> {
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
         let inverse = Self::alloc(cs.ns(|| "inverse"), || {
             let result = self.value.get()?;
-            let inv = result.inverse().expect("Inverse doesn't exist!");
+            let inv = result.inverse().unwrap_or(F::zero());
             Ok(inv)
         })?;
 
@@ -717,13 +717,17 @@ impl<F: PrimeField> Clone for AllocatedFp<F> {
 
 impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
     #[inline]
-    fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(_cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<F>,
     {
-        // TODO (raychu86): Alloc a constant.
-        Self::alloc(cs, value_gen)
+        let value = *value_gen()?.borrow();
+        let variable = ConstraintVariable::from((value, CS::one()));
+        Ok(Self {
+            value: Some(value),
+            variable,
+        })
     }
 
     #[inline]
@@ -1320,12 +1324,13 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
 
 impl<F: PrimeField> AllocGadget<F, F> for FpGadget<F> {
     #[inline]
-    fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(_cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<F>,
     {
-        Ok(Self::Constant(*value_gen()?.borrow()))
+        // TODO: Revert this once we do constant propagation
+        AllocatedFp::alloc_constant(cs, value_gen).map(Self::Variable)
     }
 
     #[inline]

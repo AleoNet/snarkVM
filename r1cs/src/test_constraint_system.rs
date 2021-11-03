@@ -150,6 +150,34 @@ impl<F: Field> TestConstraintSystem<F> {
         Self::default()
     }
 
+    /// Prints the constraint at which `self` and `other` differ.
+    pub fn diff(&self, other: &Self) {
+        for (i, (self_c, other_c)) in self.constraints.iter().zip(other.constraints.iter()).enumerate() {
+            let self_interned_path = self_c.interned_path;
+            let other_interned_path = other_c.interned_path;
+            if self_c.a != other_c.a {
+                println!("A row {} is different:", i);
+                println!("self: {}", self.unintern_path(self_interned_path));
+                println!("other: {}", other.unintern_path(other_interned_path));
+                break;
+            }
+
+            if self_c.b != other_c.b {
+                println!("B row {} is different:", i);
+                println!("self: {}", self.unintern_path(self_interned_path));
+                println!("other: {}", other.unintern_path(other_interned_path));
+                break;
+            }
+
+            if self_c.c != other_c.c {
+                println!("C row {} is different:", i);
+                println!("self: {}", self.unintern_path(self_interned_path));
+                println!("other: {}", other.unintern_path(other_interned_path));
+                break;
+            }
+        }
+    }
+
     #[inline]
     fn intern_path(&self, path: &str) -> InternedPath {
         let mut vec = vec![];
@@ -231,6 +259,11 @@ impl<F: Field> TestConstraintSystem<F> {
     #[inline]
     pub fn num_constraints(&self) -> usize {
         self.constraints.len()
+    }
+
+    #[inline]
+    pub fn get_constraint_path(&self, i: usize) -> String {
+        self.unintern_path(self.constraints.iter().nth(i).unwrap().interned_path)
     }
 
     pub fn set(&mut self, path: &str, to: F) {

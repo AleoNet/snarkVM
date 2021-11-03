@@ -138,20 +138,21 @@ where
 
         eprintln!("before AHP: constraints: {}", cs.num_constraints());
 
-        let public_input = {
-            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
-
-            let mut new_input = public_input.to_vec();
+        let padded_public_input = {
+            let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
+            new_input.extend_from_slice(public_input);
+            let domain_x = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();
             new_input.resize(
-                core::cmp::max(public_input.len(), domain_x.size() - 1),
+                core::cmp::max(new_input.len(), domain_x.size()),
                 NonNativeFieldVar::<TargetField, BaseField>::Constant(TargetField::zero()),
             );
             new_input
         };
 
+        // let input_bytes = padded_public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
         fs_rng.absorb_nonnative_field_elements(
-            cs.ns(|| "initial_absorb_nonnative_field_elements"),
-            &public_input,
+            &mut cs.ns(|| "absorb_input_bytes"),
+            &padded_public_input,
             OptimizationType::Weight,
         )?;
 
@@ -180,14 +181,9 @@ where
             &proof.prover_messages[2].field_elements,
         )?;
 
-        let mut formatted_public_input = vec![NonNativeFieldVar::one(cs.ns(|| "nonnative_one"))?];
-        for elem in public_input.iter().cloned() {
-            formatted_public_input.push(elem);
-        }
-
         let lc = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_decision(
             cs.ns(|| "verifier_decision"),
-            &formatted_public_input,
+            &padded_public_input,
             &proof.evaluations,
             verifier_state.clone(),
             &prepared_verifying_key.domain_k_size_gadget,
@@ -229,7 +225,7 @@ where
             num_batching_rands,
         )?;
 
-        eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        // eprintln!("before PC checks: constraints: {}", cs.num_constraints());
 
         let rand_data = PCCheckRandomDataVar::<TargetField, BaseField> {
             opening_challenges,
