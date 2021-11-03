@@ -60,7 +60,7 @@ version = "0.9"
 version = "0.10.1"
 
 [dependencies.num-bigint]
-version = "0.4.2"
+version = "0.4.3"
 default-features = false
 optional = true
 
