@@ -270,85 +270,6 @@ mod test {
     type MultiPCVar = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
     #[test]
-    fn test_alloc() {
-        let rng = &mut test_rng();
-
-        let cs = &mut TestConstraintSystem::<Fq>::new();
-
-        let num_constraints = 25;
-        let num_variables = 25;
-
-        // Construct the circuit verifier key.
-
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
-        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
-
-        let a = Fr::rand(rng);
-        let b = Fr::rand(rng);
-        let mut c = a;
-        c.mul_assign(&b);
-        let mut d = c;
-        d.mul_assign(&b);
-
-        let circ = Circuit {
-            a: Some(a),
-            b: Some(b),
-            num_constraints,
-            num_variables,
-        };
-
-        let (_circuit_pk, circuit_vk) = MarlinInst::circuit_setup(&universal_srs, &circ).unwrap();
-
-        let prepared_circuit_vk = circuit_vk.prepare();
-
-        // Allocate the circuit vk gadget.
-        let prepared_circuit_vk_gadget =
-            PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc_constant(
-                cs.ns(|| "alloc_prepared_vk"),
-                || Ok(prepared_circuit_vk.clone()),
-            )
-            .unwrap();
-
-        // Enforce that the native vk and vk gadget elements are equivalent.
-
-        assert_eq!(
-            prepared_circuit_vk.domain_h_size,
-            prepared_circuit_vk_gadget.domain_h_size
-        );
-        assert_eq!(
-            prepared_circuit_vk.domain_k_size,
-            prepared_circuit_vk_gadget.domain_k_size
-        );
-
-        for (i, (prepared_commitment, prepared_commitment_gadget)) in prepared_circuit_vk
-            .prepared_index_comms
-            .iter()
-            .zip(prepared_circuit_vk_gadget.prepared_index_comms)
-            .enumerate()
-        {
-            let expected_prepared_commitment_gadget =
-                <MultiPCVar as PCCheckVar<_, _, _>>::PreparedCommitmentVar::alloc(
-                    cs.ns(|| format!("alloc_prepared_commitment_{}", i)),
-                    || Ok(prepared_commitment),
-                )
-                .unwrap();
-
-            for (j, (expected_comm, comm)) in expected_prepared_commitment_gadget
-                .prepared_comm
-                .iter()
-                .zip(prepared_commitment_gadget.prepared_comm)
-                .enumerate()
-            {
-                expected_comm
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_comm_{}_{}", i, j)), &comm)
-                    .unwrap();
-            }
-        }
-
-        assert!(cs.is_satisfied());
-    }
-
-    #[test]
     fn test_prepare() {
         let rng = &mut test_rng();
 
@@ -380,12 +301,11 @@ mod test {
         let prepared_circuit_vk = circuit_vk.prepare();
 
         // Allocate the circuit vk gadget.
-        let circuit_vk_gadget =
-            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
-                .unwrap();
-
         let prepared_circuit_vk_gadget: PreparedCircuitVerifyingKeyVar<_, _, _, _, FS, FSG> =
-            circuit_vk_gadget.prepare(cs.ns(|| "prepare")).unwrap();
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
+                .unwrap()
+                .prepare(cs.ns(|| "Prepare"))
+                .unwrap();
 
         // Enforce that the native vk and vk gadget elements are equivalent.
 

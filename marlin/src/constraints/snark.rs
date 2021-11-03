@@ -356,13 +356,13 @@ pub mod test {
 
         const INPUT_GADGET_CONSTRAINTS: usize = 259;
         const PROOF_GADGET_CONSTRAINTS: usize = 48;
-        const VK_GADGET_CONSTRAINTS: usize = 192;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 132743;
+        const VK_GADGET_CONSTRAINTS: usize = 188;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 131223;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
         assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);
-        // assert_eq!(verifier_gadget_constraints, VERIFIER_GADGET_CONSTRAINTS);
+        assert_eq!(verifier_gadget_constraints, VERIFIER_GADGET_CONSTRAINTS);
     }
 }
 

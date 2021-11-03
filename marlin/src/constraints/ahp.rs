@@ -1529,7 +1529,8 @@ mod test {
 
         if is_recursion {
             fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
-            fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
+
+            fs_rng.absorb_native_field_elements(&circuit_vk.circuit_commitments);
             fs_rng.absorb_bytes(&to_bytes_le![padded_public_input].unwrap());
         } else {
             fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &padded_public_input].unwrap());

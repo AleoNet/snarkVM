@@ -220,120 +220,6 @@ mod tests {
     // TODO (raychu86): Implement `test_to_constraint_field`.
 
     #[test]
-    fn test_alloc() {
-        let rng = &mut test_rng();
-
-        let cs = &mut TestConstraintSystem::<Fq>::new();
-
-        // Construct the universal params.
-        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
-
-        // Construct the verifying key.
-        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
-
-        let prepared_vk = vk.prepare();
-
-        // Allocate the prepared vk gadget.
-        let prepared_vk_gadget =
-            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_prepared_vk"), || {
-                Ok(prepared_vk.clone())
-            })
-            .unwrap();
-
-        // Gadget enforcement checks.
-        let prepared_h_gadget =
-            <PG as PairingGadget<_, _>>::G2PreparedGadget::alloc(cs.ns(|| "alloc_prepared_native_h"), || {
-                Ok(&prepared_vk.prepared_vk.prepared_h)
-            })
-            .unwrap();
-        let prepared_beta_h_gadget =
-            <PG as PairingGadget<_, _>>::G2PreparedGadget::alloc(cs.ns(|| "alloc_native_prepared_beta_h"), || {
-                Ok(&prepared_vk.prepared_vk.prepared_beta_h)
-            })
-            .unwrap();
-
-        for (i, (g_element, g_gadget_element)) in prepared_vk
-            .prepared_vk
-            .prepared_g
-            .iter()
-            .zip(prepared_vk_gadget.prepared_g)
-            .enumerate()
-        {
-            let prepared_g_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
-                cs.ns(|| format!("alloc_native_prepared_g_{}", i)),
-                || Ok(g_element.into_projective()),
-            )
-            .unwrap();
-
-            prepared_g_gadget
-                .enforce_equal(cs.ns(|| format!("enforce_equals_prepared_g_{}", i)), &g_gadget_element)
-                .unwrap();
-        }
-
-        prepared_h_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_prepared_h"), &prepared_vk_gadget.prepared_h)
-            .unwrap();
-        prepared_beta_h_gadget
-            .enforce_equal(
-                cs.ns(|| "enforce_equals_prepared_beta_h"),
-                &prepared_vk_gadget.prepared_beta_h,
-            )
-            .unwrap();
-
-        // Native check that degree bounds are equivalent.
-
-        assert!(cs.is_satisfied());
-    }
-
-    #[test]
-    fn test_prepare() {
-        let rng = &mut test_rng();
-
-        let cs = &mut TestConstraintSystem::<Fq>::new();
-
-        // Construct the universal params.
-        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
-
-        // Construct the verifying key.
-        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
-
-        // Allocate the vk gadget.
-        let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
-
-        // Allocate the prepared vk gadget.
-        let prepared_vk = vk.prepare();
-        let expected_prepared_vk_gadget =
-            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_prepared_vk"), || {
-                Ok(prepared_vk.clone())
-            })
-            .unwrap();
-
-        let prepared_vk_gadget = vk_gadget.prepare(cs.ns(|| "prepare")).unwrap();
-
-        // Enforce that the elements are equivalent.
-
-        for (i, (expected_g_element, g_element_gadget)) in expected_prepared_vk_gadget
-            .prepared_g
-            .iter()
-            .zip(prepared_vk_gadget.prepared_g)
-            .enumerate()
-        {
-            g_element_gadget
-                .enforce_equal(
-                    cs.ns(|| format!("enforce_equals_prepared_g_{}", i)),
-                    &expected_g_element,
-                )
-                .unwrap();
-        }
-
-        if !cs.is_satisfied() {
-            println!("{:?}", cs.which_is_unsatisfied());
-        }
-
-        assert!(cs.is_satisfied());
-    }
-
-    #[test]
     fn test_get_prepared_shift_power() {
         let rng = &mut test_rng();
 
@@ -357,9 +243,11 @@ mod tests {
         let pvk = vk.prepare();
 
         // Allocate the vk gadget.
-        let pvk_gadget =
-            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_pvk"), || Ok(pvk.clone()))
-                .unwrap();
+        let pvk_gadget = {
+            let vk =
+                VerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+            vk.prepare(cs.ns(|| "Prepare vk")).unwrap()
+        };
 
         assert!(pvk.degree_bounds_and_prepared_neg_powers_of_h.is_some());
 
