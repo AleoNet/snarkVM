@@ -23,6 +23,11 @@ path = "benches/account.rs"
 harness = false
 
 [[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
+
+[[bench]]
 name = "noop_program"
 path = "benches/noop_program.rs"
 harness = false
