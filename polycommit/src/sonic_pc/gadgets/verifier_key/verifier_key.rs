@@ -404,28 +404,11 @@ where
         let prepared_h = PG::G2PreparedGadget::alloc_constant(cs.ns(|| "prepared_h"), || prepared_h)?;
         let prepared_beta_h = PG::G2PreparedGadget::alloc_constant(cs.ns(|| "prepared_beta_h"), || prepared_beta_h)?;
 
-        let degree_bounds_and_prepared_neg_powers_of_h = if self.degree_bounds_and_neg_powers_of_h.is_some() {
-            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
-
-            for (d, d_gadget, shift_power) in self.degree_bounds_and_neg_powers_of_h.as_ref().unwrap().iter() {
-                res.push((
-                    *d,
-                    (*d_gadget).clone(),
-                    PG::prepare_g2(cs.ns(|| format!("prepare_neg_powers_of_h {}", d)), shift_power.clone())?,
-                ));
-            }
-
-            Some(res)
-        } else {
-            None
-        };
-
         Ok(PreparedVerifierKeyVar::<TargetCurve, BaseCurve, PG> {
             prepared_g,
             prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
             origin_vk: Some(self.clone()),
         })
     }
