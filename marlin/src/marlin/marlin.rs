@@ -282,7 +282,7 @@ impl<
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
             let input_bytes = to_bytes_le![padded_public_input].unwrap();
-            fs_rng.absorb_bytes(&input_bytes);
+            fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(
                 &to_bytes_le![
@@ -603,7 +603,7 @@ impl<
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&circuit_verifying_key.circuit_commitments);
             let input_bytes = to_bytes_le![padded_public_input].unwrap();
-            fs_rng.absorb_bytes(&input_bytes);
+            fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(
                 &to_bytes_le![&Self::PROTOCOL_NAME, &circuit_verifying_key, padded_public_input].unwrap(),

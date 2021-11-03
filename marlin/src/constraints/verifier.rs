@@ -150,8 +150,12 @@ where
             new_input
         };
 
-        let input_bytes = padded_public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
-        fs_rng.absorb_bytes(&mut cs.ns(|| "absorb_input_bytes"), &input_bytes)?;
+        // let input_bytes = padded_public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
+        fs_rng.absorb_nonnative_field_elements(
+            &mut cs.ns(|| "absorb_input_bytes"),
+            &padded_public_input,
+            OptimizationType::Weight,
+        )?;
 
         let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_first_round(
             cs.ns(|| "verifier_first_round"),
