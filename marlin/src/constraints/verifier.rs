@@ -151,7 +151,6 @@ where
         };
 
         let input_bytes = padded_public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
-        println!("Constraints input byte length: {:?}", input_bytes.len());
         fs_rng.absorb_bytes(&mut cs.ns(|| "absorb_input_bytes"), &input_bytes)?;
 
         let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_first_round(

@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::alloc::AllocGadget,
@@ -42,8 +42,8 @@ use crate::{
     PolynomialCommitment,
     Vec,
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, Prepare};
-use snarkvm_utilities::{marker::PhantomData, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
+use snarkvm_utilities::{marker::PhantomData, FromBytes};
 
 /// The circuit verifying key gadget
 pub struct CircuitVerifyingKeyVar<

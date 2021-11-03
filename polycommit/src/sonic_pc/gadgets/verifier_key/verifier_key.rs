@@ -16,7 +16,7 @@
 
 use core::borrow::Borrow;
 
-use snarkvm_curves::{AffineCurve, PairingEngine};
+use snarkvm_curves::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBytesGadget},
@@ -254,10 +254,10 @@ where
                 .collect()
         });
 
-        let g = PG::G1Gadget::alloc(cs.ns(|| "g"), || Ok(g.into_projective()))?;
-        let gamma_g = PG::G1Gadget::alloc(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
-        let h = PG::G2Gadget::alloc(cs.ns(|| "h"), || Ok(h.into_projective()))?;
-        let beta_h = PG::G2Gadget::alloc(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
+        let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let gamma_g = PG::G1Gadget::alloc_constant(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
+        let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h.into_projective()))?;
+        let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
@@ -305,10 +305,10 @@ where
                 .collect()
         });
 
-        let g = PG::G1Gadget::alloc_input(cs.ns(|| "g"), || Ok(g.into_projective()))?;
-        let gamma_g = PG::G1Gadget::alloc_input(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
-        let h = PG::G2Gadget::alloc_input(cs.ns(|| "h"), || Ok(h.into_projective()))?;
-        let beta_h = PG::G2Gadget::alloc_input(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
+        let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let gamma_g = PG::G1Gadget::alloc_constant(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
+        let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h.into_projective()))?;
+        let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
@@ -373,20 +373,36 @@ where
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
 
-        let mut g: PG::G1Gadget = self.g.clone();
+        let mut g = self.g.get_value();
         for i in 0..supported_bits {
-            prepared_g.push(g.clone());
-            g.double_in_place(cs.ns(|| format!("double_in_place_{}", i)))?;
+            prepared_g.push(PG::G1Gadget::alloc_constant(
+                cs.ns(|| format!("prepare g{}", i)),
+                || g.ok_or(SynthesisError::AssignmentMissing),
+            )?);
+            g.as_mut().map(|g| g.double_in_place());
         }
 
-        let mut gamma_g: PG::G1Gadget = self.gamma_g.clone();
+        let mut gamma_g = self.gamma_g.get_value();
         for i in 0..supported_bits {
-            prepared_gamma_g.push(gamma_g.clone());
-            gamma_g.double_in_place(cs.ns(|| format!("double_in_place_{}_gamma_g", i)))?;
+            prepared_gamma_g.push(PG::G1Gadget::alloc_constant(
+                cs.ns(|| format!("prepare_gamma_g{}", i)),
+                || gamma_g.ok_or(SynthesisError::AssignmentMissing),
+            )?);
+            gamma_g.as_mut().map(|gamma_g| gamma_g.double_in_place());
         }
 
-        let prepared_h = PG::prepare_g2(cs.ns(|| "prepared_h"), self.h.clone())?;
-        let prepared_beta_h = PG::prepare_g2(cs.ns(|| "prepared_beta_h"), self.beta_h.clone())?;
+        let prepared_h = self
+            .h
+            .get_value()
+            .map(|h| h.into_affine().prepare())
+            .ok_or(SynthesisError::AssignmentMissing);
+        let prepared_beta_h = self
+            .beta_h
+            .get_value()
+            .map(|beta_h| beta_h.into_affine().prepare())
+            .ok_or(SynthesisError::AssignmentMissing);
+        let prepared_h = PG::G2PreparedGadget::alloc_constant(cs.ns(|| "prepared_h"), || prepared_h)?;
+        let prepared_beta_h = PG::G2PreparedGadget::alloc_constant(cs.ns(|| "prepared_beta_h"), || prepared_beta_h)?;
 
         let degree_bounds_and_prepared_neg_powers_of_h = if self.degree_bounds_and_neg_powers_of_h.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();

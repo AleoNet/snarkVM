@@ -247,7 +247,7 @@ impl<F: PrimeField> AllocatedFp<F> {
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
         let inverse = Self::alloc(cs.ns(|| "inverse"), || {
             let result = self.value.get()?;
-            let inv = result.inverse().expect("Inverse doesn't exist!");
+            let inv = result.inverse().unwrap_or(F::zero());
             Ok(inv)
         })?;
 

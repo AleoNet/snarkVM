@@ -230,7 +230,19 @@ impl ConstraintSynthesizer<Fr> for MulSquareCircuit {
         let b = FpGadget::alloc_input(&mut cs.ns(|| "b"), || self.b.ok_or(SynthesisError::AssignmentMissing))?;
         let c = FpGadget::alloc_input(&mut cs.ns(|| "c"), || self.c.ok_or(SynthesisError::AssignmentMissing))?;
 
-        let claimed_c = a.mul(cs.ns(|| "a * b"), &b)?.square(cs.ns(|| "d.square()"))?;
+        let claimed_c = a
+            .mul(cs.ns(|| "a * b"), &b)?
+            .square(cs.ns(|| "d.square()"))?
+            .square(cs.ns(|| "e.square()"))?
+            .square(cs.ns(|| "f.square()"))?
+            .square(cs.ns(|| "f1.square()"))?
+            .square(cs.ns(|| "f2.square()"))?
+            .square(cs.ns(|| "f3.square()"))?
+            .square(cs.ns(|| "f4.square()"))?
+            .square(cs.ns(|| "f5.square()"))?
+            .square(cs.ns(|| "f6.square()"))?
+            .square(cs.ns(|| "f7.square()"))?
+            .square(cs.ns(|| "g.square()"))?;
         c.enforce_equal(cs.ns(|| "c == e"), &claimed_c)?;
         Ok(())
     }
@@ -349,7 +361,18 @@ fn verifier_on_groth16() {
         // MulSquareCircuit
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
-        let c = (a * &b).square();
+        let c = (a * &b)
+            .square()
+            .square()
+            .square()
+            .square()
+            .square()
+            .square()
+            .square()
+            .square()
+            .square()
+            .square()
+            .square();
 
         let circ = MulSquareCircuit {
             a: Some(a),
@@ -386,6 +409,12 @@ fn verifier_on_groth16() {
 
     println!("\n\nDiffing constraints now\n\n");
     circ1.diff(&circ2);
+    let mut cs = TestConstraintChecker::new();
+    circ1.generate_constraints(&mut cs).unwrap();
+    assert!(cs.is_satisfied());
+    let mut cs = TestConstraintChecker::new();
+    circ2.generate_constraints(&mut cs).unwrap();
+    assert!(cs.is_satisfied());
 
     let (rec_pk1, rec_vk1) = Groth16::<BW6_761, Vec<Fq>>::setup(&circ1, &mut SRS::CircuitSpecific(rng)).unwrap();
     let rec_input1 = circ1.public_input();
