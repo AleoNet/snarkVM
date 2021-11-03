@@ -63,6 +63,9 @@ parameters = ["snarkvm-parameters"]
 r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
 
+## snarkVM workspace specific ##
+parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
+
 ## snarkVM CLI ##
 cli = ["anyhow", "colored", "self_update", "structopt", "thiserror"]
 

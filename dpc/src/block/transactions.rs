@@ -20,13 +20,14 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::Deref,
     sync::Arc,
 };
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Transactions<N: Network>(Vec<Transaction<N>>);
 
 impl<N: Network> Transactions<N> {
@@ -124,11 +125,12 @@ impl<N: Network> Transactions<N> {
         match self.is_valid() {
             true => {
                 let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
-                Ok(*MerkleTree::<N::TransactionsRootParameters>::new(
+                let root = *MerkleTree::<N::TransactionsRootParameters>::new(
                     Arc::new(N::transactions_root_parameters().clone()),
                     &transaction_ids,
                 )?
-                .root())
+                .root();
+                Ok(root.into())
             }
             false => Err(anyhow!("The transactions list is invalid")),
         }

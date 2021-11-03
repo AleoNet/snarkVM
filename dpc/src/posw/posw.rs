@@ -87,7 +87,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
             // Generate the proof.
             block_header.set_proof(
-                (&<<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?).into(),
+                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
             );
 
             if self.verify(block_header) {
@@ -182,7 +182,7 @@ mod tests {
         assert!(block_header.proof().is_some());
         assert_eq!(
             block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
-            Testnet2::POSW_PROOF_SIZE_IN_BYTES
+            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
         ); // NOTE: Marlin proofs use compressed serialization
         assert!(posw.verify(&block_header));
     }

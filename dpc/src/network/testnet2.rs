@@ -17,6 +17,8 @@
 use crate::{
     account::ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
     posw::PoSW,
+    AleoLocator,
+    AleoObject,
     Block,
     InnerPublicVariables,
     Network,
@@ -24,6 +26,7 @@ use crate::{
     PoSWScheme,
     Program,
     ProgramPublicVariables,
+    RecordCiphertext,
 };
 use snarkvm_algorithms::{
     commitment::BHPCommitment,
@@ -75,7 +78,7 @@ use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
 
 // TODO (raychu86): Optimize each of the window sizes in the type declarations below.
@@ -86,22 +89,51 @@ impl Network for Testnet2 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-
-    const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
-    const RECORD_SIZE_IN_BYTES: usize = 280;
-    const PAYLOAD_SIZE_IN_BYTES: usize = 128;
-
     const NUM_TRANSITIONS: u8 = 128;
     const NUM_EVENTS: u16 = 256;
 
-    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
-    const TRANSITION_TREE_DEPTH: u32 = 3;
+    const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
+    const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
+    const PROGRAM_ID_PREFIX: u16 = hrp2!("ap");
+    const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp2!("ar");
+    const TRANSITION_ID_PREFIX: u16 = hrp2!("as");
+    const TRANSACTION_ID_PREFIX: u16 = hrp2!("at");
 
-    const POSW_PROOF_SIZE_IN_BYTES: usize = 771;
-    const POSW_NUM_LEAVES: usize = 4;
-    const POSW_TREE_DEPTH: usize = 2;
-    
+    const COMMITMENT_PREFIX: u16 = hrp2!("cm");
+    const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp2!("cr");
+    const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
+    const FUNCTION_ID_PREFIX: u16 = hrp2!("fn");
+    const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
+    const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
+    const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
+    const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
+
+    const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
+    const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
+    const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
+    const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
+    const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
+    const SIGNATURE_PREFIX: u32 = hrp4!("sign");
+
+    const ADDRESS_SIZE_IN_BYTES: usize = 32;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
+    const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
+    const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
+    const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
+    const RECORD_SIZE_IN_BYTES: usize = 280;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
+    const SIGNATURE_SIZE_IN_BYTES: usize = 128;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
+
+    const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 16;
+    const HEADER_TREE_DEPTH: usize = 2;
+    const LEDGER_TREE_DEPTH: usize = 32;
+    const PROGRAM_TREE_DEPTH: usize = 8;
+    const TRANSITION_TREE_DEPTH: usize = 3;
+    const TRANSACTION_TREE_DEPTH: usize = 7;
+
+    const ALEO_BLOCK_TIME_IN_SECS: i64 = 15i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
     type InnerCurve = Bls12_377;
@@ -120,21 +152,20 @@ impl Network for Testnet2 {
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+    type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet2>>;
-    type OuterProof = <Self::OuterSNARK as SNARK>::Proof;
+    type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, { Self::OUTER_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet2Mode, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
-    type ProgramProof = <Self::ProgramSNARK as SNARK>::Proof;
+    type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
     type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
-    type PoSWProof = <Self::PoSWSNARK as SNARK>::Proof;
-
-    type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
-    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
+    type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
+    type PoSW = PoSW<Self>;
 
     type AccountSeedPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
     type AccountSeed = <Self::AccountSeedPRF as PRF>::Seed;
@@ -142,72 +173,75 @@ impl Network for Testnet2 {
     type AccountSignatureScheme = AleoSignatureScheme<Self::ProgramCurveParameters>;
     type AccountSignatureGadget = AleoSignatureSchemeGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
-    type AccountSignature = <Self::AccountSignatureScheme as SignatureScheme>::Signature;
+    type AccountSignature = AleoObject<<Self::AccountSignatureScheme as SignatureScheme>::Signature, { Self::SIGNATURE_PREFIX }, { Self::SIGNATURE_SIZE_IN_BYTES }>;
 
     type BlockHashCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type BlockHash = <Self::BlockHashCRH as CRH>::Output;
+    type BlockHash = AleoLocator<<Self::BlockHashCRH as CRH>::Output, { Self::BLOCK_HASH_PREFIX }>;
 
     type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, 2>;
-    type BlockHeaderRoot = <Self::BlockHeaderRootCRH as CRH>::Output;
+    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
+    type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
     type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
     type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = <Self::CiphertextIDCRH as CRH>::Output;
+    type CiphertextID = AleoLocator<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_ID_PREFIX }>;
 
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
-    type CommitmentRandomness = <Self::CommitmentScheme as CommitmentScheme>::Randomness;
-    type Commitment = <Self::CommitmentScheme as CommitmentScheme>::Output;
+    type CommitmentRandomness = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Randomness, { Self::COMMITMENT_RANDOMNESS_PREFIX }>;
+    type Commitment = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
     type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;
-    type FunctionID = <Self::FunctionIDCRH as CRH>::Output;
+    type FunctionID = AleoLocator<<Self::FunctionIDCRH as CRH>::Output, { Self::FUNCTION_ID_PREFIX }>;
 
     type FunctionInputsCRH = PoseidonCRH<Self::InnerScalarField, 128>;
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
-    type FunctionInputsDigest = <Self::FunctionInputsCRH as CRH>::Output;
+    type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 79, 63>;
     type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 79, 63>;
-    type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
+    type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, 32>;
-    type LedgerRoot = <Self::LedgerRootCRH as CRH>::Output;
+    type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, { Self::LEDGER_TREE_DEPTH }>;
+    type LedgerRoot = AleoLocator<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }>;
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
-    type PoSW = PoSW<Self>;
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
-    type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, 8>;
-    type ProgramID = <Self::ProgramIDCRH as CRH>::Output;
-    
+    type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
+    type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
+
+    type RecordCiphertextScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
+    type RecordCiphertextGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
+    type RecordCiphertext = AleoObject<RecordCiphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
+
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
-    type SerialNumber = <Self::SerialNumberPRF as PRF>::Output;
+    type SerialNumber = AleoLocator<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }>;
 
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, 16>;
-    type TransactionsRoot = <Self::TransactionsRootCRH as CRH>::Output;
+    type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, { Self::HEADER_TRANSACTIONS_TREE_DEPTH }>;
+    type TransactionsRoot = AleoLocator<<Self::TransactionsRootCRH as CRH>::Output, { Self::HEADER_TRANSACTIONS_ROOT_PREFIX }>;
 
     type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, 7>;
-    type TransactionID = <Self::TransactionIDCRH as CRH>::Output;
+    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, { Self::TRANSACTION_TREE_DEPTH }>;
+    type TransactionID = AleoLocator<<Self::TransactionIDCRH as CRH>::Output, { Self::TRANSACTION_ID_PREFIX }>;
 
     type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
     type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
-    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, 3>;
-    type TransitionID = <Self::TransitionIDCRH as CRH>::Output;
+    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
+    type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
-    dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet2, account_encryption_scheme, RecordCiphertextScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet2, block_header_root_parameters, BlockHeaderRootParameters, "AleoBlockHeaderRootCRH0"}
@@ -237,7 +271,7 @@ impl Network for Testnet2 {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
             .hash_bits(&Self::inner_verifying_key().to_minimal_bits())
-            .expect("Failed to hash inner circuit verifying key elements"))
+            .expect("Failed to hash inner circuit verifying key elements").into())
     }
     
     fn noop_program() -> &'static Program<Self> {
@@ -306,7 +340,8 @@ mod tests {
             Testnet2::inner_circuit_id(),
             &Testnet2::inner_circuit_id_crh()
                 .hash_bits(&Testnet2::inner_verifying_key().to_minimal_bits())
-                .expect("Failed to hash inner circuit ID"),
+                .expect("Failed to hash inner circuit ID")
+                .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
         );
     }
@@ -324,14 +359,10 @@ mod tests {
     #[test]
     fn test_posw_tree_sanity_check() {
         // Verify the PoSW tree depth matches the declared depth.
-        assert_eq!(Testnet2::POSW_TREE_DEPTH, 2); // Testnet2 has a tree depth of 2.
+        assert_eq!(Testnet2::HEADER_TREE_DEPTH, 2); // Testnet2 has a tree depth of 2.
         assert_eq!(
-            Testnet2::POSW_TREE_DEPTH,
+            Testnet2::HEADER_TREE_DEPTH,
             <<Testnet2 as Network>::BlockHeaderRootParameters as MerkleParameters>::DEPTH
         );
-
-        // Verify the number of leaves corresponds to the correct tree depth.
-        let num_leaves = 2u32.pow(Testnet2::POSW_TREE_DEPTH as u32) as usize;
-        assert_eq!(Testnet2::POSW_NUM_LEAVES, num_leaves);
     }
 }

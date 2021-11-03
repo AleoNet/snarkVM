@@ -92,5 +92,7 @@ version = "0.8"
 
 [features]
 default = [ "remote", "snarkvm-algorithms/default" ]
+no_std_out = []
 remote = [ "curl" ]
 wasm = [ "snarkvm-algorithms/wasm", "reqwest", "wasm-bindgen-futures", "parking_lot" ]
+

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, Network, PoSWScheme, ProofOfSuccinctWork};
+use crate::{BlockError, Network, PoSWScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
     fmt,
@@ -89,14 +89,14 @@ impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
-    /// The Merkle root representing the blocks in the ledger - 32 bytes
-    ledger_root: N::LedgerRoot,
+    /// The Merkle root representing the blocks in the ledger up to the previous block - 32 bytes
+    previous_ledger_root: N::LedgerRoot,
     /// The Merkle root representing the transactions in the block - 32 bytes
     transactions_root: N::TransactionsRoot,
     /// The block header metadata - 52 bytes
     metadata: BlockHeaderMetadata<N>,
     /// Proof of Succinct Work - 771 bytes
-    proof: Option<ProofOfSuccinctWork<N>>,
+    proof: Option<N::PoSWProof>,
 }
 
 impl<N: Network> BlockHeader<N> {
@@ -105,7 +105,7 @@ impl<N: Network> BlockHeader<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
-        ledger_root: N::LedgerRoot,
+        previous_ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
         terminator: &AtomicBool,
         rng: &mut R,
@@ -123,7 +123,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Construct a candidate block header.
         let mut block_header = Self {
-            ledger_root,
+            previous_ledger_root,
             transactions_root,
             metadata,
             proof: None,
@@ -143,7 +143,7 @@ impl<N: Network> BlockHeader<N> {
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
         // Ensure the ledger root is nonzero.
-        if self.ledger_root == Default::default() {
+        if self.previous_ledger_root == Default::default() {
             eprintln!("Invalid ledger root in block header");
             return false;
         }
@@ -179,9 +179,9 @@ impl<N: Network> BlockHeader<N> {
             && N::posw().verify(&self)
     }
 
-    /// Returns the ledger root in the block header.
-    pub fn ledger_root(&self) -> N::LedgerRoot {
-        self.ledger_root
+    /// Returns the previous ledger root from the block header.
+    pub fn previous_ledger_root(&self) -> N::LedgerRoot {
+        self.previous_ledger_root
     }
 
     /// Returns the transactions root in the block header.
@@ -210,7 +210,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns the proof, if it is set.
-    pub fn proof(&self) -> &Option<ProofOfSuccinctWork<N>> {
+    pub fn proof(&self) -> &Option<N::PoSWProof> {
         &self.proof
     }
 
@@ -219,13 +219,13 @@ impl<N: Network> BlockHeader<N> {
         32 // LedgerRoot
             + 32 // TransactionsRoot
             + BlockHeaderMetadata::<N>::size()
-            + N::POSW_PROOF_SIZE_IN_BYTES
+            + N::HEADER_PROOF_SIZE_IN_BYTES
     }
 
     /// Returns an instance of the block header tree.
     pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
-        let ledger_root = self.ledger_root.to_bytes_le()?;
-        assert_eq!(ledger_root.len(), 32);
+        let previous_ledger_root = self.previous_ledger_root.to_bytes_le()?;
+        assert_eq!(previous_ledger_root.len(), 32);
 
         let transactions_root = self.transactions_root.to_bytes_le()?;
         assert_eq!(transactions_root.len(), 32);
@@ -233,12 +233,14 @@ impl<N: Network> BlockHeader<N> {
         let metadata = self.metadata.to_bytes_le()?;
         assert_eq!(metadata.len(), 52);
 
-        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(N::POSW_NUM_LEAVES);
-        leaves.push(ledger_root);
+        let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
+        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
+        leaves.push(previous_ledger_root);
         leaves.push(transactions_root);
         leaves.push(vec![0u8; 32]);
         leaves.push(metadata);
-        assert_eq!(N::POSW_NUM_LEAVES, leaves.len());
+        // Sanity check that the correct number of leaves are allocated.
+        assert_eq!(num_leaves, leaves.len());
 
         Ok(MerkleTree::<N::BlockHeaderRootParameters>::new(
             Arc::new(N::block_header_root_parameters().clone()),
@@ -260,7 +262,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block header root.
     pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
-        Ok(*self.to_header_tree()?.root())
+        Ok((*self.to_header_tree()?.root()).into())
     }
 
     /// Sets the block header nonce to the given nonce.
@@ -271,7 +273,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Sets the block header proof to the given proof.
     /// This method is used by PoSW to iterate over candidate block headers.
-    pub(crate) fn set_proof(&mut self, proof: ProofOfSuccinctWork<N>) {
+    pub(crate) fn set_proof(&mut self, proof: N::PoSWProof) {
         self.proof = Some(proof);
     }
 }
@@ -280,7 +282,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the header core variables.
-        let ledger_root = FromBytes::read_le(&mut reader)?;
+        let previous_ledger_root = FromBytes::read_le(&mut reader)?;
         let transactions_root = FromBytes::read_le(&mut reader)?;
 
         // Read the header metadata.
@@ -301,7 +303,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 
         // Construct the block header.
         let block_header = Self {
-            ledger_root,
+            previous_ledger_root,
             transactions_root,
             metadata,
             proof: Some(proof),
@@ -325,7 +327,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         };
 
         // Write the header core variables.
-        self.ledger_root.write_le(&mut writer)?;
+        self.previous_ledger_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
 
         // Write the header metadata.
@@ -342,15 +344,27 @@ impl<N: Network> ToBytes for BlockHeader<N> {
 impl<N: Network> FromStr for BlockHeader<N> {
     type Err = anyhow::Error;
 
-    fn from_str(header_hex: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from_bytes_le(&hex::decode(header_hex)?)?)
+    fn from_str(header: &str) -> Result<Self, Self::Err> {
+        let header = serde_json::Value::from_str(header)?;
+
+        Ok(Self {
+            previous_ledger_root: serde_json::from_value(header["previous_ledger_root"].clone())?,
+            transactions_root: serde_json::from_value(header["transactions_root"].clone())?,
+            metadata: serde_json::from_value(header["metadata"].clone())?,
+            proof: serde_json::from_value(header["proof"].clone())?,
+        })
     }
 }
 
 impl<N: Network> fmt::Display for BlockHeader<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let bytes = self.to_bytes_le().expect("Failed to convert block header to bytes");
-        write!(f, "{}", hex::encode(bytes))
+        let header = serde_json::json!({
+            "previous_ledger_root": self.previous_ledger_root,
+            "transactions_root": self.transactions_root,
+            "metadata": self.metadata,
+            "proof": self.proof,
+        });
+        write!(f, "{}", header)
     }
 }
 
@@ -382,6 +396,40 @@ mod tests {
     use rand::{rngs::ThreadRng, thread_rng};
 
     #[test]
+    fn test_serde_json() {
+        let block_header = Testnet2::genesis_block().header().to_owned();
+
+        // Serialize
+        let expected_string = &block_header.to_string();
+        let candidate_string = serde_json::to_string(&block_header).unwrap();
+        assert_eq!(1620, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(block_header, BlockHeader::from_str(&expected_string).unwrap());
+        assert_eq!(block_header, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let block_header = Testnet2::genesis_block().header().to_owned();
+
+        println!("{}", serde_json::to_string(&block_header).unwrap());
+
+        let expected_bytes = block_header.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&block_header).unwrap()[..]);
+
+        assert_eq!(block_header, BlockHeader::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(block_header, bincode::deserialize(&expected_bytes[..]).unwrap());
+    }
+
+    #[test]
     fn test_block_header_genesis() {
         let block_header = Testnet2::genesis_block().header();
         assert!(block_header.is_genesis());
@@ -393,7 +441,7 @@ mod tests {
         assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.ledger_root, Default::default());
+        assert_ne!(block_header.previous_ledger_root, Default::default());
         assert_ne!(block_header.transactions_root, Default::default());
     }
 

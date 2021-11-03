@@ -108,7 +108,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
     /// Returns the ledger root.
     fn root(&self) -> N::LedgerRoot {
-        *self.tree.root()
+        (*self.tree.root()).into()
     }
 
     /// Returns the Merkle path for a given block hash.

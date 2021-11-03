@@ -70,7 +70,7 @@ impl<N: Network> Program<N> {
 
     /// Returns the program ID.
     pub fn program_id(&self) -> N::ProgramID {
-        *self.tree.root()
+        (*self.tree.root()).into()
     }
 
     /// Returns `true` if the given function ID exists in the program.

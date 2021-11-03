@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use std::io::{Read, Result as IoResult, Write};
@@ -76,8 +76,9 @@ impl<N: Network> RecordProof<N> {
         }
 
         // Ensure the block hash is valid.
-        let candidate_block_hash = N::block_hash_crh()
-            .hash(&[previous_block_hash.to_bytes_le()?, block_header_root.to_bytes_le()?].concat())?;
+        let candidate_block_hash: N::BlockHash = N::block_hash_crh()
+            .hash(&to_bytes_le![previous_block_hash, block_header_root]?)?
+            .into();
         if candidate_block_hash != block_hash {
             return Err(anyhow!(
                 "Candidate block hash {} does not match given block hash {}",
@@ -224,7 +225,7 @@ mod tests {
         let expected_commitments = coinbase_transaction.commitments();
 
         // Create a ledger proof for one commitment.
-        let record_proof = ledger.to_ledger_inclusion_proof(expected_commitments[0]).unwrap();
+        let record_proof = ledger.to_ledger_proof(expected_commitments[0]).unwrap();
         assert_eq!(record_proof.block_hash(), expected_block.block_hash());
         assert_eq!(record_proof.previous_block_hash(), expected_block.previous_block_hash());
         assert_eq!(record_proof.block_header_root(), expected_block.header().to_header_root()?);

@@ -31,24 +31,19 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
-    fmt,
     io::{Read, Result as IoResult, Write},
     ops::Mul,
     rand::UniformRand,
     serialize::*,
-    str::FromStr,
     FromBits,
     FromBytes,
-    FromBytesDeserializer,
     ToBits,
     ToBytes,
-    ToBytesSerializer,
 };
 
 use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Derivative)]
 #[derivative(
@@ -131,46 +126,6 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
         self.verifier_challenge.write_le(&mut writer)?;
         self.root_public_key.write_le(&mut writer)?;
         self.root_randomizer.write_le(&mut writer)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromStr for AleoSignature<TE> {
-    type Err = anyhow::Error;
-
-    #[inline]
-    fn from_str(signature_hex: &str) -> Result<Self, Self::Err> {
-        Self::from_bytes_le(&hex::decode(signature_hex)?)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> fmt::Display for AleoSignature<TE> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let signature_hex = hex::encode(self.to_bytes_le().expect("Failed to convert signature to bytes"));
-        write!(f, "{}", signature_hex)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> Serialize for AleoSignature<TE> {
-    #[inline]
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
-            false => ToBytesSerializer::serialize(self, serializer),
-        }
-    }
-}
-
-impl<'de, TE: TwistedEdwardsParameters> Deserialize<'de> for AleoSignature<TE> {
-    #[inline]
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        match deserializer.is_human_readable() {
-            true => {
-                let s: String = Deserialize::deserialize(deserializer)?;
-                FromStr::from_str(&s).map_err(de::Error::custom)
-            }
-            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "signature", Self::size()),
-        }
     }
 }
 

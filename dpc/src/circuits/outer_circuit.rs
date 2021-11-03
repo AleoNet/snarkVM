@@ -41,7 +41,7 @@ pub struct OuterCircuit<N: Network> {
 impl<N: Network> OuterCircuit<N> {
     pub fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: N::InnerProof,
         execution: Execution<N>,
     ) -> Self {
         Self {
@@ -141,7 +141,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(&private.inner_proof),
+        || Ok(&*private.inner_proof),
     )?;
 
     N::InnerSNARKGadget::check_verify(
@@ -187,7 +187,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
             let given_program_id = <N::ProgramIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
                 &mut cs.ns(|| "Given program ID"),
-                || Ok(&private.execution.program_id),
+                || Ok(private.execution.program_id),
             )?;
 
             claimed_program_id.enforce_equal(
@@ -206,7 +206,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&private.execution.proof),
+            || Ok(&*private.execution.proof),
         )?;
 
         N::ProgramSNARKGadget::check_verify(

@@ -39,7 +39,7 @@ fn test_posw_load_and_mine() {
 
     assert_eq!(
         block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
-        Testnet2::POSW_PROOF_SIZE_IN_BYTES
+        Testnet2::HEADER_PROOF_SIZE_IN_BYTES
     ); // NOTE: Marlin proofs use compressed serialization
     assert!(Testnet2::posw().verify(&block_header));
 }

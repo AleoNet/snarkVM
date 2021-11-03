@@ -52,8 +52,10 @@ impl<N: Network> FunctionInputs<N> {
     }
 
     /// Returns a hash of the function inputs.
-    pub fn to_hash(&self) -> Result<N::FunctionInputsDigest> {
-        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon").hash_field_elements(&self.to_field_elements()?)?)
+    pub fn to_hash(&self) -> Result<N::FunctionInputsHash> {
+        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon")
+            .hash_field_elements(&self.to_field_elements()?)?
+            .into())
     }
 }
 

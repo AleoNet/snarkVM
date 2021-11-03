@@ -65,7 +65,7 @@ impl<N: Network> Function<N> for Noop<N> {
     ) -> Result<N::ProgramProof> {
         let circuit = SynthesizedCircuit::Noop(public.clone());
         let proof =
-            <N::ProgramSNARK as SNARK>::prove(N::noop_circuit_proving_key(), &circuit, &mut rand::thread_rng())?;
+            <N::ProgramSNARK as SNARK>::prove(N::noop_circuit_proving_key(), &circuit, &mut rand::thread_rng())?.into();
         assert!(self.verify(&public, &proof));
         Ok(proof)
     }

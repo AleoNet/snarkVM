@@ -14,20 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod account;
-pub use account::*;
+#[macro_use]
+extern crate criterion;
 
-pub mod bech32m;
-pub use bech32m::*;
+use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
-pub mod block;
-pub use block::*;
+use criterion::Criterion;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
-pub mod posw;
-pub use posw::*;
+fn block_from_bytes(c: &mut Criterion) {
+    let block_bytes = Testnet2::genesis_block().to_bytes_le().unwrap();
 
-pub mod record;
-pub use record::*;
+    c.bench_function("block_from_bytes", move |b| {
+        b.iter(|| Block::<Testnet2>::from_bytes_le(&block_bytes).unwrap())
+    });
+}
 
-pub mod virtual_machine;
-pub use virtual_machine::*;
+criterion_group! {
+    name = block;
+    config = Criterion::default().sample_size(50);
+    targets = block_from_bytes
+}
+
+criterion_main!(block);
