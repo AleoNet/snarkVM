@@ -41,7 +41,6 @@ use snarkvm_gadgets::{
     nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar},
     traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
     PrepareGadget,
-    ToBytesGadget,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
