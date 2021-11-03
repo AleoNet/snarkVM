@@ -110,22 +110,6 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> From<Prepar
     }
 }
 
-/// Compute the hash of the circuit verifying key.
-/// Used internally in Marlin
-pub(crate) fn compute_vk_hash<TargetField, BaseField, PC, FS>(
-    vk: &CircuitVerifyingKey<TargetField, BaseField, PC>,
-) -> Result<Vec<BaseField>, FiatShamirError>
-where
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField, BaseField>,
-    FS: FiatShamirRng<TargetField, BaseField>,
-{
-    let mut vk_hash_rng = FS::new();
-    vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
-    vk_hash_rng.squeeze_native_field_elements(1)
-}
-
 impl<F, CF, PC> Prepare<PreparedCircuitVerifyingKey<F, CF, PC>> for CircuitVerifyingKey<F, CF, PC>
 where
     F: PrimeField,

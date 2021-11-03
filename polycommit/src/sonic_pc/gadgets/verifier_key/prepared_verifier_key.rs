@@ -16,7 +16,7 @@
 
 use core::borrow::Borrow;
 
-use snarkvm_curves::{AffineCurve, PairingEngine};
+use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{alloc::AllocGadget, curves::PairingGadget},
@@ -113,8 +113,8 @@ where
         T: Borrow<PreparedVerifierKey<TargetCurve>>,
         CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
     >(
-        mut cs: CS,
-        value_gen: Fn,
+        _cs: CS,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         unimplemented!()
     }

@@ -867,21 +867,28 @@ mod test {
 
     use crate::{
         ahp::AHPForR1CS as AHPForR1CSNative,
-        marlin::{
-            compute_vk_hash,
-            CircuitProvingKey,
-            CircuitVerifyingKey,
-            MarlinMode,
-            MarlinRecursiveMode,
-            MarlinSNARK,
-            Proof,
-        },
-        prover::ProverConstraintSystem,
+        marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinMode, MarlinRecursiveMode, MarlinSNARK, Proof},
         FiatShamirAlgebraicSpongeRng,
         FiatShamirAlgebraicSpongeRngVar,
+        FiatShamirError,
         PoseidonSponge,
         PoseidonSpongeVar,
     };
+    /// Compute the hash of the circuit verifying key.
+    /// Used internally in Marlin
+    pub(crate) fn compute_vk_hash<TargetField, BaseField, PC, FS>(
+        vk: &CircuitVerifyingKey<TargetField, BaseField, PC>,
+    ) -> Result<Vec<BaseField>, FiatShamirError>
+    where
+        TargetField: PrimeField,
+        BaseField: PrimeField,
+        PC: PolynomialCommitment<TargetField, BaseField>,
+        FS: FiatShamirRng<TargetField, BaseField>,
+    {
+        let mut vk_hash_rng = FS::new();
+        vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
+        vk_hash_rng.squeeze_native_field_elements(1)
+    }
 
     use super::*;
     use crate::constraints::verifier_key::CircuitVerifyingKeyVar;
@@ -1515,7 +1522,7 @@ mod test {
 
             unpadded_input
         };
-        let unpadded_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
+        // let unpadded_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
 
         let is_recursion = MarlinRecursiveMode::RECURSION;
         let fs_rng = &mut FS::new();
