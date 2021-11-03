@@ -195,10 +195,6 @@ impl<F: PrimeField> ConditionalEqGadget<F> for Address {
     }
 }
 
-fn cond_select_helper(first: &Address, second: &Address, cond: bool) -> Address {
-    if cond { first.clone() } else { second.clone() }
-}
-
 impl<F: PrimeField> CondSelectGadget<F> for Address {
     fn conditionally_select<CS: ConstraintSystem<F>>(
         mut cs: CS,
@@ -207,7 +203,7 @@ impl<F: PrimeField> CondSelectGadget<F> for Address {
         second: &Self,
     ) -> Result<Self, SynthesisError> {
         if let Boolean::Constant(cond) = *cond {
-            Ok(cond_select_helper(first, second, cond))
+            Ok(if cond { first.clone() } else { second.clone() })
         } else {
             let result_val = cond.get_value().and_then(|c| {
                 if c {

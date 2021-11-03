@@ -16,27 +16,31 @@
 
 use super::*;
 
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub(super) fn evaluate_array_slice_get(&mut self, instruction: &Instruction) -> Result<()> {
+impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+    pub(super) fn evaluate_array_slice_get<CS: ConstraintSystem<F>>(
+        &mut self,
+        instruction: &Instruction,
+        cs: &mut CS,
+    ) -> Result<()> {
         let (destination, values) = if let Instruction::ArraySliceGet(QueryData { destination, values }) = instruction {
             (destination, values)
         } else {
             unimplemented!("unsupported instruction in evaluate_array_slice_get");
         };
 
-        let array = self.resolve(values.get(0).unwrap())?.into_owned();
+        let array = self.resolve(values.get(0).unwrap(), cs)?.into_owned();
         let array = array
             .extract_array()
             .map_err(|value| anyhow!("illegal value for array slice: {}", value))?;
-        let from = self.resolve(values.get(1).unwrap())?.into_owned();
+        let from = self.resolve(values.get(1).unwrap(), cs)?.into_owned();
         let from_resolved = from
             .extract_integer()
             .map_err(|value| anyhow!("invalid value for array slice from index: {}", value))?;
-        let to = self.resolve(values.get(2).unwrap())?.into_owned();
+        let to = self.resolve(values.get(2).unwrap(), cs)?.into_owned();
         let to_resolved = to
             .extract_integer()
             .map_err(|value| anyhow!("invalid value for array slice to index: {}", value))?;
-        let length = self.resolve(values.get(3).unwrap())?.into_owned();
+        let length = self.resolve(values.get(3).unwrap(), cs)?.into_owned();
         let length = length
             .extract_integer()
             .map_err(|value| anyhow!("invalid value for array slice length: {}", value))?
@@ -64,7 +68,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             }
             ConstrainedValue::Array(array[left..right].to_owned())
         } else {
-            let mut cs = self.cs();
+            let mut cs = self.cs(cs);
             {
                 let calc_len = operations::enforce_sub::<F, G, _>(
                     &mut cs,

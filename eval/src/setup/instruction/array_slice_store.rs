@@ -16,8 +16,12 @@
 
 use super::*;
 
-impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub(super) fn evaluate_array_slice_store(&mut self, instruction: &Instruction) -> Result<()> {
+impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
+    pub(super) fn evaluate_array_slice_store<CS: ConstraintSystem<F>>(
+        &mut self,
+        instruction: &Instruction,
+        cs: &mut CS,
+    ) -> Result<()> {
         let (destination, values) = if let Instruction::ArraySliceStore(QueryData { destination, values }) = instruction
         {
             (destination, values)
@@ -25,19 +29,19 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             unimplemented!("unsupported instruction in evaluate_array_slice_get");
         };
 
-        let array = self.resolve(&Value::Ref(*destination))?.into_owned();
+        let array = self.resolve(&Value::Ref(*destination), cs)?.into_owned();
         let array = array
             .extract_array()
             .map_err(|value| anyhow!("illegal target for array slice store: {}", value))?;
-        let from = self.resolve(values.get(0).unwrap())?.into_owned();
+        let from = self.resolve(values.get(0).unwrap(), cs)?.into_owned();
         let from_resolved = from
             .extract_integer()
             .map_err(|value| anyhow!("invalid value for array slice store from index: {}", value))?;
-        let to = self.resolve(values.get(1).unwrap())?.into_owned();
+        let to = self.resolve(values.get(1).unwrap(), cs)?.into_owned();
         let to_resolved = to
             .extract_integer()
             .map_err(|value| anyhow!("invalid value for array slice store to index: {}", value))?;
-        let target = self.resolve(values.get(2).unwrap())?.into_owned();
+        let target = self.resolve(values.get(2).unwrap(), cs)?.into_owned();
         let target_values = target
             .extract_array()
             .map_err(|value| anyhow!("illegal value for array slice store: {}", value))?;
