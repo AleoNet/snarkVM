@@ -116,8 +116,8 @@ impl<N: Network> Block<N> {
         }
     }
 
-    /// Initializes a new block from a given previous hash, header, and transactions list.
-    pub fn from(
+    /// Initializes a new block from a given previous hash, header, and transactions list, without validating the block.
+    pub fn from_unchecked(
         previous_block_hash: N::BlockHash,
         header: BlockHeader<N>,
         transactions: Transactions<N>,
@@ -134,6 +134,18 @@ impl<N: Network> Block<N> {
             header,
             transactions,
         };
+
+        Ok(block)
+    }
+
+    /// Initializes a new block from a given previous hash, header, and transactions list.
+    pub fn from(
+        previous_block_hash: N::BlockHash,
+        header: BlockHeader<N>,
+        transactions: Transactions<N>,
+    ) -> Result<Self> {
+        // Construct the block.
+        let block = Self::from_unchecked(previous_block_hash, header, transactions)?;
 
         // Ensure the block is valid.
         match block.is_valid() {
