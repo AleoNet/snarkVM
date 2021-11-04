@@ -132,6 +132,12 @@ impl<N: Network> MemoryPool<N> {
         Ok(())
     }
 
+    /// Removes a block from the memory pool.
+    pub fn remove_block(&mut self, block_hash: &N::BlockHash) -> Result<()> {
+        self.blocks.remove(block_hash);
+        Ok(())
+    }
+
     /// Clear a transaction (and associated state) from the memory pool.
     pub fn remove_transaction(&mut self, transaction: &Transaction<N>) {
         // This code section executes atomically.
