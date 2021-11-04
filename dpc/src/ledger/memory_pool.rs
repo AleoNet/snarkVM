@@ -132,8 +132,44 @@ impl<N: Network> MemoryPool<N> {
         Ok(())
     }
 
+    /// Clear a transaction (and associated state) from the memory pool.
+    pub fn clear_transaction(&mut self, transaction: &Transaction<N>) {
+        // This code section executes atomically.
+
+        let mut memory_pool = self.clone();
+
+        memory_pool.transactions.remove(&transaction.transaction_id());
+        for serial_number in &transaction.serial_numbers() {
+            memory_pool.serial_numbers.remove(serial_number);
+        }
+        for commitment in &transaction.commitments() {
+            memory_pool.commitments.remove(commitment);
+        }
+
+        *self = memory_pool;
+    }
+
+    /// Clear a list of transactions (and associated state) from the memory pool.
+    pub fn clear_transactions(&mut self, transactions: &Vec<Transaction<N>>) {
+        // This code section executes atomically.
+
+        let mut memory_pool = self.clone();
+
+        for transaction in transactions {
+            memory_pool.transactions.remove(&transaction.transaction_id());
+            for serial_number in &transaction.serial_numbers() {
+                memory_pool.serial_numbers.remove(serial_number);
+            }
+            for commitment in &transaction.commitments() {
+                memory_pool.commitments.remove(commitment);
+            }
+        }
+
+        *self = memory_pool;
+    }
+
     /// Clears all transactions (and associated state) from the memory pool.
-    pub fn clear_transactions(&mut self) {
+    pub fn clear_all_transactions(&mut self) {
         self.transactions = Default::default();
         self.serial_numbers = Default::default();
         self.commitments = Default::default();
