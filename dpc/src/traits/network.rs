@@ -44,7 +44,7 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{borrow::Borrow, cell::RefCell, ops::Deref, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, ops::Deref, rc::Rc, str::FromStr};
 
 pub trait Bech32Locator<F: Field>:
     From<F>
@@ -58,6 +58,7 @@ pub trait Bech32Locator<F: Field>:
     + Default
     + Debug
     + Display
+    + FromStr
     + ToBytes
     + FromBytes
     + Serialize
