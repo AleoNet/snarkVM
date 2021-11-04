@@ -182,7 +182,7 @@ impl<N: Network> Ledger<N> {
         self.add_next_block(&block)?;
 
         // On success, clear the memory pool of its transactions.
-        self.memory_pool.clear_transactions();
+        self.memory_pool.clear_all_transactions();
 
         Ok(())
     }
