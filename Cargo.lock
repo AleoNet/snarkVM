@@ -1674,6 +1674,7 @@ dependencies = [
  "base58",
  "bech32",
  "bincode",
+ "blake2",
  "chrono",
  "criterion",
  "derivative",
