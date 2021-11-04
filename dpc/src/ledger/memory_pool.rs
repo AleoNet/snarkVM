@@ -133,7 +133,7 @@ impl<N: Network> MemoryPool<N> {
     }
 
     /// Clear a transaction (and associated state) from the memory pool.
-    pub fn clear_transaction(&mut self, transaction: &Transaction<N>) {
+    pub fn remove_transaction(&mut self, transaction: &Transaction<N>) {
         // This code section executes atomically.
 
         let mut memory_pool = self.clone();
@@ -150,7 +150,7 @@ impl<N: Network> MemoryPool<N> {
     }
 
     /// Clear a list of transactions (and associated state) from the memory pool.
-    pub fn clear_transactions(&mut self, transactions: &Vec<Transaction<N>>) {
+    pub fn remove_transactions(&mut self, transactions: &Vec<Transaction<N>>) {
         // This code section executes atomically.
 
         let mut memory_pool = self.clone();
