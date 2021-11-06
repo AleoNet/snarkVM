@@ -95,6 +95,12 @@ impl<N: Network> FromBytes for Operation<N> {
                 let amount = FromBytes::read_le(&mut reader)?;
                 Ok(Self::Transfer(caller, recipient, amount))
             }
+            3 => {
+                let function_id = FromBytes::read_le(&mut reader)?;
+                let function_type = FromBytes::read_le(&mut reader)?;
+                let function_inputs = FromBytes::read_le(&mut reader)?;
+                Ok(Self::Evaluate(function_id, function_type, function_inputs))
+            }
             _ => unreachable!("Invalid operation during deserialization"),
         }
     }
@@ -115,7 +121,11 @@ impl<N: Network> ToBytes for Operation<N> {
                 recipient.write_le(&mut writer)?;
                 amount.write_le(&mut writer)
             }
-            Self::Evaluate(function_id, _, _) => function_id.write_le(&mut writer),
+            Self::Evaluate(function_id, function_type, function_inputs) => {
+                function_id.write_le(&mut writer)?;
+                function_type.write_le(&mut writer)?;
+                function_inputs.write_le(&mut writer)
+            }
         }
     }
 }
