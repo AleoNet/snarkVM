@@ -17,16 +17,29 @@
 use crate::{
     crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
     hash_to_curve::hash_to_curve,
-    EncryptionError, EncryptionScheme,
+    EncryptionError,
+    EncryptionScheme,
 };
 use rand::{CryptoRng, Rng};
 use snarkvm_curves::{
-    templates::twisted_edwards_extended::Affine as TEAffine, AffineCurve, ProjectiveCurve, TwistedEdwardsParameters,
+    templates::twisted_edwards_extended::Affine as TEAffine,
+    AffineCurve,
+    ProjectiveCurve,
+    TwistedEdwardsParameters,
 };
 use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
-    io::Result as IoResult, ops::Mul, serialize::*, FromBits, FromBytes, Read, SerializationError, ToBits, ToBytes,
-    UniformRand, Write,
+    io::Result as IoResult,
+    ops::Mul,
+    serialize::*,
+    FromBits,
+    FromBytes,
+    Read,
+    SerializationError,
+    ToBits,
+    ToBytes,
+    UniformRand,
+    Write,
 };
 
 use itertools::Itertools;
@@ -100,9 +113,9 @@ where
 {
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
-    type SharedSecret = TE::BaseField;
     type PublicKey = TEAffine<TE>;
     type Randomness = TE::ScalarField;
+    type SharedSecret = TE::BaseField;
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
