@@ -60,6 +60,13 @@ impl<N: Network> Address<N> {
         Self(N::account_encryption_scheme().generate_public_key(&*view_key))
     }
 
+    /// Derives the account address from a record ciphertext encryption public key.
+    pub(crate) fn from_record_encryption_public_key(
+        public_key: <N::RecordCiphertextScheme as EncryptionScheme>::PublicKey,
+    ) -> Self {
+        Self(public_key)
+    }
+
     /// Verifies a signature on a message signed by the account view key.
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
     pub fn verify_signature(&self, message: &[u8], signature: &N::AccountSignature) -> Result<bool, AccountError> {

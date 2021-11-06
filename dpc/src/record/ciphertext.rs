@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Network, Payload, Record, RecordError, ViewKey};
+use crate::{Address, Network, Payload, Record, RecordError, RecordViewKey, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
     fmt,
@@ -103,6 +103,37 @@ impl<N: Network> RecordCiphertext<N> {
 
         // Derive the record owner.
         let owner = Address::from_view_key(&recipient_view_key);
+
+        Ok(Record::from(
+            owner,
+            value,
+            payload,
+            program_id,
+            serial_number_nonce,
+            commitment_randomness,
+        )?)
+    }
+
+    /// Decrypt the record ciphertext using the view key of the recipient.
+    pub fn decrypt_with_record_view_key(&self, record_view_key: &RecordViewKey<N>) -> Result<Record<N>> {
+        // Decrypt the record ciphertext.
+        let plaintext = N::account_encryption_scheme().decrypt_with_shared_secret(
+            record_view_key.shared_secret(),
+            record_view_key.public_key(),
+            &self.ciphertext,
+        )?;
+
+        let mut cursor = Cursor::new(plaintext);
+
+        // Deserialize the plaintext bytes.
+        let value = u64::read_le(&mut cursor)?;
+        let payload = Payload::read_le(&mut cursor)?;
+        let program_id = N::ProgramID::read_le(&mut cursor)?;
+        let serial_number_nonce = N::SerialNumber::read_le(&mut cursor)?;
+        let commitment_randomness = N::CommitmentRandomness::read_le(&mut cursor)?;
+
+        // Derive the record owner.
+        let owner = Address::from_record_encryption_public_key(*record_view_key.public_key());
 
         Ok(Record::from(
             owner,
