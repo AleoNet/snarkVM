@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{record::*, testnet2::*, Account, AccountScheme, Network, Payload, Record, ViewKey};
+use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_utilities::{FromBytes, UniformRand};
 
 use rand::{Rng, SeedableRng};
@@ -49,6 +50,43 @@ fn test_record_ciphertext() {
         // Decrypt the record.
         let account_view_key = ViewKey::from_private_key(&account.private_key());
         let candidate_record = record_ciphertext.decrypt(&account_view_key).unwrap();
+        assert_eq!(expected_record, candidate_record);
+    }
+}
+
+#[test]
+fn test_record_view_key_decryption_ciphertext() {
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+
+    for _ in 0..ITERATIONS {
+        let account = Account::<Testnet2>::new(rng);
+
+        let value = rng.gen();
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
+        rng.fill(&mut payload);
+
+        let expected_record = Record::new_input(
+            account.address(),
+            value,
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            UniformRand::rand(rng),
+            UniformRand::rand(rng),
+        )
+        .unwrap();
+
+        // Encrypt the record.
+        let (record_ciphertext, randomness) = RecordCiphertext::encrypt(&expected_record, rng).unwrap();
+
+        // Craft the record view key.
+        let shared_secret =
+            <Testnet2 as Network>::RecordCiphertextScheme::to_shared_secret(&account.address(), &randomness);
+        let record_view_key = RecordViewKey::new(shared_secret, *account.address());
+
+        // Decrypt the record with the record view key.
+        let candidate_record = record_ciphertext
+            .decrypt_with_record_view_key(&record_view_key)
+            .unwrap();
         assert_eq!(expected_record, candidate_record);
     }
 }
