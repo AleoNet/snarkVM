@@ -61,15 +61,28 @@ impl<N: Network> FunctionInputs<N> {
 
 impl<N: Network> FromBytes for FunctionInputs<N> {
     #[inline]
-    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
-        unimplemented!()
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let caller = FromBytes::read_le(&mut reader)?;
+        let recipient = FromBytes::read_le(&mut reader)?;
+        let amount = FromBytes::read_le(&mut reader)?;
+        let record_payload = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self {
+            caller,
+            recipient,
+            amount,
+            record_payload,
+        })
     }
 }
 
 impl<N: Network> ToBytes for FunctionInputs<N> {
     #[inline]
-    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
-        unimplemented!()
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.caller.write_le(&mut writer)?;
+        self.recipient.write_le(&mut writer)?;
+        self.amount.write_le(&mut writer)?;
+        self.record_payload.write_le(&mut writer)
     }
 }
 
