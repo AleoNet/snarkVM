@@ -25,6 +25,7 @@ pub trait EncryptionScheme:
 {
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
+    type SharedSecret: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
 
@@ -39,6 +40,11 @@ pub trait EncryptionScheme:
 
     fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::Randomness;
 
+    fn to_shared_secret(
+        public_key: &<Self as EncryptionScheme>::PublicKey,
+        randomness: &Self::Randomness,
+    ) -> <Self as EncryptionScheme>::SharedSecret;
+
     fn encrypt(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
@@ -49,6 +55,13 @@ pub trait EncryptionScheme:
     fn decrypt(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
+        ciphertext: &[u8],
+    ) -> Result<Vec<u8>, EncryptionError>;
+
+    fn decrypt_with_shared_secret(
+        &self,
+        shared_secret: &<Self as EncryptionScheme>::SharedSecret,
+        public_key: &<Self as EncryptionScheme>::PublicKey,
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, EncryptionError>;
 

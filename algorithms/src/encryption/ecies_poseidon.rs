@@ -17,29 +17,16 @@
 use crate::{
     crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
     hash_to_curve::hash_to_curve,
-    EncryptionError,
-    EncryptionScheme,
+    EncryptionError, EncryptionScheme,
 };
 use rand::{CryptoRng, Rng};
 use snarkvm_curves::{
-    templates::twisted_edwards_extended::Affine as TEAffine,
-    AffineCurve,
-    ProjectiveCurve,
-    TwistedEdwardsParameters,
+    templates::twisted_edwards_extended::Affine as TEAffine, AffineCurve, ProjectiveCurve, TwistedEdwardsParameters,
 };
 use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
-    io::Result as IoResult,
-    ops::Mul,
-    serialize::*,
-    FromBits,
-    FromBytes,
-    Read,
-    SerializationError,
-    ToBits,
-    ToBytes,
-    UniformRand,
-    Write,
+    io::Result as IoResult, ops::Mul, serialize::*, FromBits, FromBytes, Read, SerializationError, ToBits, ToBytes,
+    UniformRand, Write,
 };
 
 use itertools::Itertools;
@@ -113,6 +100,7 @@ where
 {
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
+    type SharedSecret = TE::BaseField;
     type PublicKey = TEAffine<TE>;
     type Randomness = TE::ScalarField;
 
@@ -143,6 +131,21 @@ where
         Self::Randomness::rand(rng)
     }
 
+    fn to_shared_secret(
+        public_key: &<Self as EncryptionScheme>::PublicKey,
+        randomness: &Self::Randomness,
+    ) -> <Self as EncryptionScheme>::SharedSecret {
+        // Compute the ECDH value := public_key^r.
+        // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is on the curve.
+        let ecdh_value = public_key
+            .into_projective()
+            .mul(*randomness)
+            .into_affine()
+            .to_x_coordinate();
+
+        ecdh_value
+    }
+
     fn encrypt(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
@@ -159,11 +162,7 @@ where
 
         // Compute the ECDH value := public_key^r.
         // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is on the curve.
-        let ecdh_value = public_key
-            .into_projective()
-            .mul(*randomness)
-            .into_affine()
-            .to_x_coordinate();
+        let ecdh_value = Self::to_shared_secret(&public_key, &randomness);
 
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
@@ -246,12 +245,28 @@ where
             random_elem.unwrap()
         };
 
-        // Compute the ECDH value
+        // Compute the ECDH value.
         let ecdh_value = random_elem.into_projective().mul((*private_key).clone()).into_affine();
+
+        // Compute the public key.
+        let public_key = self.generate_public_key(&private_key);
+
+        // Decrypt the ciphertext with the shared secret.
+        self.decrypt_with_shared_secret(&ecdh_value.x, &public_key, ciphertext)
+    }
+
+    fn decrypt_with_shared_secret(
+        &self,
+        shared_secret: &<Self as EncryptionScheme>::SharedSecret,
+        public_key: &<Self as EncryptionScheme>::PublicKey,
+        ciphertext: &[u8],
+    ) -> Result<Vec<u8>, EncryptionError> {
+        let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
+        assert!(ciphertext.len() >= per_field_element_bytes);
 
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
+        sponge.absorb(&[*shared_secret]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
         // Squeeze one element for the commitment randomness.
         let commitment_randomness = sponge.squeeze_field_elements(1)[0];
@@ -259,7 +274,6 @@ where
         // Add a commitment to the public key.
         let public_key_commitment = {
             let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-            let public_key = self.generate_public_key(&private_key);
             sponge.absorb(&[commitment_randomness, public_key.x]);
             sponge.squeeze_field_elements(1)[0]
         };
