@@ -16,16 +16,20 @@
 
 use crate::{Address, AleoAmount, FunctionInputs, FunctionType, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, ToBytesSerializer};
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use std::io::{Read, Result as IoResult, Write};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+    str::FromStr,
+};
 
 type Caller<N> = Address<N>;
 type Recipient<N> = Address<N>;
 
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -126,6 +130,92 @@ impl<N: Network> ToBytes for Operation<N> {
                 function_type.write_le(&mut writer)?;
                 function_inputs.write_le(&mut writer)
             }
+        }
+    }
+}
+
+impl<N: Network> FromStr for Operation<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(operation: &str) -> Result<Self, Self::Err> {
+        let operation = serde_json::Value::from_str(operation)?;
+        let operation_id: u8 = serde_json::from_value(operation["id"].clone())?;
+
+        match operation_id {
+            0 => Ok(Self::Noop),
+            1 => {
+                let recipient = serde_json::from_value(operation["recipient"].clone())?;
+                let amount = serde_json::from_value(operation["amount"].clone())?;
+                Ok(Self::Coinbase(recipient, amount))
+            }
+            2 => {
+                let caller = serde_json::from_value(operation["caller"].clone())?;
+                let recipient = serde_json::from_value(operation["recipient"].clone())?;
+                let amount = serde_json::from_value(operation["amount"].clone())?;
+                Ok(Self::Transfer(caller, recipient, amount))
+            }
+            3 => {
+                let function_id = serde_json::from_value(operation["function_id"].clone())?;
+                let function_type = serde_json::from_value(operation["function_type"].clone())?;
+                let function_inputs = serde_json::from_value(operation["function_inputs"].clone())?;
+                Ok(Self::Evaluate(function_id, function_type, function_inputs))
+            }
+            _ => unreachable!(format!("Invalid operation id {}", operation_id)),
+        }
+    }
+}
+
+impl<N: Network> fmt::Display for Operation<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let operation = match self {
+            Self::Noop => {
+                serde_json::json!({
+                    "id": self.operation_id(),
+                })
+            }
+            Self::Coinbase(recipient, amount) => {
+                serde_json::json!({
+                    "id": self.operation_id(),
+                    "recipient": recipient,
+                    "amount": amount
+                })
+            }
+            Self::Transfer(caller, recipient, amount) => {
+                serde_json::json!({
+                    "id": self.operation_id(),
+                    "caller": caller,
+                    "recipient": recipient,
+                    "amount": amount
+                })
+            }
+            Self::Evaluate(function_id, function_type, function_inputs) => {
+                serde_json::json!({
+                    "id": self.operation_id(),
+                    "function_id": function_id,
+                    "function_type": function_type.id(),
+                    "function_inputs": function_inputs
+                })
+            }
+        };
+
+        write!(f, "{}", operation)
+    }
+}
+
+impl<N: Network> Serialize for Operation<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Operation<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => unimplemented!(), // TODO (raychu86): Handle variables sizes for FromBytesDeserializer.
         }
     }
 }
