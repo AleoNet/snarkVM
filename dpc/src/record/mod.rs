@@ -23,6 +23,9 @@ pub use payload::*;
 pub mod record;
 pub use record::*;
 
+pub mod record_view_key;
+pub use record_view_key::*;
+
 pub mod record_proof;
 pub use record_proof::*;
 
