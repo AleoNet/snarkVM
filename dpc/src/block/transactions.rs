@@ -16,7 +16,7 @@
 
 use crate::{AleoAmount, BlockError, Network, Transaction};
 use snarkvm_algorithms::merkle_tree::*;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
@@ -31,11 +31,6 @@ use std::{
 pub struct Transactions<N: Network>(Vec<Transaction<N>>);
 
 impl<N: Network> Transactions<N> {
-    /// Initializes an empty transactions list.
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
     /// Initializes from a given transactions list.
     pub fn from(transactions: &[Transaction<N>]) -> Result<Self> {
         let transactions = Self(transactions.to_vec());
@@ -109,18 +104,13 @@ impl<N: Network> Transactions<N> {
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
     pub fn to_transactions_root(&self) -> Result<N::TransactionsRoot> {
         // TODO (howardwu): Optimize this design.
-        match self.is_valid() {
-            true => {
-                let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
-                let root = *MerkleTree::<N::TransactionsRootParameters>::new(
-                    Arc::new(N::transactions_root_parameters().clone()),
-                    &transaction_ids,
-                )?
-                .root();
-                Ok(root.into())
-            }
-            false => Err(anyhow!("The transactions list is invalid")),
-        }
+        let transaction_ids = (*self).iter().map(Transaction::transaction_id).collect::<Vec<_>>();
+        let root = *MerkleTree::<N::TransactionsRootParameters>::new(
+            Arc::new(N::transactions_root_parameters().clone()),
+            &transaction_ids,
+        )?
+        .root();
+        Ok(root.into())
     }
 
     /// Returns an inclusion proof for the transactions tree.
@@ -141,42 +131,23 @@ impl<N: Network> Transactions<N> {
     /// Returns the total transaction fees, by summing the value balance from all positive transactions.
     /// Note - this amount does *not* include the block reward.
     pub fn to_transaction_fees(&self) -> Result<AleoAmount> {
-        match self.is_valid() {
-            true => self
-                .0
-                .iter()
-                .filter_map(|t| match t.value_balance().is_negative() {
-                    true => None,
-                    false => Some(t.value_balance()),
-                })
-                .reduce(|a, b| a.add(b))
-                .ok_or(anyhow!("Failed to compute the transaction fees for block")),
-            false => Err(anyhow!("The transactions list is invalid")),
-        }
+        self.0
+            .iter()
+            .filter_map(|t| match t.value_balance().is_negative() {
+                true => None,
+                false => Some(t.value_balance()),
+            })
+            .reduce(|a, b| a.add(b))
+            .ok_or(anyhow!("Failed to compute the transaction fees for block"))
     }
 
     /// Returns the net value balance, by summing the value balance from all transactions.
     pub fn to_net_value_balance(&self) -> Result<AleoAmount> {
-        match self.is_valid() {
-            true => Ok(self
-                .0
-                .iter()
-                .map(Transaction::value_balance)
-                .fold(AleoAmount::ZERO, |a, b| a.add(b))),
-            false => Err(anyhow!("The transactions list is invalid")),
-        }
-    }
-
-    /// Serializes the transactions into strings.
-    pub fn serialize_as_str(&self) -> Result<Vec<String>> {
-        match self.is_valid() {
-            true => self
-                .0
-                .iter()
-                .map(|transaction| -> Result<String> { Ok(hex::encode(to_bytes_le![transaction]?)) })
-                .collect::<Result<Vec<String>>>(),
-            false => Err(anyhow!("The transactions list is invalid").into()),
-        }
+        Ok(self
+            .0
+            .iter()
+            .map(Transaction::value_balance)
+            .fold(AleoAmount::ZERO, |a, b| a.add(b)))
     }
 }
 
@@ -216,7 +187,7 @@ impl<N: Network> ToBytes for Transactions<N> {
 
 impl<N: Network> Default for Transactions<N> {
     fn default() -> Self {
-        Self::new()
+        Self(vec![])
     }
 }
 
