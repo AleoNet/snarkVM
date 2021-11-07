@@ -39,7 +39,7 @@ fn dpc_testnet1_integration_test() {
 
     let mut ledger = Ledger::<Testnet1>::new().unwrap();
     assert_eq!(ledger.latest_block_height(), 0);
-    assert_eq!(ledger.latest_block_hash(), Testnet1::genesis_block().block_hash());
+    assert_eq!(ledger.latest_block_hash(), Testnet1::genesis_block().hash());
     assert_eq!(&ledger.latest_block().unwrap(), Testnet1::genesis_block());
     assert_eq!((*ledger.latest_block_transactions().unwrap()).len(), 1);
     assert_eq!(
@@ -49,7 +49,7 @@ fn dpc_testnet1_integration_test() {
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
-    let previous_hash = previous_block.block_hash();
+    let previous_hash = previous_block.hash();
     let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 

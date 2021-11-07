@@ -48,14 +48,14 @@ impl<N: Network> Blocks<N> {
 
         let mut blocks = Self {
             current_height: height,
-            current_hash: genesis_block.block_hash(),
+            current_hash: genesis_block.hash(),
             ledger_tree: LedgerTree::<N>::new()?,
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
         };
 
-        blocks.ledger_tree.add(&genesis_block.block_hash())?;
+        blocks.ledger_tree.add(&genesis_block.hash())?;
         blocks
             .previous_hashes
             .insert(height, genesis_block.previous_block_hash());
@@ -223,7 +223,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the block hash does not already exist.
-        let block_hash = block.block_hash();
+        let block_hash = block.hash();
         if self.contains_block_hash(&block_hash) {
             return Err(anyhow!("The given block hash already exists in the ledger"));
         }
@@ -290,7 +290,7 @@ impl<N: Network> Blocks<N> {
 
             blocks.current_height = height;
             blocks.current_hash = block_hash;
-            blocks.ledger_tree.add(&block.block_hash())?;
+            blocks.ledger_tree.add(&block.hash())?;
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());

@@ -226,7 +226,7 @@ mod tests {
 
         // Create a ledger proof for one commitment.
         let record_proof = ledger.to_ledger_proof(expected_commitments[0]).unwrap();
-        assert_eq!(record_proof.block_hash(), expected_block.block_hash());
+        assert_eq!(record_proof.block_hash(), expected_block.hash());
         assert_eq!(record_proof.previous_block_hash(), expected_block.previous_block_hash());
         assert_eq!(record_proof.block_header_root(), expected_block.header().to_header_root()?);
         // assert_eq!(record_proof.commitments_root(), expected_block.header().commitments_root());

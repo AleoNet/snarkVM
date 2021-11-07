@@ -228,7 +228,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the hash of this block.
-    pub fn block_hash(&self) -> N::BlockHash {
+    pub fn hash(&self) -> N::BlockHash {
         self.block_hash
     }
 

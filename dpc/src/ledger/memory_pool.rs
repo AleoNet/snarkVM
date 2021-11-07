@@ -67,7 +67,7 @@ impl<N: Network> MemoryPool<N> {
             return Err(anyhow!("Unconfirmed block {} is invalid", block.height()));
         }
         // Ensure the unconfirmed block is not already in the memory pool.
-        else if self.contains_block_hash(&block.block_hash()) {
+        else if self.contains_block_hash(&block.hash()) {
             return Err(anyhow!(
                 "Unconfirmed block {} already exists in the memory pool",
                 block.height()
@@ -75,7 +75,7 @@ impl<N: Network> MemoryPool<N> {
         }
         // Add the given block to the memory pool.
         else {
-            self.blocks.insert(block.block_hash(), block);
+            self.blocks.insert(block.hash(), block);
             Ok(())
         }
     }
