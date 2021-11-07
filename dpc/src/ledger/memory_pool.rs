@@ -99,16 +99,14 @@ impl<N: Network> MemoryPool<N> {
         }
 
         // Ensure the memory pool does not already contain a given serial numbers.
-        let serial_numbers = transaction.serial_numbers();
-        for serial_number in &serial_numbers {
+        for serial_number in transaction.serial_numbers() {
             if self.serial_numbers.contains(serial_number) {
                 return Err(anyhow!("Serial number already used in memory pool"));
             }
         }
 
         // Ensure the memory pool does not already contain a given commitments.
-        let commitments = transaction.commitments();
-        for commitment in &commitments {
+        for commitment in transaction.commitments() {
             if self.commitments.contains(commitment) {
                 return Err(anyhow!("Commitment already used in memory pool"));
             }
@@ -119,11 +117,11 @@ impl<N: Network> MemoryPool<N> {
             let mut memory_pool = self.clone();
 
             memory_pool.transactions.insert(transaction_id, transaction.clone());
-            for serial_number in serial_numbers {
-                memory_pool.serial_numbers.insert(serial_number);
+            for serial_number in transaction.serial_numbers() {
+                memory_pool.serial_numbers.insert(*serial_number);
             }
-            for commitment in commitments {
-                memory_pool.commitments.insert(commitment);
+            for commitment in transaction.commitments() {
+                memory_pool.commitments.insert(*commitment);
             }
 
             *self = memory_pool;
@@ -144,10 +142,10 @@ impl<N: Network> MemoryPool<N> {
         let mut memory_pool = self.clone();
 
         memory_pool.transactions.remove(&transaction.transaction_id());
-        for serial_number in &transaction.serial_numbers() {
+        for serial_number in transaction.serial_numbers() {
             memory_pool.serial_numbers.remove(serial_number);
         }
-        for commitment in &transaction.commitments() {
+        for commitment in transaction.commitments() {
             memory_pool.commitments.remove(commitment);
         }
 
@@ -162,10 +160,10 @@ impl<N: Network> MemoryPool<N> {
 
         for transaction in transactions {
             memory_pool.transactions.remove(&transaction.transaction_id());
-            for serial_number in &transaction.serial_numbers() {
+            for serial_number in transaction.serial_numbers() {
                 memory_pool.serial_numbers.remove(serial_number);
             }
-            for commitment in &transaction.commitments() {
+            for commitment in transaction.commitments() {
                 memory_pool.commitments.remove(commitment);
             }
         }

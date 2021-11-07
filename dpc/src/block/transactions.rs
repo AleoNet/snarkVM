@@ -112,27 +112,27 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the transaction IDs, by constructing a flattened list of transaction IDs from all transactions.
-    pub fn transaction_ids(&self) -> impl Iterator<Item = <N as Network>::TransactionID> + '_ {
+    pub fn transaction_ids(&self) -> impl Iterator<Item = N::TransactionID> + '_ {
         self.transactions.iter().map(Transaction::transaction_id)
     }
 
     /// Returns the transition IDs, by constructing a flattened list of transition IDs from all transactions.
-    pub fn transition_ids(&self) -> impl Iterator<Item = <N as Network>::TransitionID> + '_ {
+    pub fn transition_ids(&self) -> impl Iterator<Item = N::TransitionID> + '_ {
         self.transactions.iter().flat_map(Transaction::transition_ids)
     }
 
     /// Returns the ledger roots, by constructing a flattened list of ledger roots from all transactions.
-    pub fn ledger_roots(&self) -> impl Iterator<Item = <N as Network>::LedgerRoot> + '_ {
+    pub fn ledger_roots(&self) -> impl Iterator<Item = N::LedgerRoot> + '_ {
         self.transactions.iter().map(Transaction::ledger_root)
     }
 
     /// Returns the serial numbers, by constructing a flattened list of serial numbers from all transactions.
-    pub fn serial_numbers(&self) -> impl Iterator<Item = <N as Network>::SerialNumber> + '_ {
+    pub fn serial_numbers(&self) -> impl Iterator<Item = &N::SerialNumber> + '_ {
         self.transactions.iter().flat_map(Transaction::serial_numbers)
     }
 
     /// Returns the commitments, by constructing a flattened list of commitments from all transactions.
-    pub fn commitments(&self) -> impl Iterator<Item = <N as Network>::Commitment> + '_ {
+    pub fn commitments(&self) -> impl Iterator<Item = &N::Commitment> + '_ {
         self.transactions.iter().flat_map(Transaction::commitments)
     }
 

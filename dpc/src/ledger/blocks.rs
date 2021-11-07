@@ -183,20 +183,18 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
-        // TODO (howardwu): Optimize this operation.
         self.transactions
             .values()
             .flat_map(|transactions| (**transactions).iter().map(Transaction::serial_numbers))
-            .any(|serial_numbers| serial_numbers.contains(serial_number))
+            .any(|mut serial_numbers| serial_numbers.contains(serial_number))
     }
 
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
-        // TODO (howardwu): Optimize this operation.
         self.transactions
             .values()
             .flat_map(|transactions| (**transactions).iter().map(Transaction::commitments))
-            .any(|commitments| commitments.contains(commitment))
+            .any(|mut commitments| commitments.contains(commitment))
     }
 
     /// Adds the given block as the next block in the chain.
@@ -269,16 +267,14 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the ledger does not already contain a given serial numbers.
-        let serial_numbers = block.serial_numbers();
-        for serial_number in &serial_numbers {
+        for serial_number in block.serial_numbers() {
             if self.contains_serial_number(serial_number) {
                 return Err(anyhow!("Serial number already exists in the ledger"));
             }
         }
 
         // Ensure the ledger does not already contain a given commitments.
-        let commitments = block.commitments();
-        for commitment in &commitments {
+        for commitment in block.commitments() {
             if self.contains_commitment(commitment) {
                 return Err(anyhow!("Commitment already exists in the ledger"));
             }

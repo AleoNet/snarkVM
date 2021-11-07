@@ -264,13 +264,13 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the serial numbers in the block, by constructing a flattened list of serial numbers from all transactions.
-    pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
-        self.transactions.serial_numbers().collect()
+    pub fn serial_numbers(&self) -> impl Iterator<Item = &N::SerialNumber> + '_ {
+        self.transactions.serial_numbers()
     }
 
     /// Returns the commitments in the block, by constructing a flattened list of commitments from all transactions.
-    pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.transactions.commitments().collect()
+    pub fn commitments(&self) -> impl Iterator<Item = &N::Commitment> + '_ {
+        self.transactions.commitments()
     }
 
     /// Returns the coinbase transaction for the block.

@@ -129,7 +129,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().len() != num_transitions * N::NUM_INPUT_RECORDS {
+        if self.serial_numbers().count() != num_transitions * N::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -141,7 +141,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.commitments().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -153,7 +153,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
@@ -254,38 +254,26 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the transition IDs.
     #[inline]
-    pub fn transition_ids(&self) -> Vec<N::TransitionID> {
-        self.transitions.iter().map(Transition::transition_id).collect()
+    pub fn transition_ids(&self) -> impl Iterator<Item = N::TransitionID> + fmt::Debug + '_ {
+        self.transitions.iter().map(Transition::transition_id)
     }
 
     /// Returns the serial numbers.
     #[inline]
-    pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::serial_numbers)
-            .cloned()
-            .collect()
+    pub fn serial_numbers(&self) -> impl Iterator<Item = &N::SerialNumber> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::serial_numbers)
     }
 
     /// Returns the commitments.
     #[inline]
-    pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::commitments)
-            .cloned()
-            .collect()
+    pub fn commitments(&self) -> impl Iterator<Item = &N::Commitment> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::commitments)
     }
 
     /// Returns the output record ciphertexts.
     #[inline]
-    pub fn ciphertexts(&self) -> Vec<RecordCiphertext<N>> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::ciphertexts)
-            .cloned()
-            .collect()
+    pub fn ciphertexts(&self) -> impl Iterator<Item = &RecordCiphertext<N>> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::ciphertexts)
     }
 
     /// Returns the value balance.
@@ -311,11 +299,8 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the ciphertext IDs.
     #[inline]
-    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::to_ciphertext_ids)
-            .collect::<Result<Vec<_>>>()
+    pub fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::to_ciphertext_ids)
     }
 
     /// Returns records from the transaction belonging to the given account view key.
