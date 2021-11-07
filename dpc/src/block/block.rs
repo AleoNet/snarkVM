@@ -31,7 +31,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, 
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -350,40 +350,27 @@ impl<N: Network> FromStr for Block<N> {
     type Err = anyhow::Error;
 
     fn from_str(block: &str) -> Result<Self, Self::Err> {
-        let block = serde_json::Value::from_str(block)?;
-        let block_hash: N::BlockHash = serde_json::from_value(block["block_hash"].clone())?;
-
-        // Recover the block.
-        let block = Self::from(
-            serde_json::from_value(block["previous_block_hash"].clone())?,
-            serde_json::from_value(block["header"].clone())?,
-            serde_json::from_value(block["transactions"].clone())?,
-        )?;
-
-        // Ensure the block hash matches.
-        match block_hash == block.hash() {
-            true => Ok(block),
-            false => Err(BlockError::Message("Mismatching block hash, possible data corruption".to_string()).into()),
-        }
+        Ok(serde_json::from_str(&block)?)
     }
 }
 
 impl<N: Network> fmt::Display for Block<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let block = serde_json::json!({
-           "block_hash": self.block_hash,
-           "previous_block_hash": self.previous_block_hash,
-           "header": self.header,
-           "transactions": self.transactions,
-        });
-        write!(f, "{}", block)
+        write!(f, "{}", serde_json::to_string(self).map_err(serde::ser::Error::custom)?)
     }
 }
 
 impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
+            true => {
+                let mut block = serializer.serialize_struct("Block", 4)?;
+                block.serialize_field("block_hash", &self.block_hash)?;
+                block.serialize_field("previous_block_hash", &self.previous_block_hash)?;
+                block.serialize_field("header", &self.header)?;
+                block.serialize_field("transactions", &self.transactions)?;
+                block.end()
+            }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
@@ -392,7 +379,27 @@ impl<N: Network> Serialize for Block<N> {
 impl<'de, N: Network> Deserialize<'de> for Block<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            true => {
+                let block = serde_json::Value::deserialize(deserializer)?;
+                let block_hash: N::BlockHash =
+                    serde_json::from_value(block["block_hash"].clone()).map_err(de::Error::custom)?;
+
+                // Recover the block.
+                let block = Self::from(
+                    serde_json::from_value(block["previous_block_hash"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["header"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["transactions"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)?;
+
+                // Ensure the block hash matches.
+                match block_hash == block.hash() {
+                    true => Ok(block),
+                    false => {
+                        Err(anyhow!("Mismatching block hash, possible data corruption")).map_err(de::Error::custom)
+                    }
+                }
+            }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "block"),
         }
     }
@@ -472,27 +479,13 @@ mod tests {
         let expected_block = Block::<Testnet2>::new_genesis(account.address(), rng).unwrap();
 
         // Serialize
-        let expected_string = &expected_block.to_string();
+        let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(
-            4745,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .len(),
-            "Update me if serialization has changed"
-        );
-        assert_eq!(
-            expected_string,
-            &serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(4436, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(expected_block, Block::<Testnet2>::from_str(&expected_string).unwrap());
+        assert_eq!(expected_block, Block::<Testnet2>::from_str(&candidate_string).unwrap());
         assert_eq!(expected_block, serde_json::from_str(&candidate_string).unwrap());
     }
 

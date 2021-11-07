@@ -64,7 +64,7 @@ fn dpc_testnet2_integration_test() {
         assert_eq!(coinbase_transaction, recovered_transaction);
 
         // Check that coinbase record can be decrypted from the transaction.
-        let encrypted_record = &coinbase_transaction.ciphertexts()[0];
+        let encrypted_record = coinbase_transaction.ciphertexts().next().unwrap();
         let view_key = ViewKey::from_private_key(recipient.private_key());
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());

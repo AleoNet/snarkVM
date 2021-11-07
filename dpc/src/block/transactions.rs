@@ -20,7 +20,14 @@ use snarkvm_utilities::{has_duplicates, FromBytes, FromBytesDeserializer, ToByte
 
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de,
+    ser::{self, SerializeStruct},
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -203,24 +210,24 @@ impl<N: Network> FromStr for Transactions<N> {
     type Err = anyhow::Error;
 
     fn from_str(transactions: &str) -> Result<Self, Self::Err> {
-        let transactions = serde_json::Value::from_str(transactions)?;
-        let transactions: Vec<_> = serde_json::from_value(transactions)?;
-        Ok(Self::from(&transactions)?)
+        Ok(serde_json::from_str(&transactions)?)
     }
 }
 
 impl<N: Network> fmt::Display for Transactions<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let transactions =
-            serde_json::to_value(&self.transactions).map_err::<fmt::Error, _>(serde::ser::Error::custom)?;
-        write!(f, "{}", transactions)
+        write!(f, "{}", serde_json::to_string(self).map_err(ser::Error::custom)?)
     }
 }
 
 impl<N: Network> Serialize for Transactions<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
+            true => {
+                let mut transactions = serializer.serialize_struct("Transactions", 1)?;
+                transactions.serialize_field("transactions", &self.transactions)?;
+                transactions.end()
+            }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
@@ -229,7 +236,12 @@ impl<N: Network> Serialize for Transactions<N> {
 impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            true => {
+                let transactions = serde_json::Value::deserialize(deserializer)?;
+                let transactions: Vec<_> =
+                    serde_json::from_value(transactions["transactions"].clone()).map_err(de::Error::custom)?;
+                Ok(Self::from(&transactions).map_err(de::Error::custom)?)
+            }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transactions"),
         }
     }
@@ -261,29 +273,15 @@ mod tests {
         let expected_transactions = Testnet2::genesis_block().transactions().clone();
 
         // Serialize
-        let expected_string = &expected_transactions.to_string();
+        let expected_string = expected_transactions.to_string();
         let candidate_string = serde_json::to_string(&expected_transactions).unwrap();
-        assert_eq!(
-            2759,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .len(),
-            "Update me if serialization has changed"
-        );
-        assert_eq!(
-            expected_string,
-            &serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(2652, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(expected_string, candidate_string);
 
         // Deserialize
         assert_eq!(
             expected_transactions,
-            Transactions::<Testnet2>::from_str(&expected_string).unwrap()
+            Transactions::<Testnet2>::from_str(&candidate_string).unwrap()
         );
         assert_eq!(expected_transactions, serde_json::from_str(&candidate_string).unwrap());
     }
