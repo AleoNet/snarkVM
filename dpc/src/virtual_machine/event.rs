@@ -15,12 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Network, Operation};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, ToBytesSerializer};
 
-use serde::{Deserialize, Serialize};
-use std::io::{Read, Result as IoResult, Write};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+    str::FromStr,
+};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Event<N: Network> {
     /// Emits publicly-visible arbitrary data.
     Custom(Vec<u8>),
@@ -79,6 +83,78 @@ impl<N: Network> ToBytes for Event<N> {
                 record_view_key.write_le(&mut writer)
             }
             Self::Operation(operation) => operation.write_le(&mut writer),
+        }
+    }
+}
+
+impl<N: Network> FromStr for Event<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(event: &str) -> Result<Self, Self::Err> {
+        let event = serde_json::Value::from_str(event)?;
+        let event_id: u8 = serde_json::from_value(event["id"].clone())?;
+
+        match event_id {
+            0 => {
+                let bytes: String = serde_json::from_value(event["bytes"].clone())?;
+                Ok(Self::Custom(hex::decode(bytes)?))
+            }
+            1 => {
+                let index = serde_json::from_value(event["index"].clone())?;
+                let record_view_key: String = serde_json::from_value(event["record_view_key"].clone())?;
+                Ok(Self::RecordViewKey(index, hex::decode(record_view_key)?))
+            }
+            2 => {
+                let operation = serde_json::from_value(event["operation"].clone())?;
+                Ok(Self::Operation(operation))
+            }
+            _ => unreachable!(format!("Invalid event id {}", event_id)),
+        }
+    }
+}
+
+impl<N: Network> fmt::Display for Event<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let event = match self {
+            Self::Custom(bytes) => {
+                serde_json::json!({
+                    "id": self.id(),
+                    "bytes": hex::encode(bytes), // TODO (raychu86): Have serializer for bytes
+                })
+            }
+            Self::RecordViewKey(index, record_view_key) => {
+                serde_json::json!({
+                    "id": self.id(),
+                    "index": index,
+                    "record_view_key": hex::encode(record_view_key), // TODO (raychu86): Have serializer for record_view_key
+                })
+            }
+            Self::Operation(operation) => {
+                serde_json::json!({
+                    "id": self.id(),
+                    "operation": operation
+                })
+            }
+        };
+
+        write!(f, "{}", event)
+    }
+}
+
+impl<N: Network> Serialize for Event<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Event<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => unimplemented!(), // TODO (raychu86): Handle variables sizes for FromBytesDeserializer.
         }
     }
 }
