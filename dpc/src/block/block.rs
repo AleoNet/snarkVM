@@ -70,7 +70,7 @@ impl<N: Network> Block<N> {
             block_timestamp,
             difficulty_target,
             previous_ledger_root,
-            transactions.to_transactions_root()?,
+            transactions.transactions_root(),
             terminator,
             rng,
         )?;
@@ -86,7 +86,7 @@ impl<N: Network> Block<N> {
         println!("{} seconds", (Instant::now() - start).as_secs());
 
         // Compute the transactions root from the transactions.
-        let transactions_root = transactions.to_transactions_root()?;
+        let transactions_root = transactions.transactions_root();
 
         // Construct the genesis block header metadata.
         let block_height = 0u32;
@@ -172,17 +172,8 @@ impl<N: Network> Block<N> {
             return false;
         }
 
-        // Fetch the transactions root.
-        let transactions_root = match self.transactions.to_transactions_root() {
-            Ok(transactions_root) => transactions_root,
-            Err(error) => {
-                eprintln!("{}", error);
-                return false;
-            }
-        };
-
         // Ensure the transactions root matches the computed root from the transactions list.
-        if self.header.transactions_root() != transactions_root {
+        if self.header.transactions_root() != self.transactions.transactions_root() {
             eprintln!("Invalid block transactions does not match transactions root in header");
             return false;
         }
@@ -205,19 +196,11 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
-        match self.transactions.to_net_value_balance() {
-            Ok(net_value_balance) => {
-                let candidate_block_reward = AleoAmount::ZERO.sub(net_value_balance); // Make it a positive number.
-                if candidate_block_reward > block_reward {
-                    eprintln!("Block reward must be <= {}", block_reward);
-                    return false;
-                }
-            }
-            Err(error) => {
-                eprintln!("{}", error);
-                return false;
-            }
-        };
+        let candidate_block_reward = AleoAmount::ZERO.sub(self.transactions.net_value_balance()); // Make it a positive number.
+        if candidate_block_reward > block_reward {
+            eprintln!("Block reward must be <= {}", block_reward);
+            return false;
+        }
 
         true
     }

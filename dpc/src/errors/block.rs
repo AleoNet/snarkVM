@@ -31,6 +31,9 @@ pub enum BlockError {
     CRHError(#[from] snarkvm_algorithms::CRHError),
 
     #[error("{}", _0)]
+    MerkleError(#[from] snarkvm_algorithms::MerkleError),
+
+    #[error("{}", _0)]
     Message(String),
 }
 

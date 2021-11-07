@@ -71,7 +71,7 @@ fn dpc_testnet2_integration_test() {
         assert_eq!(decrypted_record.value() as i64, Block::<Testnet2>::block_reward(1).0);
     }
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
-    let transactions_root = transactions.to_transactions_root().unwrap();
+    let transactions_root = transactions.transactions_root();
 
     let previous_ledger_root = ledger.latest_ledger_root();
     let timestamp = Utc::now().timestamp();

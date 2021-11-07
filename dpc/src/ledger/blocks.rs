@@ -369,7 +369,7 @@ impl<N: Network> Blocks<N> {
         };
 
         // Compute the block header inclusion proof.
-        let transactions_root = transactions.to_transactions_root()?;
+        let transactions_root = transactions.transactions_root();
         let block_header_inclusion_proof = block_header.to_header_inclusion_proof(1, transactions_root)?;
         let block_header_root = block_header.to_header_root()?;
         let previous_block_hash = self.get_previous_block_hash(self.current_height)?;

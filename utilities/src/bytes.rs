@@ -91,6 +91,12 @@ impl<T: ToBytes> ToBytesSerializer<T> {
         }
         tuple.end()
     }
+
+    /// Serializes a dynamically-sized byte array.
+    pub fn try_serialize<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
+        let bytes = object.to_bytes_le().map_err(ser::Error::custom)?;
+        serializer.serialize_bytes(&bytes)
+    }
 }
 
 pub struct FromBytesDeserializer<T: FromBytes>(String, Option<usize>, PhantomData<T>);
@@ -108,12 +114,21 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     }
 
     ///
+    /// Deserializes a dynamically-sized byte array.
+    ///
+    pub fn try_deserialize<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
+        let mut buffer = Vec::with_capacity(32);
+        deserializer.deserialize_bytes(FromBytesVisitor::new(&mut buffer, name))?;
+        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
+    }
+
+    ///
     /// Attempts to deserialize a byte array (without length encoding).
     ///
     /// This method does *not* fail if `deserializer` is given an insufficient `size`,
     /// however this method fails if `FromBytes` fails to read the value of `T`.
     ///
-    pub fn try_deserialize<D: Deserializer<'de>>(
+    pub fn deserialize_extended<D: Deserializer<'de>>(
         deserializer: D,
         name: &str,
         size_a: usize,
@@ -154,6 +169,11 @@ impl<'a, 'de> Visitor<'de> for FromBytesVisitor<'a> {
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str(&format!("a valid {} ", self.1))
+    }
+
+    fn visit_borrowed_bytes<E: serde::de::Error>(self, bytes: &'de [u8]) -> Result<Self::Value, E> {
+        self.0.extend_from_slice(bytes);
+        Ok(())
     }
 
     fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<Self::Value, S::Error> {
