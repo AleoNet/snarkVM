@@ -152,7 +152,7 @@ impl<N: Network> ResponseBuilder<N> {
         // }
 
         // Compute the commitments.
-        let commitments = output_records
+        let commitments: Vec<_> = output_records
             .iter()
             .take(N::NUM_OUTPUT_RECORDS)
             .map(Record::commitment)

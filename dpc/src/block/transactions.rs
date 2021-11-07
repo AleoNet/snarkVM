@@ -211,7 +211,8 @@ impl<N: Network> FromStr for Transactions<N> {
 
 impl<N: Network> fmt::Display for Transactions<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let transactions = serde_json::to_value(&self.transactions).map_err(serde::ser::Error::custom)?;
+        let transactions =
+            serde_json::to_value(&self.transactions).map_err::<fmt::Error, _>(serde::ser::Error::custom)?;
         write!(f, "{}", transactions)
     }
 }

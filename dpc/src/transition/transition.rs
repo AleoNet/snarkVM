@@ -164,20 +164,20 @@ impl<N: Network> Transition<N> {
 
     /// Returns a reference to the serial numbers.
     #[inline]
-    pub fn serial_numbers(&self) -> &Vec<N::SerialNumber> {
-        &self.serial_numbers
+    pub fn serial_numbers(&self) -> impl Iterator<Item = &N::SerialNumber> + fmt::Debug + '_ {
+        self.serial_numbers.iter()
     }
 
     /// Returns a reference to the commitments.
     #[inline]
-    pub fn commitments(&self) -> &Vec<N::Commitment> {
-        &self.commitments
+    pub fn commitments(&self) -> impl Iterator<Item = &N::Commitment> + fmt::Debug + '_ {
+        self.commitments.iter()
     }
 
     /// Returns a reference to the ciphertexts.
     #[inline]
-    pub fn ciphertexts(&self) -> &Vec<RecordCiphertext<N>> {
-        &self.ciphertexts
+    pub fn ciphertexts(&self) -> impl Iterator<Item = &RecordCiphertext<N>> + fmt::Debug + '_ {
+        self.ciphertexts.iter()
     }
 
     /// Returns a reference to the value balance.
@@ -231,9 +231,9 @@ impl<N: Network> Transition<N> {
     ///
     #[inline]
     pub(crate) fn compute_transition_id(
-        serial_numbers: &Vec<N::SerialNumber>,
-        commitments: &Vec<N::Commitment>,
-        ciphertexts: &Vec<RecordCiphertext<N>>,
+        serial_numbers: &[N::SerialNumber],
+        commitments: &[N::Commitment],
+        ciphertexts: &[RecordCiphertext<N>],
         value_balance: AleoAmount,
     ) -> Result<N::TransitionID> {
         let leaves = Self::compute_transition_leaves(serial_numbers, commitments, ciphertexts, value_balance)?;
@@ -249,9 +249,9 @@ impl<N: Network> Transition<N> {
     ///
     #[inline]
     pub(crate) fn compute_transition_leaves(
-        serial_numbers: &Vec<N::SerialNumber>,
-        commitments: &Vec<N::Commitment>,
-        ciphertexts: &Vec<RecordCiphertext<N>>,
+        serial_numbers: &[N::SerialNumber],
+        commitments: &[N::Commitment],
+        ciphertexts: &[RecordCiphertext<N>],
         value_balance: AleoAmount,
     ) -> Result<Vec<Vec<u8>>> {
         // Construct the leaves of the transition tree.
