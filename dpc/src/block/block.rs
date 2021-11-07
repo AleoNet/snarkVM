@@ -17,6 +17,7 @@
 use crate::{
     Address,
     AleoAmount,
+    BlockError,
     BlockHeader,
     LedgerProof,
     LedgerTree,
@@ -74,7 +75,7 @@ impl<N: Network> Block<N> {
             rng,
         )?;
 
-        Self::from(previous_block_hash, header, transactions)
+        Ok(Self::from(previous_block_hash, header, transactions)?)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.
@@ -121,7 +122,7 @@ impl<N: Network> Block<N> {
         previous_block_hash: N::BlockHash,
         header: BlockHeader<N>,
         transactions: Transactions<N>,
-    ) -> Result<Self> {
+    ) -> Result<Self, BlockError> {
         // Compute the block hash.
         let block_hash = N::block_hash_crh()
             .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
@@ -138,7 +139,7 @@ impl<N: Network> Block<N> {
         // Ensure the block is valid.
         match block.is_valid() {
             true => Ok(block),
-            false => Err(anyhow!("Failed to initialize a block from given inputs")),
+            false => Err(anyhow!("Failed to initialize a block from given inputs").into()),
         }
     }
 
@@ -337,17 +338,23 @@ impl<N: Network> Block<N> {
 impl<N: Network> FromBytes for Block<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let block_hash: N::BlockHash = FromBytes::read_le(&mut reader)?;
         let previous_block_hash = FromBytes::read_le(&mut reader)?;
         let header = FromBytes::read_le(&mut reader)?;
         let transactions = FromBytes::read_le(&mut reader)?;
+        let block = Self::from(previous_block_hash, header, transactions)?;
 
-        Ok(Self::from(previous_block_hash, header, transactions).expect("Failed to deserialize a block"))
+        match block_hash == block.hash() {
+            true => Ok(block),
+            false => Err(BlockError::Message("Mismatching block hash, possible data corruption".to_string()).into()),
+        }
     }
 }
 
 impl<N: Network> ToBytes for Block<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.block_hash.write_le(&mut writer)?;
         self.previous_block_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
         self.transactions.write_le(&mut writer)

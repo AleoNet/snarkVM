@@ -6,10 +6,6 @@
 
 # Inputs: network, recipient address, amount, genesis filepath, transaction filepath
 
-RUST_BACKTRACE=1 cargo run --example genesis testnet1 aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah previous_hash.genesis block_header.genesis transaction_1.genesis || exit
+RUST_BACKTRACE=1 cargo run --example genesis testnet1 aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah block.genesis || exit
 
-mv previous_hash.genesis ../../src/testnet1/genesis || exit
-
-mv transaction_1.genesis ../../src/testnet1/genesis || exit
-
-mv block_header.genesis ../../src/testnet1/genesis || exit
+mv block.genesis ../../src/testnet1/resources || exit

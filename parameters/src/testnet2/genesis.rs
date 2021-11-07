@@ -16,15 +16,14 @@
 
 use crate::traits::Genesis;
 
-pub struct GenesisBlockHeader;
+pub struct GenesisBlock;
 
-impl Genesis for GenesisBlockHeader {
+impl Genesis for GenesisBlock {
     const CHECKSUM: &'static str = "";
-    const SIZE: u64 = 887;
+    const SIZE: u64 = 2102;
 
     fn load_bytes() -> Vec<u8> {
-        let buffer = include_bytes!("block_header.genesis");
-        buffer.to_vec()
+        include_bytes!("./resources/block.genesis").to_vec()
     }
 }
 
@@ -33,8 +32,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_genesis_block_header() {
-        let header = GenesisBlockHeader::load_bytes();
-        assert_eq!(GenesisBlockHeader::SIZE, header.len() as u64);
+    fn test_genesis_block() {
+        let block = GenesisBlock::load_bytes();
+        assert_eq!(GenesisBlock::SIZE, block.len() as u64);
     }
 }

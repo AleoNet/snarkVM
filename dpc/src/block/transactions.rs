@@ -45,19 +45,6 @@ impl<N: Network> Transactions<N> {
         }
     }
 
-    /// Adds the given transaction to the transactions list, if it is valid.
-    pub fn add(&mut self, transaction: Transaction<N>) -> Result<()> {
-        // Create a clone to test validity before appending.
-        let mut transactions = self.clone();
-        transactions.0.push(transaction);
-
-        // Ensure the given transaction is valid in the transactions list.
-        match transactions.is_valid() {
-            true => Ok(*self = transactions),
-            false => Err(anyhow!("Failed to initialize the transactions list")),
-        }
-    }
-
     /// Returns `true` if the transactions are well-formed.
     pub fn is_valid(&self) -> bool {
         // Ensure the transactions list is not empty.

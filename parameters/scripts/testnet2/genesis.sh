@@ -6,10 +6,6 @@
 
 # Inputs: network, recipient address, amount, genesis filepath, transaction filepath
 
-cargo run --release --example genesis testnet2 aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah previous_hash.genesis block_header.genesis transaction_1.genesis -- --nocapture || exit
+cargo run --release --example genesis testnet2 aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah block.genesis -- --nocapture || exit
 
-mv previous_hash.genesis ../../src/testnet2/genesis || exit
-
-mv transaction_1.genesis ../../src/testnet2/genesis || exit
-
-mv block_header.genesis ../../src/testnet2/genesis || exit
+mv block.genesis ../../src/testnet2/resources || exit
