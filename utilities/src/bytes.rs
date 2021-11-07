@@ -97,7 +97,7 @@ impl<T: ToBytes> ToBytesSerializer<T> {
     ///
     /// Serializes a dynamically-sized object as a byte array with length encoding.
     ///
-    pub fn serialize_with_size<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize_with_size_encoding<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
         let bytes = object.to_bytes_le().map_err(ser::Error::custom)?;
         serializer.serialize_bytes(&bytes)
     }
@@ -120,7 +120,7 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     ///
     /// Deserializes a dynamically-sized byte array.
     ///
-    pub fn try_deserialize<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
+    pub fn deserialize_with_size_encoding<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
         let mut buffer = Vec::with_capacity(32);
         deserializer.deserialize_bytes(FromBytesVisitor::new(&mut buffer, name))?;
         FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)

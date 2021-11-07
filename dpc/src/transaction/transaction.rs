@@ -433,7 +433,7 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
-            false => ToBytesSerializer::serialize_with_size(self, serializer),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
@@ -442,7 +442,7 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::try_deserialize(deserializer, "transaction"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction"),
         }
     }
 }
