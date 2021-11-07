@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Network, Operation};
-use snarkvm_utilities::{FromBytes, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -145,7 +145,7 @@ impl<N: Network> Serialize for Event<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
-            false => ToBytesSerializer::serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size(self, serializer),
         }
     }
 }
@@ -154,7 +154,50 @@ impl<'de, N: Network> Deserialize<'de> for Event<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => unimplemented!(), // TODO (raychu86): Handle variables sizes for FromBytesDeserializer.
+            false => FromBytesDeserializer::<Self>::try_deserialize(deserializer, "event"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+
+    #[test]
+    fn test_serde_json() {
+        let expected_event = Event::<Testnet2>::Operation(Operation::Noop);
+
+        // Serialize
+        let expected_string = &expected_event.to_string();
+        let candidate_string = serde_json::to_string(&expected_event).unwrap();
+        assert_eq!(45, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_event, Event::from_str(&expected_string).unwrap());
+        assert_eq!(expected_event, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let expected_event = Event::<Testnet2>::Operation(Operation::Noop);
+
+        // Serialize
+        let expected_bytes = expected_event.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&expected_event).unwrap();
+        assert_eq!(3, expected_bytes.len(), "Update me if serialization has changed");
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(expected_event, Event::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_event, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }

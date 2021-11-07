@@ -27,18 +27,20 @@ use crate::{
     Transactions,
 };
 use snarkvm_algorithms::CRH;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
+    fmt,
     io::{Read, Result as IoResult, Write},
+    str::FromStr,
     sync::atomic::AtomicBool,
     time::Instant,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block<N: Network> {
     /// Hash of this block.
     block_hash: N::BlockHash,
@@ -344,6 +346,58 @@ impl<N: Network> ToBytes for Block<N> {
     }
 }
 
+impl<N: Network> FromStr for Block<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(block: &str) -> Result<Self, Self::Err> {
+        let block = serde_json::Value::from_str(block)?;
+        let block_hash: N::BlockHash = serde_json::from_value(block["block_hash"].clone())?;
+
+        // Recover the block.
+        let block = Self::from(
+            serde_json::from_value(block["previous_block_hash"].clone())?,
+            serde_json::from_value(block["header"].clone())?,
+            serde_json::from_value(block["transactions"].clone())?,
+        )?;
+
+        // Ensure the block hash matches.
+        match block_hash == block.hash() {
+            true => Ok(block),
+            false => Err(BlockError::Message("Mismatching block hash, possible data corruption".to_string()).into()),
+        }
+    }
+}
+
+impl<N: Network> fmt::Display for Block<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let block = serde_json::json!({
+           "block_hash": self.block_hash,
+           "previous_block_hash": self.previous_block_hash,
+           "header": self.header,
+           "transactions": self.transactions,
+        });
+        write!(f, "{}", block)
+    }
+}
+
+impl<N: Network> Serialize for Block<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize_with_size(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Block<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::try_deserialize(deserializer, "block"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -409,6 +463,55 @@ mod tests {
             let block_num: u32 = rng.gen_range(second_halving..u32::MAX);
             assert_eq!(Block::<Testnet2>::block_reward(block_num).0, block_reward);
         }
+    }
+
+    #[test]
+    fn test_block_serde_json() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+        let expected_block = Block::<Testnet2>::new_genesis(account.address(), rng).unwrap();
+
+        // Serialize
+        let expected_string = &expected_block.to_string();
+        let candidate_string = serde_json::to_string(&expected_block).unwrap();
+        assert_eq!(
+            4745,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .len(),
+            "Update me if serialization has changed"
+        );
+        assert_eq!(
+            expected_string,
+            &serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(expected_block, Block::<Testnet2>::from_str(&expected_string).unwrap());
+        assert_eq!(expected_block, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_block_bincode() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+        let expected_block = Block::<Testnet2>::new_genesis(account.address(), rng).unwrap();
+
+        // Serialize
+        let expected_bytes = expected_block.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&expected_block).unwrap();
+        assert_eq!(2102, expected_bytes.len(), "Update me if serialization has changed");
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(expected_block, Block::<Testnet2>::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_block, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 
     /// A bech32-encoded representation of the block hash.

@@ -16,7 +16,7 @@
 
 use crate::{Address, AleoAmount, FunctionInputs, FunctionType, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::Result;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -206,7 +206,7 @@ impl<N: Network> Serialize for Operation<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
-            false => ToBytesSerializer::serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size(self, serializer),
         }
     }
 }
@@ -215,7 +215,7 @@ impl<'de, N: Network> Deserialize<'de> for Operation<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => unimplemented!(), // TODO (raychu86): Handle variables sizes for FromBytesDeserializer.
+            false => FromBytesDeserializer::<Self>::try_deserialize(deserializer, "operation"),
         }
     }
 }

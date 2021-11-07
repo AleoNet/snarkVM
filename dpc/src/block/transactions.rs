@@ -220,7 +220,7 @@ impl<N: Network> Serialize for Transactions<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
-            false => ToBytesSerializer::try_serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size(self, serializer),
         }
     }
 }
@@ -253,5 +253,59 @@ mod tests {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
         // Duplicate the transaction, and ensure it errors.
         assert!(Transactions::from(&[transaction.clone(), transaction]).is_err());
+    }
+
+    #[test]
+    fn test_transactions_serde_json() {
+        let expected_transactions = Testnet2::genesis_block().transactions().clone();
+
+        // Serialize
+        let expected_string = &expected_transactions.to_string();
+        let candidate_string = serde_json::to_string(&expected_transactions).unwrap();
+        assert_eq!(
+            2759,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .len(),
+            "Update me if serialization has changed"
+        );
+        assert_eq!(
+            expected_string,
+            &serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(
+            expected_transactions,
+            Transactions::<Testnet2>::from_str(&expected_string).unwrap()
+        );
+        assert_eq!(expected_transactions, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_transactions_bincode() {
+        let expected_transactions = Testnet2::genesis_block().transactions().clone();
+
+        // Serialize
+        let expected_bytes = expected_transactions.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&expected_transactions).unwrap();
+        assert_eq!(1151, expected_bytes.len(), "Update me if serialization has changed");
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(
+            expected_transactions,
+            Transactions::<Testnet2>::read_le(&expected_bytes[..]).unwrap()
+        );
+        assert_eq!(
+            expected_transactions,
+            bincode::deserialize(&candidate_bytes[..]).unwrap()
+        );
     }
 }

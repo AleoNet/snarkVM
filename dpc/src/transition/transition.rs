@@ -348,8 +348,8 @@ impl<N: Network> FromStr for Transition<N> {
             true => Ok(transition),
             false => Err(anyhow!(
                 "Incorrect transition ID during deserialization. Expected {}, found {}",
+                transition.transition_id(),
                 transition_id,
-                transition.transition_id()
             )),
         }
     }
@@ -406,14 +406,12 @@ mod tests {
     fn test_size() {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
         let transition = transaction.transitions().first().unwrap().clone();
-        assert_eq!(
-            Testnet2::TRANSITION_SIZE_IN_BYTES,
-            transition.to_bytes_le().unwrap().len(),
-        );
+        let transition_bytes = transition.to_bytes_le().unwrap();
+        assert_eq!(Testnet2::TRANSITION_SIZE_IN_BYTES, transition_bytes.len(),);
     }
 
     #[test]
-    fn test_serde_json() {
+    fn test_transition_serde_json() {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
         let expected_transition = transaction.transitions().first().unwrap().clone();
 
@@ -435,11 +433,9 @@ mod tests {
     }
 
     #[test]
-    fn test_bincode() {
+    fn test_transition_bincode() {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
         let expected_transition = transaction.transitions().first().unwrap().clone();
-
-        println!("{}", serde_json::to_string(&expected_transition).unwrap());
 
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         assert_eq!(

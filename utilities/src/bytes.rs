@@ -82,7 +82,9 @@ pub trait FromBytes {
 pub struct ToBytesSerializer<T: ToBytes>(String, Option<usize>, PhantomData<T>);
 
 impl<T: ToBytes> ToBytesSerializer<T> {
-    /// Serializes a static-sized byte array (without length encoding).
+    ///
+    /// Serializes a static-sized object as a byte array (without length encoding).
+    ///
     pub fn serialize<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
         let bytes = object.to_bytes_le().map_err(ser::Error::custom)?;
         let mut tuple = serializer.serialize_tuple(bytes.len())?;
@@ -92,8 +94,10 @@ impl<T: ToBytes> ToBytesSerializer<T> {
         tuple.end()
     }
 
-    /// Serializes a dynamically-sized byte array.
-    pub fn try_serialize<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
+    ///
+    /// Serializes a dynamically-sized object as a byte array with length encoding.
+    ///
+    pub fn serialize_with_size<S: Serializer>(object: &T, serializer: S) -> Result<S::Ok, S::Error> {
         let bytes = object.to_bytes_le().map_err(ser::Error::custom)?;
         serializer.serialize_bytes(&bytes)
     }

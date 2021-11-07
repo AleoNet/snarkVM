@@ -33,16 +33,22 @@ use snarkvm_utilities::{
     has_duplicates,
     io::{Read, Result as IoResult, Write},
     FromBytes,
+    FromBytesDeserializer,
     ToBytes,
+    ToBytesSerializer,
 };
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
 
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -383,6 +389,64 @@ impl<N: Network> ToBytes for Transaction<N> {
     }
 }
 
+impl<N: Network> FromStr for Transaction<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(transaction: &str) -> Result<Self, Self::Err> {
+        let transaction = serde_json::Value::from_str(transaction)?;
+        let transaction_id: N::TransactionID = serde_json::from_value(transaction["transaction_id"].clone())?;
+
+        // Recover the transaction.
+        let transaction = Self::from(
+            serde_json::from_value(transaction["inner_circuit_id"].clone())?,
+            serde_json::from_value(transaction["ledger_root"].clone())?,
+            serde_json::from_value(transaction["transitions"].clone())?,
+            serde_json::from_value(transaction["events"].clone())?,
+        )?;
+
+        // Ensure the transaction ID matches.
+        match transaction_id == transaction.transaction_id() {
+            true => Ok(transaction),
+            false => Err(anyhow!(
+                "Incorrect transaction ID during deserialization. Expected {}, found {}",
+                transaction.transaction_id(),
+                transaction_id
+            )),
+        }
+    }
+}
+
+impl<N: Network> fmt::Display for Transaction<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let transaction = serde_json::json!({
+           "transaction_id": self.transaction_id,
+           "inner_circuit_id": self.inner_circuit_id,
+           "ledger_root": self.ledger_root,
+           "transitions": self.transitions,
+           "events": self.events,
+        });
+        write!(f, "{}", transaction)
+    }
+}
+
+impl<N: Network> Serialize for Transaction<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize_with_size(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::try_deserialize(deserializer, "transaction"),
+        }
+    }
+}
+
 impl<N: Network> Hash for Transaction<N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -424,5 +488,67 @@ mod tests {
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
         assert_eq!(expected_record.program_id(), candidate_record.program_id());
+    }
+
+    #[test]
+    fn test_transaction_serde_json() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft a transaction with 1 coinbase record.
+        let expected_transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+
+        // Serialize
+        let expected_string = &expected_transaction.to_string();
+        let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
+        assert_eq!(
+            2661,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .len(),
+            "Update me if serialization has changed"
+        );
+        assert_eq!(
+            expected_string,
+            &serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(
+            expected_transaction,
+            Transaction::<Testnet2>::from_str(&expected_string).unwrap()
+        );
+        assert_eq!(expected_transaction, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_transaction_bincode() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft a transaction with 1 coinbase record.
+        let expected_transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+
+        // Serialize
+        let expected_bytes = expected_transaction.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
+        assert_eq!(1149, expected_bytes.len(), "Update me if serialization has changed");
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(
+            expected_transaction,
+            Transaction::<Testnet2>::read_le(&expected_bytes[..]).unwrap()
+        );
+        assert_eq!(
+            expected_transaction,
+            bincode::deserialize(&candidate_bytes[..]).unwrap()
+        );
     }
 }

@@ -94,7 +94,7 @@ pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq +
 }
 
 #[rustfmt::skip]
-pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + Serialize + Send + Sync {
+pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync {
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
