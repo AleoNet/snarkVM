@@ -356,7 +356,11 @@ impl<N: Network> FromStr for Block<N> {
 
 impl<N: Network> fmt::Display for Block<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err(serde::ser::Error::custom)?)
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
+        )
     }
 }
 
