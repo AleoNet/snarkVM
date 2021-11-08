@@ -28,7 +28,14 @@ use snarkvm_utilities::{
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{de, ser::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de,
+    ser::{Error, SerializeStruct},
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
 use std::{
     mem::size_of,
     sync::{atomic::AtomicBool, Arc},
@@ -345,33 +352,31 @@ impl<N: Network> FromStr for BlockHeader<N> {
     type Err = anyhow::Error;
 
     fn from_str(header: &str) -> Result<Self, Self::Err> {
-        let header = serde_json::Value::from_str(header)?;
-
-        Ok(Self {
-            previous_ledger_root: serde_json::from_value(header["previous_ledger_root"].clone())?,
-            transactions_root: serde_json::from_value(header["transactions_root"].clone())?,
-            metadata: serde_json::from_value(header["metadata"].clone())?,
-            proof: serde_json::from_value(header["proof"].clone())?,
-        })
+        Ok(serde_json::from_str(&header)?)
     }
 }
 
 impl<N: Network> fmt::Display for BlockHeader<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let header = serde_json::json!({
-            "previous_ledger_root": self.previous_ledger_root,
-            "transactions_root": self.transactions_root,
-            "metadata": self.metadata,
-            "proof": self.proof,
-        });
-        write!(f, "{}", header)
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
+        )
     }
 }
 
 impl<N: Network> Serialize for BlockHeader<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
+            true => {
+                let mut header = serializer.serialize_struct("BlockHeader", 4)?;
+                header.serialize_field("previous_ledger_root", &self.previous_ledger_root)?;
+                header.serialize_field("transactions_root", &self.transactions_root)?;
+                header.serialize_field("metadata", &self.metadata)?;
+                header.serialize_field("proof", &self.proof)?;
+                header.end()
+            }
             false => ToBytesSerializer::serialize(self, serializer),
         }
     }
@@ -380,7 +385,17 @@ impl<N: Network> Serialize for BlockHeader<N> {
 impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            true => {
+                let header = serde_json::Value::deserialize(deserializer)?;
+                Ok(Self {
+                    previous_ledger_root: serde_json::from_value(header["previous_ledger_root"].clone())
+                        .map_err(de::Error::custom)?,
+                    transactions_root: serde_json::from_value(header["transactions_root"].clone())
+                        .map_err(de::Error::custom)?,
+                    metadata: serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
+                    proof: serde_json::from_value(header["proof"].clone()).map_err(de::Error::custom)?,
+                })
+            }
             false => FromBytesDeserializer::<Self>::deserialize(deserializer, "block header", Self::size()),
         }
     }
@@ -396,31 +411,23 @@ mod tests {
     use rand::{rngs::ThreadRng, thread_rng};
 
     #[test]
-    fn test_serde_json() {
+    fn test_block_header_serde_json() {
         let block_header = Testnet2::genesis_block().header().to_owned();
 
         // Serialize
-        let expected_string = &block_header.to_string();
+        let expected_string = block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1620, candidate_string.len(), "Update me if serialization has changed");
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(1593, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(block_header, BlockHeader::from_str(&expected_string).unwrap());
+        assert_eq!(block_header, BlockHeader::from_str(&candidate_string).unwrap());
         assert_eq!(block_header, serde_json::from_str(&candidate_string).unwrap());
     }
 
     #[test]
-    fn test_bincode() {
+    fn test_block_header_bincode() {
         let block_header = Testnet2::genesis_block().header().to_owned();
-
-        println!("{}", serde_json::to_string(&block_header).unwrap());
 
         let expected_bytes = block_header.to_bytes_le().unwrap();
         assert_eq!(&expected_bytes[..], &bincode::serialize(&block_header).unwrap()[..]);

@@ -103,7 +103,7 @@ impl<N: Network> Ledger<N> {
     /// Adds the given orphan block, if it is well-formed and does not already exist.
     pub fn add_orphan_block(&mut self, block: &Block<N>) -> Result<()> {
         // Ensure the block does not exist in canon.
-        if self.canon_blocks.contains_block_hash(&block.block_hash()) {
+        if self.canon_blocks.contains_block_hash(&block.hash()) {
             return Err(anyhow!("Orphan block already exists in canon chain"));
         }
 
@@ -121,14 +121,14 @@ impl<N: Network> Ledger<N> {
         }
 
         // Ensure the transaction does not contain serial numbers already in the canon chain.
-        for serial_number in &transaction.serial_numbers() {
+        for serial_number in transaction.serial_numbers() {
             if self.canon_blocks.contains_serial_number(serial_number) {
                 return Err(anyhow!("Transaction contains a serial number already in existence"));
             }
         }
 
         // Ensure the transaction does not contain commitments already in the canon chain.
-        for commitment in &transaction.commitments() {
+        for commitment in transaction.commitments() {
             if self.canon_blocks.contains_commitment(commitment) {
                 return Err(anyhow!("Transaction contains a commitment already in existence"));
             }

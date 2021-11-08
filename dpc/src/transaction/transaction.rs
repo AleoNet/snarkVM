@@ -33,16 +33,22 @@ use snarkvm_utilities::{
     has_duplicates,
     io::{Read, Result as IoResult, Write},
     FromBytes,
+    FromBytesDeserializer,
     ToBytes,
+    ToBytesSerializer,
 };
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
 
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative)]
 #[derivative(
     Clone(bound = "N: Network"),
     Debug(bound = "N: Network"),
@@ -123,7 +129,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().len() != num_transitions * N::NUM_INPUT_RECORDS {
+        if self.serial_numbers().count() != num_transitions * N::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -135,7 +141,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.commitments().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -147,7 +153,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().len() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
@@ -248,38 +254,26 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the transition IDs.
     #[inline]
-    pub fn transition_ids(&self) -> Vec<N::TransitionID> {
-        self.transitions.iter().map(Transition::transition_id).collect()
+    pub fn transition_ids(&self) -> impl Iterator<Item = N::TransitionID> + fmt::Debug + '_ {
+        self.transitions.iter().map(Transition::transition_id)
     }
 
     /// Returns the serial numbers.
     #[inline]
-    pub fn serial_numbers(&self) -> Vec<N::SerialNumber> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::serial_numbers)
-            .cloned()
-            .collect()
+    pub fn serial_numbers(&self) -> impl Iterator<Item = &N::SerialNumber> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::serial_numbers)
     }
 
     /// Returns the commitments.
     #[inline]
-    pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::commitments)
-            .cloned()
-            .collect()
+    pub fn commitments(&self) -> impl Iterator<Item = &N::Commitment> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::commitments)
     }
 
     /// Returns the output record ciphertexts.
     #[inline]
-    pub fn ciphertexts(&self) -> Vec<RecordCiphertext<N>> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::ciphertexts)
-            .cloned()
-            .collect()
+    pub fn ciphertexts(&self) -> impl Iterator<Item = &RecordCiphertext<N>> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::ciphertexts)
     }
 
     /// Returns the value balance.
@@ -305,11 +299,8 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the ciphertext IDs.
     #[inline]
-    pub fn to_ciphertext_ids(&self) -> Result<Vec<N::CiphertextID>> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::to_ciphertext_ids)
-            .collect::<Result<Vec<_>>>()
+    pub fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::to_ciphertext_ids)
     }
 
     /// Returns records from the transaction belonging to the given account view key.
@@ -383,6 +374,74 @@ impl<N: Network> ToBytes for Transaction<N> {
     }
 }
 
+impl<N: Network> FromStr for Transaction<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(transaction: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(&transaction)?)
+    }
+}
+
+impl<N: Network> fmt::Display for Transaction<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
+        )
+    }
+}
+
+impl<N: Network> Serialize for Transaction<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => {
+                let mut transaction = serializer.serialize_struct("Transaction", 5)?;
+                transaction.serialize_field("transaction_id", &self.transaction_id)?;
+                transaction.serialize_field("inner_circuit_id", &self.inner_circuit_id)?;
+                transaction.serialize_field("ledger_root", &self.ledger_root)?;
+                transaction.serialize_field("transitions", &self.transitions)?;
+                transaction.serialize_field("events", &self.events)?;
+                transaction.end()
+            }
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let transaction = serde_json::Value::deserialize(deserializer)?;
+                let transaction_id =
+                    N::TransactionID::deserialize(transaction["transaction_id"].clone()).map_err(de::Error::custom)?;
+
+                // Recover the transaction.
+                let transaction = Self::from(
+                    serde_json::from_value(transaction["inner_circuit_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transaction["ledger_root"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transaction["transitions"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transaction["events"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)?;
+
+                // Ensure the transaction ID matches.
+                match transaction_id == transaction.transaction_id() {
+                    true => Ok(transaction),
+                    false => Err(anyhow!(
+                        "Incorrect transaction ID during deserialization. Expected {}, found {}",
+                        transaction.transaction_id(),
+                        transaction_id
+                    ))
+                    .map_err(de::Error::custom),
+                }
+            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction"),
+        }
+    }
+}
+
 impl<N: Network> Hash for Transaction<N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -424,5 +483,49 @@ mod tests {
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
         assert_eq!(expected_record.program_id(), candidate_record.program_id());
+    }
+
+    #[test]
+    fn test_transaction_serde_json() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft a transaction with 1 coinbase record.
+        let expected_transaction =
+            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+
+        // Serialize
+        let expected_string = expected_transaction.to_string();
+        let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
+        assert_eq!(2625, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(expected_string, candidate_string);
+
+        // Deserialize
+        assert_eq!(expected_transaction, Transaction::from_str(&candidate_string).unwrap());
+        assert_eq!(expected_transaction, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_transaction_bincode() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft a transaction with 1 coinbase record.
+        let expected_transaction =
+            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+
+        // Serialize
+        let expected_bytes = expected_transaction.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
+        assert_eq!(1149, expected_bytes.len(), "Update me if serialization has changed");
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(expected_transaction, Transaction::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(
+            expected_transaction,
+            bincode::deserialize(&candidate_bytes[..]).unwrap()
+        );
     }
 }

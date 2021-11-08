@@ -202,7 +202,7 @@ impl<'de, E: PairingEngine> Deserialize<'de> for Proof<E> {
                 let s: String = Deserialize::deserialize(deserializer)?;
                 FromStr::from_str(&s).map_err(de::Error::custom)
             }
-            false => FromBytesDeserializer::<Self>::try_deserialize(
+            false => FromBytesDeserializer::<Self>::deserialize_extended(
                 deserializer,
                 "proof",
                 Self::compressed_proof_size().map_err(de::Error::custom)?,

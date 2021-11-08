@@ -94,7 +94,7 @@ pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq +
 }
 
 #[rustfmt::skip]
-pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + Serialize + Send + Sync {
+pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync {
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
@@ -146,6 +146,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_TREE_DEPTH: usize;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64;
+    const ALEO_MAXIMUM_FORK_DEPTH: u32;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
     /// Inner curve type declarations.

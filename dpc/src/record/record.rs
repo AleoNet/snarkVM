@@ -19,7 +19,7 @@ use snarkvm_algorithms::traits::{CommitmentScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer, UniformRand};
 
 use rand::{CryptoRng, Rng};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -242,49 +242,34 @@ impl<N: Network> FromStr for Record<N> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
-        let record = serde_json::Value::from_str(record)?;
-        let commitment: N::Commitment = serde_json::from_value(record["commitment"].clone())?;
-
-        // Recover the record.
-        let record = Self::from(
-            serde_json::from_value(record["owner"].clone())?,
-            serde_json::from_value(record["value"].clone())?,
-            serde_json::from_value(record["payload"].clone())?,
-            serde_json::from_value(record["program_id"].clone())?,
-            serde_json::from_value(record["serial_number_nonce"].clone())?,
-            serde_json::from_value(record["commitment_randomness"].clone())?,
-        )?;
-
-        // Ensure the commitment matches.
-        match commitment == record.commitment() {
-            true => Ok(record),
-            false => Err(RecordError::InvalidCommitment(
-                commitment.to_string(),
-                record.commitment().to_string(),
-            )),
-        }
+        Ok(serde_json::from_str(&record)?)
     }
 }
 
 impl<N: Network> fmt::Display for Record<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let record = serde_json::json!({
-           "owner": self.owner,
-           "value": self.value,
-           "payload": self.payload,
-           "program_id": self.program_id,
-           "serial_number_nonce": self.serial_number_nonce,
-           "commitment_randomness": self.commitment_randomness,
-           "commitment": self.commitment
-        });
-        write!(f, "{}", record)
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
+        )
     }
 }
 
 impl<N: Network> Serialize for Record<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
+            true => {
+                let mut record = serializer.serialize_struct("Record", 7)?;
+                record.serialize_field("owner", &self.owner)?;
+                record.serialize_field("value", &self.value)?;
+                record.serialize_field("payload", &self.payload)?;
+                record.serialize_field("program_id", &self.program_id)?;
+                record.serialize_field("serial_number_nonce", &self.serial_number_nonce)?;
+                record.serialize_field("commitment_randomness", &self.commitment_randomness)?;
+                record.serialize_field("commitment", &self.commitment)?;
+                record.end()
+            }
             false => ToBytesSerializer::serialize(self, serializer),
         }
     }
@@ -293,7 +278,32 @@ impl<N: Network> Serialize for Record<N> {
 impl<'de, N: Network> Deserialize<'de> for Record<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            true => {
+                let record = serde_json::Value::deserialize(deserializer)?;
+                let commitment: N::Commitment =
+                    serde_json::from_value(record["commitment"].clone()).map_err(de::Error::custom)?;
+
+                // Recover the record.
+                let record = Self::from(
+                    serde_json::from_value(record["owner"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["value"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["payload"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["program_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["serial_number_nonce"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["commitment_randomness"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)?;
+
+                // Ensure the commitment matches.
+                match commitment == record.commitment() {
+                    true => Ok(record),
+                    false => Err(RecordError::InvalidCommitment(
+                        commitment.to_string(),
+                        record.commitment().to_string(),
+                    ))
+                    .map_err(de::Error::custom)?,
+                }
+            }
             false => FromBytesDeserializer::<Self>::deserialize(deserializer, "record", N::RECORD_SIZE_IN_BYTES),
         }
     }
@@ -316,18 +326,12 @@ mod tests {
         let expected_record = Record::new_noop_output(address, UniformRand::rand(rng), rng).unwrap();
 
         // Serialize
-        let expected_string = &expected_record.to_string();
+        let expected_string = expected_record.to_string();
         let candidate_string = serde_json::to_string(&expected_record).unwrap();
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(expected_record, Record::from_str(&expected_string).unwrap());
+        assert_eq!(expected_record, Record::from_str(&candidate_string).unwrap());
         assert_eq!(expected_record, serde_json::from_str(&candidate_string).unwrap());
     }
 
@@ -350,18 +354,12 @@ mod tests {
         .unwrap();
 
         // Serialize
-        let expected_string = &expected_record.to_string();
+        let expected_string = expected_record.to_string();
         let candidate_string = serde_json::to_string(&expected_record).unwrap();
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(expected_record, Record::from_str(&expected_string).unwrap());
+        assert_eq!(expected_record, Record::from_str(&candidate_string).unwrap());
         assert_eq!(expected_record, serde_json::from_str(&candidate_string).unwrap());
     }
 
