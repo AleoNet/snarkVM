@@ -161,7 +161,7 @@ impl<N: Network> VirtualMachine<N> {
     ) -> Result<Response<N>> {
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None, false)?)
             .build(rng)
     }
 
@@ -192,8 +192,8 @@ impl<N: Network> VirtualMachine<N> {
 
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(caller, caller_balance, Default::default(), None)?)
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(caller, caller_balance, Default::default(), None, false)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None, false)?)
             .build(rng)
     }
 
@@ -240,6 +240,7 @@ impl<N: Network> VirtualMachine<N> {
                 function_inputs.amount,
                 function_inputs.record_payload.clone(),
                 Some(program_id),
+                false,
             )?);
 
         // Add the change address if the balance is not zero.
@@ -249,6 +250,7 @@ impl<N: Network> VirtualMachine<N> {
                 caller_balance,
                 Default::default(),
                 None,
+                false,
             )?)
         }
 
