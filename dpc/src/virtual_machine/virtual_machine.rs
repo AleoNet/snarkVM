@@ -74,6 +74,7 @@ impl<N: Network> VirtualMachine<N> {
                 &function_id,
                 &function_type,
                 &function_inputs,
+                false,
                 rng,
             )?,
         };
@@ -205,6 +206,7 @@ impl<N: Network> VirtualMachine<N> {
         function_id: &N::FunctionID,
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
+        public_output: bool,
         rng: &mut R,
     ) -> Result<Response<N>> {
         // TODO (raychu86): Do function type checks.
@@ -240,7 +242,7 @@ impl<N: Network> VirtualMachine<N> {
                 function_inputs.amount,
                 function_inputs.record_payload.clone(),
                 Some(program_id),
-                false,
+                public_output,
             )?);
 
         // Add the change address if the balance is not zero.
@@ -252,6 +254,11 @@ impl<N: Network> VirtualMachine<N> {
                 None,
                 false,
             )?)
+        }
+
+        // Add the operation event to the response builder.
+        if request.is_public() {
+            response_builder = response_builder.add_event(Event::Operation(request.operation().clone()));
         }
 
         response_builder.build(rng)
@@ -267,6 +274,7 @@ impl<N: Network> VirtualMachine<N> {
         function_path: &MerklePath<<N as Network>::ProgramIDParameters>,
         function_verifying_key: <<N as Network>::ProgramSNARK as SNARK>::VerifyingKey,
         private_variables: &dyn ProgramPrivateVariables<N>,
+        public_output: bool,
         rng: &mut R,
     ) -> Result<(Self, Response<N>)> {
         // Ensure the request is valid.
@@ -277,9 +285,15 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => {
-                self.evaluate(request, program_id, &function_id, &function_type, &function_inputs, rng)?
-            }
+            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+                request,
+                program_id,
+                &function_id,
+                &function_type,
+                &function_inputs,
+                public_output,
+                rng,
+            )?,
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
