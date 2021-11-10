@@ -35,6 +35,8 @@ pub struct Request<N: Network> {
     ledger_proofs: Vec<LedgerProof<N>>,
     /// The operation being performed.
     operation: Operation<N>,
+    /// The visibility of the operation.
+    public: bool,
     /// The network fee being paid.
     fee: AleoAmount,
     /// The signature for the request.
@@ -43,7 +45,12 @@ pub struct Request<N: Network> {
 
 impl<N: Network> Request<N> {
     /// Initializes a new coinbase generation.
-    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
+    pub fn new_coinbase<R: Rng + CryptoRng>(
+        recipient: Address<N>,
+        amount: AleoAmount,
+        public: bool,
+        rng: &mut R,
+    ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
@@ -52,6 +59,7 @@ impl<N: Network> Request<N> {
             vec![],
             vec![LedgerProof::default(); N::NUM_INPUT_RECORDS],
             operation,
+            public,
             fee,
             rng,
         )
@@ -63,12 +71,13 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         recipient: Address<N>,
+        public: bool,
         amount: AleoAmount,
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
         let operation = Operation::Transfer(caller.to_address(), recipient, amount);
-        Self::new(caller, records, ledger_proofs, operation, fee, rng)
+        Self::new(caller, records, ledger_proofs, operation, public, fee, rng)
     }
 
     /// Returns a new instance of a noop request.
@@ -88,6 +97,7 @@ impl<N: Network> Request<N> {
             records,
             ledger_proofs,
             Operation::Noop,
+            false,
             AleoAmount::ZERO,
             rng,
         )
@@ -99,6 +109,7 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
+        public: bool,
         fee: AleoAmount,
         rng: &mut R,
     ) -> Result<Self> {
@@ -122,7 +133,7 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, ledger_proofs, operation, fee, signature)
+        Self::from(records, ledger_proofs, operation, public, fee, signature)
     }
 
     /// Returns a new instance of a request.
@@ -130,12 +141,14 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
+        public: bool,
         fee: AleoAmount,
         signature: N::AccountSignature,
     ) -> Result<Self> {
         let request = Self {
             records,
             operation,
+            public,
             ledger_proofs,
             fee,
             signature,
@@ -270,6 +283,11 @@ impl<N: Network> Request<N> {
         &self.operation
     }
 
+    /// Returns the visibility of the operation.
+    pub fn is_public(&self) -> bool {
+        self.public
+    }
+
     /// Returns the fee.
     pub fn fee(&self) -> AleoAmount {
         self.fee
@@ -338,10 +356,12 @@ impl<N: Network> FromBytes for Request<N> {
         }
 
         let operation = FromBytes::read_le(&mut reader)?;
+        let public = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(records, ledger_proofs, operation, fee, signature).expect("Failed to deserialize a request"))
+        Ok(Self::from(records, ledger_proofs, operation, public, fee, signature)
+            .expect("Failed to deserialize a request"))
     }
 }
 
@@ -351,6 +371,7 @@ impl<N: Network> ToBytes for Request<N> {
         self.records.write_le(&mut writer)?;
         self.ledger_proofs.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
+        self.public.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)
     }
