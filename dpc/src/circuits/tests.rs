@@ -26,7 +26,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     let recipient = Account::new(rng);
     let amount = AleoAmount::from_bytes(10);
-    let request = Request::new_coinbase(recipient.address(), amount, rng).unwrap();
+    let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
         .add_output(Output::new(recipient.address(), amount, Default::default(), None, false).unwrap())
