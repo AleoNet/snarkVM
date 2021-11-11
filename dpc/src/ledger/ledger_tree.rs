@@ -83,7 +83,16 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
         let start_index = self.current_index;
         let num_block_hashes = block_hashes.len();
-        self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &block_hashes)?);
+
+        // Add the block hashes to the tree. Start the tree from scratch if the tree is currently empty.
+        self.tree = match self.current_index {
+            0 => Arc::new(MerkleTree::<N::LedgerRootParameters>::new::<N::BlockHash>(
+                Arc::new(N::ledger_root_parameters().clone()),
+                &block_hashes,
+            )?),
+            _ => Arc::new(self.tree.rebuild(self.current_index as usize, &block_hashes)?),
+        };
+
         self.block_hashes.extend(
             block_hashes
                 .into_iter()
