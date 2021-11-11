@@ -136,7 +136,7 @@ where
     ) -> Result<Boolean, MarlinError> {
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
-        eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        // eprintln!("before AHP: constraints: {}", cs.num_constraints());
 
         let padded_public_input = {
             let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
