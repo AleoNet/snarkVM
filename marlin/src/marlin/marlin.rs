@@ -591,7 +591,7 @@ impl<
         let public_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
 
         if cfg!(debug_assertions) {
-            println!("Number of padded public variables: {}", padded_public_input.len());
+            eprintln!("Number of padded public variables: {}", padded_public_input.len());
         }
 
         let is_recursion = MM::RECURSION;

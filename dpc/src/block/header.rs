@@ -493,6 +493,17 @@ mod tests {
     }
 
     #[test]
+    fn test_block_header_serialization_bincode() {
+        let block_header = Testnet2::genesis_block().header().clone();
+
+        let serialized = &bincode::serialize(&block_header).unwrap();
+
+        let deserialized: BlockHeader<Testnet2> = bincode::deserialize(&serialized[..]).unwrap();
+
+        assert_eq!(deserialized, block_header);
+    }
+
+    #[test]
     fn test_block_header_size() {
         let block_header = Testnet2::genesis_block().header();
 
