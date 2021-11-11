@@ -21,26 +21,9 @@ use crate::{
     EncryptionScheme,
 };
 use rand::{CryptoRng, Rng};
-use snarkvm_curves::{
-    templates::twisted_edwards_extended::Affine as TEAffine,
-    AffineCurve,
-    ProjectiveCurve,
-    TwistedEdwardsParameters,
-};
+use snarkvm_curves::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters, templates::twisted_edwards_extended::{Affine as TEAffine, Projective}};
 use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField, Zero};
-use snarkvm_utilities::{
-    io::Result as IoResult,
-    ops::Mul,
-    serialize::*,
-    FromBits,
-    FromBytes,
-    Read,
-    SerializationError,
-    ToBits,
-    ToBytes,
-    UniformRand,
-    Write,
-};
+use snarkvm_utilities::{BitIteratorBE, FromBits, FromBytes, Read, SerializationError, ToBits, ToBytes, UniformRand, Write, io::Result as IoResult, ops::Mul, serialize::*};
 
 use itertools::Itertools;
 use std::sync::Arc;
@@ -109,7 +92,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PoseidonDefaultParametersField + PrimeField,
 {
     type CiphertextRandomizer = TE::BaseField;
     type Parameters = TEAffine<TE>;
@@ -117,7 +100,7 @@ where
     type PublicKey = TEAffine<TE>;
     type PublicKeyCommitment = TE::BaseField;
     type ScalarRandomness = TE::ScalarField;
-    type SymmetricKey = TEAffine<TE>;
+    type SymmetricKey = TE::BaseField;
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
@@ -155,14 +138,15 @@ where
         // Compute the randomizer := G^r
         let ciphertext_randomizer = self
             .generator
-            .into_projective()
-            .mul(randomness)
-            .into_affine()
-            .to_x_coordinate();
+            .mul_bits(BitIteratorBE::new_without_leading_zeros(randomness.to_repr()));
 
         // Compute the ECDH value := public_key^r.
-        // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is on the curve.
-        let symmetric_key = public_key.into_projective().mul(randomness).into_affine();
+        // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is in the prime-order subgroup.
+        let symmetric_key = public_key.mul_bits(BitIteratorBE::new_without_leading_zeros(randomness.to_repr()));
+
+        let mut batch = [ciphertext_randomizer, symmetric_key];
+        Projective::<TE>::batch_normalization(&mut batch);
+        let (ciphertext_randomizer, symmetric_key) = (batch[0].into_affine().to_x_coordinate(), batch[1].into_affine().to_x_coordinate());
 
         (randomness, ciphertext_randomizer, symmetric_key)
     }
@@ -171,7 +155,10 @@ where
     /// Given a public key and symmetric key, return the following:
     ///
     ///     public_key_commitment := H(R_0 || public_key) == H(H_0(public_key^r) || public_key) == H(H_0(G^ar) || G^a)
-    ///
+    /// 
+    // TODO: figure out why the double hash structure; why not just H(pub_key || pub_key^r)?
+    /// The reason for the double hash structure 
+    /// is to enable quick detection of whether this commitment is intended for a specific user.
     fn generate_public_key_commitment(
         &self,
         public_key: &Self::PublicKey,
@@ -179,7 +166,8 @@ where
     ) -> Self::PublicKeyCommitment {
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[symmetric_key.to_x_coordinate()]);
+        sponge.absorb(b"AleoEncryption2021");
+        sponge.absorb(&[*symmetric_key]);
 
         // Squeeze one element for the commitment randomness.
         let commitment_randomness = sponge.squeeze_field_elements(1)[0];
@@ -224,10 +212,9 @@ where
         };
 
         // Compute the ECDH value.
-        Ok(randomizer.into_projective().mul(*private_key).into_affine())
+        Ok(randomizer.mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr())).into_affine().to_x_coordinate())
     }
 
-    ///
     /// Encrypts the given message, and returns the following:
     ///
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
@@ -235,7 +222,7 @@ where
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[symmetric_key.to_x_coordinate()]);
+        sponge.absorb(&[*symmetric_key]);
         // Squeeze one element for the public key commitment, which was already computed in the randomness method above.
         let _commitment_randomness = sponge.squeeze_field_elements(1)[0];
 
@@ -283,7 +270,7 @@ where
 
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[symmetric_key.to_x_coordinate()]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
+        sponge.absorb(&[*symmetric_key]);
         // Squeeze one element for the public key commitment, which was already computed in the randomness method above.
         let _commitment_randomness = sponge.squeeze_field_elements(1)[0];
 
