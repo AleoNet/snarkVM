@@ -38,7 +38,7 @@ use crate::Vec;
 /// the gadget for Poseidon sponge
 pub struct PoseidonSpongeVar<F: PrimeField + PoseidonDefaultParametersField> {
     /// The actual sponge
-    pub sponge_var: PoseidonSpongeGadget<F>,
+    pub sponge_var: PoseidonSpongeGadget<F, 6, 1>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeVar<F> {

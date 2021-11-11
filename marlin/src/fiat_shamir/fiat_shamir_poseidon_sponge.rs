@@ -31,7 +31,7 @@ use snarkvm_utilities::sync::Arc;
 #[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField + PoseidonDefaultParametersField> {
     /// The actual sponge element
-    pub sponge: snarkvm_algorithms::crypto_hash::PoseidonSponge<F>,
+    pub sponge: snarkvm_algorithms::crypto_hash::PoseidonSponge<F, 6, 1>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSponge<F> for PoseidonSponge<F> {
