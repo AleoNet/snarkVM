@@ -142,7 +142,7 @@ impl<N: Network> ResponseBuilder<N> {
                 // Add the record view key event if the output record is public.
                 if output.is_public() && events.len() < N::NUM_EVENTS as usize {
                     // TODO (raychu86): Add the record view key instead of the placeholder byte.
-                    events.push(Event::RecordViewKey(i as u8, vec![0u8]))
+                    events.push(Event::RecordViewKey(i as u8, vec![0u8; 32]))
                 }
 
                 Ok(record)
