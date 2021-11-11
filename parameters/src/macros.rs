@@ -99,6 +99,13 @@ macro_rules! impl_remote {
                     _ => concat!($fname, $ftype).to_string()
                 };
 
+                let user_defined_path = std::env::var("ALEO_PARAMETERS_DIR").map(|user_defined_path| {
+                    let mut pb = std::path::PathBuf::from(user_defined_path);
+                    pb.push($local_dir);
+                    pb.push(&filename);
+                    pb
+                });
+
                 // Compose the correct file path for the parameter file.
                 let mut file_path = std::path::PathBuf::from(file!());
                 file_path.pop();
@@ -116,7 +123,9 @@ macro_rules! impl_remote {
                 let mut absolute_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
                 absolute_path.push(&relative_path);
 
-                let buffer = if relative_path.exists() {
+                let buffer = if user_defined_path.is_ok() {
+                    std::fs::read(user_defined_path.unwrap())?
+                } else if relative_path.exists() {
                     // Attempts to load the parameter file locally with a relative path.
                     std::fs::read(relative_path)?
                 } else if absolute_path.exists() {
