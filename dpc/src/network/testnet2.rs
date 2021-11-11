@@ -118,6 +118,7 @@ impl Network for Testnet2 {
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
+    const HEADER_SIZE_IN_BYTES: usize = 887;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
