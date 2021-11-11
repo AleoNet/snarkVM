@@ -149,6 +149,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
+        println!("11");
         // Ensure the ledger root is nonzero.
         if self.previous_ledger_root == Default::default() {
             eprintln!("Invalid ledger root in block header");
@@ -315,6 +316,8 @@ impl<N: Network> FromBytes for BlockHeader<N> {
             metadata,
             proof: Some(proof),
         };
+
+        println!("aa");
 
         // Ensure the block header is well-formed.
         match block_header.is_valid() {
@@ -489,6 +492,22 @@ mod tests {
         assert_eq!(&serialized[..], &bincode::serialize(&block_header).unwrap()[..]);
 
         let deserialized = BlockHeader::read_le(&serialized[..]).unwrap();
+        assert_eq!(deserialized, block_header);
+    }
+
+    #[test]
+    fn test_block_header_serialization_bincode() {
+        let block_header = Testnet2::genesis_block().header().clone();
+
+        println!("start");
+        let serialized = &bincode::serialize(&block_header).unwrap();
+
+        println!("start 1");
+
+        let deserialized: BlockHeader<Testnet2> = bincode::deserialize(&serialized[..]).unwrap();
+
+        println!("start 2");
+
         assert_eq!(deserialized, block_header);
     }
 

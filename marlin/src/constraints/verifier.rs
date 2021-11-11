@@ -137,7 +137,7 @@ where
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
         if cfg!(debug_assertions) {
-            println!("before AHP: constraints: {}", cs.num_constraints());
+            eprintln!("before AHP: constraints: {}", cs.num_constraints());
         }
 
         let padded_public_input = {
@@ -228,7 +228,7 @@ where
         )?;
 
         if cfg!(debug_assertions) {
-            println!("before PC checks: constraints: {}", cs.num_constraints());
+            eprintln!("before PC checks: constraints: {}", cs.num_constraints());
         }
 
         let rand_data = PCCheckRandomDataVar::<TargetField, BaseField> {
