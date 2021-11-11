@@ -230,7 +230,7 @@ mod pedersen_compressed_crh_on_projective {
     }
 
     #[test]
-    fn test_rebuild() {
+    fn merkle_tree_rebuild_test() {
         type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
         let leaves = generate_random_leaves!(1000, 32);
 
