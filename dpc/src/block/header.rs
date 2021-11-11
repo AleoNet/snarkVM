@@ -221,12 +221,9 @@ impl<N: Network> BlockHeader<N> {
         &self.proof
     }
 
-    /// Returns the block header size in bytes - 887 bytes.
+    /// Returns the block header size in bytes.
     pub fn size() -> usize {
-        32 // LedgerRoot
-            + 32 // TransactionsRoot
-            + BlockHeaderMetadata::<N>::size()
-            + N::HEADER_PROOF_SIZE_IN_BYTES
+        N::HEADER_SIZE_IN_BYTES
     }
 
     /// Returns an instance of the block header tree.
@@ -404,11 +401,43 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, PoSWScheme};
+    use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
     use snarkvm_marlin::ahp::AHPForR1CS;
 
     use rand::{rngs::ThreadRng, thread_rng};
+
+    /// Returns the expected block header size by summing its expected subcomponents.
+    /// Update this method if the contents of a block header have changed.
+    fn get_expected_size<N: Network>() -> usize {
+        32 // LedgerRoot
+            + 32 // TransactionsRoot
+            + BlockHeaderMetadata::<N>::size()
+            + N::HEADER_PROOF_SIZE_IN_BYTES
+    }
+
+    #[test]
+    fn test_block_header_size() {
+        assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet1>(), BlockHeader::<Testnet1>::size());
+
+        assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet2>(), BlockHeader::<Testnet2>::size());
+    }
+
+    #[test]
+    fn test_block_header_genesis_size() {
+        let block_header = Testnet2::genesis_block().header();
+
+        assert_eq!(
+            block_header.to_bytes_le().unwrap().len(),
+            BlockHeader::<Testnet2>::size()
+        );
+        assert_eq!(
+            bincode::serialize(&block_header).unwrap().len(),
+            BlockHeader::<Testnet2>::size()
+        );
+    }
 
     #[test]
     fn test_block_header_serde_json() {
@@ -501,19 +530,5 @@ mod tests {
         let deserialized: BlockHeader<Testnet2> = bincode::deserialize(&serialized[..]).unwrap();
 
         assert_eq!(deserialized, block_header);
-    }
-
-    #[test]
-    fn test_block_header_size() {
-        let block_header = Testnet2::genesis_block().header();
-
-        assert_eq!(
-            block_header.to_bytes_le().unwrap().len(),
-            BlockHeader::<Testnet2>::size()
-        );
-        assert_eq!(
-            bincode::serialize(&block_header).unwrap().len(),
-            BlockHeader::<Testnet2>::size()
-        );
     }
 }

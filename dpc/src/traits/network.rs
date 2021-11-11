@@ -128,6 +128,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const SIGNATURE_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
+    const HEADER_SIZE_IN_BYTES: usize;
     const HEADER_PROOF_SIZE_IN_BYTES: usize;
     const INNER_PROOF_SIZE_IN_BYTES: usize;
     const OUTER_PROOF_SIZE_IN_BYTES: usize;
