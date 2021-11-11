@@ -302,15 +302,14 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         parameters: &P,
         leaves: &[L],
     ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
-        cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
-            .map(|chunk| -> Result<Vec<_>, MerkleError> {
-                let mut out = Vec::with_capacity(chunk.len());
-                for leaf in chunk.into_iter() {
-                    out.push(parameters.hash_leaf(&leaf)?);
-                }
-                Ok(out)
-            })
-            .collect::<Result<Vec<_>, MerkleError>>()
+        match leaves.len() {
+            0 => Ok(vec![]),
+            _ => Ok(vec![
+                cfg_iter!(leaves)
+                    .map(|leaf| parameters.hash_leaf(&leaf).unwrap())
+                    .collect::<Vec<_>>(),
+            ]),
+        }
     }
 }
 
