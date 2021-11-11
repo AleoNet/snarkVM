@@ -179,7 +179,9 @@ where
             labels.1.insert(label);
         }
 
-        eprintln!("before PC combining commitments: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before PC combining commitments: constraints: {}", cs.num_constraints());
+        }
 
         let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
 
@@ -344,7 +346,9 @@ where
             combined_degree_bound_shift_powers.push(shift_powers);
         }
 
-        eprintln!("before PC batch check: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before PC batch check: constraints: {}", cs.num_constraints());
+        }
 
         // Perform the batch check.
         {
@@ -549,7 +553,9 @@ where
                 pairing_right.as_slice(),
             )?;
 
-            eprintln!("after PC batch check: constraints: {}", cs.num_constraints());
+            if cfg!(debug_assertions) {
+                eprintln!("after PC batch check: constraints: {}", cs.num_constraints());
+            }
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
             lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)

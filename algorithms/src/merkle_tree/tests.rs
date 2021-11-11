@@ -228,4 +228,26 @@ mod pedersen_compressed_crh_on_projective {
         type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3>;
         padded_merkle_tree_test::<MTParameters>();
     }
+
+    #[test]
+    fn merkle_tree_rebuild_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        let leaves = generate_random_leaves!(1000, 32);
+
+        let parameters = &MTParameters::setup("merkle_tree_test");
+        let tree = MerkleTree::<MTParameters>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
+
+        let mut new_tree_1 =
+            MerkleTree::<MTParameters>::new(Arc::new(parameters.clone()), &Vec::<[u8; 32]>::new()).unwrap();
+        for (i, leaf) in leaves.iter().enumerate() {
+            new_tree_1 = new_tree_1.rebuild(i, &vec![leaf]).unwrap();
+        }
+
+        let mut new_tree_2 =
+            MerkleTree::<MTParameters>::new(Arc::new(parameters.clone()), &Vec::<[u8; 32]>::new()).unwrap();
+        new_tree_2 = new_tree_2.rebuild(0, &leaves[..]).unwrap();
+
+        assert_eq!(tree.root(), new_tree_1.root());
+        assert_eq!(tree.root(), new_tree_2.root());
+    }
 }

@@ -136,7 +136,9 @@ where
     ) -> Result<Boolean, MarlinError> {
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
-        eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        }
 
         let padded_public_input = {
             let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
@@ -225,7 +227,9 @@ where
             num_batching_rands,
         )?;
 
-        // eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        }
 
         let rand_data = PCCheckRandomDataVar::<TargetField, BaseField> {
             opening_challenges,
