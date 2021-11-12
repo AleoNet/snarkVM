@@ -31,6 +31,9 @@ pub trait FiatShamirRngVar<TargetField: PrimeField, BaseField: PrimeField, PFS: 
     /// Create a new RNG.
     fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self;
 
+    /// Instantiate from a plaintext fs_rng.
+    fn constant<CS: ConstraintSystem<BaseField>>(cs: CS, pfs: &PFS) -> Self;
+
     /// Take in field elements.
     fn absorb_nonnative_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,

@@ -325,6 +325,18 @@ impl<
         }
     }
 
+    fn constant<CS: ConstraintSystem<BaseField>>(
+        cs: CS,
+        pfs: &FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>,
+    ) -> Self {
+        Self {
+            s: S::constant(cs, &pfs.s.clone()),
+            _target_field: PhantomData,
+            _base_field: PhantomData,
+            _sponge: PhantomData,
+        }
+    }
+
     fn absorb_nonnative_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,

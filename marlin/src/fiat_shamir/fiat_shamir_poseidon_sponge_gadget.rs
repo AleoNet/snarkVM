@@ -25,6 +25,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
     fields::FpGadget,
+    AllocGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -44,6 +45,20 @@ impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSpongeVar<F, Posei
     fn new<CS: ConstraintSystem<F>>(mut cs: CS) -> Self {
         let params = F::get_default_poseidon_parameters(6, false).unwrap();
         let sponge_var = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
+        Self { sponge_var }
+    }
+
+    fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F>) -> Self {
+        let params = F::get_default_poseidon_parameters(6, false).unwrap();
+        let mut sponge_var = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
+
+        for (i, state_elem) in pfs.state.iter().enumerate() {
+            sponge_var.state[i] =
+                FpGadget::<F>::alloc_constant(cs.ns(|| format!("alloc_elems_{}", i)), || Ok((*state_elem).clone()))
+                    .unwrap();
+        }
+        sponge_var.mode = pfs.mode.clone();
+
         Self { sponge_var }
     }
 
