@@ -21,6 +21,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, 
 use anyhow::anyhow;
 use rand::{CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use snarkvm_fields::PrimeField;
 use std::{
     fmt,
     io::{Cursor, Read, Result as IoResult, Write},
@@ -29,7 +30,7 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "N: Network"),
+    Default(bound = "N: Network, N::RecordViewKey: Default"),
     Debug(bound = "N: Network"),
     Clone(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
@@ -85,16 +86,16 @@ impl<N: Network> Record<N> {
         // Encode the record contents into plaintext bytes.
         let plaintext = Self::encode_plaintext(owner, value, payload, program_id)?;
 
-        // // Encrypt the record bytes.
-        // let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
-        //     randomizer,
-        //     N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?
-        // ]?)?;
+        // Encrypt the record bytes.
+        let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
+            randomizer,
+            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?
+        ]?)?;
 
         // Compute the record commitment.
-        let commitment_input = to_bytes_le![plaintext, randomizer]?;
-        let commitment_randomness =
-            N::account_encryption_scheme().generate_public_key_commitment(&*owner, &record_view_key);
+        let commitment_input = to_bytes_le![ciphertext, owner]?;
+        let commitment_randomness = Self::view_key_to_comm_randomness(record_view_key)?;
+
         let commitment = N::commitment_scheme()
             .commit(&commitment_input, &commitment_randomness)?
             .into();
@@ -108,6 +109,12 @@ impl<N: Network> Record<N> {
             record_view_key,
             commitment,
         })
+    }
+
+    fn view_key_to_comm_randomness(record_view_key: N::RecordViewKey) -> Result<N::ProgramScalarField, RecordError> {
+        Ok(N::ProgramScalarField::from_bytes_le_mod_order(&to_bytes_le![
+            record_view_key
+        ]?))
     }
 
     /// Returns a record from the given account view key and ciphertext.
@@ -131,9 +138,8 @@ impl<N: Network> Record<N> {
         match owner == expected_owner {
             true => {
                 // Compute the commitment.
-                let commitment_input = to_bytes_le![plaintext, randomizer]?;
-                let commitment_randomness =
-                    N::account_encryption_scheme().generate_public_key_commitment(&*owner, &*record_view_key);
+                let commitment_input = to_bytes_le![ciphertext, owner]?;
+                let commitment_randomness = Self::view_key_to_comm_randomness(record_view_key)?;
                 let commitment = N::commitment_scheme()
                     .commit(&commitment_input, &commitment_randomness)?
                     .into();
@@ -164,9 +170,8 @@ impl<N: Network> Record<N> {
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
         // Compute the commitment.
-        let commitment_input = to_bytes_le![plaintext, randomizer]?;
-        let commitment_randomness =
-            N::account_encryption_scheme().generate_public_key_commitment(&*owner, &*record_view_key);
+        let commitment_input = to_bytes_le![ciphertext, owner]?;
+        let commitment_randomness = Self::view_key_to_comm_randomness(record_view_key)?;
         let commitment = N::commitment_scheme()
             .commit(&commitment_input, &commitment_randomness)?
             .into();

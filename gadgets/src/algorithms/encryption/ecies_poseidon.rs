@@ -466,7 +466,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             private_key_bits.iter().zip_eq(&generator_powers),
         )?;
 
-        Ok(ECIESPoseidonEncryptionPublicKeyGadget::<TE, F> { 0: public_key })
+        Ok(ECIESPoseidonEncryptionPublicKeyGadget::<TE, F>(public_key))
     }
 
     fn check_encryption_from_scalar_randomness<CS: ConstraintSystem<F>>(
@@ -481,33 +481,26 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         // Compute the ECDH value.
         let randomness_bits = randomness.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
-        let ecdh_value = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
+        let symmetric_key = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
             &public_key.0,
             cs.ns(|| "compute_ecdh_value"),
             &affine_zero,
             randomness_bits.iter().copied(),
-        )?;
+        )?
+        .x;
 
         // Prepare the sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
-        sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
+        let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
+            Ok(TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021"))
+        })?;
+        sponge.absorb(cs.ns(|| "absorb"), [domain_separator, symmetric_key].iter())?;
 
         // Squeeze one element for the commitment randomness.
-        let commitment_randomness =
+        let key_commitment =
             sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 1)?[0].clone();
-
-        // Add a commitment to the public key.
-        let public_key_commitment = {
-            let mut sponge =
-                PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge for public key commitment"), &params);
-            sponge.absorb(
-                cs.ns(|| "absorb for public key commitment"),
-                [commitment_randomness, public_key.0.x.clone()].iter(),
-            )?;
-            sponge.squeeze_field_elements(cs.ns(|| "squeeze for public key commitment"), 1)?[0].clone()
-        };
 
         // Convert the message into bits.
         let mut bits = Vec::with_capacity(message.len() * 8);
@@ -555,7 +548,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
                 randomness_bits.iter().copied(),
             )?);
 
-        Ok((ciphertext_randomizer, ciphertext, public_key_commitment))
+        Ok((ciphertext_randomizer, ciphertext, key_commitment))
     }
 
     fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
@@ -575,31 +568,21 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             cs.ns(|| "compute the symmetric key"),
             &affine_zero,
             private_key_bits.iter().copied(),
-        )?;
-
-        // Compute the public key.
-        let public_key = self.check_public_key_gadget(&mut cs.ns(|| "Compute public key"), private_key)?;
+        )?
+        .x;
 
         // Prepare the sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
-        sponge.absorb(cs.ns(|| "absorb"), [symmetric_key.x].iter())?;
+        let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
+            Ok(TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021"))
+        })?;
+        sponge.absorb(cs.ns(|| "absorb"), [domain_separator, symmetric_key].iter())?;
 
         // Squeeze one element for the public key commitment randomness.
-        let public_key_commitment_randomness =
+        let key_commitment =
             sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 1)?[0].clone();
-
-        // Add a commitment to the public key.
-        let public_key_commitment = {
-            let mut sponge =
-                PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge for public key commitment"), &params);
-            sponge.absorb(
-                cs.ns(|| "absorb for public key commitment"),
-                [public_key_commitment_randomness, public_key.0.x.clone()].iter(),
-            )?;
-            sponge.squeeze_field_elements(cs.ns(|| "squeeze for public key commitment"), 1)?[0].clone()
-        };
 
         // Convert the message into bits.
         let mut bits = Vec::with_capacity(message.len() * 8);
@@ -634,6 +617,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         let ciphertext = res.to_bytes(cs.ns(|| "convert the masked results into bytes"))?;
 
-        Ok((ciphertext, public_key_commitment))
+        Ok((ciphertext, key_commitment))
     }
 }

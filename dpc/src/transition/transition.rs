@@ -174,12 +174,6 @@ impl<N: Network> Transition<N> {
         &self.commitments
     }
 
-    /// Returns the ciphertext IDs.
-    #[inline]
-    pub fn ciphertext_ids(&self) -> impl Iterator<Item = N::CiphertextID> + fmt::Debug + '_ {
-        self.ciphertexts.iter().map(|c| (*c).ciphertext_id())
-    }
-
     /// Returns a reference to the ciphertexts.
     #[inline]
     pub fn ciphertexts(&self) -> &Vec<N::RecordCiphertext> {
@@ -268,16 +262,10 @@ impl<N: Network> Transition<N> {
                 .take(N::NUM_OUTPUT_RECORDS)
                 .map(ToBytes::to_bytes_le)
                 .collect::<Result<Vec<_>>>()?,
-            // Leaf 4, 5 := ciphertext IDs
-            ciphertexts
-                .iter()
-                .take(N::NUM_OUTPUT_RECORDS)
-                .map(|c| Ok(c.ciphertext_id().to_bytes_le()?))
-                .collect::<Result<Vec<_>>>()?,
-            // Leaf 6 := value balance
+            // Leaf 4 := value balance
             vec![value_balance.to_bytes_le()?],
-            // Leaf 7 := unallocated
-            vec![vec![0u8; 32]],
+            // Leaf 5, 6, 7 := unallocated
+            vec![vec![0u8; 32]; 3],
         ]
         .concat();
 
@@ -361,7 +349,6 @@ impl<N: Network> fmt::Display for Transition<N> {
            "transition_id": self.transition_id,
            "serial_numbers": self.serial_numbers,
            "commitments": self.commitments,
-           "ciphertext_ids": self.ciphertext_ids().collect::<Vec<_>>(),
            "ciphertexts": self.ciphertexts,
            "value_balance": self.value_balance,
            "proof": self.proof,

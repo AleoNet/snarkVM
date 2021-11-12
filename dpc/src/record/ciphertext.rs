@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Bech32Locator, Network, RecordError};
-use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
+use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
     FromBytes,
@@ -35,7 +35,6 @@ use anyhow::Result;
     Hash(bound = "N: Network")
 )]
 pub struct RecordCiphertext<N: Network> {
-    ciphertext_id: N::CiphertextID,
     ciphertext_randomizer: N::RecordRandomizer,
     record_ciphertext: Vec<u8>,
 }
@@ -46,19 +45,10 @@ impl<N: Network> RecordCiphertext<N> {
         // Decode the ciphertext bytes.
         let (ciphertext_randomizer, record_ciphertext) = Self::decode_ciphertext(ciphertext)?;
 
-        // Compute the ciphertext ID.
-        let ciphertext_id = N::ciphertext_id_crh().hash(ciphertext)?.into();
-
         Ok(Self {
-            ciphertext_id,
             ciphertext_randomizer,
             record_ciphertext,
         })
-    }
-
-    /// Returns the record ciphertext ID. The preimage is the ciphertext x-coordinates appended with the selector bits.
-    pub fn ciphertext_id(&self) -> N::CiphertextID {
-        self.ciphertext_id
     }
 
     /// Returns the ciphertext randomizer.
@@ -72,7 +62,7 @@ impl<N: Network> RecordCiphertext<N> {
         Ok(N::account_encryption_scheme().decrypt(record_view_key, &self.record_ciphertext)?)
     }
 
-    /// Decode the ciphertext into the commitment randomness, ciphertext randomizer, and record ciphertext.
+    /// Decode the ciphertext into the ciphertext randomizer and record ciphertext.
     fn decode_ciphertext(ciphertext: &Vec<u8>) -> Result<(N::RecordRandomizer, Vec<u8>), RecordError> {
         assert_eq!(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, ciphertext.len());
 

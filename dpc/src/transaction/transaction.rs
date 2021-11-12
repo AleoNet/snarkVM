@@ -272,15 +272,6 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
-    /// Returns the ciphertext IDs.
-    #[inline]
-    pub fn ciphertext_ids(&self) -> Vec<N::CiphertextID> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::ciphertext_ids)
-            .collect::<Vec<_>>()
-    }
-
     /// Returns the output record ciphertexts.
     #[inline]
     pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {

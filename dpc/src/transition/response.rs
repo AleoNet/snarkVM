@@ -87,11 +87,6 @@ impl<N: Network> Response<N> {
         &self.records
     }
 
-    /// Returns the ciphertext IDs.
-    pub fn ciphertext_ids(&self) -> Vec<N::CiphertextID> {
-        self.ciphertexts.iter().map(|c| c.ciphertext_id()).collect()
-    }
-
     /// Returns a reference to the ciphertexts.
     pub fn ciphertexts(&self) -> &Vec<N::RecordCiphertext> {
         &self.ciphertexts

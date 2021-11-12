@@ -220,7 +220,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type CiphertextID: Bech32Locator<<Self::CiphertextIDCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
-    type CommitmentScheme: CommitmentScheme<Randomness = <Self::AccountEncryptionScheme as EncryptionScheme>::PublicKeyCommitment, Output = Self::InnerScalarField>;
+    type CommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::InnerScalarField>;
     type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
     type Commitment: Bech32Locator<<Self::CommitmentScheme as CommitmentScheme>::Output>;
 
