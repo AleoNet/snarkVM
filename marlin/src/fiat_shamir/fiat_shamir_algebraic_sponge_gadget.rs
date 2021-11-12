@@ -325,18 +325,6 @@ impl<
         }
     }
 
-    fn constant<CS: ConstraintSystem<BaseField>>(
-        cs: CS,
-        pfs: &FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>,
-    ) -> Self {
-        Self {
-            s: S::constant(cs, &pfs.s.clone()),
-            _target_field: PhantomData,
-            _base_field: PhantomData,
-            _sponge: PhantomData,
-        }
-    }
-
     fn absorb_nonnative_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
@@ -460,11 +448,8 @@ mod tests {
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
-    use crate::fiat_shamir::{
-        fiat_shamir_poseidon_sponge::PoseidonSponge,
-        fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
-        traits::FiatShamirRng,
-    };
+    use crate::fiat_shamir::{fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar, traits::FiatShamirRng};
+    use snarkvm_algorithms::crypto_hash::PoseidonSponge;
 
     use super::*;
 
@@ -597,47 +582,6 @@ mod tests {
             println!("\n=========================================================");
         }
         assert!(cs.is_satisfied());
-    }
-
-    #[test]
-    fn test_fiat_shamir_algebraic_sponge_rng_constant() {
-        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
-
-        for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fq>::new();
-
-            // Generate random element.
-            let num_bytes: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
-            let element: Vec<u8> = (0..num_bytes).map(|_| u8::rand(&mut rng)).collect();
-
-            // Create a new FS rng.
-            let mut fs_rng = FS::new();
-            fs_rng.absorb_bytes(&element);
-
-            // Allocate an fs_rng gadget from the existing `fs_rng`.
-            let mut fs_rng_gadget = FSGadget::constant(cs.ns(|| format!("fs_rng_gadget_constant_{}", i)), &fs_rng);
-
-            // Get bits from the `fs_rng` and `fs_rng_gadget`.
-            let num_bits = num_bytes * 8;
-            let bits = FS::get_bits_from_sponge(&mut fs_rng.s, num_bits);
-            let bit_gadgets = FSGadget::get_booleans_from_sponge(
-                cs.ns(|| format!("get_booleans_from_sponge_{}", i)),
-                &mut fs_rng_gadget.s,
-                num_bits,
-            )
-            .unwrap();
-
-            // Check that the bit results are equivalent.
-            for (j, (bit_gadget, bit)) in bit_gadgets.iter().zip(bits).enumerate() {
-                // Allocate a boolean from the native bit.
-                let alloc_boolean = Boolean::alloc(cs.ns(|| format!("alloc_boolean_{}_{}", i, j)), || Ok(bit)).unwrap();
-
-                // Check that the boolean gadgets are equivalent.
-                bit_gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}", i, j)), &alloc_boolean)
-                    .unwrap();
-            }
-        }
     }
 
     #[test]

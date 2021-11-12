@@ -19,7 +19,7 @@ mod ecies {
     use snarkvm_curves::edwards_bls12::EdwardsParameters;
     use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
-    use rand::{thread_rng, Rng};
+    use rand::thread_rng;
 
     pub const ITERATIONS: usize = 1000;
 

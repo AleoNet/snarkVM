@@ -16,20 +16,25 @@
 
 use snarkvm_fields::PrimeField;
 
+use core::fmt::Debug;
+
 /// The interface for a cryptographic sponge.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.
 /// The outputs are dependent on previous `absorb` and `squeeze` calls.
-pub trait CryptographicSponge<F: PrimeField>: Clone {
+pub trait AlgebraicSponge<F: PrimeField>: Clone + Debug {
     /// Parameters used by the sponge.
     type Parameters;
 
     /// Initialize a new instance of the sponge.
     fn new(params: &Self::Parameters) -> Self;
 
+    /// Initialize a new instance of the sponge with default parameters.
+    fn with_default_parameters() -> Self;
+
     /// Absorb an input into the sponge.
     fn absorb(&mut self, input: &[F]);
 
-    /// Squeeze `num_elements` nonnative field elements from the sponge.
+    /// Squeeze `num_elements` field elements from the sponge.
     fn squeeze_field_elements(&mut self, num_elements: usize) -> Vec<F>;
 }
 

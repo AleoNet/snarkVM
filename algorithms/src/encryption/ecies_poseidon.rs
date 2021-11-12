@@ -15,15 +15,34 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
+    crypto_hash::{PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
     hash_to_curve::hash_to_curve,
+    AlgebraicSponge,
     EncryptionError,
     EncryptionScheme,
 };
 use rand::{CryptoRng, Rng};
-use snarkvm_curves::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters, templates::twisted_edwards_extended::{Affine as TEAffine, Projective}};
+use snarkvm_curves::{
+    templates::twisted_edwards_extended::{Affine as TEAffine, Projective},
+    AffineCurve,
+    ProjectiveCurve,
+    TwistedEdwardsParameters,
+};
 use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField, Zero};
-use snarkvm_utilities::{BitIteratorBE, FromBits, FromBytes, Read, SerializationError, ToBits, ToBytes, UniformRand, Write, io::Result as IoResult, ops::Mul, serialize::*};
+use snarkvm_utilities::{
+    io::Result as IoResult,
+    ops::Mul,
+    serialize::*,
+    BitIteratorBE,
+    FromBits,
+    FromBytes,
+    Read,
+    SerializationError,
+    ToBits,
+    ToBytes,
+    UniformRand,
+    Write,
+};
 
 use itertools::Itertools;
 use std::sync::Arc;
@@ -146,7 +165,10 @@ where
 
         let mut batch = [ciphertext_randomizer, symmetric_key];
         Projective::<TE>::batch_normalization(&mut batch);
-        let (ciphertext_randomizer, symmetric_key) = (batch[0].into_affine().to_x_coordinate(), batch[1].into_affine().to_x_coordinate());
+        let (ciphertext_randomizer, symmetric_key) = (
+            batch[0].into_affine().to_x_coordinate(),
+            batch[1].into_affine().to_x_coordinate(),
+        );
 
         (randomness, ciphertext_randomizer, symmetric_key)
     }
@@ -155,30 +177,17 @@ where
     /// Given a public key and symmetric key, return the following:
     ///
     ///     public_key_commitment := H(R_0 || public_key) == H(H_0(public_key^r) || public_key) == H(H_0(G^ar) || G^a)
-    /// 
+    ///
     // TODO: figure out why the double hash structure; why not just H(pub_key || pub_key^r)?
-    /// The reason for the double hash structure 
+    /// The reason for the double hash structure
     /// is to enable quick detection of whether this commitment is intended for a specific user.
-    fn generate_public_key_commitment(
-        &self,
-        public_key: &Self::PublicKey,
-        symmetric_key: &Self::SymmetricKey,
-    ) -> Self::PublicKeyCommitment {
+    fn generate_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::PublicKeyCommitment {
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(b"AleoEncryption2021");
-        sponge.absorb(&[*symmetric_key]);
+        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
+        sponge.absorb(&[domain_separator, *symmetric_key]);
 
-        // Squeeze one element for the commitment randomness.
-        let commitment_randomness = sponge.squeeze_field_elements(1)[0];
-
-        // Add a commitment to the public key.
-        let public_key_commitment = {
-            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-            sponge.absorb(&[commitment_randomness, public_key.x]);
-            sponge.squeeze_field_elements(1)[0]
-        };
-
+        let public_key_commitment = sponge.squeeze_field_elements(1)[0];
         public_key_commitment
     }
 
@@ -191,7 +200,7 @@ where
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext_randomizer: Self::CiphertextRandomizer,
-    ) -> Result<<Self as EncryptionScheme>::SymmetricKey, EncryptionError> {
+    ) -> Result<Self::SymmetricKey, EncryptionError> {
         // Recover the ciphertext randomizer group element.
         let randomizer = {
             let mut first = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, true);
@@ -212,7 +221,10 @@ where
         };
 
         // Compute the ECDH value.
-        Ok(randomizer.mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr())).into_affine().to_x_coordinate())
+        Ok(randomizer
+            .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
+            .into_affine()
+            .to_x_coordinate())
     }
 
     /// Encrypts the given message, and returns the following:
@@ -220,11 +232,11 @@ where
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
     ///
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
-        // Prepare the Poseidon sponge.
+        // Initialize sponge state.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[*symmetric_key]);
-        // Squeeze one element for the public key commitment, which was already computed in the randomness method above.
-        let _commitment_randomness = sponge.squeeze_field_elements(1)[0];
+        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
+        sponge.absorb(&[domain_separator, *symmetric_key]);
+        let _public_key_commitment = sponge.squeeze_field_elements(1)[0];
 
         // Convert the message into bits.
         let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
@@ -268,28 +280,29 @@ where
         let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
         assert!(ciphertext.len() >= per_field_element_bytes);
 
-        // Prepare the Poseidon sponge.
+        // Initialize sponge state.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
-        sponge.absorb(&[*symmetric_key]);
-        // Squeeze one element for the public key commitment, which was already computed in the randomness method above.
-        let _commitment_randomness = sponge.squeeze_field_elements(1)[0];
+        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
+        sponge.absorb(&[domain_separator, *symmetric_key]);
+        let _public_key_commitment = sponge.squeeze_field_elements(1)[0];
 
         // Compute the number of sponge elements needed.
         let num_field_elements = ciphertext.len() / per_field_element_bytes;
 
         // Obtain random field elements from Poseidon.
-        let sponge_field_elements = sponge.squeeze_field_elements(num_field_elements);
+        let sponge_field_elements: Vec<TE::BaseField> = sponge.squeeze_field_elements(num_field_elements);
 
         // Subtract the random field elements to the packed bits.
-        let mut res_field_elements = Vec::with_capacity(num_field_elements);
-        for i in 0..num_field_elements {
-            res_field_elements.push(TE::BaseField::from_bytes_le(
-                &ciphertext[(i * per_field_element_bytes)..((i + 1) * per_field_element_bytes)],
-            )?);
-        }
-        for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
-            res_field_elements[i] = res_field_elements[i] - sponge_field_element;
-        }
+        let mut res_field_elements: Vec<TE::BaseField> = ciphertext
+            .chunks(per_field_element_bytes)
+            .map(|chunk| TE::BaseField::from_bytes_le(chunk).unwrap())
+            .collect();
+
+        sponge_field_elements.iter().zip(&mut res_field_elements).for_each(
+            |(sponge_field_element, res_field_element)| {
+                *res_field_element -= sponge_field_element;
+            },
+        );
 
         // Unpack the packed bits.
         if res_field_elements.is_empty() {
@@ -308,9 +321,9 @@ where
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
 
         let mut bits = Vec::<bool>::with_capacity(res_field_elements.len() * capacity);
-        for elem in res_field_elements.iter() {
-            let elem_bits = elem.to_repr().to_bits_le();
-            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        for elem in &res_field_elements {
+            // only keep `capacity` bits, discarding the highest bit.
+            bits.extend_from_slice(&elem.to_repr().to_bits_le()[..capacity]);
         }
 
         // Drop all the ending zeros and the last "1" bit.
@@ -330,15 +343,17 @@ where
         }
         // Here we do not use assertion since it can cause Rust panicking.
 
-        let mut message = Vec::with_capacity(bits.len() / 8);
-        for chunk in bits.chunks_exact(8) {
-            let mut byte = 0u8;
-            for bit in chunk.iter().rev() {
-                byte <<= 1;
-                byte += *bit as u8;
-            }
-            message.push(byte);
-        }
+        let message = bits
+            .chunks_exact(8)
+            .map(|chunk| {
+                let mut byte = 0u8;
+                for bit in chunk.iter().rev() {
+                    byte <<= 1;
+                    byte += *bit as u8;
+                }
+                byte
+            })
+            .collect();
 
         Ok(message)
     }

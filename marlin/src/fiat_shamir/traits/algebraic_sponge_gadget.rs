@@ -24,9 +24,6 @@ pub trait AlgebraicSpongeVar<BaseField: PrimeField, PS: AlgebraicSponge<BaseFiel
     /// Create the new sponge.
     fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self;
 
-    /// Instantiate from a plaintext sponge.
-    fn constant<CS: ConstraintSystem<BaseField>>(cs: CS, ps: &PS) -> Self;
-
     /// Take in field elements.
     fn absorb<CS: ConstraintSystem<BaseField>>(
         &mut self,

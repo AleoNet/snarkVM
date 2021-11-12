@@ -16,12 +16,9 @@
 
 use crate::{algorithms::crypto_hash::CryptographicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
 
-use snarkvm_algorithms::crypto_hash::{
+use snarkvm_algorithms::{
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
     DuplexSpongeMode,
-    PoseidonCryptoHash,
-    PoseidonDefaultParametersField,
-    PoseidonParameters,
-    PoseidonSponge,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -207,7 +204,7 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
     }
 }
 
-impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadget<F> {
+impl<F: PoseidonDefaultParametersField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadget<F> {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PoseidonParameters<F>>,
@@ -240,7 +237,7 @@ impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadg
     }
 }
 
-impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeGadget<F> {
+impl<F: PoseidonDefaultParametersField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeGadget<F> {
     type Parameters = PoseidonParameters<F>;
 
     fn new<CS: ConstraintSystem<F>>(mut cs: CS, parameters: &Self::Parameters) -> Self {

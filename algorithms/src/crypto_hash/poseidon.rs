@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{CryptographicSponge, DuplexSpongeMode, PoseidonGrainLFSR},
+    crypto_hash::PoseidonGrainLFSR,
+    traits::{AlgebraicSponge, DuplexSpongeMode},
     CryptoHash,
 };
 use snarkvm_fields::{
@@ -304,7 +305,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
     }
 }
 
-impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
+impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSponge<F> for PoseidonSponge<F> {
     type Parameters = Arc<PoseidonParameters<F>>;
 
     fn new(parameters: &Self::Parameters) -> Self {
@@ -317,6 +318,13 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
             mode,
         }
     }
+
+    /// Creates a new sponge with default parameters for the given field, with rate 6.
+    fn with_default_parameters() -> Self {
+        let params = Arc::new(F::get_default_poseidon_parameters(6, false).unwrap());
+        Self::new(&params)
+    }
+
 
     fn absorb(&mut self, input: &[F]) {
         if input.len() == 0 {

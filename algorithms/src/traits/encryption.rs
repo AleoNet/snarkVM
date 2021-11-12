@@ -43,11 +43,7 @@ pub trait EncryptionScheme:
         rng: &mut R,
     ) -> (Self::ScalarRandomness, Self::CiphertextRandomizer, Self::SymmetricKey);
 
-    fn generate_public_key_commitment(
-        &self,
-        public_key: &Self::PublicKey,
-        symmetric_key: &Self::SymmetricKey,
-    ) -> Self::PublicKeyCommitment;
+    fn generate_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::PublicKeyCommitment;
 
     fn generate_symmetric_key(
         &self,

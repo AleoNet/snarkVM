@@ -74,15 +74,15 @@ fn aleo_encryption_generate_symmetric_key(c: &mut Criterion) {
     });
 }
 
-fn aleo_encryption_generate_public_key_commitment(c: &mut Criterion) {
+fn aleo_encryption_generate_key_commitment(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = EncryptionScheme::setup("aleo_encryption_generate_public_key_commitment");
+    let parameters = EncryptionScheme::setup("aleo_encryption_generate_key_commitment");
     let private_key = parameters.generate_private_key(rng);
     let public_key = parameters.generate_public_key(&private_key);
     let (_, _, sym_key) = parameters.generate_asymmetric_key(&public_key, rng);
 
-    c.bench_function("Aleo Encryption Generate Public Key Commitment", move |b| {
-        b.iter(|| parameters.generate_public_key_commitment(&public_key, &sym_key))
+    c.bench_function("Aleo Encryption Generate Key Commitment", move |b| {
+        b.iter(|| parameters.generate_key_commitment(&public_key, &sym_key))
     });
 }
 

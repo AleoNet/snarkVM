@@ -20,7 +20,10 @@ use crate::{
     FieldGadget,
     FpGadget,
 };
-use snarkvm_algorithms::crypto_hash::{poseidon::PoseidonSponge, CryptographicSponge, PoseidonDefaultParametersField};
+use snarkvm_algorithms::{
+    crypto_hash::{poseidon::PoseidonSponge, PoseidonDefaultParametersField},
+    AlgebraicSponge,
+};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{test_rng, UniformRand};
