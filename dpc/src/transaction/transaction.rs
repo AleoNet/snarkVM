@@ -21,6 +21,7 @@ use crate::{
     Event,
     LedgerTree,
     LedgerTreeScheme,
+    LocalProof,
     Network,
     Request,
     Transition,
@@ -65,14 +66,16 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new transaction from a request.
     #[inline]
     pub fn new<R: Rng + CryptoRng>(ledger: LedgerTree<N>, request: &Request<N>, rng: &mut R) -> Result<Self> {
-        VirtualMachine::<N>::new(ledger)?.execute(request, rng)?.finalize()
+        VirtualMachine::<N>::new(ledger.root())?
+            .execute(request, rng)?
+            .finalize()
     }
 
     /// Initializes a new coinbase transaction.
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
         let request = Request::new_coinbase(recipient, amount, rng)?;
-        VirtualMachine::<N>::new(LedgerTree::new()?)?
+        VirtualMachine::<N>::new(LedgerTree::<N>::new()?.root())?
             .execute(&request, rng)?
             .finalize()
     }
@@ -318,6 +321,17 @@ impl<N: Network> Transaction<N> {
             .filter_map(|c| Record::from_account_view_key(account_view_key, c).ok())
             .filter(|record| !record.is_dummy())
             .collect()
+    }
+
+    /// Returns the local proof for a given commitment.
+    #[inline]
+    pub fn to_local_proof(&self, record_commitment: N::Commitment) -> Result<LocalProof<N>> {
+        // Initialize a transitions tree.
+        let mut transitions_tree = Transitions::<N>::new()?;
+        // Add all given transition IDs to the tree.
+        transitions_tree.add_all(&self.transitions())?;
+        // Return the local proof for the transitions tree.
+        transitions_tree.to_local_proof(record_commitment)
     }
 
     /// Transaction ID := MerkleTree(transition IDs)

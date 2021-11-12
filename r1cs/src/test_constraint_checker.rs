@@ -64,6 +64,11 @@ impl<F: Field> TestConstraintChecker<F> {
     pub fn num_constraints(&self) -> usize {
         self.num_constraints
     }
+
+    #[inline]
+    pub fn public_inputs(&self) -> Vec<F> {
+        self.public_variables[1..].to_vec()
+    }
 }
 
 impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {

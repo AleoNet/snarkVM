@@ -99,11 +99,13 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
     fn permute<CS: ConstraintSystem<F>>(&mut self, mut cs: CS) -> Result<(), SynthesisError> {
         let full_rounds_over_2 = self.parameters.full_rounds / 2;
         let mut state = self.state.clone();
+
         for i in 0..full_rounds_over_2 {
             self.apply_ark(cs.ns(|| format!("apply_ark {}", i)), &mut state, i)?;
             self.apply_s_box(cs.ns(|| format!("apply_s_box {}", i)), &mut state, true)?;
             self.apply_mds(cs.ns(|| format!("apply_mds {}", i)), &mut state)?;
         }
+
         for i in full_rounds_over_2..(full_rounds_over_2 + self.parameters.partial_rounds) {
             self.apply_ark(cs.ns(|| format!("apply_ark {}", i)), &mut state, i)?;
             self.apply_s_box(cs.ns(|| format!("apply_s_box {}", i)), &mut state, false)?;

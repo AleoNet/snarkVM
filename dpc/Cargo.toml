@@ -23,6 +23,11 @@ path = "benches/account.rs"
 harness = false
 
 [[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
+
+[[bench]]
 name = "noop_program"
 path = "benches/noop_program.rs"
 harness = false
@@ -72,6 +77,11 @@ path = "../polycommit"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-profiler]
+path = "../profiler"
+version = "0.7.5"
+default-features = false
+
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -90,6 +100,10 @@ version = "0.2"
 
 [dependencies.bech32]
 version = "0.8"
+
+[dependencies.blake2]
+version = "0.9"
+default-features = false
 
 [dependencies.chrono]
 version = "0.4"
@@ -146,5 +160,6 @@ default = [
 ]
 wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full", "snarkvm-marlin/wasm", "snarkvm-parameters/wasm" ]
 full = [ "testnet1", "testnet2" ]
+print-trace = [ "snarkvm-profiler/print-trace" ]
 testnet1 = []
 testnet2 = []

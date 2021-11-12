@@ -59,4 +59,9 @@ impl<'a, F: PrimeField> ProverState<'a, F> {
     pub fn public_input(&self) -> Vec<F> {
         ProverConstraintSystem::unformat_public_input(&self.padded_public_variables)
     }
+
+    /// Get the padded public input.
+    pub fn padded_public_input(&self) -> &[F] {
+        &self.padded_public_variables
+    }
 }

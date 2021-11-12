@@ -136,30 +136,30 @@ impl<
         for (i, elem) in src.iter().enumerate() {
             match elem {
                 NonNativeFieldVar::Constant(c) => {
-                    let v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc_constant(
-                        cs.ns(|| format!("alloc_constant_{}", i)),
-                        || Ok(c),
+                    let v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::constant(
+                        &mut cs.ns(|| format!("alloc_constant_{}", i)),
+                        *c,
                     )?;
 
-                    for limb in v.limbs.iter() {
+                    for limb in v.limbs {
                         let num_of_additions_over_normal_form =
                             if v.num_of_additions_over_normal_form == BaseField::zero() {
                                 BaseField::one()
                             } else {
                                 v.num_of_additions_over_normal_form
                             };
-                        src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
+                        src_limbs.push((limb, num_of_additions_over_normal_form));
                     }
                 }
                 NonNativeFieldVar::Var(v) => {
-                    for limb in v.limbs.iter() {
+                    for limb in v.limbs.clone() {
                         let num_of_additions_over_normal_form =
                             if v.num_of_additions_over_normal_form == BaseField::zero() {
                                 BaseField::one()
                             } else {
                                 v.num_of_additions_over_normal_form
                             };
-                        src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
+                        src_limbs.push((limb, num_of_additions_over_normal_form));
                     }
                 }
             }
