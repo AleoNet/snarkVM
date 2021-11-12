@@ -325,7 +325,6 @@ impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSponge<F> for Pose
         Self::new(&params)
     }
 
-
     fn absorb(&mut self, input: &[F]) {
         if input.len() == 0 {
             return;

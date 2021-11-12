@@ -62,7 +62,7 @@ mod tests {
     use rand_chacha::ChaChaRng;
 
     use snarkvm_curves::bls12_377::Fq;
-    use snarkvm_gadgets::{AllocGadget, traits::eq::EqGadget};
+    use snarkvm_gadgets::{traits::eq::EqGadget, AllocGadget};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
