@@ -80,7 +80,7 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new coinbase transaction.
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
-        let request = Request::new_coinbase(recipient, amount, rng)?;
+        let request = Request::new_coinbase(recipient, amount, false, rng)?;
         VirtualMachine::<N>::new(LedgerTree::<N>::new()?.root())?
             .execute(&request, rng)?
             .finalize()

@@ -50,6 +50,24 @@ impl<N: Network> VirtualMachine<N> {
         self.local_transitions.to_local_proof(commitment)
     }
 
+    /// Adds the given event into the virtual machine.
+    pub fn add_event(mut self, event: Event<N>) -> Result<Self> {
+        match self.events.len() < N::NUM_EVENTS as usize {
+            true => self.events.push(event),
+            false => return Err(anyhow!("Virtual machine exceeded maximum number of events")),
+        };
+        Ok(self)
+    }
+
+    /// Adds the given events into the virtual machine.
+    pub fn add_events(mut self, events: &Vec<Event<N>>) -> Result<Self> {
+        match self.events.len() + events.len() < N::NUM_EVENTS as usize {
+            true => self.events.extend_from_slice(events),
+            false => return Err(anyhow!("Virtual machine exceeded maximum number of events")),
+        };
+        Ok(self)
+    }
+
     /// Returns the number of transitions in the virtual machine.
     pub fn num_transitions(&self) -> usize {
         self.transitions.len()
@@ -74,6 +92,7 @@ impl<N: Network> VirtualMachine<N> {
                 &function_id,
                 &function_type,
                 &function_inputs,
+                false,
                 rng,
             )?,
         };
@@ -132,7 +151,7 @@ impl<N: Network> VirtualMachine<N> {
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;
         self.transitions.push(transition);
-        self.events.extend_from_slice(response.events());
+        self = self.add_events(response.events())?;
 
         Ok(self)
     }
@@ -161,7 +180,7 @@ impl<N: Network> VirtualMachine<N> {
     ) -> Result<Response<N>> {
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None, false)?)
             .build(rng)
     }
 
@@ -192,8 +211,8 @@ impl<N: Network> VirtualMachine<N> {
 
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(caller, caller_balance, Default::default(), None)?)
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(caller, caller_balance, Default::default(), None, false)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None, false)?)
             .build(rng)
     }
 
@@ -205,6 +224,7 @@ impl<N: Network> VirtualMachine<N> {
         function_id: &N::FunctionID,
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
+        public_output: bool,
         rng: &mut R,
     ) -> Result<Response<N>> {
         // TODO (raychu86): Do function type checks.
@@ -240,6 +260,7 @@ impl<N: Network> VirtualMachine<N> {
                 function_inputs.amount,
                 function_inputs.record_payload.clone(),
                 Some(program_id),
+                public_output,
             )?);
 
         // Add the change address if the balance is not zero.
@@ -249,7 +270,13 @@ impl<N: Network> VirtualMachine<N> {
                 caller_balance,
                 Default::default(),
                 None,
+                false,
             )?)
+        }
+
+        // Add the operation event to the response builder.
+        if request.is_public() {
+            response_builder = response_builder.add_event(Event::Operation(request.operation().clone()));
         }
 
         response_builder.build(rng)
@@ -265,6 +292,8 @@ impl<N: Network> VirtualMachine<N> {
         function_path: &MerklePath<<N as Network>::ProgramIDParameters>,
         function_verifying_key: <<N as Network>::ProgramSNARK as SNARK>::VerifyingKey,
         private_variables: &dyn ProgramPrivateVariables<N>,
+        public_output: bool,
+        custom_events: Vec<Vec<u8>>,
         rng: &mut R,
     ) -> Result<(Self, Response<N>)> {
         // Ensure the request is valid.
@@ -275,9 +304,15 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => {
-                self.evaluate(request, program_id, &function_id, &function_type, &function_inputs, rng)?
-            }
+            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+                request,
+                program_id,
+                &function_id,
+                &function_type,
+                &function_inputs,
+                public_output,
+                rng,
+            )?,
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
@@ -337,7 +372,13 @@ impl<N: Network> VirtualMachine<N> {
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;
         self.transitions.push(transition);
-        self.events.extend_from_slice(response.events());
+
+        // Add events to the virtual machine.
+        self = self.add_events(response.events())?;
+        for event in custom_events {
+            let custom_event = Event::Custom(event);
+            self = self.add_event(custom_event)?;
+        }
 
         Ok((self, response))
     }

@@ -113,6 +113,9 @@ impl<N: Network> ResponseBuilder<N> {
             None => return Err(anyhow!("Builder is missing request")),
         };
 
+        // Fetch the events.
+        let mut events = self.events.clone();
+
         // Construct the state.
         let function_type = request.function_type();
         let program_id = request.to_program_id()?;
@@ -133,7 +136,17 @@ impl<N: Network> ResponseBuilder<N> {
             .iter()
             .enumerate()
             .take(N::NUM_OUTPUT_RECORDS)
-            .map(|(i, output)| Ok(output.to_record(serial_numbers[i], rng)?))
+            .map(|(i, output)| {
+                let record = output.to_record(serial_numbers[i], rng)?;
+
+                // Add the record view key event if the output record is public.
+                if output.is_public() && events.len() < N::NUM_EVENTS as usize {
+                    // TODO (raychu86): Add the record view key instead of the placeholder byte.
+                    events.push(Event::RecordViewKey(i as u8, vec![0u8; 32]))
+                }
+
+                Ok(record)
+            })
             .collect::<Result<Vec<_>>>()?;
 
         // Ensure the input records have the correct program ID.
@@ -178,9 +191,6 @@ impl<N: Network> ResponseBuilder<N> {
                 value_balance
             ));
         }
-
-        // Process the events.
-        let events = self.events.clone();
 
         // Compute the transition ID.
         let transition_id =
