@@ -62,16 +62,16 @@ macro_rules! impl_params_local {
 
 #[macro_export]
 macro_rules! impl_params_remote {
-    ($name: ident, $test_name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $size: tt) => {
+    ($name: ident, $test_name: ident, $remote_url: tt, $local_dir: expr, $filename: tt, $size: tt) => {
         pub struct $name;
 
         impl crate::traits::Parameter for $name {
-            const CHECKSUM: &'static str = include_str!(concat!($local_dir, $fname, ".checksum"));
+            const CHECKSUM: &'static str = include_str!(concat!($local_dir, $filename, ".checksum"));
             const SIZE: u64 = $size;
 
             fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                let para = crate::param_check::ParamCheck::new($fname, $remote_url, Self::CHECKSUM);
-                para.load_bytes()
+                let parameters = crate::check_parameters::CheckParameters::new($filename, $remote_url, Self::CHECKSUM);
+                parameters.load_bytes()
             }
         }
 
