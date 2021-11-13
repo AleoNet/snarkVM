@@ -83,6 +83,5 @@ macro_rules! impl_params_remote {
             let parameters = $name::load_bytes().expect("failed to load parameters");
             assert_eq!($name::SIZE, parameters.len() as u64);
         }
-    }
+    };
 }
-

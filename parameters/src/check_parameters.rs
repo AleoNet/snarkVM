@@ -16,9 +16,11 @@
 
 use crate::errors::ParameterError;
 
-use std::path::{Path, PathBuf};
-use std::fs::create_dir_all;
-use std::io::{Read, Write};
+use std::{
+    fs::create_dir_all,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
 
 pub struct CheckParameters {
     checksum: String,
@@ -36,10 +38,13 @@ impl CheckParameters {
     }
 
     fn parameters_path_from_env() -> Result<PathBuf, ParameterError> {
-        let path = option_env!("ALEO_PROOFS_PARAMETER_CACHE").map(|name| Path::new(name).to_path_buf())
+        let path = option_env!("ALEO_PROOFS_PARAMETER_CACHE")
+            .map(|name| Path::new(name).to_path_buf())
             .unwrap_or_else(|| std::env::temp_dir().join("aleo-proof-parameters"));
         if !path.exists() || !path.is_dir() {
-            create_dir_all(path.clone()).map(|_| path.to_path_buf()).map_err(|err| ParameterError::Message(format!("{}", err)))
+            create_dir_all(path.clone())
+                .map(|_| path.to_path_buf())
+                .map_err(|err| ParameterError::Message(format!("{}", err)))
         } else {
             Ok(path.to_path_buf())
         }
@@ -52,21 +57,25 @@ impl CheckParameters {
     pub fn load_bytes(&self) -> Result<Vec<u8>, ParameterError> {
         let parameters_path = Self::parameters_path_from_env()?;
         let parameters_file = parameters_path.join(self.versioned_filename());
-        let content = std::fs::File::open(parameters_file.clone()).map(|mut file| {
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer).unwrap_or(0);
-            buffer
-        }).unwrap_or(Vec::new());
+        let content = std::fs::File::open(parameters_file.clone())
+            .map(|mut file| {
+                let mut buffer = Vec::new();
+                file.read_to_end(&mut buffer).unwrap_or(0);
+                buffer
+            })
+            .unwrap_or(Vec::new());
 
         if Self::checksum(content.as_ref()) != self.checksum {
             let buffer = self.load_remote()?;
-            match std::fs::File::create(parameters_file).map(|mut file| {
-                file.write_all(buffer.as_ref()).unwrap_or(())
-            }) {
-                Ok(_) => {},
+            match std::fs::File::create(parameters_file).map(|mut file| file.write_all(buffer.as_ref()).unwrap_or(())) {
+                Ok(_) => {}
                 Err(e) => {
-                    tracing::error!("Cannot store the data of {} caused by the {}", self.versioned_filename(), format!("{:?}", e));
-                },
+                    tracing::error!(
+                        "Cannot store the data of {} caused by the {}",
+                        self.versioned_filename(),
+                        format!("{:?}", e)
+                    );
+                }
             }
             Ok(buffer)
         } else {
@@ -74,7 +83,7 @@ impl CheckParameters {
         }
     }
 
-    fn load_remote(&self) ->  Result<Vec<u8>, ParameterError> {
+    fn load_remote(&self) -> Result<Vec<u8>, ParameterError> {
         println!("{} - Downloading parameters...", self.remote_url());
         let mut buffer = Vec::new();
         self.remote_fetch(&mut buffer)?;
@@ -84,12 +93,17 @@ impl CheckParameters {
         let checksum = Self::checksum(buffer.as_slice());
         match self.checksum == checksum {
             true => Ok(buffer),
-            false => Err(ParameterError::ChecksumMismatch(self.checksum.clone(), checksum.clone()))
+            false => Err(ParameterError::ChecksumMismatch(
+                self.checksum.clone(),
+                checksum.clone(),
+            )),
         }
     }
 
     fn versioned_filename(&self) -> String {
-        self.checksum.get(0..7).map(|x| format!("{}-{}.params", self.filename, x))
+        self.checksum
+            .get(0..7)
+            .map(|x| format!("{}-{}.params", self.filename, x))
             .unwrap_or(self.filename.to_string() + ".params")
     }
 
