@@ -133,7 +133,7 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, ledger_proofs, operation, fee, is_public, signature)
+        Self::from(records, ledger_proofs, operation, fee, signature, is_public)
     }
 
     /// Returns a new instance of a request.
@@ -142,8 +142,8 @@ impl<N: Network> Request<N> {
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
         fee: AleoAmount,
-        is_public: bool,
         signature: N::AccountSignature,
+        is_public: bool,
     ) -> Result<Self> {
         let request = Self {
             records,
@@ -356,11 +356,11 @@ impl<N: Network> FromBytes for Request<N> {
         }
 
         let operation = FromBytes::read_le(&mut reader)?;
-        let public = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
+        let is_public = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(records, ledger_proofs, operation, public, fee, signature)
+        Ok(Self::from(records, ledger_proofs, operation, fee, signature, is_public)
             .expect("Failed to deserialize a request"))
     }
 }
@@ -371,9 +371,9 @@ impl<N: Network> ToBytes for Request<N> {
         self.records.write_le(&mut writer)?;
         self.ledger_proofs.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
-        self.is_public.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
-        self.signature.write_le(&mut writer)
+        self.signature.write_le(&mut writer)?;
+        self.is_public.write_le(&mut writer)
     }
 }
 
