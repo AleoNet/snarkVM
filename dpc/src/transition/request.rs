@@ -35,12 +35,12 @@ pub struct Request<N: Network> {
     ledger_proofs: Vec<LedgerProof<N>>,
     /// The operation being performed.
     operation: Operation<N>,
-    /// The visibility of the operation.
-    public: bool,
     /// The network fee being paid.
     fee: AleoAmount,
     /// The signature for the request.
     signature: N::AccountSignature,
+    /// The visibility of the operation.
+    is_public: bool,
 }
 
 impl<N: Network> Request<N> {
@@ -48,7 +48,7 @@ impl<N: Network> Request<N> {
     pub fn new_coinbase<R: Rng + CryptoRng>(
         recipient: Address<N>,
         amount: AleoAmount,
-        public: bool,
+        is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
@@ -59,8 +59,8 @@ impl<N: Network> Request<N> {
             vec![],
             vec![LedgerProof::default(); N::NUM_INPUT_RECORDS],
             operation,
-            public,
             fee,
+            is_public,
             rng,
         )
     }
@@ -71,13 +71,13 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         recipient: Address<N>,
-        public: bool,
         amount: AleoAmount,
         fee: AleoAmount,
+        is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
         let operation = Operation::Transfer(caller.to_address(), recipient, amount);
-        Self::new(caller, records, ledger_proofs, operation, public, fee, rng)
+        Self::new(caller, records, ledger_proofs, operation, fee, is_public, rng)
     }
 
     /// Returns a new instance of a noop request.
@@ -97,8 +97,8 @@ impl<N: Network> Request<N> {
             records,
             ledger_proofs,
             Operation::Noop,
-            false,
             AleoAmount::ZERO,
+            false,
             rng,
         )
     }
@@ -109,8 +109,8 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
-        public: bool,
         fee: AleoAmount,
+        is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
         let caller_address = Address::from_private_key(caller);
@@ -133,7 +133,7 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, ledger_proofs, operation, public, fee, signature)
+        Self::from(records, ledger_proofs, operation, fee, is_public, signature)
     }
 
     /// Returns a new instance of a request.
@@ -141,17 +141,17 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
-        public: bool,
         fee: AleoAmount,
+        is_public: bool,
         signature: N::AccountSignature,
     ) -> Result<Self> {
         let request = Self {
             records,
             operation,
-            public,
             ledger_proofs,
             fee,
             signature,
+            is_public,
         };
 
         match request.is_valid() {
@@ -285,7 +285,7 @@ impl<N: Network> Request<N> {
 
     /// Returns the visibility of the operation.
     pub fn is_public(&self) -> bool {
-        self.public
+        self.is_public
     }
 
     /// Returns the fee.
@@ -371,7 +371,7 @@ impl<N: Network> ToBytes for Request<N> {
         self.records.write_le(&mut writer)?;
         self.ledger_proofs.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
-        self.public.write_le(&mut writer)?;
+        self.is_public.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
         self.signature.write_le(&mut writer)
     }

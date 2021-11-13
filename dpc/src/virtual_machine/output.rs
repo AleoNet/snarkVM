@@ -32,7 +32,7 @@ pub struct Output<N: Network> {
     /// The program that was run.
     program_id: N::ProgramID,
     /// The visibility of the output record.
-    public: bool,
+    is_public: bool,
 }
 
 impl<N: Network> Output<N> {
@@ -50,7 +50,7 @@ impl<N: Network> Output<N> {
         value: AleoAmount,
         payload: Payload<N>,
         program_id: Option<N::ProgramID>,
-        public: bool,
+        is_public: bool,
     ) -> Result<Self> {
         // Retrieve the program ID. If `None` is provided, construct the noop program ID.
         let program_id = match program_id {
@@ -63,7 +63,7 @@ impl<N: Network> Output<N> {
             value,
             payload,
             program_id,
-            public,
+            is_public,
         })
     }
 
@@ -110,7 +110,7 @@ impl<N: Network> Output<N> {
 
     /// Returns the visibility of the output record.
     pub fn is_public(&self) -> bool {
-        self.public
+        self.is_public
     }
 }
 
