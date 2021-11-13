@@ -81,28 +81,28 @@ macro_rules! impl_local {
 
 #[macro_export]
 macro_rules! impl_remote {
-    ($name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $ftype: tt) => {
+    ($name: ident, $remote_url: tt, $local_dir: expr, $file_name: tt, $file_type: tt) => {
         pub struct $name;
 
         impl $name {
             pub fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
+                const METADATA: &'static str = include_str!(concat!($local_dir, $file_name, ".metadata"));
 
                 let metadata: serde_json::Value =
                     serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
-                let expected_checksum: String = metadata[concat!($ftype, "_checksum")]
+                let expected_checksum: String = metadata[concat!($file_type, "_checksum")]
                     .as_str()
                     .expect("Failed to parse checksum")
                     .to_string();
-                let expected_size: usize = metadata[concat!($ftype, "_size")]
+                let expected_size: usize = metadata[concat!($file_type, "_size")]
                     .to_string()
                     .parse()
                     .expect("Failed to retrieve the file size");
 
                 // Construct the versioned filename.
                 let filename = match expected_checksum.get(0..7) {
-                    Some(sum) => format!("{}.{}.{}", $fname, $ftype, sum),
-                    _ => concat!($fname, $ftype).to_string(),
+                    Some(sum) => format!("{}.{}.{}", $file_name, $file_type, sum),
+                    _ => concat!($file_name, $file_type).to_string(),
                 };
 
                 // Compose the correct file path for the parameter file.
@@ -128,7 +128,7 @@ macro_rules! impl_remote {
         paste::item! {
             #[cfg(test)]
             #[test]
-            fn [< test_ $fname _ $ftype >]() {
+            fn [< test_ $file_name _ $file_type >]() {
                 assert!($name::load_bytes().is_ok());
             }
         }
