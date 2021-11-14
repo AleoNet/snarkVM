@@ -44,30 +44,9 @@ impl CheckParameters {
     }
 
     pub fn load_bytes(&self) -> Result<Vec<u8>, ParameterError> {
-        // Compute the relative path.
-        let relative_path = if self.file_path.strip_prefix("parameters").is_ok() {
-            self.file_path.strip_prefix("parameters")?
-        } else {
-            &self.file_path
-        };
-
-        // Compute the absolute path.
-        let mut absolute_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        absolute_path.push(&relative_path);
-
-        // Compute the path to the aleo directory.
-        let mut aleo_path = aleo_std::aleo_dir();
-        aleo_path.push(&relative_path);
-
-        let buffer = if aleo_path.exists() {
+        let buffer = if self.file_path.exists() {
             // Attempts to load the parameter file locally with a path to the aleo directory.
-            std::fs::read(aleo_path)?
-        } else if relative_path.exists() {
-            // Attempts to load the parameter file locally with a relative path.
-            std::fs::read(relative_path)?
-        } else if absolute_path.exists() {
-            // Attempts to load the parameter file locally with an absolute path.
-            std::fs::read(absolute_path)?
+            std::fs::read(self.file_path.clone())?
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
             eprintln!(
@@ -94,7 +73,7 @@ impl CheckParameters {
                         return checksum_error!(self.expected_checksum.clone(), candidate_checksum)
                     }
 
-                    match Self::store_bytes(&buffer, &aleo_path, &relative_path, &absolute_path, &self.file_path) {
+                    match Self::store_bytes(&buffer, &self.file_path) {
                         Ok(()) => buffer,
                         Err(_) => {
                             eprintln!(
@@ -151,13 +130,7 @@ impl CheckParameters {
     }
 
     #[cfg(not(feature = "wasm"))]
-    fn store_bytes(
-        buffer: &[u8],
-        aleo_path: &std::path::Path,
-        relative_path: &std::path::Path,
-        absolute_path: &std::path::Path,
-        file_path: &std::path::Path,
-    ) -> Result<(), crate::errors::ParameterError> {
+    fn store_bytes(buffer: &[u8], file_path: &std::path::Path) -> Result<(), crate::errors::ParameterError> {
         use snarkvm_utilities::Write;
 
         // Hide compilation warning.
@@ -167,13 +140,10 @@ impl CheckParameters {
         println!("{} - Storing parameters ({:?})", module_path!(), file_path);
 
         // Attempt to write the parameter buffer to a file.
-        if let Ok(mut file) = std::fs::File::create(aleo_path) {
-            file.write_all(&buffer)?;
-        } else if let Ok(mut file) = std::fs::File::create(relative_path) {
-            file.write_all(&buffer)?;
-        } else if let Ok(mut file) = std::fs::File::create(absolute_path) {
+        if let Ok(mut file) = std::fs::File::create(file_path) {
             file.write_all(&buffer)?;
         }
+
         Ok(())
     }
 
