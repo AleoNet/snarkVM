@@ -100,7 +100,7 @@ macro_rules! impl_remote {
                 };
 
                 // Compose the correct file path for the parameter file.
-                let mut file_path = aleo_std::aleo_dir();
+                let mut file_path = aleo_path::aleo_dir();
                 file_path.push($local_dir);
                 file_path.push(&filename);
 
