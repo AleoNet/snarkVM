@@ -43,17 +43,44 @@ impl CheckParameters {
         }
     }
 
+    fn check_bytes(&self, buffer: &Vec<u8>) -> Result<(), ParameterError> {
+        // Ensure the size matches.
+        if self.expected_size != buffer.len() {
+            return Err(crate::errors::ParameterError::SizeMismatch(
+                self.expected_size,
+                buffer.len(),
+            ));
+        }
+
+        // Ensure the checksum matches.
+        let candidate_checksum = checksum!(buffer.as_slice());
+        if self.expected_checksum != candidate_checksum {
+            return checksum_error!(self.expected_checksum.clone(), candidate_checksum);
+        }
+
+        Ok(())
+    }
+
     pub fn load_bytes(&self) -> Result<Vec<u8>, ParameterError> {
-        let buffer = if self.file_path.exists() {
-            // Attempts to load the parameter file locally with a path to the aleo directory.
+        // Attempts to load the parameter file locally with a path to the aleo directory.
+        let buffer_unchecked = if self.file_path.exists() {
             std::fs::read(self.file_path.clone())?
         } else {
-            // Downloads the missing parameters and stores it in the local directory for use.
-            eprintln!(
-                "\nWARNING - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
-                self.file_name, self.file_name, self.file_path
-            );
+            Vec::new()
+        };
 
+        // Checks the size and checksum of the existing parameters file.
+        if self.check_bytes(&buffer_unchecked).is_ok() {
+            return Ok(buffer_unchecked);
+        }
+
+        // Downloads the missing parameters and stores it in the local directory for use.
+        eprintln!(
+            "\nWARNING - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
+            self.file_name, self.file_name, self.file_path
+        );
+
+        let buffer = {
             // Load remote file
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
@@ -112,21 +139,10 @@ impl CheckParameters {
             }
         };
 
-        // Ensure the size matches.
-        if self.expected_size != buffer.len() {
-            return Err(crate::errors::ParameterError::SizeMismatch(
-                self.expected_size,
-                buffer.len(),
-            ));
-        }
+        // Check the size and checksum of the parameters file.
+        self.check_bytes(&buffer)?;
 
-        // Ensure the checksum matches.
-        let candidate_checksum = checksum!(buffer.as_slice());
-        if self.expected_checksum != candidate_checksum {
-            return checksum_error!(self.expected_checksum.clone(), candidate_checksum);
-        }
-
-        return Ok(buffer);
+        Ok(buffer)
     }
 
     #[cfg(not(feature = "wasm"))]
