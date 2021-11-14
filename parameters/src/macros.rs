@@ -105,7 +105,7 @@ macro_rules! impl_remote {
                 file_path.push(&filename);
 
                 let buffer = if file_path.exists() {
-                    // Attempts to load the parameter file locally with a relative path.
+                    // Attempts to load the parameter file locally with an absolute path.
                     std::fs::read(file_path)?
                 } else {
                     // Downloads the missing parameters and stores it in the local directory for use.
