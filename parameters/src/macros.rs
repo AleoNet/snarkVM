@@ -193,9 +193,6 @@ macro_rules! impl_remote {
             ) -> Result<(), crate::errors::ParameterError> {
                 use snarkvm_utilities::Write;
 
-                // Hide compilation warning.
-                let _ = file_path;
-
                 #[cfg(not(feature = "no_std_out"))]
                 println!("{} - Storing parameters ({:?})", module_path!(), file_path);
 
