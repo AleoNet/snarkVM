@@ -138,7 +138,7 @@ mod ecies_poseidon {
         {
             let expected_public_key_commitment = encryption_scheme.generate_key_commitment(&symmetric_key);
             let expected_public_key_commitment_gadget =
-                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PublicKeyCommitment::alloc(
+                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::KeyCommitment::alloc(
                     &mut cs.ns(|| "expected_public_key_commitment_gadget"),
                     || Ok(&expected_public_key_commitment),
                 )
@@ -219,7 +219,7 @@ mod ecies_poseidon {
         {
             let expected_public_key_commitment = encryption_scheme.generate_key_commitment(&symmetric_key);
             let expected_public_key_commitment_gadget =
-                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PublicKeyCommitment::alloc(
+                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::KeyCommitment::alloc(
                     &mut cs.ns(|| "expected_public_key_commitment_gadget"),
                     || Ok(&expected_public_key_commitment),
                 )

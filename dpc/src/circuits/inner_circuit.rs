@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Network, Payload};
+use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Network, Payload, Record};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -43,7 +43,10 @@ pub struct InnerCircuit<N: Network> {
     private: InnerPrivateVariables<N>,
 }
 
-impl<N: Network> InnerCircuit<N> {
+impl<N: Network> InnerCircuit<N>
+where
+    Record<N>: Default,
+{
     pub fn blank() -> Self {
         Self {
             public: InnerPublicVariables::blank(),
@@ -154,6 +157,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // Declare the noop program ID as bytes.
         let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
 
+        // TODO: directly allocate these as the appropriate number of constant zero field elements
+        // (i.e., no constraints)
         let zero_value_field_elements =
             zero_value.to_constraint_field(&mut cs.ns(|| "convert zero value to field elements"))?;
         let empty_payload_field_elements =
@@ -191,6 +196,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Declare record contents
             let (
                 given_owner,
+                given_owner_view_key,
                 given_is_dummy,
                 given_value,
                 given_payload,
@@ -211,6 +217,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
                     &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
+                )?;
+
+                let given_owner_view_key = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::PrivateKeyGadget::alloc(
+                    &mut declare_cs.ns(|| "given_record_owner_view_key"),
+                    || Ok(*record.owner()),
                 )?;
 
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
@@ -258,6 +272,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
                 // Allocate sk_prf.
+                // TODO: CRITICAL: we don't check sk_prf against the account
                 let sk_prf = {
                     let compute_key = ComputeKey::<N>::from_signature(&private.signature)
                         .expect("Failed to derive the compute key from signature");
@@ -338,21 +353,24 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Compute the record commitment and check that it matches the declared commitment.
                 // *******************************************************************
 
-                let mut commitment_input = Vec::new();
-                commitment_input.extend_from_slice(&given_owner_bytes);
-                commitment_input.extend_from_slice(&given_is_dummy_bytes);
-                commitment_input.extend_from_slice(&given_value_bytes);
-                commitment_input.extend_from_slice(&given_payload);
-                commitment_input.extend_from_slice(&given_program_id);
-                commitment_input.extend_from_slice(&given_randomizer_bytes);
+                let mut plaintext = Vec::new();
+                plaintext.extend_from_slice(&given_owner_bytes);
+                plaintext.extend_from_slice(&given_is_dummy_bytes);
+                plaintext.extend_from_slice(&given_value_bytes);
+                plaintext.extend_from_slice(&given_payload);
+                plaintext.extend_from_slice(&given_program_id);
 
-                // let (candidate_record_ciphertext, candidate_commitment_randomness) = account_encryption_parameters
-                //     .check_encryption_from_ciphertext_randomizer(
-                //         &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", j)),
-                //         &given_randomizer,
-                //         &given_owner,
-                //         &plaintext_input,
-                //     )?;
+                let (candidate_record_ciphertext, candidate_commitment_randomness) = account_encryption_parameters
+                    .check_encryption_from_ciphertext_randomizer(
+                        &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", j)),
+                        &given_randomizer,
+                        &given_owner,
+                        &plaintext,
+                    )?;
+
+                let mut commitment_input = Vec::new();
+                commitment_input.extend_from_slice(&candidate_record_ciphertext);
+                commitment_input.extend_from_slice(&given_owner_bytes);
 
                 let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
                     &mut commitment_cs.ns(|| "Compute record commitment"),
@@ -642,7 +660,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     let encryption_randomness_gadget = <N::AccountEncryptionGadget as EncryptionGadget<
                         N::AccountEncryptionScheme,
                         N::InnerScalarField,
-                    >>::RandomnessGadget::alloc(
+                    >>::ScalarRandomnessGadget::alloc(
                         &mut encryption_cs.ns(|| format!("output record {} encryption_randomness", j)),
                         || Ok(encryption_randomness),
                     )?;

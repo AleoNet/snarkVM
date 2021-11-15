@@ -44,7 +44,7 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         + Clone
         + Sized
         + Debug;
-    type PublicKeyCommitment;
+    type KeyCommitment;
     type ScalarRandomnessGadget: AllocGadget<E::ScalarRandomness, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
@@ -59,7 +59,7 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         input: &[UInt8],
-    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::PublicKeyCommitment), SynthesisError>;
+    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::KeyCommitment), SynthesisError>;
 
     fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
         &self,
@@ -67,5 +67,5 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         ciphertext_randomizer: &Self::CiphertextRandomizer,
         private_key: &Self::PrivateKeyGadget,
         message: &[UInt8],
-    ) -> Result<(Vec<UInt8>, Self::PublicKeyCommitment), SynthesisError>;
+    ) -> Result<(Vec<UInt8>, Self::KeyCommitment), SynthesisError>;
 }

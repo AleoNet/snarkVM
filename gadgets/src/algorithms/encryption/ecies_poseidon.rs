@@ -435,8 +435,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     EncryptionGadget<ECIESPoseidonEncryption<TE>, F> for ECIESPoseidonEncryptionGadget<TE, F>
 {
     type CiphertextRandomizer = ECIESPoseidonCiphertextRandomizerGadget<TE, F>;
+    type KeyCommitment = FpGadget<F>;
     type PrivateKeyGadget = ECIESPoseidonEncryptionPrivateKeyGadget<TE, F>;
-    type PublicKeyCommitment = FpGadget<F>;
     type PublicKeyGadget = ECIESPoseidonEncryptionPublicKeyGadget<TE, F>;
     type ScalarRandomnessGadget = ECIESPoseidonEncryptionRandomnessGadget<TE>;
 
@@ -475,7 +475,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
-    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::PublicKeyCommitment), SynthesisError> {
+    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::KeyCommitment), SynthesisError> {
         let affine_zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
 
@@ -557,7 +557,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         ciphertext_randomizer: &Self::CiphertextRandomizer,
         private_key: &Self::PrivateKeyGadget,
         message: &[UInt8],
-    ) -> Result<(Vec<UInt8>, Self::PublicKeyCommitment), SynthesisError> {
+    ) -> Result<(Vec<UInt8>, Self::KeyCommitment), SynthesisError> {
         let affine_zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
 

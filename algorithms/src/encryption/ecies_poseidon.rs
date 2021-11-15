@@ -114,10 +114,10 @@ where
     TE::BaseField: PoseidonDefaultParametersField + PrimeField,
 {
     type CiphertextRandomizer = TE::BaseField;
+    type KeyCommitment = TE::BaseField;
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = TEAffine<TE>;
-    type PublicKeyCommitment = TE::BaseField;
     type ScalarRandomness = TE::ScalarField;
     type SymmetricKey = TE::BaseField;
 
@@ -139,7 +139,6 @@ where
         self.generator.into_projective().mul(*private_key).into_affine()
     }
 
-    ///
     /// Given an RNG, returns the following:
     ///
     ///                  randomness := r
@@ -173,15 +172,11 @@ where
         (randomness, ciphertext_randomizer, symmetric_key)
     }
 
-    ///
     /// Given a public key and symmetric key, return the following:
     ///
-    ///     public_key_commitment := H(R_0 || public_key) == H(H_0(public_key^r) || public_key) == H(H_0(G^ar) || G^a)
-    ///
-    // TODO: figure out why the double hash structure; why not just H(pub_key || pub_key^r)?
-    /// The reason for the double hash structure
-    /// is to enable quick detection of whether this commitment is intended for a specific user.
-    fn generate_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::PublicKeyCommitment {
+    ///     public_key_commitment := sponge(domain_sep || G^ar)
+    ///     domain_sep := b"AleoEncryption2021"
+    fn generate_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::KeyCommitment {
         // Prepare the Poseidon sponge.
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
         let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
@@ -191,7 +186,6 @@ where
         public_key_commitment
     }
 
-    ///
     /// Given the private key and ciphertext randomizer, return the following:
     ///
     ///    symmetric_key := public_key^r == (G^r)^private_key
