@@ -185,17 +185,17 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Default for State<
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAPACITY> {
     /// Returns an immutable iterator over the state.
-    fn iter(&self) -> impl Iterator<Item = &F> {
+    pub fn iter(&self) -> impl Iterator<Item = &F> {
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 
     /// Returns an mutable iterator over the state.
-    fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
         self.capacity_state.iter_mut().chain(self.rate_state.iter_mut())
     }
 
     /// Get elements lying within the specified range
-    fn range(&self, range: Range<usize>) -> impl Iterator<Item = &F> {
+    pub fn range(&self, range: Range<usize>) -> impl Iterator<Item = &F> {
         let start = range.start;
         let end = range.end;
         assert!(
@@ -314,17 +314,17 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     }
 
     // Absorbs everything in elements, this does not end in an absorbtion.
-    fn absorb_internal(&mut self, rate_start: usize, elements: &[F]) {
+    fn absorb_internal(&mut self, mut rate_start: usize, elements: &[F]) {
         if elements.len() == 0 {
             return;
         }
 
         let first_chunk_size = std::cmp::min(RATE - rate_start, elements.len());
+        let num_elements_remaining = elements.len() - first_chunk_size;
         let (first_chunk, rest_chunk) = elements.split_at(first_chunk_size);
         let rest_chunks = rest_chunk.chunks(RATE);
-        // The total number of chunks is `elements[num_elements_absorbed..].len() / RATE`, plus 1
+        // The total number of chunks is `elements[num_elements_remaining..].len() / RATE`, plus 1
         // for the remainder.
-        let num_elements_remaining = elements.len() - first_chunk_size;
         let total_num_chunks = 1 + // 1 for the first chunk
             // We add all the chunks that are perfectly divisible by `RATE`
             (num_elements_remaining / RATE) +
@@ -348,46 +348,44 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
             } else {
                 self.permute();
             }
+            rate_start = 0;
         }
     }
 
     // Squeeze |output| many elements. This does not end in a squeeze
-    fn squeeze_internal(&mut self, mut rate_start_index: usize, output: &mut [F]) {
-        let mut output_remaining = output;
-        loop {
-            // if we can finish in this call
-            if rate_start_index + output_remaining.len() <= RATE {
-                let start = CAPACITY + rate_start_index;
-                let end = start + output_remaining.len();
-                output_remaining
-                    .iter_mut()
-                    .zip(self.state.range(start..end))
-                    .for_each(|(out, state)| {
-                        *out = *state;
-                    });
+    fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
+        if output.len() == 0 {
+            return;
+        }
+
+        let first_chunk_size = std::cmp::min(RATE - rate_start, output.len());
+        let num_output_remaining = output.len() - first_chunk_size;
+        let (first_chunk, rest_chunk) = output.split_at_mut(first_chunk_size);
+        let rest_chunks = rest_chunk.chunks_mut(RATE);
+        // The total number of chunks is `output[num_output_remaining..].len() / RATE`, plus 1
+        // for the remainder.
+        let total_num_chunks = 1 + // 1 for the first chunk
+            // We add all the chunks that are perfectly divisible by `RATE`
+            (num_output_remaining / RATE) +
+            // And also add 1 if the last chunk is non-empty 
+            // (i.e. if `num_output_remaining` is not a multiple of `RATE`)
+            (num_output_remaining % RATE) % 2;
+
+        // Absorb the input output, `RATE` output at a time, except for the first chunk, which
+        // is of size `RATE - rate_start`.
+        for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
+            chunk.copy_from_slice(&self.state.rate_state[rate_start..chunk.len()]);
+            // Are we in the last chunk?
+            // If so, let's wrap up.
+            if i == total_num_chunks - 1 {
                 self.mode = DuplexSpongeMode::Squeezing {
-                    next_squeeze_index: rate_start_index + output_remaining.len(),
+                    next_squeeze_index: (rate_start + chunk.len()),
                 };
                 return;
-            }
-            // otherwise squeeze (rate - rate_start_index) elements
-            let num_elements_squeezed = RATE - rate_start_index;
-            let start = CAPACITY + rate_start_index;
-            let end = start + num_elements_squeezed;
-            output_remaining[..num_elements_squeezed]
-                .iter_mut()
-                .zip(self.state.range(start..end))
-                .for_each(|(out, state)| {
-                    *out = *state;
-                });
-
-            // Unless we are done with squeezing in this call, permute.
-            if output_remaining.len() != RATE {
+            } else {
                 self.permute();
             }
-            // Repeat with updated output slices
-            output_remaining = &mut output_remaining[num_elements_squeezed..];
-            rate_start_index = 0;
+            rate_start = 0;
         }
     }
 }

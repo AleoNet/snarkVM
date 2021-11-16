@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonGrainLFSR, PoseidonSponge};
+use crate::crypto_hash::{
+    CryptographicSponge,
+    DuplexSpongeMode,
+    PoseidonDefaultParametersField,
+    PoseidonGrainLFSR,
+    PoseidonSponge,
+};
 use snarkvm_curves::bls12_377::Fr;
 
 use itertools::Itertools;
-use std::{
-    path::{PathBuf, MAIN_SEPARATOR},
-    sync::Arc,
-};
+use std::{path::PathBuf, sync::Arc};
 
 #[track_caller]
 fn expect_file_with_name(name: impl ToString, val: impl std::fmt::Debug) {
@@ -30,13 +33,7 @@ fn expect_file_with_name(name: impl ToString, val: impl std::fmt::Debug) {
     if !path.exists() {
         std::fs::create_dir_all(&path).expect("failed to create directory");
     }
-    let loc = std::panic::Location::caller();
-    let line = loc.line().to_string();
-    let column = loc.column().to_string();
-    let file_name: String = module_path!()
-        .split("::")
-        .chain([line.as_str(), column.as_str(), &name.to_string()])
-        .join("_");
+    let file_name: String = module_path!().split("::").chain([name.to_string().as_ref()]).join("_");
     path.push(file_name);
     path.set_extension("snap");
     if !path.exists() {
@@ -45,90 +42,80 @@ fn expect_file_with_name(name: impl ToString, val: impl std::fmt::Debug) {
     expect_test::expect_file![path].assert_eq(&format!("{:?}", val));
 }
 
-#[track_caller]
-fn expect_file(val: impl std::fmt::Debug) {
-    expect_file_with_name("", val)
-}
-
 #[test]
 fn test_grain_lfsr_consistency() {
     let mut lfsr = PoseidonGrainLFSR::new(false, 253, 3, 8, 31);
-    expect_file(lfsr.get_field_elements_rejection_sampling::<Fr>(1));
-    expect_file(lfsr.get_field_elements_rejection_sampling::<Fr>(1));
+    expect_file_with_name("first sample", lfsr.get_field_elements_rejection_sampling::<Fr>(1));
+    expect_file_with_name("second sample", lfsr.get_field_elements_rejection_sampling::<Fr>(1));
 }
 
 #[test]
 fn test_poseidon_sponge_consistency() {
-    let sponge_param = Arc::new(Fr::get_default_poseidon_parameters::<2>(false).unwrap());
+    const RATE: usize = 2;
+    let sponge_param = Arc::new(Fr::get_default_poseidon_parameters::<RATE>(false).unwrap());
     for absorb in 0..10 {
-        for squeeze in 1..10 {
-            let mut sponge = PoseidonSponge::<Fr, 2, 1>::new(&sponge_param);
+        for squeeze in 0..10 {
+            let iteration_name = format!("Absorb {} -> Squeeze {}", absorb, squeeze);
+            let mut sponge = PoseidonSponge::<Fr, RATE, 1>::new(&sponge_param);
             sponge.absorb(&vec![Fr::from(1237812u64); absorb]);
-            expect_file_with_name(
-                format!("Absorb {} -> Squeeze {}", absorb, squeeze),
-                sponge.squeeze_field_elements(squeeze),
+            let next_absorb_index = if absorb % RATE != 0 || absorb == 0 {
+                absorb % RATE
+            } else {
+                RATE
+            };
+            assert_eq!(
+                sponge.mode,
+                DuplexSpongeMode::Absorbing { next_absorb_index },
+                "{}",
+                iteration_name
             );
+            expect_file_with_name(&iteration_name, sponge.squeeze_field_elements(squeeze));
+            let next_squeeze_index = if squeeze % RATE != 0 || squeeze == 0 {
+                squeeze % RATE
+            } else {
+                RATE
+            };
+            if squeeze == 0 {
+                assert_eq!(
+                    sponge.mode,
+                    DuplexSpongeMode::Absorbing { next_absorb_index },
+                    "{}",
+                    iteration_name
+                );
+            } else {
+                assert_eq!(
+                    sponge.mode,
+                    DuplexSpongeMode::Squeezing { next_squeeze_index },
+                    "{}",
+                    iteration_name
+                );
+            }
         }
     }
 }
 
 #[test]
 fn bls12_377_fr_poseidon_default_parameters_test() {
+    fn single_rate_test<const RATE: usize>(optimize_for_weights: bool) {
+        let params = Fr::get_default_poseidon_parameters::<RATE>(optimize_for_weights).unwrap();
+        let name = format!("rate {} and optimize_for_weights {}", RATE, optimize_for_weights);
+        expect_file_with_name("Ark for ".to_string() + &name, params.ark);
+        expect_file_with_name("MDS for ".to_string() + &name, params.mds);
+    }
     // Optimize for constraints
-    let constraints_rate_2 = Fr::get_default_poseidon_parameters::<2>(false).unwrap();
-    expect_file(constraints_rate_2.ark);
-    expect_file(constraints_rate_2.mds);
+    single_rate_test::<2>(false);
+    single_rate_test::<3>(false);
+    single_rate_test::<4>(false);
+    single_rate_test::<5>(false);
+    single_rate_test::<6>(false);
+    single_rate_test::<7>(false);
+    single_rate_test::<8>(false);
 
-    let constraints_rate_3 = Fr::get_default_poseidon_parameters::<3>(false).unwrap();
-    expect_file(constraints_rate_3.ark);
-    expect_file(constraints_rate_3.mds);
-
-    let constraints_rate_4 = Fr::get_default_poseidon_parameters::<4>(false).unwrap();
-    expect_file(constraints_rate_4.ark);
-    expect_file(constraints_rate_4.mds);
-
-    let constraints_rate_5 = Fr::get_default_poseidon_parameters::<5>(false).unwrap();
-    expect_file(constraints_rate_5.ark);
-    expect_file(constraints_rate_5.mds);
-
-    let constraints_rate_6 = Fr::get_default_poseidon_parameters::<6>(false).unwrap();
-    expect_file(constraints_rate_6.ark);
-    expect_file(constraints_rate_6.mds);
-
-    let constraints_rate_7 = Fr::get_default_poseidon_parameters::<7>(false).unwrap();
-    expect_file(constraints_rate_7.ark);
-    expect_file(constraints_rate_7.mds);
-
-    let constraints_rate_8 = Fr::get_default_poseidon_parameters::<8>(false).unwrap();
-    expect_file(constraints_rate_8.ark);
-    expect_file(constraints_rate_8.mds);
-
-    // weights
-    let weights_rate_2 = Fr::get_default_poseidon_parameters::<2>(true).unwrap();
-    expect_file(weights_rate_2.ark);
-    expect_file(weights_rate_2.mds);
-
-    let weights_rate_3 = Fr::get_default_poseidon_parameters::<3>(true).unwrap();
-    expect_file(weights_rate_3.ark);
-    expect_file(weights_rate_3.mds);
-
-    let weights_rate_4 = Fr::get_default_poseidon_parameters::<4>(true).unwrap();
-    expect_file(weights_rate_4.ark);
-    expect_file(weights_rate_4.mds);
-
-    let weights_rate_5 = Fr::get_default_poseidon_parameters::<5>(true).unwrap();
-    expect_file(weights_rate_5.ark);
-    expect_file(weights_rate_5.mds);
-
-    let weights_rate_6 = Fr::get_default_poseidon_parameters::<6>(true).unwrap();
-    expect_file(weights_rate_6.ark);
-    expect_file(weights_rate_6.mds);
-
-    let weights_rate_7 = Fr::get_default_poseidon_parameters::<7>(true).unwrap();
-    expect_file(weights_rate_7.ark);
-    expect_file(weights_rate_7.mds);
-
-    let weights_rate_8 = Fr::get_default_poseidon_parameters::<8>(true).unwrap();
-    expect_file(weights_rate_8.ark);
-    expect_file(weights_rate_8.mds);
+    single_rate_test::<2>(true);
+    single_rate_test::<3>(true);
+    single_rate_test::<4>(true);
+    single_rate_test::<5>(true);
+    single_rate_test::<6>(true);
+    single_rate_test::<7>(true);
+    single_rate_test::<8>(true);
 }

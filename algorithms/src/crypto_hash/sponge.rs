@@ -34,7 +34,7 @@ pub trait CryptographicSponge<F: PrimeField>: Clone {
 }
 
 /// The mode structure for duplex sponges
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum DuplexSpongeMode {
     /// The sponge is currently absorbing data.
     Absorbing {
