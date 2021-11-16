@@ -32,6 +32,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::{
     io::{Read, Result as IoResult, Write},
+    ops::{Index, IndexMut, Range},
     sync::Arc,
 };
 
@@ -162,16 +163,110 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
 
     // Sponge State
     /// current sponge's state (current elements in the permutation block)
-    pub state: [F; RATE + CAPACITY],
+    pub state: State<F, RATE, CAPACITY>,
     /// current mode (whether its absorbing or squeezing)
     pub mode: DuplexSpongeMode,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct State<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
+    capacity_state: [F; CAPACITY],
+    rate_state: [F; RATE],
+}
+
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Default for State<F, RATE, CAPACITY> {
+    fn default() -> Self {
+        Self {
+            capacity_state: [F::zero(); CAPACITY],
+            rate_state: [F::zero(); RATE],
+        }
+    }
+}
+
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAPACITY> {
+    /// Returns an immutable iterator over the state.
+    fn iter(&self) -> impl Iterator<Item = &F> {
+        self.capacity_state.iter().chain(self.rate_state.iter())
+    }
+
+    /// Returns an mutable iterator over the state.
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
+        self.capacity_state.iter_mut().chain(self.rate_state.iter_mut())
+    }
+
+    /// Get elements lying within the specified range
+    fn range(&self, range: Range<usize>) -> impl Iterator<Item = &F> {
+        let start = range.start;
+        let end = range.end;
+        assert!(
+            start < end,
+            "start < end in range: start is {} but end is {}",
+            start,
+            end
+        );
+        assert!(
+            end <= RATE + CAPACITY,
+            "Range out of bounds: range is {:?} but length is {}",
+            range,
+            RATE + CAPACITY
+        );
+        if start >= CAPACITY {
+            // Our range is contained entirely in `rate_state`
+            self.rate_state[(start - CAPACITY)..(end - CAPACITY)].iter().chain(&[]) // This hack is need for `impl Iterator` to work.
+        } else if end > CAPACITY {
+            // Our range spans both arrays
+            self.capacity_state[start..]
+                .iter()
+                .chain(self.rate_state[..(end - CAPACITY)].iter())
+        } else {
+            debug_assert!(end <= CAPACITY);
+            debug_assert!(start < CAPACITY);
+            // Our range spans only the first array
+            self.capacity_state[start..end].iter().chain(&[])
+        }
+    }
+}
+
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Index<usize> for State<F, RATE, CAPACITY> {
+    type Output = F;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        assert!(
+            index < RATE + CAPACITY,
+            "Index out of bounds: index is {} but length is {}",
+            index,
+            RATE + CAPACITY
+        );
+        if index < CAPACITY {
+            &self.capacity_state[index]
+        } else {
+            &self.rate_state[index - CAPACITY]
+        }
+    }
+}
+
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> for State<F, RATE, CAPACITY> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        assert!(
+            index < RATE + CAPACITY,
+            "Index out of bounds: index is {} but length is {}",
+            index,
+            RATE + CAPACITY
+        );
+        if index < CAPACITY {
+            &mut self.capacity_state[index]
+        } else {
+            &mut self.rate_state[index - CAPACITY]
+        }
+    }
+}
+
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, RATE, CAPACITY> {
-    fn apply_s_box(&self, state: &mut [F], is_full_round: bool) {
+    #[inline]
+    fn apply_s_box(&self, state: &mut State<F, RATE, CAPACITY>, is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
-            for elem in state {
+            for elem in state.iter_mut() {
                 *elem = elem.pow(&[self.parameters.alpha]);
             }
         }
@@ -181,80 +276,78 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         }
     }
 
-    fn apply_ark(&self, state: &mut [F], round_number: usize) {
-        for (i, state_elem) in state.iter_mut().enumerate() {
-            *state_elem += &self.parameters.ark[round_number][i];
+    #[inline]
+    fn apply_ark(&self, state: &mut State<F, RATE, CAPACITY>, round_number: usize) {
+        for (state_elem, ark_elem) in state.iter_mut().zip(&self.parameters.ark[round_number]) {
+            *state_elem += ark_elem;
         }
     }
 
-    fn apply_mds(&self, state: &mut [F]) {
-        let new_state = (0..state.len())
-            .map(|i| {
-                state
+    #[inline]
+    fn apply_mds(&self, state: &mut State<F, RATE, CAPACITY>) {
+        let mut new_state = State::default();
+        new_state
+            .iter_mut()
+            .zip(&self.parameters.mds)
+            .for_each(|(new_elem, mds_row)| {
+                *new_elem = state
                     .iter()
-                    .enumerate()
-                    .map(|(j, state_elem)| self.parameters.mds[i][j] * state_elem)
-                    .sum::<F>()
-            })
-            .collect::<Vec<_>>();
-
-        state.clone_from_slice(&new_state[..state.len()])
+                    .zip(mds_row)
+                    .map(|(state_elem, &mds_elem)| mds_elem * state_elem)
+                    .sum::<F>();
+            });
+        *state = new_state;
     }
 
     fn permute(&mut self) {
         let full_rounds_over_2 = self.parameters.full_rounds / 2;
-        let mut state = self.state.clone();
-        for i in 0..full_rounds_over_2 {
-            self.apply_ark(&mut state, i);
-            self.apply_s_box(&mut state, true);
-            self.apply_mds(&mut state);
-        }
+        let partial_round_range = full_rounds_over_2..(full_rounds_over_2 + self.parameters.partial_rounds);
 
-        for i in full_rounds_over_2..(full_rounds_over_2 + self.parameters.partial_rounds) {
+        let mut state = self.state;
+        for i in 0..(self.parameters.partial_rounds + self.parameters.full_rounds) {
+            let is_full_round = !partial_round_range.contains(&i);
             self.apply_ark(&mut state, i);
-            self.apply_s_box(&mut state, false);
-            self.apply_mds(&mut state);
-        }
-
-        for i in (full_rounds_over_2 + self.parameters.partial_rounds)
-            ..(self.parameters.partial_rounds + self.parameters.full_rounds)
-        {
-            self.apply_ark(&mut state, i);
-            self.apply_s_box(&mut state, true);
+            self.apply_s_box(&mut state, is_full_round);
             self.apply_mds(&mut state);
         }
         self.state = state;
     }
 
     // Absorbs everything in elements, this does not end in an absorbtion.
-    fn absorb_internal(&mut self, mut rate_start_index: usize, elements: &[F]) {
+    fn absorb_internal(&mut self, rate_start: usize, elements: &[F]) {
         if elements.len() == 0 {
             return;
         }
 
-        let mut remaining_elements = elements;
+        let first_chunk_size = std::cmp::min(RATE - rate_start, elements.len());
+        let (first_chunk, rest_chunk) = elements.split_at(first_chunk_size);
+        let rest_chunks = rest_chunk.chunks(RATE);
+        // The total number of chunks is `elements[num_elements_absorbed..].len() / RATE`, plus 1
+        // for the remainder.
+        let num_elements_remaining = elements.len() - first_chunk_size;
+        let total_num_chunks = 1 + // 1 for the first chunk
+            // We add all the chunks that are perfectly divisible by `RATE`
+            (num_elements_remaining / RATE) +
+            // And also add 1 if the last chunk is non-empty 
+            // (i.e. if `num_elements_remaining` is not a multiple of `RATE`)
+            (num_elements_remaining % RATE) % 2;
 
-        loop {
-            // if we can finish in this call
-            if rate_start_index + remaining_elements.len() <= RATE {
-                for (i, element) in remaining_elements.iter().enumerate() {
-                    self.state[CAPACITY + i + rate_start_index] += element;
-                }
+        // Absorb the input elements, `RATE` elements at a time, except for the first chunk, which
+        // is of size `RATE - rate_start`.
+        for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
+            for (element, state_elem) in chunk.iter().zip(&mut self.state.rate_state[rate_start..]) {
+                *state_elem += element;
+            }
+            // Are we in the last chunk?
+            // If so, let's wrap up.
+            if i == total_num_chunks - 1 {
                 self.mode = DuplexSpongeMode::Absorbing {
-                    next_absorb_index: rate_start_index + remaining_elements.len(),
+                    next_absorb_index: rate_start + chunk.len(),
                 };
-
                 return;
+            } else {
+                self.permute();
             }
-            // otherwise absorb (rate - rate_start_index) elements
-            let num_elements_absorbed = RATE - rate_start_index;
-            for (i, element) in remaining_elements.iter().enumerate().take(num_elements_absorbed) {
-                self.state[CAPACITY + i + rate_start_index] += element;
-            }
-            self.permute();
-            // the input elements got truncated by num elements absorbed
-            remaining_elements = &remaining_elements[num_elements_absorbed..];
-            rate_start_index = 0;
         }
     }
 
@@ -264,9 +357,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         loop {
             // if we can finish in this call
             if rate_start_index + output_remaining.len() <= RATE {
-                output_remaining.clone_from_slice(
-                    &self.state[CAPACITY + rate_start_index..(CAPACITY + output_remaining.len() + rate_start_index)],
-                );
+                let start = CAPACITY + rate_start_index;
+                let end = start + output_remaining.len();
+                output_remaining
+                    .iter_mut()
+                    .zip(self.state.range(start..end))
+                    .for_each(|(out, state)| {
+                        *out = *state;
+                    });
                 self.mode = DuplexSpongeMode::Squeezing {
                     next_squeeze_index: rate_start_index + output_remaining.len(),
                 };
@@ -274,9 +372,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
             }
             // otherwise squeeze (rate - rate_start_index) elements
             let num_elements_squeezed = RATE - rate_start_index;
-            output_remaining[..num_elements_squeezed].clone_from_slice(
-                &self.state[CAPACITY + rate_start_index..(CAPACITY + num_elements_squeezed + rate_start_index)],
-            );
+            let start = CAPACITY + rate_start_index;
+            let end = start + num_elements_squeezed;
+            output_remaining[..num_elements_squeezed]
+                .iter_mut()
+                .zip(self.state.range(start..end))
+                .for_each(|(out, state)| {
+                    *out = *state;
+                });
 
             // Unless we are done with squeezing in this call, permute.
             if output_remaining.len() != RATE {
@@ -295,7 +398,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> CryptographicSpong
     type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
 
     fn new(parameters: &Self::Parameters) -> Self {
-        let state = [F::zero(); RATE + CAPACITY];
+        let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
         Self {
@@ -311,13 +414,12 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> CryptographicSpong
         }
 
         match self.mode {
-            DuplexSpongeMode::Absorbing { next_absorb_index } => {
-                let mut absorb_index = next_absorb_index;
-                if absorb_index == RATE {
+            DuplexSpongeMode::Absorbing { mut next_absorb_index } => {
+                if next_absorb_index == RATE {
                     self.permute();
-                    absorb_index = 0;
+                    next_absorb_index = 0;
                 }
-                self.absorb_internal(absorb_index, input);
+                self.absorb_internal(next_absorb_index, input);
             }
             DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
                 self.permute();
@@ -330,20 +432,18 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> CryptographicSpong
         if num_elements == 0 {
             return vec![];
         }
-
         let mut squeezed_elems = vec![F::zero(); num_elements];
         match self.mode {
             DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
                 self.permute();
                 self.squeeze_internal(0, &mut squeezed_elems);
             }
-            DuplexSpongeMode::Squeezing { next_squeeze_index } => {
-                let mut squeeze_index = next_squeeze_index;
-                if squeeze_index == RATE {
+            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
+                if next_squeeze_index == RATE {
                     self.permute();
-                    squeeze_index = 0;
+                    next_squeeze_index = 0;
                 }
-                self.squeeze_internal(squeeze_index, &mut squeezed_elems);
+                self.squeeze_internal(next_squeeze_index, &mut squeezed_elems);
             }
         };
 
@@ -377,8 +477,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
         let mut sponge = PoseidonSponge::<F, RATE, 1>::new(&self.parameters);
         sponge.absorb(input);
-        let res = sponge.squeeze_field_elements(1);
-        res[0]
+        sponge.squeeze_field_elements(1)[0]
     }
 
     fn parameters(&self) -> &Self::Parameters {
