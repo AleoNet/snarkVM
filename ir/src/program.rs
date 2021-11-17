@@ -21,8 +21,9 @@ use prost::Message;
 use crate::{ir, Function, Header, Instruction, MaskData, RepeatData};
 
 use anyhow::*;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Program {
     pub header: Header,
     pub functions: Vec<Function>,

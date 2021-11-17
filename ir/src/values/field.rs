@@ -18,8 +18,10 @@ use std::fmt;
 
 use crate::ir;
 
+use serde::Serialize;
+
 /// An unbounded field value
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Field {
     pub negate: bool,
     pub values: Vec<u64>,

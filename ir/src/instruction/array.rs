@@ -17,12 +17,13 @@
 use std::fmt;
 
 use anyhow::*;
+use serde::Serialize;
 
 use crate::{ir, Value};
 
 use super::decode_control_u32;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ArrayInitRepeatData {
     pub destination: u32,
     pub length: u32,
@@ -69,7 +70,7 @@ impl ArrayInitRepeatData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct VarData {
     pub destination: u32,
     pub values: Vec<Value>,

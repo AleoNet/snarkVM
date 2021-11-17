@@ -19,10 +19,11 @@ use std::fmt;
 use crate::{ir, Value};
 
 use anyhow::*;
+use serde::Serialize;
 
 use super::decode_control_u32;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct QueryData<const N: usize> {
     pub destination: u32,
     pub values: Vec<Value>,

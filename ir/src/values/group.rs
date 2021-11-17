@@ -19,8 +19,9 @@ use std::fmt;
 use crate::{ir, Field};
 
 use anyhow::*;
+use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum GroupCoordinate {
     Field(Field),
     SignHigh,
@@ -68,7 +69,7 @@ impl GroupCoordinate {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum Group {
     Single(Field),
     Tuple(GroupCoordinate, GroupCoordinate),
