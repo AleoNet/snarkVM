@@ -330,7 +330,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
             (num_elements_remaining / RATE) +
             // And also add 1 if the last chunk is non-empty 
             // (i.e. if `num_elements_remaining` is not a multiple of `RATE`)
-            (num_elements_remaining % RATE) % 2;
+            usize::from((num_elements_remaining % RATE) != 0);
 
         // Absorb the input elements, `RATE` elements at a time, except for the first chunk, which
         // is of size `RATE - rate_start`.
@@ -354,13 +354,15 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
     // Squeeze |output| many elements. This does not end in a squeeze
     fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
-        if output.len() == 0 {
+        let output_length = output.len();
+        if output_length == 0 {
             return;
         }
 
         let first_chunk_size = std::cmp::min(RATE - rate_start, output.len());
         let num_output_remaining = output.len() - first_chunk_size;
         let (first_chunk, rest_chunk) = output.split_at_mut(first_chunk_size);
+        assert_eq!(rest_chunk.len(), num_output_remaining);
         let rest_chunks = rest_chunk.chunks_mut(RATE);
         // The total number of chunks is `output[num_output_remaining..].len() / RATE`, plus 1
         // for the remainder.
@@ -369,12 +371,21 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
             (num_output_remaining / RATE) +
             // And also add 1 if the last chunk is non-empty 
             // (i.e. if `num_output_remaining` is not a multiple of `RATE`)
-            (num_output_remaining % RATE) % 2;
+            usize::from((num_output_remaining % RATE) != 0);
 
         // Absorb the input output, `RATE` output at a time, except for the first chunk, which
         // is of size `RATE - rate_start`.
         for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
-            chunk.copy_from_slice(&self.state.rate_state[rate_start..chunk.len()]);
+            let range = rate_start..(rate_start + chunk.len());
+            debug_assert_eq!(
+                chunk.len(),
+                self.state.rate_state[range.clone()].len(),
+                "failed with squeeze {} at rate {} and rate_start {}",
+                output_length,
+                RATE,
+                rate_start
+            );
+            chunk.copy_from_slice(&self.state.rate_state[range]);
             // Are we in the last chunk?
             // If so, let's wrap up.
             if i == total_num_chunks - 1 {

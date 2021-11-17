@@ -43,9 +43,22 @@ pub struct FiatShamirAlgebraicSpongeRng<TargetField: PrimeField, BaseField: Prim
 impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>>
     FiatShamirRng<TargetField, BaseField> for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
+    type Parameters = S::Parameters;
+
+    fn sample_params() -> Self::Parameters {
+        S::sample_params()
+    }
+
     fn new() -> Self {
         Self {
             s: S::new(),
+            _phantom: PhantomData,
+        }
+    }
+
+    fn with_parameters(params: &Self::Parameters) -> Self {
+        Self {
+            s: S::with_parameters(&params),
             _phantom: PhantomData,
         }
     }
