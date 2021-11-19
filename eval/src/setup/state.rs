@@ -83,9 +83,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
 
         self.namespace_id_counter += 1;
         let mut parent_variables = self.state_data.state.variables.clone();
-
         parent_variables.extend(self.state_data.state.parent_variables.clone());
-
         let mut state = EvaluatorState {
             program: self.state_data.state.program,
             variables: IndexMap::new(),
@@ -159,9 +157,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             self.namespace_id_counter += 1;
 
             let mut parent_variables = self.state_data.state.variables.clone();
-
             parent_variables.extend(self.state_data.state.parent_variables.clone());
-
             let state = EvaluatorState {
                 program: self.state_data.state.program,
                 variables: IndexMap::new(),
