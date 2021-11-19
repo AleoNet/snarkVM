@@ -58,6 +58,3 @@ version = "1.0"
 
 [dependencies.indexmap]
 version = "1.6"
-
-[dependencies.im]
-version = "15.0"
