@@ -133,7 +133,7 @@ impl<N: Network> ResponseBuilder<N> {
             .iter()
             .enumerate()
             .take(N::NUM_OUTPUT_RECORDS)
-            .map(|(i, output)| output.to_record(rng))
+            .map(|(_i, output)| output.to_record(rng))
             .collect::<Result<Vec<(_, _)>>>()?
             .iter()
             .cloned()

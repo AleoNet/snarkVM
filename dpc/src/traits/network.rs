@@ -258,11 +258,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
     type RecordCiphertext: Bech32Object<RecordCiphertext<Self>> + Hash;
     type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
-    type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey>;
+    type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CommitmentScheme>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
-    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
+    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField, Input = Vec<<Self::CommitmentGadget as CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>>;
     type SerialNumber: Bech32Locator<<Self::SerialNumberPRF as PRF>::Output>;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.

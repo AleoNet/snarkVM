@@ -84,17 +84,19 @@ impl<N: Network> Record<N> {
         record_view_key: N::RecordViewKey,
     ) -> Result<Self, RecordError> {
         // Encode the record contents into plaintext bytes.
-        let plaintext = Self::encode_plaintext(owner, value, payload, program_id)?;
+        let plaintext = Self::encode_plaintext(owner, value, &payload, program_id)?;
 
+        let encryption_scheme = N::account_encryption_scheme();
         // Encrypt the record bytes.
         let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
             randomizer,
-            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?
+            encryption_scheme.generate_key_commitment(&record_view_key),
+            encryption_scheme.encrypt(&record_view_key, &plaintext)?
         ]?)?;
 
         // Compute the record commitment.
         let commitment_input = to_bytes_le![ciphertext, owner]?;
-        let commitment_randomness = Self::view_key_to_comm_randomness(record_view_key)?;
+        let commitment_randomness = Self::record_view_key_to_comm_randomness(&record_view_key)?;
 
         let commitment = N::commitment_scheme()
             .commit(&commitment_input, &commitment_randomness)?
@@ -111,7 +113,9 @@ impl<N: Network> Record<N> {
         })
     }
 
-    fn view_key_to_comm_randomness(record_view_key: N::RecordViewKey) -> Result<N::ProgramScalarField, RecordError> {
+    pub(crate) fn record_view_key_to_comm_randomness(
+        record_view_key: &N::RecordViewKey,
+    ) -> Result<N::ProgramScalarField, RecordError> {
         Ok(N::ProgramScalarField::from_bytes_le_mod_order(&to_bytes_le![
             record_view_key
         ]?))
@@ -139,7 +143,7 @@ impl<N: Network> Record<N> {
             true => {
                 // Compute the commitment.
                 let commitment_input = to_bytes_le![ciphertext, owner]?;
-                let commitment_randomness = Self::view_key_to_comm_randomness(record_view_key)?;
+                let commitment_randomness = Self::record_view_key_to_comm_randomness(&record_view_key)?;
                 let commitment = N::commitment_scheme()
                     .commit(&commitment_input, &commitment_randomness)?
                     .into();
@@ -171,7 +175,7 @@ impl<N: Network> Record<N> {
 
         // Compute the commitment.
         let commitment_input = to_bytes_le![ciphertext, owner]?;
-        let commitment_randomness = Self::view_key_to_comm_randomness(record_view_key)?;
+        let commitment_randomness = Self::record_view_key_to_comm_randomness(&record_view_key)?;
         let commitment = N::commitment_scheme()
             .commit(&commitment_input, &commitment_randomness)?
             .into();
@@ -190,7 +194,7 @@ impl<N: Network> Record<N> {
     /// Returns the ciphertext of the record, encrypted under the record owner.
     pub fn encrypt(&self) -> Result<N::RecordCiphertext, RecordError> {
         // Encode the record contents into plaintext bytes.
-        let plaintext = Self::encode_plaintext(self.owner, self.value, self.payload, self.program_id)?;
+        let plaintext = Self::encode_plaintext(self.owner, self.value, &self.payload, self.program_id)?;
 
         // Encrypt the record bytes.
         let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
@@ -232,8 +236,8 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the view key of this record.
-    pub fn record_view_key(&self) -> N::RecordViewKey {
-        self.record_view_key
+    pub fn record_view_key(&self) -> &N::RecordViewKey {
+        &self.record_view_key
     }
 
     /// Returns the commitment of this record.
@@ -261,7 +265,7 @@ impl<N: Network> Record<N> {
     fn encode_plaintext(
         owner: Address<N>,
         value: u64,
-        payload: Payload<N>,
+        payload: &Payload<N>,
         program_id: N::ProgramID,
     ) -> Result<Vec<u8>, RecordError> {
         // Determine if the record is a dummy.

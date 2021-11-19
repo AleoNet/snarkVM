@@ -24,7 +24,6 @@ use anyhow::Result;
 pub struct InnerPrivateVariables<N: Network> {
     // Inputs.
     pub(super) input_records: Vec<Record<N>>,
-    pub(super) view_keys: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey>,
     pub(super) ledger_proofs: Vec<LedgerProof<N>>,
     pub(super) signature: N::AccountSignature,
     pub(super) function_type: FunctionType,
@@ -41,10 +40,6 @@ impl<N: Network> InnerPrivateVariables<N> {
     {
         Self {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
-            view_keys: vec![
-                <N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::default();
-                N::NUM_INPUT_RECORDS
-            ],
             ledger_proofs: vec![Default::default(); N::NUM_INPUT_RECORDS],
             signature: <N::AccountSignatureScheme as SignatureScheme>::Signature::default().into(),
             function_type: FunctionType::Noop,

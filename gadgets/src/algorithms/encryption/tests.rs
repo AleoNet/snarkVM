@@ -118,14 +118,15 @@ mod ecies_poseidon {
 
         println!("number of constraints for inputs: {}", cs.num_constraints());
 
-        let (_ciphertext_randomizer, ciphertext_gadget, public_key_commitment_gadget) = encryption
-            .check_encryption_from_scalar_randomness(
-                &mut cs.ns(|| "ciphertext_gadget_evaluation"),
-                &randomness_gadget,
-                &public_key_gadget,
-                &message_gadget,
-            )
-            .unwrap();
+        let (_ciphertext_randomizer, ciphertext_gadget, symmetric_key_gadget, public_key_commitment_gadget) =
+            encryption
+                .check_encryption_from_scalar_randomness(
+                    &mut cs.ns(|| "ciphertext_gadget_evaluation"),
+                    &randomness_gadget,
+                    &public_key_gadget,
+                    &message_gadget,
+                )
+                .unwrap();
 
         expected_ciphertext_gadget
             .enforce_equal(

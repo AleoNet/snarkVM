@@ -27,7 +27,7 @@ use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
 pub struct PedersenCompressedCommitmentGadget<
@@ -99,6 +99,13 @@ impl<
 {
     type OutputGadget = GG::BaseFieldGadget;
     type RandomnessGadget = PedersenRandomnessGadget<G>;
+
+    fn randomness_from_bytes<CS: ConstraintSystem<F>>(
+        _cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::RandomnessGadget, SynthesisError> {
+        Ok(PedersenRandomnessGadget(bytes.to_vec(), PhantomData))
+    }
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
         &self,

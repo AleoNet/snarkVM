@@ -90,6 +90,17 @@ impl<
 }
 
 impl<
+    T: Default + Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
+    const PREFIX: u32,
+    const DATA_SIZE_IN_BYTES: usize,
+> Default for AleoObject<T, PREFIX, DATA_SIZE_IN_BYTES>
+{
+    fn default() -> Self {
+        Self(T::default())
+    }
+}
+
+impl<
     T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
     const PREFIX: u32,
     const DATA_SIZE_IN_BYTES: usize,

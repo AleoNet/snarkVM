@@ -44,7 +44,12 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         + Clone
         + Sized
         + Debug;
-    type KeyCommitment;
+    type SymmetricKeyGadget: AllocGadget<<E as EncryptionScheme>::SymmetricKey, F>
+        + ToBytesGadget<F>
+        + Clone
+        + Sized
+        + Debug;
+    type KeyCommitment: ToBytesGadget<F>;
     type ScalarRandomnessGadget: AllocGadget<E::ScalarRandomness, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
@@ -59,7 +64,28 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         input: &[UInt8],
-    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::KeyCommitment), SynthesisError>;
+    ) -> Result<
+        (
+            Self::CiphertextRandomizer,
+            Vec<UInt8>,
+            Self::SymmetricKeyGadget,
+            Self::KeyCommitment,
+        ),
+        SynthesisError,
+    >;
+
+    /// Assumes symmetric key is committed before hand.
+    /// Otherwise, this allows the decrypter to open the ciphertext to any
+    /// plaintext.
+    ///
+    /// # Returns
+    /// The ciphertext produced by this key.
+    fn check_encryption_from_symmetric_key<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        symmetric_key: &Self::SymmetricKeyGadget,
+        plaintext: &[UInt8],
+    ) -> Result<(Self::KeyCommitment, Vec<UInt8>), SynthesisError>;
 
     fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
         &self,

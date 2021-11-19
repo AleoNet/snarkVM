@@ -227,10 +227,10 @@ impl<N: Network> Transition<N> {
     pub(crate) fn compute_transition_id(
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
-        ciphertexts: &Vec<N::RecordCiphertext>,
+        _ciphertexts: &Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
     ) -> Result<N::TransitionID> {
-        let leaves = Self::compute_transition_leaves(serial_numbers, commitments, ciphertexts, value_balance)?;
+        let leaves = Self::compute_transition_leaves(serial_numbers, commitments, _ciphertexts, value_balance)?;
         let tree =
             MerkleTree::<N::TransitionIDParameters>::new(Arc::new(N::transition_id_parameters().clone()), &leaves)?;
         Ok((*tree.root()).into())
@@ -245,7 +245,7 @@ impl<N: Network> Transition<N> {
     pub(crate) fn compute_transition_leaves(
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
-        ciphertexts: &Vec<N::RecordCiphertext>,
+        _ciphertexts: &Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
     ) -> Result<Vec<Vec<u8>>> {
         // Construct the leaves of the transition tree.

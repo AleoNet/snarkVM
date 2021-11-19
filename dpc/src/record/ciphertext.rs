@@ -72,7 +72,7 @@ impl<N: Network> RecordCiphertext<N> {
 
         let mut record_ciphertext =
             vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES - N::RecordRandomizer::data_size_in_bytes()];
-        cursor.read_exact(&mut record_ciphertext);
+        cursor.read_exact(&mut record_ciphertext)?;
 
         Ok((ciphertext_randomizer, record_ciphertext))
     }
@@ -82,7 +82,7 @@ impl<N: Network> FromBytes for RecordCiphertext<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut ciphertext = vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES];
-        reader.read_exact(&mut ciphertext);
+        reader.read_exact(&mut ciphertext)?;
         Ok(Self::from(&ciphertext)?)
     }
 }
