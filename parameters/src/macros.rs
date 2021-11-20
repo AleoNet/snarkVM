@@ -125,7 +125,7 @@ macro_rules! impl_remote {
                 } else {
                     // Downloads the missing parameters and stores it in the local directory for use.
                     eprintln!(
-                        "\nWARNING - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
+                        "\nATTENTION - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
                         filename, filename, file_path
                     );
 
@@ -152,7 +152,7 @@ macro_rules! impl_remote {
                                 Ok(()) => buffer,
                                 Err(_) => {
                                     eprintln!(
-                                        "\nWARNING - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
+                                        "\nATTENTION - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
                                         filename, file_path
                                     );
                                     buffer
