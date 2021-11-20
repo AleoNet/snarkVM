@@ -21,8 +21,16 @@ use core::fmt::Debug;
 
 /// Trait for an algebraic sponge.
 pub trait AlgebraicSponge<BaseField: PrimeField>: Clone + Debug {
+    type Parameters;
+
+    fn sample_params() -> Self::Parameters;
+
     /// Initializes an algebraic sponge.
     fn new() -> Self;
+
+    /// Initializes an algebraic sponge.
+    fn with_parameters(params: &Self::Parameters) -> Self;
+
     /// Takes in field elements.
     fn absorb(&mut self, elems: &[BaseField]);
     /// Takes out field elements.

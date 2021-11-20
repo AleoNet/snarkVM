@@ -35,7 +35,7 @@ pub struct PoseidonCRH<F: PrimeField + PoseidonDefaultParametersField, const INP
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
     type Output = F;
-    type Parameters = PoseidonParameters<F>;
+    type Parameters = PoseidonParameters<F, 4, 1>;
 
     fn setup(_message: &str) -> Self {
         Self(PoseidonCryptoHash::<F, 4, false>::setup())
@@ -90,10 +90,10 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<PoseidonParameters<F>>
+impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<PoseidonParameters<F, 4, 1>>
     for PoseidonCRH<F, INPUT_SIZE_FE>
 {
-    fn from(parameters: PoseidonParameters<F>) -> Self {
+    fn from(parameters: PoseidonParameters<F, 4, 1>) -> Self {
         Self(PoseidonCryptoHash::<F, 4, false>::from(parameters))
     }
 }
@@ -103,7 +103,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
 {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let parameters: PoseidonParameters<F> = FromBytes::read_le(&mut reader)?;
+        let parameters: PoseidonParameters<F, 4, 1> = FromBytes::read_le(&mut reader)?;
         Ok(Self::from(parameters))
     }
 }
@@ -117,7 +117,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField> ToConstraintField<F> for PoseidonParameters<F> {
+impl<F: PrimeField + PoseidonDefaultParametersField> ToConstraintField<F> for PoseidonParameters<F, 4, 1> {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // do not write into field elements
         Ok(vec![])
