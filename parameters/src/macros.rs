@@ -196,9 +196,15 @@ macro_rules! impl_remote {
                 #[cfg(not(feature = "no_std_out"))]
                 println!("{} - Storing parameters ({:?})", module_path!(), file_path);
 
+                // Ensure the folders up to the file path all exist.
+                let mut directory_path = file_path.to_path_buf();
+                directory_path.pop();
+                let _ = std::fs::create_dir_all(directory_path)?;
+
                 // Attempt to write the parameter buffer to a file.
-                if let Ok(mut file) = std::fs::File::create(file_path) {
-                    file.write_all(&buffer)?;
+                match std::fs::File::create(file_path) {
+                    Ok(mut file) => file.write_all(&buffer)?,
+                    Err(error) => eprintln!("{}", error)
                 }
                 Ok(())
             }
