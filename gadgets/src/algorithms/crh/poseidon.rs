@@ -99,7 +99,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
 
         let field_input = input.to_constraint_field(cs.ns(|| "convert input into field gadgets"))?;
 
-        let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc"), self.crh.parameters());
+        let mut sponge = PoseidonSpongeGadget::new(cs.ns(|| "alloc"), self.crh.parameters());
         sponge.absorb(cs.ns(|| "absorb"), field_input.iter())?;
         let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
@@ -121,7 +121,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
             input
         };
 
-        let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc"), self.crh.parameters());
+        let mut sponge = PoseidonSpongeGadget::new(cs.ns(|| "alloc"), self.crh.parameters());
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
         let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())

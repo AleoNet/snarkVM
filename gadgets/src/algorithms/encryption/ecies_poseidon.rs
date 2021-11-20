@@ -376,8 +376,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         // Prepare the sponge.
         let params =
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
-        let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
+            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap();
+        let mut sponge = PoseidonSpongeGadget::new(cs.ns(|| "sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
 
         // Squeeze one element for the commitment randomness.
@@ -386,8 +386,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         // Add a commitment to the public key.
         let public_key_commitment = {
-            let mut sponge =
-                PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge for public key commitment"), &params);
+            let mut sponge = PoseidonSpongeGadget::new(cs.ns(|| "sponge for public key commitment"), &params);
             sponge.absorb(
                 cs.ns(|| "absorb for public key commitment"),
                 [commitment_randomness, public_key.0.x.clone()].iter(),

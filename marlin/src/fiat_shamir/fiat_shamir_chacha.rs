@@ -76,12 +76,22 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
 impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> FiatShamirRng<TargetField, BaseField>
     for FiatShamirChaChaRng<TargetField, BaseField, D>
 {
+    type Parameters = ();
+
+    fn sample_params() -> Self::Parameters {
+        ()
+    }
+
     fn new() -> Self {
         Self {
             r: None,
             seed: None,
             _phantom: PhantomData,
         }
+    }
+
+    fn with_parameters(_params: &Self::Parameters) -> Self {
+        Self::new()
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], _: OptimizationType) {
