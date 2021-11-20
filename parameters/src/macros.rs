@@ -100,28 +100,13 @@ macro_rules! impl_remote {
                 };
 
                 // Compose the correct file path for the parameter file.
-                let mut file_path = std::path::PathBuf::from(file!());
-                file_path.pop();
+                let mut file_path = aleo_std::aleo_dir();
                 file_path.push($local_dir);
                 file_path.push(&filename);
 
-                // Compute the relative path.
-                let relative_path = if file_path.strip_prefix("parameters").is_ok() {
-                    file_path.strip_prefix("parameters")?
-                } else {
-                    &file_path
-                };
-
-                // Compute the absolute path.
-                let mut absolute_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                absolute_path.push(&relative_path);
-
-                let buffer = if relative_path.exists() {
-                    // Attempts to load the parameter file locally with a relative path.
-                    std::fs::read(relative_path)?
-                } else if absolute_path.exists() {
+                let buffer = if file_path.exists() {
                     // Attempts to load the parameter file locally with an absolute path.
-                    std::fs::read(absolute_path)?
+                    std::fs::read(file_path)?
                 } else {
                     // Downloads the missing parameters and stores it in the local directory for use.
                     eprintln!(
@@ -148,7 +133,7 @@ macro_rules! impl_remote {
                                 return checksum_error!(expected_checksum, candidate_checksum)
                             }
 
-                            match Self::store_bytes(&buffer, &relative_path, &absolute_path, &file_path) {
+                            match Self::store_bytes(&buffer, &file_path) {
                                 Ok(()) => buffer,
                                 Err(_) => {
                                     eprintln!(
@@ -204,22 +189,15 @@ macro_rules! impl_remote {
             #[cfg(not(feature = "wasm"))]
             fn store_bytes(
                 buffer: &[u8],
-                relative_path: &std::path::Path,
-                absolute_path: &std::path::Path,
                 file_path: &std::path::Path,
             ) -> Result<(), crate::errors::ParameterError> {
                 use snarkvm_utilities::Write;
-
-                // Hide compilation warning.
-                let _ = file_path;
 
                 #[cfg(not(feature = "no_std_out"))]
                 println!("{} - Storing parameters ({:?})", module_path!(), file_path);
 
                 // Attempt to write the parameter buffer to a file.
-                if let Ok(mut file) = std::fs::File::create(relative_path) {
-                    file.write_all(&buffer)?;
-                } else if let Ok(mut file) = std::fs::File::create(absolute_path) {
+                if let Ok(mut file) = std::fs::File::create(file_path) {
                     file.write_all(&buffer)?;
                 }
                 Ok(())
