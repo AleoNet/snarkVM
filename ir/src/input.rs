@@ -19,8 +19,9 @@ use crate::{ir, Type, Value};
 use anyhow::*;
 use indexmap::IndexMap;
 use prost::Message;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Input {
     pub variable: u32,
     pub name: String,

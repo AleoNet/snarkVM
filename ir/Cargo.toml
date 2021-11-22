@@ -25,6 +25,11 @@ version = "0.7"
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.serde]
+version = "1.0"
+default-features = false
+features = [ "derive" ]
+
 [dependencies.num_enum]
 version = "0.5"
 

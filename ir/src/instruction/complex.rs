@@ -20,10 +20,11 @@ use crate::{ir, Value};
 
 use anyhow::*;
 use num_enum::TryFromPrimitive;
+use serde::Serialize;
 
 use super::{decode_control_bool, decode_control_u32};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MaskData {
     pub instruction_count: u32,
     pub condition: Value,
@@ -62,7 +63,7 @@ impl MaskData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RepeatData {
     pub instruction_count: u32,
     pub iter_variable: u32,
@@ -128,7 +129,7 @@ impl RepeatData {
 }
 
 #[repr(u32)]
-#[derive(Clone, Copy, Debug, TryFromPrimitive, PartialEq)]
+#[derive(Clone, Copy, Debug, TryFromPrimitive, PartialEq, Serialize)]
 pub enum LogLevel {
     Error = 0,
     Info,
@@ -145,7 +146,7 @@ impl fmt::Display for LogLevel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LogData {
     pub log_level: LogLevel,
     pub parts: Vec<Value>,

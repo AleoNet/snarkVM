@@ -20,13 +20,14 @@ use crate::{ir, Type};
 
 use anyhow::*;
 use bech32::ToBase32;
+use serde::Serialize;
 
 mod field;
 pub use field::*;
 mod group;
 pub use group::*;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum Integer {
     U8(u8),
     U16(u16),
@@ -81,7 +82,7 @@ impl fmt::Display for Integer {
 }
 
 /// A constant value in IR representation or variable reference
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum Value {
     Address(Vec<u8>),
     Boolean(bool),

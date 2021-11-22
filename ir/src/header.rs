@@ -17,8 +17,9 @@
 use crate::{ir, Input};
 
 use anyhow::*;
+use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct SnarkVMVersion {
     major: u32,
     minor: u32,
@@ -41,7 +42,7 @@ impl SnarkVMVersion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Header {
     pub version: SnarkVMVersion,
     pub main_inputs: Vec<Input>,

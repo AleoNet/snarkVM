@@ -19,8 +19,9 @@ use std::fmt;
 use crate::ir;
 
 use anyhow::*;
+use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum Type {
     Address,
     Boolean,

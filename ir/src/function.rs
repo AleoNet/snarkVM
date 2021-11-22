@@ -17,8 +17,9 @@
 use crate::{ir, Instruction};
 
 use anyhow::*;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Function {
     pub argument_start_variable: u32,
     pub instructions: Vec<Instruction>,
