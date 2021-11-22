@@ -34,7 +34,6 @@ use crate::{
     GroupType,
     Integer,
 };
-use im::HashMap;
 
 mod instruction;
 mod state;

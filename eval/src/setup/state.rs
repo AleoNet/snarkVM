@@ -82,16 +82,13 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
             .collect::<Result<Vec<_>, _>>()?;
 
         self.namespace_id_counter += 1;
+        let mut parent_variables = self.state_data.state.variables.clone();
+        parent_variables.extend(self.state_data.state.parent_variables.clone());
         let mut state = EvaluatorState {
             program: self.state_data.state.program,
-            variables: HashMap::new(),
+            variables: IndexMap::new(),
             call_depth: self.state_data.state.call_depth,
-            parent_variables: self
-                .state_data
-                .state
-                .variables
-                .clone()
-                .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+            parent_variables, // todo: eval perf of IndexMap here
             function_index: self.state_data.state.function_index,
             instruction_index: 0,
             namespace_id: self.namespace_id_counter,
@@ -158,16 +155,14 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
 
         if condition_const_value {
             self.namespace_id_counter += 1;
+
+            let mut parent_variables = self.state_data.state.variables.clone();
+            parent_variables.extend(self.state_data.state.parent_variables.clone());
             let state = EvaluatorState {
                 program: self.state_data.state.program,
-                variables: HashMap::new(),
+                variables: IndexMap::new(),
                 call_depth: self.state_data.state.call_depth,
-                parent_variables: self
-                    .state_data
-                    .state
-                    .variables
-                    .clone()
-                    .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                parent_variables, // todo: eval perf of IndexMap here
                 function_index: self.state_data.state.function_index,
                 instruction_index: self.state_data.state.instruction_index,
                 namespace_id: self.namespace_id_counter,
@@ -272,16 +267,13 @@ impl<'a, F: PrimeField, G: GroupType<F>> FunctionEvaluator<'a, F, G> {
         //todo: max loop count (DOS vector)
         for i in iter {
             self.namespace_id_counter += 1;
+            let mut parent_variables = self.state_data.state.variables.clone();
+            parent_variables.extend(self.state_data.state.parent_variables.clone());
             let mut state = EvaluatorState {
                 program: self.state_data.state.program,
-                variables: HashMap::new(),
+                variables: IndexMap::new(),
                 call_depth: self.state_data.state.call_depth,
-                parent_variables: self
-                    .state_data
-                    .state
-                    .variables
-                    .clone()
-                    .union(self.state_data.state.parent_variables.clone()), // todo: eval perf of im::map here
+                parent_variables, // todo: eval perf of IndexMap here
                 function_index: self.state_data.state.function_index,
                 instruction_index: self.state_data.state.instruction_index,
                 namespace_id: self.namespace_id_counter,
@@ -535,9 +527,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> StateData<'a, F, G> {
 #[derive(Clone, Debug)]
 pub(super) struct EvaluatorState<'a, F: PrimeField, G: GroupType<F>> {
     pub program: &'a Program,
-    variables: HashMap<u32, ConstrainedValue<F, G>>,
+    variables: IndexMap<u32, ConstrainedValue<F, G>>,
     call_depth: u32,
-    pub parent_variables: HashMap<u32, ConstrainedValue<F, G>>,
+    pub parent_variables: IndexMap<u32, ConstrainedValue<F, G>>,
     pub function_index: u32,
     pub instruction_index: u32,
     namespace_id: usize,
@@ -548,9 +540,9 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
     pub fn new(program: &'a Program) -> Self {
         Self {
             program,
-            variables: HashMap::new(),
+            variables: IndexMap::new(),
             call_depth: 0,
-            parent_variables: HashMap::new(),
+            parent_variables: IndexMap::new(),
             function_index: 0,
             instruction_index: 0,
             namespace_id: 0,
