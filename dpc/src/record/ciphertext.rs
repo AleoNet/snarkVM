@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Locator, Network, RecordError};
+use crate::{account, Bech32Locator, Network, RecordError};
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
@@ -60,6 +60,14 @@ impl<N: Network> RecordCiphertext<N> {
     pub fn to_plaintext(&self, record_view_key: &N::RecordViewKey) -> Result<Vec<u8>, RecordError> {
         // Decrypt the record ciphertext.
         Ok(N::account_encryption_scheme().decrypt(record_view_key, &self.record_ciphertext)?)
+    }
+
+    /// Does the ciphertext encrypt the public key?
+    pub fn matches_account(&self, account: account::Address<N>, account_view_key: &account::ViewKey<N>) -> bool {
+        let encryption_scheme = N::account_encryption_scheme();
+        let record_view_key = encryption_scheme.generate_symmetric_key(&account_view_key, self.ciphertext_randomizer);
+
+        encryption_scheme.decrypt_up_to(N::ADDRESS_SIZE_IN_BYTES) == account.to_bytes_le().unwrap()
     }
 
     /// Decode the ciphertext into the ciphertext randomizer and record ciphertext.

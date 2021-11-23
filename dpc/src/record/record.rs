@@ -90,7 +90,6 @@ impl<N: Network> Record<N> {
         // Encrypt the record bytes.
         let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
             randomizer,
-            encryption_scheme.generate_key_commitment(&record_view_key),
             encryption_scheme.encrypt(&record_view_key, &plaintext)?
         ]?)?;
 
@@ -129,7 +128,8 @@ impl<N: Network> Record<N> {
         // Compute the record view key.
         let ciphertext = &*ciphertext;
         let randomizer = ciphertext.ciphertext_randomizer();
-        let record_view_key = N::account_encryption_scheme()
+        let encryption_scheme = N::account_encryption_scheme();
+        let record_view_key = encryption_scheme
             .generate_symmetric_key(&*account_view_key, *randomizer)?
             .into();
 

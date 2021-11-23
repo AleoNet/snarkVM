@@ -349,17 +349,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 plaintext.extend_from_slice(&given_payload);
                 plaintext.extend_from_slice(&given_program_id);
 
-                let (key_commitment, ciphertext) = account_encryption_parameters.check_encryption_from_symmetric_key(
+                let ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
                     &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
                     &given_record_view_key,
                     &plaintext,
                 )?;
 
-                let key_commitment_bytes =
-                    &key_commitment.to_bytes_strict(&mut commitment_cs.ns(|| "key commitment to bytes"))?;
-                let mut commitment_input =
-                    Vec::with_capacity(ciphertext.len() + key_commitment_bytes.len() + given_owner_bytes.len());
-                commitment_input.extend_from_slice(&key_commitment_bytes);
+                let mut commitment_input = Vec::with_capacity(ciphertext.len() + given_owner_bytes.len());
                 commitment_input.extend_from_slice(&ciphertext);
                 commitment_input.extend_from_slice(&given_owner_bytes);
 
@@ -661,7 +657,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     || Ok(encryption_randomness),
                 )?;
 
-                let (candidate_ciphertext_randomizer, record_ciphertext, record_view_key, key_commitment) =
+                let (candidate_ciphertext_randomizer, record_ciphertext, record_view_key) =
                     account_encryption_parameters.check_encryption_from_scalar_randomness(
                         &mut commitment_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                         &encryption_randomness,
@@ -679,11 +675,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Compute the record commitment and check that it matches the declared commitment.
                 // *******************************************************************
 
-                let key_commitment_bytes =
-                    key_commitment.to_bytes_strict(&mut commitment_cs.ns(|| "key commitment bytes"))?;
-                let mut commitment_input =
-                    Vec::with_capacity(record_ciphertext.len() + key_commitment_bytes.len() + given_owner_bytes.len());
-                commitment_input.extend_from_slice(&key_commitment_bytes);
+                let mut commitment_input = Vec::with_capacity(record_ciphertext.len() + given_owner_bytes.len());
                 commitment_input.extend_from_slice(&record_ciphertext);
                 commitment_input.extend_from_slice(&given_owner_bytes);
                 let rec_view_key_bytes =

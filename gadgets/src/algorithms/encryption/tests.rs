@@ -118,15 +118,14 @@ mod ecies_poseidon {
 
         println!("number of constraints for inputs: {}", cs.num_constraints());
 
-        let (_ciphertext_randomizer, ciphertext_gadget, symmetric_key_gadget, public_key_commitment_gadget) =
-            encryption
-                .check_encryption_from_scalar_randomness(
-                    &mut cs.ns(|| "ciphertext_gadget_evaluation"),
-                    &randomness_gadget,
-                    &public_key_gadget,
-                    &message_gadget,
-                )
-                .unwrap();
+        let (_ciphertext_randomizer, ciphertext_gadget, _) = encryption
+            .check_encryption_from_scalar_randomness(
+                &mut cs.ns(|| "ciphertext_gadget_evaluation"),
+                &randomness_gadget,
+                &public_key_gadget,
+                &message_gadget,
+            )
+            .unwrap();
 
         expected_ciphertext_gadget
             .enforce_equal(
@@ -134,24 +133,6 @@ mod ecies_poseidon {
                 &ciphertext_gadget,
             )
             .unwrap();
-
-        // Additionally, check the public key commitment is equal.
-        {
-            let expected_public_key_commitment = encryption_scheme.generate_key_commitment(&symmetric_key);
-            let expected_public_key_commitment_gadget =
-                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::KeyCommitment::alloc(
-                    &mut cs.ns(|| "expected_public_key_commitment_gadget"),
-                    || Ok(&expected_public_key_commitment),
-                )
-                .unwrap();
-
-            expected_public_key_commitment_gadget
-                .enforce_equal(
-                    cs.ns(|| "Check that declared and computed public key commitments are equal"),
-                    &public_key_commitment_gadget,
-                )
-                .unwrap();
-        }
 
         println!("number of constraints total: {}", cs.num_constraints());
 
@@ -200,7 +181,7 @@ mod ecies_poseidon {
 
         println!("number of constraints for inputs: {}", cs.num_constraints());
 
-        let (ciphertext_gadget, public_key_commitment_gadget) = encryption
+        let ciphertext_gadget = encryption
             .check_encryption_from_ciphertext_randomizer(
                 &mut cs.ns(|| "ciphertext_gadget_evaluation"),
                 &ciphertext_randomizer_gadget,
@@ -215,24 +196,6 @@ mod ecies_poseidon {
                 &ciphertext_gadget,
             )
             .unwrap();
-
-        // Additionally, check the public key commitment is equal.
-        {
-            let expected_public_key_commitment = encryption_scheme.generate_key_commitment(&symmetric_key);
-            let expected_public_key_commitment_gadget =
-                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::KeyCommitment::alloc(
-                    &mut cs.ns(|| "expected_public_key_commitment_gadget"),
-                    || Ok(&expected_public_key_commitment),
-                )
-                .unwrap();
-
-            expected_public_key_commitment_gadget
-                .enforce_equal(
-                    cs.ns(|| "Check that declared and computed public key commitments are equal"),
-                    &public_key_commitment_gadget,
-                )
-                .unwrap();
-        }
 
         println!("number of constraints total: {}", cs.num_constraints());
 

@@ -27,7 +27,6 @@ pub trait EncryptionScheme:
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type KeyCommitment: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes;
     type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
 
@@ -43,8 +42,6 @@ pub trait EncryptionScheme:
         rng: &mut R,
     ) -> (Self::ScalarRandomness, Self::CiphertextRandomizer, Self::SymmetricKey);
 
-    fn generate_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::KeyCommitment;
-
     fn generate_symmetric_key(
         &self,
         private_key: &Self::PrivateKey,
@@ -53,7 +50,17 @@ pub trait EncryptionScheme:
 
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError>;
 
-    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError>;
+    /// Decrypt while the condition specified by `f` is satisfied.
+    fn decrypt_while(
+        &self,
+        symmetric_key: &Self::SymmetricKey,
+        ciphertext: &[u8],
+        f: impl Fn(usize, u8) -> bool,
+    ) -> Option<Result<Vec<u8>, EncryptionError>>;
+
+    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
+        self.decrypt_while(symmetric_key, ciphertext, |_, _| true).unwrap()
+    }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 

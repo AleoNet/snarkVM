@@ -189,7 +189,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSW: PoSWScheme<Self>;
 
     /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, KeyCommitment = Self::ProgramBaseField, CiphertextRandomizer = Self::ProgramBaseField>;
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::ProgramBaseField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
@@ -259,6 +259,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type RecordCiphertext: Bech32Object<RecordCiphertext<Self>> + Hash;
     type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
     type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
+
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CommitmentScheme>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;

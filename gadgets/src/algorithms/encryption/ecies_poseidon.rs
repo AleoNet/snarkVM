@@ -499,7 +499,7 @@ fn symmetric_enc<F: PoseidonDefaultParametersField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
     plaintext: &[UInt8],
-) -> Result<(FpGadget<F>, Vec<UInt8>), SynthesisError> {
+) -> Result<Vec<UInt8>, SynthesisError> {
     // Prepare the sponge.
     let params = F::get_default_poseidon_parameters(4, false).unwrap();
     let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "sponge"), &params);
@@ -510,9 +510,6 @@ fn symmetric_enc<F: PoseidonDefaultParametersField>(
         cs.ns(|| "absorb"),
         IntoIterator::into_iter([&domain_separator, symmetric_key]),
     )?;
-
-    // Squeeze one element for the commitment randomness.
-    let key_commitment = sponge.squeeze_field_elements(cs.ns(|| "squeeze field elements for polyMAC"), 1)?[0].clone();
 
     // Convert the message into bits.
     let bits = plaintext
@@ -538,14 +535,13 @@ fn symmetric_enc<F: PoseidonDefaultParametersField>(
     }
 
     let ciphertext = res.to_bytes(cs.ns(|| "convert the masked results into bytes"))?;
-    Ok((key_commitment, ciphertext))
+    Ok(ciphertext)
 }
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
     EncryptionGadget<ECIESPoseidonEncryption<TE>, F> for ECIESPoseidonEncryptionGadget<TE, F>
 {
     type CiphertextRandomizer = ECIESPoseidonCiphertextRandomizerGadget<TE, F>;
-    type KeyCommitment = FpGadget<F>;
     type PrivateKeyGadget = ECIESPoseidonEncryptionPrivateKeyGadget<TE, F>;
     type PublicKeyGadget = ECIESPoseidonEncryptionPublicKeyGadget<TE, F>;
     type ScalarRandomnessGadget = ECIESPoseidonEncryptionRandomnessGadget<TE>;
@@ -591,7 +587,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         cs: CS,
         symmetric_key: &Self::SymmetricKeyGadget,
         plaintext: &[UInt8],
-    ) -> Result<(Self::KeyCommitment, Vec<UInt8>), SynthesisError> {
+    ) -> Result<Vec<UInt8>, SynthesisError> {
         symmetric_enc(cs, &symmetric_key.0, plaintext)
     }
 
@@ -601,15 +597,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
-    ) -> Result<
-        (
-            Self::CiphertextRandomizer,
-            Vec<UInt8>,
-            Self::SymmetricKeyGadget,
-            Self::KeyCommitment,
-        ),
-        SynthesisError,
-    > {
+    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::SymmetricKeyGadget), SynthesisError> {
         let zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
 
@@ -623,7 +611,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         )?
         .x;
 
-        let (key_commitment, ciphertext) = symmetric_enc(cs.ns(|| "enc with sym key"), &symmetric_key, message)?;
+        let ciphertext = symmetric_enc(cs.ns(|| "enc with sym key"), &symmetric_key, message)?;
         let symmetric_key = ECIESPoseidonEncryptionSymmetricKeyGadget(symmetric_key, PhantomData);
 
         // Put the bytes of the x coordinate of the randomness group element
@@ -639,7 +627,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
                 randomness_bits.iter().copied(),
             )?);
 
-        Ok((ciphertext_randomizer, ciphertext, symmetric_key, key_commitment))
+        Ok((ciphertext_randomizer, ciphertext, symmetric_key))
     }
 
     fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
@@ -648,7 +636,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         ciphertext_randomizer: &Self::CiphertextRandomizer,
         private_key: &Self::PrivateKeyGadget,
         message: &[UInt8],
-    ) -> Result<(Vec<UInt8>, Self::KeyCommitment), SynthesisError> {
+    ) -> Result<Vec<UInt8>, SynthesisError> {
         let zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
 
@@ -662,7 +650,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         )?
         .x;
 
-        let (key_commitment, ciphertext) = symmetric_enc(cs.ns(|| "enc with sym key"), &symmetric_key, message)?;
-        Ok((ciphertext, key_commitment))
+        let ciphertext = symmetric_enc(cs.ns(|| "enc with sym key"), &symmetric_key, message)?;
+        Ok(ciphertext)
     }
 }
