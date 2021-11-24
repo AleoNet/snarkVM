@@ -847,6 +847,7 @@ impl<
 mod test {
     use core::ops::MulAssign;
 
+    use smallvec::SmallVec;
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
@@ -887,7 +888,7 @@ mod test {
     {
         let mut vk_hash_rng = FS::new();
         vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
-        vk_hash_rng.squeeze_native_field_elements(1)
+        vk_hash_rng.squeeze_native_field_elements(1).map(SmallVec::into_vec)
     }
 
     use super::*;

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 
 use core::fmt::Debug;
@@ -34,7 +35,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     fn absorb(&mut self, input: &[F]);
 
     /// Squeeze `num_elements` field elements from the sponge.
-    fn squeeze_field_elements(&mut self, num_elements: usize) -> Vec<F>;
+    fn squeeze_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]>;
 }
 
 pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: AlgebraicSponge<F, RATE, 1> {

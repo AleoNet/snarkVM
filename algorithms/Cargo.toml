@@ -38,6 +38,11 @@ path = "benches/crh/bhp.rs"
 harness = false
 
 [[bench]]
+name = "encryption-aleo"
+path = "benches/encryption/aleo.rs"
+harness = false
+
+[[bench]]
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
@@ -155,6 +160,11 @@ features = ["derive"]
 [dependencies.sha2]
 version = "0.9"
 default-features = false
+
+[dependencies.smallvec]
+version = "1.7"
+default-features = false
+features = [ "const_generics", "const_new" ]
 
 [dependencies.thiserror]
 version = "1.0"

@@ -19,6 +19,7 @@ use crate::{
     PhantomData,
     Vec,
 };
+use smallvec::SmallVec;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     nonnative::{
@@ -114,7 +115,7 @@ where
         Ok(Self::get_elements_from_sponge(&mut self.s, num, false))
     }
 
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError> {
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError> {
         Ok(self.s.squeeze_field_elements(num))
     }
 

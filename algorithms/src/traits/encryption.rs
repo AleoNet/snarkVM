@@ -55,11 +55,11 @@ pub trait EncryptionScheme:
         &self,
         symmetric_key: &Self::SymmetricKey,
         ciphertext: &[u8],
-        f: impl Fn(usize, u8) -> bool,
-    ) -> Option<Result<Vec<u8>, EncryptionError>>;
+        should_continue: impl Fn(&[u8]) -> bool,
+    ) -> Result<Vec<u8>, EncryptionError>;
 
     fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
-        self.decrypt_while(symmetric_key, ciphertext, |_, _| true).unwrap()
+        self.decrypt_while(symmetric_key, ciphertext, |_| true)
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;

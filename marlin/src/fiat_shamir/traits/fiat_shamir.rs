@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fiat_shamir::FiatShamirError, Vec};
+use smallvec::SmallVec;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 
@@ -53,7 +54,7 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone +
     ) -> Result<Vec<TargetField>, FiatShamirError>;
 
     /// Takes in field elements.
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError>;
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError>;
 
     /// Takes out field elements of 128 bits.
     fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError>;

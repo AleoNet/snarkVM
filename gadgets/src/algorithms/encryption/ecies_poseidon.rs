@@ -481,15 +481,21 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F>
 {
 }
 
-fn pack_bits_to_field_elements<F: PrimeField>(
+fn pack_bytes_to_field_elements<F: PrimeField>(
     mut cs: impl ConstraintSystem<F>,
-    bits: &[Boolean],
+    bytes: &[UInt8],
 ) -> Result<Vec<FpGadget<F>>, SynthesisError> {
-    let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
-    bits.chunks(capacity)
+    let bit_capacity = F::Parameters::CAPACITY as usize;
+    let byte_capacity = bit_capacity / 8;
+    bytes
+        .iter()
+        .chain(std::iter::once(&UInt8::constant(1u8)))
+        .chunks(byte_capacity)
+        .into_iter()
         .enumerate()
         .map(|(i, chunk)| {
-            Boolean::le_bits_to_fp_var(cs.ns(|| format!("convert a bit to a field element {}", i)), chunk)
+            let bits = chunk.flat_map(|byte| byte.to_bits_le()).collect::<Vec<_>>();
+            Boolean::le_bits_to_fp_var(cs.ns(|| format!("convert a bit to a field element {}", i)), &bits)
         })
         .collect::<Result<Vec<_>, _>>()
 }
@@ -513,16 +519,12 @@ fn symmetric_enc<F: PoseidonDefaultParametersField>(
     )?;
 
     // Convert the message into bits.
-    let bits = plaintext
-        .iter()
-        .flat_map(|byte| byte.to_bits_le())
-        .chain(std::iter::once(Boolean::Constant(true)))
-        .collect::<Vec<_>>();
+
     // The last bit indicates the end of the actual data, which is used in decoding to
     // make sure that the length is correct.
 
     // Pack the bits into field elements.
-    let mut res = pack_bits_to_field_elements(cs.ns(|| "pack bits to be"), &bits)?;
+    let mut res = pack_bytes_to_field_elements(cs.ns(|| "pack bits to be"), &plaintext)?;
 
     // Obtain random field elements from Poseidon.
     let sponge_field_elements = sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), res.len())?;

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fiat_shamir::FiatShamirRng, FiatShamirError, PhantomData, Vec};
+use smallvec::SmallVec;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 
@@ -151,14 +152,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
         Ok(res)
     }
 
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError> {
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError> {
         // Ensure the RNG is initialized.
         let rng = match &mut self.r {
             Some(rng) => rng,
             None => return Err(FiatShamirError::UninitializedRNG),
         };
 
-        let mut res = Vec::<BaseField>::new();
+        let mut res = SmallVec::with_capacity(num);
         for _ in 0..num {
             res.push(BaseField::rand(rng));
         }

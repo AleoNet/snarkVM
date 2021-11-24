@@ -19,6 +19,7 @@ use crate::{
     traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode, SpongeParameters},
     CryptoHash,
 };
+use smallvec::SmallVec;
 use snarkvm_fields::{
     Fp256,
     Fp256Parameters,
@@ -353,6 +354,22 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         }
     }
 
+    fn squeeze_helper(&mut self, output: &mut [F]) {
+        match self.mode {
+            DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
+                self.permute();
+                self.squeeze_internal(0, output);
+            }
+            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
+                if next_squeeze_index == RATE {
+                    self.permute();
+                    next_squeeze_index = 0;
+                }
+                self.squeeze_internal(next_squeeze_index, output);
+            }
+        };
+    }
+
     // Squeeze |output| many elements. This does not end in a squeeze
     fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
         let output_length = output.len();
@@ -461,26 +478,18 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
         };
     }
 
-    fn squeeze_field_elements(&mut self, num_elements: usize) -> Vec<F> {
+    fn squeeze_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]> {
         if num_elements == 0 {
-            return vec![];
+            return SmallVec::new();
         }
-        let mut squeezed_elems = vec![F::zero(); num_elements];
-        match self.mode {
-            DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
-                self.permute();
-                self.squeeze_internal(0, &mut squeezed_elems);
-            }
-            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
-                if next_squeeze_index == RATE {
-                    self.permute();
-                    next_squeeze_index = 0;
-                }
-                self.squeeze_internal(next_squeeze_index, &mut squeezed_elems);
-            }
+        let mut buf = if num_elements <= 10 {
+            smallvec::smallvec_inline![F::zero(); 10]
+        } else {
+            smallvec::smallvec![F::zero(); num_elements]
         };
-
-        squeezed_elems
+        self.squeeze_helper(&mut buf[..num_elements]);
+        buf.truncate(num_elements);
+        buf
     }
 }
 

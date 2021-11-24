@@ -17,8 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::encryption::ecies_poseidon::*;
-use snarkvm_algorithms::traits::EncryptionScheme as _;
+use snarkvm_algorithms::{encryption::ecies_poseidon::*, traits::EncryptionScheme as _};
 use snarkvm_curves::edwards_bls12::EdwardsParameters;
 
 use criterion::Criterion;
@@ -74,18 +73,6 @@ fn aleo_encryption_generate_symmetric_key(c: &mut Criterion) {
     });
 }
 
-fn aleo_encryption_generate_key_commitment(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-    let parameters = EncryptionScheme::setup("aleo_encryption_generate_key_commitment");
-    let private_key = parameters.generate_private_key(rng);
-    let public_key = parameters.generate_public_key(&private_key);
-    let (_, _, sym_key) = parameters.generate_asymmetric_key(&public_key, rng);
-
-    c.bench_function("Aleo Encryption Generate Key Commitment", move |b| {
-        b.iter(|| parameters.generate_key_commitment(&public_key, &sym_key))
-    });
-}
-
 fn aleo_encryption_encrypt(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let parameters = EncryptionScheme::setup("aleo_encryption_encrypt");
@@ -120,7 +107,6 @@ criterion_group! {
                 aleo_encryption_generate_public_key,
                 aleo_encryption_generate_asymmetric_key,
                 aleo_encryption_generate_symmetric_key,
-                aleo_encryption_generate_public_key_commitment,
                 aleo_encryption_encrypt,
                 aleo_encryption_decrypt,
 }
