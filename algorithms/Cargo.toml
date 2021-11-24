@@ -48,6 +48,11 @@ path = "benches/hash_to_curve/hash_to_curve.rs"
 harness = false
 
 [[bench]]
+name = "poseidon_sponge"
+path = "benches/sponge/poseidon.rs"
+harness = false
+
+[[bench]]
 name = "prf"
 path = "benches/prf/poseidon.rs"
 harness = false
@@ -99,7 +104,7 @@ version = "0.9"
 optional = true
 
 [dependencies.blake2s_simd]
-version = "0.5"
+version = "1.0"
 
 [dependencies.crossbeam-channel]
 version = "0.5"
@@ -153,6 +158,9 @@ default-features = false
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dev-dependencies.expect-test ]
+version = "1.1.0"
 
 [dev-dependencies.bincode]
 version = "1"

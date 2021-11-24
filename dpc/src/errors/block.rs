@@ -28,6 +28,12 @@ pub enum BlockError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
+    CRHError(#[from] snarkvm_algorithms::CRHError),
+
+    #[error("{}", _0)]
+    MerkleError(#[from] snarkvm_algorithms::MerkleError),
+
+    #[error("{}", _0)]
     Message(String),
 }
 

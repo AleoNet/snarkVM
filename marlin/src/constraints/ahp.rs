@@ -872,7 +872,7 @@ mod test {
         FiatShamirAlgebraicSpongeRngVar,
         FiatShamirError,
         PoseidonSponge,
-        PoseidonSpongeVar,
+        PoseidonSpongeGadget as PoseidonSpongeVar,
     };
     /// Compute the hash of the circuit verifying key.
     /// Used internally in Marlin
@@ -899,8 +899,8 @@ mod test {
 
     type MultiPCVar = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     #[derive(Copy, Clone)]
     struct Circuit<F: Field> {

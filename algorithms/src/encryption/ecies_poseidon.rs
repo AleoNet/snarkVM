@@ -105,7 +105,7 @@ where
     TE::BaseField: PoseidonDefaultParametersField,
 {
     pub generator: TEAffine<TE>,
-    poseidon_parameters: Arc<PoseidonParameters<TE::BaseField>>,
+    poseidon_parameters: Arc<PoseidonParameters<TE::BaseField, 4, 1>>,
 }
 
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
@@ -121,11 +121,13 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
+        let poseidon_parameters = Arc::new(
+            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap(),
+        );
+
         Self {
             generator,
-            poseidon_parameters: Arc::new(
-                <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
-            ),
+            poseidon_parameters,
         }
     }
 
@@ -211,7 +213,7 @@ where
     ///
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
         // Initialize sponge state.
-        let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
+        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
         let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
         sponge.absorb(&[domain_separator, *symmetric_key]);
 
@@ -230,7 +232,6 @@ where
 
         // Determine the number of ciphertext elements.
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-        let num_ciphertext_elements = (plaintext_bits.len() + capacity - 1) / capacity;
 
         // Obtain random field elements from Poseidon.
         // Pack the bits into field elements and add the random field elements to the packed bits.
@@ -259,7 +260,7 @@ where
             assert!(ciphertext.len() >= per_field_element_bytes);
 
             // Initialize sponge state.
-            let mut sponge = PoseidonSponge::<TE::BaseField>::new(&self.poseidon_parameters);
+            let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
             let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
             sponge.absorb(&[domain_separator, *symmetric_key]);
 
@@ -349,11 +350,12 @@ where
     TE::BaseField: PoseidonDefaultParametersField,
 {
     fn from(generator: TEAffine<TE>) -> Self {
+        let poseidon_parameters = Arc::new(
+            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap(),
+        );
         Self {
             generator,
-            poseidon_parameters: Arc::new(
-                <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap(),
-            ),
+            poseidon_parameters,
         }
     }
 }

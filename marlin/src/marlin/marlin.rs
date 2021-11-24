@@ -572,6 +572,17 @@ impl<
         public_input: &[TargetField],
         proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError> {
+        Self::verify_with_fs_parameters(circuit_verifying_key, &FS::sample_params(), public_input, proof)
+    }
+
+    /// Verify that a proof for the constraint system defined by `C` asserts that
+    /// all constraints are satisfied.
+    pub fn verify_with_fs_parameters(
+        circuit_verifying_key: &CircuitVerifyingKey<TargetField, BaseField, PC>,
+        fs_parameters: &FS::Parameters,
+        public_input: &[TargetField],
+        proof: &Proof<TargetField, BaseField, PC>,
+    ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
         let padded_public_input = {
@@ -595,8 +606,7 @@ impl<
         }
 
         let is_recursion = MM::RECURSION;
-
-        let mut fs_rng = FS::new();
+        let mut fs_rng = FS::with_parameters(fs_parameters);
 
         if is_recursion {
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -772,5 +782,16 @@ impl<
         proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError> {
         Self::verify(&prepared_vk.orig_vk, public_input, proof)
+    }
+
+    /// Verify that a proof for the constraint system defined by `C` asserts that
+    /// all constraints are satisfied using the prepared verifying key.
+    pub fn prepared_verify_with_fs_parameters(
+        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, BaseField, PC>,
+        fs_parameters: &FS::Parameters,
+        public_input: &[TargetField],
+        proof: &Proof<TargetField, BaseField, PC>,
+    ) -> Result<bool, MarlinError> {
+        Self::verify_with_fs_parameters(&prepared_vk.orig_vk, fs_parameters, public_input, proof)
     }
 }

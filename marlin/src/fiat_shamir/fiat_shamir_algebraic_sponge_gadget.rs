@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::DefaultCapacityAlgebraicSponge;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsBEGadget},
@@ -26,14 +27,11 @@ use snarkvm_gadgets::{
     },
     overhead,
     traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
+    DefaultCapacityAlgebraicSpongeVar,
 };
 use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 
-use crate::fiat_shamir::{
-    traits::{AlgebraicSpongeVar, FiatShamirRngVar},
-    AlgebraicSponge,
-    FiatShamirAlgebraicSpongeRng,
-};
+use crate::fiat_shamir::{traits::FiatShamirRngVar, FiatShamirAlgebraicSpongeRng};
 
 use crate::{PhantomData, Vec};
 
@@ -42,8 +40,8 @@ use crate::{PhantomData, Vec};
 pub struct FiatShamirAlgebraicSpongeRngVar<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PS: AlgebraicSponge<BaseField>,
-    S: AlgebraicSpongeVar<BaseField, PS>,
+    PS: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSpongeVar<BaseField, PS, 6>,
 > {
     /// Algebraic sponge gadget.
     pub s: S,
@@ -58,8 +56,8 @@ pub struct FiatShamirAlgebraicSpongeRngVar<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PS: AlgebraicSponge<BaseField>,
-    S: AlgebraicSpongeVar<BaseField, PS>,
+    PS: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSpongeVar<BaseField, PS, 6>,
 > FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions),
@@ -166,7 +164,7 @@ impl<
         }
 
         let dest_limbs = Self::compress_gadgets(cs.ns(|| "compress_gadgets"), &src_limbs, ty)?;
-        sponge.absorb(cs.ns(|| "absorb"), &dest_limbs)?;
+        sponge.absorb(cs.ns(|| "absorb"), dest_limbs.iter())?;
         Ok(())
     }
 
@@ -180,7 +178,7 @@ impl<
         let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
-        let src_elements = sponge.squeeze(cs.ns(|| "squeeze"), num_elements)?;
+        let src_elements = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), num_elements)?;
         let mut dest_bits = Vec::<Boolean>::new();
 
         for (i, elem) in src_elements.iter().enumerate() {
@@ -311,14 +309,14 @@ impl<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PS: AlgebraicSponge<BaseField>,
-    S: AlgebraicSpongeVar<BaseField, PS>,
+    PS: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSpongeVar<BaseField, PS, 6>,
 > FiatShamirRngVar<TargetField, BaseField, FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>>
     for FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self {
         Self {
-            s: S::new(cs),
+            s: S::with_parameters(cs, &PS::sample_parameters()),
             _target_field: PhantomData,
             _base_field: PhantomData,
             _sponge: PhantomData,
@@ -351,7 +349,7 @@ impl<
         cs: CS,
         elems: &[FpGadget<BaseField>],
     ) -> Result<(), SynthesisError> {
-        self.s.absorb(cs, elems)?;
+        self.s.absorb(cs, elems.iter())?;
         Ok(())
     }
 
@@ -402,7 +400,7 @@ impl<
             cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
 
-        self.s.absorb(cs.ns(|| "absorb"), &gadgets)
+        self.s.absorb(cs.ns(|| "absorb"), gadgets.iter())
     }
 
     fn squeeze_native_field_elements<CS: ConstraintSystem<BaseField>>(
@@ -410,7 +408,7 @@ impl<
         cs: CS,
         num: usize,
     ) -> Result<Vec<FpGadget<BaseField>>, SynthesisError> {
-        self.s.squeeze(cs, num)
+        self.s.squeeze_field_elements(cs, num)
     }
 
     fn squeeze_field_elements<CS: ConstraintSystem<BaseField>>(
@@ -460,13 +458,13 @@ mod tests {
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
-    use crate::fiat_shamir::{fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar, traits::FiatShamirRng};
+    use crate::fiat_shamir::{traits::FiatShamirRng, PoseidonSpongeGadget};
     use snarkvm_algorithms::crypto_hash::PoseidonSponge;
 
     use super::*;
 
-    type PS = PoseidonSponge<Fq>;
-    type PSGadget = PoseidonSpongeVar<Fq>;
+    type PS = PoseidonSponge<Fq, 6, 1>;
+    type PSGadget = PoseidonSpongeGadget<Fq, 6, 1>;
     type FS = FiatShamirAlgebraicSpongeRng<Fq, Fq, PS>;
     type FSGadget = FiatShamirAlgebraicSpongeRngVar<Fq, Fq, PS, PSGadget>;
 

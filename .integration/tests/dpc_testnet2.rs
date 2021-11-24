@@ -39,7 +39,7 @@ fn dpc_testnet2_integration_test() {
 
     let mut ledger = Ledger::<Testnet2>::new().unwrap();
     assert_eq!(ledger.latest_block_height(), 0);
-    assert_eq!(ledger.latest_block_hash(), Testnet2::genesis_block().block_hash());
+    assert_eq!(ledger.latest_block_hash(), Testnet2::genesis_block().hash());
     assert_eq!(&ledger.latest_block().unwrap(), Testnet2::genesis_block());
     assert_eq!((*ledger.latest_block_transactions().unwrap()).len(), 1);
     assert_eq!(
@@ -49,7 +49,7 @@ fn dpc_testnet2_integration_test() {
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
-    let previous_hash = previous_block.block_hash();
+    let previous_hash = previous_block.hash();
     let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
@@ -64,14 +64,14 @@ fn dpc_testnet2_integration_test() {
         assert_eq!(coinbase_transaction, recovered_transaction);
 
         // Check that coinbase record can be decrypted from the transaction.
-        let encrypted_record = &coinbase_transaction.ciphertexts()[0];
+        let encrypted_record = coinbase_transaction.ciphertexts().next().unwrap();
         let view_key = ViewKey::from_private_key(recipient.private_key());
         let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
         assert_eq!(decrypted_record.value() as i64, Block::<Testnet2>::block_reward(1).0);
     }
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
-    let transactions_root = transactions.to_transactions_root().unwrap();
+    let transactions_root = transactions.transactions_root();
 
     let previous_ledger_root = ledger.latest_ledger_root();
     let timestamp = Utc::now().timestamp();

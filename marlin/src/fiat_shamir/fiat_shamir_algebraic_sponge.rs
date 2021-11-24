@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fiat_shamir::{AlgebraicSponge, FiatShamirError, FiatShamirRng},
+    fiat_shamir::{DefaultCapacityAlgebraicSponge, FiatShamirError, FiatShamirRng},
     PhantomData,
     Vec,
 };
@@ -33,19 +33,40 @@ use rand_core::{Error, RngCore};
 
 /// An RNG from any algebraic sponge
 #[derive(Clone, Debug)]
-pub struct FiatShamirAlgebraicSpongeRng<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>> {
+pub struct FiatShamirAlgebraicSpongeRng<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    S: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+> {
     /// The algebraic sponge.
     pub(super) s: S,
     #[doc(hidden)]
     _phantom: PhantomData<(TargetField, BaseField)>,
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>>
-    FiatShamirRng<TargetField, BaseField> for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
+impl<TargetField, BaseField, S> FiatShamirRng<TargetField, BaseField>
+    for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    S: DefaultCapacityAlgebraicSponge<BaseField, 6>,
 {
+    type Parameters = S::Parameters;
+
+    fn sample_params() -> Self::Parameters {
+        S::sample_parameters()
+    }
+
     fn new() -> Self {
         Self {
             s: S::with_default_parameters(),
+            _phantom: PhantomData,
+        }
+    }
+
+    fn with_parameters(params: &Self::Parameters) -> Self {
+        Self {
+            s: S::with_parameters(&params),
             _phantom: PhantomData,
         }
     }
@@ -102,7 +123,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>> RngCore
+impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>> RngCore
     for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
     fn next_u32(&mut self) -> u32 {
@@ -171,7 +192,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>>
+impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>>
     FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions), both of which are P::BaseField.

@@ -119,6 +119,7 @@ impl Network for Testnet2 {
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
+    const HEADER_SIZE_IN_BYTES: usize = 887;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
@@ -137,7 +138,8 @@ impl Network for Testnet2 {
     const TRANSITION_TREE_DEPTH: usize = 3;
     const TRANSACTION_TREE_DEPTH: usize = 7;
 
-    const ALEO_BLOCK_TIME_IN_SECS: i64 = 15i64;
+    const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
+    const ALEO_MAXIMUM_FORK_DEPTH: u32 = 1024;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
     type InnerCurve = Bls12_377;
@@ -161,7 +163,7 @@ impl Network for Testnet2 {
     type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet2>>;
     type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, { Self::OUTER_PROOF_SIZE_IN_BYTES }>;
 
-    type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet2Mode, ProgramPublicVariables<Self>>;
+    type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinTestnet2Mode, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;

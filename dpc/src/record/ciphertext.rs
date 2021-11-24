@@ -63,7 +63,11 @@ impl<N: Network> RecordCiphertext<N> {
     }
 
     /// Does the ciphertext encrypt the public key?
-    pub fn matches_account(&self, account: account::Address<N>, account_view_key: &account::ViewKey<N>) -> bool {
+    pub fn to_plaintext_if_account(
+        &self,
+        account: account::Address<N>,
+        account_view_key: &account::ViewKey<N>,
+    ) -> Option<Vec<u8>> {
         let encryption_scheme = N::account_encryption_scheme();
         let record_view_key = encryption_scheme.generate_symmetric_key(&account_view_key, self.ciphertext_randomizer);
 

@@ -17,8 +17,5 @@
 pub mod poseidon;
 pub use poseidon::*;
 
-pub mod sponge;
-pub use sponge::*;
-
 #[cfg(test)]
 pub mod tests;

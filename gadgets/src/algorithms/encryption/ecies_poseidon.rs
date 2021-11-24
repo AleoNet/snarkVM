@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
+    algorithms::crypto_hash::poseidon::PoseidonSpongeGadget,
+    AlgebraicSpongeVar,
     AllocGadget,
     Boolean,
     ConditionalEqGadget,
@@ -42,7 +43,7 @@ use snarkvm_utilities::{borrow::Borrow, to_bytes_le, ToBytes};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 type TEAffineGadget<TE, F> = crate::curves::templates::twisted_edwards::AffineGadget<TE, F, FpGadget<F>>;
 
@@ -501,8 +502,8 @@ fn symmetric_enc<F: PoseidonDefaultParametersField>(
     plaintext: &[UInt8],
 ) -> Result<Vec<UInt8>, SynthesisError> {
     // Prepare the sponge.
-    let params = F::get_default_poseidon_parameters(4, false).unwrap();
-    let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "sponge"), &params);
+    let params = Arc::new(F::get_default_poseidon_parameters::<4>(false).unwrap());
+    let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoEncryption2021"))
     })?;

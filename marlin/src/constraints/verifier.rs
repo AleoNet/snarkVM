@@ -30,7 +30,7 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
     PoseidonSponge,
-    PoseidonSpongeVar,
+    PoseidonSpongeGadget,
     String,
     Vec,
 };
@@ -54,11 +54,16 @@ pub struct MarlinVerificationGadget<
 >(PhantomData<(TargetField, BaseField, PC, PCG)>);
 
 /// Fiat Shamir Algebraic Sponge RNG type
-pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
+pub type FSA<InnerField, OuterField> =
+    FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField, 6, 1>>;
 
 /// Fiat Shamir Algebraic Sponge RNG Gadget type
-pub type FSG<InnerField, OuterField> =
-    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
+pub type FSG<InnerField, OuterField> = FiatShamirAlgebraicSpongeRngVar<
+    InnerField,
+    OuterField,
+    PoseidonSponge<OuterField, 6, 1>,
+    PoseidonSpongeGadget<OuterField, 6, 1>,
+>;
 
 impl<TargetField, BaseField, PC, PCG, FS, MM, V> SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
@@ -136,7 +141,9 @@ where
     ) -> Result<Boolean, MarlinError> {
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
-        eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        }
 
         let padded_public_input = {
             let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
@@ -225,7 +232,9 @@ where
             num_batching_rands,
         )?;
 
-        // eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        }
 
         let rand_data = PCCheckRandomDataVar::<TargetField, BaseField> {
             opening_challenges,
@@ -298,7 +307,7 @@ mod test {
             FiatShamirAlgebraicSpongeRng,
             FiatShamirAlgebraicSpongeRngVar,
             PoseidonSponge,
-            PoseidonSpongeVar,
+            PoseidonSpongeGadget as PoseidonSpongeVar,
         },
         marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
     };
@@ -308,8 +317,8 @@ mod test {
     type PC = SonicKZG10<Bls12_377>;
     type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 

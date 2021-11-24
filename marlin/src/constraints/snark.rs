@@ -192,7 +192,7 @@ pub mod test {
     type PC = SonicKZG10<Bls12_377>;
     type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
 
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
     type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget>;
@@ -382,7 +382,7 @@ pub mod multiple_input_tests {
             FiatShamirAlgebraicSpongeRng,
             FiatShamirAlgebraicSpongeRngVar,
             PoseidonSponge,
-            PoseidonSpongeVar,
+            PoseidonSpongeGadget as PoseidonSpongeVar,
         },
         marlin::MarlinRecursiveMode,
         FiatShamirRngVar,
@@ -522,8 +522,8 @@ pub mod multiple_input_tests {
     type PC = SonicKZG10<Bls12_377>;
     type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
     type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget>;

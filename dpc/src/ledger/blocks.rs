@@ -48,14 +48,14 @@ impl<N: Network> Blocks<N> {
 
         let mut blocks = Self {
             current_height: height,
-            current_hash: genesis_block.block_hash(),
+            current_hash: genesis_block.hash(),
             ledger_tree: LedgerTree::<N>::new()?,
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
         };
 
-        blocks.ledger_tree.add(&genesis_block.block_hash())?;
+        blocks.ledger_tree.add(&genesis_block.hash())?;
         blocks
             .previous_hashes
             .insert(height, genesis_block.previous_block_hash());
@@ -183,20 +183,18 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
-        // TODO (howardwu): Optimize this operation.
         self.transactions
             .values()
             .flat_map(|transactions| (**transactions).iter().map(Transaction::serial_numbers))
-            .any(|serial_numbers| serial_numbers.contains(serial_number))
+            .any(|mut serial_numbers| serial_numbers.contains(serial_number))
     }
 
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &N::Commitment) -> bool {
-        // TODO (howardwu): Optimize this operation.
         self.transactions
             .values()
             .flat_map(|transactions| (**transactions).iter().map(Transaction::commitments))
-            .any(|commitments| commitments.contains(commitment))
+            .any(|mut commitments| commitments.contains(commitment))
     }
 
     /// Adds the given block as the next block in the chain.
@@ -223,7 +221,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the block hash does not already exist.
-        let block_hash = block.block_hash();
+        let block_hash = block.hash();
         if self.contains_block_hash(&block_hash) {
             return Err(anyhow!("The given block hash already exists in the ledger"));
         }
@@ -269,16 +267,14 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the ledger does not already contain a given serial numbers.
-        let serial_numbers = block.serial_numbers();
-        for serial_number in &serial_numbers {
+        for serial_number in block.serial_numbers() {
             if self.contains_serial_number(serial_number) {
                 return Err(anyhow!("Serial number already exists in the ledger"));
             }
         }
 
         // Ensure the ledger does not already contain a given commitments.
-        let commitments = block.commitments();
-        for commitment in &commitments {
+        for commitment in block.commitments() {
             if self.contains_commitment(commitment) {
                 return Err(anyhow!("Commitment already exists in the ledger"));
             }
@@ -290,7 +286,7 @@ impl<N: Network> Blocks<N> {
 
             blocks.current_height = height;
             blocks.current_hash = block_hash;
-            blocks.ledger_tree.add(&block.block_hash())?;
+            blocks.ledger_tree.add(&block.hash())?;
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
@@ -369,7 +365,7 @@ impl<N: Network> Blocks<N> {
         };
 
         // Compute the block header inclusion proof.
-        let transactions_root = transactions.to_transactions_root()?;
+        let transactions_root = transactions.transactions_root();
         let block_header_inclusion_proof = block_header.to_header_inclusion_proof(1, transactions_root)?;
         let block_header_root = block_header.to_header_root()?;
         let previous_block_hash = self.get_previous_block_hash(self.current_height)?;
