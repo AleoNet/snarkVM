@@ -296,8 +296,6 @@ impl<N: Network> Block<N> {
     ///
     /// Returns the block reward for the given block height.
     ///
-    /// TODO (howardwu): CRITICAL - Update this with the correct emission schedule.
-    ///
     pub fn block_reward(height: u32) -> AleoAmount {
         match height == 0 {
             true => {
@@ -305,12 +303,13 @@ impl<N: Network> Block<N> {
                 AleoAmount::from_bytes(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
             }
             false => {
-                let expected_blocks_per_hour: u32 = 180;
-                let num_years = 3;
+                let expected_blocks_per_hour: u32 = 3600 / N::ALEO_BLOCK_TIME_IN_SECS;
+                let num_years = 5;
+                // Blocks rewards will halve at block `7,095,600` and `13,402,800` // TODO (raychu86): Update this.
                 let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
 
-                // The block reward halves at most 2 times - minimum is 37.5 ALEO after 8 years.
-                let initial_reward = 150i64 * AleoAmount::ONE_CREDIT.0;
+                // The block reward halves at most 2 times - minimum is 25 ALEO after 8 years.
+                let initial_reward = 100i64 * AleoAmount::ONE_CREDIT.0;
                 let num_halves = u32::min(height / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
@@ -429,6 +428,7 @@ mod tests {
         println!("{:?}", genesis_block);
     }
 
+    // TODO (raychu86): Update this test.
     #[test]
     fn test_block_rewards() {
         let rng = &mut thread_rng();
