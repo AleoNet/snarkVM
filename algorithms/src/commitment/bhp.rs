@@ -59,8 +59,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+        let num_bits = input.len() * 8;
         // If the input is too long, return an error.
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
+        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CommitmentError::IncorrectInputLength(
                 input.len(),
                 WINDOW_SIZE,
@@ -72,7 +73,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         let bits = input
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
-        let num_bits = input.len() * 8;
 
         let mut output = self.bhp_crh.hash_bits_inner(bits, num_bits)?;
 

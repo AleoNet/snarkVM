@@ -501,7 +501,7 @@ fn pack_bytes_to_field_elements<F: PrimeField>(
 }
 
 /// On input the symmetric key and the plaintext, outputs
-/// the key commitment and the ciphertext.
+/// the ciphertext.
 fn symmetric_enc<F: PoseidonDefaultParametersField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
