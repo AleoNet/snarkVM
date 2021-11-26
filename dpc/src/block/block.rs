@@ -303,14 +303,17 @@ impl<N: Network> Block<N> {
                 AleoAmount::from_bytes(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
             }
             false => {
-                let expected_blocks_per_hour: u32 = 3600 / N::ALEO_BLOCK_TIME_IN_SECS;
-                let num_years = 5;
-                // Blocks rewards will halve at block `7,095,600` and `13,402,800` // TODO (raychu86): Update this.
+                // The initial blocks that aren't taken into account with the halving calculation.
+                const INITIAL_BLOCKS: u32 = 394200;
+                // The time it takes before the halving - 3 years (approximately 4,730,400) blocks.
+                let expected_blocks_per_hour: u32 = 3600 / (N::ALEO_BLOCK_TIME_IN_SECS as u32);
+                let num_years = 3;
                 let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
 
-                // The block reward halves at most 2 times - minimum is 25 ALEO after 8 years.
+                // The block reward halves at most 2 times - minimum is 25 ALEO.
+                // The reward will halve at blocks `5,124,600` and `9,855,000`.
                 let initial_reward = 100i64 * AleoAmount::ONE_CREDIT.0;
-                let num_halves = u32::min(height / block_segments, 2);
+                let num_halves = u32::min(height.saturating_sub(INITIAL_BLOCKS) / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
                 AleoAmount::from_bytes(reward)
@@ -428,13 +431,12 @@ mod tests {
         println!("{:?}", genesis_block);
     }
 
-    // TODO (raychu86): Update this test.
     #[test]
     fn test_block_rewards() {
         let rng = &mut thread_rng();
 
-        let first_halving: u32 = 3 * 365 * 24 * 180;
-        let second_halving: u32 = first_halving * 2;
+        let first_halving: u32 = (3 * 365 * 24 * 180) + 394200; // 5,124,600
+        let second_halving: u32 = (3 * 365 * 24 * 180 * 2) + 394200; // 9,855,000
 
         // Genesis
 
@@ -445,7 +447,7 @@ mod tests {
 
         // Before block halving
 
-        let mut block_reward: i64 = 150 * 1_000_000;
+        let mut block_reward: i64 = 100 * 1_000_000;
 
         for _ in 0..ITERATIONS {
             let block_height: u32 = rng.gen_range(0..first_halving);
