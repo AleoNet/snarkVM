@@ -134,7 +134,7 @@ impl Network for Testnet2 {
     const HEADER_TREE_DEPTH: usize = 2;
     const LEDGER_TREE_DEPTH: usize = 32;
     const PROGRAM_TREE_DEPTH: usize = 8;
-    const TRANSITION_TREE_DEPTH: usize = 3;
+    const TRANSITION_TREE_DEPTH: usize = 2;
     const TRANSACTION_TREE_DEPTH: usize = 5;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;

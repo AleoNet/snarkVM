@@ -78,7 +78,7 @@ impl<N: Network> Transition<N> {
         proof: N::OuterProof,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let transition_id = Self::compute_transition_id(&serial_numbers, &commitments, value_balance)?;
+        let transition_id = Self::compute_transition_id(&serial_numbers, &commitments)?;
 
         // Construct the transition.
         Ok(Self {
@@ -100,7 +100,7 @@ impl<N: Network> Transition<N> {
         local_transitions_root: N::TransactionID,
     ) -> bool {
         // Returns `false` if the transition ID does not match the computed one.
-        match Self::compute_transition_id(&self.serial_numbers, &self.commitments, self.value_balance) {
+        match Self::compute_transition_id(&self.serial_numbers, &self.commitments) {
             Ok(computed_transition_id) => {
                 if computed_transition_id != self.transition_id {
                     eprintln!(
@@ -120,10 +120,14 @@ impl<N: Network> Transition<N> {
         match N::OuterSNARK::verify(
             N::outer_verifying_key(),
             &OuterPublicVariables::new(
-                self.transition_id,
-                ledger_root,
-                local_transitions_root,
-                inner_circuit_id,
+                InnerPublicVariables::new(
+                    self.transition_id,
+                    self.value_balance,
+                    ledger_root,
+                    local_transitions_root,
+                    None,
+                ),
+                &inner_circuit_id,
             ),
             &self.proof,
         ) {
@@ -194,7 +198,7 @@ impl<N: Network> Transition<N> {
         let leaf = leaf.to_bytes_le()?;
 
         // Retrieve the transition leaves.
-        let leaves = Self::compute_transition_leaves(&self.serial_numbers, &self.commitments, self.value_balance)?;
+        let leaves = Self::compute_transition_leaves(&self.serial_numbers, &self.commitments)?;
 
         // Find the index of the given leaf.
         for (index, candidate_leaf) in leaves.iter().enumerate() {
@@ -217,9 +221,8 @@ impl<N: Network> Transition<N> {
     pub(crate) fn compute_transition_id(
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
-        value_balance: AleoAmount,
     ) -> Result<N::TransitionID> {
-        let leaves = Self::compute_transition_leaves(serial_numbers, commitments, value_balance)?;
+        let leaves = Self::compute_transition_leaves(serial_numbers, commitments)?;
         let tree =
             MerkleTree::<N::TransitionIDParameters>::new(Arc::new(N::transition_id_parameters().clone()), &leaves)?;
         Ok((*tree.root()).into())
@@ -228,13 +231,12 @@ impl<N: Network> Transition<N> {
     ///
     /// Returns an instance of the transition tree.
     ///
-    /// Transition Tree := MerkleTree(serial numbers || commitments || value balance)
+    /// Transition Tree := MerkleTree(serial numbers || commitments)
     ///
     #[inline]
     pub(crate) fn compute_transition_leaves(
         serial_numbers: &Vec<N::SerialNumber>,
         commitments: &Vec<N::Commitment>,
-        value_balance: AleoAmount,
     ) -> Result<Vec<Vec<u8>>> {
         // Construct the leaves of the transition tree.
         let leaves: Vec<Vec<u8>> = vec![
@@ -250,10 +252,6 @@ impl<N: Network> Transition<N> {
                 .take(N::NUM_OUTPUT_RECORDS)
                 .map(ToBytes::to_bytes_le)
                 .collect::<Result<Vec<_>>>()?,
-            // Leaf 4 := value balance
-            vec![value_balance.to_bytes_le()?],
-            // Leaf 5, 6, 7 := unallocated
-            vec![vec![0u8; 32]; 3],
         ]
         .concat();
 

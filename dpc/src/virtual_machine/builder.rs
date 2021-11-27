@@ -192,7 +192,7 @@ impl<N: Network> ResponseBuilder<N> {
         }
 
         // Compute the transition ID.
-        let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments, value_balance)?;
+        let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments)?;
 
         // Construct the response.
         Response::new(

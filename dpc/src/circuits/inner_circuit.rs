@@ -141,8 +141,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             )
         };
 
-        // Declare a constant zero leaf.
-        let zero_leaf_bytes = UInt8::constant_vec(&[0u8; 32]);
         // Declares a constant for a 0 value in a record.
         let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
         // Declares a constant for an empty payload in a record.
@@ -810,7 +808,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         // *******************************************************************
         // Check that the value balance is valid.
         // *******************************************************************
-        let candidate_value_balance_bytes = {
+        {
             let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
             let mut candidate_value_balance = Int64::zero();
@@ -827,7 +825,21 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .unwrap();
             }
 
-            candidate_value_balance.to_bytes(cs.ns(|| "value_balance_bytes"))?
+            let candidate_value_balance_bytes = candidate_value_balance.to_bytes(cs.ns(|| "value_balance_bytes"))?;
+            let candidate_value_balance_field_elements = candidate_value_balance_bytes
+                .to_constraint_field(&mut cs.ns(|| "convert candidate value balance to field elements"))?;
+
+            let given_value_balance_bytes = UInt8::alloc_input_vec_le(
+                &mut cs.ns(|| "Allocate given_value_balance"),
+                &public.value_balance().to_bytes_le()?,
+            )?;
+            let given_value_balance_field_elements = given_value_balance_bytes
+                .to_constraint_field(&mut cs.ns(|| "convert given value balance to field elements"))?;
+
+            candidate_value_balance_field_elements.enforce_equal(
+                &mut cs.ns(|| "enforce the value balance is equal"),
+                &given_value_balance_field_elements,
+            )?;
         };
 
         // ********************************************************************
@@ -840,10 +852,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let mut transition_leaves = vec![];
             transition_leaves.extend_from_slice(&input_serial_numbers_bytes);
             transition_leaves.extend_from_slice(&output_commitments_bytes);
-            transition_leaves.push(candidate_value_balance_bytes);
-            transition_leaves.push(zero_leaf_bytes.clone());
-            transition_leaves.push(zero_leaf_bytes.clone());
-            transition_leaves.push(zero_leaf_bytes.clone());
 
             // Sanity check that the correct number of leaves are allocated.
             // Note: This is *not* enforced in the circuit.
