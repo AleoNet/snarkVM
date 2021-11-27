@@ -83,8 +83,8 @@ impl Network for Testnet1 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-    const NUM_TRANSITIONS: u8 = 128;
-    const NUM_EVENTS: u16 = 256;
+    const NUM_TRANSITIONS: u8 = u8::pow(2, Self::TRANSACTION_TREE_DEPTH as u32);
+    const NUM_EVENTS: u16 = (2 * Self::NUM_TRANSITIONS) as u16;
 
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
