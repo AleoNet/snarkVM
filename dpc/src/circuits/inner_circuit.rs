@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Network, Payload, Record};
+use crate::{ComputeKey, InnerPrivateVariables, InnerPublicVariables, Network, Payload};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -43,10 +43,7 @@ pub struct InnerCircuit<N: Network> {
     private: InnerPrivateVariables<N>,
 }
 
-impl<N: Network> InnerCircuit<N>
-where
-    Record<N>: Default,
-{
+impl<N: Network> InnerCircuit<N> {
     pub fn blank() -> Self {
         Self {
             public: InnerPublicVariables::blank(),
