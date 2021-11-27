@@ -145,11 +145,11 @@ where
     }
 
     /// Given an RNG, returns the following:
-    ///
-    ///                  randomness == r
-    ///       ciphertext_randomizer == G^r
-    ///               symmetric_key == public_key^r == G^ar
-    ///
+    /// ```ignore
+    ///                  randomness := r
+    ///       ciphertext_randomizer := G^r
+    ///               symmetric_key := public_key^r == G^ar
+    /// ```
     fn generate_asymmetric_key<R: Rng + CryptoRng>(
         &self,
         public_key: &Self::PublicKey,
@@ -178,9 +178,9 @@ where
     }
 
     /// Given the private key and ciphertext randomizer, return the following:
-    ///
-    ///    symmetric_key == public_key^r == (G^r)^private_key
-    ///
+    /// ```ignore
+    ///    symmetric_key := public_key^r == (G^r)^private_key
+    /// ```
     fn generate_symmetric_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
@@ -213,9 +213,9 @@ where
     }
 
     /// Encrypts the given message, and returns the following:
-    ///
-    ///     ciphertext == to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
-    ///
+    /// ```ignore
+    ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
+    /// ```
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
