@@ -192,6 +192,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 given_value,
                 given_payload,
                 given_program_id,
+                given_randomizer,
                 given_record_view_key,
                 given_commitment,
             ) = {
@@ -222,6 +223,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &record.program_id().to_bytes_le()?,
                 )?;
 
+                let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::CiphertextRandomizer::alloc(
+                    &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
+                )?;
+
                 let given_record_view_key = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
@@ -242,6 +250,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_value,
                     given_payload,
                     given_program_id,
+                    given_randomizer,
                     given_record_view_key,
                     given_commitment,
                 )
@@ -353,11 +362,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut commitment_cs.ns(|| format!("input record {} check_symmetric_key_commitment", i)),
                     &given_record_view_key,
                 )?;
+
+                let given_randomizer_bytes =
+                    given_randomizer.to_bytes(&mut commitment_cs.ns(|| "Convert given_randomizer to bytes"))?;
                 let record_view_key_commitment_bytes = record_view_key_commitment
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
-                let mut commitment_input =
-                    Vec::with_capacity(record_view_key_commitment_bytes.len() + ciphertext.len());
+                let mut commitment_input = Vec::with_capacity(
+                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                );
+                commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext);
 
@@ -670,11 +684,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut commitment_cs.ns(|| format!("output record {} check_symmetric_key_commitment", j)),
                     &record_view_key,
                 )?;
+
+                let given_randomizer_bytes =
+                    given_randomizer.to_bytes(&mut commitment_cs.ns(|| "Convert given_randomizer to bytes"))?;
                 let record_view_key_commitment_bytes = record_view_key_commitment
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
-                let mut commitment_input =
-                    Vec::with_capacity(record_view_key_commitment_bytes.len() + ciphertext.len());
+                let mut commitment_input = Vec::with_capacity(
+                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                );
+                commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext);
 

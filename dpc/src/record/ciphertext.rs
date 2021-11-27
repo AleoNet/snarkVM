@@ -70,7 +70,11 @@ impl<N: Network> RecordCiphertext<N> {
     /// Returns the record commitment.
     pub fn to_commitment(&self) -> Result<N::Commitment, RecordError> {
         Ok(N::commitment_scheme()
-            .hash(&to_bytes_le![self.record_view_key_commitment, self.record_ciphertext]?)?
+            .hash(&to_bytes_le![
+                self.ciphertext_randomizer,
+                self.record_view_key_commitment,
+                self.record_ciphertext
+            ]?)?
             .into())
     }
 
