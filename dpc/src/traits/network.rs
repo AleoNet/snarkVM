@@ -148,7 +148,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_TREE_DEPTH: usize;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64;
-    const ALEO_MAXIMUM_FORK_DEPTH: u32;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
     /// Inner curve type declarations.

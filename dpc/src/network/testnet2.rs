@@ -130,15 +130,14 @@ impl Network for Testnet2 {
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const TRANSITION_SIZE_IN_BYTES: usize = 1065;
 
-    const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 16;
+    const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
     const LEDGER_TREE_DEPTH: usize = 32;
     const PROGRAM_TREE_DEPTH: usize = 8;
     const TRANSITION_TREE_DEPTH: usize = 3;
-    const TRANSACTION_TREE_DEPTH: usize = 7;
+    const TRANSACTION_TREE_DEPTH: usize = 5;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
-    const ALEO_MAXIMUM_FORK_DEPTH: u32 = 1024;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
     type InnerCurve = Bls12_377;
