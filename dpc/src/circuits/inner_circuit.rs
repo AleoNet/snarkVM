@@ -188,11 +188,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // Declare record contents
             let (
                 given_owner,
-                given_record_view_key,
                 given_is_dummy,
                 given_value,
                 given_payload,
                 given_program_id,
+                given_record_view_key,
                 given_commitment,
             ) = {
                 let declare_cs = &mut cs.ns(|| "Declare input record");
@@ -210,14 +210,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
                 )?;
 
-                let given_record_view_key = <N::AccountEncryptionGadget as EncryptionGadget<
-                    N::AccountEncryptionScheme,
-                    N::InnerScalarField,
-                >>::SymmetricKeyGadget::alloc(
-                    &mut declare_cs.ns(|| "given_record_view_key"),
-                    || Ok(*record.record_view_key().clone()),
-                )?;
-
                 let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value() as i64))?;
@@ -230,6 +222,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &record.program_id().to_bytes_le()?,
                 )?;
 
+                let given_record_view_key = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::SymmetricKeyGadget::alloc(
+                    &mut declare_cs.ns(|| "given_record_view_key"),
+                    || Ok(*record.record_view_key().clone()),
+                )?;
+
                 let given_commitment =
                     <N::CommitmentGadget as CRHGadget<N::CommitmentScheme, N::InnerScalarField>>::OutputGadget::alloc(
                         &mut declare_cs.ns(|| "given_commitment"),
@@ -238,11 +238,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 (
                     given_owner,
-                    given_record_view_key,
                     given_is_dummy,
                     given_value,
                     given_payload,
                     given_program_id,
+                    given_record_view_key,
                     given_commitment,
                 )
             };
@@ -349,9 +349,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &plaintext,
                 )?;
 
-                let mut commitment_input = Vec::with_capacity(ciphertext.len() + given_owner_bytes.len());
+                let record_view_key_commitment = account_encryption_parameters.check_symmetric_key_commitment(
+                    &mut commitment_cs.ns(|| format!("input record {} check_symmetric_key_commitment", i)),
+                    &given_record_view_key,
+                )?;
+                let record_view_key_commitment_bytes = record_view_key_commitment
+                    .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
+
+                let mut commitment_input =
+                    Vec::with_capacity(record_view_key_commitment_bytes.len() + ciphertext.len());
+                commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext);
-                commitment_input.extend_from_slice(&given_owner_bytes);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
@@ -640,8 +648,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     || Ok(encryption_randomness),
                 )?;
 
-                let (candidate_ciphertext_randomizer, record_ciphertext, _record_view_key) =
-                    account_encryption_parameters.check_encryption_from_scalar_randomness(
+                let (candidate_ciphertext_randomizer, ciphertext, record_view_key) = account_encryption_parameters
+                    .check_encryption_from_scalar_randomness(
                         &mut commitment_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                         &encryption_randomness,
                         &given_owner,
@@ -658,9 +666,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Compute the record commitment and check that it matches the declared commitment.
                 // *******************************************************************
 
-                let mut commitment_input = Vec::with_capacity(record_ciphertext.len() + given_owner_bytes.len());
-                commitment_input.extend_from_slice(&record_ciphertext);
-                commitment_input.extend_from_slice(&given_owner_bytes);
+                let record_view_key_commitment = account_encryption_parameters.check_symmetric_key_commitment(
+                    &mut commitment_cs.ns(|| format!("output record {} check_symmetric_key_commitment", j)),
+                    &record_view_key,
+                )?;
+                let record_view_key_commitment_bytes = record_view_key_commitment
+                    .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
+
+                let mut commitment_input =
+                    Vec::with_capacity(record_view_key_commitment_bytes.len() + ciphertext.len());
+                commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
+                commitment_input.extend_from_slice(&ciphertext);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;

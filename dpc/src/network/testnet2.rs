@@ -105,6 +105,7 @@ impl Network for Testnet2 {
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
     const RECORD_RANDOMIZER_PREFIX: u16 = hrp2!("rr");
+    const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16 = hrp2!("rc");
     const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
 
     const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
@@ -122,7 +123,7 @@ impl Network for Testnet2 {
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
     const RECORD_SIZE_IN_BYTES: usize = 280;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
@@ -189,8 +190,8 @@ impl Network for Testnet2 {
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
-    type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 34, 63>;
-    type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
+    type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
+    type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
     type Commitment = AleoLocator<<Self::CommitmentScheme as CRH>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
@@ -221,6 +222,7 @@ impl Network for Testnet2 {
     type RecordCiphertext = AleoObject<RecordCiphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
     type RecordRandomizer = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer, { Self::RECORD_RANDOMIZER_PREFIX }>;
     type RecordViewKey = AleoObject<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey, { Self::RECORD_VIEW_KEY_PREFIX }, { Self::RECORD_VIEW_KEY_SIZE_IN_BYTES }>;
+    type RecordViewKeyCommitment = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment, { Self::RECORD_VIEW_KEY_COMMITMENT_PREFIX }>;
 
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;

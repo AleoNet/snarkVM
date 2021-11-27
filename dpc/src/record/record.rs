@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, Bech32Locator, ComputeKey, Network, Payload, RecordCiphertext, RecordError, ViewKey};
-use snarkvm_algorithms::traits::{EncryptionScheme, CRH, PRF};
+use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::anyhow;
@@ -89,12 +89,12 @@ impl<N: Network> Record<N> {
         // Encrypt the record bytes.
         let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
             randomizer,
+            encryption_scheme.generate_symmetric_key_commitment(&record_view_key),
             encryption_scheme.encrypt(&record_view_key, &plaintext)?
         ]?)?;
 
-        // Compute the record commitment.
-        let commitment_input = to_bytes_le![ciphertext, owner]?;
-        let commitment = N::commitment_scheme().hash(&commitment_input)?.into();
+        // Compute the commitment.
+        let commitment = ciphertext.to_commitment()?;
 
         Ok(Self {
             owner,
@@ -129,8 +129,7 @@ impl<N: Network> Record<N> {
         match owner == expected_owner {
             true => {
                 // Compute the commitment.
-                let commitment_input = to_bytes_le![ciphertext, owner]?;
-                let commitment = N::commitment_scheme().hash(&commitment_input)?.into();
+                let commitment = ciphertext.to_commitment()?;
 
                 Ok(Self {
                     owner,
@@ -158,8 +157,7 @@ impl<N: Network> Record<N> {
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
         // Compute the commitment.
-        let commitment_input = to_bytes_le![ciphertext, owner]?;
-        let commitment = N::commitment_scheme().hash(&commitment_input)?.into();
+        let commitment = ciphertext.to_commitment()?;
 
         Ok(Self {
             owner,
@@ -180,6 +178,7 @@ impl<N: Network> Record<N> {
         // Encrypt the record bytes.
         let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
             self.randomizer,
+            N::account_encryption_scheme().generate_symmetric_key_commitment(&self.record_view_key),
             N::account_encryption_scheme().encrypt(&self.record_view_key, &plaintext)?
         ]?)?;
 

@@ -117,6 +117,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
+    const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
     const HEADER_PROOF_PREFIX: u32;
@@ -189,7 +190,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSW: PoSWScheme<Self>;
 
     /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::ProgramBaseField>;
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::ProgramBaseField, SymmetricKeyCommitment = Self::ProgramBaseField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
@@ -254,6 +255,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type RecordCiphertext: Bech32Object<RecordCiphertext<Self>> + Hash;
     type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
     type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
+    type RecordViewKeyCommitment: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CRH>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
