@@ -91,7 +91,6 @@ impl Network for Testnet1 {
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
     const PROGRAM_ID_PREFIX: u16 = hrp2!("ap");
-    const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp2!("ar");
     const TRANSITION_ID_PREFIX: u16 = hrp2!("as");
     const TRANSACTION_ID_PREFIX: u16 = hrp2!("at");
 
@@ -187,10 +186,6 @@ impl Network for Testnet1 {
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
-    type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
-    type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = AleoLocator<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_ID_PREFIX }>;
-
     type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
     type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
     type Commitment = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
@@ -247,7 +242,6 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet1, block_header_root_parameters, BlockHeaderRootParameters, "AleoBlockHeaderRootCRH0"}
-    dpc_setup!{Testnet1, ciphertext_id_crh, CiphertextIDCRH, "AleoCiphertextIDCRH0"}
     dpc_setup!{Testnet1, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
     dpc_setup!{Testnet1, function_id_crh, FunctionIDCRH, "AleoFunctionIDCRH0"}
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}

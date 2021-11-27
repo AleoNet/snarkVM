@@ -107,7 +107,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const BLOCK_HASH_PREFIX: u16;
     const LEDGER_ROOT_PREFIX: u16;
     const PROGRAM_ID_PREFIX: u16;
-    const RECORD_CIPHERTEXT_ID_PREFIX: u16;
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
 
@@ -216,11 +215,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHeaderRootParameters: MaskedMerkleParameters<H = Self::BlockHeaderRootCRH>;
     type BlockHeaderRoot: Bech32Locator<<Self::BlockHeaderRootCRH as CRH>::Output>;
 
-    /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
-    type CiphertextIDCRH: CRH<Output = Self::InnerScalarField>;
-    type CiphertextIDCRHGadget: CRHGadget<Self::CiphertextIDCRH, Self::InnerScalarField>;
-    type CiphertextID: Bech32Locator<<Self::CiphertextIDCRH as CRH>::Output>;
-
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
     type CommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::InnerScalarField>;
     type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
@@ -262,7 +256,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
     type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
 
-
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CommitmentScheme>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField, Input = Vec<<Self::CommitmentGadget as CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>>;
@@ -290,7 +283,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_root_parameters() -> &'static Self::BlockHeaderRootParameters;
-    fn ciphertext_id_crh() -> &'static Self::CiphertextIDCRH;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
     fn function_id_crh() -> &'static Self::FunctionIDCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
