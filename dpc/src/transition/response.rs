@@ -33,8 +33,6 @@ pub struct Response<N: Network> {
     transition_id: N::TransitionID,
     /// The records being produced.
     records: Vec<Record<N>>,
-    /// The record ciphertexts.
-    ciphertexts: Vec<N::RecordCiphertext>,
     /// The record encryption randomness.
     encryption_randomness: Vec<EncryptionRandomness<N>>,
     /// A value balance is the difference between the input and output record values.
@@ -48,7 +46,6 @@ impl<N: Network> Response<N> {
     pub fn new(
         transition_id: N::TransitionID,
         records: Vec<Record<N>>,
-        ciphertexts: Vec<N::RecordCiphertext>,
         encryption_randomness: Vec<EncryptionRandomness<N>>,
         value_balance: AleoAmount,
         events: Vec<Event<N>>,
@@ -56,7 +53,6 @@ impl<N: Network> Response<N> {
         Ok(Self {
             transition_id,
             records,
-            ciphertexts,
             encryption_randomness,
             value_balance,
             events,
@@ -87,9 +83,14 @@ impl<N: Network> Response<N> {
         &self.records
     }
 
-    /// Returns a reference to the ciphertexts.
-    pub fn ciphertexts(&self) -> &Vec<N::RecordCiphertext> {
-        &self.ciphertexts
+    /// Returns the ciphertexts.
+    pub fn to_ciphertexts(&self) -> Result<Vec<N::RecordCiphertext>> {
+        Ok(self
+            .records
+            .iter()
+            .take(N::NUM_OUTPUT_RECORDS)
+            .map(Record::encrypt)
+            .collect::<Result<Vec<_>, _>>()?)
     }
 
     /// Returns a reference to the encryption randomness.
@@ -118,11 +119,6 @@ impl<N: Network> FromBytes for Response<N> {
             records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut ciphertexts = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
-            ciphertexts.push(FromBytes::read_le(&mut reader)?);
-        }
-
         let mut encryption_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
             encryption_randomness.push(FromBytes::read_le(&mut reader)?);
@@ -139,7 +135,6 @@ impl<N: Network> FromBytes for Response<N> {
         Ok(Self {
             transition_id,
             records,
-            ciphertexts,
             encryption_randomness,
             value_balance,
             events,
@@ -152,7 +147,6 @@ impl<N: Network> ToBytes for Response<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.transition_id.write_le(&mut writer)?;
         self.records.write_le(&mut writer)?;
-        self.ciphertexts.write_le(&mut writer)?;
         self.encryption_randomness.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;

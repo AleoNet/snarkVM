@@ -173,13 +173,6 @@ impl<N: Network> ResponseBuilder<N> {
             .map(Record::commitment)
             .collect();
 
-        // Compute the ciphertexts.
-        let ciphertexts = output_records
-            .iter()
-            .take(N::NUM_OUTPUT_RECORDS)
-            .map(Record::encrypt)
-            .collect::<Result<Vec<_>, _>>()?;
-
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
@@ -199,14 +192,12 @@ impl<N: Network> ResponseBuilder<N> {
         }
 
         // Compute the transition ID.
-        let transition_id =
-            Transition::<N>::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance)?;
+        let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments, value_balance)?;
 
         // Construct the response.
         Response::new(
             transition_id,
             output_records,
-            ciphertexts,
             encryption_randomness,
             value_balance,
             events,

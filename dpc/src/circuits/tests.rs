@@ -42,7 +42,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Fetch the commitments and ciphertexts.
     let commitments = response.commitments();
-    let ciphertexts = response.ciphertexts().clone();
 
     // Compute the value balance.
     let mut value_balance = AleoAmount::ZERO;
@@ -57,8 +56,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let local_transitions_root = Transitions::<N>::new().unwrap().root();
 
     // Compute the transition ID.
-    let transition_id =
-        Transition::<N>::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance).unwrap();
+    let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments, value_balance).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
