@@ -44,18 +44,29 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         + Clone
         + Sized
         + Debug;
+    type ScalarRandomnessGadget: AllocGadget<E::ScalarRandomness, F> + Clone + Sized + Debug;
     type SymmetricKeyGadget: AllocGadget<<E as EncryptionScheme>::SymmetricKey, F>
         + ToBytesGadget<F>
         + Clone
         + Sized
         + Debug;
-    type ScalarRandomnessGadget: AllocGadget<E::ScalarRandomness, F> + Clone + Sized + Debug;
+    type SymmetricKeyCommitmentGadget: AllocGadget<<E as EncryptionScheme>::SymmetricKey, F>
+        + ToBytesGadget<F>
+        + Clone
+        + Sized
+        + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
         private_key: &Self::PrivateKeyGadget,
     ) -> Result<Self::PublicKeyGadget, SynthesisError>;
+
+    fn check_symmetric_key_commitment<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        symmetric_key: &Self::SymmetricKeyGadget,
+    ) -> Result<Self::SymmetricKeyCommitmentGadget, SynthesisError>;
 
     fn check_encryption_from_scalar_randomness<CS: ConstraintSystem<F>>(
         &self,

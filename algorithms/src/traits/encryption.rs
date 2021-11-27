@@ -29,6 +29,7 @@ pub trait EncryptionScheme:
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
+    type SymmetricKeyCommitment: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
 
     fn setup(message: &str) -> Self;
 
@@ -47,6 +48,8 @@ pub trait EncryptionScheme:
         private_key: &Self::PrivateKey,
         ciphertext_randomizer: Self::CiphertextRandomizer,
     ) -> Result<Self::SymmetricKey, EncryptionError>;
+
+    fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment;
 
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError>;
 

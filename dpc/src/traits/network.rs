@@ -27,7 +27,7 @@ use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tre
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+    traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     GroupGadget,
     MaskedCRHGadget,
     SNARKVerifierGadget,
@@ -215,9 +215,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHeaderRoot: Bech32Locator<<Self::BlockHeaderRootCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
-    type CommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::InnerScalarField>;
-    type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
-    type Commitment: Bech32Locator<<Self::CommitmentScheme as CommitmentScheme>::Output>;
+    type CommitmentScheme: CRH<Output = Self::InnerScalarField>;
+    type CommitmentGadget: CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>;
+    type Commitment: Bech32Locator<<Self::CommitmentScheme as CRH>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
     type FunctionIDCRH: CRH<Output = Self::OuterScalarField>;
@@ -256,8 +256,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CommitmentScheme>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
-    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField, Input = Vec<<Self::CommitmentGadget as CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>>;
+    type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CRH>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
+    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField, Input = Vec<<Self::CommitmentGadget as CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>>;
     type SerialNumber: Bech32Locator<<Self::SerialNumberPRF as PRF>::Output>;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.

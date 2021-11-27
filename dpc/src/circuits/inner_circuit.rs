@@ -21,7 +21,7 @@ use snarkvm_gadgets::{
     bits::{Boolean, ToBytesGadget},
     integers::{int::Int64, uint::UInt8},
     traits::{
-        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+        algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
@@ -230,12 +230,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &record.program_id().to_bytes_le()?,
                 )?;
 
-                let given_commitment = <N::CommitmentGadget as CommitmentGadget<
-                    N::CommitmentScheme,
-                    N::InnerScalarField,
-                >>::OutputGadget::alloc(
-                    &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
-                )?;
+                let given_commitment =
+                    <N::CommitmentGadget as CRHGadget<N::CommitmentScheme, N::InnerScalarField>>::OutputGadget::alloc(
+                        &mut declare_cs.ns(|| "given_commitment"),
+                        || Ok(record.commitment()),
+                    )?;
 
                 (
                     given_owner,
@@ -354,18 +353,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 commitment_input.extend_from_slice(&ciphertext);
                 commitment_input.extend_from_slice(&given_owner_bytes);
 
-                let rec_view_key_bytes =
-                    given_record_view_key.to_bytes_strict(&mut commitment_cs.ns(|| "Record View Key to bytes"))?;
-                let commitment_randomness = N::CommitmentGadget::randomness_from_bytes(
-                    &mut commitment_cs.ns(|| "Construct randomness"),
-                    &rec_view_key_bytes,
-                )?;
-
-                let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
-                    &mut commitment_cs.ns(|| "Compute record commitment"),
-                    &commitment_input,
-                    &commitment_randomness,
-                )?;
+                let candidate_commitment = record_commitment_parameters
+                    .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
 
                 // Ensure the given commitment is correct.
                 candidate_commitment.enforce_equal(
@@ -566,12 +555,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
                 )?;
 
-                let given_commitment = <N::CommitmentGadget as CommitmentGadget<
-                    N::CommitmentScheme,
-                    N::InnerScalarField,
-                >>::OutputGadget::alloc(
-                    &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
-                )?;
+                let given_commitment =
+                    <N::CommitmentGadget as CRHGadget<N::CommitmentScheme, N::InnerScalarField>>::OutputGadget::alloc(
+                        &mut declare_cs.ns(|| "record_commitment"),
+                        || Ok(record.commitment()),
+                    )?;
 
                 (
                     given_owner,
@@ -652,7 +640,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     || Ok(encryption_randomness),
                 )?;
 
-                let (candidate_ciphertext_randomizer, record_ciphertext, record_view_key) =
+                let (candidate_ciphertext_randomizer, record_ciphertext, _record_view_key) =
                     account_encryption_parameters.check_encryption_from_scalar_randomness(
                         &mut commitment_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                         &encryption_randomness,
@@ -673,18 +661,9 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let mut commitment_input = Vec::with_capacity(record_ciphertext.len() + given_owner_bytes.len());
                 commitment_input.extend_from_slice(&record_ciphertext);
                 commitment_input.extend_from_slice(&given_owner_bytes);
-                let rec_view_key_bytes =
-                    record_view_key.to_bytes_strict(&mut commitment_cs.ns(|| "Record View Key to bytes"))?;
-                let commitment_randomness = N::CommitmentGadget::randomness_from_bytes(
-                    &mut commitment_cs.ns(|| "Construct randomness"),
-                    &rec_view_key_bytes,
-                )?;
 
-                let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
-                    &mut commitment_cs.ns(|| "Compute record commitment"),
-                    &commitment_input,
-                    &commitment_randomness,
-                )?;
+                let candidate_commitment = record_commitment_parameters
+                    .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
 
                 // Ensure the given commitment is correct.
                 candidate_commitment.enforce_equal(

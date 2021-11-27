@@ -29,7 +29,6 @@ use crate::{
     RecordCiphertext,
 };
 use snarkvm_algorithms::{
-    commitment::BHPCommitment,
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
@@ -51,7 +50,6 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::BHPCommitmentGadget,
         crh::{BHPCRHGadget, PedersenCompressedCRHGadget, PoseidonCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -185,9 +183,9 @@ impl Network for Testnet1 {
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
-    type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
-    type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
-    type Commitment = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
+    type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 34, 63>;
+    type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
+    type Commitment = AleoLocator<<Self::CommitmentScheme as CRH>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
     type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;

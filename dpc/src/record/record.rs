@@ -15,13 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, Bech32Locator, ComputeKey, Network, Payload, RecordCiphertext, RecordError, ViewKey};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, PRF};
+use snarkvm_algorithms::traits::{EncryptionScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::anyhow;
 use rand::{CryptoRng, Rng};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use snarkvm_fields::PrimeField;
 use std::{
     fmt,
     io::{Cursor, Read, Result as IoResult, Write},
@@ -30,7 +29,7 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "N: Network, N::RecordViewKey: Default"),
+    Default(bound = "N: Network"),
     Debug(bound = "N: Network"),
     Clone(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
@@ -95,11 +94,7 @@ impl<N: Network> Record<N> {
 
         // Compute the record commitment.
         let commitment_input = to_bytes_le![ciphertext, owner]?;
-        let commitment_randomness = Self::record_view_key_to_comm_randomness(&record_view_key)?;
-
-        let commitment = N::commitment_scheme()
-            .commit(&commitment_input, &commitment_randomness)?
-            .into();
+        let commitment = N::commitment_scheme().hash(&commitment_input)?.into();
 
         Ok(Self {
             owner,
@@ -110,14 +105,6 @@ impl<N: Network> Record<N> {
             record_view_key,
             commitment,
         })
-    }
-
-    pub(crate) fn record_view_key_to_comm_randomness(
-        record_view_key: &N::RecordViewKey,
-    ) -> Result<N::ProgramScalarField, RecordError> {
-        Ok(N::ProgramScalarField::from_bytes_le_mod_order(&to_bytes_le![
-            record_view_key
-        ]?))
     }
 
     /// Returns a record from the given account view key and ciphertext.
@@ -143,10 +130,7 @@ impl<N: Network> Record<N> {
             true => {
                 // Compute the commitment.
                 let commitment_input = to_bytes_le![ciphertext, owner]?;
-                let commitment_randomness = Self::record_view_key_to_comm_randomness(&record_view_key)?;
-                let commitment = N::commitment_scheme()
-                    .commit(&commitment_input, &commitment_randomness)?
-                    .into();
+                let commitment = N::commitment_scheme().hash(&commitment_input)?.into();
 
                 Ok(Self {
                     owner,
@@ -175,10 +159,7 @@ impl<N: Network> Record<N> {
 
         // Compute the commitment.
         let commitment_input = to_bytes_le![ciphertext, owner]?;
-        let commitment_randomness = Self::record_view_key_to_comm_randomness(&record_view_key)?;
-        let commitment = N::commitment_scheme()
-            .commit(&commitment_input, &commitment_randomness)?
-            .into();
+        let commitment = N::commitment_scheme().hash(&commitment_input)?.into();
 
         Ok(Self {
             owner,

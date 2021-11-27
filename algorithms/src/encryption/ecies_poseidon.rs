@@ -123,6 +123,7 @@ where
     type PublicKey = TEAffine<TE>;
     type ScalarRandomness = TE::ScalarField;
     type SymmetricKey = TE::BaseField;
+    type SymmetricKeyCommitment = TE::BaseField;
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
@@ -212,6 +213,21 @@ where
             .to_x_coordinate())
     }
 
+    /// Given the symmetric key, return the following:
+    /// ```ignore
+    ///    symmetric_key_commitment := H(public_key^r) == H((G^r)^private_key)
+    /// ```
+    fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment {
+        // Initialize sponge state.
+        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
+        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
+        sponge.absorb(&[domain_separator, *symmetric_key]);
+
+        // Compute the symmetric key commitment.
+        let symmetric_key_commitment = sponge.squeeze_field_elements(1)[0];
+        symmetric_key_commitment
+    }
+
     /// Encrypts the given message, and returns the following:
     /// ```ignore
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
@@ -219,7 +235,7 @@ where
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
+        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
         sponge.absorb(&[domain_separator, *symmetric_key]);
 
         // Determine the number of bytes that fit in each field element.
@@ -267,7 +283,7 @@ where
 
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption2021");
+        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
         sponge.absorb(&[domain_separator, *symmetric_key]);
 
         // Subtract the random field elements to the packed bits.

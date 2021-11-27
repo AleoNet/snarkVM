@@ -90,6 +90,7 @@ mod ecies_poseidon {
         let public_key = encryption_scheme.generate_public_key(&private_key);
         let (randomness, _ciphertext_randomizer, symmetric_key) =
             encryption_scheme.generate_asymmetric_key(&public_key, rng);
+        let symmetric_key_commitment = encryption_scheme.generate_symmetric_key_commitment(&symmetric_key);
 
         let message = (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>();
         let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
@@ -135,6 +136,33 @@ mod ecies_poseidon {
             .unwrap();
 
         println!("number of constraints total: {}", cs.num_constraints());
+
+        let symmetric_key_gadget =
+            <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::SymmetricKeyGadget::alloc(
+                &mut cs.ns(|| "symmetric_key_gadget"),
+                || Ok(&symmetric_key),
+            )
+            .unwrap();
+
+        let expected_symmetric_key_commitment = <TestEncryptionSchemeGadget as EncryptionGadget<
+            TestEncryptionScheme,
+            _,
+        >>::SymmetricKeyCommitmentGadget::alloc(
+            &mut cs.ns(|| "symmetric_key_commitment_gadget"),
+            || Ok(&symmetric_key_commitment),
+        )
+        .unwrap();
+
+        let candidate_symmetric_key_commitment = encryption
+            .check_symmetric_key_commitment(&mut cs.ns(|| "check_symmetric_key_commitment"), &symmetric_key_gadget)
+            .unwrap();
+
+        expected_symmetric_key_commitment
+            .enforce_equal(
+                cs.ns(|| "Check that declared and computed symmetric key commitments are equal"),
+                &candidate_symmetric_key_commitment,
+            )
+            .unwrap();
 
         if !cs.is_satisfied() {
             println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
