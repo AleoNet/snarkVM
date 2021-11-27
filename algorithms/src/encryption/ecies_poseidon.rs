@@ -113,22 +113,6 @@ where
     const SENTINEL: u8 = 1;
 }
 
-// fn bits_to_byte(bits: impl Iterator<Item = bool>) -> u8 {
-//     let mut byte = 0u8;
-//     for (i, bit) in bits.enumerate() {
-//         byte |= u8::from(bit) << i;
-//     }
-//     byte
-// }
-
-// fn byte_to_bits(byte: u8) -> impl Iterator<Item = bool> {
-//     let mut bits = [false; 8];
-//     for (i, bit) in bits.iter_mut().enumerate() {
-//         *bit = (byte >> i) == 1;
-//     }
-//     std::array::IntoIter::new(bits)
-// }
-
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
 where
     TE::BaseField: PoseidonDefaultParametersField,
