@@ -171,7 +171,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         /* //////////////////////////////////////////////////////////////////////////// */
 
         let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        let mut input_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
         let mut input_owners = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -194,7 +193,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 given_program_id,
                 given_randomizer,
                 given_record_view_key,
-                given_commitment,
             ) = {
                 let declare_cs = &mut cs.ns(|| "Declare input record");
 
@@ -238,12 +236,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     || Ok(*record.record_view_key().clone()),
                 )?;
 
-                let given_commitment =
-                    <N::CommitmentGadget as CRHGadget<N::CommitmentScheme, N::InnerScalarField>>::OutputGadget::alloc(
-                        &mut declare_cs.ns(|| "given_commitment"),
-                        || Ok(record.commitment()),
-                    )?;
-
                 (
                     given_owner,
                     given_is_dummy,
@@ -252,45 +244,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_program_id,
                     given_randomizer,
                     given_record_view_key,
-                    given_commitment,
                 )
-            };
-
-            // ********************************************************************
-            // Check that the serial number is derived correctly.
-            // ********************************************************************
-            {
-                let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
-
-                // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
-                // Allocate sk_prf.
-                // TODO: CRITICAL: we don't check sk_prf against the account
-                let sk_prf = {
-                    let compute_key = ComputeKey::<N>::from_signature(&private.signature)
-                        .expect("Failed to derive the compute key from signature");
-                    FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?
-                };
-
-                let sk_prf =
-                    <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Seed::alloc(
-                        &mut sn_cs.ns(|| "Declare sk_prf"),
-                        || Ok(&sk_prf),
-                    )?;
-
-                let candidate_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
-                    N::SerialNumberPRF,
-                    N::InnerScalarField,
-                >>::check_evaluation_gadget(
-                    &mut sn_cs.ns(|| "Compute serial number"),
-                    &sk_prf,
-                    &vec![given_commitment.clone()],
-                )?;
-
-                // Convert input serial numbers to bytes.
-                let candidate_serial_number_bytes = candidate_serial_number
-                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
-
-                input_serial_numbers_bytes.push(candidate_serial_number_bytes);
             };
 
             // *******************************************************************
@@ -378,21 +332,51 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
 
-                // Ensure the given commitment is correct.
-                candidate_commitment.enforce_equal(
-                    &mut commitment_cs.ns(|| "Check that computed commitment matches public input"),
-                    &given_commitment,
-                )?;
-
                 let candidate_commitment_bytes =
                     candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
 
                 input_owners.push(given_owner);
-                input_commitments.push(candidate_commitment.clone());
                 input_commitments_bytes.extend_from_slice(&candidate_commitment_bytes);
                 input_values.push(given_value);
 
                 (candidate_commitment, given_is_dummy)
+            };
+
+            // ********************************************************************
+            // Check that the serial number is derived correctly.
+            // ********************************************************************
+            {
+                let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
+
+                // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
+                // Allocate sk_prf.
+                // TODO: CRITICAL: we don't check sk_prf against the account
+                let sk_prf = {
+                    let compute_key = ComputeKey::<N>::from_signature(&private.signature)
+                        .expect("Failed to derive the compute key from signature");
+                    FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?
+                };
+
+                let sk_prf =
+                    <N::SerialNumberPRFGadget as PRFGadget<N::SerialNumberPRF, N::InnerScalarField>>::Seed::alloc(
+                        &mut sn_cs.ns(|| "Declare sk_prf"),
+                        || Ok(&sk_prf),
+                    )?;
+
+                let candidate_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
+                    N::SerialNumberPRF,
+                    N::InnerScalarField,
+                >>::check_evaluation_gadget(
+                    &mut sn_cs.ns(|| "Compute serial number"),
+                    &sk_prf,
+                    &vec![commitment.clone()],
+                )?;
+
+                // Convert input serial numbers to bytes.
+                let candidate_serial_number_bytes = candidate_serial_number
+                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
+
+                input_serial_numbers_bytes.push(candidate_serial_number_bytes);
             };
 
             // **********************************************************************************
@@ -540,15 +524,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
-            let (
-                given_owner,
-                given_is_dummy,
-                given_value,
-                given_payload,
-                given_program_id,
-                given_randomizer,
-                given_commitment,
-            ) = {
+            let (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer) = {
                 let declare_cs = &mut cs.ns(|| "Declare output record");
 
                 let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
@@ -577,12 +553,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
                 )?;
 
-                let given_commitment =
-                    <N::CommitmentGadget as CRHGadget<N::CommitmentScheme, N::InnerScalarField>>::OutputGadget::alloc(
-                        &mut declare_cs.ns(|| "record_commitment"),
-                        || Ok(record.commitment()),
-                    )?;
-
                 (
                     given_owner,
                     given_is_dummy,
@@ -590,7 +560,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_payload,
                     given_program_id,
                     given_randomizer,
-                    given_commitment,
                 )
             };
             // ********************************************************************
@@ -700,14 +669,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
 
-                // Ensure the given commitment is correct.
-                candidate_commitment.enforce_equal(
-                    &mut commitment_cs.ns(|| "Check that computed commitment matches public input"),
-                    &given_commitment,
-                )?;
+                let candidate_commitment_bytes =
+                    candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
 
-                output_commitments_bytes
-                    .push(candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "commitment_bytes"))?);
+                output_commitments_bytes.push(candidate_commitment_bytes);
                 output_values.push(given_value);
             };
         }
