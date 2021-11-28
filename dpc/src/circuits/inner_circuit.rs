@@ -484,7 +484,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let signature_cs = &mut cs.ns(|| "Check that the signature is valid");
 
-            // TODO (howardwu): TEMPORARY - Enforce that the input owners are the same address.
+            // Enforce that the input owners are the same address.
+            let mut current_owner = &input_owners[0];
+            for (i, next_owner) in input_owners.iter().take(N::NUM_INPUT_RECORDS).skip(1).enumerate() {
+                // Enforce the owners are equal.
+                current_owner.enforce_equal(signature_cs.ns(|| format!("check_owners_match_{}", i)), next_owner)?;
+                // Update the current owner.
+                current_owner = next_owner;
+            }
 
             let signature_gadget = <N::AccountSignatureGadget as SignatureGadget<
                 N::AccountSignatureScheme,
