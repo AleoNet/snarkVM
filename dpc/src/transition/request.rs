@@ -89,7 +89,7 @@ impl<N: Network> Request<N> {
         // Construct the noop records.
         let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
-            records.push(Record::new_noop_input(noop_address, rng)?);
+            records.push(Record::new_noop(noop_address, rng)?);
         }
 
         Self::new(
@@ -118,7 +118,7 @@ impl<N: Network> Request<N> {
         // Pad the records with noops if there is less than required.
         let mut records = records;
         while records.len() < N::NUM_INPUT_RECORDS {
-            records.push(Record::new_noop_input(caller_address, rng)?);
+            records.push(Record::new_noop(caller_address, rng)?);
         }
 
         let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);

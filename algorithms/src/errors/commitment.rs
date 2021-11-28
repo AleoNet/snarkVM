@@ -30,6 +30,9 @@ pub enum CommitmentError {
     #[error("incorrect input length {} for window params {}x{}", _0, _1, _2)]
     IncorrectInputLength(usize, usize, usize),
 
+    #[error("incorrect randomness length {}", _0)]
+    IncorrectRandomnessLength(usize),
+
     #[error("{}", _0)]
     Message(String),
 

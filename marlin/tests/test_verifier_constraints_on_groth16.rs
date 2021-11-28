@@ -17,6 +17,7 @@
 use snarkvm_algorithms::{snark::groth16::Groth16, SNARK, SRS};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_gadgets::{
+    algorithms::crypto_hash::PoseidonSpongeGadget as PoseidonSpongeVar,
     curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
     nonnative::NonNativeFieldVar,
     traits::alloc::AllocGadget,
@@ -31,7 +32,6 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
     PoseidonSponge,
-    PoseidonSpongeVar,
 };
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_r1cs::{
@@ -320,8 +320,8 @@ impl ConstraintSynthesizer<Fq> for RecursiveCircuit {
 type PC = SonicKZG10<Bls12_377>;
 type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
 type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 

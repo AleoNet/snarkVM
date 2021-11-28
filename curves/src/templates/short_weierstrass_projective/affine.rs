@@ -126,7 +126,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         unimplemented!()
     }
 
-    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
+    fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut res = Projective::zero();
         for i in bits {
             res.double_in_place();

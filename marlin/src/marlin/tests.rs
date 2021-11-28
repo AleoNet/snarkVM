@@ -191,8 +191,13 @@ mod marlin_recursion {
     use core::ops::MulAssign;
 
     type MultiPC = SonicKZG10<Bls12_377>;
-    type MarlinInst =
-        MarlinSNARK<Fr, Fq, MultiPC, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>, MarlinRecursiveMode>;
+    type MarlinInst = MarlinSNARK<
+        Fr,
+        Fq,
+        MultiPC,
+        FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
+        MarlinRecursiveMode,
+    >;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();

@@ -847,6 +847,7 @@ impl<
 mod test {
     use core::ops::MulAssign;
 
+    use smallvec::SmallVec;
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
@@ -872,7 +873,7 @@ mod test {
         FiatShamirAlgebraicSpongeRngVar,
         FiatShamirError,
         PoseidonSponge,
-        PoseidonSpongeVar,
+        PoseidonSpongeGadget as PoseidonSpongeVar,
     };
     /// Compute the hash of the circuit verifying key.
     /// Used internally in Marlin
@@ -887,7 +888,7 @@ mod test {
     {
         let mut vk_hash_rng = FS::new();
         vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
-        vk_hash_rng.squeeze_native_field_elements(1)
+        vk_hash_rng.squeeze_native_field_elements(1).map(SmallVec::into_vec)
     }
 
     use super::*;
@@ -899,8 +900,8 @@ mod test {
 
     type MultiPCVar = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     #[derive(Copy, Clone)]
     struct Circuit<F: Field> {

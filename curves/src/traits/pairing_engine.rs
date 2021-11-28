@@ -16,7 +16,7 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
-use snarkvm_utilities::{biginteger::BigInteger, serialize::*, BitIteratorBE, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{biginteger::BigInteger, serialize::*, ToBytes, ToMinimalBits};
 
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, iter};
@@ -200,8 +200,9 @@ pub trait AffineCurve:
     /// random group elements from a hash-function or RNG output.
     fn from_random_bytes(bytes: &[u8]) -> Option<Self>;
 
-    /// Multiply this element by a scalar field element in BigInteger form.
-    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> Self::Projective;
+    /// Multiply this element by a big-endian boolean representation of
+    /// an integer.
+    fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Self::Projective;
 
     /// Multiply this element by the cofactor.
     #[must_use]

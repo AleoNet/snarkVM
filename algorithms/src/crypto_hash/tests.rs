@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::crypto_hash::{
-    CryptographicSponge,
+use crate::{
+    crypto_hash::{PoseidonDefaultParametersField, PoseidonGrainLFSR, PoseidonSponge},
+    AlgebraicSponge,
     DuplexSpongeMode,
-    PoseidonDefaultParametersField,
-    PoseidonGrainLFSR,
-    PoseidonSponge,
 };
 use snarkvm_curves::bls12_377::Fr;
 
@@ -56,7 +54,7 @@ fn test_poseidon_sponge_consistency() {
     for absorb in 0..10 {
         for squeeze in 0..10 {
             let iteration_name = format!("Absorb {} -> Squeeze {}", absorb, squeeze);
-            let mut sponge = PoseidonSponge::<Fr, RATE, 1>::new(&sponge_param);
+            let mut sponge = PoseidonSponge::<Fr, RATE, 1>::with_parameters(&sponge_param);
             sponge.absorb(&vec![Fr::from(1237812u64); absorb]);
             let next_absorb_index = if absorb % RATE != 0 || absorb == 0 {
                 absorb % RATE

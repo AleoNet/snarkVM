@@ -5,5 +5,5 @@
 RUST_BACKTRACE=1 cargo run --release --example setup posw testnet1 || exit
 
 mv posw.metadata ../../src/testnet1/resources
-mv posw.proving* ../../src/testnet1/resources
+mv posw.proving* ~/.aleo/resources
 mv posw.verifying ../../src/testnet1/resources
