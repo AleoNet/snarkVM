@@ -101,6 +101,7 @@ impl Network for Testnet2 {
     const COMMITMENT_PREFIX: u16 = hrp2!("cm");
     const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
     const FUNCTION_ID_PREFIX: u16 = hrp2!("fn");
+    const HEADER_NONCE_PREFIX: u16 = hrp2!("hn");
     const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
@@ -213,6 +214,7 @@ impl Network for Testnet2 {
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;

@@ -113,6 +113,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const COMMITMENT_PREFIX: u16;
     const FUNCTION_INPUTS_HASH_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
+    const HEADER_NONCE_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
@@ -244,6 +245,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
     type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
     type PoSWMaskPRFGadget: PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>;
+    type PoSWNonce: Bech32Locator<Self::InnerScalarField>;
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH<Output = Self::OuterScalarField>;
