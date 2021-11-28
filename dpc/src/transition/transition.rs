@@ -22,7 +22,6 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
-use itertools::Itertools;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
@@ -61,43 +60,46 @@ impl<N: Network> Transition<N> {
         // Fetch the serial numbers.
         let serial_numbers = request.to_serial_numbers()?;
 
-        // Fetch the commitments, ciphertexts, and value balance.
-        let commitments = response.commitments();
+        // Fetch the ciphertexts and value balance.
+        let transition_id = response.transition_id();
         let ciphertexts = response.ciphertexts();
         let value_balance = response.value_balance();
 
         // Construct the transition.
-        Self::from(serial_numbers, commitments, ciphertexts, value_balance, proof)
+        Self::from(transition_id, serial_numbers, ciphertexts, value_balance, proof)
     }
 
     /// Constructs an instance of a transition from the given inputs.
     pub(crate) fn from(
+        transition_id: N::TransitionID,
         serial_numbers: Vec<N::SerialNumber>,
-        commitments: Vec<N::Commitment>,
         ciphertexts: Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
         proof: N::OuterProof,
     ) -> Result<Self> {
-        // Ensure the ciphertexts correspond to the commitments.
-        for (commitment, ciphertext) in commitments.iter().zip_eq(ciphertexts.iter()) {
-            let candidate_commitment = (*ciphertext).to_commitment()?;
-            if candidate_commitment != *commitment {
-                return Err(anyhow!("Mismatching commitment from ciphertext in transition"));
-            }
-        }
-
-        // Compute the transition ID.
-        let transition_id = Self::compute_transition_id(&serial_numbers, &commitments)?;
-
+        // Compute the commitments.
+        let commitments = ciphertexts
+            .iter()
+            .map(|c| c.to_commitment())
+            .collect::<Result<Vec<_>, _>>()?;
         // Construct the transition.
-        Ok(Self {
-            transition_id,
+        let transition = Self {
+            transition_id: Self::compute_transition_id(&serial_numbers, &commitments)?,
             serial_numbers,
             commitments,
             ciphertexts,
             value_balance,
             proof,
-        })
+        };
+        // Ensure the transition ID matches.
+        match transition_id == transition.transition_id() {
+            true => Ok(transition),
+            false => Err(anyhow!(
+                "Incorrect transition ID during deserialization. Expected {}, found {}",
+                transition_id,
+                transition.transition_id(),
+            )),
+        }
     }
 
     /// Returns `true` if the transition ID is well-formed and the transition proof is valid.
@@ -257,14 +259,11 @@ impl<N: Network> Transition<N> {
 impl<N: Network> FromBytes for Transition<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let transition_id: N::TransitionID = FromBytes::read_le(&mut reader)?;
+
         let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        let mut commitments = Vec::<N::Commitment>::with_capacity(N::NUM_OUTPUT_RECORDS);
-        for _ in 0..N::NUM_OUTPUT_RECORDS {
-            commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
         let mut ciphertexts = Vec::<N::RecordCiphertext>::with_capacity(N::NUM_OUTPUT_RECORDS);
@@ -276,7 +275,7 @@ impl<N: Network> FromBytes for Transition<N> {
         let proof: N::OuterProof = FromBytes::read_le(&mut reader)?;
 
         Ok(
-            Self::from(serial_numbers, commitments, ciphertexts, value_balance, proof)
+            Self::from(transition_id, serial_numbers, ciphertexts, value_balance, proof)
                 .expect("Failed to deserialize a transition from bytes"),
         )
     }
@@ -285,8 +284,8 @@ impl<N: Network> FromBytes for Transition<N> {
 impl<N: Network> ToBytes for Transition<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.transition_id.write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
-        self.commitments.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
@@ -334,29 +333,15 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
         match deserializer.is_human_readable() {
             true => {
                 let transition = serde_json::Value::deserialize(deserializer)?;
-                let transition_id =
-                    N::TransitionID::deserialize(transition["transition_id"].clone()).map_err(de::Error::custom)?;
-
                 // Recover the transition.
-                let transition = Self::from(
+                Self::from(
+                    serde_json::from_value(transition["transition_id"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["serial_numbers"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transition["commitments"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["ciphertexts"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["value_balance"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["proof"].clone()).map_err(de::Error::custom)?,
                 )
-                .map_err(de::Error::custom)?;
-
-                // Ensure the transition ID matches.
-                match transition_id == transition.transition_id() {
-                    true => Ok(transition),
-                    false => Err(anyhow!(
-                        "Incorrect transition ID during deserialization. Expected {}, found {}",
-                        transition.transition_id(),
-                        transition_id,
-                    ))
-                    .map_err(de::Error::custom)?,
-                }
+                .map_err(de::Error::custom)
             }
             false => {
                 FromBytesDeserializer::<Self>::deserialize(deserializer, "transition", N::TRANSITION_SIZE_IN_BYTES)
