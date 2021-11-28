@@ -19,7 +19,6 @@ use crate::{
     traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode, SpongeParameters},
     CryptoHash,
 };
-use smallvec::SmallVec;
 use snarkvm_fields::{
     Fp256,
     Fp256Parameters,
@@ -32,6 +31,7 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use smallvec::SmallVec;
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Index, IndexMut, Range},

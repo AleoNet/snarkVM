@@ -121,7 +121,7 @@ impl Network for Testnet1 {
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
-    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1001;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
