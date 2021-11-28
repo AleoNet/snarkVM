@@ -305,8 +305,6 @@ impl<N: Network> Block<N> {
     ///
     /// Returns the block reward for the given block height.
     ///
-    /// TODO (howardwu): CRITICAL - Update this with the correct emission schedule.
-    ///
     pub fn block_reward(height: u32) -> AleoAmount {
         match height == 0 {
             true => {
@@ -314,13 +312,19 @@ impl<N: Network> Block<N> {
                 AleoAmount::from_bytes(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
             }
             false => {
-                let expected_blocks_per_hour: u32 = 180;
+                // The initial blocks that aren't taken into account with the halving calculation.
+                // The time it takes before the halving - 4,730,400 blocks (approximately 3 years).
+                let expected_blocks_per_hour: u32 = 3600 / (N::ALEO_BLOCK_TIME_IN_SECS as u32);
                 let num_years = 3;
                 let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
 
-                // The block reward halves at most 2 times - minimum is 37.5 ALEO after 8 years.
-                let initial_reward = 150i64 * AleoAmount::ONE_CREDIT.0;
-                let num_halves = u32::min(height / block_segments, 2);
+                // The block reward halves at most 2 times - minimum is 25 ALEO.
+                // The reward will halve at blocks `4,730,400` and `9,460,800`.
+                // Blocks 1 to 4,730,400         - 100 CREDITS
+                // Blocks 4,730,401 to 9,460,800 - 50 CREDITS
+                // Blocks 9,460,801+             - 25 CREDITS
+                let initial_reward = 100i64 * AleoAmount::ONE_CREDIT.0;
+                let num_halves = u32::min(height.saturating_sub(1) / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
                 AleoAmount::from_bytes(reward)
@@ -425,6 +429,7 @@ mod tests {
     use snarkvm_utilities::UniformRand;
 
     use rand::{thread_rng, Rng};
+    use rayon::iter::{IntoParallelIterator, ParallelIterator};
     use std::str::FromStr;
 
     const ITERATIONS: usize = 1000;
@@ -442,8 +447,8 @@ mod tests {
     fn test_block_rewards() {
         let rng = &mut thread_rng();
 
-        let first_halving: u32 = 3 * 365 * 24 * 180;
-        let second_halving: u32 = first_halving * 2;
+        let first_halving: u32 = 3 * 365 * 24 * 180; // 4,730,400
+        let second_halving: u32 = first_halving * 2; // 9,460,800
 
         // Genesis
 
@@ -454,35 +459,81 @@ mod tests {
 
         // Before block halving
 
-        let mut block_reward: i64 = 150 * 1_000_000;
+        let mut block_reward: i64 = 100 * 1_000_000;
 
         for _ in 0..ITERATIONS {
-            let block_height: u32 = rng.gen_range(0..first_halving);
+            let block_height: u32 = rng.gen_range(1..first_halving);
             assert_eq!(Block::<Testnet2>::block_reward(block_height).0, block_reward);
         }
+        assert_eq!(Block::<Testnet2>::block_reward(first_halving).0, block_reward);
 
         // First block halving
 
         block_reward /= 2;
 
-        assert_eq!(Block::<Testnet2>::block_reward(first_halving).0, block_reward);
-
+        assert_eq!(Block::<Testnet2>::block_reward(first_halving + 1).0, block_reward);
         for _ in 0..ITERATIONS {
             let block_num: u32 = rng.gen_range((first_halving + 1)..second_halving);
             assert_eq!(Block::<Testnet2>::block_reward(block_num).0, block_reward);
         }
+        assert_eq!(Block::<Testnet2>::block_reward(second_halving).0, block_reward);
 
         // Second and final block halving
 
         block_reward /= 2;
 
-        assert_eq!(Block::<Testnet2>::block_reward(second_halving).0, block_reward);
-        assert_eq!(Block::<Testnet2>::block_reward(u32::MAX).0, block_reward);
-
+        assert_eq!(Block::<Testnet2>::block_reward(second_halving + 1).0, block_reward);
         for _ in 0..ITERATIONS {
             let block_num: u32 = rng.gen_range(second_halving..u32::MAX);
             assert_eq!(Block::<Testnet2>::block_reward(block_num).0, block_reward);
         }
+        assert_eq!(Block::<Testnet2>::block_reward(u32::MAX).0, block_reward);
+    }
+
+    #[test]
+    fn test_token_supply() {
+        let first_halving: u32 = 3 * 365 * 24 * 180; // 4,730,400
+        let supply_at_first_halving = 1_473_040_000;
+
+        let second_halving: u32 = first_halving * 2; // 9,460,800
+        let supply_at_second_halving = 1_709_560_000;
+
+        assert_eq!(
+            Block::<Testnet2>::block_reward(0),
+            AleoAmount::from_bytes(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+        );
+
+        let mut supply = AleoAmount::ZERO;
+
+        // Phase 1 - 100 credits per block.
+        let phase_1_sum = AleoAmount::from_bytes(
+            (0..=first_halving)
+                .into_par_iter()
+                .map(|i| Block::<Testnet2>::block_reward(i).0)
+                .sum::<i64>(),
+        );
+
+        supply = supply.add(phase_1_sum);
+
+        assert_eq!(
+            supply,
+            AleoAmount::from_bytes(supply_at_first_halving * AleoAmount::ONE_CREDIT.0)
+        );
+
+        // Phase 2 - 50 credits per block.
+        let phase_2_sum = AleoAmount::from_bytes(
+            ((first_halving + 1)..=second_halving)
+                .into_par_iter()
+                .map(|i| Block::<Testnet2>::block_reward(i).0)
+                .sum::<i64>(),
+        );
+
+        supply = supply.add(phase_2_sum);
+
+        assert_eq!(
+            supply,
+            AleoAmount::from_bytes(supply_at_second_halving * AleoAmount::ONE_CREDIT.0)
+        );
     }
 
     #[test]
