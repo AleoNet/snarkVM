@@ -34,10 +34,7 @@ pub struct InnerPrivateVariables<N: Network> {
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
-    pub(crate) fn blank() -> Self
-    where
-        Record<N>: Default,
-    {
+    pub(crate) fn blank() -> Self {
         Self {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proofs: vec![Default::default(); N::NUM_INPUT_RECORDS],

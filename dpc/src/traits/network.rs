@@ -16,12 +16,12 @@
 
 use crate::{
     Block,
+    Ciphertext,
     InnerPublicVariables,
     OuterPublicVariables,
     PoSWScheme,
     Program,
     ProgramPublicVariables,
-    RecordCiphertext,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
@@ -252,7 +252,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
     /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
-    type RecordCiphertext: Bech32Object<RecordCiphertext<Self>> + Hash;
+    type RecordCiphertext: Bech32Object<Ciphertext<Self>> + Hash;
     type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
     type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
     type RecordViewKeyCommitment: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment>;

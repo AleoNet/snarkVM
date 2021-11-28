@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Bech32Locator, ComputeKey, Network, Payload, RecordCiphertext, RecordError, ViewKey};
+use crate::{Address, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -24,12 +24,12 @@ use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Seri
 use std::{
     fmt,
     io::{Cursor, Read, Result as IoResult, Write},
+    ops::Deref,
     str::FromStr,
 };
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "N: Network"),
     Debug(bound = "N: Network"),
     Clone(bound = "N: Network"),
     PartialEq(bound = "N: Network"),
@@ -41,9 +41,9 @@ pub struct Record<N: Network> {
     value: u64,
     payload: Payload<N>,
     program_id: N::ProgramID,
-    randomizer: N::RecordRandomizer,
     record_view_key: N::RecordViewKey,
     commitment: N::Commitment,
+    ciphertext: N::RecordCiphertext,
 }
 
 impl<N: Network> Record<N> {
@@ -86,7 +86,7 @@ impl<N: Network> Record<N> {
         let plaintext = Self::encode_plaintext(owner, value, &payload, program_id)?;
 
         // Encrypt the record bytes.
-        let ciphertext = RecordCiphertext::<N>::from(
+        let ciphertext = Ciphertext::<N>::from(
             randomizer,
             N::account_encryption_scheme()
                 .generate_symmetric_key_commitment(&record_view_key)
@@ -102,9 +102,9 @@ impl<N: Network> Record<N> {
             value,
             payload,
             program_id,
-            randomizer,
             record_view_key,
             commitment,
+            ciphertext: ciphertext.into(),
         })
     }
 
@@ -114,14 +114,12 @@ impl<N: Network> Record<N> {
         ciphertext: &N::RecordCiphertext,
     ) -> Result<Self, RecordError> {
         // Compute the record view key.
-        let ciphertext = &*ciphertext;
-        let randomizer = ciphertext.ciphertext_randomizer();
         let record_view_key = N::account_encryption_scheme()
-            .generate_symmetric_key(&*account_view_key, *randomizer)?
+            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())?
             .into();
 
         // Decrypt the record ciphertext.
-        let plaintext = ciphertext.to_plaintext(&record_view_key)?;
+        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
         // Ensure the record owner matches.
@@ -129,16 +127,16 @@ impl<N: Network> Record<N> {
         match owner == expected_owner {
             true => {
                 // Compute the commitment.
-                let commitment = ciphertext.to_commitment()?;
+                let commitment = ciphertext.deref().to_commitment()?;
 
                 Ok(Self {
                     owner,
                     value,
                     payload,
                     program_id,
-                    randomizer,
                     record_view_key,
                     commitment,
+                    ciphertext: ciphertext.clone(),
                 })
             }
             false => Err(anyhow!("Decoded incorrect record owner from ciphertext").into()),
@@ -151,40 +149,21 @@ impl<N: Network> Record<N> {
         ciphertext: &N::RecordCiphertext,
     ) -> Result<Self, RecordError> {
         // Decrypt the record ciphertext.
-        let ciphertext = &*ciphertext;
-        let randomizer = ciphertext.ciphertext_randomizer();
-        let plaintext = ciphertext.to_plaintext(&record_view_key)?;
+        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
         // Compute the commitment.
-        let commitment = ciphertext.to_commitment()?;
+        let commitment = ciphertext.deref().to_commitment()?;
 
         Ok(Self {
             owner,
             value,
             payload,
             program_id,
-            randomizer,
             record_view_key,
             commitment,
+            ciphertext: ciphertext.clone(),
         })
-    }
-
-    /// Returns the ciphertext of the record, encrypted under the record owner.
-    pub fn encrypt(&self) -> Result<N::RecordCiphertext, RecordError> {
-        // Encode the record contents into plaintext bytes.
-        let plaintext = Self::encode_plaintext(self.owner, self.value, &self.payload, self.program_id)?;
-
-        // Encrypt the record bytes.
-        let ciphertext = RecordCiphertext::<N>::from(
-            self.randomizer,
-            N::account_encryption_scheme()
-                .generate_symmetric_key_commitment(&self.record_view_key)
-                .into(),
-            N::account_encryption_scheme().encrypt(&self.record_view_key, &plaintext)?,
-        )?;
-
-        Ok(ciphertext.into())
     }
 
     /// Returns `true` if the record is a dummy.
@@ -214,7 +193,7 @@ impl<N: Network> Record<N> {
 
     /// Returns the randomizer used for the ciphertext.
     pub fn randomizer(&self) -> N::RecordRandomizer {
-        self.randomizer
+        self.ciphertext.deref().randomizer()
     }
 
     /// Returns the view key of this record.
@@ -225,6 +204,11 @@ impl<N: Network> Record<N> {
     /// Returns the commitment of this record.
     pub fn commitment(&self) -> N::Commitment {
         self.commitment
+    }
+
+    /// Returns this record as ciphertext.
+    pub fn ciphertext(&self) -> &N::RecordCiphertext {
+        &self.ciphertext
     }
 
     /// Returns the serial number of the record, given the compute key corresponding to the record owner.
@@ -300,7 +284,7 @@ impl<N: Network> ToBytes for Record<N> {
         self.value.write_le(&mut writer)?;
         self.payload.write_le(&mut writer)?;
         self.program_id.write_le(&mut writer)?;
-        self.randomizer.write_le(&mut writer)?;
+        self.randomizer().write_le(&mut writer)?;
         self.record_view_key.write_le(&mut writer)
     }
 }
@@ -353,7 +337,7 @@ impl<N: Network> Serialize for Record<N> {
                 record.serialize_field("value", &self.value)?;
                 record.serialize_field("payload", &self.payload)?;
                 record.serialize_field("program_id", &self.program_id)?;
-                record.serialize_field("randomizer", &self.randomizer)?;
+                record.serialize_field("randomizer", &self.randomizer())?;
                 record.serialize_field("record_view_key", &self.record_view_key)?;
                 record.serialize_field("commitment", &self.commitment)?;
                 record.end()
@@ -394,6 +378,20 @@ impl<'de, N: Network> Deserialize<'de> for Record<N> {
             }
             false => FromBytesDeserializer::<Self>::deserialize(deserializer, "record", N::RECORD_SIZE_IN_BYTES),
         }
+    }
+}
+
+impl<N: Network> Default for Record<N> {
+    fn default() -> Self {
+        Self::from(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            *N::noop_program_id(),
+            Default::default(),
+            Default::default(),
+        )
+        .expect("Failed to initialize Record::default()")
     }
 }
 

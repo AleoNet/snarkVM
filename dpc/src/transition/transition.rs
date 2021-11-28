@@ -63,7 +63,7 @@ impl<N: Network> Transition<N> {
 
         // Fetch the commitments, ciphertexts, and value balance.
         let commitments = response.commitments();
-        let ciphertexts = response.to_ciphertexts()?;
+        let ciphertexts = response.ciphertexts();
         let value_balance = response.value_balance();
 
         // Construct the transition.
