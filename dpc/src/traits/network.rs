@@ -111,12 +111,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_ID_PREFIX: u16;
 
     const COMMITMENT_PREFIX: u16;
-    const RECORD_RANDOMIZER_PREFIX: u16;
     const FUNCTION_INPUTS_HASH_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
+    const RECORD_RANDOMIZER_PREFIX: u16;
     const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 

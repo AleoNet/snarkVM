@@ -379,10 +379,19 @@ mod tests {
 
     #[test]
     fn test_size() {
-        let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
-        let transition = transaction.transitions().first().unwrap().clone();
-        let transition_bytes = transition.to_bytes_le().unwrap();
-        assert_eq!(Testnet2::TRANSITION_SIZE_IN_BYTES, transition_bytes.len(),);
+        {
+            use crate::testnet1::Testnet1;
+            let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
+            let transition = transaction.transitions().first().unwrap().clone();
+            let transition_bytes = transition.to_bytes_le().unwrap();
+            assert_eq!(Testnet1::TRANSITION_SIZE_IN_BYTES, transition_bytes.len(),);
+        }
+        {
+            let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+            let transition = transaction.transitions().first().unwrap().clone();
+            let transition_bytes = transition.to_bytes_le().unwrap();
+            assert_eq!(Testnet2::TRANSITION_SIZE_IN_BYTES, transition_bytes.len(),);
+        }
     }
 
     #[test]
