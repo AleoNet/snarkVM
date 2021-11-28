@@ -21,7 +21,6 @@ use crate::{
     EncryptionError,
     EncryptionScheme,
 };
-use rand::{CryptoRng, Rng};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective},
     AffineCurve,
@@ -34,14 +33,18 @@ use snarkvm_utilities::{
     ops::Mul,
     serialize::*,
     BitIteratorBE,
+    FromBits,
     FromBytes,
     Read,
     SerializationError,
+    ToBits,
     ToBytes,
     UniformRand,
     Write,
 };
 
+use itertools::Itertools;
+use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
@@ -102,15 +105,10 @@ pub struct ECIESPoseidonEncryption<TE: TwistedEdwardsParameters>
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    pub generator: TEAffine<TE>,
+    generator: TEAffine<TE>,
     poseidon_parameters: Arc<PoseidonParameters<TE::BaseField, 4, 1>>,
-}
-
-impl<TE: TwistedEdwardsParameters> ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    const SENTINEL: u8 = 1;
+    symmetric_key_commitment_domain: TE::BaseField,
+    symmetric_encryption_domain: TE::BaseField,
 }
 
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
@@ -127,14 +125,7 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        let poseidon_parameters = Arc::new(
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap(),
-        );
-
-        Self {
-            generator,
-            poseidon_parameters,
-        }
+        Self::from(generator)
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey {
@@ -145,12 +136,15 @@ where
         self.generator.into_projective().mul(*private_key).into_affine()
     }
 
+    ///
     /// Given an RNG, returns the following:
+    ///
     /// ```ignore
     ///                  randomness := r
     ///       ciphertext_randomizer := G^r
     ///               symmetric_key := public_key^r == G^ar
     /// ```
+    ///
     fn generate_asymmetric_key<R: Rng + CryptoRng>(
         &self,
         public_key: &Self::PublicKey,
@@ -178,157 +172,264 @@ where
         (randomness, ciphertext_randomizer, symmetric_key)
     }
 
+    ///
     /// Given the private key and ciphertext randomizer, return the following:
+    ///
     /// ```ignore
     ///    symmetric_key := public_key^r == (G^r)^private_key
     /// ```
+    ///
     fn generate_symmetric_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext_randomizer: Self::CiphertextRandomizer,
     ) -> Result<Self::SymmetricKey, EncryptionError> {
         // Recover the ciphertext randomizer group element.
-        let randomizer = {
-            let mut first = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, true);
-            if first.is_some() && !first.unwrap().is_in_correct_subgroup_assuming_on_curve() {
-                first = None;
-            }
-            let mut second = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, false);
-            if second.is_some() && !second.unwrap().is_in_correct_subgroup_assuming_on_curve() {
-                second = None;
-            }
-            let randomizer = first.or(second);
-            if randomizer.is_none() {
-                return Err(EncryptionError::Message(
-                    "The ciphertext randomizer is malformed.".to_string(),
-                ));
-            }
-            randomizer.unwrap()
-        };
+        let mut randomizer = None;
 
-        // Compute the ECDH value.
-        Ok(randomizer
-            .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
-            .into_affine()
-            .to_x_coordinate())
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                randomizer = Some(element);
+            }
+        }
+        if randomizer.is_none() {
+            if let Some(element) = TEAffine::<TE>::from_x_coordinate(ciphertext_randomizer, false) {
+                if element.is_in_correct_subgroup_assuming_on_curve() {
+                    randomizer = Some(element);
+                }
+            }
+        }
+
+        match randomizer {
+            // Compute the ECDH value.
+            Some(randomizer) => Ok(randomizer
+                .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
+                .into_affine()
+                .to_x_coordinate()),
+            _ => Err(EncryptionError::Message(
+                "The ciphertext randomizer is malformed.".to_string(),
+            )),
+        }
     }
 
+    ///
     /// Given the symmetric key, return the following:
+    ///
     /// ```ignore
     ///    symmetric_key_commitment := H(public_key^r) == H((G^r)^private_key)
     /// ```
+    ///
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment {
-        // Initialize sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
-        sponge.absorb(&[domain_separator, *symmetric_key]);
-
         // Compute the symmetric key commitment.
-        let symmetric_key_commitment = sponge.squeeze_field_elements(1)[0];
-        symmetric_key_commitment
+        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
+        sponge.absorb(&[self.symmetric_key_commitment_domain, *symmetric_key]);
+        sponge.squeeze_field_elements(1)[0]
     }
 
+    ///
     /// Encrypts the given message, and returns the following:
+    ///
     /// ```ignore
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
     /// ```
+    ///
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
-        // Initialize sponge state.
+        // Initialize the sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
-        sponge.absorb(&[domain_separator, *symmetric_key]);
+        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
 
-        // Determine the number of bytes that fit in each field element.
-        let bit_capacity = <<TE::BaseField as PrimeField>::Parameters>::CAPACITY as usize;
-        let byte_capacity = bit_capacity / 8;
-        let modulus_bits = <<TE::BaseField as PrimeField>::Parameters>::MODULUS_BITS as usize;
-        let bytes_per_field_element = ((modulus_bits + 63) / 64) * 8;
+        // // Determine the number of bytes that fit in each field element.
+        // let bit_capacity = <<TE::BaseField as PrimeField>::Parameters>::CAPACITY as usize;
+        // let byte_capacity = bit_capacity / 8;
+        // let modulus_bits = <<TE::BaseField as PrimeField>::Parameters>::MODULUS_BITS as usize;
+        // let bytes_per_field_element = ((modulus_bits + 63) / 64) * 8;
+        //
+        // // Add a sentinel to indicate the start of the padding.
+        // let mut message = message.to_vec();
+        // message.push(Self::SENTINEL);
+        //
+        // // Obtain random field elements from Poseidon.
+        // // Pack the bytes into field elements and add the random field elements to the packed bits.
+        // let ciphertext = message
+        //     .chunks(byte_capacity)
+        //     .flat_map(|chunk| {
+        //         let sponge_randomizer = sponge.squeeze_field_elements(1)[0];
+        //         let plaintext_element = TE::BaseField::from_bytes_le_mod_order(&chunk);
+        //         (plaintext_element + sponge_randomizer).to_bytes_le().unwrap()
+        //     })
+        //     .collect::<Vec<_>>();
+        //
+        // let num_field_elements = (message.len() + byte_capacity - 1) / byte_capacity;
+        // let num_bytes = num_field_elements * bytes_per_field_element;
+        //
+        // assert_eq!(ciphertext.len(), num_bytes, "incorrect length for ciphertext");
+        //
+        // Ok(ciphertext)
 
-        // Add a sentinel to indicate the start of the padding.
-        let mut message = message.to_vec();
-        message.push(Self::SENTINEL);
+        // Convert the message into bits.
+        let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
+        for byte in message.iter() {
+            let mut byte = byte.clone();
+            for _ in 0..8 {
+                plaintext_bits.push(byte & 1 == 1);
+                byte >>= 1;
+            }
+        }
+        // The final bit serves as a terminus indicator,
+        // and is used during decryption to ensure the length is correct.
+        plaintext_bits.push(true);
+
+        // Determine the number of ciphertext elements.
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+        let num_ciphertext_elements = (plaintext_bits.len() + capacity - 1) / capacity;
 
         // Obtain random field elements from Poseidon.
-        // Pack the bytes into field elements and add the random field elements to the packed bits.
-        let ciphertext = message
-            .chunks(byte_capacity)
-            .flat_map(|chunk| {
-                let sponge_randomizer = sponge.squeeze_field_elements(1)[0];
-                let plaintext_element = TE::BaseField::from_bytes_le_mod_order(&chunk);
+        let sponge_randomizers = sponge.squeeze_field_elements(num_ciphertext_elements);
+        assert_eq!(sponge_randomizers.len(), num_ciphertext_elements);
+
+        // Pack the bits into field elements and add the random field elements to the packed bits.
+        let ciphertext = plaintext_bits
+            .chunks(capacity)
+            .zip_eq(sponge_randomizers.iter())
+            .flat_map(|(chunk, sponge_randomizer)| {
+                let plaintext_element =
+                    TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
                 (plaintext_element + sponge_randomizer).to_bytes_le().unwrap()
             })
-            .collect::<Vec<_>>();
-
-        let num_field_elements = (message.len() + byte_capacity - 1) / byte_capacity;
-        let num_bytes = num_field_elements * bytes_per_field_element;
-
-        assert_eq!(ciphertext.len(), num_bytes, "incorrect length for ciphertext");
+            .collect();
 
         Ok(ciphertext)
     }
 
+    ///
     /// Decrypt while the condition specified by `f` is satisfied.
-    fn decrypt_while(
-        &self,
-        symmetric_key: &Self::SymmetricKey,
-        ciphertext: &[u8],
-        should_continue: impl Fn(&[u8]) -> bool,
-    ) -> Result<Vec<u8>, EncryptionError> {
-        let bit_capacity = <<TE::BaseField as PrimeField>::Parameters>::CAPACITY as usize;
-        let modulus_bits = <<TE::BaseField as PrimeField>::Parameters>::MODULUS_BITS as usize;
-        let byte_capacity_less_than_modulus = bit_capacity / 8;
-        let byte_capacity_more_than_modulus = (modulus_bits + 7) / 8;
-        let bytes_per_field_element = ((modulus_bits + 63) / 64) * 8;
-        assert!(ciphertext.len() >= byte_capacity_more_than_modulus);
+    ///
+    fn decrypt_while(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
+        // let bit_capacity = <<TE::BaseField as PrimeField>::Parameters>::CAPACITY as usize;
+        // let modulus_bits = <<TE::BaseField as PrimeField>::Parameters>::MODULUS_BITS as usize;
+        // let byte_capacity_less_than_modulus = bit_capacity / 8;
+        // let byte_capacity_more_than_modulus = (modulus_bits + 7) / 8;
+        // let bytes_per_field_element = ((modulus_bits + 63) / 64) * 8;
+        // assert!(ciphertext.len() >= byte_capacity_more_than_modulus);
 
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        let domain_separator = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
-        sponge.absorb(&[domain_separator, *symmetric_key]);
+        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
+
+        // // Subtract the random field elements to the packed bits.
+        // assert_eq!(ciphertext.len() % bytes_per_field_element, 0);
+        // let num_chunks = ciphertext.len() / bytes_per_field_element;
+        //
+        // let mut plaintext = Vec::with_capacity(ciphertext.len());
+        // for (i, chunk) in ciphertext.chunks(bytes_per_field_element).enumerate() {
+        //     let ciphertext_block = TE::BaseField::from_bytes_le(chunk).unwrap();
+        //     let sponge_fe = sponge.squeeze_field_elements(1)[0];
+        //     let plaintext_fe = ciphertext_block - sponge_fe;
+        //     let bytes = &plaintext_fe.to_bytes_le()?[..byte_capacity_less_than_modulus];
+        //     let mut sentinel_index = bytes.len();
+        //     if i == num_chunks - 1 {
+        //         // If we're in the last chunk, truncate the padding
+        //         if plaintext_fe.is_zero() {
+        //             Err(EncryptionError::Message(
+        //                 "The packed field elements must end with a non-zero element.".into(),
+        //             ))?;
+        //         }
+        //         for (i, byte) in bytes.iter().enumerate().rev() {
+        //             if byte == &Self::SENTINEL {
+        //                 sentinel_index = i;
+        //                 break;
+        //             }
+        //         }
+        //     }
+        //     plaintext.extend_from_slice(&bytes[..sentinel_index]);
+        //
+        //     if !should_continue(&plaintext) {
+        //         return Err(EncryptionError::MismatchingAddress);
+        //     }
+        // }
+        // if plaintext.is_empty() {
+        //     Err(EncryptionError::Message(
+        //         "The packed field elements must consist of at least one field element.".into(),
+        //     ))?;
+        // }
+        //
+        // let num_field_elements =
+        //     (plaintext.len() + byte_capacity_less_than_modulus - 1) / byte_capacity_less_than_modulus;
+        // let num_bytes = num_field_elements * bytes_per_field_element;
+        // assert_eq!(ciphertext.len(), num_bytes);
+        //
+        // Ok(plaintext)
+
+        let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
+        assert!(ciphertext.len() >= per_field_element_bytes);
+
+        // Compute the number of sponge elements needed.
+        let num_field_elements = ciphertext.len() / per_field_element_bytes;
+
+        // Obtain random field elements from Poseidon.
+        let sponge_randomizers = sponge.squeeze_field_elements(num_field_elements);
 
         // Subtract the random field elements to the packed bits.
-        assert_eq!(ciphertext.len() % bytes_per_field_element, 0);
-        let num_chunks = ciphertext.len() / bytes_per_field_element;
-
-        let mut plaintext = Vec::with_capacity(ciphertext.len());
-        for (i, chunk) in ciphertext.chunks(bytes_per_field_element).enumerate() {
-            let ciphertext_block = TE::BaseField::from_bytes_le(chunk).unwrap();
-            let sponge_fe = sponge.squeeze_field_elements(1)[0];
-            let plaintext_fe = ciphertext_block - sponge_fe;
-            let bytes = &plaintext_fe.to_bytes_le()?[..byte_capacity_less_than_modulus];
-            let mut sentinel_index = bytes.len();
-            if i == num_chunks - 1 {
-                // If we're in the last chunk, truncate the padding
-                if plaintext_fe.is_zero() {
-                    Err(EncryptionError::Message(
-                        "The packed field elements must end with a non-zero element.".into(),
-                    ))?;
-                }
-                for (i, byte) in bytes.iter().enumerate().rev() {
-                    if byte == &Self::SENTINEL {
-                        sentinel_index = i;
-                        break;
-                    }
-                }
-            }
-            plaintext.extend_from_slice(&bytes[..sentinel_index]);
-
-            if !should_continue(&plaintext) {
-                return Err(EncryptionError::MismatchingAddress);
-            }
+        let mut plaintext_elements = Vec::with_capacity(num_field_elements);
+        for i in 0..num_field_elements {
+            plaintext_elements.push(TE::BaseField::from_bytes_le(
+                &ciphertext[(i * per_field_element_bytes)..((i + 1) * per_field_element_bytes)],
+            )?);
         }
-        if plaintext.is_empty() {
-            Err(EncryptionError::Message(
-                "The packed field elements must consist of at least one field element.".into(),
-            ))?;
+        for (i, sponge_randomizer) in sponge_randomizers.iter().enumerate() {
+            plaintext_elements[i] = plaintext_elements[i] - sponge_randomizer;
         }
 
-        let num_field_elements =
-            (plaintext.len() + byte_capacity_less_than_modulus - 1) / byte_capacity_less_than_modulus;
-        let num_bytes = num_field_elements * bytes_per_field_element;
-        assert_eq!(ciphertext.len(), num_bytes);
+        // Unpack the packed bits.
+        if plaintext_elements.is_empty() {
+            return Err(EncryptionError::Message(
+                "The packed field elements must consist of at least one field element.".to_string(),
+            )
+            .into());
+        }
+        if plaintext_elements.last().unwrap().is_zero() {
+            return Err(EncryptionError::Message(
+                "The packed field elements must end with a non-zero element.".to_string(),
+            )
+            .into());
+        }
 
-        Ok(plaintext)
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+
+        let mut bits = Vec::<bool>::with_capacity(plaintext_elements.len() * capacity);
+        for elem in plaintext_elements.iter() {
+            let elem_bits = elem.to_repr().to_bits_le();
+            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        }
+
+        // Drop all the ending zeros and the last "1" bit.
+        //
+        // Note that there must be at least one "1" bit because the last element is not zero.
+        loop {
+            if let Some(true) = bits.pop() {
+                break;
+            }
+        }
+
+        if bits.len() % 8 != 0 {
+            return Err(EncryptionError::Message(
+                "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
+            )
+            .into());
+        }
+        // Here we do not use assertion since it can cause Rust panicking.
+
+        let mut message = Vec::with_capacity(bits.len() / 8);
+        for chunk in bits.chunks_exact(8) {
+            let mut byte = 0u8;
+            for bit in chunk.iter().rev() {
+                byte <<= 1;
+                byte += *bit as u8;
+            }
+            message.push(byte);
+        }
+
+        Ok(message)
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
@@ -348,9 +449,14 @@ where
         let poseidon_parameters = Arc::new(
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap(),
         );
+        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
+        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
+
         Self {
             generator,
             poseidon_parameters,
+            symmetric_key_commitment_domain,
+            symmetric_encryption_domain,
         }
     }
 }

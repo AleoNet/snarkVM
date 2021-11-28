@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
-
 use crate::{account, Bech32Locator, Network, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
@@ -91,21 +89,10 @@ impl<N: Network> RecordCiphertext<N> {
         account_view_key: &account::ViewKey<N>,
     ) -> Option<Vec<u8>> {
         let record_view_key = N::account_encryption_scheme()
-            .generate_symmetric_key(&account_view_key, *self.ciphertext_randomizer.borrow())
+            .generate_symmetric_key(&account_view_key, *self.ciphertext_randomizer)
             .unwrap();
 
-        let decryption_result =
-            N::account_encryption_scheme().decrypt_while(&record_view_key, &self.record_bytes, |plaintext| {
-                let account_bytes = account.to_bytes_le().unwrap();
-                if plaintext.len() == account_bytes.len() {
-                    // If the account bytes match the first chunk of the plaintext,
-                    // return true and continue decryption.
-                    // If it doesn't match, then return false and halt decryption.
-                    account_bytes == plaintext
-                } else {
-                    true
-                }
-            });
+        let decryption_result = N::account_encryption_scheme().decrypt_while(&record_view_key, &self.record_bytes);
         match decryption_result {
             Ok(msg) => Some(msg),
             Err(snarkvm_algorithms::EncryptionError::MismatchingAddress) => None,
