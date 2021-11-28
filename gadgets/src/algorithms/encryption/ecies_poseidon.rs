@@ -29,7 +29,11 @@ use crate::{
     ToBytesGadget,
     UInt8,
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, encryption::ECIESPoseidonEncryption};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    encryption::ECIESPoseidonEncryption,
+    EncryptionScheme,
+};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
@@ -481,25 +485,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F>
 {
 }
 
-fn pack_bytes_to_field_elements<F: PrimeField>(
-    mut cs: impl ConstraintSystem<F>,
-    bytes: &[UInt8],
-) -> Result<Vec<FpGadget<F>>, SynthesisError> {
-    let bit_capacity = F::Parameters::CAPACITY as usize;
-    let byte_capacity = bit_capacity / 8;
-    bytes
-        .iter()
-        .chain(std::iter::once(&UInt8::constant(1u8)))
-        .chunks(byte_capacity)
-        .into_iter()
-        .enumerate()
-        .map(|(i, chunk)| {
-            let bits = chunk.flat_map(|byte| byte.to_bits_le()).collect::<Vec<_>>();
-            Boolean::le_bits_to_fp_var(cs.ns(|| format!("convert a bit to a field element {}", i)), &bits)
-        })
-        .collect::<Result<Vec<_>, _>>()
-}
-
 /// On input the symmetric key, outputs
 /// the symmetric key commitment.
 fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
@@ -518,9 +503,7 @@ fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
     )?;
 
     // Obtain the symmetric key commitment from Poseidon.
-    let symmetric_key_commitment =
-        sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), 1)?[0].clone();
-    Ok(symmetric_key_commitment)
+    Ok(sponge.squeeze_field_elements(cs.ns(|| "squeeze for symmetric key commitment"), 1)?[0].clone())
 }
 
 /// On input the symmetric key and the plaintext, outputs
@@ -528,7 +511,7 @@ fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
 fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
-    plaintext: &[UInt8],
+    message: &[UInt8],
 ) -> Result<Vec<UInt8>, SynthesisError> {
     // Prepare the sponge.
     let params = Arc::new(F::get_default_poseidon_parameters::<4>(false).unwrap());
@@ -542,21 +525,32 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     )?;
 
     // Convert the message into bits.
-
+    let mut bits = Vec::with_capacity(message.len() * 8);
+    for byte in message.iter() {
+        bits.extend_from_slice(&byte.to_bits_le());
+    }
     // The last bit indicates the end of the actual data, which is used in decoding to
     // make sure that the length is correct.
+    bits.push(Boolean::Constant(true));
 
     // Pack the bits into field elements.
-    let mut res = pack_bytes_to_field_elements(cs.ns(|| "pack bits to be"), &plaintext)?;
+    let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
+    let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
+    for (i, chunk) in bits.chunks(capacity).enumerate() {
+        res.push(Boolean::le_bits_to_fp_var(
+            cs.ns(|| format!("convert a bit to a field element {}", i)),
+            chunk,
+        )?);
+    }
 
     // Obtain random field elements from Poseidon.
-    let sponge_field_elements = sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), res.len())?;
+    let sponge_randomizers = sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), res.len())?;
 
     // Add the random field elements to the packed bits.
-    for (i, (sponge_field_element, plaintext_fe)) in sponge_field_elements.iter().zip(&mut res).enumerate() {
-        plaintext_fe.add_in_place(
+    for (i, sponge_randomizer) in sponge_randomizers.iter().enumerate() {
+        res[i].add_in_place(
             cs.ns(|| format!("add the sponge field element {}", i)),
-            sponge_field_element,
+            sponge_randomizer,
         )?;
     }
 
@@ -586,7 +580,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         let generator_powers: Vec<TEAffine<TE>> = {
             let mut generator_powers = Vec::new();
-            let mut generator = self.encryption.generator.into_projective();
+            let mut generator = self.encryption.parameters().into_projective();
             for _ in 0..num_powers {
                 generator_powers.push(generator.clone());
                 generator.double_in_place();
@@ -654,7 +648,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Put the bytes of the x coordinate of the randomness group element
         // into the beginning of the ciphertext.
         let generator = TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc generator"), || {
-            Ok(self.encryption.generator.clone())
+            Ok(self.encryption.parameters().clone())
         })?;
         let ciphertext_randomizer =
             ECIESPoseidonCiphertextRandomizerGadget(<TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
@@ -687,7 +681,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         )?
         .x;
 
-        let ciphertext = symmetric_encryption(cs.ns(|| "enc with sym key"), &symmetric_key, message)?;
+        let ciphertext = symmetric_encryption(cs.ns(|| "enc with symmetric key"), &symmetric_key, message)?;
         Ok(ciphertext)
     }
 }
