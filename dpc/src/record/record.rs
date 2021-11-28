@@ -42,7 +42,6 @@ pub struct Record<N: Network> {
     payload: Payload<N>,
     program_id: N::ProgramID,
     record_view_key: N::RecordViewKey,
-    commitment: N::Commitment,
     ciphertext: N::RecordCiphertext,
 }
 
@@ -94,16 +93,12 @@ impl<N: Network> Record<N> {
             N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
         )?;
 
-        // Compute the commitment.
-        let commitment = ciphertext.to_commitment()?;
-
         Ok(Self {
             owner,
             value,
             payload,
             program_id,
             record_view_key,
-            commitment,
             ciphertext: ciphertext.into(),
         })
     }
@@ -125,20 +120,14 @@ impl<N: Network> Record<N> {
         // Ensure the record owner matches.
         let expected_owner = Address::from_view_key(account_view_key);
         match owner == expected_owner {
-            true => {
-                // Compute the commitment.
-                let commitment = ciphertext.deref().to_commitment()?;
-
-                Ok(Self {
-                    owner,
-                    value,
-                    payload,
-                    program_id,
-                    record_view_key,
-                    commitment,
-                    ciphertext: ciphertext.clone(),
-                })
-            }
+            true => Ok(Self {
+                owner,
+                value,
+                payload,
+                program_id,
+                record_view_key,
+                ciphertext: ciphertext.clone(),
+            }),
             false => Err(anyhow!("Decoded incorrect record owner from ciphertext").into()),
         }
     }
@@ -152,16 +141,12 @@ impl<N: Network> Record<N> {
         let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
-        // Compute the commitment.
-        let commitment = ciphertext.deref().to_commitment()?;
-
         Ok(Self {
             owner,
             value,
             payload,
             program_id,
             record_view_key,
-            commitment,
             ciphertext: ciphertext.clone(),
         })
     }
@@ -203,7 +188,7 @@ impl<N: Network> Record<N> {
 
     /// Returns the commitment of this record.
     pub fn commitment(&self) -> N::Commitment {
-        self.commitment
+        self.ciphertext.deref().commitment()
     }
 
     /// Returns this record as ciphertext.
@@ -221,7 +206,7 @@ impl<N: Network> Record<N> {
         // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
         let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
-        let input = self.commitment;
+        let input = self.commitment();
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
 
         Ok(serial_number)
@@ -339,7 +324,7 @@ impl<N: Network> Serialize for Record<N> {
                 record.serialize_field("program_id", &self.program_id)?;
                 record.serialize_field("randomizer", &self.randomizer())?;
                 record.serialize_field("record_view_key", &self.record_view_key)?;
-                record.serialize_field("commitment", &self.commitment)?;
+                record.serialize_field("commitment", &self.commitment())?;
                 record.end()
             }
             false => ToBytesSerializer::serialize(self, serializer),

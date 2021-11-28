@@ -78,10 +78,7 @@ impl<N: Network> Transition<N> {
         proof: N::OuterProof,
     ) -> Result<Self> {
         // Compute the commitments.
-        let commitments = ciphertexts
-            .iter()
-            .map(|c| c.to_commitment())
-            .collect::<Result<Vec<_>, _>>()?;
+        let commitments = ciphertexts.iter().map(|c| c.commitment()).collect();
         // Construct the transition.
         let transition = Self {
             transition_id: Self::compute_transition_id(&serial_numbers, &commitments)?,

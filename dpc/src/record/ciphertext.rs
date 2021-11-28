@@ -36,6 +36,7 @@ use anyhow::Result;
     Hash(bound = "N: Network")
 )]
 pub struct Ciphertext<N: Network> {
+    commitment: N::Commitment,
     randomizer: N::RecordRandomizer,
     record_view_key_commitment: N::RecordViewKeyCommitment,
     record_bytes: Vec<u8>,
@@ -44,15 +45,26 @@ pub struct Ciphertext<N: Network> {
 impl<N: Network> Ciphertext<N> {
     /// Returns the record ciphertext object.
     pub fn from(
-        ciphertext_randomizer: N::RecordRandomizer,
+        randomizer: N::RecordRandomizer,
         record_view_key_commitment: N::RecordViewKeyCommitment,
         record_bytes: Vec<u8>,
     ) -> Result<Self, RecordError> {
+        // Compute the commitment.
+        let commitment = N::commitment_scheme()
+            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes]?)?
+            .into();
+
         Ok(Self {
-            randomizer: ciphertext_randomizer,
+            commitment,
+            randomizer,
             record_view_key_commitment,
             record_bytes,
         })
+    }
+
+    /// Returns the record commitment.
+    pub fn commitment(&self) -> N::Commitment {
+        self.commitment
     }
 
     /// Returns the ciphertext randomizer.
@@ -63,17 +75,6 @@ impl<N: Network> Ciphertext<N> {
     /// Returns the record view key commitment.
     pub fn record_view_key_commitment(&self) -> &N::RecordViewKeyCommitment {
         &self.record_view_key_commitment
-    }
-
-    /// Returns the record commitment.
-    pub fn to_commitment(&self) -> Result<N::Commitment, RecordError> {
-        Ok(N::commitment_scheme()
-            .hash(&to_bytes_le![
-                self.randomizer,
-                self.record_view_key_commitment,
-                self.record_bytes
-            ]?)?
-            .into())
     }
 
     /// Returns the plaintext corresponding to the record ciphertext.
