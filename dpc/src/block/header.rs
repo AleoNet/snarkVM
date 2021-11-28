@@ -103,7 +103,7 @@ pub struct BlockHeader<N: Network> {
     /// The block header metadata - 28 bytes
     metadata: BlockHeaderMetadata,
     /// Nonce for Proof of Succinct Work - 32 bytes
-    nonce: N::InnerScalarField,
+    nonce: N::PoSWNonce,
     /// Proof of Succinct Work - 771 bytes
     proof: Option<N::PoSWProof>,
 }
@@ -114,7 +114,7 @@ impl<N: Network> BlockHeader<N> {
         previous_ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
         metadata: BlockHeaderMetadata,
-        nonce: N::InnerScalarField,
+        nonce: N::PoSWNonce,
         proof: N::PoSWProof,
     ) -> Result<Self, BlockError> {
         // Construct the block header.
@@ -255,7 +255,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns the block nonce.
-    pub fn nonce(&self) -> N::InnerScalarField {
+    pub fn nonce(&self) -> N::PoSWNonce {
         self.nonce
     }
 
@@ -314,7 +314,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Sets the block header nonce to the given nonce.
     /// This method is used by PoSW to iterate over candidate block headers.
-    pub(crate) fn set_nonce(&mut self, nonce: N::InnerScalarField) {
+    pub(crate) fn set_nonce(&mut self, nonce: N::PoSWNonce) {
         self.nonce = nonce;
     }
 
@@ -489,7 +489,7 @@ mod tests {
         // Serialize
         let expected_string = block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1616, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1601, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize

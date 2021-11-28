@@ -268,7 +268,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the block nonce.
-    pub fn nonce(&self) -> N::InnerScalarField {
+    pub fn nonce(&self) -> N::PoSWNonce {
         self.header.nonce()
     }
 
@@ -545,7 +545,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(3979, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3964, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
