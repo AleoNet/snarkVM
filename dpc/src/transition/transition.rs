@@ -22,6 +22,7 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
@@ -60,7 +61,7 @@ impl<N: Network> Transition<N> {
         // Fetch the serial numbers.
         let serial_numbers = request.to_serial_numbers()?;
 
-        // Fetch the commitments and ciphertexts.
+        // Fetch the commitments, ciphertexts, and value balance.
         let commitments = response.commitments();
         let ciphertexts = response.to_ciphertexts()?;
         let value_balance = response.value_balance();
@@ -77,6 +78,14 @@ impl<N: Network> Transition<N> {
         value_balance: AleoAmount,
         proof: N::OuterProof,
     ) -> Result<Self> {
+        // Ensure the ciphertexts correspond to the commitments.
+        for (commitment, ciphertext) in commitments.iter().zip_eq(ciphertexts.iter()) {
+            let candidate_commitment = (*ciphertext).to_commitment()?;
+            if candidate_commitment != *commitment {
+                return Err(anyhow!("Mismatching commitment from ciphertext in transition"));
+            }
+        }
+
         // Compute the transition ID.
         let transition_id = Self::compute_transition_id(&serial_numbers, &commitments)?;
 
@@ -99,23 +108,6 @@ impl<N: Network> Transition<N> {
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
     ) -> bool {
-        // Returns `false` if the transition ID does not match the computed one.
-        match Self::compute_transition_id(&self.serial_numbers, &self.commitments) {
-            Ok(computed_transition_id) => {
-                if computed_transition_id != self.transition_id {
-                    eprintln!(
-                        "Transition ID is incorrect. Expected {}, found {}",
-                        computed_transition_id, self.transition_id
-                    );
-                    return false;
-                }
-            }
-            Err(error) => {
-                eprintln!("Failed to compute the transition ID for verification: {}", error);
-                return false;
-            }
-        };
-
         // Returns `false` if the transition proof is invalid.
         match N::OuterSNARK::verify(
             N::outer_verifying_key(),
