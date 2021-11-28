@@ -90,6 +90,11 @@ impl<N: Network> Blocks<N> {
         Ok(self.get_block_header(self.current_height)?.difficulty_target())
     }
 
+    /// Returns the latest cumulative weight.
+    pub fn latest_cumulative_weight(&self) -> Result<u64> {
+        Ok(self.get_block_header(self.current_height)?.cumulative_weight())
+    }
+
     /// Returns the latest block transactions.
     pub fn latest_block_transactions(&self) -> Result<&Transactions<N>> {
         self.get_block_transactions(self.current_height)
@@ -249,6 +254,18 @@ impl<N: Network> Blocks<N> {
                 "The given block difficulty target is incorrect. Found {}, but expected {}",
                 block.difficulty_target(),
                 expected_difficulty_target
+            ));
+        }
+
+        // Ensure the expected cumulative weight is computed correctly.
+        let expected_cumulative_weight = current_block
+            .cumulative_weight()
+            .saturating_add(u64::MAX - expected_difficulty_target);
+        if block.cumulative_weight() != expected_cumulative_weight {
+            return Err(anyhow!(
+                "The given cumulative weight is incorrect. Found {}, but expected {}",
+                block.cumulative_weight(),
+                expected_cumulative_weight
             ));
         }
 

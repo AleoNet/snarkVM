@@ -80,12 +80,16 @@ fn dpc_testnet2_integration_test() {
         previous_block.difficulty_target(),
         timestamp,
     );
+    let cumulative_weight = previous_block
+        .cumulative_weight()
+        .saturating_add(u64::MAX - difficulty_target);
 
     // Construct the new block header.
     let header = BlockHeader::mine(
         block_height,
         timestamp,
         difficulty_target,
+        cumulative_weight,
         previous_ledger_root,
         transactions_root,
         &AtomicBool::new(false),

@@ -61,8 +61,10 @@ pub struct BlockHeaderMetadata {
     height: u32,
     /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
     timestamp: i64,
-    /// Difficulty target for this block - 8 bytes
+    /// The difficulty target for this block - 8 bytes
     difficulty_target: u64,
+    /// The cumulative weight up to this block (inclusive) - 8 bytes
+    cumulative_weight: u64,
 }
 
 impl BlockHeaderMetadata {
@@ -72,12 +74,13 @@ impl BlockHeaderMetadata {
             height: 0u32,
             timestamp: 0i64,
             difficulty_target: u64::MAX,
+            cumulative_weight: 0u64,
         }
     }
 
     /// Returns the size (in bytes) of a block header's metadata.
     pub fn size() -> usize {
-        size_of::<u32>() + size_of::<i64>() + size_of::<u64>()
+        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u64>()
     }
 }
 
@@ -85,7 +88,8 @@ impl ToBytes for BlockHeaderMetadata {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.height.to_le_bytes().write_le(&mut writer)?;
         self.timestamp.to_le_bytes().write_le(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write_le(&mut writer)
+        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.cumulative_weight.to_le_bytes().write_le(&mut writer)
     }
 }
 
@@ -96,7 +100,7 @@ pub struct BlockHeader<N: Network> {
     previous_ledger_root: N::LedgerRoot,
     /// The Merkle root representing the transactions in the block - 32 bytes
     transactions_root: N::TransactionsRoot,
-    /// The block header metadata - 20 bytes
+    /// The block header metadata - 28 bytes
     metadata: BlockHeaderMetadata,
     /// Nonce for Proof of Succinct Work - 32 bytes
     nonce: N::InnerScalarField,
@@ -134,6 +138,7 @@ impl<N: Network> BlockHeader<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
+        cumulative_weight: u64,
         previous_ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
         terminator: &AtomicBool,
@@ -146,6 +151,7 @@ impl<N: Network> BlockHeader<N> {
                 height: block_height,
                 timestamp: block_timestamp,
                 difficulty_target,
+                cumulative_weight,
             },
         };
 
@@ -212,6 +218,8 @@ impl<N: Network> BlockHeader<N> {
             && self.metadata.timestamp == 0i64
             // Ensure the difficulty target in the genesis block is u64::MAX.
             && self.metadata.difficulty_target == u64::MAX
+            // Ensure the cumulative weight in the genesis block is 0.
+            && self.metadata.cumulative_weight == 0
             // Ensure the PoSW proof is valid.
             && N::posw().verify(&self)
     }
@@ -241,6 +249,11 @@ impl<N: Network> BlockHeader<N> {
         self.metadata.difficulty_target
     }
 
+    /// Returns the cumulative weight up to this block (inclusive).
+    pub fn cumulative_weight(&self) -> u64 {
+        self.metadata.cumulative_weight
+    }
+
     /// Returns the block nonce.
     pub fn nonce(&self) -> N::InnerScalarField {
         self.nonce
@@ -265,7 +278,7 @@ impl<N: Network> BlockHeader<N> {
         assert_eq!(transactions_root.len(), 32);
 
         let metadata = self.metadata.to_bytes_le()?;
-        assert_eq!(metadata.len(), 20);
+        assert_eq!(metadata.len(), 28);
 
         let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
@@ -323,10 +336,12 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
+        let cumulative_weight = <[u8; 8]>::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata {
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
+            cumulative_weight: u64::from_le_bytes(cumulative_weight),
         };
 
         // Read the header nonce.
@@ -362,6 +377,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         self.metadata.height.to_le_bytes().write_le(&mut writer)?;
         self.metadata.timestamp.to_le_bytes().write_le(&mut writer)?;
         self.metadata.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.metadata.cumulative_weight.to_le_bytes().write_le(&mut writer)?;
 
         // Write the header nonce.
         self.nonce.write_le(&mut writer)?;
@@ -501,6 +517,7 @@ mod tests {
         assert_eq!(block_header.metadata.height, 0);
         assert_eq!(block_header.metadata.timestamp, 0);
         assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
+        assert_eq!(block_header.metadata.cumulative_weight, 0);
         assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.

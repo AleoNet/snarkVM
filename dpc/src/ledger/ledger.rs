@@ -66,6 +66,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.latest_block_difficulty_target()
     }
 
+    /// Returns the latest cumulative weight.
+    pub fn latest_cumulative_weight(&self) -> Result<u64> {
+        self.canon_blocks.latest_cumulative_weight()
+    }
+
     /// Returns the latest block transactions.
     pub fn latest_block_transactions(&self) -> Result<&Transactions<N>> {
         self.canon_blocks.latest_block_transactions()
@@ -154,9 +159,11 @@ impl<N: Network> Ledger<N> {
         // Compute the block difficulty target.
         let previous_timestamp = self.latest_block_timestamp()?;
         let previous_difficulty_target = self.latest_block_difficulty_target()?;
+        let previous_cumulative_weight = self.latest_cumulative_weight()?;
         let block_timestamp = Utc::now().timestamp();
         let difficulty_target =
             Blocks::<N>::compute_difficulty_target(previous_timestamp, previous_difficulty_target, block_timestamp);
+        let cumulative_weight = previous_cumulative_weight.saturating_add(u64::MAX - difficulty_target);
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
@@ -172,6 +179,7 @@ impl<N: Network> Ledger<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            cumulative_weight,
             previous_ledger_root,
             transactions,
             terminator,

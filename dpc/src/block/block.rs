@@ -59,6 +59,7 @@ impl<N: Network> Block<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
+        cumulative_weight: u64,
         previous_ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
         terminator: &AtomicBool,
@@ -71,6 +72,7 @@ impl<N: Network> Block<N> {
             block_height,
             block_timestamp,
             difficulty_target,
+            cumulative_weight,
             previous_ledger_root,
             transactions.transactions_root(),
             terminator,
@@ -94,12 +96,14 @@ impl<N: Network> Block<N> {
         let block_height = 0u32;
         let block_timestamp = 0i64;
         let difficulty_target = u64::MAX;
+        let cumulative_weight = 0u64;
 
         // Compute the genesis block header.
         let header = BlockHeader::mine(
             block_height,
             block_timestamp,
             difficulty_target,
+            cumulative_weight,
             LedgerTree::<N>::new()?.root(),
             transactions_root,
             &AtomicBool::new(false),
@@ -256,6 +260,11 @@ impl<N: Network> Block<N> {
     /// Returns the block difficulty target.
     pub fn difficulty_target(&self) -> u64 {
         self.header.difficulty_target()
+    }
+
+    /// Returns the cumulative weight up to this block (inclusive).
+    pub fn cumulative_weight(&self) -> u64 {
+        self.header.cumulative_weight()
     }
 
     /// Returns the block nonce.
