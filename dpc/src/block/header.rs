@@ -61,9 +61,9 @@ pub struct BlockHeaderMetadata<N: Network> {
     height: u32,
     /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
     timestamp: i64,
-    /// Proof of work algorithm difficulty target for this block - 8 bytes
+    /// Difficulty target for this block - 8 bytes
     difficulty_target: u64,
-    /// Nonce for solving the PoW puzzle - 32 bytes
+    /// Nonce for solving the puzzle - 32 bytes
     nonce: N::InnerScalarField,
 }
 
@@ -108,6 +108,28 @@ pub struct BlockHeader<N: Network> {
 
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
+    pub fn from(
+        previous_ledger_root: N::LedgerRoot,
+        transactions_root: N::TransactionsRoot,
+        metadata: BlockHeaderMetadata<N>,
+        proof: N::PoSWProof,
+    ) -> Result<Self, BlockError> {
+        // Construct the block header.
+        let block_header = Self {
+            previous_ledger_root,
+            transactions_root,
+            metadata,
+            proof: Some(proof),
+        };
+
+        // Ensure the block header is well-formed.
+        match block_header.is_valid() {
+            true => Ok(block_header),
+            false => Err(BlockError::Message("Invalid block header".to_string()).into()),
+        }
+    }
+
+    /// Mines a new instance of a block header.
     pub fn mine<R: Rng + CryptoRng>(
         block_height: u32,
         block_timestamp: i64,
@@ -306,18 +328,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let proof = FromBytes::read_le(&mut reader)?;
 
         // Construct the block header.
-        let block_header = Self {
-            previous_ledger_root,
-            transactions_root,
-            metadata,
-            proof: Some(proof),
-        };
-
-        // Ensure the block header is well-formed.
-        match block_header.is_valid() {
-            true => Ok(block_header),
-            false => Err(BlockError::Message("Invalid block header".to_string()).into()),
-        }
+        Ok(Self::from(previous_ledger_root, transactions_root, metadata, proof)?)
     }
 }
 
@@ -384,14 +395,13 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
         match deserializer.is_human_readable() {
             true => {
                 let header = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self {
-                    previous_ledger_root: serde_json::from_value(header["previous_ledger_root"].clone())
-                        .map_err(de::Error::custom)?,
-                    transactions_root: serde_json::from_value(header["transactions_root"].clone())
-                        .map_err(de::Error::custom)?,
-                    metadata: serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
-                    proof: serde_json::from_value(header["proof"].clone()).map_err(de::Error::custom)?,
-                })
+                Ok(Self::from(
+                    serde_json::from_value(header["previous_ledger_root"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["transactions_root"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["proof"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)?)
             }
             false => FromBytesDeserializer::<Self>::deserialize(deserializer, "block header", Self::size()),
         }
