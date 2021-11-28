@@ -92,7 +92,7 @@ impl<N: Network> RecordCiphertext<N> {
             .generate_symmetric_key(&account_view_key, *self.ciphertext_randomizer)
             .unwrap();
 
-        let decryption_result = N::account_encryption_scheme().decrypt_while(&record_view_key, &self.record_bytes);
+        let decryption_result = N::account_encryption_scheme().decrypt(&record_view_key, &self.record_bytes);
         match decryption_result {
             Ok(msg) => Some(msg),
             Err(snarkvm_algorithms::EncryptionError::MismatchingAddress) => None,
