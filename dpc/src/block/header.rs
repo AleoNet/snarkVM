@@ -56,40 +56,36 @@ pub mod proof_serialization {
 
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeaderMetadata<N: Network> {
+pub struct BlockHeaderMetadata {
     /// The height of this block - 4 bytes.
     height: u32,
     /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
     timestamp: i64,
     /// Difficulty target for this block - 8 bytes
     difficulty_target: u64,
-    /// Nonce for solving the puzzle - 32 bytes
-    nonce: N::InnerScalarField,
 }
 
-impl<N: Network> BlockHeaderMetadata<N> {
+impl BlockHeaderMetadata {
     /// Initializes a new instance of a genesis block header metadata.
     pub fn genesis() -> Self {
         Self {
             height: 0u32,
             timestamp: 0i64,
             difficulty_target: u64::MAX,
-            nonce: Default::default(),
         }
     }
 
     /// Returns the size (in bytes) of a block header's metadata.
     pub fn size() -> usize {
-        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + 32 // N::InnerScalarField
+        size_of::<u32>() + size_of::<i64>() + size_of::<u64>()
     }
 }
 
-impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
+impl ToBytes for BlockHeaderMetadata {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.height.to_le_bytes().write_le(&mut writer)?;
         self.timestamp.to_le_bytes().write_le(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.nonce.write_le(&mut writer)
+        self.difficulty_target.to_le_bytes().write_le(&mut writer)
     }
 }
 
@@ -100,8 +96,10 @@ pub struct BlockHeader<N: Network> {
     previous_ledger_root: N::LedgerRoot,
     /// The Merkle root representing the transactions in the block - 32 bytes
     transactions_root: N::TransactionsRoot,
-    /// The block header metadata - 52 bytes
-    metadata: BlockHeaderMetadata<N>,
+    /// The block header metadata - 20 bytes
+    metadata: BlockHeaderMetadata,
+    /// Nonce for Proof of Succinct Work - 32 bytes
+    nonce: N::InnerScalarField,
     /// Proof of Succinct Work - 771 bytes
     proof: Option<N::PoSWProof>,
 }
@@ -111,7 +109,8 @@ impl<N: Network> BlockHeader<N> {
     pub fn from(
         previous_ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
-        metadata: BlockHeaderMetadata<N>,
+        metadata: BlockHeaderMetadata,
+        nonce: N::InnerScalarField,
         proof: N::PoSWProof,
     ) -> Result<Self, BlockError> {
         // Construct the block header.
@@ -119,6 +118,7 @@ impl<N: Network> BlockHeader<N> {
             previous_ledger_root,
             transactions_root,
             metadata,
+            nonce,
             proof: Some(proof),
         };
 
@@ -146,7 +146,6 @@ impl<N: Network> BlockHeader<N> {
                 height: block_height,
                 timestamp: block_timestamp,
                 difficulty_target,
-                nonce: Default::default(),
             },
         };
 
@@ -155,9 +154,13 @@ impl<N: Network> BlockHeader<N> {
             previous_ledger_root,
             transactions_root,
             metadata,
+            nonce: Default::default(),
             proof: None,
         };
-        debug_assert!(!block_header.is_valid(), "Block header with a missing proof is invalid");
+        debug_assert!(
+            !block_header.is_valid(),
+            "Block header with a missing nonce and proof is invalid"
+        );
 
         // Mine the block.
         N::posw().mine(&mut block_header, terminator, rng)?;
@@ -183,11 +186,16 @@ impl<N: Network> BlockHeader<N> {
             return false;
         }
 
+        // Ensure the nonce is nonzero.
+        if self.nonce == Default::default() {
+            eprintln!("Invalid nonce in block header");
+            return false;
+        }
+
         // Ensure the metadata and proof are valid.
         match self.metadata.height == 0u32 {
             true => self.is_genesis(),
             false => {
-                // TODO (howardwu): CRITICAL - Fill in after refactor is complete.
                 // Ensure the timestamp in the block is greater than 0.
                 self.metadata.timestamp > 0i64
                     // Ensure the PoSW proof is valid.
@@ -235,7 +243,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block nonce.
     pub fn nonce(&self) -> N::InnerScalarField {
-        self.metadata.nonce
+        self.nonce
     }
 
     /// Returns the proof, if it is set.
@@ -257,7 +265,7 @@ impl<N: Network> BlockHeader<N> {
         assert_eq!(transactions_root.len(), 32);
 
         let metadata = self.metadata.to_bytes_le()?;
-        assert_eq!(metadata.len(), 52);
+        assert_eq!(metadata.len(), 20);
 
         let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
@@ -294,7 +302,7 @@ impl<N: Network> BlockHeader<N> {
     /// Sets the block header nonce to the given nonce.
     /// This method is used by PoSW to iterate over candidate block headers.
     pub(crate) fn set_nonce(&mut self, nonce: N::InnerScalarField) {
-        self.metadata.nonce = nonce;
+        self.nonce = nonce;
     }
 
     /// Sets the block header proof to the given proof.
@@ -315,20 +323,25 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let nonce = FromBytes::read_le(&mut reader)?;
-
         let metadata = BlockHeaderMetadata {
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
-            nonce,
         };
 
+        // Read the header nonce.
+        let nonce = FromBytes::read_le(&mut reader)?;
         // Read the header proof.
         let proof = FromBytes::read_le(&mut reader)?;
 
         // Construct the block header.
-        Ok(Self::from(previous_ledger_root, transactions_root, metadata, proof)?)
+        Ok(Self::from(
+            previous_ledger_root,
+            transactions_root,
+            metadata,
+            nonce,
+            proof,
+        )?)
     }
 }
 
@@ -349,8 +362,9 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         self.metadata.height.to_le_bytes().write_le(&mut writer)?;
         self.metadata.timestamp.to_le_bytes().write_le(&mut writer)?;
         self.metadata.difficulty_target.to_le_bytes().write_le(&mut writer)?;
-        self.metadata.nonce.write_le(&mut writer)?;
 
+        // Write the header nonce.
+        self.nonce.write_le(&mut writer)?;
         // Write the header proof.
         proof.write_le(&mut writer)
     }
@@ -382,6 +396,7 @@ impl<N: Network> Serialize for BlockHeader<N> {
                 header.serialize_field("previous_ledger_root", &self.previous_ledger_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
                 header.serialize_field("metadata", &self.metadata)?;
+                header.serialize_field("nonce", &self.nonce)?;
                 header.serialize_field("proof", &self.proof)?;
                 header.end()
             }
@@ -399,6 +414,7 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
                     serde_json::from_value(header["previous_ledger_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["transactions_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["nonce"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["proof"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)
@@ -422,7 +438,8 @@ mod tests {
     fn get_expected_size<N: Network>() -> usize {
         32 // LedgerRoot
             + 32 // TransactionsRoot
-            + BlockHeaderMetadata::<N>::size()
+            + BlockHeaderMetadata::size()
+            + 32 // N::InnerScalarField
             + N::HEADER_PROOF_SIZE_IN_BYTES
     }
 
