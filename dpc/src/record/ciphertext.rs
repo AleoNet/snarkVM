@@ -40,20 +40,20 @@ use anyhow::Result;
 pub struct RecordCiphertext<N: Network> {
     ciphertext_randomizer: N::RecordRandomizer,
     record_view_key_commitment: N::RecordViewKeyCommitment,
-    record_ciphertext: Vec<u8>,
+    record_bytes: Vec<u8>,
 }
 
 impl<N: Network> RecordCiphertext<N> {
     /// Returns the record ciphertext object.
-    pub fn from(ciphertext: &Vec<u8>) -> Result<Self, RecordError> {
-        // Decode the ciphertext bytes.
-        let (ciphertext_randomizer, record_view_key_commitment, record_ciphertext) =
-            Self::decode_ciphertext(ciphertext)?;
-
+    pub fn from(
+        ciphertext_randomizer: N::RecordRandomizer,
+        record_view_key_commitment: N::RecordViewKeyCommitment,
+        record_bytes: Vec<u8>,
+    ) -> Result<Self, RecordError> {
         Ok(Self {
             ciphertext_randomizer,
             record_view_key_commitment,
-            record_ciphertext,
+            record_bytes,
         })
     }
 
@@ -73,7 +73,7 @@ impl<N: Network> RecordCiphertext<N> {
             .hash(&to_bytes_le![
                 self.ciphertext_randomizer,
                 self.record_view_key_commitment,
-                self.record_ciphertext
+                self.record_bytes
             ]?)?
             .into())
     }
@@ -81,7 +81,7 @@ impl<N: Network> RecordCiphertext<N> {
     /// Returns the plaintext corresponding to the record ciphertext.
     pub fn to_plaintext(&self, record_view_key: &N::RecordViewKey) -> Result<Vec<u8>, RecordError> {
         // Decrypt the record ciphertext.
-        Ok(N::account_encryption_scheme().decrypt(record_view_key, &self.record_ciphertext)?)
+        Ok(N::account_encryption_scheme().decrypt(record_view_key, &self.record_bytes)?)
     }
 
     /// Does the ciphertext encrypt the public key?
@@ -90,13 +90,12 @@ impl<N: Network> RecordCiphertext<N> {
         account: account::Address<N>,
         account_view_key: &account::ViewKey<N>,
     ) -> Option<Vec<u8>> {
-        let encryption_scheme = N::account_encryption_scheme();
-        let record_view_key = encryption_scheme
+        let record_view_key = N::account_encryption_scheme()
             .generate_symmetric_key(&account_view_key, *self.ciphertext_randomizer.borrow())
             .unwrap();
 
         let decryption_result =
-            encryption_scheme.decrypt_while(&record_view_key, &self.record_ciphertext, |plaintext| {
+            N::account_encryption_scheme().decrypt_while(&record_view_key, &self.record_bytes, |plaintext| {
                 let account_bytes = account.to_bytes_le().unwrap();
                 if plaintext.len() == account_bytes.len() {
                     // If the account bytes match the first chunk of the plaintext,
@@ -113,36 +112,33 @@ impl<N: Network> RecordCiphertext<N> {
             Err(e) => panic!("Encountered decryption error: {}", e),
         }
     }
+}
 
+impl<N: Network> FromBytes for RecordCiphertext<N> {
     /// Decode the ciphertext into the ciphertext randomizer, record view key commitment, and record ciphertext.
-    fn decode_ciphertext(
-        ciphertext: &Vec<u8>,
-    ) -> Result<(N::RecordRandomizer, N::RecordViewKeyCommitment, Vec<u8>), RecordError> {
-        assert_eq!(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, ciphertext.len());
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut ciphertext = vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES];
+        reader.read_exact(&mut ciphertext)?;
 
         // Decode the ciphertext bytes.
         let mut cursor = Cursor::new(ciphertext);
         let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut cursor)?;
         let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut cursor)?;
 
-        let mut record_ciphertext = vec![
+        let mut record_bytes = vec![
             0u8;
             N::RECORD_CIPHERTEXT_SIZE_IN_BYTES
                 - N::RecordRandomizer::data_size_in_bytes()
                 - N::RecordViewKeyCommitment::data_size_in_bytes()
         ];
-        cursor.read_exact(&mut record_ciphertext)?;
+        cursor.read_exact(&mut record_bytes)?;
 
-        Ok((ciphertext_randomizer, record_view_key_commitment, record_ciphertext))
-    }
-}
-
-impl<N: Network> FromBytes for RecordCiphertext<N> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut ciphertext = vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES];
-        reader.read_exact(&mut ciphertext)?;
-        Ok(Self::from(&ciphertext)?)
+        Ok(Self::from(
+            ciphertext_randomizer,
+            record_view_key_commitment,
+            record_bytes,
+        )?)
     }
 }
 
@@ -151,7 +147,7 @@ impl<N: Network> ToBytes for RecordCiphertext<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.ciphertext_randomizer.write_le(&mut writer)?;
         self.record_view_key_commitment.write_le(&mut writer)?;
-        self.record_ciphertext.write_le(&mut writer)
+        self.record_bytes.write_le(&mut writer)
     }
 }
 

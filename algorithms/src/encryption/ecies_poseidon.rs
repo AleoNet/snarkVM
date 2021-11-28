@@ -277,7 +277,7 @@ where
         let bit_capacity = <<TE::BaseField as PrimeField>::Parameters>::CAPACITY as usize;
         let modulus_bits = <<TE::BaseField as PrimeField>::Parameters>::MODULUS_BITS as usize;
         let byte_capacity_less_than_modulus = bit_capacity / 8;
-        let byte_capacity_more_than_modulus = (modulus_bits + 8 - 1) / 8;
+        let byte_capacity_more_than_modulus = (modulus_bits + 7) / 8;
         let bytes_per_field_element = ((modulus_bits + 63) / 64) * 8;
         assert!(ciphertext.len() >= byte_capacity_more_than_modulus);
 

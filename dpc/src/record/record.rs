@@ -86,11 +86,13 @@ impl<N: Network> Record<N> {
         let plaintext = Self::encode_plaintext(owner, value, &payload, program_id)?;
 
         // Encrypt the record bytes.
-        let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
+        let ciphertext = RecordCiphertext::<N>::from(
             randomizer,
-            N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key),
-            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?
-        ]?)?;
+            N::account_encryption_scheme()
+                .generate_symmetric_key_commitment(&record_view_key)
+                .into(),
+            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
+        )?;
 
         // Compute the commitment.
         let commitment = ciphertext.to_commitment()?;
@@ -174,11 +176,13 @@ impl<N: Network> Record<N> {
         let plaintext = Self::encode_plaintext(self.owner, self.value, &self.payload, self.program_id)?;
 
         // Encrypt the record bytes.
-        let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
+        let ciphertext = RecordCiphertext::<N>::from(
             self.randomizer,
-            N::account_encryption_scheme().generate_symmetric_key_commitment(&self.record_view_key),
-            N::account_encryption_scheme().encrypt(&self.record_view_key, &plaintext)?
-        ]?)?;
+            N::account_encryption_scheme()
+                .generate_symmetric_key_commitment(&self.record_view_key)
+                .into(),
+            N::account_encryption_scheme().encrypt(&self.record_view_key, &plaintext)?,
+        )?;
 
         Ok(ciphertext.into())
     }
