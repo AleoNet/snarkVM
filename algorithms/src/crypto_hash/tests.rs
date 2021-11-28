@@ -53,7 +53,7 @@ fn test_poseidon_sponge_consistency() {
     let sponge_param = Arc::new(Fr::get_default_poseidon_parameters::<RATE>(false).unwrap());
     for absorb in 0..10 {
         for squeeze in 0..10 {
-            let iteration_name = format!("Absorb {} -> Squeeze {}", absorb, squeeze);
+            let iteration_name = format!("Absorb {} and Squeeze {}", absorb, squeeze);
             let mut sponge = PoseidonSponge::<Fr, RATE, 1>::with_parameters(&sponge_param);
             sponge.absorb(&vec![Fr::from(1237812u64); absorb]);
             let next_absorb_index = if absorb % RATE != 0 || absorb == 0 {
