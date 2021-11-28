@@ -29,7 +29,7 @@ pub enum Event<N: Network> {
     /// Emits publicly-visible arbitrary data.
     Custom(Vec<u8>),
     /// Emits the view key for an output record at the specified index in a transition.
-    RecordViewKey(u8, Vec<u8>),
+    RecordViewKey(u8, N::RecordViewKey),
     /// Emits the operation performed in a transition.
     Operation(Operation<N>),
 }
@@ -59,8 +59,7 @@ impl<N: Network> FromBytes for Event<N> {
             }
             1 => {
                 let index: u8 = FromBytes::read_le(&mut reader)?;
-                let mut record_view_key = vec![0u8; 32];
-                reader.read_exact(&mut record_view_key)?;
+                let record_view_key: N::RecordViewKey = FromBytes::read_le(&mut reader)?;
                 Ok(Self::RecordViewKey(index, record_view_key))
             }
             2 => Ok(Self::Operation(FromBytes::read_le(&mut reader)?)),
@@ -102,7 +101,7 @@ impl<N: Network> FromStr for Event<N> {
             1 => {
                 let index = serde_json::from_value(event["index"].clone())?;
                 let record_view_key: String = serde_json::from_value(event["record_view_key"].clone())?;
-                Ok(Self::RecordViewKey(index, hex::decode(record_view_key)?))
+                Ok(Self::RecordViewKey(index, serde_json::from_str(&record_view_key)?))
             }
             2 => {
                 let operation = serde_json::from_value(event["operation"].clone())?;
@@ -126,7 +125,7 @@ impl<N: Network> fmt::Display for Event<N> {
                 serde_json::json!({
                     "id": self.id(),
                     "index": index,
-                    "record_view_key": hex::encode(record_view_key), // TODO (raychu86): Have serializer for record_view_key
+                    "record_view_key": record_view_key.to_string(), // TODO (raychu86): Have serializer for record_view_key
                 })
             }
             Self::Operation(operation) => {

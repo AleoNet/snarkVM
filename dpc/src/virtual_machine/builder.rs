@@ -137,15 +137,14 @@ impl<N: Network> ResponseBuilder<N> {
             .enumerate()
             .take(N::NUM_OUTPUT_RECORDS)
             .map(|(i, output)| {
-                let record = output.to_record(rng)?;
+                let (record, encryption_randomness) = output.to_record(rng)?;
 
                 // Add the record view key event if the output record is public.
                 if output.is_public() && events.len() < N::NUM_EVENTS as usize {
-                    // TODO (raychu86): Add the record view key instead of the placeholder byte.
-                    events.push(Event::RecordViewKey(i as u8, vec![0u8; 32]))
+                    events.push(Event::RecordViewKey(i as u8, record.record_view_key().clone()))
                 }
 
-                Ok(record)
+                Ok((record, encryption_randomness))
             })
             .collect::<Result<Vec<_>>>()?
             .into_iter()
