@@ -56,12 +56,12 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRa
 }
 
 impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget<G> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes(cs)
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        Ok(self.0.clone())
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes_strict(cs)
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        Ok(self.0.clone())
     }
 }
 
@@ -135,6 +135,13 @@ impl<
 {
     type OutputGadget = GG::BaseFieldGadget;
     type RandomnessGadget = BHPRandomnessGadget<G>;
+
+    fn randomness_from_bytes<CS: ConstraintSystem<F>>(
+        _cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::RandomnessGadget, SynthesisError> {
+        Ok(BHPRandomnessGadget(bytes.to_vec(), PhantomData))
+    }
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
         &self,

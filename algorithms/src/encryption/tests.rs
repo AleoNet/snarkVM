@@ -19,8 +19,7 @@ mod ecies {
     use snarkvm_curves::edwards_bls12::EdwardsParameters;
     use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
+    use rand::{thread_rng, Rng};
 
     pub const ITERATIONS: usize = 1000;
 
@@ -28,29 +27,29 @@ mod ecies {
 
     #[test]
     fn test_encrypt_and_decrypt() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let rng = &mut thread_rng();
+        let encryption = TestEncryptionScheme::setup("simple_encryption");
 
-        let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
-        let private_key = encryption_scheme.generate_private_key(rng);
-        let public_key = encryption_scheme.generate_public_key(&private_key);
+        let private_key = encryption.generate_private_key(rng);
+        let public_key = encryption.generate_public_key(&private_key);
+        let (_randomness, _ciphertext_randomizer, symmetric_key) = encryption.generate_asymmetric_key(&public_key, rng);
 
-        let randomness = encryption_scheme.generate_randomness(rng);
-        let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
-        let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
-
-        let candidate_message = encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
+        let number_of_bytes = 320;
+        let message = (0..number_of_bytes).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
+        let ciphertext = encryption.encrypt(&symmetric_key, &message).unwrap();
+        dbg!(ciphertext.len());
+        let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
         assert_eq!(message, candidate_message);
     }
 
     #[test]
     fn test_encryption_public_key_to_bytes_le() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-
-        let encryption_scheme = TestEncryptionScheme::setup("encryption_public_key_serialization");
+        let rng = &mut thread_rng();
+        let encryption = TestEncryptionScheme::setup("encryption_public_key_serialization");
 
         for _ in 0..ITERATIONS {
-            let private_key = encryption_scheme.generate_private_key(rng);
-            let public_key = encryption_scheme.generate_public_key(&private_key);
+            let private_key = encryption.generate_private_key(rng);
+            let public_key = encryption.generate_public_key(&private_key);
 
             let public_key_bytes = public_key.to_bytes_le().unwrap();
             let recovered_public_key =
@@ -60,23 +59,77 @@ mod ecies {
     }
 
     #[test]
-    #[should_panic]
+    fn test_encryption_symmetric_key_commitment() {
+        let rng = &mut thread_rng();
+        let encryption = TestEncryptionScheme::setup("encryption_symmetric_key_commitment");
+
+        // Compute the symmetric key commitment.
+        let private_key = encryption.generate_private_key(rng);
+        let public_key = encryption.generate_public_key(&private_key);
+        let (_randomness, ciphertext_randomizer, symmetric_key) = encryption.generate_asymmetric_key(&public_key, rng);
+        let symmetric_key_commitment = encryption.generate_symmetric_key_commitment(&symmetric_key);
+
+        {
+            // Sanity check that the symmetric key matches, when derived from the private key.
+            let candidate_symmetric_key = encryption
+                .generate_symmetric_key(&private_key, ciphertext_randomizer)
+                .unwrap();
+            assert_eq!(symmetric_key, candidate_symmetric_key);
+        }
+        {
+            // Sanity check that the symmetric key commitment is deterministic.
+            let candidate_symmetric_key_commitment = encryption.generate_symmetric_key_commitment(&symmetric_key);
+            assert_eq!(symmetric_key_commitment, candidate_symmetric_key_commitment);
+        }
+
+        // Ensure different symmetric keys for the same public key fail to match the symmetric key commitment.
+        for _ in 0..ITERATIONS {
+            let (_randomness, _ciphertext_randomizer, alternate_symmetric_key) =
+                encryption.generate_asymmetric_key(&public_key, rng);
+            let candidate_symmetric_key_commitment =
+                encryption.generate_symmetric_key_commitment(&alternate_symmetric_key);
+            assert_ne!(symmetric_key_commitment, candidate_symmetric_key_commitment);
+        }
+
+        // Ensure different private keys fail to match the symmetric key commitment.
+        for _ in 0..ITERATIONS {
+            let alternate_private_key = encryption.generate_private_key(rng);
+            let alternate_public_key = encryption.generate_public_key(&alternate_private_key);
+            let (_randomness, _ciphertext_randomizer, alternate_symmetric_key) =
+                encryption.generate_asymmetric_key(&alternate_public_key, rng);
+            let candidate_symmetric_key_commitment =
+                encryption.generate_symmetric_key_commitment(&alternate_symmetric_key);
+            assert_ne!(symmetric_key_commitment, candidate_symmetric_key_commitment);
+        }
+    }
+
+    #[test]
     fn test_ciphertext_random_manipulation() {
-        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+        let rng = &mut thread_rng();
+        let encryption = TestEncryptionScheme::setup("simple_encryption");
 
-        let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
+        let private_key = encryption.generate_private_key(rng);
+        let public_key = encryption.generate_public_key(&private_key);
+        let (_randomness, _ciphertext_randomizer, symmetric_key) = encryption.generate_asymmetric_key(&public_key, rng);
 
-        let private_key = encryption_scheme.generate_private_key(rng);
-        let public_key = encryption_scheme.generate_public_key(&private_key);
+        let number_of_bytes = 320;
+        let message = (0..number_of_bytes).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
+        let ciphertext = encryption.encrypt(&symmetric_key, &message).unwrap();
+        let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
+        assert_eq!(message, candidate_message);
 
-        let randomness = encryption_scheme.generate_randomness(rng);
-        let message = (0..32).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
+        // Ensure any mutation fails to match the original message.
+        for _ in 0..ITERATIONS {
+            // Copy the ciphertext.
+            let mut ciphertext = ciphertext.clone();
 
-        let mut ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
-        let idx = rng.gen_range(0..ciphertext.len());
-        ciphertext[idx] = ciphertext[idx].wrapping_add(1u8);
+            // Mutate one byte in the first 30 bytes of the ciphertext.
+            let idx = rng.gen_range(0..30);
+            ciphertext[idx] = ciphertext[idx].wrapping_add(rng.gen_range(1..u8::MAX));
 
-        // This should fail due to a MAC mismatch.
-        encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
+            // This should fail.
+            let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
+            assert_ne!(message, candidate_message);
+        }
     }
 }

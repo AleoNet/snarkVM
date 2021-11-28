@@ -15,19 +15,27 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::FpGadget;
-use snarkvm_algorithms::crypto_hash::CryptographicSponge;
+use snarkvm_algorithms::traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// The interface for a cryptographic sponge constraints on field `CF`.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.
 /// The outputs are dependent on previous `absorb` and `squeeze` calls.
-pub trait CryptographicSpongeVar<CF: PrimeField, S: CryptographicSponge<CF>>: Clone {
+pub trait AlgebraicSpongeVar<
+    CF: PrimeField,
+    S: AlgebraicSponge<CF, RATE, CAPACITY>,
+    const RATE: usize,
+    const CAPACITY: usize,
+>: Clone
+{
     /// Parameters used by the sponge.
     type Parameters;
 
     /// Initialize a new instance of the sponge.
-    fn new<CS: ConstraintSystem<CF>>(cs: CS, params: &Self::Parameters) -> Self;
+    fn with_parameters<CS: ConstraintSystem<CF>>(cs: CS, params: &S::Parameters) -> Self;
+
+    fn constant<CS: ConstraintSystem<CF>>(cs: CS, sponge: &S) -> Self;
 
     /// Absorb an input into the sponge.
     fn absorb<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = &'a FpGadget<CF>>>(
@@ -42,4 +50,13 @@ pub trait CryptographicSpongeVar<CF: PrimeField, S: CryptographicSponge<CF>>: Cl
         cs: CS,
         num_elements: usize,
     ) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
+}
+
+/// Trait for an algebraic sponge such as Poseidon.
+pub trait DefaultCapacityAlgebraicSpongeVar<
+    CF: PrimeField,
+    PS: DefaultCapacityAlgebraicSponge<CF, RATE>,
+    const RATE: usize,
+>: AlgebraicSpongeVar<CF, PS, RATE, 1>
+{
 }

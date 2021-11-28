@@ -26,6 +26,7 @@ use std::{
     borrow::Cow,
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +36,7 @@ pub struct PoseidonCRH<F: PrimeField + PoseidonDefaultParametersField, const INP
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
     type Output = F;
-    type Parameters = PoseidonParameters<F, 4, 1>;
+    type Parameters = Arc<PoseidonParameters<F, 4, 1>>;
 
     fn setup(_message: &str) -> Self {
         Self(PoseidonCryptoHash::<F, 4, false>::setup())
@@ -94,6 +95,14 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     for PoseidonCRH<F, INPUT_SIZE_FE>
 {
     fn from(parameters: PoseidonParameters<F, 4, 1>) -> Self {
+        Self(PoseidonCryptoHash::<F, 4, false>::from(parameters))
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<Arc<PoseidonParameters<F, 4, 1>>>
+    for PoseidonCRH<F, INPUT_SIZE_FE>
+{
+    fn from(parameters: Arc<PoseidonParameters<F, 4, 1>>) -> Self {
         Self(PoseidonCryptoHash::<F, 4, false>::from(parameters))
     }
 }

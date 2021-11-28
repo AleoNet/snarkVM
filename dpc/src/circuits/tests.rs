@@ -42,7 +42,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Fetch the commitments and ciphertexts.
     let commitments = response.commitments();
-    let ciphertexts = response.ciphertexts().clone();
 
     // Compute the value balance.
     let mut value_balance = AleoAmount::ZERO;
@@ -57,8 +56,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let local_transitions_root = Transitions::<N>::new().unwrap().root();
 
     // Compute the transition ID.
-    let transition_id =
-        Transition::compute_transition_id(&serial_numbers, &commitments, &ciphertexts, value_balance).unwrap();
+    let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -82,13 +80,19 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(transition_id, ledger_root, local_transitions_root, Some(program_id));
+    let inner_public = InnerPublicVariables::new(
+        transition_id,
+        value_balance,
+        ledger_root,
+        local_transitions_root,
+        Some(program_id),
+    );
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
-    let inner_circuit = InnerCircuit::new(inner_public.clone(), inner_private);
+    let inner_circuit = InnerCircuit::new(inner_public, inner_private);
     inner_circuit
         .generate_constraints(&mut inner_cs.ns(|| "Inner circuit"))
         .unwrap();
@@ -130,7 +134,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the outer circuit public and private variables.
-    let outer_public = OuterPublicVariables::new(transition_id, ledger_root, local_transitions_root, inner_circuit_id);
+    let outer_public = OuterPublicVariables::new(inner_public, &inner_circuit_id);
     let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof.into(), execution);
 
     // Check that the proof check constraint system was satisfied.
@@ -181,7 +185,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(274316, 147941);
+        dpc_execute_circuits_test::<Testnet1>(251478, 152379);
     }
 }
 
@@ -191,6 +195,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(274316, 238013);
+        dpc_execute_circuits_test::<Testnet2>(251478, 242451);
     }
 }

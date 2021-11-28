@@ -21,6 +21,7 @@ use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
 
 use once_cell::sync::OnceCell;
 use std::{
+    borrow::Borrow,
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
     sync::Arc,
@@ -87,7 +88,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        let affine = self.hash_bits_inner(input)?.into_affine();
+        let affine = self.hash_bits_inner(input.iter(), input.len())?.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }
@@ -148,16 +149,24 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
             .expect("failed to init BoweHopwoodPedersenCRHParameters")
     }
 
-    pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
+    /// Precondition: number of elements in `input` == `num_bits`.
+    pub(crate) fn hash_bits_inner<S: Borrow<bool>>(
+        &self,
+        input: impl Iterator<Item = S>,
+        num_bits: usize,
+    ) -> Result<G, CRHError> {
+        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
+            return Err(CRHError::IncorrectInputLength(num_bits, WINDOW_SIZE, NUM_WINDOWS));
         }
         debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
         debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
         let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buf_slice[..input.len()].copy_from_slice(input);
+        buf_slice[..num_bits]
+            .iter_mut()
+            .zip(input)
+            .for_each(|(b, i)| *b = *i.borrow());
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
@@ -175,7 +184,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
             NUM_WINDOWS,
             BOWE_HOPWOOD_CHUNK_SIZE,
         );
-        debug_assert_eq!(self.bases.len(), NUM_WINDOWS);
         for bases in self.bases.iter() {
             debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }

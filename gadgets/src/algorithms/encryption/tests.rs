@@ -88,10 +88,12 @@ mod ecies_poseidon {
 
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key);
+        let (randomness, _ciphertext_randomizer, symmetric_key) =
+            encryption_scheme.generate_asymmetric_key(&public_key, rng);
+        let symmetric_key_commitment = encryption_scheme.generate_symmetric_key_commitment(&symmetric_key);
 
-        let randomness = encryption_scheme.generate_randomness(rng);
-        let message: Vec<u8> = (0..10).map(|_| rand::random::<u8>()).collect();
-        let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
+        let message = (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =
@@ -106,7 +108,7 @@ mod ecies_poseidon {
         let message_gadget = UInt8::alloc_vec(&mut cs.ns(|| "plaintext_gadget"), &message).unwrap();
 
         let randomness_gadget =
-            <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::RandomnessGadget::alloc(
+            <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ScalarRandomnessGadget::alloc(
                 &mut cs.ns(|| "randomness_gadget"),
                 || Ok(&randomness),
             )
@@ -117,11 +119,101 @@ mod ecies_poseidon {
 
         println!("number of constraints for inputs: {}", cs.num_constraints());
 
-        let ciphertext_gadget = encryption
-            .check_encryption_gadget(
+        let (_ciphertext_randomizer, ciphertext_gadget, _) = encryption
+            .check_encryption_from_scalar_randomness(
                 &mut cs.ns(|| "ciphertext_gadget_evaluation"),
                 &randomness_gadget,
                 &public_key_gadget,
+                &message_gadget,
+            )
+            .unwrap();
+
+        expected_ciphertext_gadget
+            .enforce_equal(
+                cs.ns(|| "Check that declared and computed ciphertexts are equal"),
+                &ciphertext_gadget,
+            )
+            .unwrap();
+
+        println!("number of constraints total: {}", cs.num_constraints());
+
+        let symmetric_key_gadget =
+            <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::SymmetricKeyGadget::alloc(
+                &mut cs.ns(|| "symmetric_key_gadget"),
+                || Ok(&symmetric_key),
+            )
+            .unwrap();
+
+        let expected_symmetric_key_commitment = <TestEncryptionSchemeGadget as EncryptionGadget<
+            TestEncryptionScheme,
+            _,
+        >>::SymmetricKeyCommitmentGadget::alloc(
+            &mut cs.ns(|| "symmetric_key_commitment_gadget"),
+            || Ok(&symmetric_key_commitment),
+        )
+        .unwrap();
+
+        let candidate_symmetric_key_commitment = encryption
+            .check_symmetric_key_commitment(&mut cs.ns(|| "check_symmetric_key_commitment"), &symmetric_key_gadget)
+            .unwrap();
+
+        expected_symmetric_key_commitment
+            .enforce_equal(
+                cs.ns(|| "Check that declared and computed symmetric key commitments are equal"),
+                &candidate_symmetric_key_commitment,
+            )
+            .unwrap();
+
+        if !cs.is_satisfied() {
+            println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
+        }
+        assert!(cs.is_satisfied());
+    }
+
+    #[test]
+    fn test_ecies_poseidon_encryption_from_ciphertext_randomizer_equivalence() {
+        let mut cs = TestConstraintSystem::<Fr>::new();
+        let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+
+        let encryption_scheme = TestEncryptionScheme::setup("test_encryption_gadget");
+
+        let private_key = encryption_scheme.generate_private_key(rng);
+        let public_key = encryption_scheme.generate_public_key(&private_key);
+        let (_randomness, ciphertext_randomizer, symmetric_key) =
+            encryption_scheme.generate_asymmetric_key(&public_key, rng);
+
+        let message = (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
+
+        // Alloc parameters, public key, plaintext, randomness, and blinding exponents
+        let encryption =
+            TestEncryptionSchemeGadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme))
+                .unwrap();
+        let private_key_gadget =
+            <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PrivateKeyGadget::alloc(
+                &mut cs.ns(|| "private_key_gadget"),
+                || Ok(&private_key),
+            )
+            .unwrap();
+        let message_gadget = UInt8::alloc_vec(&mut cs.ns(|| "plaintext_gadget"), &message).unwrap();
+
+        let ciphertext_randomizer_gadget =
+            <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::CiphertextRandomizer::alloc(
+                &mut cs.ns(|| "ciphertext_randomizer_gadget"),
+                || Ok(&ciphertext_randomizer),
+            )
+            .unwrap();
+
+        // Expected ciphertext gadget
+        let expected_ciphertext_gadget = UInt8::alloc_vec(&mut cs.ns(|| "ciphertext_gadget"), &ciphertext).unwrap();
+
+        println!("number of constraints for inputs: {}", cs.num_constraints());
+
+        let ciphertext_gadget = encryption
+            .check_encryption_from_ciphertext_randomizer(
+                &mut cs.ns(|| "ciphertext_gadget_evaluation"),
+                &ciphertext_randomizer_gadget,
+                &private_key_gadget,
                 &message_gadget,
             )
             .unwrap();

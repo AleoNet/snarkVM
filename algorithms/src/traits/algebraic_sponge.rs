@@ -14,23 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
+
+use core::fmt::Debug;
+
+pub trait SpongeParameters<const RATE: usize, const CAPACITY: usize> {}
 
 /// The interface for a cryptographic sponge.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.
 /// The outputs are dependent on previous `absorb` and `squeeze` calls.
-pub trait CryptographicSponge<F: PrimeField>: Clone {
+pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize>: Clone + Debug {
     /// Parameters used by the sponge.
-    type Parameters;
+    type Parameters: SpongeParameters<RATE, CAPACITY>;
 
     /// Initialize a new instance of the sponge.
-    fn new(params: &Self::Parameters) -> Self;
+    fn with_parameters(params: &Self::Parameters) -> Self;
 
     /// Absorb an input into the sponge.
     fn absorb(&mut self, input: &[F]);
 
-    /// Squeeze `num_elements` nonnative field elements from the sponge.
-    fn squeeze_field_elements(&mut self, num_elements: usize) -> Vec<F>;
+    /// Squeeze `num_elements` field elements from the sponge.
+    fn squeeze_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]>;
+}
+
+pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: AlgebraicSponge<F, RATE, 1> {
+    fn sample_parameters() -> Self::Parameters;
+
+    fn with_default_parameters() -> Self {
+        Self::with_parameters(&Self::sample_parameters())
+    }
 }
 
 /// The mode structure for duplex sponges

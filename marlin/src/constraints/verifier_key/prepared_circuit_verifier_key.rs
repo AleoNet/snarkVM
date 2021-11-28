@@ -255,14 +255,14 @@ mod test {
         FiatShamirAlgebraicSpongeRng,
         FiatShamirAlgebraicSpongeRngVar,
         PoseidonSponge,
-        PoseidonSpongeVar,
+        PoseidonSpongeGadget as PoseidonSpongeVar,
     };
 
     use super::*;
     use crate::constraints::verifier_key::CircuitVerifyingKeyVar;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type MultiPC = SonicKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinTestnet1Mode>;

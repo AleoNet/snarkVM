@@ -23,34 +23,37 @@ use std::{fmt::Debug, hash::Hash};
 pub trait EncryptionScheme:
     Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncryptionScheme>::Parameters>
 {
+    type CiphertextRandomizer: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type Randomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
+    type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
+    type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
+    type SymmetricKeyCommitment: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
 
     fn setup(message: &str) -> Self;
 
-    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey;
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey;
 
-    fn generate_public_key(
+    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey;
+
+    fn generate_asymmetric_key<R: Rng + CryptoRng>(
         &self,
-        private_key: &<Self as EncryptionScheme>::PrivateKey,
-    ) -> <Self as EncryptionScheme>::PublicKey;
+        public_key: &Self::PublicKey,
+        rng: &mut R,
+    ) -> (Self::ScalarRandomness, Self::CiphertextRandomizer, Self::SymmetricKey);
 
-    fn generate_randomness<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::Randomness;
-
-    fn encrypt(
+    fn generate_symmetric_key(
         &self,
-        public_key: &<Self as EncryptionScheme>::PublicKey,
-        randomness: &Self::Randomness,
-        message: &[u8],
-    ) -> Result<Vec<u8>, EncryptionError>;
+        private_key: &Self::PrivateKey,
+        ciphertext_randomizer: Self::CiphertextRandomizer,
+    ) -> Result<Self::SymmetricKey, EncryptionError>;
 
-    fn decrypt(
-        &self,
-        private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &[u8],
-    ) -> Result<Vec<u8>, EncryptionError>;
+    fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment;
+
+    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError>;
+
+    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 

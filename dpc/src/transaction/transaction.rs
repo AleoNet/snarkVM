@@ -272,7 +272,7 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the output record ciphertexts.
     #[inline]
-    pub fn ciphertexts(&self) -> impl Iterator<Item = &RecordCiphertext<N>> + fmt::Debug + '_ {
+    pub fn ciphertexts(&self) -> impl Iterator<Item = &N::RecordCiphertext> + fmt::Debug + '_ {
         self.transitions.iter().flat_map(Transition::ciphertexts)
     }
 
@@ -297,19 +297,13 @@ impl<N: Network> Transaction<N> {
         &self.events
     }
 
-    /// Returns the ciphertext IDs.
-    #[inline]
-    pub fn to_ciphertext_ids(&self) -> impl Iterator<Item = Result<N::CiphertextID>> + fmt::Debug + '_ {
-        self.transitions.iter().flat_map(Transition::to_ciphertext_ids)
-    }
-
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
     pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Vec<Record<N>> {
         self.transitions
             .iter()
             .flat_map(Transition::ciphertexts)
-            .filter_map(|c| c.decrypt(account_view_key).ok())
+            .filter_map(|c| Record::from_account_view_key(account_view_key, c).ok())
             .filter(|record| !record.is_dummy())
             .collect()
     }
@@ -453,7 +447,6 @@ impl<N: Network> Hash for Transaction<N> {
 mod tests {
     use super::*;
     use crate::{testnet2::Testnet2, Account, AccountScheme};
-    use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
 
@@ -463,12 +456,11 @@ mod tests {
         let account = Account::<Testnet2>::new(rng);
 
         // Craft the expected coinbase record.
-        let expected_record = Record::new_output(
+        let expected_record = Record::new(
             account.address(),
             1234,
             Default::default(),
             *Testnet2::noop_program_id(),
-            UniformRand::rand(rng),
             rng,
         )
         .unwrap();
@@ -497,7 +489,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(2625, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2142, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -517,7 +509,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1149, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1085, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

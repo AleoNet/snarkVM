@@ -16,18 +16,18 @@
 
 use crate::{
     Block,
+    Ciphertext,
     InnerPublicVariables,
     OuterPublicVariables,
     PoSWScheme,
     Program,
     ProgramPublicVariables,
-    RecordCiphertext,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+    traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     GroupGadget,
     MaskedCRHGadget,
     SNARKVerifierGadget,
@@ -107,17 +107,17 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const BLOCK_HASH_PREFIX: u16;
     const LEDGER_ROOT_PREFIX: u16;
     const PROGRAM_ID_PREFIX: u16;
-    const RECORD_CIPHERTEXT_ID_PREFIX: u16;
     const TRANSITION_ID_PREFIX: u16;
     const TRANSACTION_ID_PREFIX: u16;
 
     const COMMITMENT_PREFIX: u16;
-    const COMMITMENT_RANDOMNESS_PREFIX: u16;
     const FUNCTION_INPUTS_HASH_PREFIX: u16;
     const FUNCTION_ID_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
     const INNER_CIRCUIT_ID_PREFIX: u16;
+    const RECORD_RANDOMIZER_PREFIX: u16;
+    const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
     const HEADER_PROOF_PREFIX: u32;
@@ -125,6 +125,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const OUTER_PROOF_PREFIX: u32;
     const PROGRAM_PROOF_PREFIX: u32;
     const RECORD_CIPHERTEXT_PREFIX: u32;
+    const RECORD_VIEW_KEY_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
@@ -136,6 +137,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
+    const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
     const TRANSITION_SIZE_IN_BYTES: usize;
 
@@ -147,7 +149,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const TRANSACTION_TREE_DEPTH: usize;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64;
-    const ALEO_MAXIMUM_FORK_DEPTH: u32;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
     /// Inner curve type declarations.
@@ -188,6 +189,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSWProof: Bech32Object<<Self::PoSWSNARK as SNARK>::Proof>;
     type PoSW: PoSWScheme<Self>;
 
+    /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::ProgramBaseField, SymmetricKeyCommitment = Self::ProgramBaseField>;
+    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
+
     /// PRF for deriving the account private key from a seed.
     type AccountSeedPRF: PRF<Input = Vec<Self::ProgramScalarField>, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
     type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
@@ -210,16 +215,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHeaderRootParameters: MaskedMerkleParameters<H = Self::BlockHeaderRootCRH>;
     type BlockHeaderRoot: Bech32Locator<<Self::BlockHeaderRootCRH as CRH>::Output>;
 
-    /// CRH scheme for encrypted record ID. Invoked only over `Self::InnerScalarField`.
-    type CiphertextIDCRH: CRH<Output = Self::InnerScalarField>;
-    type CiphertextIDCRHGadget: CRHGadget<Self::CiphertextIDCRH, Self::InnerScalarField>;
-    type CiphertextID: Bech32Locator<<Self::CiphertextIDCRH as CRH>::Output>;
-
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
-    type CommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::InnerScalarField>;
-    type CommitmentGadget: CommitmentGadget<Self::CommitmentScheme, Self::InnerScalarField>;
-    type CommitmentRandomness: Bech32Locator<<Self::CommitmentScheme as CommitmentScheme>::Randomness>;
-    type Commitment: Bech32Locator<<Self::CommitmentScheme as CommitmentScheme>::Output>;
+    type CommitmentScheme: CRH<Output = Self::InnerScalarField>;
+    type CommitmentGadget: CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>;
+    type Commitment: Bech32Locator<<Self::CommitmentScheme as CRH>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
     type FunctionIDCRH: CRH<Output = Self::OuterScalarField>;
@@ -253,13 +252,14 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
     /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
-    type RecordCiphertextScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve>;
-    type RecordCiphertextGadget: EncryptionGadget<Self::RecordCiphertextScheme, Self::InnerScalarField>;
-    type RecordCiphertext: Bech32Object<RecordCiphertext<Self>>;
+    type RecordCiphertext: Bech32Object<Ciphertext<Self>> + Hash;
+    type RecordRandomizer: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer>;
+    type RecordViewKey: Bech32Object<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey> + Default;
+    type RecordViewKeyCommitment: Bech32Locator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
-    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField>;
+    type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CRH>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
+    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField, Input = Vec<<Self::CommitmentGadget as CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>>;
     type SerialNumber: Bech32Locator<<Self::SerialNumberPRF as PRF>::Output>;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
@@ -280,11 +280,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
-    fn account_encryption_scheme() -> &'static Self::RecordCiphertextScheme;
+    fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
     fn block_header_root_parameters() -> &'static Self::BlockHeaderRootParameters;
-    fn ciphertext_id_crh() -> &'static Self::CiphertextIDCRH;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
     fn function_id_crh() -> &'static Self::FunctionIDCRH;
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;

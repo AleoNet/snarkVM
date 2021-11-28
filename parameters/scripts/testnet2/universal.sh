@@ -5,4 +5,4 @@
 cargo run --release --example setup universal testnet2 || exit
 
 mv universal.metadata ../../src/testnet2/resources
-mv universal.srs* ../../src/testnet2/resources
+mv universal.srs* ~/.aleo/resources

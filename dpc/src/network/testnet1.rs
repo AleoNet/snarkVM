@@ -20,16 +20,15 @@ use crate::{
     AleoLocator,
     AleoObject,
     Block,
+    Ciphertext,
     InnerPublicVariables,
     Network,
     OuterPublicVariables,
     PoSWScheme,
     Program,
     ProgramPublicVariables,
-    RecordCiphertext,
 };
 use snarkvm_algorithms::{
-    commitment::BHPCommitment,
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
@@ -51,7 +50,6 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::BHPCommitmentGadget,
         crh::{BHPCRHGadget, PedersenCompressedCRHGadget, PoseidonCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -85,23 +83,23 @@ impl Network for Testnet1 {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-    const NUM_TRANSITIONS: u8 = 128;
-    const NUM_EVENTS: u16 = 256;
+    const NUM_TRANSITIONS: u8 = u8::pow(2, Self::TRANSACTION_TREE_DEPTH as u32);
+    const NUM_EVENTS: u16 = (2 * Self::NUM_TRANSITIONS) as u16;
 
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
     const PROGRAM_ID_PREFIX: u16 = hrp2!("ap");
-    const RECORD_CIPHERTEXT_ID_PREFIX: u16 = hrp2!("ar");
     const TRANSITION_ID_PREFIX: u16 = hrp2!("as");
     const TRANSACTION_ID_PREFIX: u16 = hrp2!("at");
 
     const COMMITMENT_PREFIX: u16 = hrp2!("cm");
-    const COMMITMENT_RANDOMNESS_PREFIX: u16 = hrp2!("cr");
     const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
     const FUNCTION_ID_PREFIX: u16 = hrp2!("fn");
     const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
+    const RECORD_RANDOMIZER_PREFIX: u16 = hrp2!("rr");
+    const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16 = hrp2!("rc");
     const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
 
     const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
@@ -109,6 +107,7 @@ impl Network for Testnet1 {
     const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
     const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
+    const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
@@ -118,20 +117,20 @@ impl Network for Testnet1 {
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 193;
     const RECORD_SIZE_IN_BYTES: usize = 280;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
+    const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
-    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1001;
 
-    const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 16;
+    const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
     const LEDGER_TREE_DEPTH: usize = 32;
     const PROGRAM_TREE_DEPTH: usize = 8;
-    const TRANSITION_TREE_DEPTH: usize = 3;
-    const TRANSACTION_TREE_DEPTH: usize = 7;
+    const TRANSITION_TREE_DEPTH: usize = 2;
+    const TRANSACTION_TREE_DEPTH: usize = 5;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
-    const ALEO_MAXIMUM_FORK_DEPTH: u32 = 1024;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
 
     type InnerCurve = Bls12_377;
@@ -161,9 +160,12 @@ impl Network for Testnet1 {
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
+
+    type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
+    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
 
     type AccountSeedPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
     type AccountSeed = <Self::AccountSeedPRF as PRF>::Seed;
@@ -182,14 +184,9 @@ impl Network for Testnet1 {
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
-    type CiphertextIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
-    type CiphertextIDCRHGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
-    type CiphertextID = AleoLocator<<Self::CiphertextIDCRH as CRH>::Output, { Self::RECORD_CIPHERTEXT_ID_PREFIX }>;
-
-    type CommitmentScheme = BHPCommitment<Self::ProgramProjectiveCurve, 34, 63>;
-    type CommitmentGadget = BHPCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 34, 63>;
-    type CommitmentRandomness = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Randomness, { Self::COMMITMENT_RANDOMNESS_PREFIX }>;
-    type Commitment = AleoLocator<<Self::CommitmentScheme as CommitmentScheme>::Output, { Self::COMMITMENT_PREFIX }>;
+    type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
+    type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
+    type Commitment = AleoLocator<<Self::CommitmentScheme as CRH>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
     type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;
@@ -199,8 +196,8 @@ impl Network for Testnet1 {
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
     type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
-    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 79, 63>;
-    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 79, 63>;
+    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 85, 63>;
+    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 85, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -216,9 +213,10 @@ impl Network for Testnet1 {
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
-    type RecordCiphertextScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
-    type RecordCiphertextGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
-    type RecordCiphertext = AleoObject<RecordCiphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
+    type RecordCiphertext = AleoObject<Ciphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
+    type RecordRandomizer = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer, { Self::RECORD_RANDOMIZER_PREFIX }>;
+    type RecordViewKey = AleoObject<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey, { Self::RECORD_VIEW_KEY_PREFIX }, { Self::RECORD_VIEW_KEY_SIZE_IN_BYTES }>;
+    type RecordViewKeyCommitment = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment, { Self::RECORD_VIEW_KEY_COMMITMENT_PREFIX }>;
 
     type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
@@ -239,11 +237,10 @@ impl Network for Testnet1 {
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
-    dpc_setup!{Testnet1, account_encryption_scheme, RecordCiphertextScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
     dpc_setup!{Testnet1, block_header_root_parameters, BlockHeaderRootParameters, "AleoBlockHeaderRootCRH0"}
-    dpc_setup!{Testnet1, ciphertext_id_crh, CiphertextIDCRH, "AleoCiphertextIDCRH0"}
     dpc_setup!{Testnet1, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
     dpc_setup!{Testnet1, function_id_crh, FunctionIDCRH, "AleoFunctionIDCRH0"}
     dpc_setup!{Testnet1, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}

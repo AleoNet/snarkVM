@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{CryptographicSponge, DuplexSpongeMode, PoseidonGrainLFSR},
+    crypto_hash::PoseidonGrainLFSR,
+    traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode, SpongeParameters},
     CryptoHash,
 };
 use snarkvm_fields::{
@@ -30,6 +31,7 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use smallvec::SmallVec;
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Index, IndexMut, Range},
@@ -352,6 +354,22 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         }
     }
 
+    fn squeeze_helper(&mut self, output: &mut [F]) {
+        match self.mode {
+            DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
+                self.permute();
+                self.squeeze_internal(0, output);
+            }
+            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
+                if next_squeeze_index == RATE {
+                    self.permute();
+                    next_squeeze_index = 0;
+                }
+                self.squeeze_internal(next_squeeze_index, output);
+            }
+        };
+    }
+
     // Squeeze |output| many elements. This does not end in a squeeze
     fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
         let output_length = output.len();
@@ -401,12 +419,35 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     }
 }
 
-impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> CryptographicSponge<F>
+impl<F: PoseidonDefaultParametersField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
+    pub fn sample_default_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
+        Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap())
+    }
+
+    pub fn with_default_parameters() -> Self {
+        let parameters = Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap());
+        let state = State::default();
+        let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
+
+        Self {
+            parameters,
+            state,
+            mode,
+        }
+    }
+}
+
+impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize> SpongeParameters<RATE, CAPACITY>
+    for Arc<PoseidonParameters<F, RATE, CAPACITY>>
+{
+}
+
+impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
     for PoseidonSponge<F, RATE, CAPACITY>
 {
     type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
 
-    fn new(parameters: &Self::Parameters) -> Self {
+    fn with_parameters(parameters: &Self::Parameters) -> Self {
         let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
@@ -437,26 +478,38 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> CryptographicSpong
         };
     }
 
-    fn squeeze_field_elements(&mut self, num_elements: usize) -> Vec<F> {
+    fn squeeze_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]> {
         if num_elements == 0 {
-            return vec![];
+            return SmallVec::new();
         }
-        let mut squeezed_elems = vec![F::zero(); num_elements];
-        match self.mode {
-            DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
-                self.permute();
-                self.squeeze_internal(0, &mut squeezed_elems);
-            }
-            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
-                if next_squeeze_index == RATE {
-                    self.permute();
-                    next_squeeze_index = 0;
-                }
-                self.squeeze_internal(next_squeeze_index, &mut squeezed_elems);
-            }
+        let mut buf = if num_elements <= 10 {
+            smallvec::smallvec_inline![F::zero(); 10]
+        } else {
+            smallvec::smallvec![F::zero(); num_elements]
         };
+        self.squeeze_helper(&mut buf[..num_elements]);
+        buf.truncate(num_elements);
+        buf
+    }
+}
 
-        squeezed_elems
+impl<F: PoseidonDefaultParametersField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE>
+    for PoseidonSponge<F, RATE, 1>
+{
+    fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
+        Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap())
+    }
+
+    fn with_default_parameters() -> Self {
+        let parameters = Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap());
+        let state = State::default();
+        let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
+
+        Self {
+            parameters,
+            state,
+            mode,
+        }
     }
 }
 
@@ -474,7 +527,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 {
     type Input = F;
     type Output = F;
-    type Parameters = PoseidonParameters<F, RATE, 1>;
+    type Parameters = Arc<PoseidonParameters<F, RATE, 1>>;
 
     /// Initializes a new instance of the cryptographic hash function.
     fn setup() -> Self {
@@ -484,7 +537,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 
     fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
-        let mut sponge = PoseidonSponge::<F, RATE, 1>::new(&self.parameters);
+        let mut sponge = PoseidonSponge::<F, RATE, 1>::with_parameters(&self.parameters);
         sponge.absorb(input);
         sponge.squeeze_field_elements(1)[0]
     }
@@ -501,6 +554,14 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         Self {
             parameters: Arc::new(parameters),
         }
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+    From<Arc<PoseidonParameters<F, RATE, 1>>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    fn from(parameters: Arc<PoseidonParameters<F, RATE, 1>>) -> Self {
+        Self { parameters }
     }
 }
 

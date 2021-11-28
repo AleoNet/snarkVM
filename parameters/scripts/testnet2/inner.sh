@@ -5,5 +5,5 @@
 RUST_BACKTRACE=1 cargo run --release --example setup inner testnet2 || exit
 
 mv inner.metadata ../../src/testnet2/resources
-mv inner.proving* ../../src/testnet2/resources
+mv inner.proving* ~/.aleo/resources
 mv inner.verifying ../../src/testnet2/resources

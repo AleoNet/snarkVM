@@ -106,6 +106,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     let program_id_fe =
         alloc_inner_snark_field_element::<N, _, _>(cs, &private.execution.program_id.to_bytes_le()?[..], "program ID")?;
 
+    let value_balance_fe = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &public.value_balance().to_bytes_le()?[..],
+        "value balance",
+    )?;
+
     let transition_id_fe_inner_snark =
         alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID inner snark")?;
     let transition_id_fe_program_snark =
@@ -127,6 +133,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             ledger_root_fe_inner_snark,
             local_transitions_root_fe_inner_snark,
             program_id_fe,
+            value_balance_fe,
             transition_id_fe_inner_snark,
         ])?;
 
@@ -262,7 +269,7 @@ fn alloc_inner_snark_field_element<
 fn alloc_inner_snark_input_field_element<
     'a,
     N: Network,
-    V: ToConstraintField<N::InnerScalarField>,
+    V: ToConstraintField<N::InnerScalarField> + ?Sized,
     CS: ConstraintSystem<N::OuterScalarField>,
 >(
     cs: &mut CS,
