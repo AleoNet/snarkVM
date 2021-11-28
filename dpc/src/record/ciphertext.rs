@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
-
-use crate::{account, Bech32Locator, Network, RecordError};
+use crate::{Bech32Locator, Network, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
@@ -37,13 +35,13 @@ use anyhow::Result;
     Eq(bound = "N: Network"),
     Hash(bound = "N: Network")
 )]
-pub struct RecordCiphertext<N: Network> {
-    ciphertext_randomizer: N::RecordRandomizer,
+pub struct Ciphertext<N: Network> {
+    randomizer: N::RecordRandomizer,
     record_view_key_commitment: N::RecordViewKeyCommitment,
     record_bytes: Vec<u8>,
 }
 
-impl<N: Network> RecordCiphertext<N> {
+impl<N: Network> Ciphertext<N> {
     /// Returns the record ciphertext object.
     pub fn from(
         ciphertext_randomizer: N::RecordRandomizer,
@@ -51,15 +49,15 @@ impl<N: Network> RecordCiphertext<N> {
         record_bytes: Vec<u8>,
     ) -> Result<Self, RecordError> {
         Ok(Self {
-            ciphertext_randomizer,
+            randomizer: ciphertext_randomizer,
             record_view_key_commitment,
             record_bytes,
         })
     }
 
     /// Returns the ciphertext randomizer.
-    pub fn ciphertext_randomizer(&self) -> N::RecordRandomizer {
-        self.ciphertext_randomizer
+    pub fn randomizer(&self) -> N::RecordRandomizer {
+        self.randomizer
     }
 
     /// Returns the record view key commitment.
@@ -71,7 +69,7 @@ impl<N: Network> RecordCiphertext<N> {
     pub fn to_commitment(&self) -> Result<N::Commitment, RecordError> {
         Ok(N::commitment_scheme()
             .hash(&to_bytes_le![
-                self.ciphertext_randomizer,
+                self.randomizer,
                 self.record_view_key_commitment,
                 self.record_bytes
             ]?)?
@@ -83,38 +81,9 @@ impl<N: Network> RecordCiphertext<N> {
         // Decrypt the record ciphertext.
         Ok(N::account_encryption_scheme().decrypt(record_view_key, &self.record_bytes)?)
     }
-
-    /// Does the ciphertext encrypt the public key?
-    pub fn to_plaintext_if_account_matches(
-        &self,
-        account: account::Address<N>,
-        account_view_key: &account::ViewKey<N>,
-    ) -> Option<Vec<u8>> {
-        let record_view_key = N::account_encryption_scheme()
-            .generate_symmetric_key(&account_view_key, *self.ciphertext_randomizer.borrow())
-            .unwrap();
-
-        let decryption_result =
-            N::account_encryption_scheme().decrypt_while(&record_view_key, &self.record_bytes, |plaintext| {
-                let account_bytes = account.to_bytes_le().unwrap();
-                if plaintext.len() == account_bytes.len() {
-                    // If the account bytes match the first chunk of the plaintext,
-                    // return true and continue decryption.
-                    // If it doesn't match, then return false and halt decryption.
-                    account_bytes == plaintext
-                } else {
-                    true
-                }
-            });
-        match decryption_result {
-            Ok(msg) => Some(msg),
-            Err(snarkvm_algorithms::EncryptionError::MismatchingAddress) => None,
-            Err(e) => panic!("Encountered decryption error: {}", e),
-        }
-    }
 }
 
-impl<N: Network> FromBytes for RecordCiphertext<N> {
+impl<N: Network> FromBytes for Ciphertext<N> {
     /// Decode the ciphertext into the ciphertext randomizer, record view key commitment, and record ciphertext.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -142,10 +111,10 @@ impl<N: Network> FromBytes for RecordCiphertext<N> {
     }
 }
 
-impl<N: Network> ToBytes for RecordCiphertext<N> {
+impl<N: Network> ToBytes for Ciphertext<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.ciphertext_randomizer.write_le(&mut writer)?;
+        self.randomizer.write_le(&mut writer)?;
         self.record_view_key_commitment.write_le(&mut writer)?;
         self.record_bytes.write_le(&mut writer)
     }

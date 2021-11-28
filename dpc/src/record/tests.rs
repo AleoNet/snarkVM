@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{testnet2::*, Account, AccountScheme, Network, Payload, Record, ViewKey};
-use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -43,7 +43,11 @@ fn test_record_ciphertext() {
         .unwrap();
 
         // Encrypt the record.
-        let record_ciphertext = expected_record.encrypt().unwrap();
+        let record_ciphertext = expected_record.ciphertext();
+        assert_eq!(
+            Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES,
+            (*record_ciphertext).to_bytes_le().unwrap().len()
+        );
 
         // Decrypt the record.
         let account_view_key = ViewKey::from_private_key(&account.private_key());

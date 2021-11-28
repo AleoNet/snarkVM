@@ -84,13 +84,13 @@ impl<N: Network> Response<N> {
     }
 
     /// Returns the ciphertexts.
-    pub fn to_ciphertexts(&self) -> Result<Vec<N::RecordCiphertext>> {
-        Ok(self
-            .records
+    pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {
+        self.records
             .iter()
             .take(N::NUM_OUTPUT_RECORDS)
-            .map(Record::encrypt)
-            .collect::<Result<Vec<_>, _>>()?)
+            .map(Record::ciphertext)
+            .cloned()
+            .collect()
     }
 
     /// Returns a reference to the encryption randomness.

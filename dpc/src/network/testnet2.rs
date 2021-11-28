@@ -20,13 +20,13 @@ use crate::{
     AleoLocator,
     AleoObject,
     Block,
+    Ciphertext,
     InnerPublicVariables,
     Network,
     OuterPublicVariables,
     PoSWScheme,
     Program,
     ProgramPublicVariables,
-    RecordCiphertext,
 };
 use blake2::Blake2s;
 use snarkvm_algorithms::{
@@ -123,11 +123,11 @@ impl Network for Testnet2 {
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
     const RECORD_SIZE_IN_BYTES: usize = 280;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 320;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
-    const TRANSITION_SIZE_IN_BYTES: usize = 1065;
+    const TRANSITION_SIZE_IN_BYTES: usize = 1001;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -219,7 +219,7 @@ impl Network for Testnet2 {
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
-    type RecordCiphertext = AleoObject<RecordCiphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
+    type RecordCiphertext = AleoObject<Ciphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
     type RecordRandomizer = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::CiphertextRandomizer, { Self::RECORD_RANDOMIZER_PREFIX }>;
     type RecordViewKey = AleoObject<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey, { Self::RECORD_VIEW_KEY_PREFIX }, { Self::RECORD_VIEW_KEY_SIZE_IN_BYTES }>;
     type RecordViewKeyCommitment = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment, { Self::RECORD_VIEW_KEY_COMMITMENT_PREFIX }>;
@@ -302,7 +302,7 @@ impl Network for Testnet2 {
     
     fn genesis_block() -> &'static Block<Self> {
         static BLOCK: OnceCell<Block<Testnet2>> = OnceCell::new();
-        BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load genesis block"))
+        BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load the genesis block"))
     }
     
     /// Returns the program SRS for Aleo applications.
