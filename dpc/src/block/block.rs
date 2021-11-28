@@ -304,16 +304,15 @@ impl<N: Network> Block<N> {
             }
             false => {
                 // The initial blocks that aren't taken into account with the halving calculation.
-                const INITIAL_BLOCKS: u32 = 394200;
-                // The time it takes before the halving - 3 years (approximately 4,730,400) blocks.
+                // The time it takes before the halving - 4,730,400 blocks (approximately 3 years).
                 let expected_blocks_per_hour: u32 = 3600 / (N::ALEO_BLOCK_TIME_IN_SECS as u32);
                 let num_years = 3;
                 let block_segments = num_years * 365 * 24 * expected_blocks_per_hour;
 
                 // The block reward halves at most 2 times - minimum is 25 ALEO.
-                // The reward will halve at blocks `5,124,600` and `9,855,000`.
+                // The reward will halve at blocks `4,730,400` and `9,460,800`.
                 let initial_reward = 100i64 * AleoAmount::ONE_CREDIT.0;
-                let num_halves = u32::min(height.saturating_sub(INITIAL_BLOCKS) / block_segments, 2);
+                let num_halves = u32::min(height / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
                 AleoAmount::from_bytes(reward)
@@ -435,8 +434,8 @@ mod tests {
     fn test_block_rewards() {
         let rng = &mut thread_rng();
 
-        let first_halving: u32 = (3 * 365 * 24 * 180) + 394200; // 5,124,600
-        let second_halving: u32 = (3 * 365 * 24 * 180 * 2) + 394200; // 9,855,000
+        let first_halving: u32 = 3 * 365 * 24 * 180; // 4,730,400
+        let second_halving: u32 = first_halving * 2; // 9,460,800
 
         // Genesis
 
