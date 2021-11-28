@@ -85,12 +85,11 @@ impl<N: Network> Record<N> {
         // Encode the record contents into plaintext bytes.
         let plaintext = Self::encode_plaintext(owner, value, &payload, program_id)?;
 
-        let encryption_scheme = N::account_encryption_scheme();
         // Encrypt the record bytes.
         let ciphertext = RecordCiphertext::<N>::from(&to_bytes_le![
             randomizer,
-            encryption_scheme.generate_symmetric_key_commitment(&record_view_key),
-            encryption_scheme.encrypt(&record_view_key, &plaintext)?
+            N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key),
+            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?
         ]?)?;
 
         // Compute the commitment.
@@ -115,8 +114,7 @@ impl<N: Network> Record<N> {
         // Compute the record view key.
         let ciphertext = &*ciphertext;
         let randomizer = ciphertext.ciphertext_randomizer();
-        let encryption_scheme = N::account_encryption_scheme();
-        let record_view_key = encryption_scheme
+        let record_view_key = N::account_encryption_scheme()
             .generate_symmetric_key(&*account_view_key, *randomizer)?
             .into();
 
