@@ -103,7 +103,7 @@ jobs:
       - image: cimg/base
     steps:
       - checkout
-      - build-windows-x86_64
+      - setup-windows-x86_64
       - run:
           name: Check cargo build
           command: cargo build --examples --all --benches
@@ -113,7 +113,7 @@ jobs:
       - image: cimg/base
     steps:
       - checkout
-      - build-windows-i686
+      - setup-windows-i686
       - run:
           name: Check cargo build
           command: cargo build --examples --all --benches
