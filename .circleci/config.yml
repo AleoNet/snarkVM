@@ -26,6 +26,7 @@ commands:
       - restore_cache:
           keys:
             - << parameters.cache_key >>
+
   clear_environment:
     description: "Clear environment"
     parameters:
@@ -40,7 +41,82 @@ commands:
           paths:
             - .cache/sccache
             - .cargo
+
+  install-rust:
+    steps:
+      - run:
+          name: Installing Rust
+          command: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - run:
+          name: Setup custom environment variables
+          command: |
+            echo 'export PATH=$HOME/.cargo/bin:$PATH' >> $BASH_ENV
+
+  setup-rust-toolchain:
+    parameters:
+      rust-version:
+        type: string
+        default: "stable"
+    steps:
+      - run:
+          name: Setup Rust toolchain
+          command: |
+            rustup install <<parameters.rust-version>>
+            rustup default <<parameters.rust-version>>
+            rustc --version
+
+  install-mingw:
+    steps:
+      - run:
+          name: Install mingw
+          command: |
+            sudo apt update
+            sudo apt install -y gcc-mingw-w64 # This package contains tools for both i686 and x86_64 targets
+      - run:
+          name: Add mingw target
+          command: |
+            rustup target add x86_64-pc-windows-gnu
+            rustup target add i686-pc-windows-gnu
+            # Set the linker to use for Rust/mingw
+            echo '[target.x86_64-pc-windows-gnu]' >> ~/.cargo/config
+            echo 'linker = "/usr/bin/x86_64-w64-mingw32-gcc"' >> ~/.cargo/config
+            echo '[target.i686-pc-windows-gnu]' >> ~/.cargo/config
+            echo 'linker = "/usr/bin/i686-w64-mingw32-gcc"' >> ~/.cargo/config
+
+  setup-windows-x86_64:
+    steps:
+      - install-rust
+      - setup-rust-toolchain
+      - install-mingw
+
+  setup-windows-i686:
+    steps:
+      - install-rust
+      - setup-rust-toolchain:
+          rust-version: "1.56.1"
+      - install-mingw
+
 jobs:
+
+  check-windows-x86_64:
+    docker:
+      - image: cimg/base
+    steps:
+      - checkout
+      - build-windows-x86_64
+      - run:
+          name: Check cargo build
+          command: cargo build --examples --all --benches
+
+  check-windows-i686:
+    docker:
+      - image: cimg/base
+    steps:
+      - checkout
+      - build-windows-i686
+      - run:
+          name: Check cargo build
+          command: cargo build --examples --all --benches
 
   integration-testnet1:
     docker:
