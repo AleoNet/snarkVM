@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Locator, Network, RecordError};
+use crate::{Bech32Locator, Network, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
@@ -60,6 +60,23 @@ impl<N: Network> Ciphertext<N> {
             record_view_key_commitment,
             record_bytes,
         })
+    }
+
+    /// Returns `true` if this ciphertext belongs to the given account view key.
+    pub fn is_owner(&self, account_view_key: ViewKey<N>) -> bool {
+        // Compute the record view key.
+        let candidate_record_view_key =
+            match N::account_encryption_scheme().generate_symmetric_key(&account_view_key, *self.randomizer) {
+                Some(symmetric_key) => symmetric_key,
+                None => return false,
+            };
+
+        // Compute the record view key commitment.
+        let candidate_record_view_key_commitment =
+            N::account_encryption_scheme().generate_symmetric_key_commitment(&candidate_record_view_key);
+
+        // Check if the computed record view key commitment matches.
+        *self.record_view_key_commitment == candidate_record_view_key_commitment
     }
 
     /// Returns the record commitment.

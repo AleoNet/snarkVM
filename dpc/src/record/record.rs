@@ -110,7 +110,10 @@ impl<N: Network> Record<N> {
     ) -> Result<Self, RecordError> {
         // Compute the record view key.
         let record_view_key = N::account_encryption_scheme()
-            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())?
+            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())
+            .ok_or(Err(anyhow!(
+                "Failed to compute record view key due to malformed account view key"
+            )))?
             .into();
 
         // Decrypt the record ciphertext.
