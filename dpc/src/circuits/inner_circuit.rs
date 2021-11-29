@@ -797,12 +797,28 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let mut candidate_value_balance = Int64::zero();
 
             for (i, input_value) in input_values.iter().enumerate() {
+                // Enforce the record value has positive value that is less than 2^63.
+                for (j, bit) in input_value.to_bits_be()[0..2].iter().enumerate() {
+                    bit.enforce_equal(
+                        cs.ns(|| format!("enforce input {} bit {} is 0", i, j)),
+                        &Boolean::constant(false),
+                    )?;
+                }
+
                 candidate_value_balance = candidate_value_balance
                     .add(cs.ns(|| format!("add input record {} value", i)), &input_value)
                     .unwrap();
             }
 
             for (j, output_value) in output_values.iter().enumerate() {
+                // Enforce the record value has positive value that is less than 2^63.
+                for (k, bit) in output_value.to_bits_be()[0..2].iter().enumerate() {
+                    bit.enforce_equal(
+                        cs.ns(|| format!("enforce output {} bit {} is 0", j, k)),
+                        &Boolean::constant(false),
+                    )?;
+                }
+
                 candidate_value_balance = candidate_value_balance
                     .sub(cs.ns(|| format!("sub output record {} value", j)), &output_value)
                     .unwrap();
