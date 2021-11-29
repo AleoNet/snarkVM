@@ -101,7 +101,7 @@ jobs:
 
       - name: Test
         run: |
-          cargo build --all-features --examples --all --benches
+          cargo build --examples --all --benches
 
   check-ubuntu:
     name: Check Ubuntu
@@ -128,4 +128,4 @@ jobs:
 
       - name: Test
         run: |
-          cargo build --all-features --examples --all --benches
+          cargo build --examples --all --benches
