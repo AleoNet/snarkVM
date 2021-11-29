@@ -49,7 +49,7 @@ commands:
     steps:
       - run:
           name: Installing Rust
-          command: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          command: curl --proto --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run:
           name: Setup custom environment variables
           command: |
