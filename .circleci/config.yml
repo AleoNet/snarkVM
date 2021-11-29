@@ -40,6 +40,7 @@ commands:
           paths:
             - .cache/sccache
             - .cargo
+
 jobs:
 
   integration-testnet1:
