@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet2::*, Account, AccountScheme, Network, Payload, Record, ViewKey};
+use crate::{testnet2::*, Account, AccountScheme, AleoAmount, Network, Payload, Record, ViewKey};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
@@ -29,13 +29,13 @@ fn test_record_ciphertext() {
     for _ in 0..ITERATIONS {
         let account = Account::<Testnet2>::new(rng);
 
-        let value = rng.gen();
+        let value: i64 = rng.gen();
         let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
 
         let expected_record = Record::new(
             account.address(),
-            value,
+            AleoAmount::from_i64(value),
             Payload::from_bytes_le(&payload).unwrap(),
             *Testnet2::noop_program_id(),
             rng,

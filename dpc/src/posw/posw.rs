@@ -131,7 +131,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // Construct the inputs.
         let inputs = vec![
             N::InnerScalarField::read_le(&block_header.to_header_root().unwrap().to_bytes_le().unwrap()[..]).unwrap(),
-            block_header.nonce(),
+            *block_header.nonce(),
         ];
 
         // Ensure the proof is valid.

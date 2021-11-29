@@ -33,7 +33,7 @@ use anyhow::Result;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoSWCircuit<N: Network> {
     block_header_root: N::BlockHeaderRoot,
-    nonce: N::InnerScalarField,
+    nonce: N::PoSWNonce,
     hashed_leaves: Vec<<<N::BlockHeaderRootParameters as MerkleParameters>::H as CRH>::Output>,
 }
 
@@ -92,7 +92,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 
         let nonce = <N::PoSWMaskPRFGadget as PRFGadget<N::PoSWMaskPRF, N::InnerScalarField>>::Input::alloc_input(
             &mut cs.ns(|| "Declare given nonce"),
-            || Ok(vec![self.nonce]),
+            || Ok(vec![*self.nonce]),
         )?;
 
         let mask = <N::PoSWMaskPRFGadget as PRFGadget<N::PoSWMaskPRF, N::InnerScalarField>>::check_evaluation_gadget(
@@ -197,7 +197,7 @@ mod test {
         // Verify the proof is valid on the public inputs.
         let inputs = vec![
             N::InnerScalarField::read_le(&assigned_circuit.block_header_root.to_bytes_le().unwrap()[..]).unwrap(),
-            assigned_circuit.nonce,
+            *assigned_circuit.nonce,
         ];
         assert_eq!(2, inputs.len());
         assert!(<<N as Network>::PoSWSNARK as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap());

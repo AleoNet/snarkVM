@@ -183,7 +183,7 @@ where
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext_randomizer: Self::CiphertextRandomizer,
-    ) -> Result<Self::SymmetricKey, EncryptionError> {
+    ) -> Option<Self::SymmetricKey> {
         // Recover the ciphertext randomizer group element.
         let mut randomizer = None;
 
@@ -200,16 +200,14 @@ where
             }
         }
 
-        match randomizer {
-            // Compute the ECDH value.
-            Some(randomizer) => Ok(randomizer
-                .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
-                .into_affine()
-                .to_x_coordinate()),
-            _ => Err(EncryptionError::Message(
-                "The ciphertext randomizer is malformed.".to_string(),
-            )),
-        }
+        randomizer.and_then(|randomizer| {
+            Some(
+                randomizer
+                    .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
+                    .into_affine()
+                    .to_x_coordinate(),
+            )
+        })
     }
 
     ///

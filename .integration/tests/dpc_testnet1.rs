@@ -25,11 +25,9 @@ use rand_chacha::ChaChaRng;
 
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
-    let expected_inner_circuit_id = vec![
-        38, 149, 62, 85, 12, 96, 163, 74, 30, 248, 94, 243, 149, 119, 106, 96, 148, 11, 109, 30, 115, 235, 144, 28,
-        175, 157, 66, 137, 181, 159, 7, 69, 134, 40, 253, 175, 193, 88, 193, 19, 51, 66, 99, 234, 127, 97, 41, 0,
-    ];
-    let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_bytes_le().unwrap();
+    let expected_inner_circuit_id =
+        "ic13kq3p903xqaanpjmsp3rzc0a6wq7lmczu8j73ufteeqkevkp6tjwmm5t72mku7mglcf63qc2qtrqq3yanpd".to_string();
+    let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
 
@@ -68,7 +66,7 @@ fn dpc_testnet1_integration_test() {
         let view_key = ViewKey::from_private_key(recipient.private_key());
         let decrypted_record = Record::from_account_view_key(&view_key, encrypted_record).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
-        assert_eq!(decrypted_record.value() as i64, Block::<Testnet1>::block_reward(1).0);
+        assert_eq!(decrypted_record.value(), Block::<Testnet1>::block_reward(1));
     }
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
     let transactions_root = transactions.transactions_root();
@@ -80,12 +78,16 @@ fn dpc_testnet1_integration_test() {
         previous_block.difficulty_target(),
         timestamp,
     );
+    let cumulative_weight = previous_block
+        .cumulative_weight()
+        .saturating_add(u64::MAX - difficulty_target);
 
     // Construct the new block header.
     let header = BlockHeader::mine(
         block_height,
         timestamp,
         difficulty_target,
+        cumulative_weight,
         previous_ledger_root,
         transactions_root,
         &AtomicBool::new(false),

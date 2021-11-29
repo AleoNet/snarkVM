@@ -195,8 +195,8 @@ impl<N: Network> Request<N> {
 
         // Ensure the records contains a total value that is at least the fee amount.
         if !self.operation.is_coinbase() {
-            let balance: u64 = self.records.iter().map(|record| record.value()).sum();
-            if AleoAmount(balance as i64) < self.fee {
+            let balance: AleoAmount = self.records.iter().map(|record| record.value()).sum();
+            if balance < self.fee {
                 eprintln!("Request records do not contain sufficient value for fee");
                 return false;
             }
@@ -312,7 +312,7 @@ impl<N: Network> Request<N> {
 
     /// Returns the balance of the caller.
     pub fn to_balance(&self) -> AleoAmount {
-        AleoAmount(self.records.iter().map(|record| record.value()).sum::<u64>() as i64)
+        self.records.iter().map(|record| record.value()).sum()
     }
 
     /// Returns the program ID.
