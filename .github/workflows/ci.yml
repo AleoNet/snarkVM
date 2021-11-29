@@ -79,7 +79,7 @@ jobs:
   check-windows:  
     strategy:
       matrix:
-        library: [algorithms, curves, derives, dpc, fields, gadgets, marlin, parameters, polycommit, profiler, r1cs, utilities, wasm]
+        library: [algorithms, curves, derives, dpc, fields, gadgets, marlin, parameters, polycommit, profiler, r1cs, utilities]
     runs-on: windows-latest
     
     steps:
