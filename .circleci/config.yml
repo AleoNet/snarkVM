@@ -350,6 +350,8 @@ workflows:
   version: 2
   main-workflow:
     jobs:
+      - check-windows-x86_64
+      - check-windows-i686
       - integration-testnet1
       - integration-testnet2
       - algorithms
