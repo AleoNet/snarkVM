@@ -21,8 +21,6 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub struct MemoryPool<N: Network> {
-    /// The pool of unconfirmed blocks.
-    blocks: HashMap<N::BlockHash, Block<N>>,
     /// The pool of unconfirmed transactions.
     transactions: HashMap<N::TransactionID, Transaction<N>>,
     /// The list of unconfirmed serial numbers.
@@ -37,17 +35,11 @@ impl<N: Network> MemoryPool<N> {
     /// Initializes a new instance of a memory pool.
     pub fn new() -> Self {
         Self {
-            blocks: Default::default(),
             transactions: Default::default(),
             serial_numbers: Default::default(),
             commitments: Default::default(),
             requests: Default::default(),
         }
-    }
-
-    /// Returns `true` if the given block hash exists in the memory pool.
-    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
-        self.blocks.contains_key(block_hash)
     }
 
     /// Returns `true` if the given transaction exists in the memory pool.
@@ -58,26 +50,6 @@ impl<N: Network> MemoryPool<N> {
     /// Returns the transactions in the memory pool.
     pub fn transactions(&self) -> Vec<Transaction<N>> {
         self.transactions.values().cloned().collect()
-    }
-
-    /// Adds the given unconfirmed block to the memory pool.
-    pub fn add_block(&mut self, block: Block<N>) -> Result<()> {
-        // Ensure the unconfirmed block itself is valid.
-        if !block.is_valid() {
-            return Err(anyhow!("Unconfirmed block {} is invalid", block.height()));
-        }
-        // Ensure the unconfirmed block is not already in the memory pool.
-        else if self.contains_block_hash(&block.hash()) {
-            return Err(anyhow!(
-                "Unconfirmed block {} already exists in the memory pool",
-                block.height()
-            ));
-        }
-        // Add the given block to the memory pool.
-        else {
-            self.blocks.insert(block.hash(), block);
-            Ok(())
-        }
     }
 
     /// Adds the given unconfirmed transaction to the memory pool.
@@ -128,11 +100,6 @@ impl<N: Network> MemoryPool<N> {
         }
 
         Ok(())
-    }
-
-    /// Removes a block from the memory pool.
-    pub fn remove_block(&mut self, block_hash: &N::BlockHash) {
-        self.blocks.remove(block_hash);
     }
 
     /// Clear a transaction (and associated state) from the memory pool.

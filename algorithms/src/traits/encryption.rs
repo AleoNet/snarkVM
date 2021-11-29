@@ -47,7 +47,7 @@ pub trait EncryptionScheme:
         &self,
         private_key: &Self::PrivateKey,
         ciphertext_randomizer: Self::CiphertextRandomizer,
-    ) -> Result<Self::SymmetricKey, EncryptionError>;
+    ) -> Option<Self::SymmetricKey>;
 
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment;
 

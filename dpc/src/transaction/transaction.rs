@@ -458,7 +458,7 @@ mod tests {
         // Craft the expected coinbase record.
         let expected_record = Record::new(
             account.address(),
-            1234,
+            AleoAmount::from_i64(1234),
             Default::default(),
             *Testnet2::noop_program_id(),
             rng,
@@ -509,7 +509,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1085, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1053, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

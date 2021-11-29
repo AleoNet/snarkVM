@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
+use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -37,25 +37,29 @@ use std::{
 )]
 pub struct Record<N: Network> {
     owner: Address<N>,
-    // TODO (raychu86) use AleoAmount which will guard the value range
-    value: u64,
+    value: AleoAmount,
     payload: Payload<N>,
     program_id: N::ProgramID,
     record_view_key: N::RecordViewKey,
-    commitment: N::Commitment,
     ciphertext: N::RecordCiphertext,
 }
 
 impl<N: Network> Record<N> {
     /// Returns a new noop record.
     pub fn new_noop<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
-        Self::new(owner, 0, Payload::<N>::default(), *N::noop_program_id(), rng)
+        Self::new(
+            owner,
+            AleoAmount::ZERO,
+            Payload::<N>::default(),
+            *N::noop_program_id(),
+            rng,
+        )
     }
 
     /// Returns a new record.
     pub fn new<R: Rng + CryptoRng>(
         owner: Address<N>,
-        value: u64,
+        value: AleoAmount,
         payload: Payload<N>,
         program_id: N::ProgramID,
         rng: &mut R,
@@ -76,7 +80,7 @@ impl<N: Network> Record<N> {
     /// Returns a record from the given inputs.
     pub fn from(
         owner: Address<N>,
-        value: u64,
+        value: AleoAmount,
         payload: Payload<N>,
         program_id: N::ProgramID,
         randomizer: N::RecordRandomizer,
@@ -94,16 +98,12 @@ impl<N: Network> Record<N> {
             N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
         )?;
 
-        // Compute the commitment.
-        let commitment = ciphertext.to_commitment()?;
-
         Ok(Self {
             owner,
             value,
             payload,
             program_id,
             record_view_key,
-            commitment,
             ciphertext: ciphertext.into(),
         })
     }
@@ -114,9 +114,12 @@ impl<N: Network> Record<N> {
         ciphertext: &N::RecordCiphertext,
     ) -> Result<Self, RecordError> {
         // Compute the record view key.
-        let record_view_key = N::account_encryption_scheme()
-            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())?
-            .into();
+        let record_view_key = match N::account_encryption_scheme()
+            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())
+        {
+            Some(record_view_key) => record_view_key.into(),
+            None => return Err(anyhow!("Failed to compute record view key due to malformed account view key").into()),
+        };
 
         // Decrypt the record ciphertext.
         let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
@@ -125,20 +128,14 @@ impl<N: Network> Record<N> {
         // Ensure the record owner matches.
         let expected_owner = Address::from_view_key(account_view_key);
         match owner == expected_owner {
-            true => {
-                // Compute the commitment.
-                let commitment = ciphertext.deref().to_commitment()?;
-
-                Ok(Self {
-                    owner,
-                    value,
-                    payload,
-                    program_id,
-                    record_view_key,
-                    commitment,
-                    ciphertext: ciphertext.clone(),
-                })
-            }
+            true => Ok(Self {
+                owner,
+                value,
+                payload,
+                program_id,
+                record_view_key,
+                ciphertext: ciphertext.clone(),
+            }),
             false => Err(anyhow!("Decoded incorrect record owner from ciphertext").into()),
         }
     }
@@ -152,23 +149,19 @@ impl<N: Network> Record<N> {
         let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
-        // Compute the commitment.
-        let commitment = ciphertext.deref().to_commitment()?;
-
         Ok(Self {
             owner,
             value,
             payload,
             program_id,
             record_view_key,
-            commitment,
             ciphertext: ciphertext.clone(),
         })
     }
 
     /// Returns `true` if the record is a dummy.
     pub fn is_dummy(&self) -> bool {
-        self.value == 0 && self.payload.is_empty() && self.program_id == *N::noop_program_id()
+        self.value.is_zero() && self.payload.is_empty() && self.program_id == *N::noop_program_id()
     }
 
     /// Returns the record owner.
@@ -177,7 +170,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the record value.
-    pub fn value(&self) -> u64 {
+    pub fn value(&self) -> AleoAmount {
         self.value
     }
 
@@ -203,7 +196,7 @@ impl<N: Network> Record<N> {
 
     /// Returns the commitment of this record.
     pub fn commitment(&self) -> N::Commitment {
-        self.commitment
+        self.ciphertext.deref().commitment()
     }
 
     /// Returns this record as ciphertext.
@@ -221,7 +214,7 @@ impl<N: Network> Record<N> {
         // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
         let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
-        let input = self.commitment;
+        let input = self.commitment();
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
 
         Ok(serial_number)
@@ -230,12 +223,12 @@ impl<N: Network> Record<N> {
     /// Encode the record contents into plaintext bytes.
     fn encode_plaintext(
         owner: Address<N>,
-        value: u64,
+        value: AleoAmount,
         payload: &Payload<N>,
         program_id: N::ProgramID,
     ) -> Result<Vec<u8>, RecordError> {
         // Determine if the record is a dummy.
-        let is_dummy = value == 0 && payload.is_empty() && program_id == *N::noop_program_id();
+        let is_dummy = value.is_zero() && payload.is_empty() && program_id == *N::noop_program_id();
 
         // Total = 32 + 1 + 8 + 128 + 48 = 217 bytes
         let plaintext = to_bytes_le![
@@ -254,7 +247,9 @@ impl<N: Network> Record<N> {
     }
 
     /// Decode the plaintext bytes into the record contents.
-    fn decode_plaintext(plaintext: &Vec<u8>) -> Result<(Address<N>, u64, Payload<N>, N::ProgramID), RecordError> {
+    fn decode_plaintext(
+        plaintext: &Vec<u8>,
+    ) -> Result<(Address<N>, AleoAmount, Payload<N>, N::ProgramID), RecordError> {
         assert_eq!(
             1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES + N::ProgramID::data_size_in_bytes(),
             plaintext.len()
@@ -264,12 +259,12 @@ impl<N: Network> Record<N> {
         let mut cursor = Cursor::new(plaintext);
         let owner = Address::<N>::read_le(&mut cursor)?;
         let is_dummy = u8::read_le(&mut cursor)?;
-        let value = u64::read_le(&mut cursor)?;
+        let value = AleoAmount::read_le(&mut cursor)?;
         let payload = Payload::read_le(&mut cursor)?;
         let program_id = N::ProgramID::read_le(&mut cursor)?;
 
         // Ensure the dummy flag in the record is correct.
-        let expected_dummy = value == 0 && payload.is_empty() && program_id == *N::noop_program_id();
+        let expected_dummy = value.is_zero() && payload.is_empty() && program_id == *N::noop_program_id();
         match is_dummy == expected_dummy as u8 {
             true => Ok((owner, value, payload, program_id)),
             false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
@@ -293,7 +288,7 @@ impl<N: Network> FromBytes for Record<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<N> = FromBytes::read_le(&mut reader)?;
-        let value: u64 = FromBytes::read_le(&mut reader)?;
+        let value: AleoAmount = FromBytes::read_le(&mut reader)?;
         let payload: Payload<N> = FromBytes::read_le(&mut reader)?;
         let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
         let randomizer: N::RecordRandomizer = FromBytes::read_le(&mut reader)?;
@@ -339,7 +334,7 @@ impl<N: Network> Serialize for Record<N> {
                 record.serialize_field("program_id", &self.program_id)?;
                 record.serialize_field("randomizer", &self.randomizer())?;
                 record.serialize_field("record_view_key", &self.record_view_key)?;
-                record.serialize_field("commitment", &self.commitment)?;
+                record.serialize_field("commitment", &self.commitment())?;
                 record.end()
             }
             false => ToBytesSerializer::serialize(self, serializer),
@@ -385,7 +380,7 @@ impl<N: Network> Default for Record<N> {
     fn default() -> Self {
         Self::from(
             Default::default(),
-            Default::default(),
+            AleoAmount::ZERO,
             Default::default(),
             *N::noop_program_id(),
             Default::default(),
@@ -430,7 +425,7 @@ mod tests {
         rng.fill(&mut payload);
         let expected_record = Record::new(
             address,
-            1234,
+            AleoAmount::from_i64(1234),
             Payload::from_bytes_le(&payload).unwrap(),
             *Testnet2::noop_program_id(),
             rng,
@@ -474,7 +469,7 @@ mod tests {
         rng.fill(&mut payload);
         let expected_record = Record::new(
             address,
-            1234,
+            AleoAmount::from_i64(1234),
             Payload::from_bytes_le(&payload).unwrap(),
             *Testnet2::noop_program_id(),
             rng,

@@ -43,6 +43,12 @@ pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
         "Genesis coinbase transaction size - {}\n",
         genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len()
     );
+    println!(
+        "Genesis coinbase transition size - {}\n",
+        genesis_block.to_coinbase_transaction()?.transitions()[0]
+            .to_bytes_le()?
+            .len()
+    );
 
     Ok(genesis_block.to_bytes_le()?)
 }
