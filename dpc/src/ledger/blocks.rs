@@ -91,7 +91,7 @@ impl<N: Network> Blocks<N> {
     }
 
     /// Returns the latest cumulative weight.
-    pub fn latest_cumulative_weight(&self) -> Result<u64> {
+    pub fn latest_cumulative_weight(&self) -> Result<u128> {
         Ok(self.get_block_header(self.current_height)?.cumulative_weight())
     }
 
@@ -260,7 +260,7 @@ impl<N: Network> Blocks<N> {
         // Ensure the expected cumulative weight is computed correctly.
         let expected_cumulative_weight = current_block
             .cumulative_weight()
-            .saturating_add(u64::MAX - expected_difficulty_target);
+            .saturating_add(u64::MAX.saturating_sub(expected_difficulty_target) as u128);
         if block.cumulative_weight() != expected_cumulative_weight {
             return Err(anyhow!(
                 "The given cumulative weight is incorrect. Found {}, but expected {}",
