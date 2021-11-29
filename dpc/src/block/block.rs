@@ -309,7 +309,7 @@ impl<N: Network> Block<N> {
         match height == 0 {
             true => {
                 // Output the starting supply as the genesis block reward.
-                AleoAmount::from_bytes(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+                AleoAmount::from_i64(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
             }
             false => {
                 // The initial blocks that aren't taken into account with the halving calculation.
@@ -327,7 +327,7 @@ impl<N: Network> Block<N> {
                 let num_halves = u32::min(height.saturating_sub(1) / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
-                AleoAmount::from_bytes(reward)
+                AleoAmount::from_i64(reward)
             }
         }
     }
@@ -500,13 +500,13 @@ mod tests {
 
         assert_eq!(
             Block::<Testnet2>::block_reward(0),
-            AleoAmount::from_bytes(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+            AleoAmount::from_i64(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
         );
 
         let mut supply = AleoAmount::ZERO;
 
         // Phase 1 - 100 credits per block.
-        let phase_1_sum = AleoAmount::from_bytes(
+        let phase_1_sum = AleoAmount::from_i64(
             (0..=first_halving)
                 .into_par_iter()
                 .map(|i| Block::<Testnet2>::block_reward(i).0)
@@ -517,11 +517,11 @@ mod tests {
 
         assert_eq!(
             supply,
-            AleoAmount::from_bytes(supply_at_first_halving * AleoAmount::ONE_CREDIT.0)
+            AleoAmount::from_i64(supply_at_first_halving * AleoAmount::ONE_CREDIT.0)
         );
 
         // Phase 2 - 50 credits per block.
-        let phase_2_sum = AleoAmount::from_bytes(
+        let phase_2_sum = AleoAmount::from_i64(
             ((first_halving + 1)..=second_halving)
                 .into_par_iter()
                 .map(|i| Block::<Testnet2>::block_reward(i).0)
@@ -532,7 +532,7 @@ mod tests {
 
         assert_eq!(
             supply,
-            AleoAmount::from_bytes(supply_at_second_halving * AleoAmount::ONE_CREDIT.0)
+            AleoAmount::from_i64(supply_at_second_halving * AleoAmount::ONE_CREDIT.0)
         );
     }
 

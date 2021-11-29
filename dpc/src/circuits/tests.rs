@@ -25,7 +25,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let rng = &mut thread_rng();
 
     let recipient = Account::new(rng);
-    let amount = AleoAmount::from_bytes(10);
+    let amount = AleoAmount::from_i64(10);
     let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
@@ -46,10 +46,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     // Compute the value balance.
     let mut value_balance = AleoAmount::ZERO;
     for record in request.records().iter().take(N::NUM_INPUT_RECORDS) {
-        value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
+        value_balance = value_balance.add(record.value());
     }
     for record in response.records().iter().take(N::NUM_OUTPUT_RECORDS) {
-        value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
+        value_balance = value_balance.sub(record.value());
     }
 
     // Compute the local transitions root.

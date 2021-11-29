@@ -458,7 +458,7 @@ mod tests {
         // Craft the expected coinbase record.
         let expected_record = Record::new(
             account.address(),
-            1234,
+            AleoAmount::from_i64(1234),
             Default::default(),
             *Testnet2::noop_program_id(),
             rng,
