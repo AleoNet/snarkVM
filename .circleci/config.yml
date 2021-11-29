@@ -1,4 +1,7 @@
 version: 2.1
+orbs:
+  win: circleci/windows@2.2.0
+
 commands:
   setup_environment:
     description: "Setup testing environment"
@@ -99,8 +102,7 @@ commands:
 jobs:
 
   check-windows-x86_64:
-    docker:
-      - image: cimg/base
+    executor: win/default
     steps:
       - checkout
       - setup-windows-x86_64
@@ -109,8 +111,7 @@ jobs:
           command: cargo build --examples --all --benches
 
   check-windows-i686:
-    docker:
-      - image: cimg/base
+    executor: win/default
     steps:
       - checkout
       - setup-windows-i686
