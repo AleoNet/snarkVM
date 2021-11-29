@@ -75,3 +75,30 @@ jobs:
           cd wasm
           wasm-pack test --node
 #          cargo test --target wasm32-unknown-unknown --features wasm
+
+  check-windows:
+    name: Check Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust (stable)
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test
+        run: |
+          cargo build --all-features --examples --all --benches
