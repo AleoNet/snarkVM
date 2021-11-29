@@ -414,15 +414,20 @@ impl<N: Network> Blocks<N> {
         ///     B = Expected time per block.
         ///     S = Time elapsed between the last M blocks.
         fn bitcoin_retarget(
+            previous_timestamp: i64,
+            previous_difficulty: u64,
             block_timestamp: i64,
-            parent_timestamp: i64,
             target_block_time: i64,
-            parent_difficulty: u64,
         ) -> u64 {
-            let time_elapsed = block_timestamp - parent_timestamp;
+            let time_elapsed = block_timestamp.saturating_sub(previous_timestamp);
+            let time_elapsed = match time_elapsed > 0 {
+                true => time_elapsed,
+                false => 1,
+            };
+
             let difficulty_factor = time_elapsed as f64 / (NUM_BLOCKS_PER_RETARGET * target_block_time) as f64;
 
-            let new_difficulty = (parent_difficulty as f64) * difficulty_factor;
+            let new_difficulty = (previous_difficulty as f64) * difficulty_factor;
 
             match new_difficulty.is_finite() {
                 true => new_difficulty as u64,
@@ -431,10 +436,10 @@ impl<N: Network> Blocks<N> {
         }
 
         bitcoin_retarget(
-            timestamp,
             previous_timestamp,
-            N::ALEO_BLOCK_TIME_IN_SECS,
             previous_difficulty_target,
+            timestamp,
+            N::ALEO_BLOCK_TIME_IN_SECS,
         )
     }
 }

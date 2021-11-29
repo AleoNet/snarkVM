@@ -79,8 +79,13 @@ impl<N: Network> Transaction<N> {
 
     /// Initializes a new coinbase transaction.
     #[inline]
-    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
-        let request = Request::new_coinbase(recipient, amount, false, rng)?;
+    pub fn new_coinbase<R: Rng + CryptoRng>(
+        recipient: Address<N>,
+        amount: AleoAmount,
+        is_public: bool,
+        rng: &mut R,
+    ) -> Result<Self> {
+        let request = Request::new_coinbase(recipient, amount, is_public, rng)?;
         VirtualMachine::<N>::new(LedgerTree::<N>::new()?.root())?
             .execute(&request, rng)?
             .finalize()
@@ -466,7 +471,7 @@ mod tests {
         .unwrap();
 
         // Craft a transaction with 1 coinbase record.
-        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
         let decrypted_records = transaction.to_decrypted_records(&account.view_key());
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
@@ -484,12 +489,12 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let expected_transaction =
-            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(2142, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2254, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -504,12 +509,12 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let expected_transaction =
-            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), rng).unwrap();
+            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1053, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1087, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

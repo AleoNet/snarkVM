@@ -86,7 +86,8 @@ impl<N: Network> Block<N> {
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
-        let transactions = Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), rng)?])?;
+        let transactions =
+            Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
         // Compute the transactions root from the transactions.
@@ -545,7 +546,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(3964, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(4076, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -562,7 +563,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_block.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_block).unwrap();
-        assert_eq!(2022, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(2056, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

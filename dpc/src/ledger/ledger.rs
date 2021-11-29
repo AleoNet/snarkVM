@@ -149,6 +149,7 @@ impl<N: Network> Ledger<N> {
     pub fn mine_next_block<R: Rng + CryptoRng>(
         &mut self,
         recipient: Address<N>,
+        is_public: bool,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<()> {
@@ -168,7 +169,7 @@ impl<N: Network> Ledger<N> {
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
-        let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
+        let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, is_public, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
         // Retrieve the current ledger root.
@@ -234,7 +235,7 @@ mod tests {
 
             assert_eq!(0, ledger.latest_block_height());
             ledger
-                .mine_next_block(recipient.address(), &AtomicBool::new(false), rng)
+                .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
                 .unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
@@ -244,7 +245,7 @@ mod tests {
 
             assert_eq!(0, ledger.latest_block_height());
             ledger
-                .mine_next_block(recipient.address(), &AtomicBool::new(false), rng)
+                .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
                 .unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
