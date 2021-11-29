@@ -95,6 +95,7 @@ impl Network for Testnet1 {
     const COMMITMENT_PREFIX: u16 = hrp2!("cm");
     const FUNCTION_INPUTS_HASH_PREFIX: u16 = hrp2!("fi");
     const FUNCTION_ID_PREFIX: u16 = hrp2!("fn");
+    const HEADER_NONCE_PREFIX: u16 = hrp2!("hn");
     const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
     const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
@@ -111,7 +112,7 @@ impl Network for Testnet1 {
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 887;
+    const HEADER_SIZE_IN_BYTES: usize = 895;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
@@ -121,7 +122,7 @@ impl Network for Testnet1 {
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
-    const TRANSITION_SIZE_IN_BYTES: usize = 1001;
+    const TRANSITION_SIZE_IN_BYTES: usize = 969;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -131,7 +132,7 @@ impl Network for Testnet1 {
     const TRANSACTION_TREE_DEPTH: usize = 5;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
-    const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 500_000;
+    const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 1_000_000_000;
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
@@ -207,6 +208,7 @@ impl Network for Testnet1 {
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
     type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;

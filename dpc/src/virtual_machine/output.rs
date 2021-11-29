@@ -42,7 +42,7 @@ impl<N: Network> Output<N> {
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
-        Self::new(noop_address, AleoAmount::from_bytes(0), Payload::default(), None, false)
+        Self::new(noop_address, AleoAmount::from_i64(0), Payload::default(), None, false)
     }
 
     /// Initializes a new instance of `Output`.
@@ -80,7 +80,7 @@ impl<N: Network> Output<N> {
             N::account_encryption_scheme().generate_asymmetric_key(&*self.address, rng);
         let record = Record::from(
             self.address,
-            self.value.0 as u64,
+            self.value,
             self.payload.clone(),
             self.program_id,
             randomizer.into(),
