@@ -63,10 +63,10 @@ impl<N: Network> Ciphertext<N> {
     }
 
     /// Returns `true` if this ciphertext belongs to the given account view key.
-    pub fn is_owner(&self, account_view_key: ViewKey<N>) -> bool {
+    pub fn is_owner(&self, account_view_key: &ViewKey<N>) -> bool {
         // Compute the record view key.
         let candidate_record_view_key =
-            match N::account_encryption_scheme().generate_symmetric_key(&account_view_key, *self.randomizer) {
+            match N::account_encryption_scheme().generate_symmetric_key(account_view_key, *self.randomizer) {
                 Some(symmetric_key) => symmetric_key,
                 None => return false,
             };

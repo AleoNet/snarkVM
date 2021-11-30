@@ -302,7 +302,8 @@ impl<N: Network> Transaction<N> {
         self.transitions
             .iter()
             .flat_map(Transition::ciphertexts)
-            .filter_map(|c| Record::from_account_view_key(account_view_key, c).ok())
+            .filter(|ciphertext| ciphertext.is_owner(account_view_key))
+            .filter_map(|ciphertext| Record::from_account_view_key(account_view_key, ciphertext).ok())
             .filter(|record| !record.is_dummy())
             .collect()
     }
