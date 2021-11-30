@@ -34,6 +34,8 @@ pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
     assert!(genesis_block.header().is_genesis());
     assert!(genesis_block.to_coinbase_transaction()?.is_valid());
 
+    println!("\n{}\n", serde_json::to_string_pretty(&genesis_block)?);
+
     println!("Genesis block size - {}\n", genesis_block.to_bytes_le()?.len());
     println!(
         "Genesis block header size - {}\n",

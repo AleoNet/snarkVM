@@ -59,7 +59,7 @@ impl<N: Network> Block<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
-        cumulative_weight: u64,
+        cumulative_weight: u128,
         previous_ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
         terminator: &AtomicBool,
@@ -86,7 +86,8 @@ impl<N: Network> Block<N> {
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
-        let transactions = Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), rng)?])?;
+        let transactions =
+            Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
         // Compute the transactions root from the transactions.
@@ -96,7 +97,7 @@ impl<N: Network> Block<N> {
         let block_height = 0u32;
         let block_timestamp = 0i64;
         let difficulty_target = u64::MAX;
-        let cumulative_weight = 0u64;
+        let cumulative_weight = 0u128;
 
         // Compute the genesis block header.
         let header = BlockHeader::mine(
@@ -263,7 +264,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the cumulative weight up to this block (inclusive).
-    pub fn cumulative_weight(&self) -> u64 {
+    pub fn cumulative_weight(&self) -> u128 {
         self.header.cumulative_weight()
     }
 
@@ -545,7 +546,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(3964, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(4169, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -562,7 +563,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_block.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_block).unwrap();
-        assert_eq!(2014, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(2090, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
