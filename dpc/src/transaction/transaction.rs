@@ -309,22 +309,10 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
-    /// Returns records from the transaction that have a public record view key event.
+    /// Returns the decrypted records using record view key events, if they exist.
     #[inline]
-    pub fn to_public_records(&self) -> Vec<Record<N>> {
-        let transaction_ciphertexts: Vec<&N::RecordCiphertext> = self.ciphertexts().collect();
-
-        self.events
-            .iter()
-            .filter_map(|event| match event {
-                Event::RecordViewKey(i, record_view_key) => match transaction_ciphertexts.get(*i as usize) {
-                    Some(ciphertext) => Record::from_record_view_key(record_view_key.clone(), *ciphertext).ok(),
-                    None => None,
-                },
-                _ => None,
-            })
-            .filter(|record| !record.is_dummy())
-            .collect()
+    pub fn to_records(&self) -> impl Iterator<Item = Record<N>> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::to_records)
     }
 
     /// Returns the local proof for a given commitment.
@@ -501,7 +489,7 @@ mod tests {
         // Craft a transaction with 1 coinbase record.
         let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
-        let public_records = transaction.to_public_records();
+        let public_records = transaction.to_records().collect::<Vec<_>>();
         assert_eq!(public_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = public_records.first().unwrap();

@@ -199,6 +199,22 @@ impl<N: Network> Transition<N> {
         &self.proof
     }
 
+    /// Returns the decrypted records using record view key events, if they exist.
+    #[inline]
+    pub fn to_records(&self) -> impl Iterator<Item = Record<N>> + fmt::Debug + '_ {
+        let ciphertexts: Vec<&N::RecordCiphertext> = self.ciphertexts().collect();
+        self.events
+            .iter()
+            .filter_map(move |event| match event {
+                Event::RecordViewKey(i, record_view_key) => match ciphertexts.get(*i as usize) {
+                    Some(ciphertext) => Record::from_record_view_key(record_view_key.clone(), *ciphertext).ok(),
+                    None => None,
+                },
+                _ => None,
+            })
+            .filter(|record| !record.is_dummy())
+    }
+
     /// Returns an inclusion proof for the transition tree.
     #[inline]
     pub fn to_transition_inclusion_proof(&self, leaf: impl ToBytes) -> Result<MerklePath<N::TransitionIDParameters>> {
