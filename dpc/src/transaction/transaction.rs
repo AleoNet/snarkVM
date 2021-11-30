@@ -447,26 +447,14 @@ mod tests {
         let rng = &mut thread_rng();
         let account = Account::<Testnet2>::new(rng);
 
-        // Craft the expected coinbase record.
-        let expected_record = Record::new(
-            account.address(),
-            AleoAmount::from_i64(1234),
-            Default::default(),
-            *Testnet2::noop_program_id(),
-            rng,
-        )
-        .unwrap();
-
         // Craft a transaction with 1 coinbase record.
-        let (transaction, coinbase_record) =
+        let (transaction, expected_record) =
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
         let decrypted_records = transaction.to_decrypted_records(&account.view_key());
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = decrypted_records.first().unwrap();
-        assert_eq!(expected_record, coinbase_record);
-        assert_eq!(&coinbase_record, candidate_record);
-
+        assert_eq!(&expected_record, candidate_record);
         assert_eq!(expected_record.owner(), candidate_record.owner());
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
@@ -478,27 +466,15 @@ mod tests {
         let rng = &mut thread_rng();
         let account = Account::<Testnet2>::new(rng);
 
-        // Craft the expected coinbase record.
-        let expected_record = Record::new(
-            account.address(),
-            AleoAmount::from_i64(1234),
-            Default::default(),
-            *Testnet2::noop_program_id(),
-            rng,
-        )
-        .unwrap();
-
         // Craft a transaction with 1 coinbase record.
-        let (transaction, coinbase_record) =
+        let (transaction, expected_record) =
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         let public_records = transaction.to_records().collect::<Vec<_>>();
         assert_eq!(public_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = public_records.first().unwrap();
-        assert_eq!(expected_record, coinbase_record);
-        assert_eq!(&coinbase_record, candidate_record);
-
+        assert_eq!(&expected_record, candidate_record);
         assert_eq!(expected_record.owner(), candidate_record.owner());
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
