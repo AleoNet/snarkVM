@@ -18,7 +18,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
-use snarkvm_fields::ToConstraintField;
+use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -120,6 +120,19 @@ where
     type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = ProofGadget<PairingE, P>;
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, P>;
+
+    fn input_gadget_from_bytes<CS: ConstraintSystem<PairingE::Fq>>(
+        _cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError> {
+        // First, we allocate the input according to the `ToConstraintField` impl wrt PairingE::Fr.
+        let max_size = (<PairingE::Fr as PrimeField>::Parameters::CAPACITY / 8) as usize;
+        let bits = bytes
+            .chunks(max_size)
+            .map(|chunk| chunk.iter().flat_map(|bytes| bytes.bits.iter()).copied().collect())
+            .collect::<Vec<_>>();
+        Ok(BooleanInputGadget::new(bits))
+    }
 
     fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,

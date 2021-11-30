@@ -35,12 +35,16 @@ use crate::{
     Vec,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar},
     traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
+    AllocGadget,
+    Integer,
     PrepareGadget,
+    ToBytesGadget,
+    UInt8,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
@@ -87,6 +91,35 @@ where
     >;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
     type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
+
+    fn input_gadget_from_bytes<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError> {
+        // First, we allocate the input according to the `ToConstraintField` impl wrt S::BaseField.
+        let max_size = (TargetField::Parameters::CAPACITY / 8) as usize;
+        // Obtain the values of the field elements corresponding to each `max_size` chunk.
+        let values = bytes.iter().map(|byte| byte.value.unwrap_or(0u8)).collect::<Vec<_>>();
+        let values: Vec<TargetField> = values.to_field_elements().unwrap();
+
+        // Allocate the input as non-native field elements.
+        let input = NonNativeFieldInputVar::alloc_checked(cs.ns(|| "Construct input var"), || Ok(values))?;
+        // Convert the input to bytes
+        let input_bytes = input.val.to_bytes_strict(cs.ns(|| "Input to bytes"))?;
+
+        // Chunk and pad the original input bytes according to the `ToConstraintField` impl
+        let bytes_per_fe = ((TargetField::Parameters::MODULUS_BITS + 7) / 8) as usize;
+        let padded_bytes = bytes
+            .chunks(max_size)
+            .flat_map(|chunk| {
+                let mut chunk = chunk.to_vec();
+                chunk.resize(bytes_per_fe, UInt8::constant(0));
+                chunk
+            })
+            .collect::<Vec<_>>();
+        padded_bytes.enforce_equal(cs.ns(|| "Enforce equality between bytes"), &input_bytes)?;
+        Ok(input)
+    }
 
     fn check_verify<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
