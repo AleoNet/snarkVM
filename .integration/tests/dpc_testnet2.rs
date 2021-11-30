@@ -103,36 +103,36 @@ fn dpc_testnet2_integration_test() {
     assert_eq!(ledger.latest_block_height(), 1);
 }
 
-#[test]
-fn test_record_size() {
-    use std::str::FromStr;
-
-    let ledger = Ledger::<Testnet2>::new().unwrap();
-
-    // Initialize a new account.
-    let private_key =
-        PrivateKey::<Testnet2>::from_str("APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p").unwrap();
-    let account = Account::from(private_key.clone());
-    let view_key = account.view_key();
-
-    // Mine the next block.
-    let block = ledger.latest_block().unwrap();
-    println!("block: {}", block.hash());
-
-    // Craft the transaction variables.
-    let coinbase_transaction = &block.transactions()[0];
-    let candidate_records = coinbase_transaction.to_decrypted_records(view_key);
-    assert_eq!(candidate_records.len(), 1); // Excludes dummy records upon decryption.
-
-    let candidate_record = candidate_records.first().unwrap();
-    assert_eq!(
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
-        candidate_record.owner().to_string()
-    );
-    assert_eq!(
-        AleoAmount(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000),
-        candidate_record.value()
-    );
-    assert_eq!(vec![0u8; 128], candidate_record.payload().to_bytes_le().unwrap());
-    assert_eq!(Testnet2::noop_program_id(), &candidate_record.program_id());
-}
+// #[test]
+// fn test_record_size() {
+//     use std::str::FromStr;
+//
+//     let ledger = Ledger::<Testnet2>::new().unwrap();
+//
+//     // Initialize a new account.
+//     let private_key =
+//         PrivateKey::<Testnet2>::from_str("APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p").unwrap();
+//     let account = Account::from(private_key.clone());
+//     let view_key = account.view_key();
+//
+//     // Mine the next block.
+//     let block = ledger.latest_block().unwrap();
+//     println!("block: {}", block.hash());
+//
+//     // Craft the transaction variables.
+//     let coinbase_transaction = &block.transactions()[0];
+//     let candidate_records = coinbase_transaction.to_decrypted_records(view_key);
+//     assert_eq!(candidate_records.len(), 1); // Excludes dummy records upon decryption.
+//
+//     let candidate_record = candidate_records.first().unwrap();
+//     assert_eq!(
+//         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+//         candidate_record.owner().to_string()
+//     );
+//     assert_eq!(
+//         AleoAmount(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000),
+//         candidate_record.value()
+//     );
+//     assert_eq!(vec![0u8; 128], candidate_record.payload().to_bytes_le().unwrap());
+//     assert_eq!(Testnet2::noop_program_id(), &candidate_record.program_id());
+// }
