@@ -80,7 +80,7 @@ fn dpc_testnet2_integration_test() {
     );
     let cumulative_weight = previous_block
         .cumulative_weight()
-        .saturating_add(u64::MAX.saturating_sub(difficulty_target) as u128);
+        .saturating_add((u64::MAX / difficulty_target) as u128);
 
     // Construct the new block header.
     let header = BlockHeader::mine(

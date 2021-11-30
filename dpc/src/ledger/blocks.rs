@@ -260,7 +260,7 @@ impl<N: Network> Blocks<N> {
         // Ensure the expected cumulative weight is computed correctly.
         let expected_cumulative_weight = current_block
             .cumulative_weight()
-            .saturating_add(u64::MAX.saturating_sub(expected_difficulty_target) as u128);
+            .saturating_add((u64::MAX / expected_difficulty_target) as u128);
         if block.cumulative_weight() != expected_cumulative_weight {
             return Err(anyhow!(
                 "The given cumulative weight is incorrect. Found {}, but expected {}",

@@ -164,8 +164,7 @@ impl<N: Network> Ledger<N> {
         let block_timestamp = Utc::now().timestamp();
         let difficulty_target =
             Blocks::<N>::compute_difficulty_target(previous_timestamp, previous_difficulty_target, block_timestamp);
-        let cumulative_weight =
-            previous_cumulative_weight.saturating_add(u64::MAX.saturating_sub(difficulty_target) as u128);
+        let cumulative_weight = previous_cumulative_weight.saturating_add((u64::MAX / difficulty_target) as u128);
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
