@@ -90,7 +90,7 @@ impl Network for Testnet2 {
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
     const NUM_TRANSITIONS: u8 = u8::pow(2, Self::TRANSACTION_TREE_DEPTH as u32);
-    const NUM_EVENTS: u16 = (2 * Self::NUM_TRANSITIONS) as u16;
+    const NUM_EVENTS: u16 = 2;
 
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
@@ -128,7 +128,6 @@ impl Network for Testnet2 {
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
-    const TRANSITION_SIZE_IN_BYTES: usize = 969;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;

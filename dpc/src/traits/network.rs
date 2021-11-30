@@ -140,7 +140,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
-    const TRANSITION_SIZE_IN_BYTES: usize;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
     const HEADER_TREE_DEPTH: usize;

@@ -64,8 +64,6 @@ pub struct Transaction<N: Network> {
     ledger_root: N::LedgerRoot,
     /// The state transition.
     transitions: Vec<Transition<N>>,
-    /// The events emitted from this transaction.
-    events: Vec<Event<N>>,
 }
 
 impl<N: Network> Transaction<N> {
@@ -92,7 +90,6 @@ impl<N: Network> Transaction<N> {
         inner_circuit_id: N::InnerCircuitID,
         ledger_root: N::LedgerRoot,
         transitions: Vec<Transition<N>>,
-        events: Vec<Event<N>>,
     ) -> Result<Self> {
         let transaction_id = Self::compute_transaction_id(&transitions)?;
 
@@ -101,7 +98,6 @@ impl<N: Network> Transaction<N> {
             inner_circuit_id,
             ledger_root,
             transitions,
-            events,
         };
 
         match transaction.is_valid() {
@@ -123,7 +119,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Ensure the number of events is less than `N::NUM_EVENTS`.
-        if self.events.len() > N::NUM_EVENTS as usize {
+        if self.events().count() > num_transitions * N::NUM_EVENTS as usize {
             eprintln!("Transaction contains an invalid number of events");
             return false;
         }
@@ -285,16 +281,16 @@ impl<N: Network> Transaction<N> {
             .fold(AleoAmount::ZERO, |a, b| a.add(*b))
     }
 
+    /// Returns the events.
+    #[inline]
+    pub fn events(&self) -> impl Iterator<Item = &Event<N>> + fmt::Debug + '_ {
+        self.transitions.iter().flat_map(Transition::events)
+    }
+
     /// Returns a reference to the state transitions.
     #[inline]
     pub fn transitions(&self) -> &Vec<Transition<N>> {
         &self.transitions
-    }
-
-    /// Returns a reference to the events.
-    #[inline]
-    pub fn events(&self) -> &Vec<Event<N>> {
-        &self.events
     }
 
     /// Returns records from the transaction belonging to the given account view key.
@@ -343,16 +339,7 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let num_events: u16 = FromBytes::read_le(&mut reader)?;
-        let mut events = Vec::with_capacity(num_events as usize);
-        for _ in 0..num_events {
-            events.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        Ok(
-            Self::from(inner_circuit_id, ledger_root, transitions, events)
-                .expect("Failed to deserialize a transaction"),
-        )
+        Ok(Self::from(inner_circuit_id, ledger_root, transitions).expect("Failed to deserialize a transaction"))
     }
 }
 
@@ -362,9 +349,7 @@ impl<N: Network> ToBytes for Transaction<N> {
         self.inner_circuit_id.write_le(&mut writer)?;
         self.ledger_root.write_le(&mut writer)?;
         (self.transitions.len() as u16).write_le(&mut writer)?;
-        self.transitions.write_le(&mut writer)?;
-        (self.events.len() as u16).write_le(&mut writer)?;
-        self.events.write_le(&mut writer)
+        self.transitions.write_le(&mut writer)
     }
 }
 
@@ -395,7 +380,6 @@ impl<N: Network> Serialize for Transaction<N> {
                 transaction.serialize_field("inner_circuit_id", &self.inner_circuit_id)?;
                 transaction.serialize_field("ledger_root", &self.ledger_root)?;
                 transaction.serialize_field("transitions", &self.transitions)?;
-                transaction.serialize_field("events", &self.events)?;
                 transaction.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -416,7 +400,6 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                     serde_json::from_value(transaction["inner_circuit_id"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["ledger_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["transitions"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transaction["events"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 

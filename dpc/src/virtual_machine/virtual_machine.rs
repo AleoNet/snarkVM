@@ -30,8 +30,6 @@ pub struct VirtualMachine<N: Network> {
     local_transitions: Transitions<N>,
     /// The current list of transitions.
     transitions: Vec<Transition<N>>,
-    /// The current list of events.
-    events: Vec<Event<N>>,
 }
 
 impl<N: Network> VirtualMachine<N> {
@@ -41,31 +39,12 @@ impl<N: Network> VirtualMachine<N> {
             ledger_root,
             local_transitions: Transitions::new()?,
             transitions: Default::default(),
-            events: Default::default(),
         })
     }
 
     /// Returns the local proof for a given commitment.
     pub fn to_local_proof(&self, commitment: N::Commitment) -> Result<LocalProof<N>> {
         self.local_transitions.to_local_proof(commitment)
-    }
-
-    /// Adds the given event into the virtual machine.
-    pub fn add_event(mut self, event: Event<N>) -> Result<Self> {
-        match self.events.len() < N::NUM_EVENTS as usize {
-            true => self.events.push(event),
-            false => return Err(anyhow!("Virtual machine exceeded maximum number of events")),
-        };
-        Ok(self)
-    }
-
-    /// Adds the given events into the virtual machine.
-    pub fn add_events(mut self, events: &Vec<Event<N>>) -> Result<Self> {
-        match self.events.len() + events.len() < N::NUM_EVENTS as usize {
-            true => self.events.extend_from_slice(events),
-            false => return Err(anyhow!("Virtual machine exceeded maximum number of events")),
-        };
-        Ok(self)
     }
 
     /// Returns the number of transitions in the virtual machine.
@@ -93,6 +72,7 @@ impl<N: Network> VirtualMachine<N> {
                 &function_type,
                 &function_inputs,
                 false,
+                vec![], // custom_events
                 rng,
             )?,
         };
@@ -148,19 +128,13 @@ impl<N: Network> VirtualMachine<N> {
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;
         self.transitions.push(transition);
-        self = self.add_events(response.events())?;
 
         Ok(self)
     }
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(
-            *N::inner_circuit_id(),
-            self.ledger_root,
-            self.transitions.clone(),
-            self.events.clone(),
-        )
+        Transaction::from(*N::inner_circuit_id(), self.ledger_root, self.transitions.clone())
     }
 
     /// Performs a noop transition.
@@ -222,6 +196,7 @@ impl<N: Network> VirtualMachine<N> {
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
         public_output: bool,
+        custom_events: Vec<Vec<u8>>,
         rng: &mut R,
     ) -> Result<Response<N>> {
         // TODO (raychu86): Do function type checks.
@@ -271,6 +246,11 @@ impl<N: Network> VirtualMachine<N> {
             )?)
         }
 
+        // Add custom events to the response.
+        for event in custom_events {
+            response_builder = response_builder.add_event(Event::Custom(event));
+        }
+
         // Add the operation event to the response builder.
         if request.is_public() {
             response_builder = response_builder.add_event(Event::Operation(request.operation().clone()));
@@ -308,6 +288,7 @@ impl<N: Network> VirtualMachine<N> {
                 &function_type,
                 &function_inputs,
                 public_output,
+                custom_events,
                 rng,
             )?,
             _ => return Err(anyhow!("Invalid Operation")),
@@ -366,13 +347,6 @@ impl<N: Network> VirtualMachine<N> {
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;
         self.transitions.push(transition);
-
-        // Add events to the virtual machine.
-        self = self.add_events(response.events())?;
-        for event in custom_events {
-            let custom_event = Event::Custom(event);
-            self = self.add_event(custom_event)?;
-        }
 
         Ok((self, response))
     }
