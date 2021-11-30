@@ -27,6 +27,7 @@ use crate::{
     ToBytesGadget,
     ToConstraintFieldGadget,
     ToMinimalBitsGadget,
+    UInt8,
 };
 
 pub trait PrepareGadget<T, F: PrimeField> {
@@ -48,6 +49,11 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         + FromFieldElementsGadget<S::ScalarField, S::BaseField>
         + MergeGadget<S::BaseField>
         + ?Sized;
+
+    fn input_gadget_from_bytes<CS: ConstraintSystem<S::BaseField>>(
+        cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError>;
 
     fn check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
         mut cs: CS,
