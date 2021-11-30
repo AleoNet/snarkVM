@@ -30,7 +30,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
 
     c.bench_function("testnet1_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = Transaction::<Testnet1>::new_coinbase(address, amount, rng).unwrap();
+            let _transaction = Transaction::<Testnet1>::new_coinbase(address, amount, true, rng).unwrap();
         })
     });
 }
@@ -43,7 +43,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
 
     c.bench_function("testnet2_coinbase_transaction", move |b| {
         b.iter(|| {
-            let _transaction = Transaction::<Testnet2>::new_coinbase(address, amount, rng).unwrap();
+            let _transaction = Transaction::<Testnet2>::new_coinbase(address, amount, true, rng).unwrap();
         })
     });
 }

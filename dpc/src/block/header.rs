@@ -63,8 +63,8 @@ pub struct BlockHeaderMetadata {
     timestamp: i64,
     /// The difficulty target for this block - 8 bytes
     difficulty_target: u64,
-    /// The cumulative weight up to this block (inclusive) - 8 bytes
-    cumulative_weight: u64,
+    /// The cumulative weight up to this block (inclusive) - 16 bytes
+    cumulative_weight: u128,
 }
 
 impl BlockHeaderMetadata {
@@ -74,13 +74,13 @@ impl BlockHeaderMetadata {
             height: 0u32,
             timestamp: 0i64,
             difficulty_target: u64::MAX,
-            cumulative_weight: 0u64,
+            cumulative_weight: 0u128,
         }
     }
 
     /// Returns the size (in bytes) of a block header's metadata.
     pub fn size() -> usize {
-        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u64>()
+        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u128>()
     }
 }
 
@@ -100,7 +100,7 @@ pub struct BlockHeader<N: Network> {
     previous_ledger_root: N::LedgerRoot,
     /// The Merkle root representing the transactions in the block - 32 bytes
     transactions_root: N::TransactionsRoot,
-    /// The block header metadata - 28 bytes
+    /// The block header metadata - 36 bytes
     metadata: BlockHeaderMetadata,
     /// Nonce for Proof of Succinct Work - 32 bytes
     nonce: N::PoSWNonce,
@@ -138,7 +138,7 @@ impl<N: Network> BlockHeader<N> {
         block_height: u32,
         block_timestamp: i64,
         difficulty_target: u64,
-        cumulative_weight: u64,
+        cumulative_weight: u128,
         previous_ledger_root: N::LedgerRoot,
         transactions_root: N::TransactionsRoot,
         terminator: &AtomicBool,
@@ -218,8 +218,8 @@ impl<N: Network> BlockHeader<N> {
             && self.metadata.timestamp == 0i64
             // Ensure the difficulty target in the genesis block is u64::MAX.
             && self.metadata.difficulty_target == u64::MAX
-            // Ensure the cumulative weight in the genesis block is 0.
-            && self.metadata.cumulative_weight == 0
+            // Ensure the cumulative weight in the genesis block is 0u128.
+            && self.metadata.cumulative_weight == 0u128
             // Ensure the PoSW proof is valid.
             && N::posw().verify(&self)
     }
@@ -250,7 +250,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns the cumulative weight up to this block (inclusive).
-    pub fn cumulative_weight(&self) -> u64 {
+    pub fn cumulative_weight(&self) -> u128 {
         self.metadata.cumulative_weight
     }
 
@@ -278,7 +278,7 @@ impl<N: Network> BlockHeader<N> {
         assert_eq!(transactions_root.len(), 32);
 
         let metadata = self.metadata.to_bytes_le()?;
-        assert_eq!(metadata.len(), 28);
+        assert_eq!(metadata.len(), 36);
 
         let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
         let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
@@ -336,12 +336,12 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
-        let cumulative_weight = <[u8; 8]>::read_le(&mut reader)?;
+        let cumulative_weight = <[u8; 16]>::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata {
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
-            cumulative_weight: u64::from_le_bytes(cumulative_weight),
+            cumulative_weight: u128::from_le_bytes(cumulative_weight),
         };
 
         // Read the header nonce.
