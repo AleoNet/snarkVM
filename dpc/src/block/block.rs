@@ -86,8 +86,8 @@ impl<N: Network> Block<N> {
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
-        let transactions =
-            Transactions::from(&[Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?])?;
+        let (transaction, _) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
+        let transactions = Transactions::from(&[transaction])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
         // Compute the transactions root from the transactions.

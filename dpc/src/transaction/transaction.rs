@@ -70,9 +70,8 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new transaction from a request.
     #[inline]
     pub fn new<R: Rng + CryptoRng>(ledger: LedgerTree<N>, request: &Request<N>, rng: &mut R) -> Result<Self> {
-        VirtualMachine::<N>::new(ledger.root())?
-            .execute(request, rng)?
-            .finalize()
+        let (vm, _) = VirtualMachine::<N>::new(ledger.root())?.execute(request, rng)?;
+        vm.finalize()
     }
 
     /// Initializes a new coinbase transaction.
@@ -82,11 +81,10 @@ impl<N: Network> Transaction<N> {
         amount: AleoAmount,
         is_public: bool,
         rng: &mut R,
-    ) -> Result<Self> {
+    ) -> Result<(Self, Record<N>)> {
         let request = Request::new_coinbase(recipient, amount, is_public, rng)?;
-        VirtualMachine::<N>::new(LedgerTree::<N>::new()?.root())?
-            .execute(&request, rng)?
-            .finalize()
+        let (vm, response) = VirtualMachine::<N>::new(LedgerTree::<N>::new()?.root())?.execute(&request, rng)?;
+        Ok((vm.finalize()?, response.records()[0].clone()))
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
@@ -460,11 +458,15 @@ mod tests {
         .unwrap();
 
         // Craft a transaction with 1 coinbase record.
-        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+        let (transaction, coinbase_record) =
+            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
         let decrypted_records = transaction.to_decrypted_records(&account.view_key());
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = decrypted_records.first().unwrap();
+        assert_eq!(expected_record, coinbase_record);
+        assert_eq!(&coinbase_record, candidate_record);
+
         assert_eq!(expected_record.owner(), candidate_record.owner());
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
@@ -487,12 +489,16 @@ mod tests {
         .unwrap();
 
         // Craft a transaction with 1 coinbase record.
-        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+        let (transaction, coinbase_record) =
+            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         let public_records = transaction.to_records().collect::<Vec<_>>();
         assert_eq!(public_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = public_records.first().unwrap();
+        assert_eq!(expected_record, coinbase_record);
+        assert_eq!(&coinbase_record, candidate_record);
+
         assert_eq!(expected_record.owner(), candidate_record.owner());
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
@@ -505,7 +511,7 @@ mod tests {
         let account = Account::<Testnet2>::new(rng);
 
         // Craft a transaction with 1 coinbase record.
-        let expected_transaction =
+        let (expected_transaction, _) =
             Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         // Serialize
@@ -525,7 +531,7 @@ mod tests {
         let account = Account::<Testnet2>::new(rng);
 
         // Craft a transaction with 1 coinbase record.
-        let expected_transaction =
+        let (expected_transaction, _) =
             Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         // Serialize

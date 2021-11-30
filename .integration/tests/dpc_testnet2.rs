@@ -54,7 +54,8 @@ fn dpc_testnet2_integration_test() {
     // Construct the new block transactions.
     let recipient = Account::new(rng);
     let amount = Block::<Testnet2>::block_reward(block_height);
-    let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, true, rng).unwrap();
+    let (coinbase_transaction, _) =
+        Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, true, rng).unwrap();
     {
         // Check that the coinbase transaction is serialized and deserialized correctly.
         let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();

@@ -53,7 +53,7 @@ impl<N: Network> VirtualMachine<N> {
     }
 
     /// Executes the request, returning a transaction.
-    pub fn execute<R: Rng + CryptoRng>(mut self, request: &Request<N>, rng: &mut R) -> Result<Self> {
+    pub fn execute<R: Rng + CryptoRng>(mut self, request: &Request<N>, rng: &mut R) -> Result<(Self, Response<N>)> {
         // Ensure the request is valid.
         if !request.is_valid() {
             return Err(anyhow!("Virtual machine received an invalid request"));
@@ -128,7 +128,7 @@ impl<N: Network> VirtualMachine<N> {
         self.local_transitions.add(&transition)?;
         self.transitions.push(transition);
 
-        Ok(self)
+        Ok((self, response))
     }
 
     /// Finalizes the virtual machine state and returns a transaction.
