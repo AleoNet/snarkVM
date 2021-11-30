@@ -185,7 +185,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(251484, 152379);
+        dpc_execute_circuits_test::<Testnet1>(253822, 152379);
     }
 }
 

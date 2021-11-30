@@ -16,12 +16,22 @@
 
 use crate::{InnerPrivateVariables, InnerPublicVariables, Network, Payload};
 use snarkvm_algorithms::traits::*;
-use snarkvm_gadgets::{ComparatorGadget, EvaluateLtGadget, ToBitsLEGadget, ToConstraintFieldGadget, algorithms::merkle_tree::merkle_path::MerklePathGadget, bits::{Boolean, ToBytesGadget}, integers::{int::Int64, uint::UInt8}, traits::{
+use snarkvm_gadgets::{
+    algorithms::merkle_tree::merkle_path::MerklePathGadget,
+    bits::{Boolean, ToBytesGadget},
+    integers::{int::Int64, uint::UInt8},
+    traits::{
         algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
-    }};
+    },
+    ComparatorGadget,
+    EvaluateLtGadget,
+    FieldGadget,
+    ToBitsLEGadget,
+    ToConstraintFieldGadget,
+};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
@@ -160,11 +170,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
         // Declare the transition signature .
         let signature = <N::AccountSignatureGadget as SignatureGadget<
-                N::AccountSignatureScheme,
-                N::InnerScalarField,
-            >>::SignatureGadget::alloc(
-                &mut cs.ns(|| "Declare the transition signature"), || Ok(&*private.signature)
-            )?;
+            N::AccountSignatureScheme,
+            N::InnerScalarField,
+        >>::SignatureGadget::alloc(&mut cs.ns(|| "Declare the transition signature"), || {
+            Ok(&*private.signature)
+        })?;
 
         /* //////////////////////////////////////////////////////////////////////////// */
         /* ///////////////////////////// INPUT RECORDS //////////////////////////////// */
@@ -348,7 +358,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             {
                 let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
-                let sk_prf_bits = { 
+                let sk_prf_bits = {
                     let compute_key = N::AccountSignatureGadget::compute_key(
                         &account_signature_parameters,
                         &mut sn_cs.ns(|| "Compute key"),
@@ -358,7 +368,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 };
 
                 let sk_prf = Boolean::le_bits_to_fp_var(&mut sn_cs.ns(|| "Bits to FpGadget"), &sk_prf_bits)?;
-                
+                dbg!(sk_prf.get_value());
+                dbg!({
+                    let compute_key = crate::ComputeKey::<N>::from_signature(&private.signature)
+                        .expect("Failed to derive the compute key from signature");
+                    let field: N::InnerScalarField =
+                        snarkvm_utilities::FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])
+                            .expect("Failed to convert compute key to bytes");
+                    field
+                });
+
                 let candidate_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
                     N::SerialNumberPRF,
                     N::InnerScalarField,
@@ -489,7 +508,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 current_owner = next_owner;
             }
 
-            
             let mut signature_message = Vec::new();
             signature_message.extend_from_slice(&input_commitments_bytes);
             // signature_message.extend_from_slice(&inputs_digest);

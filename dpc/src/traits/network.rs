@@ -26,7 +26,13 @@ use crate::{
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
-use snarkvm_gadgets::{FpGadget, GroupGadget, MaskedCRHGadget, SNARKVerifierGadget, traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget}};
+use snarkvm_gadgets::{
+    traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+    FpGadget,
+    GroupGadget,
+    MaskedCRHGadget,
+    SNARKVerifierGadget,
+};
 use snarkvm_utilities::{
     fmt::{Debug, Display},
     hash::Hash,
