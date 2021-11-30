@@ -18,7 +18,7 @@ use std::fmt;
 
 use crate::{ir, Field};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]

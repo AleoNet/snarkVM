@@ -20,7 +20,7 @@ use prost::Message;
 
 use crate::{ir, Function, Header, Instruction, MaskData, RepeatData};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

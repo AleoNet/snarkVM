@@ -47,7 +47,7 @@ use crate::{
     Integer,
 };
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 
 use super::EvaluatorState;
 

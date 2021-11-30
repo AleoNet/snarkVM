@@ -18,7 +18,7 @@ use std::{convert::TryFrom, fmt};
 
 use crate::{ir, Type};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use bech32::ToBase32;
 use serde::Serialize;
 
