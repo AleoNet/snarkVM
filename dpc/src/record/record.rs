@@ -211,8 +211,12 @@ impl<N: Network> Record<N> {
             return Err(RecordError::IncorrectComputeKey);
         }
 
-        // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
+        // First, convert the program scalar field element to bytes, 
+        // and interpret these bytes as a program base field element
+        // For our choice of scalar field and base field (i.e., on TE curves)
+        // scalar field is always smaller than base field, so the bytes always fit without
+        // wraparound.
         let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
         let input = self.commitment();
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();

@@ -26,12 +26,7 @@ use crate::{
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
-    GroupGadget,
-    MaskedCRHGadget,
-    SNARKVerifierGadget,
-};
+use snarkvm_gadgets::{FpGadget, GroupGadget, MaskedCRHGadget, SNARKVerifierGadget, traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget}};
 use snarkvm_utilities::{
     fmt::{Debug, Display},
     hash::Hash,
@@ -261,7 +256,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type SerialNumberPRF: PRF<Input = Vec<<Self::CommitmentScheme as CRH>::Output>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
-    type SerialNumberPRFGadget: PRFGadget<Self::SerialNumberPRF, Self::InnerScalarField, Input = Vec<<Self::CommitmentGadget as CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>>;
+    type SerialNumberPRFGadget: PRFGadget<
+        Self::SerialNumberPRF, 
+        Self::InnerScalarField, 
+        Seed = FpGadget<Self::InnerScalarField>,
+        Input = Vec<<Self::CommitmentGadget as CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>
+    >;
     type SerialNumber: Bech32Locator<<Self::SerialNumberPRF as PRF>::Output>;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.

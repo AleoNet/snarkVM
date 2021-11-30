@@ -14,22 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::crypto_hash::PoseidonCryptoHashGadget,
-    bits::{Boolean, ToBytesGadget},
-    integers::uint::UInt8,
-    traits::{
+use crate::{CompressedGroupGadget, CryptoHashGadget, FpGadget, ToBitsLEGadget, ToConstraintFieldGadget, algorithms::crypto_hash::PoseidonCryptoHashGadget, bits::{Boolean, ToBytesGadget}, integers::uint::UInt8, traits::{
         algorithms::SignatureGadget,
         alloc::AllocGadget,
         curves::GroupGadget,
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
-    },
-    CryptoHashGadget,
-    FpGadget,
-    ToBitsLEGadget,
-    ToConstraintFieldGadget,
-};
+    }};
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     signature::{AleoSignature, AleoSignatureScheme},
@@ -338,6 +329,23 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AleoComputeKeyGadget {
+    /// We only include `sk_prf`, and not `root_public_key` or `root_randomizer`,
+    /// as this is all we need in the circuit.
+    pub(crate) sk_prf_bits: Vec<Boolean>,
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for AleoComputeKeyGadget {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.sk_prf_bits.to_vec())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
+    }
+}
+
 pub struct AleoSignatureSchemeGadget<
     TE: TwistedEdwardsParameters<BaseField = F>,
     F: PrimeField + PoseidonDefaultParametersField,
@@ -385,8 +393,32 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
     SignatureGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
 {
+    type ComputeKeyGadget = AleoComputeKeyGadget;
     type PublicKeyGadget = AleoSignaturePublicKeyGadget<TE, F>;
     type SignatureGadget = AleoSignatureGadget<TE, F>;
+
+    fn compute_key<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        signature: &Self::SignatureGadget,
+    ) -> Result<Self::ComputeKeyGadget, SynthesisError> {
+        let output = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
+            &mut cs.ns(|| "Hash root_public_key and root_randomizer"), 
+            &[
+                signature.root_public_key.to_x_coordinate(), 
+                signature.root_randomizer.to_x_coordinate(),
+            ])?;
+
+        // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
+        let mut sk_prf_bits = output.to_bits_le_strict(&mut cs.ns(|| "Output hash to bytes"))?;
+        sk_prf_bits.resize(                
+            <TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize,
+            Boolean::Constant(false),
+        );
+        Ok(AleoComputeKeyGadget {
+            sk_prf_bits,
+        })
+    }
 
     fn verify<CS: ConstraintSystem<F>>(
         &self,

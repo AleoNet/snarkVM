@@ -18,16 +18,18 @@ use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use crate::{
-    bits::ToBytesGadget,
-    integers::uint::UInt8,
-    traits::{alloc::AllocGadget, eq::EqGadget},
-    Boolean,
-};
+use crate::{Boolean, ToBitsLEGadget, bits::ToBytesGadget, integers::uint::UInt8, traits::{alloc::AllocGadget, eq::EqGadget}};
 
 pub trait SignatureGadget<S: SignatureScheme, F: Field>: AllocGadget<S, F> {
+    type ComputeKeyGadget: ToBitsLEGadget<F> + Clone;
     type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
     type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
+
+    fn compute_key<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        signature: &Self::SignatureGadget,
+    ) -> Result<Self::ComputeKeyGadget, SynthesisError>;
 
     fn verify<CS: ConstraintSystem<F>>(
         &self,
