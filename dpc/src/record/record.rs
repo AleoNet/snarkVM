@@ -16,7 +16,8 @@
 
 use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
-use snarkvm_utilities::{to_bytes_le, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
 
 use anyhow::anyhow;
 use rand::{CryptoRng, Rng};
@@ -211,9 +212,13 @@ impl<N: Network> Record<N> {
             return Err(RecordError::IncorrectComputeKey);
         }
 
-        // TODO (howardwu): CRITICAL - Review the translation from scalar to base field of `sk_prf`.
         // Compute the serial number.
-        let seed = FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])?;
+        // First, convert the program scalar field element to bytes,
+        // and interpret these bytes as a program base field element
+        // For our choice of scalar field and base field (i.e., on TE curves)
+        // scalar field is always smaller than base field, so the bytes always fit without
+        // wraparound.
+        let seed = N::InnerScalarField::from_repr(FromBits::from_bits_le(&compute_key.sk_prf().to_bits_le())).unwrap();
         let input = self.commitment();
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
 

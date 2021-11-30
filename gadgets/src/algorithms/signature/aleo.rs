@@ -25,6 +25,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
     },
+    CompressedGroupGadget,
     CryptoHashGadget,
     FpGadget,
     ToBitsLEGadget,
@@ -338,6 +339,23 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AleoComputeKeyGadget {
+    /// We only include `sk_prf`, and not `root_public_key` or `root_randomizer`,
+    /// as this is all we need in the circuit.
+    pub(crate) sk_prf_bits: Vec<Boolean>,
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for AleoComputeKeyGadget {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.sk_prf_bits.to_vec())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
+    }
+}
+
 pub struct AleoSignatureSchemeGadget<
     TE: TwistedEdwardsParameters<BaseField = F>,
     F: PrimeField + PoseidonDefaultParametersField,
@@ -385,8 +403,31 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
     SignatureGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
 {
+    type ComputeKeyGadget = AleoComputeKeyGadget;
     type PublicKeyGadget = AleoSignaturePublicKeyGadget<TE, F>;
     type SignatureGadget = AleoSignatureGadget<TE, F>;
+
+    fn compute_key<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        signature: &Self::SignatureGadget,
+    ) -> Result<Self::ComputeKeyGadget, SynthesisError> {
+        let output = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
+            &mut cs.ns(|| "Hash root_public_key and root_randomizer"),
+            &[
+                signature.root_public_key.to_x_coordinate(),
+                signature.root_randomizer.to_x_coordinate(),
+            ],
+        )?;
+
+        // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
+        let mut sk_prf_bits = output.to_bits_le_strict(&mut cs.ns(|| "Output hash to bytes"))?;
+        sk_prf_bits.resize(
+            <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
+            Boolean::Constant(false),
+        );
+        Ok(AleoComputeKeyGadget { sk_prf_bits })
+    }
 
     fn verify<CS: ConstraintSystem<F>>(
         &self,
