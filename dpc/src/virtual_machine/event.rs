@@ -17,7 +17,7 @@
 use crate::{Network, Operation};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -90,60 +90,44 @@ impl<N: Network> FromStr for Event<N> {
     type Err = anyhow::Error;
 
     fn from_str(event: &str) -> Result<Self, Self::Err> {
-        let event = serde_json::Value::from_str(event)?;
-        let event_id: u8 = serde_json::from_value(event["id"].clone())?;
-
-        match event_id {
-            0 => {
-                let bytes: String = serde_json::from_value(event["bytes"].clone())?;
-                Ok(Self::Custom(hex::decode(bytes)?))
-            }
-            1 => {
-                let index = serde_json::from_value(event["index"].clone())?;
-                let record_view_key: String = serde_json::from_value(event["record_view_key"].clone())?;
-                Ok(Self::RecordViewKey(index, serde_json::from_str(&record_view_key)?))
-            }
-            2 => {
-                let operation = serde_json::from_value(event["operation"].clone())?;
-                Ok(Self::Operation(operation))
-            }
-            _ => unreachable!(format!("Invalid event id {}", event_id)),
-        }
+        Ok(serde_json::from_str(&event)?)
     }
 }
 
 impl<N: Network> fmt::Display for Event<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let event = match self {
-            Self::Custom(bytes) => {
-                serde_json::json!({
-                    "id": self.id(),
-                    "bytes": hex::encode(bytes), // TODO (raychu86): Have serializer for bytes
-                })
-            }
-            Self::RecordViewKey(index, record_view_key) => {
-                serde_json::json!({
-                    "id": self.id(),
-                    "index": index,
-                    "record_view_key": record_view_key.to_string(), // TODO (raychu86): Have serializer for record_view_key
-                })
-            }
-            Self::Operation(operation) => {
-                serde_json::json!({
-                    "id": self.id(),
-                    "operation": operation
-                })
-            }
-        };
-
-        write!(f, "{}", event)
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
+        )
     }
 }
 
 impl<N: Network> Serialize for Event<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
+            true => match *self {
+                Self::Custom(ref bytes) => {
+                    let mut event = serializer.serialize_struct("Event", 2)?;
+                    event.serialize_field("id", &self.id())?;
+                    event.serialize_field("bytes", &hex::encode(bytes))?;
+                    event.end()
+                }
+                Self::RecordViewKey(ref index, ref record_view_key) => {
+                    let mut event = serializer.serialize_struct("Event", 3)?;
+                    event.serialize_field("id", &self.id())?;
+                    event.serialize_field("index", &index)?;
+                    event.serialize_field("record_view_key", &record_view_key)?;
+                    event.end()
+                }
+                Self::Operation(ref operation) => {
+                    let mut event = serializer.serialize_struct("Event", 2)?;
+                    event.serialize_field("id", &self.id())?;
+                    event.serialize_field("operation", &operation)?;
+                    event.end()
+                }
+            },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
@@ -152,7 +136,26 @@ impl<N: Network> Serialize for Event<N> {
 impl<'de, N: Network> Deserialize<'de> for Event<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            true => {
+                let event = serde_json::Value::deserialize(deserializer).map_err(de::Error::custom)?;
+                let event_id: u8 = serde_json::from_value(event["id"].clone()).map_err(de::Error::custom)?;
+                // Recover the event.
+                match event_id {
+                    0 => {
+                        let bytes: String =
+                            serde_json::from_value(event["bytes"].clone()).map_err(de::Error::custom)?;
+                        Ok(Self::Custom(hex::decode(bytes).map_err(de::Error::custom)?))
+                    }
+                    1 => Ok(Self::RecordViewKey(
+                        serde_json::from_value(event["index"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(event["record_view_key"].clone()).map_err(de::Error::custom)?,
+                    )),
+                    2 => Ok(Self::Operation(
+                        serde_json::from_value(event["operation"].clone()).map_err(de::Error::custom)?,
+                    )),
+                    _ => unreachable!(format!("Invalid event id {}", event_id)),
+                }
+            }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "event"),
         }
     }
@@ -164,28 +167,22 @@ mod tests {
     use crate::testnet2::Testnet2;
 
     #[test]
-    fn test_serde_json() {
+    fn test_event_serde_json() {
         let expected_event = Event::<Testnet2>::Operation(Operation::Noop);
 
         // Serialize
-        let expected_string = &expected_event.to_string();
+        let expected_string = expected_event.to_string();
         let candidate_string = serde_json::to_string(&expected_event).unwrap();
-        assert_eq!(45, candidate_string.len(), "Update me if serialization has changed");
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(33, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(expected_event, Event::from_str(&expected_string).unwrap());
+        assert_eq!(expected_event, Event::from_str(&candidate_string).unwrap());
         assert_eq!(expected_event, serde_json::from_str(&candidate_string).unwrap());
     }
 
     #[test]
-    fn test_bincode() {
+    fn test_event_bincode() {
         let expected_event = Event::<Testnet2>::Operation(Operation::Noop);
 
         // Serialize

@@ -206,7 +206,6 @@ where
     }
 
     #[inline]
-    #[inline]
     fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,

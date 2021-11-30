@@ -26,7 +26,7 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic1ustf9033ta3yx788ddf6czm9lgansfz5je6au5jn38mw33fw3hw7uvjx58rd0ylshmsjaw2mayesq3h0rag".to_string();
+        "ic1cqh7kpq53lfqpwrapjfns4f0t03kutvl7a3y0j4fgr3cnvryxqxf955hzzwum93dhp30nvynkxxqq9vsdfj".to_string();
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
@@ -54,7 +54,7 @@ fn dpc_testnet2_integration_test() {
     // Construct the new block transactions.
     let recipient = Account::new(rng);
     let amount = Block::<Testnet2>::block_reward(block_height);
-    let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, rng).unwrap();
+    let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, true, rng).unwrap();
     {
         // Check that the coinbase transaction is serialized and deserialized correctly.
         let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
@@ -80,7 +80,7 @@ fn dpc_testnet2_integration_test() {
     );
     let cumulative_weight = previous_block
         .cumulative_weight()
-        .saturating_add(u64::MAX - difficulty_target);
+        .saturating_add((u64::MAX / difficulty_target) as u128);
 
     // Construct the new block header.
     let header = BlockHeader::mine(

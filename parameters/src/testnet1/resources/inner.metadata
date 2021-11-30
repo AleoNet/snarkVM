@@ -1,7 +1,7 @@
 {
-  "circuit_id": "8d811095f1303bd9865b80623161fdd381efef02e1e5e8f12bce416cb2c1d2e4edee8bf2b76e7b68fe13a8830a02c600",
-  "proving_checksum": "95a65c945d7c63d72331d217df2c2580e0d081bbd050a69b6155006c92f630eb",
-  "proving_size": 153684893,
-  "verifying_checksum": "df0e6ad5f16355f4035da88f4bb71209c0abe5642525cdaca4d9385fc00bd7ce",
+  "circuit_id": "1ce6175266dbf960736458b266f0401c73e64ca03d108a68a5c478e7d44c3cc2a2ba512877067982bce3ad5980311b01",
+  "proving_checksum": "f936eca139a6d2e1084d1228c1a08a27062657fe6b1f4365aca418876b6c1190",
+  "proving_size": 154895861,
+  "verifying_checksum": "27211bd87fcbb0bc252f0e23c6df21d4538ccdd39534b57d65b2e602e0f58eba",
   "verifying_size": 1359
 }
