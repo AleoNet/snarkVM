@@ -16,7 +16,7 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{Boolean, CondSelectGadget};

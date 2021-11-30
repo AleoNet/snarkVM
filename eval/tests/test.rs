@@ -16,7 +16,7 @@
 
 use std::{collections::BTreeMap, fs, path::Path};
 
-use anyhow::*;
+use anyhow::Result;
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_eval::{edwards_bls12::EdwardsGroupType, ConstrainedValue, Evaluator, SetupEvaluator};
 use snarkvm_ir::{InputData, Program, SnarkVMVersion};

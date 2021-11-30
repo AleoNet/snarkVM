@@ -16,7 +16,7 @@
 
 use std::fmt;
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 use crate::{ir, Value};

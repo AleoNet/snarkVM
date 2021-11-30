@@ -18,7 +18,7 @@ use std::fmt;
 
 use crate::{ir, Value};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 use super::{decode_control_string, decode_control_u32};

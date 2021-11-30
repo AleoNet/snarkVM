@@ -16,7 +16,7 @@
 
 use crate::{ir, Type, Value};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use prost::Message;
 use serde::Serialize;

@@ -32,7 +32,7 @@ use op::InstructionOp;
 
 mod code;
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use num_enum::TryFromPrimitive;
 use serde::Serialize;
 

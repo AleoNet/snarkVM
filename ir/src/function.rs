@@ -16,7 +16,7 @@
 
 use crate::{ir, Instruction};
 
-use anyhow::*;
+use anyhow::Result;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

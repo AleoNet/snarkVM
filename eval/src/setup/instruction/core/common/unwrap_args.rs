@@ -19,7 +19,7 @@ use crate::{ConstrainedValue, GroupType, Integer};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{bits::Boolean, integers::uint::UInt8};
 
-use anyhow::*;
+use anyhow::{anyhow, Result};
 
 macro_rules! unwrap_constrained_array {
     ($function_name:ident, $return_type:ty, $call:expr) => {
