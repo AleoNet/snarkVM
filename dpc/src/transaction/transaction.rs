@@ -313,6 +313,24 @@ impl<N: Network> Transaction<N> {
             .collect()
     }
 
+    /// Returns records from the transaction that have a public record view key event.
+    #[inline]
+    pub fn to_public_records(&self) -> Vec<Record<N>> {
+        let transaction_ciphertexts: Vec<&N::RecordCiphertext> = self.ciphertexts().collect();
+
+        self.events
+            .iter()
+            .filter_map(|event| match event {
+                Event::RecordViewKey(i, record_view_key) => match transaction_ciphertexts.get(*i as usize) {
+                    Some(ciphertext) => Record::from_record_view_key(record_view_key.clone(), *ciphertext).ok(),
+                    None => None,
+                },
+                _ => None,
+            })
+            .filter(|record| !record.is_dummy())
+            .collect()
+    }
+
     /// Returns the local proof for a given commitment.
     #[inline]
     pub fn to_local_proof(&self, record_commitment: N::Commitment) -> Result<LocalProof<N>> {
@@ -476,6 +494,34 @@ mod tests {
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = decrypted_records.first().unwrap();
+        assert_eq!(expected_record.owner(), candidate_record.owner());
+        assert_eq!(expected_record.value(), candidate_record.value());
+        assert_eq!(expected_record.payload(), candidate_record.payload());
+        assert_eq!(expected_record.program_id(), candidate_record.program_id());
+    }
+
+    #[test]
+    fn test_public_coinbase_record() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft the expected coinbase record.
+        let expected_record = Record::new(
+            account.address(),
+            AleoAmount::from_i64(1234),
+            Default::default(),
+            *Testnet2::noop_program_id(),
+            rng,
+        )
+        .unwrap();
+
+        // Craft a transaction with 1 coinbase record.
+        let transaction = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+
+        let public_records = transaction.to_public_records();
+        assert_eq!(public_records.len(), 1); // Excludes dummy records upon decryption.
+
+        let candidate_record = public_records.first().unwrap();
         assert_eq!(expected_record.owner(), candidate_record.owner());
         assert_eq!(expected_record.value(), candidate_record.value());
         assert_eq!(expected_record.payload(), candidate_record.payload());
