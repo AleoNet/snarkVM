@@ -17,7 +17,7 @@
 use crate::{Network, Operation};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
-use serde::{de, ser::SerializeTupleVariant, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -109,19 +109,22 @@ impl<N: Network> Serialize for Event<N> {
         match serializer.is_human_readable() {
             true => match *self {
                 Self::Custom(ref bytes) => {
-                    let mut event = serializer.serialize_tuple_variant("Event", 0, "Custom", 1)?;
-                    event.serialize_field(&hex::encode(bytes))?;
+                    let mut event = serializer.serialize_struct("Event", 2)?;
+                    event.serialize_field("id", &self.id())?;
+                    event.serialize_field("bytes", &hex::encode(bytes))?;
                     event.end()
                 }
                 Self::RecordViewKey(ref index, ref record_view_key) => {
-                    let mut event = serializer.serialize_tuple_variant("Event", 1, "RecordViewKey", 2)?;
-                    event.serialize_field(index)?;
-                    event.serialize_field(record_view_key)?;
+                    let mut event = serializer.serialize_struct("Event", 3)?;
+                    event.serialize_field("id", &self.id())?;
+                    event.serialize_field("index", &index)?;
+                    event.serialize_field("record_view_key", &record_view_key)?;
                     event.end()
                 }
                 Self::Operation(ref operation) => {
-                    let mut event = serializer.serialize_tuple_variant("Event", 2, "Operation", 1)?;
-                    event.serialize_field(operation)?;
+                    let mut event = serializer.serialize_struct("Event", 2)?;
+                    event.serialize_field("id", &self.id())?;
+                    event.serialize_field("operation", &operation)?;
                     event.end()
                 }
             },
@@ -143,13 +146,10 @@ impl<'de, N: Network> Deserialize<'de> for Event<N> {
                             serde_json::from_value(event["bytes"].clone()).map_err(de::Error::custom)?;
                         Ok(Self::Custom(hex::decode(bytes).map_err(de::Error::custom)?))
                     }
-                    1 => {
-                        let index = serde_json::from_value(event["index"].clone()).map_err(de::Error::custom)?;
-                        Ok(Self::RecordViewKey(
-                            index,
-                            serde_json::from_value(event["record_view_key"].clone()).map_err(de::Error::custom)?,
-                        ))
-                    }
+                    1 => Ok(Self::RecordViewKey(
+                        serde_json::from_value(event["index"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(event["record_view_key"].clone()).map_err(de::Error::custom)?,
+                    )),
                     2 => Ok(Self::Operation(
                         serde_json::from_value(event["operation"].clone()).map_err(de::Error::custom)?,
                     )),
@@ -173,7 +173,7 @@ mod tests {
         // Serialize
         let expected_string = expected_event.to_string();
         let candidate_string = serde_json::to_string(&expected_event).unwrap();
-        assert_eq!(28, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(33, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
