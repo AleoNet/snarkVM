@@ -71,7 +71,6 @@ impl<N: Network> VirtualMachine<N> {
                 &function_id,
                 &function_type,
                 &function_inputs,
-                false,
                 vec![], // custom_events
                 rng,
             )?,
@@ -151,7 +150,7 @@ impl<N: Network> VirtualMachine<N> {
     ) -> Result<Response<N>> {
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(recipient, amount, Default::default(), None, false)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None)?)
             .build(rng)
     }
 
@@ -182,8 +181,8 @@ impl<N: Network> VirtualMachine<N> {
 
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(caller, caller_balance, Default::default(), None, false)?)
-            .add_output(Output::new(recipient, amount, Default::default(), None, false)?)
+            .add_output(Output::new(caller, caller_balance, Default::default(), None)?)
+            .add_output(Output::new(recipient, amount, Default::default(), None)?)
             .build(rng)
     }
 
@@ -195,7 +194,6 @@ impl<N: Network> VirtualMachine<N> {
         function_id: &N::FunctionID,
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
-        public_output: bool,
         custom_events: Vec<Vec<u8>>,
         rng: &mut R,
     ) -> Result<Response<N>> {
@@ -232,7 +230,6 @@ impl<N: Network> VirtualMachine<N> {
                 function_inputs.amount,
                 function_inputs.record_payload.clone(),
                 Some(program_id),
-                public_output,
             )?);
 
         // Add the change address if the balance is not zero.
@@ -242,7 +239,6 @@ impl<N: Network> VirtualMachine<N> {
                 caller_balance,
                 Default::default(),
                 None,
-                false,
             )?)
         }
 
@@ -269,7 +265,6 @@ impl<N: Network> VirtualMachine<N> {
         function_path: &MerklePath<<N as Network>::ProgramIDParameters>,
         function_verifying_key: <<N as Network>::ProgramSNARK as SNARK>::VerifyingKey,
         private_variables: &dyn ProgramPrivateVariables<N>,
-        public_output: bool,
         custom_events: Vec<Vec<u8>>,
         rng: &mut R,
     ) -> Result<(Self, Response<N>)> {
@@ -287,7 +282,6 @@ impl<N: Network> VirtualMachine<N> {
                 &function_id,
                 &function_type,
                 &function_inputs,
-                public_output,
                 custom_events,
                 rng,
             )?,

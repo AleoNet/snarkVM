@@ -32,8 +32,6 @@ pub struct Output<N: Network> {
     payload: Payload<N>,
     /// The program that was run.
     program_id: N::ProgramID,
-    /// The visibility of the output record.
-    is_public: bool,
 }
 
 impl<N: Network> Output<N> {
@@ -42,7 +40,7 @@ impl<N: Network> Output<N> {
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
-        Self::new(noop_address, AleoAmount::from_i64(0), Payload::default(), None, false)
+        Self::new(noop_address, AleoAmount::from_i64(0), Payload::default(), None)
     }
 
     /// Initializes a new instance of `Output`.
@@ -51,7 +49,6 @@ impl<N: Network> Output<N> {
         value: AleoAmount,
         payload: Payload<N>,
         program_id: Option<N::ProgramID>,
-        is_public: bool,
     ) -> Result<Self> {
         // Retrieve the program ID. If `None` is provided, construct the noop program ID.
         let program_id = match program_id {
@@ -64,7 +61,6 @@ impl<N: Network> Output<N> {
             value,
             payload,
             program_id,
-            is_public,
         })
     }
 
@@ -107,11 +103,6 @@ impl<N: Network> Output<N> {
     /// Returns a reference to the program ID.
     pub fn program_id(&self) -> N::ProgramID {
         self.program_id
-    }
-
-    /// Returns the visibility of the output record.
-    pub fn is_public(&self) -> bool {
-        self.is_public
     }
 }
 

@@ -24,9 +24,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36881e97e954a112082ee4557998ede9a0ba0da10501e2b04e865e8f4ddd2da6"
+checksum = "09209c7e5c7c91e93e1676481d3c14cd3c89ba0073ae0e20ff447cae3dae3829"
 dependencies = [
  "aleo-std-storage",
  "aleo-std-time",
@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std-storage"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2b0e216e47e31901ba23b7c1efe1909ab3d819cf29e168c1cfdde7219c746ef"
+checksum = "f9d57acc81ab9c7f9adba6416b80fe1b45596027a3b2a78ebd850793bbe95ca2"
 dependencies = [
  "dirs",
 ]
@@ -85,9 +85,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.49"
+version = "1.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a03e93e97a28fbc9f42fbc5ba0886a3c67eb637b476dbee711f80a6ffe8223d"
+checksum = "ecc78c299ae753905840c5d3ba036c51f61ce5a98a83f98d9c9d29dffd427f71"
 
 [[package]]
 name = "arrayref"

@@ -140,7 +140,7 @@ impl<N: Network> ResponseBuilder<N> {
                 let (record, encryption_randomness) = output.to_record(rng)?;
 
                 // Add the record view key event if the output record is public.
-                if output.is_public() && events.len() < N::NUM_EVENTS as usize {
+                if request.is_public() && events.len() < N::NUM_EVENTS as usize {
                     events.push(Event::RecordViewKey(i as u8, record.record_view_key().clone()))
                 }
 

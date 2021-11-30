@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg_attr(nightly, doc(include = "../../documentation/the_aleo_curves/04_bw6-761.md"))]
+#![cfg_attr(nightly, doc = include_str!("../../documentation/the_aleo_curves/04_bw6-761.md"))]
 
 pub mod fr;
 #[doc(inline)]

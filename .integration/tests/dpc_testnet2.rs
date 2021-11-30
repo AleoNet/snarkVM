@@ -54,7 +54,7 @@ fn dpc_testnet2_integration_test() {
     // Construct the new block transactions.
     let recipient = Account::new(rng);
     let amount = Block::<Testnet2>::block_reward(block_height);
-    let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, rng).unwrap();
+    let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, true, rng).unwrap();
     {
         // Check that the coinbase transaction is serialized and deserialized correctly.
         let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
@@ -80,7 +80,7 @@ fn dpc_testnet2_integration_test() {
     );
     let cumulative_weight = previous_block
         .cumulative_weight()
-        .saturating_add(u64::MAX - difficulty_target);
+        .saturating_add((u64::MAX / difficulty_target) as u128);
 
     // Construct the new block header.
     let header = BlockHeader::mine(
