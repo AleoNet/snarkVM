@@ -423,7 +423,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
         let mut sk_prf_bits = output.to_bits_le_strict(&mut cs.ns(|| "Output hash to bytes"))?;
         sk_prf_bits.resize(
-            <TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize,
+            <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
             Boolean::Constant(false),
         );
         Ok(AleoComputeKeyGadget { sk_prf_bits })

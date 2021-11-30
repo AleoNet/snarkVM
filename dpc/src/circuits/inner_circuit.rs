@@ -28,7 +28,6 @@ use snarkvm_gadgets::{
     },
     ComparatorGadget,
     EvaluateLtGadget,
-    FieldGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
@@ -368,15 +367,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 };
 
                 let sk_prf = Boolean::le_bits_to_fp_var(&mut sn_cs.ns(|| "Bits to FpGadget"), &sk_prf_bits)?;
-                dbg!(sk_prf.get_value());
-                dbg!({
-                    let compute_key = crate::ComputeKey::<N>::from_signature(&private.signature)
-                        .expect("Failed to derive the compute key from signature");
-                    let field: N::InnerScalarField =
-                        snarkvm_utilities::FromBytes::read_le(&compute_key.sk_prf().to_bytes_le()?[..])
-                            .expect("Failed to convert compute key to bytes");
-                    field
-                });
 
                 let candidate_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
                     N::SerialNumberPRF,
