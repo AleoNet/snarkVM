@@ -49,6 +49,8 @@ pub struct Transition<N: Network> {
     ciphertexts: Vec<N::RecordCiphertext>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
+    /// The events emitted from this transition.
+    events: Vec<Event<N>>,
     /// The zero-knowledge proof attesting to the validity of this transition.
     proof: N::OuterProof,
 }
@@ -64,9 +66,10 @@ impl<N: Network> Transition<N> {
         let transition_id = response.transition_id();
         let ciphertexts = response.ciphertexts();
         let value_balance = response.value_balance();
+        let events = response.events().clone();
 
         // Construct the transition.
-        Self::from(transition_id, serial_numbers, ciphertexts, value_balance, proof)
+        Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, proof)
     }
 
     /// Constructs an instance of a transition from the given inputs.
@@ -75,6 +78,7 @@ impl<N: Network> Transition<N> {
         serial_numbers: Vec<N::SerialNumber>,
         ciphertexts: Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
+        events: Vec<Event<N>>,
         proof: N::OuterProof,
     ) -> Result<Self> {
         // Compute the commitments.
@@ -86,6 +90,7 @@ impl<N: Network> Transition<N> {
             commitments,
             ciphertexts,
             value_balance,
+            events,
             proof,
         };
         // Ensure the transition ID matches.
@@ -107,6 +112,12 @@ impl<N: Network> Transition<N> {
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
     ) -> bool {
+        // Ensure the number of events is less than `N::NUM_EVENTS`.
+        if self.events.len() > N::NUM_EVENTS as usize {
+            eprintln!("Transition contains an invalid number of events");
+            return false;
+        }
+
         // Returns `false` if the transition proof is invalid.
         match N::OuterSNARK::verify(
             N::outer_verifying_key(),
@@ -176,10 +187,32 @@ impl<N: Network> Transition<N> {
         &self.value_balance
     }
 
+    /// Returns a reference to the events.
+    #[inline]
+    pub fn events(&self) -> impl Iterator<Item = &Event<N>> + fmt::Debug + '_ {
+        self.events.iter()
+    }
+
     /// Returns a reference to the transition proof.
     #[inline]
     pub fn proof(&self) -> &N::OuterProof {
         &self.proof
+    }
+
+    /// Returns the decrypted records using record view key events, if they exist.
+    #[inline]
+    pub fn to_records(&self) -> impl Iterator<Item = Record<N>> + fmt::Debug + '_ {
+        let ciphertexts: Vec<&N::RecordCiphertext> = self.ciphertexts().collect();
+        self.events
+            .iter()
+            .filter_map(move |event| match event {
+                Event::RecordViewKey(i, record_view_key) => match ciphertexts.get(*i as usize) {
+                    Some(ciphertext) => Record::from_record_view_key(record_view_key.clone(), *ciphertext).ok(),
+                    None => None,
+                },
+                _ => None,
+            })
+            .filter(|record| !record.is_dummy())
     }
 
     /// Returns an inclusion proof for the transition tree.
@@ -269,10 +302,17 @@ impl<N: Network> FromBytes for Transition<N> {
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+
+        let num_events: u16 = FromBytes::read_le(&mut reader)?;
+        let mut events = Vec::with_capacity(num_events as usize);
+        for _ in 0..num_events {
+            events.push(FromBytes::read_le(&mut reader)?);
+        }
+
         let proof: N::OuterProof = FromBytes::read_le(&mut reader)?;
 
         Ok(
-            Self::from(transition_id, serial_numbers, ciphertexts, value_balance, proof)
+            Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, proof)
                 .expect("Failed to deserialize a transition from bytes"),
         )
     }
@@ -285,6 +325,8 @@ impl<N: Network> ToBytes for Transition<N> {
         self.serial_numbers.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
+        (self.events.len() as u16).write_le(&mut writer)?;
+        self.events.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
     }
 }
@@ -317,10 +359,11 @@ impl<N: Network> Serialize for Transition<N> {
                 transition.serialize_field("commitments", &self.commitments)?;
                 transition.serialize_field("ciphertexts", &self.ciphertexts)?;
                 transition.serialize_field("value_balance", &self.value_balance)?;
+                transition.serialize_field("events", &self.events)?;
                 transition.serialize_field("proof", &self.proof)?;
                 transition.end()
             }
-            false => ToBytesSerializer::serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
@@ -336,13 +379,12 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     serde_json::from_value(transition["serial_numbers"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["ciphertexts"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["value_balance"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transition["events"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["proof"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)
             }
-            false => {
-                FromBytesDeserializer::<Self>::deserialize(deserializer, "transition", N::TRANSITION_SIZE_IN_BYTES)
-            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition"),
         }
     }
 }
@@ -366,13 +408,13 @@ mod tests {
             let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(Testnet1::TRANSITION_SIZE_IN_BYTES, transition_bytes.len(),);
+            assert_eq!(1039, transition_bytes.len(),);
         }
         {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(Testnet2::TRANSITION_SIZE_IN_BYTES, transition_bytes.len(),);
+            assert_eq!(1039, transition_bytes.len(),);
         }
     }
 
@@ -384,7 +426,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(1857, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2074, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -400,10 +442,12 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(&expected_bytes[..], &candidate_bytes[..]);
+        assert_eq!(1039, expected_bytes.len(), "Update me if serialization has changed");
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
-        assert_eq!(expected_transition, Transition::read_le(&candidate_bytes[..]).unwrap());
+        assert_eq!(expected_transition, Transition::read_le(&expected_bytes[..]).unwrap());
         assert_eq!(expected_transition, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }

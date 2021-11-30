@@ -152,7 +152,7 @@ impl<N: Network> Ledger<N> {
         is_public: bool,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<()> {
+    ) -> Result<Record<N>> {
         // Prepare the new block.
         let previous_block_hash = self.latest_block_hash();
         let block_height = self.latest_block_height() + 1;
@@ -168,7 +168,8 @@ impl<N: Network> Ledger<N> {
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
-        let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, is_public, rng)?;
+        let (coinbase_transaction, coinbase_record) =
+            Transaction::<N>::new_coinbase(recipient, amount, is_public, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
         // Retrieve the current ledger root.
@@ -193,7 +194,7 @@ impl<N: Network> Ledger<N> {
         // On success, clear the memory pool of its transactions.
         self.memory_pool.clear_all_transactions();
 
-        Ok(())
+        Ok(coinbase_record)
     }
 
     /// Returns the ledger tree.
