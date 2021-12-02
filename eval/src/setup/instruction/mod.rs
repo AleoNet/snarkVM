@@ -22,8 +22,8 @@ use snarkvm_gadgets::{
     Boolean, CondSelectGadget, EqGadget, EvaluateEqGadget, Integer as IntegerTrait, ToBitsLEGadget,
 };
 use snarkvm_ir::{
-    ArrayInitRepeatData, CallCoreData, CallData, CastData, Instruction, Integer as IrInteger, LogData, LogLevel,
-    PredicateData, QueryData, Type, Value, VarData,
+    ArrayInitRepeatData, CallCoreData, CastData, Instruction, Integer as IrInteger, LogData, LogLevel, PredicateData,
+    QueryData, Type, Value, VarData,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -326,15 +326,15 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
             }
             Instruction::Cast(CastData { destination, arguments }) => {
                 let mut arguments = arguments.into_iter();
-                let from = match arguments.next().unwrap() {
-                    int @ Value::Integer(_) => self.resolve(int)?,
-                    reference @ Value::Ref(_) => self.resolve(reference)?,
+                let _from = match arguments.next().unwrap() {
+                    int @ Value::Integer(_) => self.resolve(int, cs)?,
+                    reference @ Value::Ref(_) => self.resolve(reference, cs)?,
                     f => {
                         dbg!(&f);
                         todo!("not an int")
                     }
                 };
-                let as_type = match arguments.next() {
+                let _as_type = match arguments.next() {
                     Some(Value::Str(x)) => match x.as_str() {
                         "i8" => Type::I8,
                         "i16" => Type::I16,
