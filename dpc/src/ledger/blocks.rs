@@ -23,7 +23,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 
 /// The maximum future block time - 2 minutes.
-const MAX_FUTURE_BLOCK_TIME: i64 = 120;
+const MAXIMUM_FUTURE_BLOCK_TIME: i64 = 120;
 
 #[derive(Clone, Debug)]
 pub struct Blocks<N: Network> {
@@ -234,7 +234,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the next block timestamp is within the declared time limit.
         let now = Utc::now().timestamp();
-        if block.timestamp() > (now + MAX_FUTURE_BLOCK_TIME) {
+        if block.timestamp() > (now + MAXIMUM_FUTURE_BLOCK_TIME) {
             return Err(anyhow!("The given block timestamp exceeds the time limit"));
         }
 
