@@ -114,6 +114,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             Ok(proof) => {
                 let hash_difficulty = sha256d_to_u64(&proof);
                 if hash_difficulty > block_header.difficulty_target() {
+                    #[cfg(debug_assertions)]
                     eprintln!(
                         "PoSW difficulty target is not met. Expected {}, found {}",
                         block_header.difficulty_target(),
