@@ -22,7 +22,7 @@ use anyhow::*;
 
 use super::decode_control_u32;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CastData {
     pub destination: u32,
     pub arguments: Vec<Value>,
