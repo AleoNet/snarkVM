@@ -161,7 +161,10 @@ impl<N: Network> Ledger<N> {
         let previous_timestamp = self.latest_block_timestamp()?;
         let previous_difficulty_target = self.latest_block_difficulty_target()?;
         let previous_cumulative_weight = self.latest_cumulative_weight()?;
-        let block_timestamp = Utc::now().timestamp();
+
+        // Ensure that the new timestamp is ahead of the previous timestamp.
+        let block_timestamp = std::cmp::max(chrono::Utc::now().timestamp(), previous_timestamp.saturating_add(1));
+
         let difficulty_target =
             Blocks::<N>::compute_difficulty_target(previous_timestamp, previous_difficulty_target, block_timestamp);
         let cumulative_weight = previous_cumulative_weight.saturating_add((u64::MAX / difficulty_target) as u128);
