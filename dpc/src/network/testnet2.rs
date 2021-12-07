@@ -136,7 +136,7 @@ impl Network for Testnet2 {
     const TRANSITION_TREE_DEPTH: usize = 2;
     const TRANSACTION_TREE_DEPTH: usize = 5;
 
-    const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
+    const ALEO_BLOCK_TIME_IN_SECS: i64 = 300i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 1_000_000_000;
 
     type InnerCurve = Bls12_377;
