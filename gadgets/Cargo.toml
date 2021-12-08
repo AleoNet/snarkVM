@@ -54,7 +54,7 @@ version = "1.0.50"
 version = "2"
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
 
 [dependencies.itertools]
 version = "0.10.1"
