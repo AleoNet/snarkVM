@@ -323,6 +323,13 @@ impl<N: Network> BlockHeader<N> {
     pub(crate) fn set_proof(&mut self, proof: N::PoSWProof) {
         self.proof = Some(proof);
     }
+
+    /// Sets the block header target difficulty to the given target difficulty.
+    /// This method is used by pool operators in order to restore a proposed block header
+    /// to it's original state.
+    pub(crate) fn set_difficulty_target(&mut self, target: u64) {
+        self.metadata.difficulty_target = target;
+    }
 }
 
 impl<N: Network> FromBytes for BlockHeader<N> {
