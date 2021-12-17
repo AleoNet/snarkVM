@@ -134,7 +134,7 @@ version = "0.10.3"
 version = "1.4"
 
 [dependencies.once_cell]
-version = "1.8"
+version = "1.9"
 
 [dependencies.rand]
 version = "0.8"
