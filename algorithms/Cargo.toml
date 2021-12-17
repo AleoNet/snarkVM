@@ -115,7 +115,7 @@ version = "1.0"
 version = "0.5"
 
 [dependencies.cuda-oxide]
-version = "0.3"
+version = "0.4"
 optional = true
 
 [dependencies.derivative]
