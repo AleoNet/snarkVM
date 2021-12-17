@@ -263,14 +263,6 @@ impl<N: Network> Block<N> {
         self.header.difficulty_target()
     }
 
-    /// Sets the block difficulty target.
-    /// Used purely for pool purposes - as workers need to set their header difficulty to a share
-    /// difficulty provided by the pool, and the pool needs to reset the difficulty back to normal when
-    /// checking if it is an actual solution.
-    pub fn set_difficulty_target(&mut self, target: u64) {
-        self.header.set_difficulty_target(target);
-    }
-
     /// Returns the cumulative weight up to this block (inclusive).
     pub fn cumulative_weight(&self) -> u128 {
         self.header.cumulative_weight()
