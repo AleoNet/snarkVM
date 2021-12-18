@@ -99,6 +99,11 @@ impl<N: Network> BlockTemplate<N> {
     pub fn transactions(&self) -> &Transactions<N> {
         &self.transactions
     }
+
+    /// Sets the difficulty target to the given difficulty target.
+    pub fn set_difficulty_target(&mut self, difficulty_target: u64) {
+        *self.difficulty_target = difficulty_target;
+    }
 }
 
 impl<N: Network> FromBytes for BlockTemplate<N> {
