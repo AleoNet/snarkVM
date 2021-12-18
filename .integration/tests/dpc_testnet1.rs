@@ -47,7 +47,7 @@ fn dpc_testnet1_integration_test() {
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
-    let previous_hash = previous_block.hash();
+    let previous_block_hash = previous_block.hash();
     let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
@@ -70,7 +70,6 @@ fn dpc_testnet1_integration_test() {
         assert_eq!(decrypted_record.value(), Block::<Testnet1>::block_reward(1));
     }
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
-    let transactions_root = transactions.transactions_root();
 
     let previous_ledger_root = ledger.latest_ledger_root();
     let timestamp = Utc::now().timestamp();
@@ -83,21 +82,19 @@ fn dpc_testnet1_integration_test() {
         .cumulative_weight()
         .saturating_add((u64::MAX / difficulty_target) as u128);
 
-    // Construct the new block header.
-    let header = BlockHeader::mine(
+    // Construct the block template.
+    let template = BlockTemplate::new(
+        previous_block_hash,
         block_height,
         timestamp,
         difficulty_target,
         cumulative_weight,
         previous_ledger_root,
-        transactions_root,
-        &AtomicBool::new(false),
-        &mut rng,
-    )
-    .unwrap();
+        transactions,
+    );
 
     // Construct the new block.
-    let block = Block::from(previous_hash, header, transactions).unwrap();
+    let block = Block::mine(template, &AtomicBool::new(false), &mut rng).unwrap();
 
     ledger.add_next_block(&block).unwrap();
     assert_eq!(ledger.latest_block_height(), 1);

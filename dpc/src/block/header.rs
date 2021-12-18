@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, Network, PoSWScheme};
+use crate::{BlockError, BlockTemplate, Network, PoSWScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
     fmt,
@@ -134,31 +134,22 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Mines a new instance of a block header.
-    pub fn mine<R: Rng + CryptoRng>(
-        block_height: u32,
-        block_timestamp: i64,
-        difficulty_target: u64,
-        cumulative_weight: u128,
-        previous_ledger_root: N::LedgerRoot,
-        transactions_root: N::TransactionsRoot,
-        terminator: &AtomicBool,
-        rng: &mut R,
-    ) -> Result<Self> {
+    pub fn mine<R: Rng + CryptoRng>(template: &BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
         // Construct the candidate block metadata.
-        let metadata = match block_height == 0 {
+        let metadata = match template.block_height() == 0 {
             true => BlockHeaderMetadata::genesis(),
             false => BlockHeaderMetadata {
-                height: block_height,
-                timestamp: block_timestamp,
-                difficulty_target,
-                cumulative_weight,
+                height: template.block_height(),
+                timestamp: template.block_timestamp(),
+                difficulty_target: template.difficulty_target(),
+                cumulative_weight: template.cumulative_weight(),
             },
         };
 
         // Construct a candidate block header.
         let mut block_header = Self {
-            previous_ledger_root,
-            transactions_root,
+            previous_ledger_root: template.previous_ledger_root(),
+            transactions_root: template.transactions().transactions_root(),
             metadata,
             nonce: Default::default(),
             proof: None,
