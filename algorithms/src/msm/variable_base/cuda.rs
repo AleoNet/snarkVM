@@ -255,7 +255,7 @@ mod tests {
         let mut ctx = Context::new(&device).unwrap();
         ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
         let handle = ctx.enter().unwrap();
-	let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel.test")).unwrap();
+        let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel.test")).unwrap();
         let func = module.get_function(name).unwrap();
         let mut stream = Stream::new(&handle).unwrap();
 
