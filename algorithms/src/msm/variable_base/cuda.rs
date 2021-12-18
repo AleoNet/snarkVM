@@ -165,27 +165,7 @@ fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
     #[cfg(debug_assertions)]
     ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
     let handle = ctx.enter().unwrap();
-    let linker = Linker::new(&handle, compute_capability, LinkerOptions::default())
-        .unwrap()
-        .add(
-            "asm_cuda.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/asm_cuda.release.ptx"),
-        )
-        .unwrap()
-        .add(
-            "blst_377_ops.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/blst_377_ops.release.ptx"),
-        )
-        .unwrap()
-        .add(
-            "msm.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/msm.release.ptx"),
-        )
-        .unwrap();
-    let module = linker.build_module().unwrap();
+    let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel")).unwrap();
     let pixel_func = module.get_function("msm6_pixel").unwrap();
     let row_func = module.get_function("msm6_collapse_rows").unwrap();
     let mut stream = Stream::new(&handle).unwrap();
@@ -275,33 +255,7 @@ mod tests {
         let mut ctx = Context::new(&device).unwrap();
         ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
         let handle = ctx.enter().unwrap();
-        let linker = Linker::new(&handle, device.compute_capability().unwrap(), LinkerOptions::default())
-            .unwrap()
-            .add(
-                "asm_cuda.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/asm_cuda.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "blst_377_ops.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/blst_377_ops.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "msm.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/msm.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "tests.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/tests.debug.ptx"),
-            )
-            .unwrap();
-        let module = linker.build_module().unwrap();
+	let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel.test")).unwrap();
         let func = module.get_function(name).unwrap();
         let mut stream = Stream::new(&handle).unwrap();
 
