@@ -19,6 +19,7 @@ use crate::{
     AleoAmount,
     BlockError,
     BlockHeader,
+    BlockTemplate,
     LedgerProof,
     LedgerTree,
     LedgerTreeScheme,
@@ -54,30 +55,18 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
-    pub fn mine<R: Rng + CryptoRng>(
-        previous_block_hash: N::BlockHash,
-        block_height: u32,
-        block_timestamp: i64,
-        difficulty_target: u64,
-        cumulative_weight: u128,
-        previous_ledger_root: N::LedgerRoot,
-        transactions: Transactions<N>,
-        terminator: &AtomicBool,
-        rng: &mut R,
-    ) -> Result<Self> {
-        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
+    pub fn mine<R: Rng + CryptoRng>(template: BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
+        assert!(
+            !(*template.transactions()).is_empty(),
+            "Cannot create block with no transactions"
+        );
+
+        // Prepare the block variables.
+        let previous_block_hash = template.previous_block_hash();
+        let transactions = template.transactions().clone();
 
         // Compute the block header.
-        let header = BlockHeader::mine(
-            block_height,
-            block_timestamp,
-            difficulty_target,
-            cumulative_weight,
-            previous_ledger_root,
-            transactions.transactions_root(),
-            terminator,
-            rng,
-        )?;
+        let header = BlockHeader::mine(&template, terminator, rng)?;
 
         Ok(Self::from(previous_block_hash, header, transactions)?)
     }
@@ -90,32 +79,25 @@ impl<N: Network> Block<N> {
         let transactions = Transactions::from(&[transaction])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
-        // Compute the transactions root from the transactions.
-        let transactions_root = transactions.transactions_root();
-
         // Construct the genesis block header metadata.
         let block_height = 0u32;
         let block_timestamp = 0i64;
         let difficulty_target = u64::MAX;
         let cumulative_weight = 0u128;
 
-        // Compute the genesis block header.
-        let header = BlockHeader::mine(
+        // Construct the block template.
+        let template = BlockTemplate::new(
+            LedgerProof::<N>::default().block_hash(),
             block_height,
             block_timestamp,
             difficulty_target,
             cumulative_weight,
             LedgerTree::<N>::new()?.root(),
-            transactions_root,
-            &AtomicBool::new(false),
-            rng,
-        )?;
-
-        // Construct the previous block hash.
-        let previous_block_hash = LedgerProof::<N>::default().block_hash();
+            transactions,
+        );
 
         // Construct the genesis block.
-        let block = Self::from(previous_block_hash, header, transactions)?;
+        let block = Self::mine(template, &AtomicBool::new(false), rng)?;
 
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
