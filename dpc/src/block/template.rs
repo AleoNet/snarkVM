@@ -102,7 +102,7 @@ impl<N: Network> BlockTemplate<N> {
 
     /// Sets the difficulty target to the given difficulty target.
     pub fn set_difficulty_target(&mut self, difficulty_target: u64) {
-        *self.difficulty_target = difficulty_target;
+        self.difficulty_target = difficulty_target;
     }
 }
 
