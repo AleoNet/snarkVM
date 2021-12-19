@@ -55,7 +55,7 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
-    pub fn new(template: BlockTemplate<N>, header: BlockHeader<N>) -> Result<Self> {
+    pub fn new(template: &BlockTemplate<N>, header: BlockHeader<N>) -> Result<Self> {
         assert!(
             !(*template.transactions()).is_empty(),
             "Cannot create block with no transactions"
@@ -78,7 +78,7 @@ impl<N: Network> Block<N> {
         // Compute the block header.
         let header = BlockHeader::mine(&template, terminator, rng)?;
 
-        Ok(Self::new(template, header)?)
+        Ok(Self::new(&template, header)?)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.
