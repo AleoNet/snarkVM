@@ -74,7 +74,11 @@ impl<N: Network> Block<N> {
             !(*template.transactions()).is_empty(),
             "Cannot create block with no transactions"
         );
-        Ok(Self::new(template, BlockHeader::mine(&template, terminator, rng)?)?)
+
+        // Compute the block header.
+        let header = BlockHeader::mine(&template, terminator, rng)?;
+
+        Ok(Self::new(template, header)?)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.
