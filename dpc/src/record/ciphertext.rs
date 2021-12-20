@@ -16,14 +16,7 @@
 
 use crate::{Bech32Locator, DecryptionKey, Network, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
-use snarkvm_utilities::{
-    io::{Cursor, Result as IoResult},
-    to_bytes_le,
-    FromBytes,
-    Read,
-    ToBytes,
-    Write,
-};
+use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
 
 use anyhow::{anyhow, Result};
 
@@ -133,13 +126,9 @@ impl<N: Network> FromBytes for Ciphertext<N> {
     /// Decode the ciphertext into the ciphertext randomizer, record view key commitment, and record ciphertext.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut ciphertext = vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES];
-        reader.read_exact(&mut ciphertext)?;
-
         // Decode the ciphertext bytes.
-        let mut cursor = Cursor::new(ciphertext);
-        let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut cursor)?;
-        let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut cursor)?;
+        let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut reader)?;
+        let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut reader)?;
 
         let mut record_bytes = vec![
             0u8;
@@ -147,7 +136,7 @@ impl<N: Network> FromBytes for Ciphertext<N> {
                 - N::RecordRandomizer::data_size_in_bytes()
                 - N::RecordViewKeyCommitment::data_size_in_bytes()
         ];
-        cursor.read_exact(&mut record_bytes)?;
+        reader.read_exact(&mut record_bytes)?;
 
         Ok(Self::from(
             ciphertext_randomizer,
