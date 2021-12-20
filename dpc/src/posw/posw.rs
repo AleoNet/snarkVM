@@ -34,7 +34,9 @@ pub struct PoSW<N: Network> {
 }
 
 impl<N: Network> PoSWScheme<N> for PoSW<N> {
-    /// Sets up an instance of PoSW using an SRS.
+    ///
+    /// Initializes a new instance of PoSW using the given SRS.
+    ///
     fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoSWSNARK as SNARK>::UniversalSetupParameters>,
     ) -> Result<Self, PoswError> {
@@ -47,7 +49,9 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         })
     }
 
+    ///
     /// Loads an instance of PoSW using stored parameters.
+    ///
     fn load(is_prover: bool) -> Result<Self, PoswError> {
         Ok(Self {
             proving_key: match is_prover {
@@ -58,19 +62,45 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         })
     }
 
+    ///
     /// Returns a reference to the PoSW circuit proving key.
+    ///
     fn proving_key(&self) -> &Option<<N::PoSWSNARK as SNARK>::ProvingKey> {
         &self.proving_key
     }
 
+    ///
     /// Returns a reference to the PoSW circuit verifying key.
+    ///
     fn verifying_key(&self) -> &<N::PoSWSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
     }
 
-    /// Given the leaves of the block header, it will calculate a PoSW and nonce
-    /// such that they are under the difficulty target.
+    ///
+    /// Given the block header, compute a PoSW and nonce that satisfies the difficulty target.
+    ///
     fn mine<R: Rng + CryptoRng>(
+        &self,
+        block_header: &mut BlockHeader<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<(), PoswError> {
+        loop {
+            // Run one iteration of PoSW.
+            self.mine_once_unchecked(block_header, terminator, rng)?;
+            // Check if the updated block header is valid.
+            if self.verify(block_header) {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    ///
+    /// Given the block header, compute a PoSW proof.
+    /// WARNING - This method does *not* ensure the resulting proof satisfies the difficulty target.
+    ///
+    fn mine_once_unchecked<R: Rng + CryptoRng>(
         &self,
         block_header: &mut BlockHeader<N>,
         terminator: &AtomicBool,
@@ -78,22 +108,16 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     ) -> Result<(), PoswError> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
-        loop {
-            // Sample a random nonce.
-            block_header.set_nonce(UniformRand::rand(rng));
+        // Sample a random nonce.
+        block_header.set_nonce(UniformRand::rand(rng));
 
-            // Instantiate the circuit.
-            let circuit = PoSWCircuit::<N>::new(&block_header)?;
+        // Instantiate the circuit.
+        let circuit = PoSWCircuit::<N>::new(&block_header)?;
 
-            // Generate the proof.
-            block_header.set_proof(
-                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
-            );
-
-            if self.verify(block_header) {
-                break;
-            }
-        }
+        // Generate the proof.
+        block_header.set_proof(
+            <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
+        );
 
         Ok(())
     }
@@ -112,13 +136,13 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // Ensure the difficulty target is met.
         match proof.to_bytes_le() {
             Ok(proof) => {
-                let hash_difficulty = sha256d_to_u64(&proof);
-                if hash_difficulty > block_header.difficulty_target() {
+                let proof_difficulty = sha256d_to_u64(&proof);
+                if proof_difficulty > block_header.difficulty_target() {
                     #[cfg(debug_assertions)]
                     eprintln!(
                         "PoSW difficulty target is not met. Expected {}, found {}",
                         block_header.difficulty_target(),
-                        hash_difficulty
+                        proof_difficulty
                     );
                     return false;
                 }

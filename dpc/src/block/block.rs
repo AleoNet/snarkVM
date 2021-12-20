@@ -55,20 +55,30 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
+    pub fn new(template: &BlockTemplate<N>, header: BlockHeader<N>) -> Result<Self> {
+        assert!(
+            !(*template.transactions()).is_empty(),
+            "Cannot create block with no transactions"
+        );
+
+        // Prepare the variables.
+        let previous_block_hash = template.previous_block_hash();
+        let transactions = template.transactions().clone();
+
+        Ok(Self::from(previous_block_hash, header, transactions)?)
+    }
+
+    /// Initializes a new block.
     pub fn mine<R: Rng + CryptoRng>(template: BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
         assert!(
             !(*template.transactions()).is_empty(),
             "Cannot create block with no transactions"
         );
 
-        // Prepare the block variables.
-        let previous_block_hash = template.previous_block_hash();
-        let transactions = template.transactions().clone();
-
         // Compute the block header.
         let header = BlockHeader::mine(&template, terminator, rng)?;
 
-        Ok(Self::from(previous_block_hash, header, transactions)?)
+        Ok(Self::new(&template, header)?)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.

@@ -37,9 +37,20 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     /// Returns a reference to the PoSW circuit verifying key.
     fn verifying_key(&self) -> &<N::PoSWSNARK as SNARK>::VerifyingKey;
 
-    /// Given the leaves of the block header, it will calculate a PoSW and nonce
+    /// Given the block header, compute a PoSW proof and nonce
     /// such that they are under the difficulty target.
     fn mine<R: Rng + CryptoRng>(
+        &self,
+        block_header: &mut BlockHeader<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<(), PoswError>;
+
+    ///
+    /// Given the block header, compute a PoSW proof.
+    /// WARNING - This method does *not* ensure the resulting proof satisfies the difficulty target.
+    ///
+    fn mine_once_unchecked<R: Rng + CryptoRng>(
         &self,
         block_header: &mut BlockHeader<N>,
         terminator: &AtomicBool,
