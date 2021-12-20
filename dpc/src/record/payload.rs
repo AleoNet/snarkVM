@@ -29,14 +29,15 @@ use std::{
 pub struct Payload<N: Network>(Vec<u8>, PhantomData<N>);
 
 impl<N: Network> Payload<N> {
-    pub fn from(bytes: &[u8]) -> Self {
+    pub fn from(mut bytes: Vec<u8>) -> Self {
         assert!(bytes.len() <= N::RECORD_PAYLOAD_SIZE_IN_BYTES);
 
         // Pad the bytes up to PAYLOAD_SIZE.
-        let mut buffer = bytes.to_vec();
-        buffer.resize(N::RECORD_PAYLOAD_SIZE_IN_BYTES, 0u8);
+        if bytes.len() < N::RECORD_PAYLOAD_SIZE_IN_BYTES {
+            bytes.resize(N::RECORD_PAYLOAD_SIZE_IN_BYTES, 0u8);
+        }
 
-        Self(buffer, PhantomData)
+        Self(bytes, PhantomData)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -57,7 +58,7 @@ impl<N: Network> FromBytes for Payload<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut buffer = vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES];
         reader.read_exact(&mut buffer)?;
-        Ok(Self::from(&buffer))
+        Ok(Self::from(buffer))
     }
 }
 
@@ -105,7 +106,7 @@ impl<'de, N: Network> Deserialize<'de> for Payload<N> {
 
 impl<N: Network> Default for Payload<N> {
     fn default() -> Self {
-        Self::from(&[])
+        Self::from(vec![])
     }
 }
 
@@ -124,7 +125,9 @@ mod tests {
         // Create a random byte array, construct a payload from it, and check its byte array matches.
         for i in 0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES {
             let expected_payload = (0..i).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
-            let candidate_payload = Payload::<Testnet2>::from(&expected_payload).to_bytes_le().unwrap();
+            let candidate_payload = Payload::<Testnet2>::from(expected_payload.clone())
+                .to_bytes_le()
+                .unwrap();
             assert_eq!(expected_payload, candidate_payload[0..i]);
             assert_eq!(
                 vec![0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES - i],
@@ -138,7 +141,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_payload = Payload::<Testnet2>::from(
-            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
+            (0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
                 .map(|_| u8::rand(rng))
                 .collect::<Vec<u8>>(),
         );
@@ -164,7 +167,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_payload = Payload::<Testnet2>::from(
-            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
+            (0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
                 .map(|_| u8::rand(rng))
                 .collect::<Vec<u8>>(),
         );
