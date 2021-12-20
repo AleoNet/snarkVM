@@ -40,9 +40,7 @@ impl<N: Network> Payload<N> {
     }
 
     pub fn is_empty(&self) -> bool {
-        let mut payload = vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES];
-        payload.copy_from_slice(&self.0);
-        payload == vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]
+        self.0.len() == N::RECORD_PAYLOAD_SIZE_IN_BYTES && self.0.iter().all(|byte| *byte == 0)
     }
 
     pub fn size() -> usize {
