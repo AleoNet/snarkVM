@@ -113,7 +113,7 @@ version = "0.7.5"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.50"
+version = "1.0.51"
 optional = true
 
 [dependencies.colored]
@@ -121,7 +121,7 @@ version = "2"
 optional = true
 
 [dependencies.self_update]
-version = "0.27"
+version = "0.28"
 optional = true
 
 [dependencies.structopt]

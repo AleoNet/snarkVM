@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, Network, PoSWScheme};
+use crate::{BlockError, BlockTemplate, Network, PoSWScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
     fmt,
@@ -68,6 +68,19 @@ pub struct BlockHeaderMetadata {
 }
 
 impl BlockHeaderMetadata {
+    /// Initializes a new instance of a block header metadata.
+    pub fn new<N: Network>(template: &BlockTemplate<N>) -> Self {
+        match template.block_height() == 0 {
+            true => Self::genesis(),
+            false => Self {
+                height: template.block_height(),
+                timestamp: template.block_timestamp(),
+                difficulty_target: template.difficulty_target(),
+                cumulative_weight: template.cumulative_weight(),
+            },
+        }
+    }
+
     /// Initializes a new instance of a genesis block header metadata.
     pub fn genesis() -> Self {
         Self {
@@ -134,32 +147,12 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Mines a new instance of a block header.
-    pub fn mine<R: Rng + CryptoRng>(
-        block_height: u32,
-        block_timestamp: i64,
-        difficulty_target: u64,
-        cumulative_weight: u128,
-        previous_ledger_root: N::LedgerRoot,
-        transactions_root: N::TransactionsRoot,
-        terminator: &AtomicBool,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Construct the candidate block metadata.
-        let metadata = match block_height == 0 {
-            true => BlockHeaderMetadata::genesis(),
-            false => BlockHeaderMetadata {
-                height: block_height,
-                timestamp: block_timestamp,
-                difficulty_target,
-                cumulative_weight,
-            },
-        };
-
+    pub fn mine<R: Rng + CryptoRng>(template: &BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
         // Construct a candidate block header.
         let mut block_header = Self {
-            previous_ledger_root,
-            transactions_root,
-            metadata,
+            previous_ledger_root: template.previous_ledger_root(),
+            transactions_root: template.transactions().transactions_root(),
+            metadata: BlockHeaderMetadata::new(template),
             nonce: Default::default(),
             proof: None,
         };
@@ -176,6 +169,35 @@ impl<N: Network> BlockHeader<N> {
             true => Ok(block_header),
             false => Err(anyhow!("Failed to initialize a block header")),
         }
+    }
+
+    ///
+    /// Mines a new unchecked instance of a block header.
+    /// WARNING - This method does *not* enforce the block header is valid.
+    ///
+    pub fn mine_once_unchecked<R: Rng + CryptoRng>(
+        template: &BlockTemplate<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Construct a candidate block header.
+        let mut block_header = Self {
+            previous_ledger_root: template.previous_ledger_root(),
+            transactions_root: template.transactions().transactions_root(),
+            metadata: BlockHeaderMetadata::new(template),
+            nonce: Default::default(),
+            proof: None,
+        };
+        debug_assert!(
+            !block_header.is_valid(),
+            "Block header with a missing nonce and proof is invalid"
+        );
+
+        // Run one iteration of PoSW.
+        // Warning: this operation is unchecked.
+        N::posw().mine_once_unchecked(&mut block_header, terminator, rng)?;
+
+        Ok(block_header)
     }
 
     /// Returns `true` if the block header is well-formed.

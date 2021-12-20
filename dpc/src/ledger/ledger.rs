@@ -178,8 +178,8 @@ impl<N: Network> Ledger<N> {
         // Retrieve the current ledger root.
         let previous_ledger_root = self.canon_blocks.latest_ledger_root();
 
-        // Mine the next block.
-        let block = Block::mine(
+        // Construct the block template.
+        let template = BlockTemplate::new(
             previous_block_hash,
             block_height,
             block_timestamp,
@@ -187,9 +187,10 @@ impl<N: Network> Ledger<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
-            terminator,
-            rng,
-        )?;
+        );
+
+        // Mine the next block.
+        let block = Block::mine(template, terminator, rng)?;
 
         // Attempt to add the block to the canon chain.
         self.add_next_block(&block)?;

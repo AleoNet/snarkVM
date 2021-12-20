@@ -47,7 +47,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.50"
+version = "1.0.51"
 
 [dependencies.base58]
 version = "0.2"
@@ -73,7 +73,7 @@ version = "2"
 version = "0.4.3"
 
 [dependencies.itertools]
-version = "0.10.1"
+version = "0.10.3"
 
 [dependencies.parking_lot]
 version = "0.11.2"
