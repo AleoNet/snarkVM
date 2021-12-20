@@ -152,6 +152,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const ALEO_BLOCK_TIME_IN_SECS: i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64;
 
+    /// The maximum future block time.
+    const ALEO_FUTURE_TIME_LIMIT_IN_SECS: i64;
+
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;

@@ -22,8 +22,6 @@ use chrono::Utc;
 use itertools::Itertools;
 use std::collections::HashMap;
 
-pub const TWO_HOURS_UNIX: i64 = 7200;
-
 #[derive(Clone, Debug)]
 pub struct Blocks<N: Network> {
     /// The current block height.
@@ -233,7 +231,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the next block timestamp is within the declared time limit.
         let now = Utc::now().timestamp();
-        if block.timestamp() > (now + TWO_HOURS_UNIX) {
+        if block.timestamp() > (now + N::ALEO_FUTURE_TIME_LIMIT_IN_SECS) {
             return Err(anyhow!("The given block timestamp exceeds the time limit"));
         }
 
