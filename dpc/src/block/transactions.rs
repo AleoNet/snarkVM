@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, BlockError, Network, Transaction};
+use crate::{AleoAmount, BlockError, Network, Record, Transaction, ViewKey};
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_utilities::{has_duplicates, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -175,6 +175,14 @@ impl<N: Network> Transactions<N> {
         leaf: impl ToBytes,
     ) -> Result<MerklePath<N::TransactionsRootParameters>> {
         Ok(self.tree.generate_proof(index, &leaf)?)
+    }
+
+    /// Returns records from the transactions belonging to the given account view key.
+    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Vec<Record<N>> {
+        self.transactions
+            .iter()
+            .flat_map(|transaction| transaction.to_decrypted_records(account_view_key))
+            .collect()
     }
 }
 
