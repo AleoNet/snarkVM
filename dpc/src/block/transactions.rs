@@ -270,7 +270,30 @@ impl<N: Network> Deref for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testnet2::Testnet2;
+    use crate::{testnet2::Testnet2, Account, AccountScheme};
+    use rand::thread_rng;
+
+    #[test]
+    fn test_to_decrypted_records() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft a transaction with 1 coinbase record.
+        let (transaction, expected_record) =
+            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+
+        // Craft a Transactions struct with 1 coinbase record.
+        let transactions = Transactions::from(&vec![transaction]).unwrap();
+        let decrypted_records = transactions.to_decrypted_records(&account.view_key());
+        assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
+
+        let candidate_record = decrypted_records.first().unwrap();
+        assert_eq!(&expected_record, candidate_record);
+        assert_eq!(expected_record.owner(), candidate_record.owner());
+        assert_eq!(expected_record.value(), candidate_record.value());
+        assert_eq!(expected_record.payload(), candidate_record.payload());
+        assert_eq!(expected_record.program_id(), candidate_record.program_id());
+    }
 
     #[test]
     fn test_duplicate_transactions() {
