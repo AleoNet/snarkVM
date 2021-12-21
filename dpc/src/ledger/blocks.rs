@@ -440,6 +440,61 @@ impl<N: Network> Blocks<N> {
             N::ALEO_BLOCK_TIME_IN_SECS,
         )
     }
+
+    /// Returns the expected difficulty target under an EMA given the anchor block and expected next block details.
+    pub fn compute_asert_difficulty_target(
+        anchor_timestamp: i64,
+        anchor_difficulty_target: u64,
+        anchor_block_height: u32,
+        timestamp: i64,
+        block_height: u32,
+    ) -> u64 {
+        /// ASERT difficulty retarget algorithm based on https://www.reference.cash/protocol/forks/2020-11-15-asert.
+        ///     T_{i+1} = T_anchor * 2^((S - B * N) / tau).
+        ///     T_anchor = Anchor target of a specific block height
+        ///     B = Expected time per block.
+        ///     S = Time elapsed since the anchor.
+        ///     N = Number of blocks since the anchor.
+        ///     tau = The halflife of the algorithm. For every `tau` seconds ahead of
+        ///           schedule a block’s timestamp becomes, the difficulty doubles.
+        fn asert_retarget(
+            anchor_timestamp: i64,
+            anchor_difficulty_target: u64,
+            anchor_block_height: u32,
+            block_timestamp: i64,
+            block_height: u32,
+            target_block_time: i64,
+        ) -> u64 {
+            const TAU: i64 = 86400; // 86400 seconds = 1 day
+
+            // Determine the time passed since the anchor.
+            let time_elapsed = block_timestamp.saturating_sub(anchor_timestamp);
+            let time_elapsed = match time_elapsed > 0 {
+                true => time_elapsed,
+                false => 1,
+            };
+
+            // Determine the number of blocks since the anchor.
+            let num_blocks_since_anchor = block_height.saturating_sub(anchor_block_height);
+
+            // Determine the exponent factor.
+            let exponent =
+                time_elapsed.saturating_sub(target_block_time.saturating_mul(num_blocks_since_anchor as i64)) / TAU;
+            let difficulty_factor = 2u64.pow(exponent as u32);
+
+            // Calculate the new difficulty.
+            anchor_difficulty_target.saturating_mul(difficulty_factor)
+        }
+
+        asert_retarget(
+            anchor_timestamp,
+            anchor_difficulty_target,
+            anchor_block_height,
+            timestamp,
+            block_height,
+            N::ALEO_BLOCK_TIME_IN_SECS,
+        )
+    }
 }
 
 #[cfg(test)]
