@@ -450,7 +450,7 @@ impl<N: Network> Blocks<N> {
         block_height: u32,
     ) -> u64 {
         // TODO (raychu86): Statistically determine am optimal value for tau.
-        const TAU: i64 = 1800; // 1800 seconds = 30 minutes
+        const TAU: i64 = 86_400; // 86400 seconds = 1 day
 
         /// ASERT difficulty retarget algorithm based on https://www.reference.cash/protocol/forks/2020-11-15-asert.
         ///     T_{i+1} = T_anchor * 2^((S - B * N) / tau).
@@ -473,6 +473,11 @@ impl<N: Network> Blocks<N> {
             const RBITS: i64 = 16;
             const RADIX: i64 = 1 << RBITS;
 
+            // TODO (raychu86): Look into expanding the difficulty target to u128 or even u256.
+            // The difficulty target must allow for leading zeros to account for
+            // overflows. 32 leading zero bits will suffice.
+            assert_eq!(anchor_difficulty_target.checked_shr(32), Some(0));
+
             // Determine the time passed since the anchor.
             let time_elapsed = block_timestamp.saturating_sub(anchor_timestamp);
             let time_elapsed = match time_elapsed > 0 {
@@ -484,17 +489,23 @@ impl<N: Network> Blocks<N> {
             let num_blocks_since_anchor = block_height.saturating_sub(anchor_block_height);
 
             // Determine the exponent factor.
-            let mut exponent = RADIX.saturating_mul(
+            let exponent = RADIX.saturating_mul(
                 time_elapsed.saturating_sub(target_block_time.saturating_mul(num_blocks_since_anchor as i64)),
             ) / TAU;
 
-            let num_shifts = exponent >> RBITS;
-            exponent -= num_shifts.saturating_mul(RADIX);
-            assert!(exponent >= 0 && exponent < RADIX);
+            // Ensure that arithmetic shift is supported.
+            assert_eq!(-1_i64 >> 1, -1_i64);
 
-            let difficulty_factor = ((195_766_423_245_049_i128 * exponent as i128
-                + 971_821_376_i128 * exponent.pow(2) as i128
-                + 5_127_i128 * exponent.pow(3) as i128
+            // Construct the integer and fractional parts of the fixed point arithmetic.
+            let mut num_shifts = exponent >> RBITS;
+            let fractional = exponent - num_shifts.saturating_mul(RADIX);
+            assert!(fractional >= 0 && fractional < RADIX);
+
+            // Approximated target = target * 2^(exponent/65536.0)
+            // 2^x ~= (1 + 0.695502049*x + 0.2262698*x**2 + 0.0782318*x**3)
+            let difficulty_factor = ((195_766_423_245_049_i128 * fractional as i128
+                + 971_821_376_i128 * fractional.pow(2) as i128
+                + 5_127_i128 * fractional.pow(3) as i128
                 + 2_i128.pow(47))
                 >> (RBITS * 3))
                 + RADIX as i128;
@@ -503,10 +514,11 @@ impl<N: Network> Blocks<N> {
             let mut target = (anchor_difficulty_target as i128).saturating_mul(difficulty_factor);
 
             // Shift the target to multiply by 2^(exponent).
+            num_shifts -= 16;
             if num_shifts < 0 {
                 target = match target.checked_shr(-num_shifts as u32) {
                     Some(result) => result,
-                    None => i128::MAX,
+                    None => 1,
                 };
             } else {
                 target = match target.checked_shl(num_shifts as u32) {
@@ -515,12 +527,11 @@ impl<N: Network> Blocks<N> {
                 };
             }
 
-            //Remove the `RBITS` multiplier we got earlier
-            target = target >> RBITS;
-
             // Bound the target to u64::MAX.
             if target > u64::MAX as i128 {
                 u64::MAX
+            } else if target == 0 {
+                1
             } else {
                 target as u64
             }
@@ -581,13 +592,14 @@ mod tests {
         let rng = &mut thread_rng();
 
         for i in 0..1000 {
-            let anchor_timestamp = rng.gen_range(0..i64::MAX / 2);
+            let anchor_timestamp = rng.gen_range(0..1_000_000_000_i64);
             let anchor_block_height = rng.gen_range(0..u32::MAX / 2);
-            let anchor_difficulty_target = rng.gen_range(0..u64::MAX - 1);
+            let anchor_difficulty_target = rng.gen_range(1..u64::MAX / 2);
+            let anchor_difficulty_target = rng.gen_range(1..30_000_000_000);
 
             // Simulate a random block time.
             let simulated_average_block_time =
-                rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS / 2..Testnet2::ALEO_BLOCK_TIME_IN_SECS * 2);
+                rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS - 10..Testnet2::ALEO_BLOCK_TIME_IN_SECS + 10);
             let block_height = rng.gen_range(anchor_block_height + 1..anchor_block_height * 2);
             let time_elapsed = (block_height - anchor_block_height) as i64 * simulated_average_block_time;
             let block_timestamp = anchor_timestamp.saturating_add(time_elapsed);
@@ -602,13 +614,13 @@ mod tests {
 
             if simulated_average_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
                 println!(
-                    "\n{}: {} < {}",
+                    "{}: {} < {}",
                     i,
                     simulated_average_block_time,
                     Testnet2::ALEO_BLOCK_TIME_IN_SECS
                 );
 
-                println!("{} vs {}", new_target, anchor_difficulty_target);
+                println!("{} vs {}\n", new_target, anchor_difficulty_target);
                 // If the block was found faster than expected, the difficulty should increase.
                 assert!(new_target < anchor_difficulty_target);
             } else if simulated_average_block_time >= Testnet2::ALEO_BLOCK_TIME_IN_SECS {
@@ -618,7 +630,7 @@ mod tests {
                     simulated_average_block_time,
                     Testnet2::ALEO_BLOCK_TIME_IN_SECS
                 );
-                println!("{} vs {}", new_target, anchor_difficulty_target);
+                println!("{} vs {}\n", new_target, anchor_difficulty_target);
                 // If the block was found slower than expected, the difficulty should decrease.
                 assert!(new_target >= anchor_difficulty_target);
             }
