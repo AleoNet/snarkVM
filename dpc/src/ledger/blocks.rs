@@ -575,4 +575,53 @@ mod tests {
             block_difficulty_target = new_target;
         }
     }
+
+    #[test]
+    fn test_asert_retargeting_algorithm_simple() {
+        let rng = &mut thread_rng();
+
+        for i in 0..1000 {
+            let anchor_timestamp = rng.gen_range(0..i64::MAX / 2);
+            let anchor_block_height = rng.gen_range(0..u32::MAX / 2);
+            let anchor_difficulty_target = rng.gen_range(0..u64::MAX - 1);
+
+            // Simulate a random block time.
+            let simulated_average_block_time =
+                rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS / 2..Testnet2::ALEO_BLOCK_TIME_IN_SECS * 2);
+            let block_height = rng.gen_range(anchor_block_height + 1..anchor_block_height * 2);
+            let time_elapsed = (block_height - anchor_block_height) as i64 * simulated_average_block_time;
+            let block_timestamp = anchor_timestamp.saturating_add(time_elapsed);
+
+            let new_target = Blocks::<Testnet2>::compute_asert_difficulty_target(
+                anchor_timestamp,
+                anchor_difficulty_target,
+                anchor_block_height,
+                block_timestamp,
+                block_height,
+            );
+
+            if simulated_average_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
+                println!(
+                    "\n{}: {} < {}",
+                    i,
+                    simulated_average_block_time,
+                    Testnet2::ALEO_BLOCK_TIME_IN_SECS
+                );
+
+                println!("{} vs {}", new_target, anchor_difficulty_target);
+                // If the block was found faster than expected, the difficulty should increase.
+                assert!(new_target < anchor_difficulty_target);
+            } else if simulated_average_block_time >= Testnet2::ALEO_BLOCK_TIME_IN_SECS {
+                println!(
+                    "\n{}: {} > {}",
+                    i,
+                    simulated_average_block_time,
+                    Testnet2::ALEO_BLOCK_TIME_IN_SECS
+                );
+                println!("{} vs {}", new_target, anchor_difficulty_target);
+                // If the block was found slower than expected, the difficulty should decrease.
+                assert!(new_target >= anchor_difficulty_target);
+            }
+        }
+    }
 }
