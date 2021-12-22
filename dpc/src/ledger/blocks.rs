@@ -585,8 +585,8 @@ mod tests {
     #[test]
     fn test_asert_retargeting_algorithm_simple() {
         let anchor_timestamp = 1640179531i64;
-        let anchor_block_height = 72154;
-        let anchor_difficulty_target = 101336179232188;
+        let anchor_block_height = 72154u32;
+        let anchor_difficulty_target = 101336179232188u64;
 
         //
         // Simulate block times from T-10 to T+10 seconds,
