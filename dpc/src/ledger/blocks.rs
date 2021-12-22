@@ -633,7 +633,7 @@ mod tests {
                     block_time_elapsed,
                     Testnet2::ALEO_BLOCK_TIME_IN_SECS
                 );
-                // If the block was found slower than expected, the difficulty should decrease.
+                // If the block was found within the expected time, the difficulty should stay unchanged.
                 assert_eq!(new_target, anchor_difficulty_target as u128);
             } else if block_time_elapsed > Testnet2::ALEO_BLOCK_TIME_IN_SECS {
                 println!(
