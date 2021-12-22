@@ -449,6 +449,9 @@ impl<N: Network> Blocks<N> {
         timestamp: i64,
         block_height: u32,
     ) -> u64 {
+        // TODO (raychu86): Statistically determine am optimal value for tau.
+        const TAU: i64 = 1800; // 1800 seconds = 30 minutes
+
         /// ASERT difficulty retarget algorithm based on https://www.reference.cash/protocol/forks/2020-11-15-asert.
         ///     T_{i+1} = T_anchor * 2^((S - B * N) / tau).
         ///     T_anchor = Anchor target of a specific block height
@@ -457,6 +460,7 @@ impl<N: Network> Blocks<N> {
         ///     N = Number of blocks since the anchor.
         ///     tau = The halflife of the algorithm. For every `tau` seconds ahead of
         ///           schedule a block’s timestamp becomes, the difficulty doubles.
+        /// To avoid use of floating points, we use fixed-point arithmetic.
         fn asert_retarget(
             anchor_timestamp: i64,
             anchor_difficulty_target: u64,
@@ -465,7 +469,9 @@ impl<N: Network> Blocks<N> {
             block_height: u32,
             target_block_time: i64,
         ) -> u64 {
-            const TAU: i64 = 86400; // 86400 seconds = 1 day
+            // Constants used for fixed point arithmetic.
+            const RBITS: i64 = 16;
+            const RADIX: i64 = 1 << RBITS;
 
             // Determine the time passed since the anchor.
             let time_elapsed = block_timestamp.saturating_sub(anchor_timestamp);
@@ -478,12 +484,46 @@ impl<N: Network> Blocks<N> {
             let num_blocks_since_anchor = block_height.saturating_sub(anchor_block_height);
 
             // Determine the exponent factor.
-            let exponent =
-                time_elapsed.saturating_sub(target_block_time.saturating_mul(num_blocks_since_anchor as i64)) / TAU;
-            let difficulty_factor = 2u64.pow(exponent as u32);
+            let mut exponent = RADIX.saturating_mul(
+                time_elapsed.saturating_sub(target_block_time.saturating_mul(num_blocks_since_anchor as i64)),
+            ) / TAU;
+
+            let num_shifts = exponent >> RBITS;
+            exponent -= num_shifts.saturating_mul(RADIX);
+            assert!(exponent >= 0 && exponent < RADIX);
+
+            let difficulty_factor = ((195_766_423_245_049_i128 * exponent as i128
+                + 971_821_376_i128 * exponent.pow(2) as i128
+                + 5_127_i128 * exponent.pow(3) as i128
+                + 2_i128.pow(47))
+                >> (RBITS * 3))
+                + RADIX as i128;
 
             // Calculate the new difficulty.
-            anchor_difficulty_target.saturating_mul(difficulty_factor)
+            let mut target = (anchor_difficulty_target as i128).saturating_mul(difficulty_factor);
+
+            // Shift the target to multiply by 2^(exponent).
+            if num_shifts < 0 {
+                target = match target.checked_shr(-num_shifts as u32) {
+                    Some(result) => result,
+                    None => i128::MAX,
+                };
+            } else {
+                target = match target.checked_shl(num_shifts as u32) {
+                    Some(result) => result,
+                    None => i128::MAX,
+                };
+            }
+
+            //Remove the `RBITS` multiplier we got earlier
+            target = target >> RBITS;
+
+            // Bound the target to u64::MAX.
+            if target > u64::MAX as i128 {
+                u64::MAX
+            } else {
+                target as u64
+            }
         }
 
         asert_retarget(
