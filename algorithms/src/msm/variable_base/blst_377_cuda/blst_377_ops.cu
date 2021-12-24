@@ -46,6 +46,10 @@ __device__ static inline int is_blst_fp_eq(const blst_fp p1, const blst_fp p2) {
         p1[5] == p2[5];
 }
 
+__device__ static inline int is_blst_p1_affine_eq(const blst_p1_affine* p1, const blst_p1_affine* p2) {
+    return is_blst_fp_eq(p1->X, p2->X) && is_blst_fp_eq(p1->Y, p2->Y);
+}
+
 __device__ static inline int is_blst_p1_affine_zero(const blst_p1_affine *p) {
     return p->X[0] == 0 &&
         p->X[1] == 0 &&
@@ -424,15 +428,89 @@ __device__ void blst_p1_add_projective_to_projective(blst_p1 *out, const blst_p1
     // printf("c-t%llu:add:Z %llu\n", threadIdx.x, out->Z[0]);
 }
 
+__device__ void blst_p1_duplicate_affines(blst_p1* out, const blst_p1_affine* p) {
+    // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+
+    // A = X1^2
+    blst_fp A;
+    blst_fp_sqr(A, p->X);
+
+    // B = Y1^2
+    blst_fp B;
+    blst_fp_sqr(B, p->Y);
+
+    // C = B^2
+    blst_fp C;
+    blst_fp_sqr(C, B);
+
+    // D = 2 * ((X1 + B)^2 - A - C)
+    blst_fp X1B;
+    blst_fp_add(X1B, p->X, B);
+    blst_fp_sqr(X1B, X1B);
+    blst_fp_sub(X1B, X1B, A);
+    blst_fp_sub(X1B, X1B, C);
+    blst_fp D;
+    blst_fp_add(D, X1B, X1B);
+
+    // E = 3 * A
+    blst_fp E;
+    blst_fp_add(E, A, A);
+    blst_fp_add(E, E, A);
+
+    // F = E^2
+    blst_fp F;
+    blst_fp_sqr(F, E);
+
+    // X3 = F - 2*D
+    memcpy(out->X, F, sizeof(blst_fp));
+    blst_fp_sub(out->X, out->X, D);
+    blst_fp_sub(out->X, out->X, D);
+
+    // Y3 = E*(D - X3) - 8*C
+    blst_fp C8;
+    blst_fp_add(C8, C, C);
+    blst_fp_add(C8, C8, C8);
+    blst_fp_add(C8, C8, C8);
+    blst_fp_sub(D, D, out->X);
+    blst_fp_mul(E, E, D);
+    blst_fp_sub(out->Y, E, C8);
+
+    // Z3 = 2*Y1
+    blst_fp_add(out->Z, p->Y, p->Y);
+}
+
 __device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_affine* p1, const blst_p1_affine* p2) {
     /*
         mmadd-2007-bl from
         http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-mmadd-2007-bl
     */
 
+    // mmadd-2007-bl assumes that both points aren't infinite
+    if (is_blst_p1_affine_zero(p2)) {
+        memcpy(out->X, p1->X, sizeof(blst_fp));
+        memcpy(out->Y, p1->Y, sizeof(blst_fp));
+
+        if (is_blst_p1_affine_zero(p1)) {
+            // infinity + infinity
+            memcpy(out->Z, BLS12_377_ZERO, sizeof(blst_fp));
+        } else {
+            // P + infinity
+            memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
+        }
+
+        return;
+    }
+
+    // mmadd-2007-bl assumes that points aren't equal
+    if(is_blst_p1_affine_eq(p1, p2)) {
+        blst_p1_duplicate_affines(out, p1);
+        return;
+    }
+
     // H = X2-X1
     blst_fp h;
     blst_fp_sub(h, p2->X, p1->X);
+    // printf("add: H = %llu = %llu - %llu\n", h[0], p2->X[0], p1->X[0]);
 
     // HH = H^2
     // I = 4*HH
@@ -440,37 +518,46 @@ __device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_
     memcpy(i, h, sizeof(blst_fp));
     blst_fp_add(i, i, i);
     blst_fp_sqr(i, i);
+    // printf("add: I = %llu\n", i[0]);
 
     // J = H*I
     blst_fp j;
     blst_fp_mul(j, h, i);
+    // printf("add: J = %llu\n", j[0]);
 
     // r = 2*(Y2-Y1)
     blst_fp r;
     blst_fp_sub(r, p2->Y, p1->Y);
     blst_fp_add(r, r, r);
+    // printf("add: r = %llu\n", r[0]);
 
     // V = X1*I
     blst_fp v;
     blst_fp_mul(v, p1->X, i);
+    // printf("add: V = %llu\n", v[0]);
 
     // X3 = r^2-J-2*V
     blst_fp_sqr(out->X, r);
     blst_fp_sub(out->X, out->X, j);
     blst_fp_sub(out->X, out->X, v);
     blst_fp_sub(out->X, out->X, v);
+    // printf("add: X3 = %llu\n", out->X[0]);
 
     // Y3 = r*(V-X3)-2*Y1*J
     blst_fp_sub(out->Y, v, out->X);
+    // printf("add: V-X3 = %llu\n", out->Y[0]);
     blst_fp_mul(out->Y, out->Y, r);
+    // printf("add: r*(V-X3) = %llu\n", out->Y[0]);
 
     blst_fp y1j;
     blst_fp_mul(y1j, p1->Y, j);
     blst_fp_sub(out->Y, out->Y, y1j);
     blst_fp_sub(out->Y, out->Y, y1j);
+    // printf("add: r*(V-X3) = %llu\n", out->Y[0]);
 
     // Z3 = 2*H
     blst_fp_add(out->Z, h, h);
+    // printf("add: r*(V-X3)-2*Y1*J = %llu\n", out->Y[0]);
 }
 
 __device__ void blst_p1_add_affine_to_affine(blst_p1_affine* out, const blst_p1_affine* p1, const blst_p1_affine* p2) {

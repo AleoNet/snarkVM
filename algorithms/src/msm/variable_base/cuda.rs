@@ -16,7 +16,7 @@
 
 use snarkvm_curves::{
     bls12_377::{Fq, Fr, G1Affine, G1Projective},
-    traits::{AffineCurve, Group, ProjectiveCurve},
+    traits::{AffineCurve, Group},
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::BitIteratorBE;
@@ -165,27 +165,7 @@ fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
     #[cfg(debug_assertions)]
     ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
     let handle = ctx.enter().unwrap();
-    let linker = Linker::new(&handle, compute_capability, LinkerOptions::default())
-        .unwrap()
-        .add(
-            "asm_cuda.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/asm_cuda.release.ptx"),
-        )
-        .unwrap()
-        .add(
-            "blst_377_ops.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/blst_377_ops.release.ptx"),
-        )
-        .unwrap()
-        .add(
-            "msm.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/msm.release.ptx"),
-        )
-        .unwrap();
-    let module = linker.build_module().unwrap();
+    let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel")).unwrap();
     let pixel_func = module.get_function("msm6_pixel").unwrap();
     let row_func = module.get_function("msm6_collapse_rows").unwrap();
     let mut stream = Stream::new(&handle).unwrap();
@@ -258,8 +238,9 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_curves::bls12_377::Fq;
-    use snarkvm_fields::{Field, PrimeField};
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_curves::ProjectiveCurve;
+    use snarkvm_fields::{Field, One, PrimeField};
+    use snarkvm_utilities::{FromBytes, UniformRand};
 
     use super::*;
 
@@ -275,33 +256,7 @@ mod tests {
         let mut ctx = Context::new(&device).unwrap();
         ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
         let handle = ctx.enter().unwrap();
-        let linker = Linker::new(&handle, device.compute_capability().unwrap(), LinkerOptions::default())
-            .unwrap()
-            .add(
-                "asm_cuda.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/asm_cuda.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "blst_377_ops.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/blst_377_ops.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "msm.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/msm.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "tests.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/tests.debug.ptx"),
-            )
-            .unwrap();
-        let module = linker.build_module().unwrap();
+        let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel.test")).unwrap();
         let func = module.get_function(name).unwrap();
         let mut stream = Stream::new(&handle).unwrap();
 
@@ -531,5 +486,123 @@ mod tests {
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
         }
+    }
+
+    #[test]
+    fn test_cuda_affine_add_two_infinite() {
+        let x = Fq::zero();
+        let y = Fq::one();
+        let inputs = vec![vec![
+            CudaAffine {
+                x: x.clone(),
+                y: y.clone(),
+            },
+            CudaAffine {
+                x: x.clone(),
+                y: y.clone(),
+            },
+        ]];
+
+        let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
+
+        let a = G1Affine::new(x.clone(), y.clone(), true);
+        let b = G1Affine::new(x, y, true);
+        let rust_out: G1Projective = a.into_projective() + &b.into_projective();
+        assert_eq!(rust_out, output[0]);
+    }
+
+    fn test_specific_points(raw_point_1: &[u8], raw_point_2: &[u8]) -> bool {
+        let point_1 = G1Affine::from_bytes_le(raw_point_1).unwrap();
+        let point_2 = G1Affine::from_bytes_le(raw_point_2).unwrap();
+        let inputs = vec![vec![
+            CudaAffine {
+                x: point_1.x.clone(),
+                y: point_1.y.clone(),
+            },
+            CudaAffine {
+                x: point_2.x.clone(),
+                y: point_2.y.clone(),
+            },
+        ]];
+
+        let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
+
+        let a = G1Affine::new(point_1.x, point_1.y, false);
+        let b = G1Affine::new(point_2.x, point_2.y, false);
+        let rust_out: G1Projective = a.into_projective() + &b.into_projective();
+
+        rust_out == output[0]
+    }
+
+    #[test]
+    fn test_cuda_affine_add_specific_1() {
+        let raw_point = [
+            147, 141, 242, 28, 119, 43, 212, 93, 253, 211, 11, 61, 100, 195, 20, 150, 3, 252, 138, 100, 193, 255, 158,
+            254, 131, 204, 3, 63, 47, 139, 154, 38, 173, 230, 185, 87, 215, 215, 248, 22, 167, 178, 188, 38, 253, 26,
+            153, 0, 85, 235, 227, 249, 246, 68, 212, 194, 113, 219, 144, 3, 10, 226, 167, 175, 168, 31, 55, 148, 218,
+            190, 54, 100, 202, 50, 127, 114, 132, 197, 79, 121, 155, 121, 100, 240, 235, 245, 49, 102, 124, 31, 27,
+            188, 60, 57, 249, 0, 0,
+        ];
+
+        assert!(test_specific_points(&raw_point, &raw_point));
+    }
+
+    #[test]
+    fn test_cuda_affine_add_specific_2() {
+        // here point_1.x == point_2.x and point_1.y != point_2.y
+        let raw_point_1 = [
+            28, 75, 93, 111, 87, 170, 107, 93, 127, 208, 145, 130, 164, 138, 246, 179, 138, 6, 122, 103, 84, 116, 128,
+            88, 162, 142, 220, 208, 134, 49, 49, 107, 108, 77, 153, 45, 254, 17, 171, 160, 84, 179, 193, 104, 181, 253,
+            192, 0, 65, 87, 21, 8, 208, 186, 14, 1, 56, 8, 66, 98, 13, 180, 52, 201, 148, 209, 125, 52, 79, 21, 178,
+            129, 35, 5, 232, 48, 157, 86, 253, 180, 72, 189, 195, 3, 81, 150, 40, 204, 234, 182, 17, 128, 246, 219, 97,
+            1, 0,
+        ];
+        let raw_point_2 = [
+            28, 75, 93, 111, 87, 170, 107, 93, 127, 208, 145, 130, 164, 138, 246, 179, 138, 6, 122, 103, 84, 116, 128,
+            88, 162, 142, 220, 208, 134, 49, 49, 107, 108, 77, 153, 45, 254, 17, 171, 160, 84, 179, 193, 104, 181, 253,
+            192, 0, 192, 168, 234, 247, 47, 5, 250, 131, 200, 247, 189, 205, 54, 169, 214, 77, 107, 118, 139, 133, 224,
+            76, 65, 157, 107, 14, 13, 208, 85, 131, 37, 101, 242, 139, 221, 104, 111, 111, 18, 250, 255, 89, 179, 151,
+            79, 94, 76, 0, 0,
+        ];
+
+        assert!(test_specific_points(&raw_point_1, &raw_point_2));
+    }
+
+    #[test]
+    fn test_cuda_affine_add_specific_3() {
+        let raw_point_1 = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        ];
+        let raw_point_2 = [
+            98, 62, 46, 156, 147, 130, 32, 127, 242, 202, 13, 9, 228, 235, 163, 120, 71, 155, 175, 151, 7, 204, 94, 15,
+            45, 15, 18, 221, 150, 100, 41, 20, 168, 78, 144, 158, 124, 113, 110, 160, 42, 38, 235, 163, 131, 27, 129,
+            1, 168, 243, 92, 120, 14, 177, 125, 212, 146, 247, 111, 173, 165, 102, 220, 134, 179, 130, 213, 178, 160,
+            249, 130, 196, 174, 22, 77, 13, 57, 87, 14, 1, 174, 223, 73, 50, 86, 115, 92, 201, 219, 135, 205, 231, 90,
+            46, 55, 0, 0,
+        ];
+
+        assert!(test_specific_points(&raw_point_1, &raw_point_2));
+    }
+
+    #[test]
+    fn test_cuda_projective_affine_add_infinity() {
+        let affine_x = Fq::zero();
+        let affine_y = Fq::one();
+        let mut projective = G1Projective::zero();
+        let inputs = vec![vec![ProjectiveAffine {
+            projective: projective.clone(),
+            affine: CudaAffine {
+                x: affine_x.clone(),
+                y: affine_y.clone(),
+            },
+        }]];
+
+        let output: Vec<G1Projective> = run_roundtrip("add_projective_affine_test", &inputs[..]);
+
+        let b = G1Affine::new(affine_x, affine_y, true);
+        projective.add_assign_mixed(&b);
+        assert_eq!(projective, output[0]);
     }
 }

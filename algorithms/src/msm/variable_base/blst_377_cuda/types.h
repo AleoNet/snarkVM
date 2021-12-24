@@ -49,6 +49,7 @@ __device__ static const blst_fp BLS12_377_P = {
   TO_LIMB_T(0xc63b05c06ca1493b), TO_LIMB_T(0x1ae3a4617c510ea)
 };
 __device__ static const blst_fp BLS12_377_ONE { ONE_MONT_P };
+__device__ static const blst_fp BLS12_377_ZERO { 0 };
 __device__ static const blst_fp BLS12_377_R2 {
   0xb786686c9400cd22,
   0x329fcaab00431b1,
