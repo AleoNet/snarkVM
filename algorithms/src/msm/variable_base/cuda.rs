@@ -237,8 +237,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(
 mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
-    use snarkvm_curves::bls12_377::Fq;
-    use snarkvm_curves::ProjectiveCurve;
+    use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
     use snarkvm_fields::{Field, One, PrimeField};
     use snarkvm_utilities::{FromBytes, UniformRand};
 
