@@ -22,22 +22,26 @@ use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 use crate::{IoResult, Read, Write};
 use derivative::Derivative;
 
+use super::MarlinMode;
+
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
 #[derive(Debug)]
-pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
+pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// The circuit verifying key.
-    pub circuit_verifying_key: CircuitVerifyingKey<F, CF, PC>,
+    pub circuit_verifying_key: CircuitVerifyingKey<F, CF, PC, MM>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<PC::Randomness>,
     /// The circuit itself.
-    pub circuit: Circuit<F>,
+    pub circuit: Circuit<F, MM>,
     /// The committer key for this index, trimmed from the universal SRS.
     pub committer_key: PC::CommitterKey,
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitProvingKey<F, CF, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> ToBytes
+    for CircuitProvingKey<F, CF, PC, MM>
+{
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         CanonicalSerialize::serialize(&self.circuit_verifying_key, &mut writer)?;
         CanonicalSerialize::serialize(&self.circuit_commitment_randomness, &mut writer)?;
@@ -47,7 +51,9 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for CircuitProvingKey<F, CF, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> FromBytes
+    for CircuitProvingKey<F, CF, PC, MM>
+{
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let circuit_verifying_key = CanonicalDeserialize::deserialize(&mut reader)?;

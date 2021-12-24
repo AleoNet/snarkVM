@@ -58,14 +58,14 @@ where
     V: ToConstraintField<TargetField> + Clone,
 {
     type BaseField = BaseField;
-    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC>;
+    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>;
     type Proof = Proof<TargetField, BaseField, PC>;
-    type ProvingKey = CircuitProvingKey<TargetField, BaseField, PC>;
+    type ProvingKey = CircuitProvingKey<TargetField, BaseField, PC, MM>;
     type ScalarField = TargetField;
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<TargetField, BaseField, PC>;
     type VerifierInput = V;
-    type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC>;
+    type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC, MM>;
 
     fn universal_setup<R: Rng + CryptoRng>(
         max_degree: &Self::UniversalSetupConfig,
@@ -195,7 +195,7 @@ pub mod test {
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
 
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
-    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget>;
+    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>;
 
     #[test]
     fn marlin_snark_test() {
@@ -472,7 +472,7 @@ pub mod multiple_input_tests {
         FSG: FiatShamirRngVar<F, ConstraintF, FS>,
     > {
         pub c: F,
-        pub verifying_key: CircuitVerifyingKey<F, ConstraintF, PC>,
+        pub verifying_key: CircuitVerifyingKey<F, ConstraintF, PC, MM>,
         pub proof: Proof<F, ConstraintF, PC>,
         _f: PhantomData<ConstraintF>,
         _fs: PhantomData<FS>,
@@ -492,7 +492,7 @@ pub mod multiple_input_tests {
     > ConstraintSynthesizer<ConstraintF> for VerifierCircuit<F, ConstraintF, PC, FS, MM, PCG, FSG>
     {
         fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-            let vk_gadget = CircuitVerifyingKeyVar::<F, ConstraintF, PC, PCG>::alloc(cs.ns(|| "vk"), || {
+            let vk_gadget = CircuitVerifyingKeyVar::<F, ConstraintF, PC, PCG, MM>::alloc(cs.ns(|| "vk"), || {
                 Ok(self.verifying_key.clone())
             })?;
 
@@ -503,7 +503,7 @@ pub mod multiple_input_tests {
                 Ok(vec![self.c.clone(), self.c.clone()])
             })?;
 
-            let output = MarlinVerificationGadget::<F, ConstraintF, PC, PCG>::verify::<_, FS, FSG>(
+            let output = MarlinVerificationGadget::<F, ConstraintF, PC, PCG, MM>::verify::<_, FS, FSG>(
                 cs.ns(|| "verify"),
                 &vk_gadget,
                 &input_gadget.val,
@@ -526,7 +526,7 @@ pub mod multiple_input_tests {
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
-    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget>;
+    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>;
 
     #[test]
     fn two_input_marlin_snark_test() {

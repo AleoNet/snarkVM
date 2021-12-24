@@ -23,6 +23,7 @@ use crate::{
         AHPForR1CS,
         UnnormalizedBivariateLagrangePoly,
     },
+    marlin::MarlinMode,
     prover::{state::ProverState, ProverMessage},
     ToString,
     Vec,
@@ -57,13 +58,17 @@ pub struct ProverFirstOracles<F: Field> {
     /// The LDE of `Bz`.
     pub z_b: LabeledPolynomial<F>,
     /// The sum-check hiding polynomial.
-    pub mask_poly: LabeledPolynomial<F>,
+    pub mask_poly: Option<LabeledPolynomial<F>>,
 }
 
 impl<F: Field> ProverFirstOracles<F> {
     /// Iterate over the polynomials output by the prover in the first round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        vec![&self.w, &self.z_a, &self.z_b, &self.mask_poly].into_iter()
+        if let Some(mask_poly) = &self.mask_poly {
+            vec![&self.w, &self.z_a, &self.z_b, mask_poly].into_iter()
+        } else {
+            vec![&self.w, &self.z_a, &self.z_b].into_iter()
+        }
     }
 }
 
@@ -99,12 +104,12 @@ impl<F: Field> ProverThirdOracles<F> {
     }
 }
 
-impl<F: PrimeField> AHPForR1CS<F> {
+impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Initialize the AHP prover.
     pub fn prover_init<'a, C: ConstraintSynthesizer<F>>(
-        index: &'a Circuit<F>,
+        index: &'a Circuit<F, MM>,
         circuit: &C,
-    ) -> Result<ProverState<'a, F>, AHPError> {
+    ) -> Result<ProverState<'a, F, MM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let constraint_time = start_timer!(|| "Generating constraints and witnesses");
@@ -211,10 +216,9 @@ impl<F: PrimeField> AHPForR1CS<F> {
     /// Output the first round message and the next state.
     #[allow(clippy::type_complexity)]
     pub fn prover_first_round<'a, R: RngCore>(
-        mut state: ProverState<'a, F>,
+        mut state: ProverState<'a, F, MM>,
         rng: &mut R,
-        hiding: bool,
-    ) -> Result<(ProverMessage<F>, ProverFirstOracles<F>, ProverState<'a, F>), AHPError> {
+    ) -> Result<(ProverMessage<F>, ProverFirstOracles<F>, ProverState<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let domain_h = state.domain_h;
         let zk_bound = state.zk_bound;
@@ -255,31 +259,40 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
         let z_a = state.z_a.clone().unwrap();
-        let z_a_poly = &EvaluationsOnDomain::from_vec_and_domain(z_a, domain_h).interpolate()
-            + &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+        let mut z_a_poly = EvaluationsOnDomain::from_vec_and_domain(z_a, domain_h).interpolate();
+        if MM::ZK {
+            z_a_poly += &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+        }
         end_timer!(z_a_poly_time);
 
         let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
         let z_b = state.z_b.clone().unwrap();
-        let z_b_poly = &EvaluationsOnDomain::from_vec_and_domain(z_b, domain_h).interpolate()
-            + &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+        let mut z_b_poly = EvaluationsOnDomain::from_vec_and_domain(z_b, domain_h).interpolate();
+        if MM::ZK {
+            z_b_poly += &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+        }
         end_timer!(z_b_poly_time);
 
-        let mask_poly_time = start_timer!(|| "Computing mask polynomial");
-        let mask_poly_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
-        let mut mask_poly = Polynomial::rand(mask_poly_degree, rng);
-        let scaled_sigma_1 = (mask_poly.divide_by_vanishing_poly(domain_h).unwrap().1)[0];
-        mask_poly[0] -= &scaled_sigma_1;
-        end_timer!(mask_poly_time);
+        let mask_poly = if MM::ZK {
+            let mask_poly_time = start_timer!(|| "Computing mask polynomial");
+            let mask_poly_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
+            let mut mask_poly = Polynomial::rand(mask_poly_degree, rng);
+            let scaled_sigma_1 = (mask_poly.divide_by_vanishing_poly(domain_h).unwrap().1)[0];
+            mask_poly[0] -= &scaled_sigma_1;
+            end_timer!(mask_poly_time);
+            assert!(mask_poly.degree() <= 3 * domain_h.size() + 2 * zk_bound - 3);
+            Some(mask_poly)
+        } else {
+            None
+        };
 
         let msg = ProverMessage::default();
 
         assert!(w_poly.degree() < domain_h.size() - domain_x.size() + zk_bound);
         assert!(z_a_poly.degree() < domain_h.size() + zk_bound);
         assert!(z_b_poly.degree() < domain_h.size() + zk_bound);
-        assert!(mask_poly.degree() <= 3 * domain_h.size() + 2 * zk_bound - 3);
 
-        let (w, z_a, z_b) = if hiding {
+        let (w, z_a, z_b) = if MM::ZK {
             (
                 LabeledPolynomial::new("w".to_string(), w_poly, None, Some(1)),
                 LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, Some(1)),
@@ -292,7 +305,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
                 LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, None),
             )
         };
-        let mask_poly = LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None);
+        let mask_poly =
+            mask_poly.map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None));
 
         let oracles = ProverFirstOracles {
             w: w.clone(),
@@ -303,7 +317,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         state.w_poly = Some(w);
         state.mz_polys = Some((z_a, z_b));
-        state.mask_poly = Some(mask_poly);
+        state.mask_poly = mask_poly;
         end_timer!(round_time);
 
         Ok((msg, oracles, state))
@@ -330,7 +344,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Output the number of oracles sent by the prover in the first round.
     pub fn prover_num_first_round_oracles() -> usize {
-        4
+        if MM::ZK { 4 } else { 3 }
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -341,19 +355,16 @@ impl<F: PrimeField> AHPForR1CS<F> {
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &VerifierFirstMessage<F>,
-        mut state: ProverState<'a, F>,
+        mut state: ProverState<'a, F, MM>,
         _r: &mut R,
-        hiding: bool,
-    ) -> (ProverMessage<F>, ProverSecondOracles<F>, ProverState<'a, F>) {
+    ) -> (ProverMessage<F>, ProverSecondOracles<F>, ProverState<'a, F, MM>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let domain_h = state.domain_h;
         let zk_bound = state.zk_bound;
 
-        let mask_poly = state
-            .mask_poly
-            .as_ref()
-            .expect("ProverState should include mask_poly when prover_second_round is called");
+        let mask_poly = state.mask_poly.as_ref();
+        assert_eq!(MM::ZK, mask_poly.is_some());
 
         let VerifierFirstMessage {
             alpha,
@@ -416,7 +427,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let q_1_time = start_timer!(|| "Compute q_1 poly");
 
         let mul_domain_size = *[
-            mask_poly.len(),
+            mask_poly.map_or(0, |p| p.len()),
             r_alpha_poly.coeffs.len() + summed_z_m.coeffs.len(),
             t_poly.coeffs.len() + z_poly.len(),
         ]
@@ -439,7 +450,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
                 *a -= &(c * d);
             });
         let rhs = r_alpha_evals.interpolate();
-        let q_1 = mask_poly.polynomial() + &rhs;
+        let q_1 = mask_poly.map_or(&Polynomial::zero(), |p| p.polynomial()) + &rhs;
         end_timer!(q_1_time);
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
@@ -452,7 +463,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         assert!(g_1.degree() <= domain_h.size() - 2);
         assert!(h_1.degree() <= 2 * domain_h.size() + 2 * zk_bound - 2);
 
-        let oracles = if hiding {
+        let oracles = if MM::ZK {
             ProverSecondOracles {
                 t: LabeledPolynomial::new("t".into(), t_poly, None, None),
                 g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), Some(1)),
@@ -488,7 +499,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &VerifierSecondMessage<F>,
-        prover_state: ProverState<'a, F>,
+        prover_state: ProverState<'a, F, MM>,
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
