@@ -450,9 +450,6 @@ impl<N: Network> Blocks<N> {
         block_timestamp: i64,
         block_height: u32,
     ) -> u128 {
-        // TODO (raychu86): Statistically determine am optimal value for tau.
-        const TAU: i64 = 43200; // 43200 seconds = 12 hours
-
         /// ASERT difficulty retarget algorithm based on https://www.reference.cash/protocol/forks/2020-11-15-asert.
         ///     T_{i+1} = T_anchor * 2^((S - B * N) / tau).
         ///     T_anchor = Anchor target of a specific block height
@@ -474,26 +471,29 @@ impl<N: Network> Blocks<N> {
             const RBITS: i64 = 16;
             const RADIX: i64 = 1 << RBITS;
 
-            // TODO (raychu86): Look into expanding the difficulty target to u128 or even u256.
-            let anchor_difficulty_target = anchor_difficulty_target as u128;
-            // The difficulty target must allow for leading zeros to account for
-            // overflows. 32 leading zero bits will suffice.
-            assert_eq!(anchor_difficulty_target.checked_shr(96), Some(0));
+            // The half life for the expected duration in doubling the difficulty target.
+            const TAU: i64 = 43_200; // 43,200 seconds = 12 hours
 
-            // Determine the time passed since the anchor.
-            let time_elapsed = block_timestamp.saturating_sub(anchor_timestamp);
-            let time_elapsed = match time_elapsed > 0 {
-                true => time_elapsed,
-                false => 1,
-            };
+            // Cast the anchor difficulty target from a u64 to a u128.
+            // The difficulty target must allow for leading zeros to account for overflows;
+            // an additional 64-bits for the leading zeros should suffice.
+            let anchor_difficulty_target = anchor_difficulty_target as u128;
+            assert_eq!(anchor_difficulty_target.checked_shr(64), Some(0));
+
+            // Determine the block time elapsed (in seconds) since the anchor block.
+            let block_time_elapsed = core::cmp::max(block_timestamp.saturating_sub(anchor_timestamp), 1);
 
             // Determine the number of blocks since the anchor.
-            let num_blocks_elapsed = block_height.saturating_sub(anchor_block_height);
+            let number_of_blocks_elapsed = block_height.saturating_sub(anchor_block_height);
 
-            // Determine the exponent factor.
-            let exponent = RADIX.saturating_mul(
-                time_elapsed.saturating_sub(target_block_time.saturating_mul(num_blocks_elapsed as i64)),
-            ) / TAU;
+            // Determine the expected block time elapsed (in seconds) since the anchor block.
+            let expected_block_time_elapsed = target_block_time.saturating_mul(number_of_blocks_elapsed as i64);
+
+            // Determine the difference in block time elapsed (in seconds).
+            let difference_in_block_time_elapsed = block_time_elapsed.saturating_sub(expected_block_time_elapsed);
+
+            // Compute the exponent factor.
+            let exponent = RADIX.saturating_mul(difference_in_block_time_elapsed) / TAU;
 
             // Ensure that arithmetic shift is supported.
             assert_eq!(-1_i64 >> 1, -1_i64);
@@ -513,23 +513,25 @@ impl<N: Network> Blocks<N> {
                 + RADIX as u128;
 
             // Calculate the new difficulty.
-            let mut target = anchor_difficulty_target.saturating_mul(difficulty_factor);
-
             // Shift the target to multiply by 2^(integer) / 65536.
             num_shifts -= 16;
             if num_shifts < 0 {
-                target = match target.checked_shr((-num_shifts) as u32) {
-                    Some(result) => result,
+                match anchor_difficulty_target
+                    .saturating_mul(difficulty_factor)
+                    .checked_shr((-num_shifts) as u32)
+                {
+                    Some(target) => core::cmp::max(target, 1),
                     None => 1,
-                };
+                }
             } else {
-                target = match target.checked_shl(num_shifts as u32) {
-                    Some(result) => result,
+                match anchor_difficulty_target
+                    .saturating_mul(difficulty_factor)
+                    .checked_shl(num_shifts as u32)
+                {
+                    Some(target) => core::cmp::max(target, 1),
                     None => u128::MAX,
-                };
+                }
             }
-
-            if target == 0 { 1 } else { target }
         }
 
         asert_retarget(
