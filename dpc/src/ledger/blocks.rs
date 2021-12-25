@@ -472,7 +472,7 @@ impl<N: Network> Blocks<N> {
 
             // Compute the difference in block time elapsed, defined as:
             // (block_timestamp - anchor_timestamp) - target_block_time * number_of_blocks_elapsed.
-            let difference_in_block_time_elapsed = {
+            let drift = {
                 // Determine the block time elapsed (in seconds) since the anchor block.
                 // Note: This operation includes a safety check for a repeat timestamp.
                 let block_time_elapsed = core::cmp::max(block_timestamp.saturating_sub(anchor_timestamp), 1);
@@ -490,37 +490,43 @@ impl<N: Network> Blocks<N> {
             };
 
             // Constants used for fixed point arithmetic.
-            const RBITS: i128 = 16;
-            const RADIX: i128 = 1 << RBITS;
+            const RBITS: u32 = 16;
+            const RADIX: u128 = 1 << RBITS;
 
             // The half life for the expected duration in doubling the difficulty target.
-            const TAU: i128 = 43_200; // 43,200 seconds = 12 hours
+            const TAU: u128 = 43_200; // 43,200 seconds = 12 hours
 
-            // Compute the exponent factor.
-            let exponent = RADIX.saturating_mul(difference_in_block_time_elapsed as i128) / TAU;
+            // Compute the exponent factor, and decompose it into integral & fractional parts for fixed point arithmetic.
+            let (integral, fractional) = {
+                // Calculate the exponent factor.
+                let exponent = (RADIX as i128).saturating_mul(drift as i128) / (TAU as i128);
 
-            // Decompose the exponent factor into integral and fractional components for fixed point arithmetic.
-            let mut shifts = exponent >> RBITS;
-            let fractional = exponent - shifts.saturating_mul(RADIX);
-            assert!(fractional >= 0 && fractional < RADIX);
+                // Decompose into the integral and fractional parts.
+                let integral = exponent >> RBITS;
+                let fractional = (exponent - (integral << RBITS)) as u128;
+                assert!(fractional < RADIX, "Ensure fractional part is within fixed point size");
+                assert_eq!(exponent, integral * (RADIX as i128) + fractional as i128);
 
-            // Approximate the difficulty factor as 2^(exponent/RADIX), where:
+                (integral, fractional)
+            };
+
+            // Approximate the fractional multiplier as 2^RBITS * 2^fractional, where:
             // 2^x ~= (1 + 0.695502049*x + 0.2262698*x**2 + 0.0782318*x**3)
-            let difficulty_factor: u128 = ((195_766_423_245_049_u128 * fractional as u128
-                + 971_821_376_u128 * fractional.pow(2) as u128
-                + 5_127_u128 * fractional.pow(3) as u128
-                + 2_u128.pow(47))
-                >> (RBITS * 3))
-                + RADIX as u128;
+            let fractional_multiplier = RADIX
+                + ((195_766_423_245_049_u128 * fractional
+                    + 971_821_376_u128 * fractional.pow(2)
+                    + 5_127_u128 * fractional.pow(3)
+                    + 2_u128.pow(RBITS * 3 - 1))
+                    >> (RBITS * 3));
 
             // Cast the anchor difficulty target from a u64 to a u128.
             // The difficulty target must allow for leading zeros to account for overflows;
             // an additional 64-bits for the leading zeros suffices.
-            let candidate_difficulty_target = (anchor_difficulty_target as u128).saturating_mul(difficulty_factor);
+            let candidate_difficulty_target = (anchor_difficulty_target as u128).saturating_mul(fractional_multiplier);
 
             // Calculate the new difficulty.
             // Shift the target to multiply by 2^(integer) / RADIX.
-            shifts -= RBITS;
+            let shifts = integral - RBITS as i128;
             let candidate_difficulty_target = if shifts < 0 {
                 match candidate_difficulty_target.checked_shr((-shifts) as u32) {
                     Some(target) => core::cmp::max(target, 1),
@@ -700,33 +706,15 @@ mod tests {
                 );
 
                 if simulated_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                    println!(
-                        "{}.{}: {} < {}\n",
-                        num_blocks_since_anchor,
-                        j,
-                        simulated_block_time,
-                        Testnet2::ALEO_BLOCK_TIME_IN_SECS
-                    );
+                    println!("{} < {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
                     // If the block was found faster than expected, the difficulty should increase.
                     assert!(candidate_difficulty_target < anchor_difficulty_target);
                 } else if simulated_block_time == Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                    println!(
-                        "{}.{}: {} == {}\n",
-                        num_blocks_since_anchor,
-                        j,
-                        simulated_block_time,
-                        Testnet2::ALEO_BLOCK_TIME_IN_SECS
-                    );
+                    println!("{} == {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
                     // If the block was found within the expected time, the difficulty should stay unchanged.
                     assert_eq!(candidate_difficulty_target, anchor_difficulty_target);
                 } else if simulated_block_time > Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                    println!(
-                        "{}.{}: {} > {}\n",
-                        num_blocks_since_anchor,
-                        j,
-                        simulated_block_time,
-                        Testnet2::ALEO_BLOCK_TIME_IN_SECS
-                    );
+                    println!("{} > {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
                     // If the block was found slower than expected, the difficulty should decrease.
                     assert!(candidate_difficulty_target > anchor_difficulty_target);
                 }
