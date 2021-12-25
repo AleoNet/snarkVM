@@ -481,16 +481,19 @@ impl<N: Network> Blocks<N> {
             assert_eq!(anchor_difficulty_target.checked_shr(64), Some(0));
 
             // Determine the block time elapsed (in seconds) since the anchor block.
+            // Note: This operation includes a safety check for a repeat timestamp.
             let block_time_elapsed = core::cmp::max(block_timestamp.saturating_sub(anchor_timestamp), 1);
 
             // Determine the number of blocks since the anchor.
+            // Note: This operation includes a safety check for a repeat block height.
             let number_of_blocks_elapsed = core::cmp::max(block_height.saturating_sub(anchor_block_height), 1);
 
             // Determine the expected block time elapsed (in seconds) since the anchor block.
             let expected_block_time_elapsed = target_block_time.saturating_mul(number_of_blocks_elapsed as i64);
 
             // Determine the difference in block time elapsed (in seconds).
-            let difference_in_block_time_elapsed = block_time_elapsed.saturating_sub(expected_block_time_elapsed);
+            // Note: This operation must be *standard subtraction* to account for faster blocks.
+            let difference_in_block_time_elapsed = block_time_elapsed - expected_block_time_elapsed;
 
             // Compute the exponent factor.
             let exponent = RADIX.saturating_mul(difference_in_block_time_elapsed) / TAU;
