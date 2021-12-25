@@ -527,7 +527,7 @@ impl<N: Network> Blocks<N> {
             // Calculate the new difficulty.
             // Shift the target to multiply by 2^(integer) / RADIX.
             let shifts = integral - RBITS as i128;
-            let candidate_difficulty_target = if shifts < 0 {
+            let mut candidate_difficulty_target = if shifts < 0 {
                 match candidate_difficulty_target.checked_shr((-shifts) as u32) {
                     Some(target) => core::cmp::max(target, 1),
                     None => 1,
@@ -538,6 +538,9 @@ impl<N: Network> Blocks<N> {
                     None => u64::MAX as u128,
                 }
             };
+
+            // Cap the difficulty target at `u64::MAX` if it has overflowed.
+            candidate_difficulty_target = core::cmp::min(candidate_difficulty_target, u64::MAX as u128);
 
             // Cast the new difficulty target down from a u128 to a u64.
             // Ensure that the leading 64 bits are zeros.
