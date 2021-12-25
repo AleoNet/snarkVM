@@ -484,7 +484,7 @@ impl<N: Network> Blocks<N> {
             let block_time_elapsed = core::cmp::max(block_timestamp.saturating_sub(anchor_timestamp), 1);
 
             // Determine the number of blocks since the anchor.
-            let number_of_blocks_elapsed = block_height.saturating_sub(anchor_block_height);
+            let number_of_blocks_elapsed = core::cmp::max(block_height.saturating_sub(anchor_block_height), 1);
 
             // Determine the expected block time elapsed (in seconds) since the anchor block.
             let expected_block_time_elapsed = target_block_time.saturating_mul(number_of_blocks_elapsed as i64);
