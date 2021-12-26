@@ -737,7 +737,7 @@ mod tests {
 
             // Simulate a random block time.
             let simulated_block_time = rng.gen_range(1..Testnet2::ALEO_BLOCK_TIME_IN_SECS + 100);
-            let simulated_block_height = anchor_block_height + 1;
+            let simulated_block_height = anchor_block_height.saturating_add(rng.gen_range(1..10_000_u32));
 
             let expected_time_elapsed =
                 (simulated_block_height - anchor_block_height) as i64 * Testnet2::ALEO_BLOCK_TIME_IN_SECS;
