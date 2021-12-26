@@ -451,7 +451,7 @@ impl<N: Network> Blocks<N> {
     ///     B = Expected time per block.
     ///     S = Time elapsed since the anchor.
     ///     N = Number of blocks since the anchor.
-    ///     tau = The halflife of the algorithm. For every `tau` seconds ahead of
+    ///     tau = The half life of the algorithm. For every `tau` seconds ahead of
     ///           schedule a block’s timestamp becomes, the difficulty doubles.
     /// To avoid use of floating points, we use fixed-point arithmetic.
     fn asert_retarget(
@@ -462,9 +462,6 @@ impl<N: Network> Blocks<N> {
         block_height: u32,
         target_block_time: i64,
     ) -> u64 {
-        // Ensure that arithmetic shift is supported.
-        assert_eq!(-1_i64 >> 1, -1_i64);
-
         // Compute the difference in block time elapsed, defined as:
         // (block_timestamp - anchor_timestamp) - target_block_time * number_of_blocks_elapsed.
         let drift = {
@@ -489,7 +486,7 @@ impl<N: Network> Blocks<N> {
         const RADIX: u128 = 1 << RBITS;
 
         // The half life for the expected duration in doubling the difficulty target.
-        const TAU: u128 = 43_200; // 43,200 seconds = 12 hours
+        const TAU: u128 = 64_800; // 64,800 seconds = 18 hours
 
         // Compute the exponent factor, and decompose it into integral & fractional parts for fixed point arithmetic.
         let (integral, fractional) = {
@@ -648,20 +645,24 @@ mod tests {
         let anchor_block_height = 72154u32;
         let anchor_difficulty_target = 101336179232188u64;
 
+        const TAU: u128 = 64_800; // 64,800 seconds = 18 hours
+
         for num_blocks_since_anchor in 1..500_000 {
             //
-            // Simulate block times from T-10 to T+10 seconds,
+            // Simulate block times from T-5 to T+5 seconds,
             // where T := anchor_timestamp + ALEO_BLOCK_TIME_IN_SECS.
             //
-            for j in 0..=20 {
+            for j in -5..5 {
                 // Simulate a random block time.
-                let simulated_block_time = Testnet2::ALEO_BLOCK_TIME_IN_SECS - 10 + j;
+                let simulated_block_time = Testnet2::ALEO_BLOCK_TIME_IN_SECS + j;
                 let simulated_block_height = anchor_block_height + num_blocks_since_anchor;
 
                 let expected_time_elapsed =
                     (simulated_block_height - anchor_block_height) as i64 * Testnet2::ALEO_BLOCK_TIME_IN_SECS;
                 let simulated_time_elapsed =
                     (simulated_block_height - anchor_block_height) as i64 * simulated_block_time;
+                let drift = simulated_time_elapsed - expected_time_elapsed;
+
                 let simulated_timestamp = anchor_timestamp.saturating_add(simulated_time_elapsed);
                 let candidate_difficulty_target = Blocks::<Testnet2>::asert_retarget(
                     anchor_timestamp,
@@ -672,6 +673,10 @@ mod tests {
                     Testnet2::ALEO_BLOCK_TIME_IN_SECS,
                 );
 
+                // Calculate the number of times the drift has doubled from TAU.
+                let drift_multiplier = drift as f64 / TAU as f64;
+                let difficulty_ratio = candidate_difficulty_target as f64 / anchor_difficulty_target as f64;
+
                 println!(
                     "Anchor (height = {:?}, timestamp = {:?}, difficulty_target = {:?})",
                     anchor_block_height, anchor_timestamp, anchor_difficulty_target
@@ -681,11 +686,27 @@ mod tests {
                     simulated_block_height, simulated_timestamp, candidate_difficulty_target
                 );
                 println!(
-                    "Difference (height = {:?}, drift = {:?}, delta_in_difficulty_target = {:?})",
+                    "Difference (height = {}, drift = {}, difficulty_ratio = {}, drift_multiplier = {})",
                     simulated_block_height - anchor_block_height,
-                    simulated_time_elapsed - expected_time_elapsed,
-                    candidate_difficulty_target.wrapping_sub(anchor_difficulty_target),
+                    drift,
+                    difficulty_ratio,
+                    drift_multiplier
                 );
+
+                // Ensure the difficulty is doubling when the drift doubles,
+                // and halving when the drift is half the expected time elapsed.
+                let expected_difficulty_ratio = 2f64.powf(drift_multiplier);
+                // Only check the difficulty targets that naturally fall below u64::MAX,
+                // which is determined by approximating (flooring) the expected difficulty ratio
+                // and seeing if the new difficulty target overflows or not.
+                if anchor_difficulty_target
+                    .checked_mul(expected_difficulty_ratio as u64)
+                    .is_some()
+                {
+                    let percentage_difference =
+                        100f64 * (expected_difficulty_ratio - difficulty_ratio).abs() / difficulty_ratio;
+                    assert!(percentage_difference < 1f64);
+                }
 
                 if simulated_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
                     println!("{} < {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
@@ -705,58 +726,61 @@ mod tests {
     }
 
     // #[test]
-    // fn test_asert_retargeting_algorithm_random() {
+    // fn test_asert_difficulty_target_random() {
     //     let rng = &mut thread_rng();
-    //
-    //     for i in 0..1000 {
+    //     //
+    //     // Simulate block times from T-19 to T+19 seconds,
+    //     // where T := anchor_timestamp + ALEO_BLOCK_TIME_IN_SECS.
+    //     //
+    //     for i in -19..20 {
     //         let anchor_timestamp = rng.gen_range(0..1_000_000_000_i64);
     //         let anchor_block_height = rng.gen_range(0..u32::MAX / 2);
     //         let anchor_difficulty_target = rng.gen_range(1..u64::MAX / 2);
     //
     //         // Simulate a random block time.
-    //         let simulated_average_block_time =
-    //             rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS - 10..Testnet2::ALEO_BLOCK_TIME_IN_SECS + 10);
-    //         let block_height = rng.gen_range(anchor_block_height + 1..anchor_block_height * 2);
-    //         let time_elapsed = (block_height - anchor_block_height) as i64 * simulated_average_block_time;
-    //         let block_timestamp = anchor_timestamp.saturating_add(time_elapsed);
+    //         let simulated_block_time = Testnet2::ALEO_BLOCK_TIME_IN_SECS + i;
+    //         let simulated_block_height = anchor_block_height + 1;
     //
-    //         let new_target = Blocks::<Testnet2>::compute_asert_difficulty_target(
+    //         let expected_time_elapsed =
+    //             (simulated_block_height - anchor_block_height) as i64 * Testnet2::ALEO_BLOCK_TIME_IN_SECS;
+    //         let simulated_time_elapsed = (simulated_block_height - anchor_block_height) as i64 * simulated_block_time;
+    //         let simulated_timestamp = anchor_timestamp.saturating_add(simulated_time_elapsed);
+    //         let candidate_difficulty_target = Blocks::<Testnet2>::asert_retarget(
     //             anchor_timestamp,
     //             anchor_difficulty_target,
     //             anchor_block_height,
-    //             block_timestamp,
-    //             block_height,
+    //             simulated_timestamp,
+    //             simulated_block_height,
+    //             Testnet2::ALEO_BLOCK_TIME_IN_SECS,
     //         );
     //
-    //         println!("anchor_timestamp: {:?}", anchor_timestamp);
-    //         println!("anchor_difficulty_target: {:?}", anchor_difficulty_target);
-    //         println!("anchor_block_height: {:?}", anchor_block_height);
-    //         println!("block_timestamp: {:?}", block_timestamp);
-    //         println!("block_height: {:?}", block_height);
-    //         println!("time_elapsed: {:?}", time_elapsed);
-    //         println!("block diff: {:?}", block_height - anchor_block_height);
+    //         println!(
+    //             "Anchor (height = {:?}, timestamp = {:?}, difficulty_target = {:?})",
+    //             anchor_block_height, anchor_timestamp, anchor_difficulty_target
+    //         );
+    //         println!(
+    //             "Block (height = {:?}, timestamp = {:?}, difficulty_target = {:?})",
+    //             simulated_block_height, simulated_timestamp, candidate_difficulty_target
+    //         );
+    //         println!(
+    //             "Difference (height = {:?}, drift = {:?}, delta_in_difficulty_target = {:?})",
+    //             simulated_block_height - anchor_block_height,
+    //             simulated_time_elapsed - expected_time_elapsed,
+    //             candidate_difficulty_target.wrapping_sub(anchor_difficulty_target),
+    //         );
     //
-    //         if simulated_average_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-    //             println!(
-    //                 "{}: {} < {}",
-    //                 i,
-    //                 simulated_average_block_time,
-    //                 Testnet2::ALEO_BLOCK_TIME_IN_SECS
-    //             );
-    //
-    //             println!("{} vs {}\n", new_target, anchor_difficulty_target);
+    //         if simulated_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
+    //             println!("{} < {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
     //             // If the block was found faster than expected, the difficulty should increase.
-    //             assert!(new_target < anchor_difficulty_target as u128);
-    //         } else if simulated_average_block_time >= Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-    //             println!(
-    //                 "\n{}: {} > {}",
-    //                 i,
-    //                 simulated_average_block_time,
-    //                 Testnet2::ALEO_BLOCK_TIME_IN_SECS
-    //             );
-    //             println!("{} vs {}\n", new_target, anchor_difficulty_target);
+    //             assert!(candidate_difficulty_target < anchor_difficulty_target);
+    //         } else if simulated_block_time == Testnet2::ALEO_BLOCK_TIME_IN_SECS {
+    //             println!("{} == {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
+    //             // If the block was found within the expected time, the difficulty should stay unchanged.
+    //             assert_eq!(candidate_difficulty_target, anchor_difficulty_target);
+    //         } else if simulated_block_time > Testnet2::ALEO_BLOCK_TIME_IN_SECS {
+    //             println!("{} > {}\n", simulated_block_time, Testnet2::ALEO_BLOCK_TIME_IN_SECS);
     //             // If the block was found slower than expected, the difficulty should decrease.
-    //             assert!(new_target >= anchor_difficulty_target as u128);
+    //             assert!(candidate_difficulty_target > anchor_difficulty_target);
     //         }
     //     }
     // }
