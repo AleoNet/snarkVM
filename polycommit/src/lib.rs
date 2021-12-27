@@ -139,6 +139,12 @@ pub struct BatchLCProof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<
     pub evaluations: Option<Vec<F>>,
 }
 
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> PCProof for BatchLCProof<F, CF, PC> {
+    fn is_hiding(&self) -> bool {
+        self.proof.is_hiding()
+    }
+}
+
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for BatchLCProof<F, CF, PC> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
@@ -187,6 +193,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     type BatchProof: CanonicalSerialize
         + CanonicalDeserialize
         + Clone
+        + PCProof
         + From<Vec<Self::Proof>>
         + Into<Vec<Self::Proof>>
         + PartialEq

@@ -26,7 +26,15 @@ use crate::{
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::nonnative::params::OptimizationType;
-use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
+use snarkvm_polycommit::{
+    Evaluations,
+    LabeledCommitment,
+    LabeledPolynomial,
+    PCProof,
+    PCRandomness,
+    PCUniversalParams,
+    PolynomialCommitment,
+};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
@@ -476,6 +484,11 @@ impl<
             .chain(third_commitment_randomnesses)
             .collect();
 
+        if !MM::ZK {
+            let empty_randomness = PC::Randomness::empty();
+            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
+        }
+
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state, &mut fs_rng);
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(&public_input, &polynomials, &verifier_state)?;
@@ -551,6 +564,7 @@ impl<
         let prover_messages = vec![prover_first_message, prover_second_message, prover_third_message];
 
         let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
+        assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         proof.print_size_info();
         end_timer!(prover_time);
 
@@ -576,6 +590,22 @@ impl<
         proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
+        let first_commitments = &proof.commitments[0];
+        let second_commitments = &proof.commitments[1];
+        let third_commitments = &proof.commitments[2];
+        let proof_has_correct_zk_mode = if MM::ZK {
+            first_commitments.len() == 4 && proof.pc_proof.is_hiding()
+        } else {
+            first_commitments.len() == 3 && !proof.pc_proof.is_hiding()
+        };
+        if !proof_has_correct_zk_mode {
+            eprintln!(
+                "Too many commitments in the first round ({}) or proof has incorrect hiding mode ({})",
+                first_commitments.len(),
+                proof.pc_proof.is_hiding()
+            );
+            return Ok(false);
+        }
 
         let padded_public_input = {
             let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
@@ -612,8 +642,6 @@ impl<
         // --------------------------------------------------------------------
         // First round
 
-        let first_commitments = &proof.commitments[0];
-
         if MM::RECURSION {
             fs_rng.absorb_native_field_elements(&first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
@@ -632,8 +660,6 @@ impl<
 
         // --------------------------------------------------------------------
         // Second round
-        let second_commitments = &proof.commitments[1];
-
         if MM::RECURSION {
             fs_rng.absorb_native_field_elements(&second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
@@ -651,8 +677,6 @@ impl<
 
         // --------------------------------------------------------------------
         // Third round
-        let third_commitments = &proof.commitments[2];
-
         if MM::RECURSION {
             fs_rng.absorb_native_field_elements(&third_commitments);
             if !proof.prover_messages[2].field_elements.is_empty() {
@@ -679,14 +703,6 @@ impl<
             .chain(AHPForR1CS::<_, MM>::prover_third_round_degree_bounds(&index_info));
 
         let polynomial_labels = AHPForR1CS::<TargetField, MM>::polynomial_labels();
-        let number_of_commitments_is_correct = if MM::ZK {
-            second_commitments.len() == 4
-        } else {
-            second_commitments.len() == 3
-        };
-        if !number_of_commitments_is_correct {
-            eprintln!("Too many commitments in the second round");
-        }
 
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_verifying_key
@@ -764,9 +780,9 @@ impl<
         }
         end_timer!(verifier_time, || format!(
             " PC::Check for AHP Verifier linear equations: {}",
-            evaluations_are_correct & number_of_commitments_is_correct
+            evaluations_are_correct & proof_has_correct_zk_mode
         ));
-        Ok(evaluations_are_correct & number_of_commitments_is_correct)
+        Ok(evaluations_are_correct & proof_has_correct_zk_mode)
     }
 
     /// Verify that a proof for the constraint system defined by `C` asserts that
