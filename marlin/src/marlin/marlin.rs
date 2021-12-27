@@ -36,7 +36,7 @@ use snarkvm_utilities::println;
 use crate::marlin::PreparedCircuitVerifyingKey;
 use core::{
     marker::PhantomData,
-    sync::atomic::{AtomicBool, Ordering}, num,
+    sync::atomic::{AtomicBool, Ordering},
 };
 use rand_core::RngCore;
 

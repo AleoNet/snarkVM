@@ -73,7 +73,7 @@ mod marlin {
     use super::*;
     use crate::{
         fiat_shamir::FiatShamirChaChaRng,
-        marlin::{MarlinSNARK, MarlinTestnet1Mode, MarlinPoswMode},
+        marlin::{MarlinPoswMode, MarlinSNARK, MarlinTestnet1Mode},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
@@ -97,8 +97,7 @@ mod marlin {
                 pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
                     let rng = &mut test_rng();
 
-                    let max_degree =
-                        crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
+                    let max_degree = crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
 
                     for _ in 0..100 {

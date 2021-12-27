@@ -463,9 +463,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let hiding_bound = if MM::ZK { Some(1) } else { None };
         let oracles = ProverSecondOracles {
-                t: LabeledPolynomial::new("t".into(), t_poly, None, None),
-                g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), hiding_bound),
-                h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
+            t: LabeledPolynomial::new("t".into(), t_poly, None, None),
+            g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), hiding_bound),
+            h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
 
         state.w_poly = None;
