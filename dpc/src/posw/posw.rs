@@ -17,10 +17,13 @@
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
 use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
-use core::sync::atomic::AtomicBool;
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
+use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
+use blake2::Blake2s;
+use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
 
 /// A Proof of Succinct Work miner and verifier.
@@ -32,6 +35,24 @@ pub struct PoSW<N: Network> {
     /// The verifying key.
     verifying_key: <<N as Network>::PoSWSNARK as SNARK>::VerifyingKey,
 }
+
+// TODO (raychu86): Refactor/remove this in time for mainnet. This is a temporary measure to ensure
+//                  testnet2 runs smoothly with the new POSW MarlinMode.
+/// The block height that swaps to the new Marlin posw mode.
+#[cfg(not(test))]
+const NEW_POSW_FORK_HEIGHT: u32 = 100000;
+#[cfg(test)]
+const NEW_POSW_FORK_HEIGHT: u32 = 1;
+
+/// The older marlin snark type used for blocks before `NEW_POSW_FORK_HEIGHT`.
+type OldPoSWSNARK<N> = MarlinSNARK<
+    <N as Network>::InnerScalarField,
+    <N as Network>::OuterScalarField,
+    SonicKZG10<<N as Network>::InnerCurve>,
+    FiatShamirChaChaRng<<N as Network>::InnerScalarField, <N as Network>::OuterScalarField, Blake2s>,
+    MarlinTestnet1Mode,
+    Vec<<N as Network>::InnerScalarField>,
+>;
 
 impl<N: Network> PoSWScheme<N> for PoSW<N> {
     ///
@@ -134,9 +155,9 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         };
 
         // Ensure the difficulty target is met.
-        match proof.to_bytes_le() {
-            Ok(proof) => {
-                let proof_difficulty = sha256d_to_u64(&proof);
+        let proof_bytes = match proof.to_bytes_le() {
+            Ok(proof_bytes) => {
+                let proof_difficulty = sha256d_to_u64(&proof_bytes);
                 if proof_difficulty > block_header.difficulty_target() {
                     #[cfg(debug_assertions)]
                     eprintln!(
@@ -146,6 +167,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
                     );
                     return false;
                 }
+
+                proof_bytes
             }
             Err(error) => {
                 eprintln!("Failed to convert PoSW proof to bytes: {}", error);
@@ -159,10 +182,35 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             *block_header.nonce(),
         ];
 
-        // Ensure the proof is valid.
-        if !<<N as Network>::PoSWSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
-            eprintln!("PoSW proof verification failed");
-            return false;
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < NEW_POSW_FORK_HEIGHT {
+            let proof = match <OldPoSWSNARK<N> as SNARK>::Proof::from_bytes_le(&proof_bytes) {
+                Ok(proof) => proof,
+                Err(error) => {
+                    eprintln!("Failed to read PoSW proof from bytes: {}", error);
+                    return false;
+                }
+            };
+
+            let verifying_key = match <OldPoSWSNARK<N> as SNARK>::VerifyingKey::from_bytes_le(
+                &self.verifying_key.to_bytes_le().unwrap(),
+            ) {
+                Ok(vk) => vk,
+                Err(error) => {
+                    eprintln!("Failed to read PoSW VK from bytes: {}", error);
+                    return false;
+                }
+            };
+
+            if !<OldPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap() {
+                eprintln!("PoSW proof verification failed");
+                return false;
+            }
+        } else {
+            // Ensure the proof is valid.
+            if !<<N as Network>::PoSWSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
+                eprintln!("PoSW proof verification failed");
+                return false;
+            }
         }
 
         true
