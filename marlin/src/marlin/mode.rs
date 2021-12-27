@@ -52,11 +52,11 @@ impl MarlinMode for MarlinRecursiveMode {
     const ZK: bool = true;
 }
 
-/// The Marlin testnet2 mode does not assume recursive proofs of any depth.
+/// The Marlin POSW mode does not assume recursive proofs of any depth.
 #[derive(Clone, Debug)]
 pub struct MarlinPoswMode;
 
 impl MarlinMode for MarlinPoswMode {
-    const RECURSION: bool = true;
+    const RECURSION: bool = false;
     const ZK: bool = false;
 }

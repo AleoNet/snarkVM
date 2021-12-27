@@ -36,7 +36,7 @@ use snarkvm_utilities::println;
 use crate::marlin::PreparedCircuitVerifyingKey;
 use core::{
     marker::PhantomData,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, Ordering}, num,
 };
 use rand_core::RngCore;
 
@@ -428,7 +428,7 @@ impl<
             .circuit
             .iter() // 12 items
             .chain(vanishing_polys.iter()) // 0 or 2 items
-            .chain(prover_first_oracles.iter()) // 4 items
+            .chain(prover_first_oracles.iter()) // 3 or 4 items
             .chain(prover_second_oracles.iter())// 3 items
             .chain(prover_third_oracles.iter())// 2 items
             .collect();
@@ -679,6 +679,14 @@ impl<
             .chain(AHPForR1CS::<_, MM>::prover_third_round_degree_bounds(&index_info));
 
         let polynomial_labels = AHPForR1CS::<TargetField, MM>::polynomial_labels();
+        let number_of_commitments_is_correct = if MM::ZK {
+            second_commitments.len() == 4
+        } else {
+            second_commitments.len() == 3
+        };
+        if !number_of_commitments_is_correct {
+            eprintln!("Too many commitments in the second round");
+        }
 
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_verifying_key
@@ -756,9 +764,9 @@ impl<
         }
         end_timer!(verifier_time, || format!(
             " PC::Check for AHP Verifier linear equations: {}",
-            evaluations_are_correct
+            evaluations_are_correct & number_of_commitments_is_correct
         ));
-        Ok(evaluations_are_correct)
+        Ok(evaluations_are_correct & number_of_commitments_is_correct)
     }
 
     /// Verify that a proof for the constraint system defined by `C` asserts that

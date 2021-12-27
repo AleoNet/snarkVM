@@ -292,19 +292,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(z_a_poly.degree() < domain_h.size() + zk_bound);
         assert!(z_b_poly.degree() < domain_h.size() + zk_bound);
 
-        let (w, z_a, z_b) = if MM::ZK {
-            (
-                LabeledPolynomial::new("w".to_string(), w_poly, None, Some(1)),
-                LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, Some(1)),
-                LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, Some(1)),
-            )
-        } else {
-            (
-                LabeledPolynomial::new("w".to_string(), w_poly, None, None),
-                LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, None),
-                LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, None),
-            )
-        };
+        let hiding_bound = if MM::ZK { Some(1) } else { None };
+
+        let w = LabeledPolynomial::new("w".to_string(), w_poly, None, hiding_bound);
+        let z_a = LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, hiding_bound);
+        let z_b = LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, hiding_bound);
+
         let mask_poly =
             mask_poly.map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None));
 
@@ -349,7 +342,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the first round.
     pub fn prover_first_round_degree_bounds(_info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
-        vec![None; 4].into_iter()
+        if MM::ZK {
+            vec![None; 4].into_iter()
+        } else {
+            vec![None; 3].into_iter()
+        }
     }
 
     /// Output the second round message and the next state.
@@ -449,8 +446,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 *a *= b;
                 *a -= &(c * d);
             });
-        let rhs = r_alpha_evals.interpolate();
-        let q_1 = mask_poly.map_or(&Polynomial::zero(), |p| p.polynomial()) + &rhs;
+        let mut rhs = r_alpha_evals.interpolate();
+        rhs += mask_poly.map_or(&Polynomial::zero(), |p| p.polynomial());
+        let q_1 = rhs;
         end_timer!(q_1_time);
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
@@ -463,18 +461,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(g_1.degree() <= domain_h.size() - 2);
         assert!(h_1.degree() <= 2 * domain_h.size() + 2 * zk_bound - 2);
 
-        let oracles = if MM::ZK {
-            ProverSecondOracles {
+        let hiding_bound = if MM::ZK { Some(1) } else { None };
+        let oracles = ProverSecondOracles {
                 t: LabeledPolynomial::new("t".into(), t_poly, None, None),
-                g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), Some(1)),
+                g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), hiding_bound),
                 h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
-            }
-        } else {
-            ProverSecondOracles {
-                t: LabeledPolynomial::new("t".into(), t_poly, None, None),
-                g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), None),
-                h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
-            }
         };
 
         state.w_poly = None;
