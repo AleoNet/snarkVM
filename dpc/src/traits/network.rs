@@ -155,6 +155,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// The maximum future block time.
     const ALEO_FUTURE_TIME_LIMIT_IN_SECS: i64;
 
+    /// The maximum number of blocks that a fork can be.
+    const MAXIMUM_FORK_DEPTH: u32;
+
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
