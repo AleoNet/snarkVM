@@ -26,6 +26,25 @@ use blake2::Blake2s;
 use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
 
+// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+//   This is a temporary measure to ensure testnet2 runs smoothly with the new POSW MarlinMode.
+/// The block height that swaps to the new Marlin posw mode.
+#[cfg(debug_assertions)] // TODO (raychu86): Find better solution than cfg(debug_assertions)
+const POSW_UPGRADE_BLOCK_HEIGHT: u32 = 1;
+#[cfg(not(debug_assertions))]
+const POSW_UPGRADE_BLOCK_HEIGHT: u32 = 100000;
+
+// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+/// The deprecated Marlin SNARK type used for blocks before `POSW_UPGRADE_BLOCK_HEIGHT`.
+type DeprecatedPoSWSNARK<N> = MarlinSNARK<
+    <N as Network>::InnerScalarField,
+    <N as Network>::OuterScalarField,
+    SonicKZG10<<N as Network>::InnerCurve>,
+    FiatShamirChaChaRng<<N as Network>::InnerScalarField, <N as Network>::OuterScalarField, Blake2s>,
+    MarlinTestnet1Mode,
+    Vec<<N as Network>::InnerScalarField>,
+>;
+
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
 pub struct PoSW<N: Network> {
@@ -35,24 +54,6 @@ pub struct PoSW<N: Network> {
     /// The verifying key.
     verifying_key: <<N as Network>::PoSWSNARK as SNARK>::VerifyingKey,
 }
-
-// TODO (raychu86): Refactor/remove this in time for mainnet. This is a temporary measure to ensure
-//                  testnet2 runs smoothly with the new POSW MarlinMode.
-/// The block height that swaps to the new Marlin posw mode.
-#[cfg(debug_assertions)] // TODO (raychu86): Find better solution than cfg(debug_assertions)
-const NEW_POSW_FORK_HEIGHT: u32 = 1;
-#[cfg(not(debug_assertions))]
-const NEW_POSW_FORK_HEIGHT: u32 = 100000;
-
-/// The older marlin snark type used for blocks before `NEW_POSW_FORK_HEIGHT`.
-type OldPoSWSNARK<N> = MarlinSNARK<
-    <N as Network>::InnerScalarField,
-    <N as Network>::OuterScalarField,
-    SonicKZG10<<N as Network>::InnerCurve>,
-    FiatShamirChaChaRng<<N as Network>::InnerScalarField, <N as Network>::OuterScalarField, Blake2s>,
-    MarlinTestnet1Mode,
-    Vec<<N as Network>::InnerScalarField>,
->;
 
 impl<N: Network> PoSWScheme<N> for PoSW<N> {
     ///
@@ -137,13 +138,12 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
         // Generate the proof.
 
-        // TODO (raychu86): Remove this conditional in mainnet.
-        // Mine blocks with the old POSW mode for blocks behind `NEW_POSW_FORK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < NEW_POSW_FORK_HEIGHT {
-            let pk = <OldPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
-
-            let proof_bytes =
-                <OldPoSWSNARK<N> as SNARK>::prove_with_terminator(&pk, &circuit, terminator, rng)?.to_bytes_le()?;
+        // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+        // Mine blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_BLOCK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_BLOCK_HEIGHT {
+            let pk = <DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
+            let proof_bytes = <DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(&pk, &circuit, terminator, rng)?
+                .to_bytes_le()?;
 
             block_header.set_proof(<<N as Network>::PoSWSNARK as SNARK>::Proof::from_bytes_le(&proof_bytes)?.into());
         } else {
@@ -194,41 +194,43 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             *block_header.nonce(),
         ];
 
-        // TODO (raychu86): Remove this conditional in mainnet.
-        // Verify blocks with the old POSW mode for blocks behind `NEW_POSW_FORK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < NEW_POSW_FORK_HEIGHT {
-            let proof = match <OldPoSWSNARK<N> as SNARK>::Proof::from_bytes_le(&proof_bytes) {
+        // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+        // Verify blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_BLOCK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_BLOCK_HEIGHT {
+            let proof = match <DeprecatedPoSWSNARK<N> as SNARK>::Proof::from_bytes_le(&proof_bytes) {
                 Ok(proof) => proof,
                 Err(error) => {
-                    eprintln!("Failed to read PoSW proof from bytes: {}", error);
+                    eprintln!("Failed to read deprecated PoSW proof from bytes: {}", error);
                     return false;
                 }
             };
 
-            let verifying_key = match <OldPoSWSNARK<N> as SNARK>::VerifyingKey::from_bytes_le(
+            let verifying_key = match <DeprecatedPoSWSNARK<N> as SNARK>::VerifyingKey::from_bytes_le(
                 &self.verifying_key.to_bytes_le().unwrap(),
             ) {
                 Ok(vk) => vk,
                 Err(error) => {
-                    eprintln!("Failed to read PoSW VK from bytes: {}", error);
+                    eprintln!("Failed to read deprecated PoSW VK from bytes: {}", error);
                     return false;
                 }
             };
 
-            // Ensure the proof is valid under the old POSW parameters.
-            if !<OldPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap() {
-                eprintln!("PoSW proof verification failed");
+            // Ensure the proof is valid under the deprecated POSW parameters.
+            if !<DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap() {
+                eprintln!("[deprecated] PoSW proof verification failed");
                 return false;
             }
+
+            true
         } else {
             // Ensure the proof is valid.
             if !<<N as Network>::PoSWSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
                 eprintln!("PoSW proof verification failed");
                 return false;
             }
-        }
 
-        true
+            true
+        }
     }
 }
 

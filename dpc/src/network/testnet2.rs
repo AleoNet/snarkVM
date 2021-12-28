@@ -61,7 +61,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_marlin::{
     constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
-    marlin::MarlinTestnet2Mode,
+    marlin::{MarlinPoswMode, MarlinTestnet2Mode},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirChaChaRng,
     PoseidonSponge,
@@ -69,9 +69,6 @@ use snarkvm_marlin::{
 use snarkvm_parameters::{testnet2::*, Genesis};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
-
-// TODO (howardwu): TEMPORARY - Resolve me.
-use snarkvm_marlin::marlin::MarlinPoswMode;
 
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
