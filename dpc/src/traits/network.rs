@@ -92,6 +92,7 @@ pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq +
     + Send
 {
     fn prefix() -> String;
+    fn size_in_bytes() -> usize;
 }
 
 #[rustfmt::skip]

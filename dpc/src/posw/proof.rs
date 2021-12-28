@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Network;
+use crate::{Network, PoswError};
 use snarkvm_algorithms::SNARK;
 use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
     FromBytes,
-    FromBytesVisitor,
+    FromBytesDeserializer,
     ToBytes,
     ToBytesSerializer,
 };
@@ -94,17 +94,29 @@ impl<N: Network> PoSWProof<N> {
 
     /// Returns the PoSW proof size in bytes.
     pub fn size(&self) -> usize {
-        match self {
-            Self::NonHiding(..) => N::HEADER_PROOF_SIZE_IN_BYTES,
-            Self::Hiding(..) => 771,
-        }
+        N::HEADER_PROOF_SIZE_IN_BYTES
     }
 }
 
 impl<N: Network> FromBytes for PoSWProof<N> {
     #[inline]
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        Ok(bincode::deserialize_from(reader).expect("FAILED"))
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
+        reader.read(&mut buffer)?;
+
+        println!("{:?}", &buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES][..]);
+
+        if buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
+            if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
+                return Ok(Self::NonHiding(proof));
+            }
+        } else {
+            if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
+                return Ok(Self::Hiding(proof));
+            }
+        }
+
+        Err(PoswError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
     }
 }
 
@@ -112,7 +124,11 @@ impl<N: Network> ToBytes for PoSWProof<N> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         match self {
-            Self::NonHiding(proof) => proof.write_le(writer),
+            Self::NonHiding(proof) => {
+                let mut buffer = proof.to_bytes_le().unwrap(); // TODO (howardwu): Handle this unwrap.
+                buffer.resize(N::HEADER_PROOF_SIZE_IN_BYTES, 0u8);
+                buffer.write_le(writer)
+            }
             Self::Hiding(proof) => proof.write_le(writer),
         }
     }
@@ -167,18 +183,7 @@ impl<'de, N: Network> Deserialize<'de> for PoSWProof<N> {
                 }
             }
             false => {
-                let mut buffer = Vec::with_capacity(771);
-                deserializer.deserialize_tuple(771, FromBytesVisitor::new(&mut buffer, "PoSW proof"))?;
-
-                if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES]) {
-                    return Ok(Self::NonHiding(proof));
-                }
-
-                if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
-                    return Ok(Self::Hiding(proof));
-                }
-
-                Err(anyhow!("Invalid byte deserialization")).map_err(de::Error::custom)?
+                FromBytesDeserializer::<Self>::deserialize(deserializer, "PoSW proof", N::HEADER_PROOF_SIZE_IN_BYTES)
             }
         }
     }
@@ -207,7 +212,10 @@ mod tests {
             assert_eq!(0, ledger.latest_block_height());
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
             let latest_proof = latest_block_header.proof().as_ref().unwrap();
-            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
+            assert_eq!(
+                latest_proof.to_bytes_le().unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify(&latest_block_header));
             assert!(latest_proof.is_hiding());
         }
@@ -220,7 +228,10 @@ mod tests {
 
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
             let latest_proof = latest_block_header.proof().as_ref().unwrap();
-            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
+            assert_eq!(
+                latest_proof.to_bytes_le().unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify(&latest_block_header));
             assert!(latest_proof.is_hiding());
         }
@@ -255,7 +266,7 @@ mod tests {
             let block =
                 Block::<Testnet2>::read_le(&snarkvm_parameters::testnet2::GenesisBlock::load_bytes()[..]).unwrap();
             let proof = block.header().proof().to_owned().unwrap();
-            assert_eq!(proof.to_bytes_le().unwrap().len(), 771);
+            assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
         }
     }
 
@@ -269,8 +280,11 @@ mod tests {
         );
 
         let proof = Testnet2::genesis_block().header().proof().to_owned().unwrap();
-        assert_eq!(proof.to_bytes_le().unwrap().len(), 771);
-        assert_eq!(bincode::serialize(&proof).unwrap().len(), 771);
+        assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
+        assert_eq!(
+            bincode::serialize(&proof).unwrap().len(),
+            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+        );
     }
 
     #[test]
