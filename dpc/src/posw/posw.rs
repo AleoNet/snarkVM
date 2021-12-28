@@ -39,10 +39,10 @@ pub struct PoSW<N: Network> {
 // TODO (raychu86): Refactor/remove this in time for mainnet. This is a temporary measure to ensure
 //                  testnet2 runs smoothly with the new POSW MarlinMode.
 /// The block height that swaps to the new Marlin posw mode.
-#[cfg(not(test))]
-const NEW_POSW_FORK_HEIGHT: u32 = 100000;
-#[cfg(test)]
+#[cfg(debug_assertions)]
 const NEW_POSW_FORK_HEIGHT: u32 = 1;
+#[cfg(not(debug_assertions))]
+const NEW_POSW_FORK_HEIGHT: u32 = 100000;
 
 /// The older marlin snark type used for blocks before `NEW_POSW_FORK_HEIGHT`.
 type OldPoSWSNARK<N> = MarlinSNARK<
@@ -136,9 +136,21 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         let circuit = PoSWCircuit::<N>::new(&block_header)?;
 
         // Generate the proof.
-        block_header.set_proof(
-            <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
-        );
+
+        // TODO (raychu86): Remove this conditional in mainnet.
+        // Mine blocks with the old POSW mode for blocks behind `NEW_POSW_FORK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < NEW_POSW_FORK_HEIGHT {
+            let pk = <OldPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
+
+            let proof_bytes =
+                <OldPoSWSNARK<N> as SNARK>::prove_with_terminator(&pk, &circuit, terminator, rng)?.to_bytes_le()?;
+
+            block_header.set_proof(<<N as Network>::PoSWSNARK as SNARK>::Proof::from_bytes_le(&proof_bytes)?.into());
+        } else {
+            block_header.set_proof(
+                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
+            );
+        }
 
         Ok(())
     }
@@ -182,6 +194,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             *block_header.nonce(),
         ];
 
+        // TODO (raychu86): Remove this conditional in mainnet.
+        // Verify blocks with the old POSW mode for blocks behind `NEW_POSW_FORK_HEIGHT`.
         if <N as Network>::NETWORK_ID == 2 && block_header.height() < NEW_POSW_FORK_HEIGHT {
             let proof = match <OldPoSWSNARK<N> as SNARK>::Proof::from_bytes_le(&proof_bytes) {
                 Ok(proof) => proof,
@@ -201,6 +215,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
                 }
             };
 
+            // Ensure the proof is valid under the old POSW parameters.
             if !<OldPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap() {
                 eprintln!("PoSW proof verification failed");
                 return false;
