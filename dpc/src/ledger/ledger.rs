@@ -163,11 +163,13 @@ impl<N: Network> Ledger<N> {
         // Compute the block difficulty target.
         let difficulty_target = if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
             Blocks::<N>::compute_difficulty_target(self.latest_block()?.header(), block_timestamp, block_height)
-        } else {
+        } else if N::NETWORK_ID == 2 {
             let anchor_block_header = self
                 .canon_blocks
                 .get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
             Blocks::<N>::compute_difficulty_target(&anchor_block_header, block_timestamp, block_height)
+        } else {
+            Blocks::<N>::compute_difficulty_target(&N::genesis_block().header(), block.timestamp(), block.height())
         };
 
         // Compute the cumulative weight.
