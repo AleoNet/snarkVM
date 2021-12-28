@@ -354,9 +354,13 @@ impl<N: Network> FromBytes for Block<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let block_hash: N::BlockHash = FromBytes::read_le(&mut reader)?;
         let previous_block_hash = FromBytes::read_le(&mut reader)?;
+        println!("STARTED HEADER");
         let header = FromBytes::read_le(&mut reader)?;
+        println!("FINISHED HEADER");
         let transactions = FromBytes::read_le(&mut reader)?;
+        println!("FINISHED Transactions");
         let block = Self::from(previous_block_hash, header, transactions)?;
+        println!("FINISHED block");
 
         match block_hash == block.hash() {
             true => Ok(block),
