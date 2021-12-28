@@ -157,17 +157,25 @@ impl<N: Network> Ledger<N> {
         let previous_block_hash = self.latest_block_hash();
         let block_height = self.latest_block_height() + 1;
 
-        // Compute the block difficulty target.
-        let previous_timestamp = self.latest_block_timestamp()?;
-        let previous_difficulty_target = self.latest_block_difficulty_target()?;
-        let previous_cumulative_weight = self.latest_cumulative_weight()?;
-
         // Ensure that the new timestamp is ahead of the previous timestamp.
-        let block_timestamp = std::cmp::max(Utc::now().timestamp(), previous_timestamp.saturating_add(1));
+        let block_timestamp = std::cmp::max(Utc::now().timestamp(), self.latest_block_timestamp()?.saturating_add(1));
 
-        let difficulty_target =
-            Blocks::<N>::compute_difficulty_target(previous_timestamp, previous_difficulty_target, block_timestamp);
-        let cumulative_weight = previous_cumulative_weight.saturating_add((u64::MAX / difficulty_target) as u128);
+        // Compute the block difficulty target.
+        let difficulty_target = if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            Blocks::<N>::compute_difficulty_target(self.latest_block()?.header(), block_timestamp, block_height)
+        } else if N::NETWORK_ID == 2 {
+            let anchor_block_header = self
+                .canon_blocks
+                .get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
+            Blocks::<N>::compute_difficulty_target(&anchor_block_header, block_timestamp, block_height)
+        } else {
+            Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block_timestamp, block_height)
+        };
+
+        // Compute the cumulative weight.
+        let cumulative_weight = self
+            .latest_cumulative_weight()?
+            .saturating_add((u64::MAX / difficulty_target) as u128);
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
