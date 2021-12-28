@@ -118,7 +118,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
         // Mine blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
             let pk = <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
             block_header.set_proof(PoSWProof::<N>::new_hiding(
                 <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(
@@ -175,7 +175,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
         // Verify blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
         let block_height = block_header.height();
-        if <N as Network>::NETWORK_ID == 2 && block_height < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+        if <N as Network>::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
             // Ensure the proof type is hiding.
             if !proof.is_hiding() {
                 eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
