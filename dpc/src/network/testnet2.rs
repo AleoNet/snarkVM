@@ -76,11 +76,10 @@ use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
 // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-//   This is a temporary measure to ensure testnet2 runs smoothly with the new POSW MarlinMode.
-#[cfg(debug_assertions)] // TODO (raychu86): Find better solution than cfg(debug_assertions)
-pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 1;
-#[cfg(not(debug_assertions))]
-pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 100000;
+#[cfg(test)]
+pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 1_u32;
+#[cfg(not(test))]
+pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 100_000_u32;
 
 // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
 /// The deprecated Marlin SNARK type used for blocks before `V12_UPGRADE_BLOCK_HEIGHT`.

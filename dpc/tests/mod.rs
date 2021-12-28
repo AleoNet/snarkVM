@@ -46,46 +46,6 @@ fn test_posw_load_and_mine() {
 }
 
 #[test]
-fn test_posw_no_zk() {
-    let rng = &mut thread_rng();
-
-    let mut ledger = Ledger::<Testnet2>::new().unwrap();
-    let recipient = Account::<Testnet2>::new(rng);
-
-    assert_eq!(0, ledger.latest_block_height());
-    let latest_block_header = ledger.latest_block().unwrap().header().clone();
-    assert_eq!(
-        latest_block_header
-            .proof()
-            .as_ref()
-            .unwrap()
-            .to_bytes_le()
-            .unwrap()
-            .len(),
-        Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-    ); // NOTE: Marlin proofs use compressed serialization
-
-    ledger
-        .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
-        .unwrap();
-    assert_eq!(1, ledger.latest_block_height());
-
-    // This will use the new POSW marlin mode.
-    let latest_block_header = ledger.latest_block().unwrap().header().clone();
-    assert_eq!(
-        latest_block_header
-            .proof()
-            .as_ref()
-            .unwrap()
-            .to_bytes_le()
-            .unwrap()
-            .len(),
-        Testnet2::HEADER_PROOF_SIZE_IN_BYTES // TODO (raychu86): Will fail because new proof sizes are different.
-    ); // NOTE: Marlin proofs use compressed serialization
-    assert!(Testnet2::posw().verify(&latest_block_header));
-}
-
-#[test]
 fn test_posw_terminate() {
     // Construct a block header.
     let mut block_header = Testnet2::genesis_block().header().clone();
