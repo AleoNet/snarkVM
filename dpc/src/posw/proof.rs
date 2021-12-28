@@ -196,42 +196,50 @@ mod tests {
     #[test]
     fn test_posw_no_zk() {
         let rng = &mut thread_rng();
+        let recipient = Account::<Testnet2>::new(rng).address();
+        let terminator = AtomicBool::new(false);
 
         let mut ledger = Ledger::<Testnet2>::new().unwrap();
-        let recipient = Account::<Testnet2>::new(rng);
 
-        assert_eq!(0, ledger.latest_block_height());
-        let latest_block_header = ledger.latest_block().unwrap().header().clone();
-        assert_eq!(
-            latest_block_header
-                .proof()
-                .as_ref()
-                .unwrap()
-                .to_bytes_le()
-                .unwrap()
-                .len(),
-            771
-        ); // NOTE: Marlin proofs use compressed serialization
-        assert!(Testnet2::posw().verify(&latest_block_header));
+        // Check the genesis block.
+        // This will use a hiding PoSW Marlin mode.
+        {
+            assert_eq!(0, ledger.latest_block_height());
+            let latest_block_header = ledger.latest_block().unwrap().header().clone();
+            let latest_proof = latest_block_header.proof().as_ref().unwrap();
+            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
+            assert!(Testnet2::posw().verify(&latest_block_header));
+            assert!(latest_proof.is_hiding());
+        }
 
-        ledger
-            .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
-            .unwrap();
-        assert_eq!(1, ledger.latest_block_height());
+        // Check block 1.
+        // This will use a hiding PoSW Marlin mode.
+        {
+            ledger.mine_next_block(recipient, true, &terminator, rng).unwrap();
+            assert_eq!(1, ledger.latest_block_height());
 
+            let latest_block_header = ledger.latest_block().unwrap().header().clone();
+            let latest_proof = latest_block_header.proof().as_ref().unwrap();
+            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
+            assert!(Testnet2::posw().verify(&latest_block_header));
+            assert!(latest_proof.is_hiding());
+        }
+
+        // Check block 2.
         // This will use a non-hiding PoSW Marlin mode.
-        let latest_block_header = ledger.latest_block().unwrap().header().clone();
-        assert_eq!(
-            latest_block_header
-                .proof()
-                .as_ref()
-                .unwrap()
-                .to_bytes_le()
-                .unwrap()
-                .len(),
-            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-        ); // NOTE: Marlin proofs use compressed serialization
-        assert!(Testnet2::posw().verify(&latest_block_header));
+        {
+            ledger.mine_next_block(recipient, true, &terminator, rng).unwrap();
+            assert_eq!(2, ledger.latest_block_height());
+
+            let latest_block_header = ledger.latest_block().unwrap().header().clone();
+            let latest_proof = latest_block_header.proof().as_ref().unwrap();
+            assert_eq!(
+                latest_proof.to_bytes_le().unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
+            assert!(Testnet2::posw().verify(&latest_block_header));
+            assert!(!latest_proof.is_hiding());
+        }
     }
 
     #[test]
