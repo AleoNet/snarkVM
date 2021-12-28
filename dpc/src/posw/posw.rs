@@ -16,34 +16,12 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
+use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWProof, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
-use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
-use blake2::Blake2s;
 use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
-
-// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-//   This is a temporary measure to ensure testnet2 runs smoothly with the new POSW MarlinMode.
-/// The block height that swaps to the new Marlin posw mode.
-#[cfg(debug_assertions)] // TODO (raychu86): Find better solution than cfg(debug_assertions)
-const POSW_UPGRADE_1_BLOCK_HEIGHT: u32 = 1;
-#[cfg(not(debug_assertions))]
-const POSW_UPGRADE_1_BLOCK_HEIGHT: u32 = 100000;
-
-// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-/// The deprecated Marlin SNARK type used for blocks before `POSW_UPGRADE_1_BLOCK_HEIGHT`.
-type DeprecatedPoSWSNARK<N> = MarlinSNARK<
-    <N as Network>::InnerScalarField,
-    <N as Network>::OuterScalarField,
-    SonicKZG10<<N as Network>::InnerCurve>,
-    FiatShamirChaChaRng<<N as Network>::InnerScalarField, <N as Network>::OuterScalarField, Blake2s>,
-    MarlinTestnet1Mode,
-    Vec<<N as Network>::InnerScalarField>,
->;
 
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
@@ -139,17 +117,19 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // Generate the proof.
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-        // Mine blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_1_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_1_BLOCK_HEIGHT {
-            let pk = <DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
-            let proof_bytes = <DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(&pk, &circuit, terminator, rng)?
-                .to_bytes_le()?;
-
-            block_header.set_proof(<<N as Network>::PoSWSNARK as SNARK>::Proof::from_bytes_le(&proof_bytes)?.into());
+        // Mine blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            let pk = <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
+            block_header.set_proof(PoSWProof::<N>::new_hiding(
+                <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(
+                    &pk, &circuit, terminator, rng,
+                )?
+                .into(),
+            ));
         } else {
-            block_header.set_proof(
+            block_header.set_proof(PoSWProof::<N>::new(
                 <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
-            );
+            ));
         }
 
         Ok(())
@@ -167,7 +147,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         };
 
         // Ensure the difficulty target is met.
-        let proof_bytes = match proof.to_bytes_le() {
+        match proof.to_bytes_le() {
             Ok(proof_bytes) => {
                 let proof_difficulty = sha256d_to_u64(&proof_bytes);
                 if proof_difficulty > block_header.difficulty_target() {
@@ -179,8 +159,6 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
                     );
                     return false;
                 }
-
-                proof_bytes
             }
             Err(error) => {
                 eprintln!("Failed to convert PoSW proof to bytes: {}", error);
@@ -195,42 +173,35 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         ];
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-        // Verify blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_1_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_1_BLOCK_HEIGHT {
-            let proof = match <DeprecatedPoSWSNARK<N> as SNARK>::Proof::from_bytes_le(&proof_bytes) {
-                Ok(proof) => proof,
-                Err(error) => {
-                    eprintln!("Failed to read deprecated PoSW proof from bytes: {}", error);
-                    return false;
-                }
-            };
+        // Verify blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
+        let block_height = block_header.height();
+        if <N as Network>::NETWORK_ID == 2 && block_height < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            // Ensure the proof type is hiding.
+            if !proof.is_hiding() {
+                eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
+                return false;
+            }
 
-            let verifying_key = match <DeprecatedPoSWSNARK<N> as SNARK>::VerifyingKey::from_bytes_le(
-                &self.verifying_key.to_bytes_le().unwrap(),
-            ) {
-                Ok(vk) => vk,
-                Err(error) => {
-                    eprintln!("Failed to read deprecated PoSW VK from bytes: {}", error);
-                    return false;
-                }
-            };
-
-            // Ensure the proof is valid under the deprecated POSW parameters.
-            if !<DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs, &proof).unwrap() {
+            // Ensure the proof is valid under the deprecated PoSW parameters.
+            if !proof.verify(&self.verifying_key, &inputs) {
                 eprintln!("[deprecated] PoSW proof verification failed");
                 return false;
             }
-
-            true
         } else {
-            // Ensure the proof is valid.
-            if !<<N as Network>::PoSWSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
-                eprintln!("PoSW proof verification failed");
+            // Ensure the proof type is not hiding.
+            if proof.is_hiding() {
+                eprintln!("PoSW proof for block {} should not be hiding", block_height);
                 return false;
             }
 
-            true
+            // Ensure the proof is valid under the PoSW parameters.
+            if !proof.verify(&self.verifying_key, &inputs) {
+                eprintln!("PoSW proof verification failed");
+                return false;
+            }
         }
+
+        true
     }
 }
 
@@ -272,10 +243,7 @@ mod tests {
             .unwrap();
 
         assert!(block_header.proof().is_some());
-        assert_eq!(
-            block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
-            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-        ); // NOTE: Marlin proofs use compressed serialization
+        assert_eq!(block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
         assert!(posw.verify(&block_header));
     }
 }
