@@ -243,7 +243,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the expected difficulty target is met.
         let expected_difficulty_target =
-            if N::NETWORK_ID == 2 && block.height() < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            if N::NETWORK_ID == 2 && block.height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
                 Blocks::<N>::compute_difficulty_target(current_block.header(), block.timestamp(), block.height())
             } else {
                 let anchor_block_header = self.get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
@@ -410,7 +410,7 @@ impl<N: Network> Blocks<N> {
         block_timestamp: i64,
         block_height: u32,
     ) -> u64 {
-        if N::NETWORK_ID == 2 && block_height < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+        if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
             Self::bitcoin_retarget(
                 anchor_block_header.timestamp(),
                 anchor_block_header.difficulty_target(),

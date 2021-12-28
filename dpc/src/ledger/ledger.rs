@@ -161,7 +161,7 @@ impl<N: Network> Ledger<N> {
         let block_timestamp = std::cmp::max(Utc::now().timestamp(), self.latest_block_timestamp()?.saturating_add(1));
 
         // Compute the block difficulty target.
-        let difficulty_target = if N::NETWORK_ID == 2 && block_height < crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+        let difficulty_target = if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
             Blocks::<N>::compute_difficulty_target(self.latest_block()?.header(), block_timestamp, block_height)
         } else {
             let anchor_block_header = self
