@@ -24,8 +24,8 @@ use std::{
 
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme, PoswError};
-use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinTestnet1Mode};
+use snarkvm_dpc::{prelude::*, testnet2::Testnet2, Network, PoSWScheme, PoswError};
+use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
 use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};
@@ -43,6 +43,46 @@ fn test_posw_load_and_mine() {
         Testnet2::HEADER_PROOF_SIZE_IN_BYTES
     ); // NOTE: Marlin proofs use compressed serialization
     assert!(Testnet2::posw().verify(&block_header));
+}
+
+#[test]
+fn test_posw_no_zk() {
+    let rng = &mut thread_rng();
+
+    let mut ledger = Ledger::<Testnet2>::new().unwrap();
+    let recipient = Account::<Testnet2>::new(rng);
+
+    assert_eq!(0, ledger.latest_block_height());
+    let latest_block_header = ledger.latest_block().unwrap().header().clone();
+    assert_eq!(
+        latest_block_header
+            .proof()
+            .as_ref()
+            .unwrap()
+            .to_bytes_le()
+            .unwrap()
+            .len(),
+        Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+    ); // NOTE: Marlin proofs use compressed serialization
+
+    ledger
+        .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
+        .unwrap();
+    assert_eq!(1, ledger.latest_block_height());
+
+    // This will use the new POSW marlin mode.
+    let latest_block_header = ledger.latest_block().unwrap().header().clone();
+    assert_eq!(
+        latest_block_header
+            .proof()
+            .as_ref()
+            .unwrap()
+            .to_bytes_le()
+            .unwrap()
+            .len(),
+        Testnet2::HEADER_PROOF_SIZE_IN_BYTES // TODO (raychu86): Will fail because new proof sizes are different.
+    ); // NOTE: Marlin proofs use compressed serialization
+    assert!(Testnet2::posw().verify(&latest_block_header));
 }
 
 #[test]
@@ -105,10 +145,9 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw = Testnet2::posw().clone();
 
-    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinTestnet1Mode> =
+    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> =
         generated_posw.proving_key().as_ref().unwrap();
-    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinTestnet1Mode> =
-        loaded_posw.proving_key().as_ref().unwrap();
+    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> = loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;

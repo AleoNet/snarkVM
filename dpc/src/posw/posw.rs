@@ -39,7 +39,7 @@ pub struct PoSW<N: Network> {
 // TODO (raychu86): Refactor/remove this in time for mainnet. This is a temporary measure to ensure
 //                  testnet2 runs smoothly with the new POSW MarlinMode.
 /// The block height that swaps to the new Marlin posw mode.
-#[cfg(debug_assertions)]
+#[cfg(debug_assertions)] // TODO (raychu86): Find better solution than cfg(debug_assertions)
 const NEW_POSW_FORK_HEIGHT: u32 = 1;
 #[cfg(not(debug_assertions))]
 const NEW_POSW_FORK_HEIGHT: u32 = 100000;
