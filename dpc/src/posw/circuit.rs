@@ -141,7 +141,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{testnet1::Testnet1, testnet2::Testnet2};
+    use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWProof};
     use snarkvm_marlin::marlin::MarlinTestnet1Mode;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::{FromBytes, ToBytes};
@@ -195,7 +195,10 @@ mod test {
             println!("\nPosW elapsed time: {} ms\n", (Instant::now() - timer).as_millis());
             proof
         };
-        assert_eq!(proof.to_bytes_le().unwrap().len(), N::HEADER_PROOF_SIZE_IN_BYTES);
+        assert_eq!(
+            PoSWProof::<N>::new(proof.clone().into()).to_bytes_le().unwrap().len(),
+            N::HEADER_PROOF_SIZE_IN_BYTES
+        );
 
         // Verify the proof is valid on the public inputs.
         let inputs = vec![
