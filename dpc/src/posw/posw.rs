@@ -30,12 +30,12 @@ use rand::{CryptoRng, Rng};
 //   This is a temporary measure to ensure testnet2 runs smoothly with the new POSW MarlinMode.
 /// The block height that swaps to the new Marlin posw mode.
 #[cfg(debug_assertions)] // TODO (raychu86): Find better solution than cfg(debug_assertions)
-const POSW_UPGRADE_BLOCK_HEIGHT: u32 = 1;
+const POSW_UPGRADE_1_BLOCK_HEIGHT: u32 = 1;
 #[cfg(not(debug_assertions))]
-const POSW_UPGRADE_BLOCK_HEIGHT: u32 = 100000;
+const POSW_UPGRADE_1_BLOCK_HEIGHT: u32 = 100000;
 
 // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-/// The deprecated Marlin SNARK type used for blocks before `POSW_UPGRADE_BLOCK_HEIGHT`.
+/// The deprecated Marlin SNARK type used for blocks before `POSW_UPGRADE_1_BLOCK_HEIGHT`.
 type DeprecatedPoSWSNARK<N> = MarlinSNARK<
     <N as Network>::InnerScalarField,
     <N as Network>::OuterScalarField,
@@ -139,8 +139,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // Generate the proof.
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-        // Mine blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_BLOCK_HEIGHT {
+        // Mine blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_1_BLOCK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_1_BLOCK_HEIGHT {
             let pk = <DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
             let proof_bytes = <DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(&pk, &circuit, terminator, rng)?
                 .to_bytes_le()?;
@@ -195,8 +195,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         ];
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-        // Verify blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_BLOCK_HEIGHT {
+        // Verify blocks with the deprecated PoSW mode for blocks behind `POSW_UPGRADE_1_BLOCK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() < POSW_UPGRADE_1_BLOCK_HEIGHT {
             let proof = match <DeprecatedPoSWSNARK<N> as SNARK>::Proof::from_bytes_le(&proof_bytes) {
                 Ok(proof) => proof,
                 Err(error) => {

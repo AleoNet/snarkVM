@@ -28,31 +28,11 @@ use snarkvm_utilities::{
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
-use serde::{
-    de,
-    ser::{Error, SerializeStruct},
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
-};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     mem::size_of,
     sync::{atomic::AtomicBool, Arc},
 };
-
-pub mod proof_serialization {
-    use super::*;
-    pub fn serialize<S: Serializer, T: Serialize>(proof: &Option<T>, s: S) -> Result<S::Ok, S::Error> {
-        match *proof {
-            Some(ref d) => d.serialize(s),
-            None => Err(S::Error::custom("Proof must be set to serialize block header")),
-        }
-    }
-    pub fn deserialize<'de, D: Deserializer<'de>, T: Deserialize<'de>>(deserializer: D) -> Result<Option<T>, D::Error> {
-        Ok(T::deserialize(deserializer).ok())
-    }
-}
 
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -117,7 +97,7 @@ pub struct BlockHeader<N: Network> {
     metadata: BlockHeaderMetadata,
     /// Nonce for Proof of Succinct Work - 32 bytes
     nonce: N::PoSWNonce,
-    /// Proof of Succinct Work - 771 bytes
+    /// Proof of Succinct Work - 691 bytes
     proof: Option<N::PoSWProof>,
 }
 
