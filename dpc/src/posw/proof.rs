@@ -104,8 +104,6 @@ impl<N: Network> FromBytes for PoSWProof<N> {
         let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
         reader.read(&mut buffer)?;
 
-        println!("{:?}", &buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES][..]);
-
         if buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
             if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
                 return Ok(Self::NonHiding(proof));
@@ -295,7 +293,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1601, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1134, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize
@@ -308,7 +306,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1601, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1258, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize
