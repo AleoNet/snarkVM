@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, PoswError};
+use crate::Network;
 use snarkvm_algorithms::SNARK;
 use snarkvm_utilities::{
     fmt,
@@ -29,7 +29,7 @@ use snarkvm_utilities::{
 use anyhow::{anyhow, Result};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
-/// A wrapper struct for a PoSW proof.
+/// A wrapper enum for a PoSW proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PoSWProof<N: Network> {
     NonHiding(N::PoSWProof),
@@ -103,19 +103,8 @@ impl<N: Network> PoSWProof<N> {
 
 impl<N: Network> FromBytes for PoSWProof<N> {
     #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut buffer = vec![0u8; std::cmp::max(N::HEADER_PROOF_SIZE_IN_BYTES, 771)];
-        reader.read(&mut buffer)?;
-
-        if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES]) {
-            return Ok(Self::NonHiding(proof));
-        }
-
-        if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
-            return Ok(Self::Hiding(proof));
-        }
-
-        Err(PoswError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        Ok(bincode::deserialize_from(reader).expect("FAILED"))
     }
 }
 
@@ -179,13 +168,13 @@ impl<'de, N: Network> Deserialize<'de> for PoSWProof<N> {
             }
             false => {
                 let mut buffer = Vec::with_capacity(771);
-                deserializer.deserialize_bytes(FromBytesVisitor::new(&mut buffer, "PoSW proof"))?;
+                deserializer.deserialize_tuple(771, FromBytesVisitor::new(&mut buffer, "PoSW proof"))?;
 
-                if buffer.len() == N::HEADER_PROOF_SIZE_IN_BYTES {
-                    if let Ok(proof) = FromBytes::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES]) {
-                        return Ok(Self::NonHiding(proof));
-                    }
-                } else if let Ok(proof) = FromBytes::read_le(&buffer[..]) {
+                if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES]) {
+                    return Ok(Self::NonHiding(proof));
+                }
+
+                if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
                     return Ok(Self::Hiding(proof));
                 }
 
