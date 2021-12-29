@@ -16,7 +16,7 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWProof, PoSWScheme, PoswError};
+use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWError, PoSWProof, PoSWScheme};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
@@ -39,7 +39,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     ///
     fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoSWSNARK as SNARK>::UniversalSetupParameters>,
-    ) -> Result<Self, PoswError> {
+    ) -> Result<Self, PoSWError> {
         let (proving_key, verifying_key) =
             <<N as Network>::PoSWSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N>::blank()?, srs)?;
 
@@ -52,7 +52,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     ///
     /// Loads an instance of PoSW using stored parameters.
     ///
-    fn load(is_prover: bool) -> Result<Self, PoswError> {
+    fn load(is_prover: bool) -> Result<Self, PoSWError> {
         Ok(Self {
             proving_key: match is_prover {
                 true => Some(N::posw_proving_key().clone()),
@@ -84,7 +84,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         block_header: &mut BlockHeader<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<(), PoswError> {
+    ) -> Result<(), PoSWError> {
         loop {
             // Run one iteration of PoSW.
             self.mine_once_unchecked(block_header, terminator, rng)?;
@@ -105,7 +105,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         block_header: &mut BlockHeader<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<(), PoswError> {
+    ) -> Result<(), PoSWError> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
         // Sample a random nonce.

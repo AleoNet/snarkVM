@@ -16,7 +16,7 @@
 
 use core::sync::atomic::AtomicBool;
 
-use crate::{BlockHeader, Network, PoswError};
+use crate::{BlockHeader, Network, PoSWError};
 use snarkvm_algorithms::{traits::SNARK, SRS};
 
 use anyhow::Result;
@@ -26,10 +26,10 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     /// Sets up an instance of PoSW using an SRS.
     fn setup<R: Rng + CryptoRng>(
         srs: &mut SRS<R, <<N as Network>::PoSWSNARK as SNARK>::UniversalSetupParameters>,
-    ) -> Result<Self, PoswError>;
+    ) -> Result<Self, PoSWError>;
 
     /// Loads an instance of PoSW using stored parameters.
-    fn load(is_prover: bool) -> Result<Self, PoswError>;
+    fn load(is_prover: bool) -> Result<Self, PoSWError>;
 
     /// Returns a reference to the PoSW circuit proving key.
     fn proving_key(&self) -> &Option<<N::PoSWSNARK as SNARK>::ProvingKey>;
@@ -44,7 +44,7 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
         block_header: &mut BlockHeader<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<(), PoswError>;
+    ) -> Result<(), PoSWError>;
 
     ///
     /// Given the block header, compute a PoSW proof.
@@ -55,7 +55,7 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
         block_header: &mut BlockHeader<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<(), PoswError>;
+    ) -> Result<(), PoSWError>;
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
     fn verify(&self, block_header: &BlockHeader<N>) -> bool;

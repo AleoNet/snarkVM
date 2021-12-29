@@ -20,7 +20,7 @@ use snarkvm_parameters::errors::ParameterError;
 
 /// An error when generating/verifying a Proof of Succinct Work
 #[derive(Debug, Error)]
-pub enum PoswError {
+pub enum PoSWError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
@@ -43,14 +43,14 @@ pub enum PoswError {
     SnarkError(#[from] SNARKError),
 }
 
-impl From<std::io::Error> for PoswError {
+impl From<std::io::Error> for PoSWError {
     fn from(error: std::io::Error) -> Self {
-        PoswError::Crate("std::io", format!("{:?}", error))
+        PoSWError::Crate("std::io", format!("{:?}", error))
     }
 }
 
-impl From<PoswError> for std::io::Error {
-    fn from(error: PoswError) -> Self {
+impl From<PoSWError> for std::io::Error {
+    fn from(error: PoSWError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

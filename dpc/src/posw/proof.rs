@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, PoswError};
+use crate::{Network, PoSWError};
 use snarkvm_algorithms::SNARK;
 use snarkvm_utilities::{
     fmt,
@@ -114,7 +114,7 @@ impl<N: Network> FromBytes for PoSWProof<N> {
             }
         }
 
-        Err(PoswError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
+        Err(PoSWError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
     }
 }
 
