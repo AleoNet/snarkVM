@@ -175,7 +175,7 @@ mod tests {
 
     use crate::{testnet2::Testnet2, Network, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
-    use snarkvm_marlin::ahp::AHPForR1CS;
+    use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinTestnet1Mode};
     use snarkvm_utilities::ToBytes;
 
     use rand::{rngs::ThreadRng, thread_rng};
@@ -189,8 +189,10 @@ mod tests {
     fn test_posw_marlin() {
         // Construct an instance of PoSW.
         let posw = {
-            let max_degree =
-                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
+            let max_degree = AHPForR1CS::<<Testnet2 as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(
+                20000, 20000, 200000,
+            )
+            .unwrap();
             let universal_srs =
                 <<Testnet2 as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(

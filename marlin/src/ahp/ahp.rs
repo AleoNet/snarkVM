@@ -16,6 +16,7 @@
 
 use crate::{
     ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
+    marlin::MarlinMode,
     String,
     ToString,
     Vec,
@@ -34,11 +35,12 @@ use rayon::prelude::*;
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
 /// less than a power of 2 (i.e., of the form 2^n - 1).
-pub struct AHPForR1CS<F: Field> {
+pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
     field: PhantomData<F>,
+    mode: PhantomData<MM>,
 }
 
-impl<F: PrimeField> AHPForR1CS<F> {
+impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The labels for the polynomials output by the AHP indexer.
     #[rustfmt::skip]
     pub const INDEXER_POLYNOMIALS: [&'static str; 6] = [
@@ -58,24 +60,40 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["inner_sumcheck", "outer_sumcheck"];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS: [&'static str; 9] = [
+    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 8] = [
+        // First sumcheck
+        "w", "z_a", "z_b", "t", "g_1", "h_1",
+        // Second sumcheck
+        "g_2", "h_2",
+    ];
+    /// The labels for the polynomials output by the AHP prover.
+    #[rustfmt::skip]
+    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 9] = [
         // First sumcheck
         "w", "z_a", "z_b", "mask_poly", "t", "g_1", "h_1",
         // Second sumcheck
         "g_2", "h_2",
     ];
 
-    pub(crate) fn polynomial_labels() -> impl Iterator<Item = String> {
-        Self::INDEXER_POLYNOMIALS
-            .iter()
-            .chain(&Self::PROVER_POLYNOMIALS)
-            .map(|s| s.to_string())
+    pub(crate) fn indexer_polynomials() -> impl Iterator<Item = &'static str> {
+        if MM::RECURSION {
+            Self::INDEXER_POLYNOMIALS_WITH_VANISHING.as_ref().iter().copied()
+        } else {
+            Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
+        }
     }
 
-    pub(crate) fn polynomial_labels_with_vanishing() -> impl Iterator<Item = String> {
-        Self::INDEXER_POLYNOMIALS_WITH_VANISHING
-            .iter()
-            .chain(&Self::PROVER_POLYNOMIALS)
+    pub(crate) fn prover_polynomials() -> impl Iterator<Item = &'static str> {
+        if MM::ZK {
+            Self::PROVER_POLYNOMIALS_WITH_ZK.as_ref().iter().copied()
+        } else {
+            Self::PROVER_POLYNOMIALS_WITHOUT_ZK.as_ref().iter().copied()
+        }
+    }
+
+    pub(crate) fn polynomial_labels() -> impl Iterator<Item = String> {
+        Self::indexer_polynomials()
+            .chain(Self::prover_polynomials())
             .map(|s| s.to_string())
     }
 
@@ -103,7 +121,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         Ok(*[
             2 * domain_h_size + zk_bound - 2,
-            3 * domain_h_size + 2 * zk_bound - 3, //  mask_poly
+            if MM::ZK {
+                3 * domain_h_size + 2 * zk_bound - 3
+            } else {
+                0
+            }, //  mask_poly
             domain_h_size,
             domain_h_size,
             domain_k_size - 1,
@@ -133,8 +155,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],
         evals: &E,
-        state: &verifier::VerifierState<F>,
-        with_vanishing: bool,
+        state: &verifier::VerifierState<F, MM>,
     ) -> Result<Vec<LinearCombination<F>>, AHPError> {
         let domain_h = state.domain_h;
         let domain_k = state.domain_k;
@@ -179,21 +200,19 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .fold(F::zero(), |x, y| x + y);
 
         #[rustfmt::skip]
-        let outer_sumcheck = LinearCombination::new(
-            "outer_sumcheck",
-            vec![
-                (F::one(), "mask_poly".into()),
-
-                (r_alpha_at_beta * (eta_a + (eta_c * z_b_at_beta)), "z_a".into()),
-                (r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One),
-
-                (-t_at_beta * v_X_at_beta, "w".into()),
-                (-t_at_beta * x_at_beta, LCTerm::One),
-
-                (-v_H_at_beta, "h_1".into()),
-                (-beta * g_1_at_beta, LCTerm::One),
-            ],
-        );
+        let outer_sumcheck = {
+            let mut lc_terms = vec![];
+            if MM::ZK {
+                lc_terms.push((F::one(), "mask_poly".into()));
+            }
+            lc_terms.push((r_alpha_at_beta * (eta_a + (eta_c * z_b_at_beta)), "z_a".into()));
+            lc_terms.push((r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One));
+            lc_terms.push((-t_at_beta * v_X_at_beta, "w".into()));
+            lc_terms.push((-t_at_beta * x_at_beta, LCTerm::One));
+            lc_terms.push((-v_H_at_beta, "h_1".into()));
+            lc_terms.push((-beta * g_1_at_beta, LCTerm::One));
+            LinearCombination::new("outer_sumcheck", lc_terms)
+        };
         debug_assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
 
         linear_combinations.push(z_b);
@@ -229,7 +248,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         linear_combinations.push(g_2);
         linear_combinations.push(inner_sumcheck);
 
-        if with_vanishing {
+        if MM::RECURSION {
             let vanishing_poly_h_alpha =
                 LinearCombination::new("vanishing_poly_h_alpha", vec![(F::one(), "vanishing_poly_h")]);
             let vanishing_poly_h_beta =

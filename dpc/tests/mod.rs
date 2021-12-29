@@ -25,6 +25,7 @@ use std::{
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme, PoswError};
+use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinTestnet1Mode};
 use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};
@@ -94,7 +95,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
-        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(40000, 40000, 60000).unwrap();
+        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr, MarlinTestnet1Mode>::max_degree(40000, 40000, 60000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
         <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
@@ -104,8 +105,10 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw = Testnet2::posw().clone();
 
-    let generated_proving_key = generated_posw.proving_key().as_ref().unwrap();
-    let loaded_proving_key = loaded_posw.proving_key().as_ref().unwrap();
+    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinTestnet1Mode> =
+        generated_posw.proving_key().as_ref().unwrap();
+    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinTestnet1Mode> =
+        loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;
@@ -136,8 +139,11 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 
-    let a = generated_proving_key.circuit.index_info.max_degree();
-    let b = loaded_proving_key.circuit.index_info.max_degree();
+    let a = generated_proving_key
+        .circuit
+        .index_info
+        .max_degree::<MarlinTestnet1Mode>();
+    let b = loaded_proving_key.circuit.index_info.max_degree::<MarlinTestnet1Mode>();
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 

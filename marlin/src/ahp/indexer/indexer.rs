@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::{
-    indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
-    matrices::arithmetize_matrix,
-    AHPError,
-    AHPForR1CS,
+use crate::{
+    ahp::{
+        indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
+        matrices::arithmetize_matrix,
+        AHPError,
+        AHPForR1CS,
+    },
+    marlin::MarlinMode,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
@@ -32,9 +35,9 @@ use core::marker::PhantomData;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
-impl<F: PrimeField> AHPForR1CS<F> {
+impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Generate the index for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F>, AHPError> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -105,6 +108,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             c,
 
             joint_arith,
+            mode: PhantomData,
         })
     }
 }

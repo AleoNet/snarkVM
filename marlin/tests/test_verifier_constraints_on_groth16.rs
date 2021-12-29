@@ -250,7 +250,7 @@ impl ConstraintSynthesizer<Fr> for MulSquareCircuit {
 
 #[derive(Clone, Debug)]
 struct RecursiveCircuit {
-    pub vk: Option<CircuitVerifyingKey<Fr, Fq, PC>>,
+    pub vk: Option<CircuitVerifyingKey<Fr, Fq, PC, MarlinRecursiveMode>>,
     pub input: Option<Vec<Fr>>,
     pub proof: Option<Proof<Fr, Fq, PC>>,
 }
@@ -305,7 +305,7 @@ impl ConstraintSynthesizer<Fq> for RecursiveCircuit {
                     .collect()
             })
             .ok_or(SynthesisError::AssignmentMissing)?;
-        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget>::verify::<_, FS, FSG>(
+        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>::verify::<_, FS, FSG>(
             cs.ns(|| "marlin_verification"),
             &vk,
             &input,
@@ -329,7 +329,7 @@ type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 #[test]
 fn verifier_on_groth16() {
     let rng = &mut test_rng();
-    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 25, 10000).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(10000, 25, 10000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     let (vk1, input1, proof1) = {

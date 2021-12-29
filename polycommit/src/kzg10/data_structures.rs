@@ -480,4 +480,8 @@ pub struct Proof<E: PairingEngine> {
 }
 impl_bytes!(Proof);
 
-impl<E: PairingEngine> PCProof for Proof<E> {}
+impl<E: PairingEngine> PCProof for Proof<E> {
+    fn is_hiding(&self) -> bool {
+        self.random_v.is_some()
+    }
+}

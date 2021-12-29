@@ -142,6 +142,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 mod test {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2};
+    use snarkvm_marlin::marlin::MarlinTestnet1Mode;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -171,8 +172,10 @@ mod test {
     fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
         // Generate the proving and verifying key.
         let (proving_key, verifying_key) = {
-            let max_degree =
-                snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
+            let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField, MarlinTestnet1Mode>::max_degree(
+                20000, 20000, 200000,
+            )
+            .unwrap();
             let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
             <<N as Network>::PoSWSNARK as SNARK>::setup::<_, R>(

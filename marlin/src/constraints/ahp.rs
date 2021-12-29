@@ -49,6 +49,7 @@ use crate::{
         proof::ProofVar,
         verifier_key::PreparedCircuitVerifyingKeyVar,
     },
+    marlin::MarlinMode,
     AHPError,
     FiatShamirRng,
     FiatShamirRngVar,
@@ -60,7 +61,7 @@ use crate::{
 
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]
-pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField> {
+pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField, MM: MarlinMode> {
     domain_h_size: u64,
     domain_k_size: u64,
 
@@ -68,6 +69,7 @@ pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField> {
     second_round_msg: Option<VerifierSecondMsgVar<TargetField, BaseField>>,
 
     gamma: Option<NonNativeFieldVar<TargetField, BaseField>>,
+    mode: PhantomData<MM>,
 }
 
 /// The Marlin verifier first round message gadget.
@@ -103,11 +105,13 @@ pub struct AHPForR1CS<
     BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
+    MM: MarlinMode,
 > {
     field: PhantomData<TargetField>,
     constraint_field: PhantomData<BaseField>,
     polynomial_commitment: PhantomData<PC>,
     pc_check: PhantomData<PCG>,
+    mode: PhantomData<MM>,
 }
 
 impl<
@@ -115,7 +119,8 @@ impl<
     BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-> AHPForR1CS<TargetField, BaseField, PC, PCG>
+    MM: MarlinMode,
+> AHPForR1CS<TargetField, BaseField, PC, PCG, MM>
 {
     /// Returns the first message and next round state.
     #[allow(clippy::type_complexity)]
@@ -134,7 +139,7 @@ impl<
     ) -> Result<
         (
             VerifierFirstMsgVar<TargetField, BaseField>,
-            VerifierStateVar<TargetField, BaseField>,
+            VerifierStateVar<TargetField, BaseField, MM>,
         ),
         AHPError,
     > {
@@ -179,6 +184,7 @@ impl<
             first_round_msg: Some(msg.clone()),
             second_round_msg: None,
             gamma: None,
+            mode: PhantomData,
         };
 
         Ok((msg, new_state))
@@ -193,14 +199,14 @@ impl<
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        state: VerifierStateVar<TargetField, BaseField>,
+        state: VerifierStateVar<TargetField, BaseField, MM>,
         fs_rng: &mut R,
         comms: &[CommitmentVar],
         message: &[NonNativeFieldVar<TargetField, BaseField>],
     ) -> Result<
         (
             VerifierSecondMsgVar<TargetField, BaseField>,
-            VerifierStateVar<TargetField, BaseField>,
+            VerifierStateVar<TargetField, BaseField, MM>,
         ),
         AHPError,
     > {
@@ -208,6 +214,7 @@ impl<
             domain_h_size,
             domain_k_size,
             first_round_msg,
+            mode,
             ..
         } = state;
 
@@ -244,6 +251,7 @@ impl<
             first_round_msg,
             second_round_msg: Some(msg.clone()),
             gamma: None,
+            mode,
         };
 
         Ok((msg, new_state))
@@ -257,16 +265,17 @@ impl<
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        state: VerifierStateVar<TargetField, BaseField>,
+        state: VerifierStateVar<TargetField, BaseField, MM>,
         fs_rng: &mut R,
         comms: &[CommitmentVar],
         message: &[NonNativeFieldVar<TargetField, BaseField>],
-    ) -> Result<VerifierStateVar<TargetField, BaseField>, AHPError> {
+    ) -> Result<VerifierStateVar<TargetField, BaseField, MM>, AHPError> {
         let VerifierStateVar {
             domain_h_size,
             domain_k_size,
             first_round_msg,
             second_round_msg,
+            mode,
             ..
         } = state;
 
@@ -300,6 +309,7 @@ impl<
             first_round_msg,
             second_round_msg,
             gamma: Some(gamma),
+            mode,
         };
 
         Ok(new_state)
@@ -310,7 +320,7 @@ impl<
         mut cs: CS,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         evals: &HashMap<String, NonNativeFieldVar<TargetField, BaseField>>,
-        state: VerifierStateVar<TargetField, BaseField>,
+        state: VerifierStateVar<TargetField, BaseField, MM>,
         domain_k_size_in_vk: &FpGadget<BaseField>,
     ) -> Result<Vec<LinearCombinationVar<TargetField, BaseField>>, AHPError> {
         let VerifierStateVar {
@@ -413,52 +423,54 @@ impl<
         let eta_c_mul_z_b_at_beta = eta_c.mul(cs.ns(|| "eta_c_mul_z_b_at_beta"), &z_b_at_beta)?;
         let eta_a_add_above = eta_a.add(cs.ns(|| "eta_a_add_eta_c"), &eta_c_mul_z_b_at_beta)?;
 
+        let outer_sumcheck_terms = {
+            let mut terms = Vec::new();
+            if MM::ZK {
+                terms.push((LinearCombinationCoeffVar::One, "mask_poly".into()));
+            }
+            terms.push((
+                LinearCombinationCoeffVar::Var(r_alpha_at_beta.mul(cs.ns(|| "r_alpha_mul_eta_a"), &eta_a_add_above)?),
+                "z_a".into(),
+            ));
+            terms.push((
+                LinearCombinationCoeffVar::Var(
+                    r_alpha_at_beta
+                        .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b"), &eta_b)?
+                        .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b_mul_z_b_at_beta"), &z_b_at_beta)?,
+                ),
+                LCTerm::One,
+            ));
+            terms.push((
+                LinearCombinationCoeffVar::Var(
+                    t_at_beta
+                        .mul(cs.ns(|| "t_at_beta_mul_v_x_at_beta"), &v_x_at_beta)?
+                        .negate(cs.ns(|| "negate_t_v"))?,
+                ),
+                "w".into(),
+            ));
+            terms.push((
+                LinearCombinationCoeffVar::Var(
+                    t_at_beta
+                        .mul(cs.ns(|| "t_at_beta_mul_f_x_at_beta"), &f_x_at_beta)?
+                        .negate(cs.ns(|| "negate_t_f"))?,
+                ),
+                LCTerm::One,
+            ));
+            terms.push((
+                LinearCombinationCoeffVar::Var(v_h_at_beta.negate(cs.ns(|| "negate_v_h"))?),
+                "h_1".into(),
+            ));
+            terms.push((
+                LinearCombinationCoeffVar::Var(
+                    (beta.mul(cs.ns(|| "beta_mul_g_1_at_beta"), &g_1_at_beta))?.negate(cs.ns(|| "negate_beta_g1"))?,
+                ),
+                LCTerm::One,
+            ));
+            terms
+        };
         let outer_sumcheck_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
             label: "outer_sumcheck".to_string(),
-            terms: vec![
-                (LinearCombinationCoeffVar::One, "mask_poly".into()),
-                (
-                    LinearCombinationCoeffVar::Var(
-                        r_alpha_at_beta.mul(cs.ns(|| "r_alpha_mul_eta_a"), &eta_a_add_above)?,
-                    ),
-                    "z_a".into(),
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(
-                        r_alpha_at_beta
-                            .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b"), &eta_b)?
-                            .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b_mul_z_b_at_beta"), &z_b_at_beta)?,
-                    ),
-                    LCTerm::One,
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(
-                        t_at_beta
-                            .mul(cs.ns(|| "t_at_beta_mul_v_x_at_beta"), &v_x_at_beta)?
-                            .negate(cs.ns(|| "negate_t_v"))?,
-                    ),
-                    "w".into(),
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(
-                        t_at_beta
-                            .mul(cs.ns(|| "t_at_beta_mul_f_x_at_beta"), &f_x_at_beta)?
-                            .negate(cs.ns(|| "negate_t_f"))?,
-                    ),
-                    LCTerm::One,
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(v_h_at_beta.negate(cs.ns(|| "negate_v_h"))?),
-                    "h_1".into(),
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(
-                        (beta.mul(cs.ns(|| "beta_mul_g_1_at_beta"), &g_1_at_beta))?
-                            .negate(cs.ns(|| "negate_beta_g1"))?,
-                    ),
-                    LCTerm::One,
-                ),
-            ],
+            terms: outer_sumcheck_terms,
         };
 
         linear_combinations.push(g_1_lc_gadget);
@@ -595,9 +607,9 @@ impl<
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        index_pvk: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>,
+        index_pvk: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R, MM>,
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
-        state: &VerifierStateVar<TargetField, BaseField>,
+        state: &VerifierStateVar<TargetField, BaseField, MM>,
     ) -> Result<
         (
             usize,
@@ -774,8 +786,13 @@ impl<
         }
 
         // 4 comms for beta from the round 1
-        const PROOF_1_LABELS: [&str; 4] = ["w", "z_a", "z_b", "mask_poly"];
-        for (i, (comm, label)) in proof.commitments[0].iter().zip(PROOF_1_LABELS.iter()).enumerate() {
+
+        let proof_1_labels: &[&str] = if MM::ZK {
+            &["w", "z_a", "z_b", "mask_poly"]
+        } else {
+            &["w", "z_a", "z_b"]
+        };
+        for (i, (comm, label)) in proof.commitments[0].iter().zip(proof_1_labels.iter()).enumerate() {
             let prepared_comm = comm.prepare(cs.ns(|| format!("prepare_1_{}", i)))?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
@@ -878,7 +895,7 @@ mod test {
     /// Compute the hash of the circuit verifying key.
     /// Used internally in Marlin
     pub(crate) fn compute_vk_hash<TargetField, BaseField, PC, FS>(
-        vk: &CircuitVerifyingKey<TargetField, BaseField, PC>,
+        vk: &CircuitVerifyingKey<TargetField, BaseField, PC, MarlinRecursiveMode>,
     ) -> Result<Vec<BaseField>, FiatShamirError>
     where
         TargetField: PrimeField,
@@ -945,14 +962,14 @@ mod test {
         num_variables: usize,
         num_constraints: usize,
     ) -> (
-        CircuitProvingKey<Fr, Fq, MultiPC>,
-        CircuitVerifyingKey<Fr, Fq, MultiPC>,
+        CircuitProvingKey<Fr, Fq, MultiPC, MarlinRecursiveMode>,
+        CircuitVerifyingKey<Fr, Fq, MultiPC, MarlinRecursiveMode>,
         Proof<Fr, Fq, MultiPC>,
         Vec<Fr>,
     ) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         // Construct circuit keys.
@@ -1057,11 +1074,15 @@ mod test {
         }
         // Execute the verifier first round.
         let (first_round_message, first_round_state) =
-            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
+                circuit_pk.circuit.index_info.clone(),
+                fs_rng,
+            )
+            .unwrap();
 
         // Execute the verifier first round gadget.
         let (first_round_message_gadget, first_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
                 prepared_circuit_vk.domain_h_size,
                 prepared_circuit_vk.domain_k_size,
@@ -1187,11 +1208,15 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
+                circuit_pk.circuit.index_info.clone(),
+                fs_rng,
+            )
+            .unwrap();
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
                 prepared_circuit_vk.domain_h_size,
                 prepared_circuit_vk.domain_k_size,
@@ -1243,7 +1268,7 @@ mod test {
 
         // Execute the verifier second round gadget.
         let (second_round_message_gadget, second_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_second_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_second_round(
                 cs.ns(|| "verifier_second_round"),
                 first_round_state_gadget,
                 fs_rng_gadget,
@@ -1354,11 +1379,15 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
+                circuit_pk.circuit.index_info.clone(),
+                fs_rng,
+            )
+            .unwrap();
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
                 prepared_circuit_vk.domain_h_size,
                 prepared_circuit_vk.domain_k_size,
@@ -1410,7 +1439,7 @@ mod test {
 
         // Execute the verifier second round gadget.
         let (_second_round_message_gadget, second_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_second_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_second_round(
                 cs.ns(|| "verifier_second_round"),
                 first_round_state_gadget,
                 fs_rng_gadget,
@@ -1459,7 +1488,7 @@ mod test {
         let third_round_state = AHPForR1CSNative::verifier_third_round(second_round_state, fs_rng).unwrap();
 
         // Execute the verifier third round gadget.
-        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_third_round(
+        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_third_round(
             cs.ns(|| "verifier_third_round"),
             second_round_state_gadget,
             fs_rng_gadget,
@@ -1575,7 +1604,11 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
+                circuit_pk.circuit.index_info.clone(),
+                fs_rng,
+            )
+            .unwrap();
 
         let (domain_h_size, domain_k_size) = {
             let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
@@ -1590,7 +1623,7 @@ mod test {
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
                 domain_h_size as u64,
                 domain_k_size as u64,
@@ -1642,7 +1675,7 @@ mod test {
 
         // Execute the verifier second round gadget.
         let (_second_round_message_gadget, second_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_second_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_second_round(
                 cs.ns(|| "verifier_second_round"),
                 first_round_state_gadget,
                 fs_rng_gadget,
@@ -1691,7 +1724,7 @@ mod test {
         let third_round_state = AHPForR1CSNative::verifier_third_round(second_round_state, fs_rng).unwrap();
 
         // Execute the verifier third round gadget.
-        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_third_round(
+        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_third_round(
             cs.ns(|| "verifier_third_round"),
             second_round_state_gadget,
             fs_rng_gadget,
@@ -1705,7 +1738,7 @@ mod test {
         // Collect degree bounds for commitments. Indexed polynomials have *no*
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
-        let (query_set, verifier_state) = AHPForR1CSNative::verifier_query_set(third_round_state, fs_rng, is_recursion);
+        let (query_set, verifier_state) = AHPForR1CSNative::verifier_query_set(third_round_state, fs_rng);
 
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
@@ -1718,7 +1751,7 @@ mod test {
         let mut evaluation_labels = Vec::<(String, Fr)>::new();
 
         for (label, (_point_name, q)) in query_set.iter().cloned() {
-            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
+            if AHPForR1CSNative::<Fr, MarlinRecursiveMode>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), Fr::zero());
             } else {
                 evaluation_labels.push((label, q));
@@ -1730,8 +1763,7 @@ mod test {
         }
 
         let lc_s =
-            AHPForR1CSNative::construct_linear_combinations(&public_input, &evaluations, &verifier_state, is_recursion)
-                .unwrap();
+            AHPForR1CSNative::construct_linear_combinations(&public_input, &evaluations, &verifier_state).unwrap();
 
         // ---------
 
@@ -1753,13 +1785,13 @@ mod test {
         }
 
         let vk_gadget =
-            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_prepared_vk"), || Ok(circuit_vk))
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar, _>::alloc(cs.ns(|| "alloc_prepared_vk"), || Ok(circuit_vk))
                 .unwrap();
 
         let proof_gadget =
             ProofVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "proof_gadget"), || Ok(proof.clone())).unwrap();
 
-        let lc_gadgets = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_decision(
+        let lc_gadgets = AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_decision(
             cs.ns(|| "verifier_decision"),
             &formatted_public_input,
             &proof_gadget.evaluations,
@@ -1883,7 +1915,11 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
+                circuit_pk.circuit.index_info.clone(),
+                fs_rng,
+            )
+            .unwrap();
 
         let (domain_h_size, domain_k_size) = {
             let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
@@ -1898,7 +1934,7 @@ mod test {
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
                 domain_h_size as u64,
                 domain_k_size as u64,
@@ -1950,7 +1986,7 @@ mod test {
 
         // Execute the verifier second round gadget.
         let (_second_round_message_gadget, second_round_state_gadget) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_second_round(
+            AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_second_round(
                 cs.ns(|| "verifier_second_round"),
                 first_round_state_gadget,
                 fs_rng_gadget,
@@ -1999,7 +2035,7 @@ mod test {
         let third_round_state = AHPForR1CSNative::verifier_third_round(second_round_state, fs_rng).unwrap();
 
         // Execute the verifier third round gadget.
-        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_third_round(
+        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_third_round(
             cs.ns(|| "verifier_third_round"),
             second_round_state_gadget,
             fs_rng_gadget,
@@ -2013,7 +2049,7 @@ mod test {
         // Collect degree bounds for commitments. Indexed polynomials have *no*
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
-        let (query_set, verifier_state) = AHPForR1CSNative::verifier_query_set(third_round_state, fs_rng, is_recursion);
+        let (query_set, verifier_state) = AHPForR1CSNative::verifier_query_set(third_round_state, fs_rng);
 
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
@@ -2026,7 +2062,7 @@ mod test {
         let mut evaluation_labels = Vec::<(String, Fr)>::new();
 
         for (label, (_point_name, q)) in query_set.iter().cloned() {
-            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
+            if AHPForR1CSNative::<Fr, MarlinRecursiveMode>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), Fr::zero());
             } else {
                 evaluation_labels.push((label, q));
@@ -2038,10 +2074,10 @@ mod test {
         }
 
         let vk_gadget =
-            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar, _>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
                 .unwrap();
 
-        let prepared_vk_gadget: PreparedCircuitVerifyingKeyVar<_, _, _, _, FS, FSG> =
+        let prepared_vk_gadget: PreparedCircuitVerifyingKeyVar<_, _, _, _, FS, FSG, _> =
             vk_gadget.prepare(cs.ns(|| "prepare_vk")).unwrap();
 
         let proof_gadget =
@@ -2057,15 +2093,11 @@ mod test {
         let index_info = circuit_vk.circuit_info;
         let degree_bounds = vec![None; circuit_vk.circuit_commitments.len()]
             .into_iter()
-            .chain(AHPForR1CSNative::prover_first_round_degree_bounds(&index_info))
-            .chain(AHPForR1CSNative::prover_second_round_degree_bounds(&index_info))
-            .chain(AHPForR1CSNative::prover_third_round_degree_bounds(&index_info));
+            .chain(AHPForR1CSNative::<_, MarlinRecursiveMode>::prover_first_round_degree_bounds(&index_info))
+            .chain(AHPForR1CSNative::<_, MarlinRecursiveMode>::prover_second_round_degree_bounds(&index_info))
+            .chain(AHPForR1CSNative::<_, MarlinRecursiveMode>::prover_third_round_degree_bounds(&index_info));
 
-        let polynomial_labels: Vec<String> = if is_recursion {
-            AHPForR1CSNative::<Fr>::polynomial_labels_with_vanishing().collect()
-        } else {
-            AHPForR1CSNative::<Fr>::polynomial_labels().collect()
-        };
+        let polynomial_labels = AHPForR1CSNative::<Fr, MarlinRecursiveMode>::polynomial_labels();
 
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_vk
@@ -2080,7 +2112,7 @@ mod test {
             .collect();
 
         let (num_opening_challenges, num_batching_rands, comm_gadgets, query_set_gadgets, evaluation_gadgets) =
-            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_comm_query_eval_set(
+            AHPForR1CS::<_, _, _, MultiPCVar, _>::verifier_comm_query_eval_set(
                 cs.ns(|| "verifier_comm_query_eval_set"),
                 &prepared_vk_gadget,
                 &proof_gadget,
@@ -2091,8 +2123,7 @@ mod test {
         assert_eq!(num_opening_challenges, 4);
         assert_eq!(num_batching_rands, 2);
 
-        let (query_set_native, _verifier_state_native) =
-            AHPForR1CSNative::<Fr>::verifier_query_set(verifier_state, fs_rng, true);
+        let (query_set_native, _verifier_state_native) = AHPForR1CSNative::verifier_query_set(verifier_state, fs_rng);
 
         // Check that the query sets are equivalent
 
