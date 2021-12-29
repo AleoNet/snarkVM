@@ -102,7 +102,7 @@ impl<N: Network> FromBytes for PoSWProof<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
-        reader.read(&mut buffer)?;
+        reader.read_exact(&mut buffer)?;
 
         if buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
             if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
