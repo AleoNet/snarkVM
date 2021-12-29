@@ -154,8 +154,7 @@ impl Network for Testnet2 {
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 1_000_000_000;
     const ALEO_FUTURE_TIME_LIMIT_IN_SECS: i64 = 90;
-
-    const MAXIMUM_FORK_DEPTH: u32 = 4096;
+    const ALEO_MAXIMUM_FORK_DEPTH: u32 = 4096;
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
