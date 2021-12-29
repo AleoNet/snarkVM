@@ -471,8 +471,8 @@ mod tests {
         assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
         assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
 
-        // assert_eq!(get_expected_size::<Testnet2>(), 903);
-        // assert_eq!(get_expected_size::<Testnet2>(), 903);
+        assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
     }
 
     #[test]
