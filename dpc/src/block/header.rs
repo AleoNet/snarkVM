@@ -437,12 +437,7 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
                 )
                 .map_err(de::Error::custom)?)
             }
-            false => FromBytesDeserializer::<Self>::deserialize_extended(
-                deserializer,
-                "block header",
-                N::HEADER_SIZE_IN_BYTES,
-                903,
-            ),
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "block header", N::HEADER_SIZE_IN_BYTES),
         }
     }
 }
@@ -478,8 +473,14 @@ mod tests {
     #[test]
     fn test_block_header_genesis_size() {
         let block_header = Testnet2::genesis_block().header();
-        assert_eq!(block_header.to_bytes_le().unwrap().len(), 903);
-        assert_eq!(bincode::serialize(&block_header).unwrap().len(), 903);
+        assert_eq!(
+            block_header.to_bytes_le().unwrap().len(),
+            Testnet2::HEADER_SIZE_IN_BYTES
+        );
+        assert_eq!(
+            bincode::serialize(&block_header).unwrap().len(),
+            Testnet2::HEADER_SIZE_IN_BYTES
+        );
     }
 
     #[test]
