@@ -437,12 +437,7 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
                 )
                 .map_err(de::Error::custom)?)
             }
-            false => FromBytesDeserializer::<Self>::deserialize_extended(
-                deserializer,
-                "block header",
-                N::HEADER_SIZE_IN_BYTES,
-                903,
-            ),
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "block header", N::HEADER_SIZE_IN_BYTES),
         }
     }
 }
@@ -452,7 +447,7 @@ mod tests {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWScheme};
     use snarkvm_algorithms::{SNARK, SRS};
-    use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinTestnet1Mode};
+    use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinPoswMode};
 
     use rand::{rngs::ThreadRng, thread_rng};
 
@@ -471,15 +466,21 @@ mod tests {
         assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
         assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
 
-        // assert_eq!(get_expected_size::<Testnet2>(), 903);
-        // assert_eq!(get_expected_size::<Testnet2>(), 903);
+        assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
     }
 
     #[test]
     fn test_block_header_genesis_size() {
         let block_header = Testnet2::genesis_block().header();
-        assert_eq!(block_header.to_bytes_le().unwrap().len(), 903);
-        assert_eq!(bincode::serialize(&block_header).unwrap().len(), 903);
+        assert_eq!(
+            block_header.to_bytes_le().unwrap().len(),
+            Testnet2::HEADER_SIZE_IN_BYTES
+        );
+        assert_eq!(
+            bincode::serialize(&block_header).unwrap().len(),
+            Testnet2::HEADER_SIZE_IN_BYTES
+        );
     }
 
     #[test]
@@ -542,10 +543,9 @@ mod tests {
     fn test_block_header_difficulty_target() {
         // Construct an instance of PoSW.
         let posw = {
-            let max_degree = AHPForR1CS::<<Testnet2 as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(
-                20000, 20000, 200000,
-            )
-            .unwrap();
+            let max_degree =
+                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField, MarlinPoswMode>::max_degree(20000, 20000, 200000)
+                    .unwrap();
             let universal_srs =
                 <<Testnet2 as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
             <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(

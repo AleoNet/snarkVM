@@ -24,7 +24,7 @@ use std::{
 
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{prelude::*, testnet2::Testnet2, Network, PoSWScheme, PoswError};
+use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWError, PoSWScheme};
 use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
 use snarkvm_utilities::ToBytes;
 
@@ -57,7 +57,7 @@ fn test_posw_terminate() {
     });
     let result = Testnet2::posw().mine(&mut block_header, &AtomicBool::new(true), &mut thread_rng());
 
-    assert!(matches!(result, Err(PoswError::SnarkError(SNARKError::Terminated))));
+    assert!(matches!(result, Err(PoSWError::SnarkError(SNARKError::Terminated))));
 }
 
 /// TODO (howardwu): Update this when testnet2 is live.
