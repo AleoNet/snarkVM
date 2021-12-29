@@ -252,37 +252,30 @@ mod tests {
     }
 
     #[test]
-    fn test_load_genesis_proof() {
+    fn test_genesis_proof() {
         use snarkvm_parameters::Genesis;
         {
             let block =
                 Block::<Testnet1>::read_le(&snarkvm_parameters::testnet1::GenesisBlock::load_bytes()[..]).unwrap();
             let proof = block.header().proof().to_owned().unwrap();
+            assert!(!proof.is_hiding());
             assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet1::HEADER_PROOF_SIZE_IN_BYTES);
+            assert_eq!(
+                bincode::serialize(&proof).unwrap().len(),
+                Testnet1::HEADER_PROOF_SIZE_IN_BYTES
+            );
         }
         {
             let block =
                 Block::<Testnet2>::read_le(&snarkvm_parameters::testnet2::GenesisBlock::load_bytes()[..]).unwrap();
             let proof = block.header().proof().to_owned().unwrap();
+            assert!(proof.is_hiding());
             assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
+            assert_eq!(
+                bincode::serialize(&proof).unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            );
         }
-    }
-
-    #[test]
-    fn test_proof_genesis_size() {
-        let proof = Testnet1::genesis_block().header().proof().to_owned().unwrap();
-        assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet1::HEADER_PROOF_SIZE_IN_BYTES);
-        assert_eq!(
-            bincode::serialize(&proof).unwrap().len(),
-            Testnet1::HEADER_PROOF_SIZE_IN_BYTES
-        );
-
-        let proof = Testnet2::genesis_block().header().proof().to_owned().unwrap();
-        assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
-        assert_eq!(
-            bincode::serialize(&proof).unwrap().len(),
-            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-        );
     }
 
     #[test]
