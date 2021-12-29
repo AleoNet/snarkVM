@@ -24,7 +24,7 @@ use std::{
 
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{prelude::*, testnet2::Testnet2, Network, PoSWError, PoSWScheme};
+use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWError, PoSWScheme};
 use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
 use snarkvm_utilities::ToBytes;
 
