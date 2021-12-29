@@ -24,8 +24,8 @@ use std::{
 
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme, PoswError};
-use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinTestnet1Mode};
+use snarkvm_dpc::{prelude::*, testnet2::Testnet2, Network, PoSWScheme, PoswError};
+use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
 use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};
@@ -105,10 +105,9 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw = Testnet2::posw().clone();
 
-    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinTestnet1Mode> =
+    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> =
         generated_posw.proving_key().as_ref().unwrap();
-    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinTestnet1Mode> =
-        loaded_posw.proving_key().as_ref().unwrap();
+    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> = loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;

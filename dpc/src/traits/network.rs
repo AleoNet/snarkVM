@@ -92,6 +92,7 @@ pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq +
     + Send
 {
     fn prefix() -> String;
+    fn size_in_bytes() -> usize;
 }
 
 #[rustfmt::skip]
@@ -165,7 +166,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Outer curve type declarations.
     type OuterCurve: PairingEngine;
     type OuterBaseField: PrimeField;
-    type OuterScalarField: PrimeField;
+    type OuterScalarField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
     type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;

@@ -49,6 +49,11 @@ impl<
     fn prefix() -> String {
         String::from_utf8(PREFIX.to_le_bytes().to_vec()).expect("Failed to convert prefix to string")
     }
+
+    #[inline]
+    fn size_in_bytes() -> usize {
+        DATA_SIZE_IN_BYTES
+    }
 }
 
 impl<

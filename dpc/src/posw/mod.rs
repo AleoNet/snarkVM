@@ -19,3 +19,6 @@ pub use circuit::*;
 
 mod posw;
 pub(crate) use posw::PoSW;
+
+pub mod proof;
+pub use proof::*;

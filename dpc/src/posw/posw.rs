@@ -16,11 +16,11 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWScheme, PoswError};
-use core::sync::atomic::AtomicBool;
+use crate::{posw::PoSWCircuit, BlockHeader, Network, PoSWProof, PoSWScheme, PoswError};
 use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
+use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
 
 /// A Proof of Succinct Work miner and verifier.
@@ -115,9 +115,22 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         let circuit = PoSWCircuit::<N>::new(&block_header)?;
 
         // Generate the proof.
-        block_header.set_proof(
-            <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
-        );
+
+        // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+        // Mine blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
+        if <N as Network>::NETWORK_ID == 2 && block_header.height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            let pk = <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
+            block_header.set_proof(PoSWProof::<N>::new_hiding(
+                <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(
+                    &pk, &circuit, terminator, rng,
+                )?
+                .into(),
+            ));
+        } else {
+            block_header.set_proof(PoSWProof::<N>::new(
+                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
+            ));
+        }
 
         Ok(())
     }
@@ -135,8 +148,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
         // Ensure the difficulty target is met.
         match proof.to_bytes_le() {
-            Ok(proof) => {
-                let proof_difficulty = sha256d_to_u64(&proof);
+            Ok(proof_bytes) => {
+                let proof_difficulty = sha256d_to_u64(&proof_bytes);
                 if proof_difficulty > block_header.difficulty_target() {
                     #[cfg(debug_assertions)]
                     eprintln!(
@@ -159,10 +172,33 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             *block_header.nonce(),
         ];
 
-        // Ensure the proof is valid.
-        if !<<N as Network>::PoSWSNARK as SNARK>::verify(&self.verifying_key, &inputs, &*proof).unwrap() {
-            eprintln!("PoSW proof verification failed");
-            return false;
+        // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+        // Verify blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
+        let block_height = block_header.height();
+        if <N as Network>::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            // Ensure the proof type is hiding.
+            if !proof.is_hiding() {
+                eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
+                return false;
+            }
+
+            // Ensure the proof is valid under the deprecated PoSW parameters.
+            if !proof.verify(&self.verifying_key, &inputs) {
+                eprintln!("[deprecated] PoSW proof verification failed");
+                return false;
+            }
+        } else {
+            // Ensure the proof type is not hiding.
+            if proof.is_hiding() {
+                eprintln!("PoSW proof for block {} should not be hiding", block_height);
+                return false;
+            }
+
+            // Ensure the proof is valid under the PoSW parameters.
+            if !proof.verify(&self.verifying_key, &inputs) {
+                eprintln!("PoSW proof verification failed");
+                return false;
+            }
         }
 
         true
@@ -207,10 +243,7 @@ mod tests {
             .unwrap();
 
         assert!(block_header.proof().is_some());
-        assert_eq!(
-            block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
-            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-        ); // NOTE: Marlin proofs use compressed serialization
+        assert_eq!(block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(), 771); // NOTE: Marlin proofs use compressed serialization
         assert!(posw.verify(&block_header));
     }
 }
