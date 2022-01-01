@@ -113,17 +113,22 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             // Run one iteration of PoSW.
             proof = self.prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
 
-            // Construct a block header.
-            let block_header = BlockHeader::from(
-                block_template.previous_ledger_root(),
-                block_template.transactions().transactions_root(),
-                BlockHeaderMetadata::new(block_template),
-                circuit.nonce(),
-                proof,
-            )?;
-
             // Check if the updated block header is valid.
-            if self.verify(&block_header) {
+            if self.verify(
+                block_template.block_height(),
+                block_template.difficulty_target(),
+                &circuit.to_public_inputs(),
+                &proof,
+            ) {
+                // Construct a block header.
+                let block_header = BlockHeader::from(
+                    block_template.previous_ledger_root(),
+                    block_template.transactions().transactions_root(),
+                    BlockHeaderMetadata::new(block_template),
+                    circuit.nonce(),
+                    proof,
+                )?;
+
                 return Ok(block_header);
             }
 
@@ -172,18 +177,32 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
-    fn verify(&self, block_header: &BlockHeader<N>) -> bool {
+    fn verify_from_block_header(&self, block_header: &BlockHeader<N>) -> bool {
+        self.verify(
+            block_header.height(),
+            block_header.difficulty_target(),
+            &vec![*block_header.to_header_root().unwrap(), *block_header.nonce()],
+            block_header.proof(),
+        )
+    }
+
+    /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
+    fn verify(
+        &self,
+        block_height: u32,
+        difficulty_target: u64,
+        inputs: &Vec<N::InnerScalarField>,
+        proof: &PoSWProof<N>,
+    ) -> bool {
         // Ensure the difficulty target is met.
-        let proof = block_header.proof();
         match proof.to_bytes_le() {
             Ok(proof_bytes) => {
                 let proof_difficulty = sha256d_to_u64(&proof_bytes);
-                if proof_difficulty > block_header.difficulty_target() {
+                if proof_difficulty > difficulty_target {
                     #[cfg(debug_assertions)]
                     eprintln!(
                         "PoSW difficulty target is not met. Expected {}, found {}",
-                        block_header.difficulty_target(),
-                        proof_difficulty
+                        difficulty_target, proof_difficulty
                     );
                     return false;
                 }
@@ -194,39 +213,26 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             }
         };
 
-        // Construct the inputs.
-        let inputs = vec![
-            N::InnerScalarField::read_le(&block_header.to_header_root().unwrap().to_bytes_le().unwrap()[..]).unwrap(),
-            *block_header.nonce(),
-        ];
-
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
         // Verify blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
-        let block_height = block_header.height();
-        if <N as Network>::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-            // Ensure the proof type is hiding.
-            if !proof.is_hiding() {
-                eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
-                return false;
-            }
+        // Ensure the proof type is hiding.
+        if <N as Network>::NETWORK_ID == 2
+            && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT
+            && !proof.is_hiding()
+        {
+            eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
+            return false;
+        }
+        // Ensure the proof type is not hiding.
+        else if proof.is_hiding() {
+            eprintln!("PoSW proof for block {} should not be hiding", block_height);
+            return false;
+        }
 
-            // Ensure the proof is valid under the deprecated PoSW parameters.
-            if !proof.verify(&self.verifying_key, &inputs) {
-                eprintln!("[deprecated] PoSW proof verification failed");
-                return false;
-            }
-        } else {
-            // Ensure the proof type is not hiding.
-            if proof.is_hiding() {
-                eprintln!("PoSW proof for block {} should not be hiding", block_height);
-                return false;
-            }
-
-            // Ensure the proof is valid under the PoSW parameters.
-            if !proof.verify(&self.verifying_key, &inputs) {
-                eprintln!("PoSW proof verification failed");
-                return false;
-            }
+        // Ensure the proof is valid under the deprecated PoSW parameters.
+        if !proof.verify(&self.verifying_key, inputs) {
+            eprintln!("PoSW proof verification failed");
+            return false;
         }
 
         true
@@ -287,6 +293,6 @@ mod tests {
             block_header.proof().to_bytes_le().unwrap().len(),
             Testnet2::HEADER_PROOF_SIZE_IN_BYTES
         ); // NOTE: Marlin proofs use compressed serialization
-        assert!(posw.verify(&block_header));
+        assert!(posw.verify_from_block_header(&block_header));
     }
 }

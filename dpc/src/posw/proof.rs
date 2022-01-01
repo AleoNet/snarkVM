@@ -214,7 +214,7 @@ mod tests {
                 latest_proof.to_bytes_le().unwrap().len(),
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
-            assert!(Testnet2::posw().verify(&latest_block_header));
+            assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
             assert!(latest_proof.is_hiding());
         }
 
@@ -230,7 +230,7 @@ mod tests {
                 latest_proof.to_bytes_le().unwrap().len(),
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
-            assert!(Testnet2::posw().verify(&latest_block_header));
+            assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
             assert!(latest_proof.is_hiding());
         }
 
@@ -246,7 +246,7 @@ mod tests {
                 latest_proof.to_bytes_le().unwrap().len(),
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
-            assert!(Testnet2::posw().verify(&latest_block_header));
+            assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
             assert!(!latest_proof.is_hiding());
         }
     }

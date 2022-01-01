@@ -51,7 +51,7 @@ fn marlin_posw(c: &mut Criterion) {
 
     group.bench_function("verify", |b| {
         b.iter(|| {
-            let _is_valid = Testnet2::posw().verify(Testnet2::genesis_block().header());
+            let _is_valid = Testnet2::posw().verify_from_block_header(Testnet2::genesis_block().header());
         });
     });
 }

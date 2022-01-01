@@ -59,5 +59,14 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     ) -> Result<PoSWProof<N>, PoSWError>;
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
-    fn verify(&self, block_header: &BlockHeader<N>) -> bool;
+    fn verify_from_block_header(&self, block_header: &BlockHeader<N>) -> bool;
+
+    /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
+    fn verify(
+        &self,
+        block_height: u32,
+        difficulty_target: u64,
+        inputs: &Vec<N::InnerScalarField>,
+        proof: &PoSWProof<N>,
+    ) -> bool;
 }

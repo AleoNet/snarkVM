@@ -62,6 +62,11 @@ impl<N: Network> PoSWCircuit<N> {
         })
     }
 
+    /// Returns the public inputs for the PoSW circuit.
+    pub fn to_public_inputs(&self) -> Vec<N::InnerScalarField> {
+        vec![*self.block_header_root, *self.nonce]
+    }
+
     /// Returns the block nonce.
     pub fn nonce(&self) -> N::PoSWNonce {
         self.nonce

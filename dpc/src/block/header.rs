@@ -193,7 +193,7 @@ impl<N: Network> BlockHeader<N> {
                 // Ensure the timestamp in the block is greater than 0.
                 self.metadata.timestamp > 0i64
                     // Ensure the PoSW proof is valid.
-                    && N::posw().verify(&self)
+                    && N::posw().verify_from_block_header(&self)
             }
         }
     }
@@ -209,7 +209,7 @@ impl<N: Network> BlockHeader<N> {
             // Ensure the cumulative weight in the genesis block is 0u128.
             && self.metadata.cumulative_weight == 0u128
             // Ensure the PoSW proof is valid.
-            && N::posw().verify(&self)
+            && N::posw().verify_from_block_header(&self)
     }
 
     /// Returns the previous ledger root from the block header.
@@ -519,10 +519,10 @@ mod tests {
             .unwrap();
 
         // Check that the difficulty target is satisfied.
-        assert!(posw.verify(&block_header));
+        assert!(posw.verify_from_block_header(&block_header));
 
         // Check that the difficulty target is *not* satisfied.
         block_header.metadata.difficulty_target = 0u64;
-        assert!(!posw.verify(&block_header));
+        assert!(!posw.verify_from_block_header(&block_header));
     }
 }
