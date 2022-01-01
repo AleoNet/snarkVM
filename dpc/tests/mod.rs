@@ -24,40 +24,35 @@ use std::{
 
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWError, PoSWScheme};
+use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWError, PoSWScheme};
 use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
-use snarkvm_utilities::ToBytes;
 
 use rand::{rngs::ThreadRng, thread_rng};
 
 #[test]
-fn test_posw_load_and_mine() {
-    // Construct a block header.
-    let mut block_header = Testnet2::genesis_block().header().clone();
-    Testnet2::posw()
-        .mine(&mut block_header, &AtomicBool::new(false), &mut thread_rng())
-        .unwrap();
-
-    assert_eq!(
-        block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
-        Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-    ); // NOTE: Marlin proofs use compressed serialization
-    assert!(Testnet2::posw().verify(&block_header));
-}
-
-#[test]
 fn test_posw_terminate() {
-    // Construct a block header.
-    let mut block_header = Testnet2::genesis_block().header().clone();
+    // Construct the block template.
+    let block = Testnet2::genesis_block();
+    let block_template = BlockTemplate::new(
+        block.previous_block_hash(),
+        block.height(),
+        block.timestamp(),
+        block.difficulty_target(),
+        block.cumulative_weight(),
+        block.previous_ledger_root(),
+        block.transactions().clone(),
+        block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
+    );
+
     let terminator = Arc::new(AtomicBool::new(false));
     let thread_terminator = terminator.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(1));
         thread_terminator.store(true, Ordering::SeqCst);
     });
-    let result = Testnet2::posw().mine(&mut block_header, &AtomicBool::new(true), &mut thread_rng());
+    let result = Testnet2::posw().mine(&block_template, &AtomicBool::new(true), &mut thread_rng());
 
-    assert!(matches!(result, Err(PoSWError::SnarkError(SNARKError::Terminated))));
+    assert!(matches!(result, Err(PoSWError::SNARKError(SNARKError::Terminated))));
 }
 
 /// TODO (howardwu): Update this when testnet2 is live.

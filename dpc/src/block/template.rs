@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Record, Transactions};
+use crate::{BlockHeaderMetadata, Network, Record, Transactions};
+use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
+use anyhow::Result;
 use serde::{de, ser, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
+    sync::Arc,
 };
 
 ///
@@ -106,6 +109,50 @@ impl<N: Network> BlockTemplate<N> {
     /// Returns the coinbase record in the block transactions.
     pub fn coinbase_record(&self) -> &Record<N> {
         &self.coinbase_record
+    }
+
+    /// Returns an instance of the block header tree.
+    pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
+        Self::compute_block_header_tree(
+            self.previous_ledger_root,
+            self.transactions.transactions_root(),
+            &BlockHeaderMetadata::new(self),
+        )
+    }
+
+    /// Returns the block header root.
+    pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
+        Ok((*self.to_header_tree()?.root()).into())
+    }
+
+    /// Returns an instance of the block header tree.
+    pub fn compute_block_header_tree(
+        previous_ledger_root: N::LedgerRoot,
+        transactions_root: N::TransactionsRoot,
+        metadata: &BlockHeaderMetadata,
+    ) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
+        let previous_ledger_root = previous_ledger_root.to_bytes_le()?;
+        assert_eq!(previous_ledger_root.len(), 32);
+
+        let transactions_root = transactions_root.to_bytes_le()?;
+        assert_eq!(transactions_root.len(), 32);
+
+        let metadata = metadata.to_bytes_le()?;
+        assert_eq!(metadata.len(), 36);
+
+        let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
+        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
+        leaves.push(previous_ledger_root);
+        leaves.push(transactions_root);
+        leaves.push(vec![0u8; 32]);
+        leaves.push(metadata);
+        // Sanity check that the correct number of leaves are allocated.
+        assert_eq!(num_leaves, leaves.len());
+
+        Ok(MerkleTree::<N::BlockHeaderRootParameters>::new(
+            Arc::new(N::block_header_root_parameters().clone()),
+            &leaves,
+        )?)
     }
 }
 

@@ -16,7 +16,7 @@
 
 use core::sync::atomic::AtomicBool;
 
-use crate::{BlockHeader, Network, PoSWError};
+use crate::{BlockHeader, BlockTemplate, Network, PoSWError};
 use snarkvm_algorithms::{traits::SNARK, SRS};
 
 use anyhow::Result;
@@ -37,25 +37,25 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     /// Returns a reference to the PoSW circuit verifying key.
     fn verifying_key(&self) -> &<N::PoSWSNARK as SNARK>::VerifyingKey;
 
-    /// Given the block header, compute a PoSW proof and nonce
+    /// Given the block template, compute a PoSW proof and nonce
     /// such that they are under the difficulty target.
     fn mine<R: Rng + CryptoRng>(
         &self,
-        block_header: &mut BlockHeader<N>,
+        block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<(), PoSWError>;
+    ) -> Result<BlockHeader<N>, PoSWError>;
 
     ///
-    /// Given the block header, compute a PoSW proof.
+    /// Given the block template, compute a PoSW proof.
     /// WARNING - This method does *not* ensure the resulting proof satisfies the difficulty target.
     ///
     fn mine_once_unchecked<R: Rng + CryptoRng>(
         &self,
-        block_header: &mut BlockHeader<N>,
+        block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<(), PoSWError>;
+    ) -> Result<BlockHeader<N>, PoSWError>;
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
     fn verify(&self, block_header: &BlockHeader<N>) -> bool;
