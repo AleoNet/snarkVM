@@ -16,7 +16,7 @@
 
 use core::sync::atomic::AtomicBool;
 
-use crate::{BlockHeader, BlockTemplate, Network, PoSWError};
+use crate::{BlockHeader, BlockTemplate, Network, PoSWCircuit, PoSWError, PoSWProof};
 use snarkvm_algorithms::{traits::SNARK, SRS};
 
 use anyhow::Result;
@@ -50,12 +50,13 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     /// Given the block template, compute a PoSW proof.
     /// WARNING - This method does *not* ensure the resulting proof satisfies the difficulty target.
     ///
-    fn mine_once_unchecked<R: Rng + CryptoRng>(
+    fn prove_once_unchecked<R: Rng + CryptoRng>(
         &self,
+        circuit: &mut PoSWCircuit<N>,
         block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<BlockHeader<N>, PoSWError>;
+    ) -> Result<PoSWProof<N>, PoSWError>;
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
     fn verify(&self, block_header: &BlockHeader<N>) -> bool;

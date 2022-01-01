@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, BlockTemplate, Network, PoSWProof, PoSWScheme};
+use crate::{BlockError, BlockTemplate, Network, PoSWCircuit, PoSWProof, PoSWScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
     fmt,
@@ -24,6 +24,7 @@ use snarkvm_utilities::{
     FromBytesDeserializer,
     ToBytes,
     ToBytesSerializer,
+    UniformRand,
 };
 
 use anyhow::{anyhow, Result};
@@ -148,9 +149,21 @@ impl<N: Network> BlockHeader<N> {
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self> {
+        // Instantiate the circuit.
+        let mut circuit = PoSWCircuit::<N>::new(&block_template, UniformRand::rand(rng))?;
+
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.
-        Ok(N::posw().mine_once_unchecked(&block_template, terminator, rng)?)
+        let proof = N::posw().prove_once_unchecked(&mut circuit, &block_template, terminator, rng)?;
+
+        // Construct a block header.
+        Ok(Self {
+            previous_ledger_root: block_template.previous_ledger_root(),
+            transactions_root: block_template.transactions().transactions_root(),
+            metadata: BlockHeaderMetadata::new(block_template),
+            nonce: circuit.nonce(),
+            proof,
+        })
     }
 
     /// Returns `true` if the block header is well-formed.

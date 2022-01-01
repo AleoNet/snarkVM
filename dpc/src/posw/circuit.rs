@@ -61,6 +61,17 @@ impl<N: Network> PoSWCircuit<N> {
             hashed_leaves: vec![empty_hash; usize::pow(2, N::HEADER_TREE_DEPTH as u32)],
         })
     }
+
+    /// Returns the block nonce.
+    pub fn nonce(&self) -> N::PoSWNonce {
+        self.nonce
+    }
+
+    /// Sets the nonce to the given nonce.
+    /// This method is used by PoSW to iterate over candidate block headers.
+    pub(crate) fn set_nonce(&mut self, nonce: N::PoSWNonce) {
+        self.nonce = nonce;
+    }
 }
 
 impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {

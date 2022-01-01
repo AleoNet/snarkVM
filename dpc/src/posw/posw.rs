@@ -97,8 +97,11 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     ) -> Result<BlockHeader<N>, PoSWError> {
         const MAXIMUM_MINING_DURATION: i64 = 600; // 600 seconds = 10 minutes.
 
+        // Instantiate the circuit.
+        let mut circuit = PoSWCircuit::<N>::new(&block_template, UniformRand::rand(rng))?;
+
         let mut iteration = 1;
-        let mut block_header;
+        let mut proof;
         loop {
             // Every 100 iterations, check that the miner is still within the allowed mining duration.
             if iteration % 100 == 0
@@ -108,7 +111,16 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             }
 
             // Run one iteration of PoSW.
-            block_header = self.mine_once_unchecked(block_template, terminator, rng)?;
+            proof = self.prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
+
+            // Construct a block header.
+            let block_header = BlockHeader::from(
+                block_template.previous_ledger_root(),
+                block_template.transactions().transactions_root(),
+                BlockHeaderMetadata::new(block_template),
+                circuit.nonce(),
+                proof,
+            )?;
 
             // Check if the updated block header is valid.
             if self.verify(&block_header) {
@@ -124,57 +136,39 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     /// Given the block template, compute a PoSW proof.
     /// WARNING - This method does *not* ensure the resulting proof satisfies the difficulty target.
     ///
-    fn mine_once_unchecked<R: Rng + CryptoRng>(
+    fn prove_once_unchecked<R: Rng + CryptoRng>(
         &self,
+        circuit: &mut PoSWCircuit<N>,
         block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<BlockHeader<N>, PoSWError> {
+    ) -> Result<PoSWProof<N>, PoSWError> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
         // Sample a random nonce.
-        let nonce = UniformRand::rand(rng);
+        circuit.set_nonce(UniformRand::rand(rng));
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
         // Mine blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
-        let block_header = if <N as Network>::NETWORK_ID == 2
+        let proof = if <N as Network>::NETWORK_ID == 2
             && block_template.block_height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT
         {
             let pk = <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
-
-            // Instantiate the circuit.
-            let circuit = PoSWCircuit::<N>::new(&block_template, nonce)?;
-
-            // Construct a candidate block header.
-            BlockHeader::from(
-                block_template.previous_ledger_root(),
-                block_template.transactions().transactions_root(),
-                BlockHeaderMetadata::new(block_template),
-                nonce,
-                PoSWProof::<N>::new_hiding(
-                    <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(
-                        &pk, &circuit, terminator, rng,
-                    )?
-                    .into(),
-                ),
-            )?
+            // Construct a PoSW proof.
+            PoSWProof::<N>::new_hiding(
+                <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(
+                    &pk, circuit, terminator, rng,
+                )?
+                .into(),
+            )
         } else {
-            // Instantiate the circuit.
-            let circuit = PoSWCircuit::<N>::new(&block_template, nonce)?;
-
-            // Construct a candidate block header.
-            BlockHeader::from(
-                block_template.previous_ledger_root(),
-                block_template.transactions().transactions_root(),
-                BlockHeaderMetadata::new(block_template),
-                nonce,
-                PoSWProof::<N>::new(
-                    <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, &circuit, terminator, rng)?.into(),
-                ),
-            )?
+            // Construct a PoSW proof.
+            PoSWProof::<N>::new(
+                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, circuit, terminator, rng)?.into(),
+            )
         };
 
-        Ok(block_header)
+        Ok(proof)
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
