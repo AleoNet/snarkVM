@@ -199,7 +199,7 @@ impl<N: Network> Ledger<N> {
         );
 
         // Mine the next block.
-        let block = Block::mine(template, terminator, rng)?;
+        let block = Block::mine(&template, terminator, rng)?;
 
         // Attempt to add the block to the canon chain.
         self.add_next_block(&block)?;
