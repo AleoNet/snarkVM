@@ -393,10 +393,8 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
 mod tests {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWScheme};
-    use snarkvm_algorithms::{SNARK, SRS};
-    use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinPoswMode};
 
-    use rand::{rngs::ThreadRng, thread_rng};
+    use rand::thread_rng;
 
     /// Returns the expected block header size by summing its expected subcomponents.
     /// Update this method if the contents of a block header have changed.
@@ -487,19 +485,6 @@ mod tests {
 
     #[test]
     fn test_block_header_difficulty_target() {
-        // Construct an instance of PoSW.
-        let posw = {
-            let max_degree =
-                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField, MarlinPoswMode>::max_degree(20000, 20000, 200000)
-                    .unwrap();
-            let universal_srs =
-                <<Testnet2 as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
-            <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
-                &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
-            )
-            .unwrap()
-        };
-
         // Construct the block template.
         let block = Testnet2::genesis_block();
         let block_template = BlockTemplate::new(
@@ -514,15 +499,15 @@ mod tests {
         );
 
         // Construct a PoSW proof.
-        let mut block_header = posw
+        let mut block_header = Testnet2::posw()
             .mine(&block_template, &AtomicBool::new(false), &mut thread_rng())
             .unwrap();
 
         // Check that the difficulty target is satisfied.
-        assert!(posw.verify_from_block_header(&block_header));
+        assert!(Testnet2::posw().verify_from_block_header(&block_header));
 
         // Check that the difficulty target is *not* satisfied.
         block_header.metadata.difficulty_target = 0u64;
-        assert!(!posw.verify_from_block_header(&block_header));
+        assert!(!Testnet2::posw().verify_from_block_header(&block_header));
     }
 }
