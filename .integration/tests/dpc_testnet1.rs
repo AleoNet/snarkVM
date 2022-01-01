@@ -54,7 +54,7 @@ fn dpc_testnet1_integration_test() {
     // Construct the new block transactions.
     let recipient = Account::new(rng);
     let amount = Block::<Testnet1>::block_reward(block_height);
-    let (coinbase_transaction, _) =
+    let (coinbase_transaction, coinbase_record) =
         Transaction::<Testnet1>::new_coinbase(recipient.address(), amount, true, rng).unwrap();
     {
         // Check that the coinbase transaction is serialized and deserialized correctly.
@@ -88,10 +88,11 @@ fn dpc_testnet1_integration_test() {
         cumulative_weight,
         previous_ledger_root,
         transactions,
+        coinbase_record,
     );
 
     // Construct the new block.
-    let block = Block::mine(template, &AtomicBool::new(false), &mut rng).unwrap();
+    let block = Block::mine(&template, &AtomicBool::new(false), &mut rng).unwrap();
 
     ledger.add_next_block(&block).unwrap();
     assert_eq!(ledger.latest_block_height(), 1);

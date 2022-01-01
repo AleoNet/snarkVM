@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockError, BlockTemplate, Network, PoSWProof, PoSWScheme};
+use crate::{BlockError, BlockTemplate, Network, PoSWCircuit, PoSWProof, PoSWScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{
     fmt,
@@ -24,15 +24,13 @@ use snarkvm_utilities::{
     FromBytesDeserializer,
     ToBytes,
     ToBytesSerializer,
+    UniformRand,
 };
 
 use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
-    mem::size_of,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::{mem::size_of, sync::atomic::AtomicBool};
 
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -98,7 +96,7 @@ pub struct BlockHeader<N: Network> {
     /// Nonce for Proof of Succinct Work - 32 bytes
     nonce: N::PoSWNonce,
     /// Proof of Succinct Work - 691 bytes
-    proof: Option<PoSWProof<N>>,
+    proof: PoSWProof<N>,
 }
 
 impl<N: Network> BlockHeader<N> {
@@ -116,7 +114,7 @@ impl<N: Network> BlockHeader<N> {
             transactions_root,
             metadata,
             nonce,
-            proof: Some(proof),
+            proof,
         };
 
         // Ensure the block header is well-formed.
@@ -127,22 +125,13 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Mines a new instance of a block header.
-    pub fn mine<R: Rng + CryptoRng>(template: &BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
-        // Construct a candidate block header.
-        let mut block_header = Self {
-            previous_ledger_root: template.previous_ledger_root(),
-            transactions_root: template.transactions().transactions_root(),
-            metadata: BlockHeaderMetadata::new(template),
-            nonce: Default::default(),
-            proof: None,
-        };
-        debug_assert!(
-            !block_header.is_valid(),
-            "Block header with a missing nonce and proof is invalid"
-        );
-
+    pub fn mine<R: Rng + CryptoRng>(
+        block_template: &BlockTemplate<N>,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<Self> {
         // Mine the block.
-        N::posw().mine(&mut block_header, terminator, rng)?;
+        let block_header = N::posw().mine(&block_template, terminator, rng)?;
 
         // Ensure the block header is valid.
         match block_header.is_valid() {
@@ -156,28 +145,25 @@ impl<N: Network> BlockHeader<N> {
     /// WARNING - This method does *not* enforce the block header is valid.
     ///
     pub fn mine_once_unchecked<R: Rng + CryptoRng>(
-        template: &BlockTemplate<N>,
+        block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self> {
-        // Construct a candidate block header.
-        let mut block_header = Self {
-            previous_ledger_root: template.previous_ledger_root(),
-            transactions_root: template.transactions().transactions_root(),
-            metadata: BlockHeaderMetadata::new(template),
-            nonce: Default::default(),
-            proof: None,
-        };
-        debug_assert!(
-            !block_header.is_valid(),
-            "Block header with a missing nonce and proof is invalid"
-        );
+        // Instantiate the circuit.
+        let mut circuit = PoSWCircuit::<N>::new(&block_template, UniformRand::rand(rng))?;
 
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.
-        N::posw().mine_once_unchecked(&mut block_header, terminator, rng)?;
+        let proof = N::posw().prove_once_unchecked(&mut circuit, &block_template, terminator, rng)?;
 
-        Ok(block_header)
+        // Construct a block header.
+        Ok(Self {
+            previous_ledger_root: block_template.previous_ledger_root(),
+            transactions_root: block_template.transactions().transactions_root(),
+            metadata: BlockHeaderMetadata::new(block_template),
+            nonce: circuit.nonce(),
+            proof,
+        })
     }
 
     /// Returns `true` if the block header is well-formed.
@@ -207,7 +193,7 @@ impl<N: Network> BlockHeader<N> {
                 // Ensure the timestamp in the block is greater than 0.
                 self.metadata.timestamp > 0i64
                     // Ensure the PoSW proof is valid.
-                    && N::posw().verify(&self)
+                    && N::posw().verify_from_block_header(&self)
             }
         }
     }
@@ -223,7 +209,7 @@ impl<N: Network> BlockHeader<N> {
             // Ensure the cumulative weight in the genesis block is 0u128.
             && self.metadata.cumulative_weight == 0u128
             // Ensure the PoSW proof is valid.
-            && N::posw().verify(&self)
+            && N::posw().verify_from_block_header(&self)
     }
 
     /// Returns the previous ledger root from the block header.
@@ -262,7 +248,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns the proof, if it is set.
-    pub fn proof(&self) -> &Option<PoSWProof<N>> {
+    pub fn proof(&self) -> &PoSWProof<N> {
         &self.proof
     }
 
@@ -273,28 +259,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns an instance of the block header tree.
     pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
-        let previous_ledger_root = self.previous_ledger_root.to_bytes_le()?;
-        assert_eq!(previous_ledger_root.len(), 32);
-
-        let transactions_root = self.transactions_root.to_bytes_le()?;
-        assert_eq!(transactions_root.len(), 32);
-
-        let metadata = self.metadata.to_bytes_le()?;
-        assert_eq!(metadata.len(), 36);
-
-        let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
-        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
-        leaves.push(previous_ledger_root);
-        leaves.push(transactions_root);
-        leaves.push(vec![0u8; 32]);
-        leaves.push(metadata);
-        // Sanity check that the correct number of leaves are allocated.
-        assert_eq!(num_leaves, leaves.len());
-
-        Ok(MerkleTree::<N::BlockHeaderRootParameters>::new(
-            Arc::new(N::block_header_root_parameters().clone()),
-            &leaves,
-        )?)
+        BlockTemplate::<N>::compute_block_header_tree(self.previous_ledger_root, self.transactions_root, &self.metadata)
     }
 
     /// Returns an instance of the block header tree.
@@ -312,18 +277,6 @@ impl<N: Network> BlockHeader<N> {
     /// Returns the block header root.
     pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
         Ok((*self.to_header_tree()?.root()).into())
-    }
-
-    /// Sets the block header nonce to the given nonce.
-    /// This method is used by PoSW to iterate over candidate block headers.
-    pub(crate) fn set_nonce(&mut self, nonce: N::PoSWNonce) {
-        self.nonce = nonce;
-    }
-
-    /// Sets the block header proof to the given proof.
-    /// This method is used by PoSW to iterate over candidate block headers.
-    pub(crate) fn set_proof(&mut self, proof: PoSWProof<N>) {
-        self.proof = Some(proof);
     }
 }
 
@@ -365,12 +318,6 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 impl<N: Network> ToBytes for BlockHeader<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // In this context, proof must always be set.
-        let proof = match &self.proof {
-            Some(proof) => proof,
-            None => return Err(BlockError::Message("Proof must be set to serialize block header".to_string()).into()),
-        };
-
         // Write the header core variables.
         self.previous_ledger_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
@@ -384,7 +331,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
         // Write the header nonce.
         self.nonce.write_le(&mut writer)?;
         // Write the header proof.
-        proof.write_le(&mut writer)
+        self.proof.write_le(&mut writer)
     }
 }
 
@@ -446,10 +393,8 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
 mod tests {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWScheme};
-    use snarkvm_algorithms::{SNARK, SRS};
-    use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinPoswMode};
 
-    use rand::{rngs::ThreadRng, thread_rng};
+    use rand::thread_rng;
 
     /// Returns the expected block header size by summing its expected subcomponents.
     /// Update this method if the contents of a block header have changed.
@@ -532,7 +477,6 @@ mod tests {
         assert_eq!(block_header.metadata.timestamp, 0);
         assert_eq!(block_header.metadata.difficulty_target, u64::MAX);
         assert_eq!(block_header.metadata.cumulative_weight, 0);
-        assert!(block_header.proof.is_some());
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(block_header.previous_ledger_root, Default::default());
@@ -541,31 +485,29 @@ mod tests {
 
     #[test]
     fn test_block_header_difficulty_target() {
-        // Construct an instance of PoSW.
-        let posw = {
-            let max_degree =
-                AHPForR1CS::<<Testnet2 as Network>::InnerScalarField, MarlinPoswMode>::max_degree(20000, 20000, 200000)
-                    .unwrap();
-            let universal_srs =
-                <<Testnet2 as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng()).unwrap();
-            <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(
-                &mut SRS::<ThreadRng, _>::Universal(&universal_srs),
-            )
-            .unwrap()
-        };
-
-        // Construct an assigned circuit.
-        let mut block_header = Testnet2::genesis_block().header().clone();
+        // Construct the block template.
+        let block = Testnet2::genesis_block();
+        let block_template = BlockTemplate::new(
+            block.previous_block_hash(),
+            block.height(),
+            block.timestamp(),
+            block.difficulty_target(),
+            block.cumulative_weight(),
+            block.previous_ledger_root(),
+            block.transactions().clone(),
+            block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
+        );
 
         // Construct a PoSW proof.
-        posw.mine(&mut block_header, &AtomicBool::new(false), &mut thread_rng())
+        let mut block_header = Testnet2::posw()
+            .mine(&block_template, &AtomicBool::new(false), &mut thread_rng())
             .unwrap();
 
         // Check that the difficulty target is satisfied.
-        assert!(posw.verify(&block_header));
+        assert!(Testnet2::posw().verify_from_block_header(&block_header));
 
         // Check that the difficulty target is *not* satisfied.
         block_header.metadata.difficulty_target = 0u64;
-        assert!(!posw.verify(&block_header));
+        assert!(!Testnet2::posw().verify_from_block_header(&block_header));
     }
 }

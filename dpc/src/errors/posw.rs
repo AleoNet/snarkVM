@@ -24,6 +24,9 @@ pub enum PoSWError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
+    #[error("{}", _0)]
+    BlockError(#[from] crate::BlockError),
+
     /// Thrown if the mask conversion to a field element fails
     #[error(transparent)]
     ConstraintFieldError(#[from] ConstraintFieldError),
@@ -40,7 +43,7 @@ pub enum PoSWError {
 
     /// Thrown when there's an internal error in the underlying SNARK
     #[error(transparent)]
-    SnarkError(#[from] SNARKError),
+    SNARKError(#[from] SNARKError),
 }
 
 impl From<std::io::Error> for PoSWError {

@@ -55,37 +55,26 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
-    pub fn new(template: &BlockTemplate<N>, header: BlockHeader<N>) -> Result<Self> {
+    pub fn mine<R: Rng + CryptoRng>(template: &BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
         assert!(
-            !(*template.transactions()).is_empty(),
-            "Cannot create block with no transactions"
-        );
-
-        // Prepare the variables.
-        let previous_block_hash = template.previous_block_hash();
-        let transactions = template.transactions().clone();
-
-        Ok(Self::from(previous_block_hash, header, transactions)?)
-    }
-
-    /// Initializes a new block.
-    pub fn mine<R: Rng + CryptoRng>(template: BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
-        assert!(
-            !(*template.transactions()).is_empty(),
+            !(*(template.transactions())).is_empty(),
             "Cannot create block with no transactions"
         );
 
         // Compute the block header.
-        let header = BlockHeader::mine(&template, terminator, rng)?;
+        let header = BlockHeader::mine(template, terminator, rng)?;
 
-        Ok(Self::new(&template, header)?)
+        // Construct the block.
+        let previous_block_hash = template.previous_block_hash();
+        let transactions = template.transactions().clone();
+        Ok(Self::from(previous_block_hash, header, transactions)?)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
-        let (transaction, _) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
+        let (transaction, coinbase_record) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
         let transactions = Transactions::from(&[transaction])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
@@ -104,10 +93,11 @@ impl<N: Network> Block<N> {
             cumulative_weight,
             LedgerTree::<N>::new()?.root(),
             transactions,
+            coinbase_record,
         );
 
         // Construct the genesis block.
-        let block = Self::mine(template, &AtomicBool::new(false), rng)?;
+        let block = Self::mine(&template, &AtomicBool::new(false), rng)?;
 
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
@@ -122,6 +112,8 @@ impl<N: Network> Block<N> {
         header: BlockHeader<N>,
         transactions: Transactions<N>,
     ) -> Result<Self, BlockError> {
+        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
+
         // Compute the block hash.
         let block_hash = N::block_hash_crh()
             .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
@@ -140,29 +132,6 @@ impl<N: Network> Block<N> {
             true => Ok(block),
             false => Err(anyhow!("Failed to initialize a block from given inputs").into()),
         }
-    }
-
-    /// Initializes a new block from a given previous hash, header, and transactions list,
-    /// without checking if the block is necessarily valid. Should only be used by pool
-    /// operators in order to do some preliminary validity checks that do not include
-    /// checking if the network difficulty was satisfied.
-    pub fn from_unchecked(
-        previous_block_hash: N::BlockHash,
-        header: BlockHeader<N>,
-        transactions: Transactions<N>,
-    ) -> Result<Self, BlockError> {
-        // Compute the block hash.
-        let block_hash = N::block_hash_crh()
-            .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
-            .into();
-
-        // Construct the block.
-        Ok(Self {
-            block_hash,
-            previous_block_hash,
-            header,
-            transactions,
-        })
     }
 
     /// Returns `true` if the block is well-formed.
@@ -300,22 +269,7 @@ impl<N: Network> Block<N> {
 
     /// Returns the coinbase transaction for the block.
     pub fn to_coinbase_transaction(&self) -> Result<Transaction<N>> {
-        // Filter out all transactions with a positive value balance.
-        let coinbase_transaction: Vec<_> = self
-            .transactions
-            .iter()
-            .filter(|t| t.value_balance().is_negative())
-            .collect();
-
-        // Ensure there is exactly 1 coinbase transaction.
-        let num_coinbase = coinbase_transaction.len();
-        match num_coinbase == 1 {
-            true => Ok(coinbase_transaction[0].clone()),
-            false => Err(anyhow!(
-                "Block must have 1 coinbase transaction, found {}",
-                num_coinbase
-            )),
-        }
+        self.transactions.to_coinbase_transaction()
     }
 
     ///
