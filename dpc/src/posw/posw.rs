@@ -215,13 +215,12 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
 
         // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
         // Verify blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
-        // Ensure the proof type is hiding.
-        if <N as Network>::NETWORK_ID == 2
-            && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT
-            && !proof.is_hiding()
-        {
-            eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
-            return false;
+        if <N as Network>::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            // Ensure the proof type is hiding.
+            if !proof.is_hiding() {
+                eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
+                return false;
+            }
         }
         // Ensure the proof type is not hiding.
         else if proof.is_hiding() {
