@@ -163,6 +163,22 @@ impl<N: Network> Transactions<N> {
             .fold(AleoAmount::ZERO, |a, b| a.add(b))
     }
 
+    /// Returns the coinbase transaction for the block.
+    pub fn to_coinbase_transaction(&self) -> Result<Transaction<N>> {
+        // Filter out all transactions with a positive value balance.
+        let coinbase_transaction: Vec<_> = self.iter().filter(|t| t.value_balance().is_negative()).collect();
+
+        // Ensure there is exactly 1 coinbase transaction.
+        let num_coinbase = coinbase_transaction.len();
+        match num_coinbase == 1 {
+            true => Ok(coinbase_transaction[0].clone()),
+            false => Err(anyhow!(
+                "Block must have 1 coinbase transaction, found {}",
+                num_coinbase
+            )),
+        }
+    }
+
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
     pub fn transactions_root(&self) -> N::TransactionsRoot {
         (*self.tree.root()).into()
