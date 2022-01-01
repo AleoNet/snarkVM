@@ -65,10 +65,7 @@ impl<N: Network> PoSWProof<N> {
     /// Returns the proof difficulty, determined by double-hashing the proof bytes to a u64.
     ///
     pub fn to_proof_difficulty(&self) -> Result<u64> {
-        match self {
-            Self::NonHiding(proof) => Ok(sha256d_to_u64(&proof.to_bytes_le()?)),
-            Self::Hiding(proof) => Ok(sha256d_to_u64(&proof.to_bytes_le()?)),
-        }
+        Ok(sha256d_to_u64(&self.to_bytes_le()?))
     }
 
     ///
