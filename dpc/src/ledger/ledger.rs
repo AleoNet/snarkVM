@@ -195,6 +195,7 @@ impl<N: Network> Ledger<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
+            coinbase_record.clone(),
         );
 
         // Mine the next block.

@@ -85,7 +85,7 @@ impl<N: Network> Block<N> {
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
-        let (transaction, _) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
+        let (transaction, coinbase_record) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
         let transactions = Transactions::from(&[transaction])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
@@ -104,6 +104,7 @@ impl<N: Network> Block<N> {
             cumulative_weight,
             LedgerTree::<N>::new()?.root(),
             transactions,
+            coinbase_record,
         );
 
         // Construct the genesis block.

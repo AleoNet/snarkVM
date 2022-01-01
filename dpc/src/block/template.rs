@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Transactions};
+use crate::{Network, Record, Transactions};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use serde::{de, ser, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
@@ -36,6 +36,7 @@ pub struct BlockTemplate<N: Network> {
     cumulative_weight: u128,
     previous_ledger_root: N::LedgerRoot,
     transactions: Transactions<N>,
+    coinbase_record: Record<N>,
 }
 
 impl<N: Network> BlockTemplate<N> {
@@ -48,6 +49,7 @@ impl<N: Network> BlockTemplate<N> {
         cumulative_weight: u128,
         previous_ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
+        coinbase_record: Record<N>,
     ) -> Self {
         assert!(
             !(*transactions).is_empty(),
@@ -62,6 +64,7 @@ impl<N: Network> BlockTemplate<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
+            coinbase_record,
         }
     }
 
@@ -99,6 +102,11 @@ impl<N: Network> BlockTemplate<N> {
     pub fn transactions(&self) -> &Transactions<N> {
         &self.transactions
     }
+
+    /// Returns the coinbase record in the block transactions.
+    pub fn coinbase_record(&self) -> &Record<N> {
+        &self.coinbase_record
+    }
 }
 
 impl<N: Network> FromBytes for BlockTemplate<N> {
@@ -110,6 +118,7 @@ impl<N: Network> FromBytes for BlockTemplate<N> {
         let cumulative_weight: u128 = FromBytes::read_le(&mut reader)?;
         let previous_ledger_root: N::LedgerRoot = FromBytes::read_le(&mut reader)?;
         let transactions: Transactions<N> = FromBytes::read_le(&mut reader)?;
+        let coinbase_record: Record<N> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::new(
             previous_block_hash,
@@ -119,6 +128,7 @@ impl<N: Network> FromBytes for BlockTemplate<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
+            coinbase_record,
         ))
     }
 }
@@ -131,7 +141,8 @@ impl<N: Network> ToBytes for BlockTemplate<N> {
         self.difficulty_target.write_le(&mut writer)?;
         self.cumulative_weight.write_le(&mut writer)?;
         self.previous_ledger_root.write_le(&mut writer)?;
-        self.transactions.write_le(&mut writer)
+        self.transactions.write_le(&mut writer)?;
+        self.coinbase_record.write_le(&mut writer)
     }
 }
 
@@ -165,6 +176,7 @@ impl<N: Network> Serialize for BlockTemplate<N> {
                 block_template.serialize_field("cumulative_weight", &self.cumulative_weight)?;
                 block_template.serialize_field("previous_ledger_root", &self.previous_ledger_root)?;
                 block_template.serialize_field("transactions", &self.transactions)?;
+                block_template.serialize_field("coinbase_record", &self.coinbase_record)?;
                 block_template.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -192,6 +204,8 @@ impl<'de, N: Network> Deserialize<'de> for BlockTemplate<N> {
                         .map_err(de::Error::custom)?;
                 let transactions: Transactions<N> =
                     serde_json::from_value(block_template["transactions"].clone()).map_err(de::Error::custom)?;
+                let coinbase_record: Record<N> =
+                    serde_json::from_value(block_template["coinbase_record"].clone()).map_err(de::Error::custom)?;
                 Ok(Self::new(
                     previous_block_hash,
                     block_height,
@@ -200,6 +214,7 @@ impl<'de, N: Network> Deserialize<'de> for BlockTemplate<N> {
                     cumulative_weight,
                     previous_ledger_root,
                     transactions,
+                    coinbase_record,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "block template"),
@@ -224,6 +239,7 @@ mod tests {
             block.cumulative_weight(),
             block.previous_ledger_root(),
             block.transactions().clone(),
+            block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
         );
 
         // Serialize
@@ -252,6 +268,7 @@ mod tests {
             block.cumulative_weight(),
             block.previous_ledger_root(),
             block.transactions().clone(),
+            block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
         );
 
         // Serialize
