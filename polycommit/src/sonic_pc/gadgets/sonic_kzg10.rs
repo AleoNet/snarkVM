@@ -228,12 +228,10 @@ where
             let mut degree_bound_comms = Vec::<PG::G1Gadget>::new();
             let mut shift_powers = Vec::<PG::G2PreparedGadget>::new();
 
-            let mut opening_challenges_counter = 0;
-
             for (j, (commitment_lcs, value)) in comms_to_combine.into_iter().zip(values_to_combine).enumerate() {
+                let opening_challenges_counter = j;
                 let challenge = opening_challenges[opening_challenges_counter].clone();
                 let challenge_bits = opening_challenges_bits[opening_challenges_counter].clone();
-                opening_challenges_counter += 1;
 
                 for (k, commitment_lc) in commitment_lcs.iter().enumerate() {
                     let LCInfoEntry {
