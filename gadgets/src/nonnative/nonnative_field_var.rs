@@ -227,7 +227,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> FieldGadget<TargetField, Ba
             (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
                 Ok(Self::Var(v.add_constant(&mut cs.ns(|| "add_constant"), c)?))
             }
-            (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.add(&mut cs.ns(|| "add"), &v2)?)),
+            (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.add(&mut cs.ns(|| "add"), v2)?)),
         }
     }
 
@@ -247,7 +247,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> FieldGadget<TargetField, Ba
                 let temp = v.sub_constant(&mut cs.ns(|| "sub_constant"), c)?;
                 Ok(Self::Var(temp.negate(&mut cs.ns(|| "negate"))?))
             }
-            (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.sub(&mut cs.ns(|| "sub"), &v2)?)),
+            (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.sub(&mut cs.ns(|| "sub"), v2)?)),
         }
     }
 
@@ -257,7 +257,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> FieldGadget<TargetField, Ba
             (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
                 Ok(Self::Var(v.mul_constant(&mut cs.ns(|| "mul_constant"), c)?))
             }
-            (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.mul(&mut cs.ns(|| "mul"), &v2)?)),
+            (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.mul(&mut cs.ns(|| "mul"), v2)?)),
         }
     }
 
@@ -437,7 +437,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
                 };
 
                 Ok(Self::Var(AllocatedNonNativeFieldVar::conditionally_select(
-                    cs, &cond, &first, &second,
+                    cs, cond, &first, &second,
                 )?))
             }
         }

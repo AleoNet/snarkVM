@@ -75,9 +75,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 + c2)),
             (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
-                Ok(Self::Variable(v.add_constant(cs, &c)?))
+                Ok(Self::Variable(v.add_constant(cs, c)?))
             }
-            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, &v2)?)),
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, v2)?)),
         }
     }
 }

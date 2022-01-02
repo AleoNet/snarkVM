@@ -100,9 +100,8 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
-            for _ in bits.len()..F::size_in_bits() {
-                bits.push(false);
-            }
+            bits.extend_from_slice(&vec![false; F::size_in_bits() - bits.len()]);
+
             src_bits.append(&mut bits);
         }
 
@@ -156,9 +155,8 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
-            for _ in bits.len()..F::size_in_bits() {
-                bits.push(false);
-            }
+            bits.extend_from_slice(&vec![false; F::size_in_bits() - bits.len()]);
+
             src_bits.append(&mut bits);
         }
 
@@ -205,7 +203,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
 impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanInputGadget<F, CF> {
     fn from_field_elements<CS: ConstraintSystem<CF>>(
         mut cs: CS,
-        field_elements: &Vec<FpGadget<CF>>,
+        field_elements: &[FpGadget<CF>],
     ) -> Result<Self, SynthesisError> {
         // Step 1: obtain the booleans of the CF field variables
         let mut src_booleans = Vec::<Boolean>::new();

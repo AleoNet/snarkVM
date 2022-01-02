@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate derivative;

@@ -150,7 +150,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
         let mut limbs = Vec::new();
         for (i, (this_limb, other_limb)) in self.limbs.iter().zip(other.limbs.iter()).enumerate() {
-            limbs.push(this_limb.add(cs.ns(|| format!("add_limb_{}", i)), &other_limb)?);
+            limbs.push(this_limb.add(cs.ns(|| format!("add_limb_{}", i)), other_limb)?);
         }
 
         let mut res = Self {
@@ -252,14 +252,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
                 limbs.push(
                     this_limb
                         .add_constant(cs.ns(|| format!("add_constant_{}", i)), &temp)?
-                        .sub(cs.ns(|| format!("sub_{}", i)), &other_limb)?,
+                        .sub(cs.ns(|| format!("sub_{}", i)), other_limb)?,
                 );
             } else {
                 let temp = pad_top_limb + *pad_to_kp_limb;
                 limbs.push(
                     this_limb
                         .add_constant(cs.ns(|| format!("add_constant_{}", i)), &temp)?
-                        .sub(cs.ns(|| format!("sub_{}", i)), &other_limb)?,
+                        .sub(cs.ns(|| format!("sub_{}", i)), other_limb)?,
                 );
             }
         }
@@ -300,7 +300,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     pub fn mul<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS, other: &Self) -> Result<Self, SynthesisError> {
         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
 
-        self.mul_without_reduce(cs, &other)?.reduce(&mut cs.ns(|| "reduce"))
+        self.mul_without_reduce(cs, other)?.reduce(&mut cs.ns(|| "reduce"))
     }
 
     /// Multiply a constant
@@ -331,7 +331,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let actual_result = self.mul(&mut cs.ns(|| "mul"), &inverse)?;
         actual_result.conditional_enforce_equal(
             &mut cs.ns(|| "conditional_enforce_equal"),
-            &one,
+            one,
             &Boolean::Constant(true),
         )?;
         Ok(inverse)
@@ -588,7 +588,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
         for (i, limb) in self_normal.limbs.iter().enumerate() {
             bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits_be(
                 &mut cs.ns(|| format!("limb_to_bits_{}", i)),
-                &limb,
+                limb,
                 field_parameters.bits_per_limb,
             )?);
         }
@@ -632,7 +632,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
         for (i, limb) in self_normal.limbs.iter().enumerate() {
             bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits_be(
                 &mut cs.ns(|| format!("limb_to_bits_{}", i)),
-                &limb,
+                limb,
                 field_parameters.bits_per_limb,
             )?);
         }
