@@ -359,11 +359,9 @@ impl_bytes!(VerifierKey);
 impl<E: PairingEngine> VerifierKey<E> {
     /// Find the appropriate shift for the degree bound.
     pub fn get_shift_power(&self, degree_bound: usize) -> Option<E::G2Affine> {
-        self.degree_bounds_and_neg_powers_of_h.as_ref().and_then(|v| {
-            v.binary_search_by(|(d, _)| d.cmp(&degree_bound))
-                .ok()
-                .map(|i| v[i].1.clone())
-        })
+        self.degree_bounds_and_neg_powers_of_h
+            .as_ref()
+            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1))
     }
 
     pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {

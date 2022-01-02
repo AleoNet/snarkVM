@@ -17,6 +17,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 //! A crate for polynomial commitment schemes.
 #![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate derivative;

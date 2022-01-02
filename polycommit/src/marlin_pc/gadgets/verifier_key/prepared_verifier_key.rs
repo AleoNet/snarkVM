@@ -170,7 +170,7 @@ where
 {
     fn into(self) -> VerifierKeyVar<TargetCurve, BaseCurve, PG> {
         match self.origin_vk {
-            Some(vk) => vk.clone(),
+            Some(vk) => vk,
             None => {
                 eprintln!("Missing original vk");
                 panic!()

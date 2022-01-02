@@ -197,7 +197,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             Some(
                 pp.inverse_neg_powers_of_h
                     .iter()
-                    .map(|(d, affine)| (*d, (*affine).clone()))
+                    .map(|(d, affine)| (*d, *affine))
                     .collect::<Vec<(usize, E::G2Affine)>>(),
             )
         };
@@ -259,7 +259,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 ck.supported_degree(),
                 ck.max_degree,
                 enforced_degree_bounds,
-                &labeled_polynomial,
+                labeled_polynomial,
             )?;
 
             let polynomial = labeled_polynomial.polynomial();
@@ -281,7 +281,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 ck.powers()
             };
 
-            let (comm, rand) = kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, terminator, Some(rng))?;
+            let (comm, rand) = kzg10::KZG10::commit(&powers, polynomial, hiding_bound, terminator, Some(rng))?;
 
             labeled_comms.push(LabeledCommitment::new(label.to_string(), comm, degree_bound));
             randomness.push(rand);
@@ -316,7 +316,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 ck.supported_degree(),
                 ck.max_degree,
                 enforced_degree_bounds,
-                &polynomial,
+                polynomial,
             )?;
 
             combined_polynomial += (curr_challenge, polynomial.polynomial());
@@ -509,7 +509,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             ck,
             lc_polynomials.iter(),
             lc_commitments.iter(),
-            &query_set,
+            query_set,
             opening_challenge,
             lc_randomness.iter(),
             rng,
@@ -591,7 +591,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         Self::batch_check(
             vk,
             &lc_commitments,
-            &query_set,
+            query_set,
             &evaluations,
             proof,
             opening_challenge,
@@ -673,7 +673,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             ck,
             lc_polynomials.iter(),
             lc_commitments.iter(),
-            &query_set,
+            query_set,
             opening_challenges,
             lc_randomness.iter(),
         )?;
@@ -756,7 +756,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         Self::batch_check_individual_opening_challenges(
             vk,
             &lc_commitments,
-            &query_set,
+            query_set,
             &evaluations,
             proof,
             opening_challenges,
@@ -783,23 +783,18 @@ impl<E: PairingEngine> SonicKZG10<E> {
         let mut combined_polynomial = Polynomial::zero();
         let mut combined_rand = kzg10::Randomness::empty();
 
-        let mut opening_challenge_counter = 0;
-
-        for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
-            let enforced_degree_bounds: Option<&[usize]> =
-                ck.enforced_degree_bounds.as_ref().map(|bounds| bounds.as_slice());
+        for (opening_challenge_counter, (polynomial, rand)) in labeled_polynomials.into_iter().zip(rands).enumerate() {
+            let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
                 ck.max_degree,
                 enforced_degree_bounds,
-                &polynomial,
+                polynomial,
             )?;
 
-            let curr_challenge = opening_challenges(opening_challenge_counter);
-            opening_challenge_counter += 1;
-
-            combined_polynomial += (curr_challenge.clone(), polynomial.polynomial());
+            let curr_challenge = opening_challenges(opening_challenge_counter as u64);
+            combined_polynomial += (curr_challenge, polynomial.polynomial());
             combined_rand += (curr_challenge, rand);
         }
 
@@ -870,7 +865,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
                 ck,
                 query_polys,
                 query_comms,
-                &query,
+                query,
                 opening_challenges,
                 query_rands,
             )?;
@@ -881,7 +876,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         }
         end_timer!(open_time);
 
-        Ok(proofs.into())
+        Ok(proofs)
     }
 
     /// Verifies that `value` is the evaluation at `x` of the polynomial
@@ -949,7 +944,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Implicit assumption: proofs are order in same manner as queries in
         // `query_to_labels_map`.
-        let proofs: Vec<_> = proof.clone().into();
+        let proofs: Vec<_> = proof.clone();
         assert_eq!(proofs.len(), query_to_labels_map.len());
 
         let mut result = true;
@@ -962,7 +957,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
                 })?;
 
                 let v_i = evaluations
-                    .get(&(label.clone(), point.clone()))
+                    .get(&(label.clone(), *point))
                     .ok_or(Error::MissingEvaluation {
                         label: label.to_string(),
                     })?;
@@ -972,7 +967,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             }
 
             let proof_time = start_timer!(|| "Checking per-query proof");
-            result &= Self::check_individual_opening_challenges(vk, comms, &point, values, &proof, opening_challenges)?;
+            result &= Self::check_individual_opening_challenges(vk, comms, point, values, &proof, opening_challenges)?;
             end_timer!(proof_time);
         }
         Ok(result)
@@ -1049,30 +1044,27 @@ impl<E: PairingEngine> SonicKZG10<E> {
     ) {
         let acc_time = start_timer!(|| "Accumulating elements");
 
-        let mut opening_challenge_counter = 0;
-
         // Keeps track of running combination of values
         let mut combined_values = E::Fr::zero();
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            let curr_challenge = opening_challenges(opening_challenge_counter);
-            opening_challenge_counter += 1;
+        for (opening_challenge_counter, (labeled_commitment, value)) in commitments.into_iter().zip(values).enumerate()
+        {
+            let current_challenge = opening_challenges(opening_challenge_counter as u64);
+            combined_values += &(value * current_challenge);
 
-            combined_values += &(value * curr_challenge);
-
-            let comm = labeled_comm.commitment();
-            let degree_bound = labeled_comm.degree_bound();
+            let commitment = labeled_commitment.commitment();
+            let degree_bound = labeled_commitment.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge).into();
+            let mut commitment_with_challenge: E::G1Projective = commitment.0.mul(current_challenge).into();
 
             if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(randomizer);
+                commitment_with_challenge = commitment_with_challenge.mul(randomizer);
             }
 
             // Accumulate values in the BTreeMap
-            *combined_comms.entry(degree_bound).or_insert(E::G1Projective::zero()) += &comm_with_challenge;
+            *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &commitment_with_challenge;
         }
 
         // Push expected results into list of elems. Power will be the negative of the expected power

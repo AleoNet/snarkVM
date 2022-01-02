@@ -73,7 +73,7 @@ where
     ) -> Result<PG::G2Gadget, SynthesisError> {
         // Search the bound using PIR
         if self.degree_bounds_and_neg_powers_of_h.is_none() {
-            return Err(SynthesisError::UnexpectedIdentity);
+            Err(SynthesisError::UnexpectedIdentity)
         } else {
             let degree_bounds_and_neg_powers_of_h = self.degree_bounds_and_neg_powers_of_h.clone().unwrap();
 
@@ -99,7 +99,7 @@ where
             for (i, pir_gadget) in pir_vector_gadgets.iter().enumerate() {
                 let temp = FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
                     cs.ns(|| format!("from_boolean_{}", i)),
-                    pir_gadget.clone(),
+                    *pir_gadget,
                 )?;
 
                 sum = sum.add(cs.ns(|| format!("sum_add_pir{}", i)), &temp)?;
@@ -111,7 +111,7 @@ where
             let zero_shift_power = PG::G2Gadget::zero(cs.ns(|| "zero_shift_power"))?;
 
             let mut sum_bound = zero_bound.clone();
-            let mut found_shift_power = zero_shift_power.clone();
+            let mut found_shift_power = zero_shift_power;
 
             for (i, (pir_gadget, (_, degree, shift_power))) in pir_vector_gadgets
                 .iter()
@@ -134,7 +134,7 @@ where
                 )?;
             }
 
-            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), &bound)?;
+            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), bound)?;
 
             Ok(found_shift_power)
         }
