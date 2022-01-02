@@ -26,7 +26,7 @@ use crate::{
     PoSWProof,
     PoSWScheme,
 };
-use snarkvm_algorithms::{crh::sha256d_to_u64, traits::SNARK, SRS};
+use snarkvm_algorithms::{traits::SNARK, SRS};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use chrono::Utc;
@@ -189,9 +189,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         proof: &PoSWProof<N>,
     ) -> bool {
         // Ensure the difficulty target is met.
-        match proof.to_bytes_le() {
-            Ok(proof_bytes) => {
-                let proof_difficulty = sha256d_to_u64(&proof_bytes);
+        match proof.to_proof_difficulty() {
+            Ok(proof_difficulty) => {
                 if proof_difficulty > difficulty_target {
                     #[cfg(debug_assertions)]
                     eprintln!(

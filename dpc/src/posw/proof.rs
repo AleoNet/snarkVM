@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Network, PoSWError};
-use snarkvm_algorithms::SNARK;
+use snarkvm_algorithms::{crh::sha256d_to_u64, SNARK};
 use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -37,17 +37,23 @@ pub enum PoSWProof<N: Network> {
 }
 
 impl<N: Network> PoSWProof<N> {
+    ///
     /// Initializes a new instance of a PoSW proof.
+    ///
     pub fn new(proof: N::PoSWProof) -> Self {
         Self::NonHiding(proof)
     }
 
+    ///
     /// Initializes a new instance of a hiding PoSW proof.
+    ///
     pub fn new_hiding(proof: crate::testnet2::DeprecatedPoSWProof<N>) -> Self {
         Self::Hiding(proof)
     }
 
+    ///
     /// Returns `true` if the PoSW proof is hiding.
+    ///
     pub fn is_hiding(&self) -> bool {
         match self {
             Self::NonHiding(..) => false,
@@ -55,7 +61,16 @@ impl<N: Network> PoSWProof<N> {
         }
     }
 
+    ///
+    /// Returns the proof difficulty, determined by double-hashing the proof bytes to a u64.
+    ///
+    pub fn to_proof_difficulty(&self) -> Result<u64> {
+        Ok(sha256d_to_u64(&self.to_bytes_le()?))
+    }
+
+    ///
     /// Returns `true` if the PoSW proof is valid.
+    ///
     pub fn verify(
         &self,
         verifying_key: &<<N as Network>::PoSWSNARK as SNARK>::VerifyingKey,
