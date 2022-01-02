@@ -30,6 +30,7 @@ use crate::{
     PhantomData,
     PolynomialCommitment,
 };
+use core::sync::atomic::AtomicBool;
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
@@ -42,14 +43,9 @@ pub struct MarlinSNARK<
     PC: PolynomialCommitment<F, FSF>,
     FS: FiatShamirRng<F, FSF>,
     MC: MarlinMode,
-    V: ToConstraintField<F>,
+    V: ToConstraintField<F> + Clone,
 > {
-    f_phantom: PhantomData<F>,
-    fsf_phantom: PhantomData<FSF>,
-    pc_phantom: PhantomData<PC>,
-    fs_phantom: PhantomData<FS>,
-    mc_phantom: PhantomData<MC>,
-    v_phantom: PhantomData<V>,
+    _phantom: PhantomData<(F, FSF, PC, FS, MC, V)>,
 }
 
 impl<TargetField, BaseField, PC, FS, MM, V> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>
@@ -59,17 +55,17 @@ where
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    V: ToConstraintField<TargetField>,
+    V: ToConstraintField<TargetField> + Clone,
 {
     type BaseField = BaseField;
-    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC>;
+    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>;
     type Proof = Proof<TargetField, BaseField, PC>;
-    type ProvingKey = CircuitProvingKey<TargetField, BaseField, PC>;
+    type ProvingKey = CircuitProvingKey<TargetField, BaseField, PC, MM>;
     type ScalarField = TargetField;
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<TargetField, BaseField, PC>;
     type VerifierInput = V;
-    type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC>;
+    type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC, MM>;
 
     fn universal_setup<R: Rng + CryptoRng>(
         max_degree: &Self::UniversalSetupConfig,
@@ -95,12 +91,15 @@ where
         Ok((pk, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
+    fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
         parameters: &Self::ProvingKey,
         circuit: &C,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove(&parameters, circuit, rng) {
+        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove_with_terminator(
+            parameters, circuit, terminator, rng,
+        ) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }
@@ -190,10 +189,10 @@ pub mod test {
     type PC = SonicKZG10<Bls12_377>;
     type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
 
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
-    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget>;
+    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>;
 
     #[test]
     fn marlin_snark_test() {
@@ -277,6 +276,7 @@ pub mod test {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn marlin_verifier_num_constraints_test() {
         let mut rng = test_rng();
 
@@ -353,8 +353,8 @@ pub mod test {
 
         const INPUT_GADGET_CONSTRAINTS: usize = 259;
         const PROOF_GADGET_CONSTRAINTS: usize = 48;
-        const VK_GADGET_CONSTRAINTS: usize = 32;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 132743;
+        const VK_GADGET_CONSTRAINTS: usize = 188;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 130543;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
@@ -379,7 +379,7 @@ pub mod multiple_input_tests {
             FiatShamirAlgebraicSpongeRng,
             FiatShamirAlgebraicSpongeRngVar,
             PoseidonSponge,
-            PoseidonSpongeVar,
+            PoseidonSpongeGadget as PoseidonSpongeVar,
         },
         marlin::MarlinRecursiveMode,
         FiatShamirRngVar,
@@ -469,7 +469,7 @@ pub mod multiple_input_tests {
         FSG: FiatShamirRngVar<F, ConstraintF, FS>,
     > {
         pub c: F,
-        pub verifying_key: CircuitVerifyingKey<F, ConstraintF, PC>,
+        pub verifying_key: CircuitVerifyingKey<F, ConstraintF, PC, MM>,
         pub proof: Proof<F, ConstraintF, PC>,
         _f: PhantomData<ConstraintF>,
         _fs: PhantomData<FS>,
@@ -489,7 +489,7 @@ pub mod multiple_input_tests {
     > ConstraintSynthesizer<ConstraintF> for VerifierCircuit<F, ConstraintF, PC, FS, MM, PCG, FSG>
     {
         fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-            let vk_gadget = CircuitVerifyingKeyVar::<F, ConstraintF, PC, PCG>::alloc(cs.ns(|| "vk"), || {
+            let vk_gadget = CircuitVerifyingKeyVar::<F, ConstraintF, PC, PCG, MM>::alloc(cs.ns(|| "vk"), || {
                 Ok(self.verifying_key.clone())
             })?;
 
@@ -500,7 +500,7 @@ pub mod multiple_input_tests {
                 Ok(vec![self.c.clone(), self.c.clone()])
             })?;
 
-            let output = MarlinVerificationGadget::<F, ConstraintF, PC, PCG>::verify::<_, FS, FSG>(
+            let output = MarlinVerificationGadget::<F, ConstraintF, PC, PCG, MM>::verify::<_, FS, FSG>(
                 cs.ns(|| "verify"),
                 &vk_gadget,
                 &input_gadget.val,
@@ -519,11 +519,11 @@ pub mod multiple_input_tests {
     type PC = SonicKZG10<Bls12_377>;
     type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
-    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget>;
+    type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>;
 
     #[test]
     fn two_input_marlin_snark_test() {

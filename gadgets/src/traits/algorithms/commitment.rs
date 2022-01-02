@@ -43,6 +43,11 @@ pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + C
         + Debug;
     type RandomnessGadget: AllocGadget<C::Randomness, F> + ToBytesGadget<F> + Clone;
 
+    fn randomness_from_bytes<CS: ConstraintSystem<F>>(
+        cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::RandomnessGadget, SynthesisError>;
+
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,

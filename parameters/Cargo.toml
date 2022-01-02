@@ -27,6 +27,9 @@ path = "../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.aleo-std]
+version = "0.1.6"
+
 [dependencies.anyhow]
 version = "1"
 
@@ -34,7 +37,7 @@ version = "1"
 version = "1.0"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
-version = "0.4.39"
+version = "0.4.41"
 optional = true
 
 [dependencies.hex]
@@ -92,5 +95,7 @@ version = "0.8"
 
 [features]
 default = [ "remote", "snarkvm-algorithms/default" ]
+no_std_out = []
 remote = [ "curl" ]
 wasm = [ "snarkvm-algorithms/wasm", "reqwest", "wasm-bindgen-futures", "parking_lot" ]
+

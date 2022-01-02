@@ -21,8 +21,19 @@
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{
+    errors::SerializationError,
+    fmt,
+    serialize::*,
+    str::FromStr,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
+    ToMinimalBits,
+};
 
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{
     Read,
     Result as IoResult,
@@ -55,7 +66,7 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the Groth16 SNARK.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
@@ -63,46 +74,16 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) compressed: bool,
 }
 
-impl<E: PairingEngine> ToBytes for Proof<E> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self.compressed {
-            true => self.write_compressed(&mut writer),
-            false => self.write_uncompressed(&mut writer),
-        }
-    }
-}
-
-impl<E: PairingEngine> FromBytes for Proof<E> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Self::read(&mut reader)
-    }
-}
-
-impl<E: PairingEngine> PartialEq for Proof<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.a == other.a && self.b == other.b && self.c == other.c
-    }
-}
-
-impl<E: PairingEngine> Default for Proof<E> {
-    fn default() -> Self {
-        Self {
-            a: E::G1Affine::default(),
-            b: E::G2Affine::default(),
-            c: E::G1Affine::default(),
-            compressed: true,
-        }
-    }
-}
-
 impl<E: PairingEngine> Proof<E> {
+    /// Returns `true` if the proof is in compressed form.
+    pub fn is_compressed(&self) -> bool {
+        self.compressed
+    }
+
     /// Serialize the proof into bytes in compressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_compressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
         CanonicalSerialize::serialize(self, &mut writer)?;
-
         Ok(())
     }
 
@@ -169,6 +150,85 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Self::read(&mut reader)
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Proof<E> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self.compressed {
+            true => self.write_compressed(&mut writer),
+            false => self.write_uncompressed(&mut writer),
+        }
+    }
+}
+
+impl<E: PairingEngine> FromStr for Proof<E> {
+    type Err = anyhow::Error;
+
+    #[inline]
+    fn from_str(proof_hex: &str) -> Result<Self, Self::Err> {
+        Self::from_bytes_le(&hex::decode(proof_hex)?)
+    }
+}
+
+impl<E: PairingEngine> fmt::Display for Proof<E> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let proof_hex = hex::encode(self.to_bytes_le().expect("Failed to convert proof to bytes"));
+        write!(f, "{}", proof_hex)
+    }
+}
+
+impl<E: PairingEngine> Serialize for Proof<E> {
+    #[inline]
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, E: PairingEngine> Deserialize<'de> for Proof<E> {
+    #[inline]
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let s: String = Deserialize::deserialize(deserializer)?;
+                FromStr::from_str(&s).map_err(de::Error::custom)
+            }
+            false => FromBytesDeserializer::<Self>::deserialize_extended(
+                deserializer,
+                "proof",
+                Self::compressed_proof_size().map_err(de::Error::custom)?,
+                Self::uncompressed_proof_size().map_err(de::Error::custom)?,
+            ),
+        }
+    }
+}
+
+impl<E: PairingEngine> PartialEq for Proof<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.a == other.a && self.b == other.b && self.c == other.c
+    }
+}
+
+impl<E: PairingEngine> Default for Proof<E> {
+    fn default() -> Self {
+        Self {
+            a: E::G1Affine::default(),
+            b: E::G2Affine::default(),
+            c: E::G1Affine::default(),
+            compressed: true,
+        }
+    }
+}
+
 /// A verification key in the Groth16 SNARK.
 #[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifyingKey<E: PairingEngine> {
@@ -217,12 +277,12 @@ impl<E: PairingEngine> ToMinimalBits for VerifyingKey<E> {
 impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifyingKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let mut res = vec![];
-        res.append(&mut self.alpha_g1.to_field_elements()?);
-        res.append(&mut self.beta_g2.to_field_elements()?);
-        res.append(&mut self.gamma_g2.to_field_elements()?);
-        res.append(&mut self.delta_g2.to_field_elements()?);
+        res.extend_from_slice(&self.alpha_g1.to_field_elements()?);
+        res.extend_from_slice(&self.beta_g2.to_field_elements()?);
+        res.extend_from_slice(&self.gamma_g2.to_field_elements()?);
+        res.extend_from_slice(&self.delta_g2.to_field_elements()?);
         for elem in self.gamma_abc_g1.iter() {
-            res.append(&mut elem.to_field_elements()?);
+            res.extend_from_slice(&elem.to_field_elements()?);
         }
 
         Ok(res)

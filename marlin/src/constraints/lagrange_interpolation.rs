@@ -221,7 +221,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> LagrangeInterpolationVar<Ta
     ) -> Result<NonNativeFieldVar<TargetField, BaseField>, SynthesisError> {
         let lagrange_coefficients = self.compute_lagrange_coefficients_constraints(
             cs.ns(|| "compute_lagrange_coefficients_constraints"),
-            &interpolation_point,
+            interpolation_point,
         )?;
 
         let mut interpolation = NonNativeFieldVar::<TargetField, BaseField>::zero(cs.ns(|| "zero"))?;

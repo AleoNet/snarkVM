@@ -20,5 +20,8 @@ pub use block::*;
 pub mod header;
 pub use header::*;
 
+pub mod template;
+pub use template::*;
+
 pub mod transactions;
 pub use transactions::*;

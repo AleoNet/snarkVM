@@ -21,4 +21,4 @@ mod posw;
 pub(crate) use posw::PoSW;
 
 pub mod proof;
-pub use proof::ProofOfSuccinctWork;
+pub use proof::*;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::AHPForR1CS, BTreeSet, Matrix, Vec};
+use crate::{ahp::AHPForR1CS, marlin::MarlinMode, BTreeSet, Matrix, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
@@ -58,8 +58,8 @@ pub(crate) fn sum_matrices<F: PrimeField>(a: &Matrix<F>, b: &Matrix<F>, c: &Matr
 
 impl<F: PrimeField> CircuitInfo<F> {
     /// The maximum degree of polynomial required to represent this index in the AHP.
-    pub fn max_degree(&self) -> usize {
-        AHPForR1CS::<F>::max_degree(self.num_constraints, self.num_variables, self.num_non_zero).unwrap()
+    pub fn max_degree<MM: MarlinMode>(&self) -> usize {
+        AHPForR1CS::<F, MM>::max_degree(self.num_constraints, self.num_variables, self.num_non_zero).unwrap()
     }
 }
 

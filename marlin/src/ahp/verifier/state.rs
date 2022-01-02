@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
+use core::marker::PhantomData;
+
+use crate::{
+    ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage},
+    marlin::MarlinMode,
+};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 
 /// State of the AHP verifier.
 #[derive(Debug)]
-pub struct VerifierState<F: PrimeField> {
+pub struct VerifierState<F: PrimeField, MM: MarlinMode> {
     pub(crate) domain_h: EvaluationDomain<F>,
     pub(crate) domain_k: EvaluationDomain<F>,
 
@@ -28,4 +33,5 @@ pub struct VerifierState<F: PrimeField> {
     pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,
 
     pub(crate) gamma: Option<F>,
+    pub(crate) mode: PhantomData<MM>,
 }

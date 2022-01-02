@@ -17,7 +17,7 @@
 use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
 use snarkvm_algorithms::{crh::sha256::sha256, Prepare};
 use snarkvm_curves::{
-    traits::{AffineCurve, PairingCurve, PairingEngine},
+    traits::{PairingCurve, PairingEngine},
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
@@ -39,9 +39,9 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
     /// prepare `PreparedCommitment` from `Commitment`
     fn prepare(&self) -> PreparedCommitment<E> {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(self.0.clone());
+        let mut cur = E::G1Projective::from(self.0);
         for _ in 0..128 {
-            prepared_comm.push(cur.clone().into());
+            prepared_comm.push(cur.into());
             cur.double_in_place();
         }
 
@@ -173,7 +173,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
         }
 
         if let Some(shifted_powers_of_gamma_g) = &shifted_powers_of_gamma_g {
-            for (_key, value) in shifted_powers_of_gamma_g {
+            for value in shifted_powers_of_gamma_g.values() {
                 hash_input.extend_from_slice(
                     &value
                         .to_bytes_le()
@@ -207,18 +207,12 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `powers`.
         (self.powers.len() as u32).write_le(&mut writer)?;
         for power in &self.powers {
-            if !power.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             power.write_le(&mut writer)?;
         }
 
         // Serialize `powers_of_gamma_g`.
         (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
         for power_of_gamma_g in &self.powers_of_gamma_g {
-            if !power_of_gamma_g.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(error("invalid data"));
-            }
             power_of_gamma_g.write_le(&mut writer)?;
         }
 
@@ -227,9 +221,6 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         if let Some(shifted_powers) = &self.shifted_powers {
             (shifted_powers.len() as u32).write_le(&mut writer)?;
             for shifted_power in shifted_powers {
-                if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
-                    return Err(error("invalid data"));
-                }
                 shifted_power.write_le(&mut writer)?;
             }
         }
@@ -242,9 +233,6 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
                 (*key as u32).write_le(&mut writer)?;
                 (shifted_powers.len() as u32).write_le(&mut writer)?;
                 for shifted_power in shifted_powers {
-                    if !shifted_power.is_in_correct_subgroup_assuming_on_curve() {
-                        return Err(error("invalid data"));
-                    }
                     shifted_power.write_le(&mut writer)?;
                 }
             }
@@ -284,7 +272,7 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         }
 
         if let Some(shifted_powers_of_gamma_g) = &self.shifted_powers_of_gamma_g {
-            for (_key, value) in shifted_powers_of_gamma_g {
+            for value in shifted_powers_of_gamma_g.values() {
                 hash_input.extend_from_slice(
                     &value
                         .to_bytes_le()
@@ -371,11 +359,9 @@ impl_bytes!(VerifierKey);
 impl<E: PairingEngine> VerifierKey<E> {
     /// Find the appropriate shift for the degree bound.
     pub fn get_shift_power(&self, degree_bound: usize) -> Option<E::G2Affine> {
-        self.degree_bounds_and_neg_powers_of_h.as_ref().and_then(|v| {
-            v.binary_search_by(|(d, _)| d.cmp(&degree_bound))
-                .ok()
-                .map(|i| v[i].1.clone())
-        })
+        self.degree_bounds_and_neg_powers_of_h
+            .as_ref()
+            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1))
     }
 
     pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {

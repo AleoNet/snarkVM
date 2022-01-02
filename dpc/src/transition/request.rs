@@ -14,18 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    Address,
-    AleoAmount,
-    ComputeKey,
-    FunctionType,
-    LedgerProof,
-    LocalProof,
-    Network,
-    Operation,
-    PrivateKey,
-    Record,
-};
+use crate::{Address, AleoAmount, ComputeKey, FunctionType, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -42,59 +31,74 @@ use std::{
 pub struct Request<N: Network> {
     /// The records being consumed.
     records: Vec<Record<N>>,
-    /// The inclusion proof of ledger-consumed records.
-    ledger_proof: LedgerProof<N>,
-    /// The inclusion proof of locally-consumed records.
-    local_proof: LocalProof<N>,
+    /// The inclusion proofs of ledger-consumed records.
+    ledger_proofs: Vec<LedgerProof<N>>,
     /// The operation being performed.
     operation: Operation<N>,
     /// The network fee being paid.
     fee: AleoAmount,
     /// The signature for the request.
     signature: N::AccountSignature,
+    /// The visibility of the operation.
+    is_public: bool,
 }
 
 impl<N: Network> Request<N> {
     /// Initializes a new coinbase generation.
-    pub fn new_coinbase<R: Rng + CryptoRng>(recipient: Address<N>, amount: AleoAmount, rng: &mut R) -> Result<Self> {
+    pub fn new_coinbase<R: Rng + CryptoRng>(
+        recipient: Address<N>,
+        amount: AleoAmount,
+        is_public: bool,
+        rng: &mut R,
+    ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
-        Self::new(&burner, vec![], LedgerProof::default(), operation, fee, rng)
+        Self::new(
+            &burner,
+            vec![],
+            vec![LedgerProof::default(); N::NUM_INPUT_RECORDS],
+            operation,
+            fee,
+            is_public,
+            rng,
+        )
     }
 
     /// Initializes a new transfer request.
     pub fn new_transfer<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
         records: Vec<Record<N>>,
-        ledger_proof: LedgerProof<N>,
+        ledger_proofs: Vec<LedgerProof<N>>,
         recipient: Address<N>,
         amount: AleoAmount,
         fee: AleoAmount,
+        is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
-        let operation = Operation::Transfer(caller.to_address()?, recipient, amount);
-        Self::new(caller, records, ledger_proof, operation, fee, rng)
+        let operation = Operation::Transfer(caller.to_address(), recipient, amount);
+        Self::new(caller, records, ledger_proofs, operation, fee, is_public, rng)
     }
 
     /// Returns a new instance of a noop request.
-    pub fn new_noop<R: Rng + CryptoRng>(ledger_proof: LedgerProof<N>, rng: &mut R) -> Result<Self> {
+    pub fn new_noop<R: Rng + CryptoRng>(ledger_proofs: Vec<LedgerProof<N>>, rng: &mut R) -> Result<Self> {
         // Sample a burner noop private key.
         let noop_private_key = PrivateKey::new(rng);
-        let noop_address = Address::from_private_key(&noop_private_key)?;
+        let noop_address = Address::from_private_key(&noop_private_key);
 
         // Construct the noop records.
         let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
-            records.push(Record::new_noop_input(noop_address, rng)?);
+            records.push(Record::new_noop(noop_address, rng)?);
         }
 
         Self::new(
             &noop_private_key,
             records,
-            ledger_proof,
+            ledger_proofs,
             Operation::Noop,
             AleoAmount::ZERO,
+            false,
             rng,
         )
     }
@@ -103,17 +107,18 @@ impl<N: Network> Request<N> {
     pub fn new<R: Rng + CryptoRng>(
         caller: &PrivateKey<N>,
         records: Vec<Record<N>>,
-        ledger_proof: LedgerProof<N>,
+        ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
         fee: AleoAmount,
+        is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
-        let caller_address = Address::from_private_key(caller)?;
+        let caller_address = Address::from_private_key(caller);
 
         // Pad the records with noops if there is less than required.
         let mut records = records;
         while records.len() < N::NUM_INPUT_RECORDS {
-            records.push(Record::new_noop_input(caller_address, rng)?);
+            records.push(Record::new_noop(caller_address, rng)?);
         }
 
         let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
@@ -128,25 +133,25 @@ impl<N: Network> Request<N> {
         let message = to_bytes_le![commitments /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
-        Self::from(records, ledger_proof, LocalProof::default(), operation, fee, signature)
+        Self::from(records, ledger_proofs, operation, fee, signature, is_public)
     }
 
     /// Returns a new instance of a request.
     pub fn from(
         records: Vec<Record<N>>,
-        ledger_proof: LedgerProof<N>,
-        local_proof: LocalProof<N>,
+        ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
         fee: AleoAmount,
         signature: N::AccountSignature,
+        is_public: bool,
     ) -> Result<Self> {
         let request = Self {
             records,
             operation,
-            ledger_proof,
-            local_proof,
+            ledger_proofs,
             fee,
             signature,
+            is_public,
         };
 
         match request.is_valid() {
@@ -167,6 +172,16 @@ impl<N: Network> Request<N> {
             return false;
         }
 
+        // Ensure the number of ledger proofs is correct.
+        if self.ledger_proofs.len() != N::NUM_INPUT_RECORDS {
+            eprintln!(
+                "Incorrect number of request ledger proofs. Expected {}, found {}",
+                N::NUM_INPUT_RECORDS,
+                self.ledger_proofs.len()
+            );
+            return false;
+        }
+
         // Ensure the records contain the same owner, and retrieve the owner as the caller.
         let caller = {
             let owners: HashSet<Address<N>> = self.records.iter().map(|record| record.owner()).collect();
@@ -180,8 +195,8 @@ impl<N: Network> Request<N> {
 
         // Ensure the records contains a total value that is at least the fee amount.
         if !self.operation.is_coinbase() {
-            let balance: u64 = self.records.iter().map(|record| record.value()).sum();
-            if AleoAmount(balance as i64) < self.fee {
+            let balance: AleoAmount = self.records.iter().map(|record| record.value()).sum();
+            if balance < self.fee {
                 eprintln!("Request records do not contain sufficient value for fee");
                 return false;
             }
@@ -191,11 +206,9 @@ impl<N: Network> Request<N> {
         let program_id = {
             let program_id = OnceCell::new();
             for record in &self.records {
-                if record.program_id() != *N::noop_program_id() {
-                    if program_id.set(record.program_id()).is_err() {
-                        eprintln!("Request records contains more than 1 distinct program ID");
-                        return false;
-                    }
+                if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+                    eprintln!("Request records contains more than 1 distinct program ID");
+                    return false;
                 }
             }
             *program_id.get_or_init(|| *N::noop_program_id())
@@ -210,7 +223,7 @@ impl<N: Network> Request<N> {
         // Ensure the function ID is in the specified program.
         {}
 
-        // Ensure the given record commitments are in the specified ledger proof or local proof.
+        // Ensure the given record commitments are in the specified ledger proofs.
         {}
 
         // Prepare for signature verification.
@@ -243,24 +256,14 @@ impl<N: Network> Request<N> {
         &self.records
     }
 
-    /// Returns the block hash used to prove inclusion of ledger-consumed records.
-    pub fn block_hash(&self) -> N::BlockHash {
-        self.ledger_proof.block_hash()
+    /// Returns the ledger roots used to prove inclusion of ledger-consumed records.
+    pub fn ledger_roots(&self) -> Vec<N::LedgerRoot> {
+        self.ledger_proofs.iter().map(LedgerProof::ledger_root).collect()
     }
 
-    /// Returns a reference to the ledger proof.
-    pub fn ledger_proof(&self) -> &LedgerProof<N> {
-        &self.ledger_proof
-    }
-
-    /// Returns the local commitments root used to prove inclusion of locally-consumed records.
-    pub fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
-        self.local_proof.local_commitments_root()
-    }
-
-    /// Returns a reference to the local proof.
-    pub fn local_proof(&self) -> &LocalProof<N> {
-        &self.local_proof
+    /// Returns a reference to the ledger proofs.
+    pub fn ledger_proofs(&self) -> &Vec<LedgerProof<N>> {
+        &self.ledger_proofs
     }
 
     /// Returns the function ID.
@@ -276,6 +279,11 @@ impl<N: Network> Request<N> {
     /// Returns a reference to the operation.
     pub fn operation(&self) -> &Operation<N> {
         &self.operation
+    }
+
+    /// Returns the visibility of the operation.
+    pub fn is_public(&self) -> bool {
+        self.is_public
     }
 
     /// Returns the fee.
@@ -302,17 +310,15 @@ impl<N: Network> Request<N> {
 
     /// Returns the balance of the caller.
     pub fn to_balance(&self) -> AleoAmount {
-        AleoAmount(self.records.iter().map(|record| record.value()).sum::<u64>() as i64)
+        self.records.iter().map(|record| record.value()).sum()
     }
 
     /// Returns the program ID.
     pub fn to_program_id(&self) -> Result<N::ProgramID> {
         let program_id = OnceCell::new();
         for record in &self.records {
-            if record.program_id() != *N::noop_program_id() {
-                if program_id.set(record.program_id()).is_err() {
-                    return Err(anyhow!("Request records contains more than 1 distinct program ID"));
-                }
+            if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+                return Err(anyhow!("Request records contains more than 1 distinct program ID"));
             }
         }
         Ok(*program_id.get_or_init(|| *N::noop_program_id()))
@@ -340,16 +346,18 @@ impl<N: Network> FromBytes for Request<N> {
             records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let ledger_proof = FromBytes::read_le(&mut reader)?;
-        let local_proof = FromBytes::read_le(&mut reader)?;
+        let mut ledger_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            ledger_proofs.push(FromBytes::read_le(&mut reader)?);
+        }
+
         let operation = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
+        let is_public = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::from(records, ledger_proof, local_proof, operation, fee, signature)
-                .expect("Failed to deserialize a request"),
-        )
+        Ok(Self::from(records, ledger_proofs, operation, fee, signature, is_public)
+            .expect("Failed to deserialize a request"))
     }
 }
 
@@ -357,11 +365,11 @@ impl<N: Network> ToBytes for Request<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.records.write_le(&mut writer)?;
-        self.ledger_proof.write_le(&mut writer)?;
-        self.local_proof.write_le(&mut writer)?;
+        self.ledger_proofs.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
-        self.signature.write_le(&mut writer)
+        self.signature.write_le(&mut writer)?;
+        self.is_public.write_le(&mut writer)
     }
 }
 

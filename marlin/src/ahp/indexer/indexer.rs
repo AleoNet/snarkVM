@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::{
-    indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
-    matrices::arithmetize_matrix,
-    AHPError,
-    AHPForR1CS,
+use crate::{
+    ahp::{
+        indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
+        matrices::arithmetize_matrix,
+        AHPError,
+        AHPForR1CS,
+    },
+    marlin::MarlinMode,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
@@ -32,9 +35,9 @@ use core::marker::PhantomData;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
-impl<F: PrimeField> AHPForR1CS<F> {
+impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Generate the index for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F>, AHPError> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -46,9 +49,9 @@ impl<F: PrimeField> AHPForR1CS<F> {
         crate::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
         ics.make_matrices_square();
 
-        let mut a = ics.a_matrix();
-        let mut b = ics.b_matrix();
-        let mut c = ics.c_matrix();
+        let a = ics.a_matrix();
+        let b = ics.b_matrix();
+        let c = ics.c_matrix();
 
         let joint_matrix = sum_matrices(&a, &b, &c);
 
@@ -93,7 +96,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
-        let joint_arith = arithmetize_matrix(&joint_matrix, &mut a, &mut b, &mut c, domain_k, domain_h, x_domain);
+        let joint_arith = arithmetize_matrix(&joint_matrix, &a, &b, &c, domain_k, domain_h, x_domain);
         end_timer!(joint_arithmetization_time);
 
         end_timer!(index_time);
@@ -105,6 +108,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             c,
 
             joint_arith,
+            mode: PhantomData,
         })
     }
 }

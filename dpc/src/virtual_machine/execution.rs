@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Network;
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
+use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
@@ -25,10 +25,10 @@ use std::io::{Read, Result as IoResult, Write};
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct Execution<N: Network> {
     pub program_id: N::ProgramID,
-    pub program_path: MerklePath<N::ProgramFunctionsTreeParameters>,
+    pub program_path: MerklePath<N::ProgramIDParameters>,
     #[derivative(Debug = "ignore")]
     pub verifying_key: N::ProgramVerifyingKey,
-    pub proof: <N::ProgramSNARK as SNARK>::Proof,
+    pub proof: N::ProgramProof,
 }
 
 impl<N: Network> FromBytes for Execution<N> {

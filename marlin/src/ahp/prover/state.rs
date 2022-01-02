@@ -16,6 +16,7 @@
 
 use crate::{
     ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
+    marlin::MarlinMode,
     Vec,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -23,7 +24,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 
 /// State for the AHP prover.
-pub struct ProverState<'a, F: PrimeField> {
+pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) padded_public_variables: Vec<F>,
     pub(super) private_variables: Vec<F>,
     /// Az
@@ -36,7 +37,7 @@ pub struct ProverState<'a, F: PrimeField> {
     pub(super) w_poly: Option<LabeledPolynomial<F>>,
     pub(super) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
 
-    pub(super) index: &'a Circuit<F>,
+    pub(super) index: &'a Circuit<F, MM>,
 
     /// the random values sent by the verifier in the first round
     pub(super) verifier_first_message: Option<VerifierFirstMessage<F>>,
@@ -54,9 +55,14 @@ pub struct ProverState<'a, F: PrimeField> {
     pub(super) domain_k: EvaluationDomain<F>,
 }
 
-impl<'a, F: PrimeField> ProverState<'a, F> {
+impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
     /// Get the public input.
     pub fn public_input(&self) -> Vec<F> {
         ProverConstraintSystem::unformat_public_input(&self.padded_public_variables)
+    }
+
+    /// Get the padded public input.
+    pub fn padded_public_input(&self) -> &[F] {
+        &self.padded_public_variables
     }
 }

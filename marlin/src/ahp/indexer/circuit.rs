@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::matrices::MatrixArithmetization, CircuitInfo, Matrix};
+use core::marker::PhantomData;
+
+use crate::{ahp::matrices::MatrixArithmetization, marlin::MarlinMode, CircuitInfo, Matrix};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
@@ -31,7 +33,7 @@ use derivative::Derivative;
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_star_arith` are structs containing information about A^*, B^*, and C^*,
 /// which are matrices defined as `M^*(i, j) = M(j, i) * u_H(j, j)`.
-pub struct Circuit<F: PrimeField> {
+pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo<F>,
 
@@ -44,12 +46,14 @@ pub struct Circuit<F: PrimeField> {
 
     /// Joint arithmetization of the A*, B*, and C* matrices.
     pub joint_arith: MatrixArithmetization<F>,
+
+    pub(crate) mode: PhantomData<MM>,
 }
 
-impl<F: PrimeField> Circuit<F> {
+impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
-        self.index_info.max_degree()
+        self.index_info.max_degree::<MM>()
     }
 
     /// Iterate over the indexed polynomials.

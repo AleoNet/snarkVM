@@ -52,33 +52,29 @@ impl<N: Network> PrivateKey<N> {
 
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(&self) -> bool {
-        match self.to_compute_key() {
-            Ok(compute_key) => compute_key.is_valid(),
-            Err(error) => {
-                eprintln!("Failed to validate private key: {}", error);
-                false
-            }
-        }
+        self.to_compute_key().is_valid()
     }
 
     /// Signs a message using the account private key.
     pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
-        Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?)
+        Ok(N::account_signature_scheme()
+            .sign(&(self.sk_sig, self.r_sig), message, rng)?
+            .into())
     }
 
     /// Returns the address from the private key.
-    pub fn to_address(&self) -> Result<Address<N>, AccountError> {
+    pub fn to_address(&self) -> Address<N> {
         Address::from_private_key(self)
     }
 
     /// Returns a reference to the account compute key.
-    pub fn to_compute_key(&self) -> Result<ComputeKey<N>, AccountError> {
-        Ok(ComputeKey::from_private_key(self)?)
+    pub fn to_compute_key(&self) -> ComputeKey<N> {
+        ComputeKey::from_private_key(self)
     }
 
     /// Returns the decryption key.
-    pub fn to_decryption_key(&self) -> Result<N::ProgramScalarField, AccountError> {
-        Ok(self.sk_sig + self.r_sig + self.to_compute_key()?.sk_prf())
+    pub fn to_decryption_key(&self) -> N::ProgramScalarField {
+        self.sk_sig + self.r_sig + self.to_compute_key().sk_prf()
     }
 }
 
@@ -87,7 +83,7 @@ impl<N: Network> From<&N::AccountSeed> for PrivateKey<N> {
     fn from(seed: &N::AccountSeed) -> Self {
         // Construct the sk_sig domain separator.
         let sk_sig_input = ACCOUNT_SEED_SK_SIG_DOMAIN;
-        let sk_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(&sk_sig_input.as_bytes());
+        let sk_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(sk_sig_input.as_bytes());
 
         // Construct the r_sig domain separator.
         let r_sig_input = format!("{}_{}", ACCOUNT_SEED_R_SIG_DOMAIN, 0);
@@ -95,9 +91,9 @@ impl<N: Network> From<&N::AccountSeed> for PrivateKey<N> {
 
         Self {
             seed: seed.clone(),
-            sk_sig: N::AccountPRF::evaluate(seed, &vec![sk_sig_domain])
+            sk_sig: N::AccountSeedPRF::evaluate(seed, &vec![sk_sig_domain])
                 .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
-            r_sig: N::AccountPRF::evaluate(seed, &vec![r_sig_domain])
+            r_sig: N::AccountSeedPRF::evaluate(seed, &vec![r_sig_domain])
                 .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
         }
     }

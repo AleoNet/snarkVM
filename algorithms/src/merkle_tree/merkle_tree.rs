@@ -56,7 +56,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Initialize the Merkle tree.
         let empty_hash = parameters.hash_empty()?;
-        let mut tree = vec![empty_hash.clone(); tree_size];
+        let mut tree = vec![empty_hash; tree_size];
 
         // Compute the starting index (on the left) for each level of the tree.
         let mut index = 0;
@@ -103,13 +103,13 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
         let mut current_depth = tree_depth;
         let mut padding_tree = Vec::with_capacity((Self::DEPTH).saturating_sub(current_depth + 1));
-        let mut current_hash = tree[0].clone();
+        let mut current_hash = tree[0];
         while current_depth < Self::DEPTH {
             current_hash = parameters.hash_inner_node(&current_hash, &empty_hash)?;
 
             // do not pad at the top-level of the tree
             if current_depth < Self::DEPTH - 1 {
-                padding_tree.push((current_hash.clone(), empty_hash.clone()));
+                padding_tree.push((current_hash, empty_hash));
             }
             current_depth += 1;
         }
@@ -139,7 +139,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Initialize the Merkle tree.
         let empty_hash = self.parameters.hash_empty()?;
-        let mut tree = vec![empty_hash.clone(); tree_size];
+        let mut tree = vec![empty_hash; tree_size];
 
         // Compute the starting index (on the left) for each level of the tree.
         let mut index = 0;
@@ -179,12 +179,12 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
                 if new_indices().contains(&current_index)
                     || self.tree.get(left_index) != tree.get(left_index)
                     || self.tree.get(right_index) != tree.get(right_index)
-                    || new_indices().any(|idx| Ancestors(idx).into_iter().find(|&i| i == current_index).is_some())
+                    || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
                 {
                     // Compute Hash(left || right).
                     tree[current_index] = self.parameters.hash_inner_node(&tree[left_index], &tree[right_index])?;
                 } else {
-                    tree[current_index] = self.tree[current_index].clone();
+                    tree[current_index] = self.tree[current_index];
                 }
             }
             upper_bound = start_index;
@@ -193,7 +193,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         // Finished computing actual tree.
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
         let mut current_depth = tree_depth;
-        let mut current_hash = tree[0].clone();
+        let mut current_hash = tree[0];
 
         // The whole padding tree can be reused if the current hash matches the previous one.
         let new_padding_tree = if current_hash == self.tree[0] {
@@ -210,7 +210,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
                 // do not pad at the top-level of the tree
                 if current_depth < Self::DEPTH - 1 {
-                    padding_tree.push((current_hash.clone(), empty_hash.clone()));
+                    padding_tree.push((current_hash, empty_hash));
                 }
                 current_depth += 1;
             }
@@ -268,7 +268,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let mut current_node = tree_index;
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
-            path.push(self.tree[sibling_node].clone());
+            path.push(self.tree[sibling_node]);
             current_node = parent(current_node).unwrap();
         }
 
@@ -282,7 +282,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             path.push(empty_hash);
 
             for &(ref _hash, ref sibling_hash) in &self.padding_tree {
-                path.push(sibling_hash.clone());
+                path.push(*sibling_hash);
             }
         }
         end_timer!(prove_time);
@@ -302,15 +302,14 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         parameters: &P,
         leaves: &[L],
     ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
-        cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
-            .map(|chunk| -> Result<Vec<_>, MerkleError> {
-                let mut out = Vec::with_capacity(chunk.len());
-                for leaf in chunk.into_iter() {
-                    out.push(parameters.hash_leaf(&leaf)?);
-                }
-                Ok(out)
-            })
-            .collect::<Result<Vec<_>, MerkleError>>()
+        match leaves.len() {
+            0 => Ok(vec![]),
+            _ => Ok(vec![
+                cfg_iter!(leaves)
+                    .map(|leaf| parameters.hash_leaf(&leaf).unwrap())
+                    .collect::<Vec<_>>(),
+            ]),
+        }
     }
 }
 

@@ -140,10 +140,6 @@ impl<
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
             .map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
 
-        Ok(GG::three_bit_signed_digit_scalar_multiplication(
-            cs,
-            &self.crh.bases,
-            input_in_bits,
-        )?)
+        GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
     }
 }

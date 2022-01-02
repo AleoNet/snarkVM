@@ -31,7 +31,7 @@ use std::{
 };
 
 #[derive(Clone, Debug)]
-pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, PhantomData<G>);
+pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, pub(crate) PhantomData<G>);
 
 impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
     fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
@@ -137,6 +137,13 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 {
     type OutputGadget = GG;
     type RandomnessGadget = PedersenRandomnessGadget<G>;
+
+    fn randomness_from_bytes<CS: ConstraintSystem<F>>(
+        _cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::RandomnessGadget, SynthesisError> {
+        Ok(PedersenRandomnessGadget(bytes.to_vec(), PhantomData))
+    }
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
         &self,

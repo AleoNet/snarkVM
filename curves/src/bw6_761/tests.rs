@@ -29,14 +29,15 @@ use crate::{
         BW6_761,
     },
     templates::short_weierstrass_jacobian::tests::sw_tests,
-    traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, PairingEngine},
+    traits::{
+        tests_curve::curve_tests,
+        tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+        tests_group::group_test,
+        AffineCurve,
+        PairingEngine,
+    },
 };
-use snarkvm_fields::{
-    tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-    Field,
-    One,
-    PrimeField,
-};
+use snarkvm_fields::{Field, One, PrimeField};
 
 #[test]
 fn test_bw6_761_fr() {

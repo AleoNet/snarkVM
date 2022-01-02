@@ -25,6 +25,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
     },
+    CompressedGroupGadget,
     CryptoHashGadget,
     FpGadget,
     ToBitsLEGadget,
@@ -33,6 +34,7 @@ use crate::{
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     signature::{AleoSignature, AleoSignatureScheme},
+    SignatureScheme,
 };
 use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
 use snarkvm_fields::{FieldParameters, PrimeField};
@@ -63,7 +65,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEA
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let public_key = value_gen()?.borrow().clone();
+        let public_key = *value_gen()?.borrow();
         Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(public_key))?))
     }
 
@@ -71,7 +73,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEA
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let public_key = value_gen()?.borrow().clone();
+        let public_key = *value_gen()?.borrow();
         Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(public_key))?))
     }
 
@@ -80,7 +82,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEA
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let point = if let Ok(pk) = value_gen() {
-            pk.borrow().clone()
+            *pk.borrow()
         } else {
             TEAffine::<TE>::default()
         };
@@ -88,7 +90,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEA
         let x_coordinate_gadget =
             FpGadget::<TE::BaseField>::alloc_input(cs.ns(|| "input x coordinate"), || Ok(point.x))?;
         let allocated_gadget =
-            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point.clone()))?;
+            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point))?;
 
         allocated_gadget
             .x
@@ -118,7 +120,11 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ConditionalEqGa
     }
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F> for AleoSignaturePublicKeyGadget<TE, F> {}
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F> for AleoSignaturePublicKeyGadget<TE, F> {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        self.0.is_eq(&mut cs.ns(|| "is_eq"), &other.0)
+    }
+}
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F>
     for AleoSignaturePublicKeyGadget<TE, F>
@@ -154,7 +160,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
-        let signature = value.borrow().clone();
+        let signature = *value.borrow();
 
         // TODO (raychu86): Check that this conversion is valid.
         //      This will work for EdwardsBls Fr and Bls12_377 Fr because they are both represented with Fp256.
@@ -188,7 +194,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
-        let signature = value.borrow().clone();
+        let signature = *value.borrow();
 
         // Cast <G as Group>::ScalarField as F.
         let prover_response: F = FromBytes::read_le(&signature.prover_response.to_bytes_le()?[..])?;
@@ -221,7 +227,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<Ale
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
-        let signature = value.borrow().clone();
+        let signature = *value.borrow();
 
         // Cast <G as Group>::ScalarField as F.
         let prover_response: F = FromBytes::read_le(&signature.prover_response.to_bytes_le()?[..])?;
@@ -333,6 +339,23 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AleoComputeKeyGadget {
+    /// We only include `sk_prf`, and not `root_public_key` or `root_randomizer`,
+    /// as this is all we need in the circuit.
+    pub(crate) sk_prf_bits: Vec<Boolean>,
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for AleoComputeKeyGadget {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.sk_prf_bits.to_vec())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
+    }
+}
+
 pub struct AleoSignatureSchemeGadget<
     TE: TwistedEdwardsParameters<BaseField = F>,
     F: PrimeField + PoseidonDefaultParametersField,
@@ -380,8 +403,31 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
     SignatureGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
 {
+    type ComputeKeyGadget = AleoComputeKeyGadget;
     type PublicKeyGadget = AleoSignaturePublicKeyGadget<TE, F>;
     type SignatureGadget = AleoSignatureGadget<TE, F>;
+
+    fn compute_key<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        signature: &Self::SignatureGadget,
+    ) -> Result<Self::ComputeKeyGadget, SynthesisError> {
+        let output = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
+            &mut cs.ns(|| "Hash root_public_key and root_randomizer"),
+            &[
+                signature.root_public_key.to_x_coordinate(),
+                signature.root_randomizer.to_x_coordinate(),
+            ],
+        )?;
+
+        // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
+        let mut sk_prf_bits = output.to_bits_le_strict(&mut cs.ns(|| "Output hash to bytes"))?;
+        sk_prf_bits.resize(
+            <TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
+            Boolean::Constant(false),
+        );
+        Ok(AleoComputeKeyGadget { sk_prf_bits })
+    }
 
     fn verify<CS: ConstraintSystem<F>>(
         &self,
@@ -411,7 +457,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         // Compute G^s.
         let g_s = {
             let mut g_s = zero_affine.clone();
-            for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(s).enumerate() {
+            for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(s).enumerate() {
                 let added = g_s.add_constant(cs.ns(|| format!("add_g_s_{}", i)), base)?;
 
                 g_s = TEAffineGadget::<TE, F>::conditionally_select(
@@ -443,7 +489,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         // Compute G^sk_sig^c.
         let g_sk_sig_c = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
-            &g_sk_sig,
+            g_sk_sig,
             cs.ns(|| "G^sk_sig^c"),
             &zero_affine,
             c.into_iter(),
@@ -512,8 +558,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
             // Compute G^sk_prf.
             let g_sk_prf = {
-                let mut g_sk_prf = zero_affine.clone();
-                for (i, (base, bit)) in self.signature.g_bases.iter().zip_eq(sk_prf).enumerate() {
+                let mut g_sk_prf = zero_affine;
+                for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(sk_prf).enumerate() {
                     let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), base)?;
 
                     g_sk_prf = TEAffineGadget::<TE, F>::conditionally_select(
@@ -528,9 +574,9 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
             // Compute G^sk_sig G^r_sig.
             let g_sk_sig_g_r_sig = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::add(
-                &g_sk_sig,
+                g_sk_sig,
                 cs.ns(|| "G^sk_sig G^r_sig"),
-                &g_r_sig,
+                g_r_sig,
             )?;
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
@@ -551,10 +597,6 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             .0
             .is_eq(cs.ns(|| "Check public key"), &candidate_public_key)?;
 
-        Ok(Boolean::and(
-            cs.ns(|| "a ^ b"),
-            &verifier_challenge_equals,
-            &public_key_equals,
-        )?)
+        Boolean::and(cs.ns(|| "a ^ b"), &verifier_challenge_equals, &public_key_equals)
     }
 }

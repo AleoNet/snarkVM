@@ -19,127 +19,122 @@ use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
-use itertools::Itertools;
 use std::io::{Read, Result as IoResult, Write};
 
-/// A local proof of inclusion for commitments.
+/// A local proof of inclusion.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
 pub struct LocalProof<N: Network> {
-    /// The local commitments root used to prove inclusion of locally-consumed records.
-    local_commitments_root: N::LocalCommitmentsRoot,
-    commitment_inclusion_proofs: Vec<MerklePath<N::LocalCommitmentsTreeParameters>>,
-    commitments: Vec<N::Commitment>,
+    transaction_id: N::TransactionID,
+    transaction_inclusion_proof: MerklePath<N::TransactionIDParameters>,
+    transition_id: N::TransitionID,
+    transition_inclusion_proof: MerklePath<N::TransitionIDParameters>,
+    commitment: N::Commitment,
 }
 
 impl<N: Network> LocalProof<N> {
     ///
-    /// Initializes a new instance of `LocalProof`, automatically padding inputs as needed.
-    ///
-    /// This method allows the number of `commitments` and `commitment_inclusion_proofs`
-    /// to be less than `N::NUM_INPUT_RECORDS`, as the method will pad up to `N::NUM_INPUT_RECORDS`.
+    /// Initializes a new instance of `LocalProof`.
     ///
     pub fn new(
-        local_commitments_root: N::LocalCommitmentsRoot,
-        commitment_inclusion_proofs: Vec<MerklePath<N::LocalCommitmentsTreeParameters>>,
-        commitments: Vec<N::Commitment>,
+        transaction_id: N::TransactionID,
+        transaction_inclusion_proof: MerklePath<N::TransactionIDParameters>,
+        transition_id: N::TransitionID,
+        transition_inclusion_proof: MerklePath<N::TransitionIDParameters>,
+        commitment: N::Commitment,
     ) -> Result<Self> {
-        // Ensure the correct number of commitments is given.
-        if commitments.len() > N::NUM_INPUT_RECORDS {
+        // Ensure the transition inclusion proof is valid.
+        if !transition_inclusion_proof.verify(&transition_id, &commitment)? {
             return Err(anyhow!(
-                "Incorrect number of given commitments. Expected up to {}, found {}",
-                N::NUM_INPUT_RECORDS,
-                commitments.len(),
+                "Commitment {} does not belong to transition {}",
+                commitment,
+                transition_id
             ));
         }
 
-        // Ensure the correct number of commitment inclusion proofs is given.
-        if commitment_inclusion_proofs.len() != commitments.len() {
+        // Ensure the transaction inclusion proof is valid.
+        if !transaction_inclusion_proof.verify(&transaction_id, &transition_id)? {
             return Err(anyhow!(
-                "Incorrect number of given commitment inclusion proofs. Expected {}, found {}",
-                commitments.len(),
-                commitment_inclusion_proofs.len(),
+                "Transition {} does not belong to transaction {}",
+                transition_id,
+                transaction_id
             ));
-        }
-
-        // Ensure the commitment inclusion proofs are valid.
-        for (commitment_inclusion_proof, commitment) in commitment_inclusion_proofs
-            .iter()
-            .zip_eq(commitments.iter())
-            .take(N::NUM_INPUT_RECORDS)
-        {
-            if !commitment_inclusion_proof.verify(&local_commitments_root, commitment)? {
-                return Err(anyhow!(
-                    "Commitment {} does not correspond to root {}",
-                    commitment,
-                    local_commitments_root
-                ));
-            }
-        }
-
-        // Pad the commitments and commitment inclusion proofs, if necessary.
-        let mut commitments = commitments;
-        let mut commitment_inclusion_proofs = commitment_inclusion_proofs;
-        while commitments.len() < N::NUM_INPUT_RECORDS {
-            commitments.push(Default::default());
-            commitment_inclusion_proofs.push(Default::default());
         }
 
         Ok(Self {
-            local_commitments_root,
-            commitment_inclusion_proofs,
-            commitments,
+            transaction_id,
+            transaction_inclusion_proof,
+            transition_id,
+            transition_inclusion_proof,
+            commitment,
         })
     }
 
-    /// Returns the local commitments root used to prove inclusion of locally-consumed records.
-    pub fn local_commitments_root(&self) -> N::LocalCommitmentsRoot {
-        self.local_commitments_root
+    /// Returns the transaction ID.
+    pub fn transaction_id(&self) -> N::TransactionID {
+        self.transaction_id
     }
 
-    /// Returns a reference to the commitment inclusion proofs.
-    pub fn commitment_inclusion_proofs(&self) -> &Vec<MerklePath<N::LocalCommitmentsTreeParameters>> {
-        &self.commitment_inclusion_proofs
+    /// Returns the transaction inclusion proof.
+    pub fn transaction_inclusion_proof(&self) -> &MerklePath<N::TransactionIDParameters> {
+        &self.transaction_inclusion_proof
+    }
+
+    /// Returns the transition ID.
+    pub fn transition_id(&self) -> N::TransitionID {
+        self.transition_id
+    }
+
+    /// Returns the transition inclusion proof.
+    pub fn transition_inclusion_proof(&self) -> &MerklePath<N::TransitionIDParameters> {
+        &self.transition_inclusion_proof
+    }
+
+    /// Returns the commitment.
+    pub fn commitment(&self) -> N::Commitment {
+        self.commitment
     }
 }
 
 impl<N: Network> FromBytes for LocalProof<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let local_commitments_root = FromBytes::read_le(&mut reader)?;
+        let transaction_id = FromBytes::read_le(&mut reader)?;
+        let transaction_inclusion_proof = FromBytes::read_le(&mut reader)?;
+        let transition_id = FromBytes::read_le(&mut reader)?;
+        let transition_inclusion_proof = FromBytes::read_le(&mut reader)?;
+        let commitment = FromBytes::read_le(&mut reader)?;
 
-        let mut commitment_inclusion_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
-            commitment_inclusion_proofs.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
-            commitments.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        Ok(
-            Self::new(local_commitments_root, commitment_inclusion_proofs, commitments)
-                .expect("Failed to deserialize a local state proof"),
+        Ok(Self::new(
+            transaction_id,
+            transaction_inclusion_proof,
+            transition_id,
+            transition_inclusion_proof,
+            commitment,
         )
+        .expect("Failed to deserialize a local inclusion proof"))
     }
 }
 
 impl<N: Network> ToBytes for LocalProof<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.local_commitments_root.write_le(&mut writer)?;
-        self.commitment_inclusion_proofs.write_le(&mut writer)?;
-        self.commitments.write_le(&mut writer)
+        self.transaction_id.write_le(&mut writer)?;
+        self.transaction_inclusion_proof.write_le(&mut writer)?;
+        self.transition_id.write_le(&mut writer)?;
+        self.transition_inclusion_proof.write_le(&mut writer)?;
+        self.commitment.write_le(&mut writer)
     }
 }
 
 impl<N: Network> Default for LocalProof<N> {
     fn default() -> Self {
         Self {
-            local_commitments_root: Default::default(),
-            commitment_inclusion_proofs: vec![MerklePath::default(); N::NUM_INPUT_RECORDS],
-            commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
+            transaction_id: Default::default(),
+            transaction_inclusion_proof: MerklePath::default(),
+            transition_id: Default::default(),
+            transition_inclusion_proof: MerklePath::default(),
+            commitment: Default::default(),
         }
     }
 }

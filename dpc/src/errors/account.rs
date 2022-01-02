@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::errors::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
+use snarkvm_algorithms::errors::{EncryptionError, PRFError, SignatureError};
 
 #[derive(Debug, Error)]
 pub enum AccountError {
@@ -22,10 +22,7 @@ pub enum AccountError {
     AnyhowError(#[from] anyhow::Error),
 
     #[error("{}", _0)]
-    CommitmentError(#[from] CommitmentError),
-
-    #[error("{}", _0)]
-    CRHError(#[from] CRHError),
+    Bech32Error(#[from] bech32::Error),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
@@ -45,6 +42,9 @@ pub enum AccountError {
     #[error("invalid prefix bytes: {:?}", _0)]
     InvalidPrefixBytes(Vec<u8>),
 
+    #[error("invalid variant")]
+    InvalidVariant,
+
     #[error("{}", _0)]
     Message(String),
 
@@ -58,12 +58,6 @@ pub enum AccountError {
 impl From<base58::FromBase58Error> for AccountError {
     fn from(error: base58::FromBase58Error) -> Self {
         AccountError::Crate("base58", format!("{:?}", error))
-    }
-}
-
-impl From<bech32::Error> for AccountError {
-    fn from(error: bech32::Error) -> Self {
-        AccountError::Crate("bech32", format!("{:?}", error))
     }
 }
 

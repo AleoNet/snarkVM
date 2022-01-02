@@ -64,6 +64,9 @@ parameters = ["snarkvm-parameters"]
 r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
 
+## snarkVM workspace specific ##
+parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
+
 ## snarkVM CLI ##
 cli = ["anyhow", "colored", "self_update", "structopt", "thiserror"]
 
@@ -111,7 +114,7 @@ version = "0.7.5"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.44"
+version = "1.0.52"
 optional = true
 
 [dependencies.colored]
@@ -119,7 +122,7 @@ version = "2"
 optional = true
 
 [dependencies.self_update]
-version = "0.27"
+version = "0.28"
 optional = true
 
 [dependencies.structopt]

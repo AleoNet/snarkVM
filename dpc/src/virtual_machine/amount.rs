@@ -16,13 +16,15 @@
 
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
+    iter::Sum,
 };
 
-/// Represents the amount of ALEOs in UNITS
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Represents the amount of ALEOs.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AleoAmount(pub i64);
 
 pub enum Denomination {
@@ -65,35 +67,31 @@ impl AleoAmount {
     /// The zero amount.
     pub const ZERO: AleoAmount = AleoAmount(0i64);
 
-    /// Create an `AleoAmount` given a number of bytes
-    pub fn from_bytes(bytes: i64) -> Self {
+    /// Create an `AleoAmount` given a number of bytes.
+    pub fn from_i64(bytes: i64) -> Self {
         Self(bytes)
     }
 
-    /// Create an `AleoAmount` given a number of gates
+    /// Create an `AleoAmount` given a number of gates.
     pub fn from_gates(gate_value: i64) -> Self {
-        let bytes = gate_value * 10_i64.pow(Denomination::GATE.precision());
-
-        Self::from_bytes(bytes)
+        Self::from_i64(gate_value * 10_i64.pow(Denomination::GATE.precision()))
     }
 
-    /// Create an `AleoAmount` given a number of ALEOs
+    /// Create an `AleoAmount` given a number of credits.
     pub fn from_aleo(aleo_value: i64) -> Self {
-        let bytes = aleo_value * 10_i64.pow(Denomination::CREDIT.precision());
-
-        Self::from_bytes(bytes)
+        Self::from_i64(aleo_value * 10_i64.pow(Denomination::CREDIT.precision()))
     }
 
     /// Add the values of two `AleoAmount`s
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, b: Self) -> Self {
-        Self::from_bytes(self.0 + b.0)
+        Self::from_i64(self.0 + b.0)
     }
 
     /// Subtract the value of two `AleoAmounts`
     #[allow(clippy::should_implement_trait)]
     pub fn sub(self, b: AleoAmount) -> Self {
-        Self::from_bytes(self.0 - b.0)
+        Self::from_i64(self.0 - b.0)
     }
 
     /// Returns `true` the amount is positive and `false` if the amount is zero or
@@ -106,6 +104,22 @@ impl AleoAmount {
     /// positive.
     pub const fn is_negative(self) -> bool {
         self.0.is_negative()
+    }
+
+    /// Returns `true` if the amount is zero and `false` if the amount is not zero.
+    pub const fn is_zero(self) -> bool {
+        self.0 == 0
+    }
+
+    /// Returns the amount as an i64.
+    pub const fn as_i64(&self) -> i64 {
+        self.0
+    }
+}
+
+impl Sum for AleoAmount {
+    fn sum<I: Iterator<Item = AleoAmount>>(iter: I) -> AleoAmount {
+        iter.fold(AleoAmount::ZERO, |a, b| a.add(b))
     }
 }
 
@@ -126,7 +140,7 @@ impl FromBytes for AleoAmount {
 
 impl fmt::Display for AleoAmount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.to_string())
+        write!(f, "{}", self.0)
     }
 }
 
@@ -134,8 +148,8 @@ impl fmt::Display for AleoAmount {
 mod tests {
     use super::*;
 
-    fn test_from_byte(byte_value: i64, expected_amount: AleoAmount) {
-        let amount = AleoAmount::from_bytes(byte_value);
+    fn test_from_i64(byte_value: i64, expected_amount: AleoAmount) {
+        let amount = AleoAmount::from_i64(byte_value);
         assert_eq!(expected_amount, amount)
     }
 
@@ -150,17 +164,17 @@ mod tests {
     }
 
     fn test_addition(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_bytes(*a);
-        let b = AleoAmount::from_bytes(*b);
-        let result = AleoAmount::from_bytes(*result);
+        let a = AleoAmount::from_i64(*a);
+        let b = AleoAmount::from_i64(*b);
+        let result = AleoAmount::from_i64(*result);
 
         assert_eq!(result, a.add(b));
     }
 
     fn test_subtraction(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_bytes(*a);
-        let b = AleoAmount::from_bytes(*b);
-        let result = AleoAmount::from_bytes(*result);
+        let a = AleoAmount::from_i64(*a);
+        let b = AleoAmount::from_i64(*b);
+        let result = AleoAmount::from_i64(*result);
 
         assert_eq!(result, a.sub(b));
     }
@@ -206,7 +220,7 @@ mod tests {
         fn test_byte_conversion() {
             TEST_AMOUNTS
                 .iter()
-                .for_each(|amounts| test_from_byte(amounts.byte, AleoAmount(amounts.byte)));
+                .for_each(|amounts| test_from_i64(amounts.byte, AleoAmount(amounts.byte)));
         }
 
         #[test]

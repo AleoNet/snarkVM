@@ -26,19 +26,20 @@ use std::{
     borrow::Cow,
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoseidonCRH<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>(
-    PoseidonParameters<F>,
+    PoseidonCryptoHash<F, 4, false>,
 );
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
     type Output = F;
-    type Parameters = PoseidonParameters<F>;
+    type Parameters = Arc<PoseidonParameters<F, 4, 1>>;
 
     fn setup(_message: &str) -> Self {
-        Self(F::get_default_poseidon_parameters(4, false).unwrap())
+        Self(PoseidonCryptoHash::<F, 4, false>::setup())
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
@@ -58,9 +59,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
             input
         };
 
-        Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(
-            &input.to_field_elements()?,
-        )?)
+        Ok(self.0.evaluate(&input.to_field_elements()?))
     }
 
     fn hash_field_elements<F2: PrimeField>(&self, input: &[F2]) -> Result<Self::Output, CRHError> {
@@ -81,22 +80,30 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
                 dest
             };
 
-            Ok(PoseidonCryptoHash::<F, 4, false>::evaluate(&dest)?)
+            Ok(self.0.evaluate(&dest))
         } else {
             unimplemented!()
         }
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.0
+        self.0.parameters()
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<PoseidonParameters<F>>
+impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<PoseidonParameters<F, 4, 1>>
     for PoseidonCRH<F, INPUT_SIZE_FE>
 {
-    fn from(parameters: PoseidonParameters<F>) -> Self {
-        Self(parameters)
+    fn from(parameters: PoseidonParameters<F, 4, 1>) -> Self {
+        Self(PoseidonCryptoHash::<F, 4, false>::from(parameters))
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<Arc<PoseidonParameters<F, 4, 1>>>
+    for PoseidonCRH<F, INPUT_SIZE_FE>
+{
+    fn from(parameters: Arc<PoseidonParameters<F, 4, 1>>) -> Self {
+        Self(PoseidonCryptoHash::<F, 4, false>::from(parameters))
     }
 }
 
@@ -105,8 +112,8 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
 {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let parameters: PoseidonParameters<F> = FromBytes::read_le(&mut reader)?;
-        Ok(Self(parameters))
+        let parameters: PoseidonParameters<F, 4, 1> = FromBytes::read_le(&mut reader)?;
+        Ok(Self::from(parameters))
     }
 }
 
@@ -119,7 +126,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField> ToConstraintField<F> for PoseidonParameters<F> {
+impl<F: PrimeField + PoseidonDefaultParametersField> ToConstraintField<F> for PoseidonParameters<F, 4, 1> {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // do not write into field elements
         Ok(vec![])

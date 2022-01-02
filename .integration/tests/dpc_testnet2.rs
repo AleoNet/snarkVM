@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::atomic::AtomicBool;
+
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -23,11 +25,9 @@ use rand_chacha::ChaChaRng;
 
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
-    let expected_inner_circuit_id = vec![
-        15, 208, 178, 28, 67, 161, 254, 241, 33, 166, 148, 227, 173, 242, 83, 68, 240, 51, 52, 58, 201, 157, 40, 133,
-        133, 182, 117, 249, 226, 156, 173, 198, 248, 157, 52, 2, 143, 102, 201, 230, 54, 182, 9, 203, 237, 195, 34, 1,
-    ];
-    let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_bytes_le().unwrap();
+    let expected_inner_circuit_id =
+        "ic13cstkmt5j4qqzfu5am8jx2rhxm0hqplyzcgzyueefz7n32xl4h53n4xmxvhjyzaq2c0f7l70a4xszau2ryc".to_string();
+    let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
 
@@ -37,10 +37,7 @@ fn dpc_testnet2_integration_test() {
 
     let mut ledger = Ledger::<Testnet2>::new().unwrap();
     assert_eq!(ledger.latest_block_height(), 0);
-    assert_eq!(
-        ledger.latest_block_hash(),
-        Testnet2::genesis_block().to_block_hash().unwrap()
-    );
+    assert_eq!(ledger.latest_block_hash(), Testnet2::genesis_block().hash());
     assert_eq!(&ledger.latest_block().unwrap(), Testnet2::genesis_block());
     assert_eq!((*ledger.latest_block_transactions().unwrap()).len(), 1);
     assert_eq!(
@@ -50,14 +47,15 @@ fn dpc_testnet2_integration_test() {
 
     // Construct the previous block hash and new block height.
     let previous_block = ledger.latest_block().unwrap();
-    let previous_hash = previous_block.to_block_hash().unwrap();
+    let previous_block_hash = previous_block.hash();
     let block_height = previous_block.header().height() + 1;
     assert_eq!(block_height, 1);
 
     // Construct the new block transactions.
-    let recipient = Account::new(rng).unwrap();
+    let recipient = Account::new(rng);
     let amount = Block::<Testnet2>::block_reward(block_height);
-    let coinbase_transaction = Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, rng).unwrap();
+    let (coinbase_transaction, coinbase_record) =
+        Transaction::<Testnet2>::new_coinbase(recipient.address(), amount, true, rng).unwrap();
     {
         // Check that the coinbase transaction is serialized and deserialized correctly.
         let transaction_bytes = coinbase_transaction.to_bytes_le().unwrap();
@@ -65,53 +63,71 @@ fn dpc_testnet2_integration_test() {
         assert_eq!(coinbase_transaction, recovered_transaction);
 
         // Check that coinbase record can be decrypted from the transaction.
-        let encrypted_record = &coinbase_transaction.ciphertexts()[0];
-        let view_key = ViewKey::from_private_key(recipient.private_key()).unwrap();
-        let decrypted_record = encrypted_record.decrypt(&view_key).unwrap();
+        let encrypted_record = coinbase_transaction.ciphertexts().next().unwrap();
+        let view_key = ViewKey::from_private_key(recipient.private_key());
+        let decrypted_record = Record::from_account_view_key(&view_key, encrypted_record).unwrap();
         assert_eq!(decrypted_record.owner(), recipient.address());
-        assert_eq!(decrypted_record.value() as i64, Block::<Testnet2>::block_reward(1).0);
+        assert_eq!(decrypted_record.value(), Block::<Testnet2>::block_reward(1));
     }
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
-    let transactions_root = transactions.to_transactions_root().unwrap();
 
-    // Construct the new serial numbers root.
-    let mut serial_numbers = SerialNumbers::<Testnet2>::new().unwrap();
-    serial_numbers
-        .add_all(previous_block.to_serial_numbers().unwrap())
-        .unwrap();
-    serial_numbers
-        .add_all(transactions.to_serial_numbers().unwrap())
-        .unwrap();
-    let serial_numbers_root = serial_numbers.root();
-
-    // Construct the new commitments root.
-    let mut commitments = Commitments::<Testnet2>::new().unwrap();
-    commitments.add_all(previous_block.to_commitments().unwrap()).unwrap();
-    commitments.add_all(transactions.to_commitments().unwrap()).unwrap();
-    let commitments_root = commitments.root();
-
+    let previous_ledger_root = ledger.latest_ledger_root();
     let timestamp = Utc::now().timestamp();
-    let difficulty_target = Blocks::<Testnet2>::compute_difficulty_target(
-        previous_block.timestamp(),
-        previous_block.difficulty_target(),
-        timestamp,
-    );
+    let difficulty_target =
+        Blocks::<Testnet2>::compute_difficulty_target(previous_block.header(), timestamp, block_height);
+    let cumulative_weight = previous_block
+        .cumulative_weight()
+        .saturating_add((u64::MAX / difficulty_target) as u128);
 
-    // Construct the new block header.
-    let header = BlockHeader::new(
+    // Construct the block template.
+    let template = BlockTemplate::new(
+        previous_block_hash,
         block_height,
         timestamp,
         difficulty_target,
-        transactions_root,
-        serial_numbers_root,
-        commitments_root,
-        &mut rng,
-    )
-    .unwrap();
+        cumulative_weight,
+        previous_ledger_root,
+        transactions,
+        coinbase_record,
+    );
 
     // Construct the new block.
-    let block = Block::from(previous_hash, header, transactions).unwrap();
+    let block = Block::mine(&template, &AtomicBool::new(false), &mut rng).unwrap();
 
     ledger.add_next_block(&block).unwrap();
     assert_eq!(ledger.latest_block_height(), 1);
 }
+
+// #[test]
+// fn test_record_size() {
+//     use std::str::FromStr;
+//
+//     let ledger = Ledger::<Testnet2>::new().unwrap();
+//
+//     // Initialize a new account.
+//     let private_key =
+//         PrivateKey::<Testnet2>::from_str("APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p").unwrap();
+//     let account = Account::from(private_key.clone());
+//     let view_key = account.view_key();
+//
+//     // Mine the next block.
+//     let block = ledger.latest_block().unwrap();
+//     println!("block: {}", block.hash());
+//
+//     // Craft the transaction variables.
+//     let coinbase_transaction = &block.transactions()[0];
+//     let candidate_records = coinbase_transaction.to_decrypted_records(view_key);
+//     assert_eq!(candidate_records.len(), 1); // Excludes dummy records upon decryption.
+//
+//     let candidate_record = candidate_records.first().unwrap();
+//     assert_eq!(
+//         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+//         candidate_record.owner().to_string()
+//     );
+//     assert_eq!(
+//         AleoAmount(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000),
+//         candidate_record.value()
+//     );
+//     assert_eq!(vec![0u8; 128], candidate_record.payload().to_bytes_le().unwrap());
+//     assert_eq!(Testnet2::noop_program_id(), &candidate_record.program_id());
+// }

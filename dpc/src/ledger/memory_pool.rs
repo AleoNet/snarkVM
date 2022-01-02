@@ -21,9 +21,14 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub struct MemoryPool<N: Network> {
+    /// The pool of unconfirmed transactions.
     transactions: HashMap<N::TransactionID, Transaction<N>>,
+    /// The list of unconfirmed serial numbers.
     serial_numbers: HashSet<N::SerialNumber>,
+    /// The list of unconfirmed commitments.
     commitments: HashSet<N::Commitment>,
+    /// The set of open requests.
+    #[allow(dead_code)]
     requests: HashSet<Request<N>>,
 }
 
@@ -40,13 +45,7 @@ impl<N: Network> MemoryPool<N> {
 
     /// Returns `true` if the given transaction exists in the memory pool.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        match transaction.to_transaction_id() {
-            Ok(id) => self.transactions.contains_key(&id),
-            Err(error) => {
-                eprintln!("Failed to lookup transaction ID: {}", error);
-                return false;
-            }
-        }
+        self.transactions.contains_key(&transaction.transaction_id())
     }
 
     /// Returns the transactions in the memory pool.
@@ -67,22 +66,20 @@ impl<N: Network> MemoryPool<N> {
         }
 
         // Ensure the transaction does not already exist in the memory pool.
-        let transaction_id = transaction.to_transaction_id()?;
+        let transaction_id = transaction.transaction_id();
         if self.transactions.contains_key(&transaction_id) {
             return Err(anyhow!("Transaction already exists in memory pool"));
         }
 
         // Ensure the memory pool does not already contain a given serial numbers.
-        let serial_numbers = transaction.serial_numbers();
-        for serial_number in &serial_numbers {
+        for serial_number in transaction.serial_numbers() {
             if self.serial_numbers.contains(serial_number) {
                 return Err(anyhow!("Serial number already used in memory pool"));
             }
         }
 
         // Ensure the memory pool does not already contain a given commitments.
-        let commitments = transaction.commitments();
-        for commitment in &commitments {
+        for commitment in transaction.commitments() {
             if self.commitments.contains(commitment) {
                 return Err(anyhow!("Commitment already used in memory pool"));
             }
@@ -93,11 +90,11 @@ impl<N: Network> MemoryPool<N> {
             let mut memory_pool = self.clone();
 
             memory_pool.transactions.insert(transaction_id, transaction.clone());
-            for serial_number in serial_numbers {
-                memory_pool.serial_numbers.insert(serial_number);
+            for serial_number in transaction.serial_numbers() {
+                memory_pool.serial_numbers.insert(*serial_number);
             }
-            for commitment in commitments {
-                memory_pool.commitments.insert(commitment);
+            for commitment in transaction.commitments() {
+                memory_pool.commitments.insert(*commitment);
             }
 
             *self = memory_pool;
@@ -106,10 +103,52 @@ impl<N: Network> MemoryPool<N> {
         Ok(())
     }
 
+    /// Clear a transaction (and associated state) from the memory pool.
+    pub fn remove_transaction(&mut self, transaction: &Transaction<N>) {
+        // This code section executes atomically.
+
+        let mut memory_pool = self.clone();
+
+        memory_pool.transactions.remove(&transaction.transaction_id());
+        for serial_number in transaction.serial_numbers() {
+            memory_pool.serial_numbers.remove(serial_number);
+        }
+        for commitment in transaction.commitments() {
+            memory_pool.commitments.remove(commitment);
+        }
+
+        *self = memory_pool;
+    }
+
+    /// Clear a list of transactions (and associated state) from the memory pool.
+    pub fn remove_transactions(&mut self, transactions: &[Transaction<N>]) {
+        // This code section executes atomically.
+
+        let mut memory_pool = self.clone();
+
+        for transaction in transactions {
+            memory_pool.transactions.remove(&transaction.transaction_id());
+            for serial_number in transaction.serial_numbers() {
+                memory_pool.serial_numbers.remove(serial_number);
+            }
+            for commitment in transaction.commitments() {
+                memory_pool.commitments.remove(commitment);
+            }
+        }
+
+        *self = memory_pool;
+    }
+
     /// Clears all transactions (and associated state) from the memory pool.
-    pub fn clear_transactions(&mut self) {
+    pub fn clear_all_transactions(&mut self) {
         self.transactions = Default::default();
         self.serial_numbers = Default::default();
         self.commitments = Default::default();
+    }
+}
+
+impl<N: Network> Default for MemoryPool<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }

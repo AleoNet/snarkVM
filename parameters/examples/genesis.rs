@@ -26,66 +26,62 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<N: Network>(recipient: Address<N>) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
     // Create a genesis block.
     let genesis_block = Block::<N>::new_genesis(recipient, &mut thread_rng())?;
-    println!("block size - {}\n", genesis_block.to_bytes_le()?.len());
+    assert!(genesis_block.is_valid());
     assert!(genesis_block.is_genesis());
+    assert!(genesis_block.header().is_genesis());
+    assert!(genesis_block.to_coinbase_transaction()?.is_valid());
 
-    // Fetch the genesis header.
-    let genesis_header = genesis_block.header();
-    println!("block header size - {}\n", BlockHeader::<N>::size());
-    assert!(genesis_header.is_genesis());
+    println!("\n{}\n", serde_json::to_string_pretty(&genesis_block)?);
 
-    // Fetch the coinbase transaction.
-    let transaction = genesis_block.to_coinbase_transaction()?;
-    assert!(transaction.is_valid());
-    let transaction_bytes = transaction.to_bytes_le()?;
-    println!("transaction size - {}\n", transaction_bytes.len());
+    println!("Genesis block size - {}\n", genesis_block.to_bytes_le()?.len());
+    println!(
+        "Genesis block header size - {}\n",
+        genesis_block.header().to_bytes_le()?.len()
+    );
+    println!(
+        "Genesis coinbase transaction size - {}\n",
+        genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len()
+    );
+    println!(
+        "Genesis coinbase transition size - {}\n",
+        genesis_block.to_coinbase_transaction()?.transitions()[0]
+            .to_bytes_le()?
+            .len()
+    );
 
-    Ok((
-        genesis_block.previous_block_hash().to_bytes_le()?,
-        genesis_header.to_bytes_le()?,
-        transaction_bytes,
-    ))
+    Ok(genesis_block.to_bytes_le()?)
 }
 
 pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
     let mut file = File::create(path)?;
     file.write_all(&bytes)?;
-
     Ok(())
 }
 
 pub fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 5 {
-        println!("Invalid number of arguments. Given: {} - Required: 4", args.len() - 1);
+    if args.len() < 4 {
+        println!("Invalid number of arguments. Given: {} - Required: 3", args.len() - 1);
         return;
     }
 
     match args[1].as_str() {
         "testnet1" => {
             let recipient = Address::from_str(&args[2]).unwrap();
-            let genesis_previous_file = &args[3];
-            let genesis_header_file = &args[4];
-            let transaction_file = &args[5];
+            let genesis_file = &args[3];
 
-            let (genesis_previous_block_hash, genesis_header, transaction) = generate::<Testnet1>(recipient).unwrap();
-            store(genesis_previous_file, &genesis_previous_block_hash).unwrap();
-            store(genesis_header_file, &genesis_header).unwrap();
-            store(transaction_file, &transaction).unwrap();
+            let genesis_block = generate::<Testnet1>(recipient).unwrap();
+            store(genesis_file, &genesis_block).unwrap();
         }
         "testnet2" => {
             let recipient = Address::from_str(&args[2]).unwrap();
-            let genesis_previous_file = &args[3];
-            let genesis_header_file = &args[4];
-            let transaction_file = &args[5];
+            let genesis_file = &args[3];
 
-            let (genesis_previous_block_hash, genesis_header, transaction) = generate::<Testnet2>(recipient).unwrap();
-            store(genesis_previous_file, &genesis_previous_block_hash).unwrap();
-            store(genesis_header_file, &genesis_header).unwrap();
-            store(transaction_file, &transaction).unwrap();
+            let genesis_block = generate::<Testnet2>(recipient).unwrap();
+            store(genesis_file, &genesis_block).unwrap();
         }
         _ => panic!("Invalid network"),
     };

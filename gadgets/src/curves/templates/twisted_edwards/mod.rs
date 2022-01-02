@@ -903,7 +903,7 @@ mod projective_impl {
                     let bit = bits_base_powers[0].0;
                     let base_power = bits_base_powers[0].1;
                     let new_encoded = self.add_constant(&mut cs.ns(|| "Add base power"), &base_power)?;
-                    *self = Self::conditionally_select(&mut cs.ns(|| "Conditional Select"), &bit, &new_encoded, &self)?;
+                    *self = Self::conditionally_select(&mut cs.ns(|| "Conditional Select"), &bit, &new_encoded, self)?;
                 }
             }
 

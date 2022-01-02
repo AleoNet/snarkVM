@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme};
+use std::sync::atomic::AtomicBool;
+
+use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWScheme};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
@@ -26,18 +28,30 @@ fn marlin_posw(c: &mut Criterion) {
 
     let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
-    // Construct a block header.
-    let mut block_header = Testnet2::genesis_block().header().clone();
+    // Construct the block template.
+    let block = Testnet2::genesis_block();
+    let block_template = BlockTemplate::new(
+        block.previous_block_hash(),
+        block.height(),
+        block.timestamp(),
+        block.difficulty_target(),
+        block.cumulative_weight(),
+        block.previous_ledger_root(),
+        block.transactions().clone(),
+        block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
+    );
 
     group.bench_function("mine", |b| {
         b.iter(|| {
-            Testnet2::posw().mine(&mut block_header, rng).unwrap();
+            Testnet2::posw()
+                .mine(&block_template, &AtomicBool::new(false), rng)
+                .unwrap();
         });
     });
 
     group.bench_function("verify", |b| {
         b.iter(|| {
-            let _is_valid = Testnet2::posw().verify(&block_header);
+            let _is_valid = Testnet2::posw().verify_from_block_header(Testnet2::genesis_block().header());
         });
     });
 }

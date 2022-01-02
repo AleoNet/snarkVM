@@ -82,6 +82,7 @@ impl PoseidonGrainLFSR {
             }
         }
 
+        #[allow(clippy::needless_range_loop)]
         // b50, ..., b79 are set to 1
         for i in 50..=79 {
             state[i] = true;
@@ -99,14 +100,14 @@ impl PoseidonGrainLFSR {
     }
 
     pub fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(num_bits);
 
         for _ in 0..num_bits {
             // Obtain the first bit
             let mut new_bit = self.update();
 
             // Loop until the first bit is true
-            while new_bit == false {
+            while !new_bit {
                 // Discard the second bit
                 let _ = self.update();
                 // Obtain another first bit
@@ -146,7 +147,7 @@ impl PoseidonGrainLFSR {
     pub fn get_field_elements_mod_p<F: PrimeField>(&mut self, num_elems: usize) -> Vec<F> {
         assert_eq!(F::Parameters::MODULUS_BITS as u64, self.prime_num_bits);
 
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(num_elems);
         for _ in 0..num_elems {
             // Obtain n bits and make it most-significant-bit first
             let mut bits = self.get_bits(self.prime_num_bits as usize);
@@ -163,9 +164,10 @@ impl PoseidonGrainLFSR {
                     }
                     sum
                 })
+                .rev()
                 .collect::<Vec<u8>>();
 
-            res.push(F::from_bytes_le_mod_order(&bytes));
+            res.push(F::from_bytes_be_mod_order(&bytes));
         }
 
         res

@@ -88,7 +88,7 @@ impl<N: Network> ResponseBuilder<N> {
     /// Adds the given event into the builder.
     ///
     pub fn add_event(mut self, event: Event<N>) -> Self {
-        match self.events.len() < N::NUM_EVENTS {
+        match self.events.len() < N::NUM_EVENTS as usize {
             true => self.events.push(event),
             false => self.errors.push("Builder exceeded maximum number of events".into()),
         };
@@ -113,14 +113,15 @@ impl<N: Network> ResponseBuilder<N> {
             None => return Err(anyhow!("Builder is missing request")),
         };
 
+        // Fetch the events.
+        let mut events = self.events.clone();
+
         // Construct the state.
-        let block_hash = request.block_hash();
-        let local_commitments_root = request.local_commitments_root();
         let function_type = request.function_type();
         let program_id = request.to_program_id()?;
 
         // Construct the inputs.
-        let input_records = request.records().clone();
+        let input_records = request.records();
         let serial_numbers = request.to_serial_numbers()?;
 
         // Construct the outputs.
@@ -131,44 +132,57 @@ impl<N: Network> ResponseBuilder<N> {
         }
 
         // Compute the output records.
-        let output_records = outputs
+        let (output_records, encryption_randomness): (Vec<_>, Vec<_>) = outputs
             .iter()
             .enumerate()
             .take(N::NUM_OUTPUT_RECORDS)
-            .map(|(i, output)| Ok(output.to_record(serial_numbers[i], rng)?))
-            .collect::<Result<Vec<_>>>()?;
+            .map(|(i, output)| {
+                let (record, encryption_randomness) = output.to_record(rng)?;
+
+                // Add the record view key event if the output record is public.
+                if request.is_public() && events.len() < N::NUM_EVENTS as usize {
+                    events.push(Event::RecordViewKey(i as u8, record.record_view_key().clone()))
+                }
+
+                Ok((record, encryption_randomness))
+            })
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .unzip();
 
         // Ensure the input records have the correct program ID.
-        for i in 0..(function_type.input_count() as usize) {
-            if input_records[i].program_id() != program_id {
+        for (i, input_record) in input_records
+            .iter()
+            .enumerate()
+            .take(function_type.input_count() as usize)
+        {
+            if input_record.program_id() != program_id {
                 return Err(anyhow!("Program ID in input record {} is incorrect", i));
             }
         }
 
-        // Ensure the output records have the correct program ID.
-        for j in 0..(function_type.output_count() as usize) {
-            if output_records[j].program_id() != program_id {
-                return Err(anyhow!("Program ID in output record {} is incorrect", j));
-            }
-        }
+        // TODO (raychu86): Check this. Currently blocking program deployments.
+        // // Ensure the output records have the correct program ID.
+        // for j in 0..(function_type.output_count() as usize) {
+        //     if output_records[j].program_id() != program_id {
+        //         return Err(anyhow!("Program ID in output record {} is incorrect", j));
+        //     }
+        // }
 
         // Compute the commitments.
-        let commitments = output_records
+        let commitments: Vec<_> = output_records
             .iter()
             .take(N::NUM_OUTPUT_RECORDS)
             .map(Record::commitment)
             .collect();
 
-        // Compute the encrypted records.
-        let (ciphertexts, ciphertext_randomizers) = Self::encrypt_records(&output_records, rng)?;
-
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
-            value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
+            value_balance = value_balance.add(record.value());
         }
         for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
-            value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
+            value_balance = value_balance.sub(record.value());
         }
 
         // Ensure the value balance matches the fee from the request.
@@ -180,45 +194,23 @@ impl<N: Network> ResponseBuilder<N> {
             ));
         }
 
-        // Process the events.
-        let events = self.events.clone();
-
         // Compute the transition ID.
-        let transition_id = Transition::compute_transition_id(
-            block_hash,
-            local_commitments_root,
-            &serial_numbers,
-            &commitments,
-            &ciphertexts,
-            value_balance,
-        )?;
+        let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments)?;
 
         // Construct the response.
         Response::new(
             transition_id,
             output_records,
-            ciphertexts,
-            ciphertext_randomizers,
+            encryption_randomness,
             value_balance,
             events,
         )
     }
+}
 
-    #[inline]
-    fn encrypt_records<R: Rng + CryptoRng>(
-        output_records: &Vec<Record<N>>,
-        rng: &mut R,
-    ) -> Result<(Vec<RecordCiphertext<N>>, Vec<CiphertextRandomizer<N>>)> {
-        let mut ciphertexts = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut ciphertext_randomizers = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-
-        for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
-            let (ciphertext, ciphertext_randomizer) = RecordCiphertext::encrypt(record, rng)?;
-            ciphertexts.push(ciphertext);
-            ciphertext_randomizers.push(ciphertext_randomizer);
-        }
-
-        Ok((ciphertexts, ciphertext_randomizers))
+impl<N: Network> Default for ResponseBuilder<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -242,7 +234,7 @@ impl<N: Network> ResponseBuilder<N> {
 //             let (expected_record, expected_serial_number, expected_program_id) = {
 //                 let rng = &mut ChaChaRng::seed_from_u64(seed);
 //
-//                 let account = Account::new(rng).unwrap();
+//                 let account = Account::new(rng);
 //                 let input_record = Record::new_noop_input(account.address, rng).unwrap();
 //                 let serial_number = input_record
 //                     .to_serial_number(&account.private_key().to_compute_key().unwrap())

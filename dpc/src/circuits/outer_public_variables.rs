@@ -14,37 +14,60 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Network;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
+use crate::{AleoAmount, InnerPublicVariables, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
 
 use anyhow::Result;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct OuterPublicVariables<N: Network> {
-    transition_id: N::TransitionID,
+    inner_public_variables: InnerPublicVariables<N>,
     inner_circuit_id: N::InnerCircuitID,
 }
 
 impl<N: Network> OuterPublicVariables<N> {
     pub(crate) fn blank() -> Self {
+        // These inner circuit public variables are allocated as private variables in the outer circuit,
+        // as they are not included in the transaction broadcast to the ledger.
+        let mut inner_public_variables = InnerPublicVariables::blank();
+        inner_public_variables.program_id = None;
+
         Self {
-            transition_id: N::TransitionID::default(),
+            inner_public_variables,
             inner_circuit_id: N::InnerCircuitID::default(),
         }
     }
 
-    pub(crate) fn new(transition_id: N::TransitionID, inner_circuit_id: N::InnerCircuitID) -> Self {
+    pub(crate) fn new(inner_public_variables: InnerPublicVariables<N>, inner_circuit_id: &N::InnerCircuitID) -> Self {
+        // These inner circuit public variables are allocated as private variables in the outer circuit,
+        // as they are not included in the transaction broadcast to the ledger.
+        let mut inner_public_variables: InnerPublicVariables<N> = inner_public_variables;
+        inner_public_variables.program_id = None;
+
         Self {
-            transition_id,
-            inner_circuit_id,
+            inner_public_variables,
+            inner_circuit_id: *inner_circuit_id,
         }
     }
 
+    /// Returns the transition ID.
     pub(crate) fn transition_id(&self) -> N::TransitionID {
-        self.transition_id
+        self.inner_public_variables.transition_id()
+    }
+
+    /// Returns the value balance of the transition.
+    pub(crate) fn value_balance(&self) -> AleoAmount {
+        self.inner_public_variables.value_balance()
+    }
+
+    /// Returns the ledger root.
+    pub(crate) fn ledger_root(&self) -> N::LedgerRoot {
+        self.inner_public_variables.ledger_root()
+    }
+
+    pub(crate) fn local_transitions_root(&self) -> N::TransactionID {
+        self.inner_public_variables.local_transitions_root()
     }
 
     pub(crate) fn inner_circuit_id(&self) -> N::InnerCircuitID {
@@ -52,11 +75,12 @@ impl<N: Network> OuterPublicVariables<N> {
     }
 }
 
-impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::OuterScalarField>, ConstraintFieldError> {
+        // In the outer circuit, these two variables must be allocated as witness,
+        // as they are not included in the transaction.
+        debug_assert!(self.inner_public_variables.program_id.is_none());
+
         let mut v = Vec::new();
 
         // Convert inner circuit public variables into `OuterField` field elements.
@@ -66,9 +90,9 @@ where
         // apply the follow a rule:
         //
         // Alloc the original inputs as bits, then pack them into the new field, in little-endian format.
-        for transition_id_fe in &self.transition_id.to_field_elements()? {
+        for inner_snark_fe in &self.inner_public_variables.to_field_elements()? {
             v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
-                transition_id_fe.to_bits_le().as_slice(),
+                inner_snark_fe.to_bits_le().as_slice(),
             )?);
         }
 

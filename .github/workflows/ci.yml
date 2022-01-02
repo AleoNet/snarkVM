@@ -75,3 +75,31 @@ jobs:
           cd wasm
           wasm-pack test --node
 #          cargo test --target wasm32-unknown-unknown --features wasm
+
+  check-windows:  
+    strategy:
+      matrix:
+        library: [algorithms, curves, derives, dpc, fields, gadgets, marlin, parameters, polycommit, profiler, r1cs, utilities]
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Rust (stable)
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-pc-windows-msvc 
+          override: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-windows-latest-${{ hashFiles('**/Cargo.lock') }}
+      - name: Test
+        run: |
+          cd ${{ matrix.library }}
+          cargo check --examples --benches --tests

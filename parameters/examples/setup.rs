@@ -21,12 +21,14 @@ use snarkvm_dpc::{
     InnerCircuit,
     Network,
     Noop,
+    NoopPrivateVariables,
     OuterCircuit,
     PoSWScheme,
+    ProgramPrivateVariables,
     ProgramPublicVariables,
     SynthesizedCircuit,
 };
-use snarkvm_marlin::ahp::AHPForR1CS;
+use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinTestnet1Mode};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
@@ -75,7 +77,9 @@ pub fn universal_setup<N: Network>() -> Result<()> {
     const UNIVERSAL_METADATA: &str = "universal.metadata";
     const UNIVERSAL_SRS: &str = "universal.srs";
 
-    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(70000, 70000, 70000).unwrap();
+    let max_degree =
+        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(2000000, 4000000, 8000000)
+            .unwrap();
     let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let universal_srs = universal_srs.to_bytes_le()?;
 
@@ -175,7 +179,7 @@ pub fn outer_setup<N: Network>() -> Result<()> {
                 <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
             let inner_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), &mut thread_rng())?;
 
-            (inner_proof, inner_verifying_key)
+            (inner_proof.into(), inner_verifying_key)
         }
         "testnet2" => {
             use snarkvm_parameters::testnet2::{InnerProvingKeyBytes, InnerVerifyingKeyBytes};
@@ -186,7 +190,7 @@ pub fn outer_setup<N: Network>() -> Result<()> {
                 <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
             let inner_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), &mut thread_rng())?;
 
-            (inner_proof, inner_verifying_key)
+            (inner_proof.into(), inner_verifying_key)
         }
         _ => panic!("Invalid network for outer setup"),
     };
@@ -196,7 +200,10 @@ pub fn outer_setup<N: Network>() -> Result<()> {
             program_id: *N::noop_program_id(),
             program_path: N::noop_program_path().clone(),
             verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(ProgramPublicVariables::blank())?,
+            proof: Noop::<N>::new().execute(
+                ProgramPublicVariables::blank(),
+                &NoopPrivateVariables::<N>::new_blank().unwrap(),
+            )?,
         }),
         &mut SRS::CircuitSpecific(&mut thread_rng()),
     )?;
@@ -227,8 +234,9 @@ pub fn posw_setup<N: Network>() -> Result<()> {
     const POSW_VERIFYING_KEY: &str = "posw.verifying";
 
     // TODO: decide the size of the universal setup
-    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(70000, 70000, 70000).unwrap();
-    let universal_srs = <<N as Network>::PoswSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
+    let max_degree =
+        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(40000, 40000, 60000).unwrap();
+    let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let srs_bytes = universal_srs.to_bytes_le()?;
     println!("srs\n\tsize - {}", srs_bytes.len());
 

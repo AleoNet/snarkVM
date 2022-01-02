@@ -30,13 +30,8 @@ pub use fiat_shamir_chacha::*;
 mod fiat_shamir_algebraic_sponge_gadget;
 pub use fiat_shamir_algebraic_sponge_gadget::*;
 
-/// The Poseidon sponge.
-mod fiat_shamir_poseidon_sponge;
-pub use fiat_shamir_poseidon_sponge::*;
-
-/// The constraints for the Poseidon sponge.
-mod fiat_shamir_poseidon_sponge_gadget;
-pub use fiat_shamir_poseidon_sponge_gadget::*;
+pub use snarkvm_algorithms::crypto_hash::poseidon::*;
+pub use snarkvm_gadgets::algorithms::crypto_hash::poseidon::*;
 
 /// Traits for the Fiat-Shamir RNG.
 pub mod traits;

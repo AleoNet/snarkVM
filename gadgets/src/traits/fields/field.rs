@@ -69,7 +69,7 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
     }
 
     fn double<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        self.add(cs, &self)
+        self.add(cs, self)
     }
 
     fn double_in_place<CS: ConstraintSystem<F>>(&mut self, cs: CS) -> Result<&mut Self, SynthesisError> {
@@ -100,7 +100,7 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
     }
 
     fn square<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        self.mul(cs, &self)
+        self.mul(cs, self)
     }
 
     fn square_in_place<CS: ConstraintSystem<F>>(&mut self, cs: CS) -> Result<&mut Self, SynthesisError> {

@@ -38,6 +38,11 @@ path = "benches/crh/bhp.rs"
 harness = false
 
 [[bench]]
+name = "encryption-aleo"
+path = "benches/encryption/aleo.rs"
+harness = false
+
+[[bench]]
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
@@ -45,6 +50,11 @@ harness = false
 [[bench]]
 name = "hash_to_curve"
 path = "benches/hash_to_curve/hash_to_curve.rs"
+harness = false
+
+[[bench]]
+name = "poseidon_sponge"
+path = "benches/sponge/poseidon.rs"
 harness = false
 
 [[bench]]
@@ -99,7 +109,7 @@ version = "0.9"
 optional = true
 
 [dependencies.blake2s_simd]
-version = "0.5"
+version = "1.0"
 
 [dependencies.crossbeam-channel]
 version = "0.5"
@@ -114,14 +124,17 @@ version = "2"
 [dependencies.digest]
 version = "0.9"
 
+[dependencies.hex]
+version = "0.4.3"
+
 [dependencies.itertools]
-version = "0.10.1"
+version = "0.10.3"
 
 [dependencies.lazy_static]
 version = "1.4"
 
 [dependencies.once_cell]
-version = "1.8"
+version = "1.9"
 
 [dependencies.rand]
 version = "0.8"
@@ -139,12 +152,28 @@ default-features = false
 [dependencies.rayon]
 version = "1"
 
-[dependencies.sha2]
-version = "0.9"
+[dependencies.serde]
+version = "1.0"
 default-features = false
+features = ["derive"]
+
+[dependencies.sha2]
+version = "0.10"
+default-features = false
+
+[dependencies.smallvec]
+version = "1.7"
+default-features = false
+features = [ "const_generics", "const_new" ]
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dev-dependencies.expect-test ]
+version = "1.1.0"
+
+[dev-dependencies.bincode]
+version = "1"
 
 [dev-dependencies.criterion]
 version = "0.3.5"

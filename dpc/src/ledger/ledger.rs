@@ -19,7 +19,7 @@ use crate::prelude::*;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use rand::{CryptoRng, Rng};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::atomic::AtomicBool};
 
 #[derive(Clone, Debug)]
 pub struct Ledger<N: Network> {
@@ -51,6 +51,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.latest_block_hash()
     }
 
+    /// Returns the latest ledger root.
+    pub fn latest_ledger_root(&self) -> N::LedgerRoot {
+        self.canon_blocks.latest_ledger_root()
+    }
+
     /// Returns the latest block timestamp.
     pub fn latest_block_timestamp(&self) -> Result<i64> {
         self.canon_blocks.latest_block_timestamp()
@@ -59,6 +64,11 @@ impl<N: Network> Ledger<N> {
     /// Returns the latest block difficulty target.
     pub fn latest_block_difficulty_target(&self) -> Result<u64> {
         self.canon_blocks.latest_block_difficulty_target()
+    }
+
+    /// Returns the latest cumulative weight.
+    pub fn latest_cumulative_weight(&self) -> Result<u128> {
+        self.canon_blocks.latest_cumulative_weight()
     }
 
     /// Returns the latest block transactions.
@@ -71,6 +81,11 @@ impl<N: Network> Ledger<N> {
         self.canon_blocks.latest_block()
     }
 
+    /// Returns `true` if the given ledger root exists on the canon chain.
+    pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
+        self.canon_blocks.contains_ledger_root(ledger_root)
+    }
+
     /// Returns `true` if the given block hash exists on the canon chain.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
         self.canon_blocks.contains_block_hash(block_hash)
@@ -79,16 +94,6 @@ impl<N: Network> Ledger<N> {
     /// Returns `true` if the given transaction exists on the canon chain.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
         self.canon_blocks.contains_transaction(transaction)
-    }
-
-    /// Returns `true` if the given serial numbers root exists.
-    pub fn contains_serial_numbers_root(&self, serial_numbers_root: &N::SerialNumbersRoot) -> bool {
-        self.canon_blocks.contains_serial_numbers_root(serial_numbers_root)
-    }
-
-    /// Returns `true` if the given commitments root exists.
-    pub fn contains_commitments_root(&self, commitments_root: &N::CommitmentsRoot) -> bool {
-        self.canon_blocks.contains_commitments_root(commitments_root)
     }
 
     /// Adds the given canon block, if it is well-formed and does not already exist.
@@ -103,7 +108,7 @@ impl<N: Network> Ledger<N> {
     /// Adds the given orphan block, if it is well-formed and does not already exist.
     pub fn add_orphan_block(&mut self, block: &Block<N>) -> Result<()> {
         // Ensure the block does not exist in canon.
-        if self.canon_blocks.contains_block_hash(&block.to_block_hash()?) {
+        if self.canon_blocks.contains_block_hash(&block.hash()) {
             return Err(anyhow!("Orphan block already exists in canon chain"));
         }
 
@@ -115,22 +120,20 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given unconfirmed transaction to the memory pool.
     pub fn add_unconfirmed_transaction(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction contains block hashes from the canon chain.
-        for block_hash in &transaction.block_hashes() {
-            if !self.canon_blocks.contains_block_hash(block_hash) {
-                return Err(anyhow!("Transaction references a non-existent block hash"));
-            }
+        // Ensure the transaction contains ledger roots from the canon chain.
+        if !self.canon_blocks.contains_ledger_root(&transaction.ledger_root()) {
+            return Err(anyhow!("Transaction references a non-existent ledger root"));
         }
 
         // Ensure the transaction does not contain serial numbers already in the canon chain.
-        for serial_number in &transaction.serial_numbers() {
+        for serial_number in transaction.serial_numbers() {
             if self.canon_blocks.contains_serial_number(serial_number) {
                 return Err(anyhow!("Transaction contains a serial number already in existence"));
             }
         }
 
         // Ensure the transaction does not contain commitments already in the canon chain.
-        for commitment in &transaction.commitments() {
+        for commitment in transaction.commitments() {
             if self.canon_blocks.contains_commitment(commitment) {
                 return Err(anyhow!("Transaction contains a commitment already in existence"));
             }
@@ -143,62 +146,80 @@ impl<N: Network> Ledger<N> {
     }
 
     /// Mines a new block and adds it to the canon blocks.
-    pub fn mine_next_block<R: Rng + CryptoRng>(&mut self, recipient: Address<N>, rng: &mut R) -> Result<()> {
+    pub fn mine_next_block<R: Rng + CryptoRng>(
+        &mut self,
+        recipient: Address<N>,
+        is_public: bool,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<Record<N>> {
         // Prepare the new block.
         let previous_block_hash = self.latest_block_hash();
         let block_height = self.latest_block_height() + 1;
 
+        // Ensure that the new timestamp is ahead of the previous timestamp.
+        let block_timestamp = std::cmp::max(Utc::now().timestamp(), self.latest_block_timestamp()?.saturating_add(1));
+
         // Compute the block difficulty target.
-        let previous_timestamp = self.latest_block_timestamp()?;
-        let previous_difficulty_target = self.latest_block_difficulty_target()?;
-        let block_timestamp = Utc::now().timestamp();
-        let difficulty_target =
-            Blocks::<N>::compute_difficulty_target(previous_timestamp, previous_difficulty_target, block_timestamp);
+        let difficulty_target = if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
+            Blocks::<N>::compute_difficulty_target(self.latest_block()?.header(), block_timestamp, block_height)
+        } else if N::NETWORK_ID == 2 {
+            let anchor_block_header = self
+                .canon_blocks
+                .get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
+            Blocks::<N>::compute_difficulty_target(anchor_block_header, block_timestamp, block_height)
+        } else {
+            Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block_timestamp, block_height)
+        };
+
+        // Compute the cumulative weight.
+        let cumulative_weight = self
+            .latest_cumulative_weight()?
+            .saturating_add((u64::MAX / difficulty_target) as u128);
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
-        let coinbase_transaction = Transaction::<N>::new_coinbase(recipient, amount, rng)?;
+        let (coinbase_transaction, coinbase_record) =
+            Transaction::<N>::new_coinbase(recipient, amount, is_public, rng)?;
         let transactions = Transactions::from(&[vec![coinbase_transaction], self.memory_pool.transactions()].concat())?;
 
-        // Construct the new serial numbers root.
-        let mut serial_numbers = self.canon_blocks.latest_serial_numbers();
-        serial_numbers.add_all(transactions.to_serial_numbers()?)?;
-        let serial_numbers_root = serial_numbers.root();
+        // Retrieve the current ledger root.
+        let previous_ledger_root = self.canon_blocks.latest_ledger_root();
 
-        // Construct the new commitments root.
-        let mut commitments = self.canon_blocks.latest_commitments();
-        commitments.add_all(transactions.to_commitments()?)?;
-        let commitments_root = commitments.root();
-
-        // Mine the next block.
-        let block = Block::new(
+        // Construct the block template.
+        let template = BlockTemplate::new(
             previous_block_hash,
             block_height,
             block_timestamp,
             difficulty_target,
+            cumulative_weight,
+            previous_ledger_root,
             transactions,
-            serial_numbers_root,
-            commitments_root,
-            rng,
-        )?;
+            coinbase_record.clone(),
+        );
+
+        // Mine the next block.
+        let block = Block::mine(&template, terminator, rng)?;
 
         // Attempt to add the block to the canon chain.
         self.add_next_block(&block)?;
 
         // On success, clear the memory pool of its transactions.
-        self.memory_pool.clear_transactions();
+        self.memory_pool.clear_all_transactions();
 
-        Ok(())
+        Ok(coinbase_record)
+    }
+
+    /// Returns the ledger tree.
+    pub fn to_ledger_tree(&self) -> &LedgerTree<N> {
+        self.canon_blocks.to_ledger_tree()
     }
 
     ///
-    /// Returns the ledger proof for the given commitments with the current block hash.
+    /// Returns the ledger proof for the given commitment with the current ledger root.
     ///
-    /// This method allows the number of `commitments` to be less than `N::NUM_INPUT_RECORDS`,
-    /// as `LedgerProof` will pad the ledger proof up to `N::NUM_INPUT_RECORDS` for noop inputs.
-    ///
-    pub fn to_ledger_inclusion_proof(&self, commitments: &[N::Commitment]) -> Result<LedgerProof<N>> {
-        self.canon_blocks.to_ledger_inclusion_proof(commitments)
+    pub fn to_ledger_proof(&self, commitment: N::Commitment) -> Result<LedgerProof<N>> {
+        self.canon_blocks.to_ledger_proof(commitment)
     }
 }
 
@@ -223,18 +244,22 @@ mod tests {
         let rng = &mut thread_rng();
         {
             let mut ledger = Ledger::<Testnet1>::new().unwrap();
-            let recipient = Account::<Testnet1>::new(rng).unwrap();
+            let recipient = Account::<Testnet1>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
-            ledger.mine_next_block(recipient.address(), rng).unwrap();
+            ledger
+                .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
+                .unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
         {
             let mut ledger = Ledger::<Testnet2>::new().unwrap();
-            let recipient = Account::<Testnet2>::new(rng).unwrap();
+            let recipient = Account::<Testnet2>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
-            ledger.mine_next_block(recipient.address(), rng).unwrap();
+            ledger
+                .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
+                .unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
     }

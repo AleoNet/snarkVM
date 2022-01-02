@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Execution, Network, OuterPrivateVariables, OuterPublicVariables};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{MerkleParameters, SNARK},
-};
+use snarkvm_algorithms::traits::{MerkleParameters, SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
@@ -29,7 +26,9 @@ use snarkvm_gadgets::{
     },
     MergeGadget,
     ToBitsLEGadget,
+    ToBytesGadget,
     ToMinimalBitsGadget,
+    UInt8,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use snarkvm_utilities::ToBytes;
@@ -44,7 +43,7 @@ pub struct OuterCircuit<N: Network> {
 impl<N: Network> OuterCircuit<N> {
     pub fn blank(
         inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
-        inner_proof: <N::InnerSNARK as SNARK>::Proof,
+        inner_proof: N::InnerProof,
         execution: Execution<N>,
     ) -> Self {
         Self {
@@ -58,10 +57,7 @@ impl<N: Network> OuterCircuit<N> {
     }
 }
 
-impl<N: Network> ConstraintSynthesizer<N::OuterScalarField> for OuterCircuit<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ConstraintSynthesizer<N::OuterScalarField> for OuterCircuit<N> {
     fn generate_constraints<CS: ConstraintSystem<N::OuterScalarField>>(
         &self,
         cs: &mut CS,
@@ -84,10 +80,10 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
             Ok(N::function_id_crh().clone())
         })?;
 
-    let program_functions_tree_crh = N::ProgramFunctionsTreeCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_functions_tree_crh_parameters"),
-        || Ok(N::program_functions_tree_parameters().crh().clone()),
-    )?;
+    let program_functions_tree_crh =
+        N::ProgramIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare program_functions_tree_crh_parameters"), || {
+            Ok(N::program_id_parameters().crh().clone())
+        })?;
 
     let inner_circuit_id_crh =
         N::InnerCircuitIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
@@ -100,8 +96,27 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     // Declare inner circuit public variables as inner circuit field elements
 
+    let ledger_root_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.ledger_root(), "ledger root inner snark")?;
+
+    let local_transitions_root_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &public.local_transitions_root(),
+        "local transitions root inner snark",
+    )?;
+
+    let program_id_bytes = UInt8::alloc_vec(
+        &mut cs.ns(|| "Given Program ID bytes"),
+        &private.execution.program_id.to_bytes_le()?[..],
+    )?;
     let program_id_fe =
-        alloc_inner_snark_field_element::<N, _, _>(cs, &private.execution.program_id.to_bytes_le()?[..], "program ID")?;
+        N::InnerSNARKGadget::input_gadget_from_bytes(cs.ns(|| "Given Program ID fe"), &program_id_bytes)?;
+
+    let value_balance_fe = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &public.value_balance().to_bytes_le()?[..],
+        "value balance",
+    )?;
 
     let transition_id_fe_inner_snark =
         alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID inner snark")?;
@@ -121,7 +136,10 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_input =
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
+            ledger_root_fe_inner_snark,
+            local_transitions_root_fe_inner_snark,
             program_id_fe,
+            value_balance_fe,
             transition_id_fe_inner_snark,
         ])?;
 
@@ -136,7 +154,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
     let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(&private.inner_proof),
+        || Ok(&*private.inner_proof),
     )?;
 
     N::InnerSNARKGadget::check_verify(
@@ -169,7 +187,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 program_circuit_verifying_key_bits,
             )?;
 
-            let program_path_gadget = MerklePathGadget::<_, N::ProgramFunctionsTreeCRHGadget, _>::alloc(
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramIDCRHGadget, _>::alloc(
                 &mut cs.ns(|| "Declare program path for circuit"),
                 || Ok(&private.execution.program_path),
             )?;
@@ -180,15 +198,12 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
                 claimed_circuit_id,
             )?;
 
-            let given_program_id =
-                <N::ProgramFunctionsTreeCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc(
-                    &mut cs.ns(|| "Given program ID"),
-                    || Ok(&private.execution.program_id),
-                )?;
+            let claimed_program_id_bytes =
+                claimed_program_id.to_bytes_strict(&mut cs.ns(|| "claimed program id to bytes"))?;
 
-            claimed_program_id.enforce_equal(
+            claimed_program_id_bytes.enforce_equal(
                 &mut cs.ns(|| "Check that declared and computed program IDs are equal"),
-                &given_program_id,
+                &program_id_bytes,
             )?;
         }
 
@@ -202,7 +217,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&private.execution.proof),
+            || Ok(&*private.execution.proof),
         )?;
 
         N::ProgramSNARKGadget::check_verify(
@@ -239,26 +254,9 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
     Ok(())
 }
 
-fn alloc_inner_snark_field_element<
+fn alloc_inner_snark_input_field_element<
     N: Network,
     V: ToConstraintField<N::InnerScalarField> + ?Sized,
-    CS: ConstraintSystem<N::OuterScalarField>,
->(
-    cs: &mut CS,
-    var: &V,
-    name: &str,
-) -> Result<<N::InnerSNARKGadget as SNARKVerifierGadget<N::InnerSNARK>>::InputGadget, SynthesisError> {
-    let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
-    <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc(
-        cs.ns(|| format!("alloc_field_element_{}", name)),
-        || Ok(field_elements),
-    )
-}
-
-fn alloc_inner_snark_input_field_element<
-    'a,
-    N: Network,
-    V: ToConstraintField<N::InnerScalarField>,
     CS: ConstraintSystem<N::OuterScalarField>,
 >(
     cs: &mut CS,
@@ -272,7 +270,7 @@ fn alloc_inner_snark_input_field_element<
         input_gadgets.push(
             <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_input(
                 cs.ns(|| format!("alloc_input_field_element_{}_{}", name, j)),
-                || Ok(vec![(*field_element).clone()]),
+                || Ok(vec![*field_element]),
             )?,
         )
     }

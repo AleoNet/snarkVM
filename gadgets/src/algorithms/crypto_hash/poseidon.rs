@@ -14,19 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::crypto_hash::CryptographicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
+use crate::{
+    AlgebraicSpongeVar,
+    AllocGadget,
+    CryptoHashGadget,
+    DefaultCapacityAlgebraicSpongeVar,
+    FieldGadget,
+    FpGadget,
+};
 
-use snarkvm_algorithms::crypto_hash::{
+use snarkvm_algorithms::{
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
     DuplexSpongeMode,
-    PoseidonCryptoHash,
-    PoseidonDefaultParametersField,
-    PoseidonParameters,
-    PoseidonSponge,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use std::{borrow::Borrow, marker::PhantomData};
+use std::{borrow::Borrow, marker::PhantomData, sync::Arc};
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
@@ -35,9 +39,9 @@ use std::{borrow::Borrow, marker::PhantomData};
 /// with small syntax changes.
 ///
 /// [cos]: https://eprint.iacr.org/2019/1076
-pub struct PoseidonSpongeGadget<F: PrimeField> {
+pub struct PoseidonSpongeGadget<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
     /// Sponge Parameters
-    pub parameters: PoseidonParameters<F>,
+    pub parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
 
     // Sponge State
     /// the sponge's state
@@ -46,7 +50,7 @@ pub struct PoseidonSpongeGadget<F: PrimeField> {
     pub mode: DuplexSpongeMode,
 }
 
-impl<F: PrimeField> PoseidonSpongeGadget<F> {
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadget<F, RATE, CAPACITY> {
     fn apply_s_box<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -102,11 +106,13 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
     fn permute<CS: ConstraintSystem<F>>(&mut self, mut cs: CS) -> Result<(), SynthesisError> {
         let full_rounds_over_2 = self.parameters.full_rounds / 2;
         let mut state = self.state.clone();
+
         for i in 0..full_rounds_over_2 {
             self.apply_ark(cs.ns(|| format!("apply_ark {}", i)), &mut state, i)?;
             self.apply_s_box(cs.ns(|| format!("apply_s_box {}", i)), &mut state, true)?;
             self.apply_mds(cs.ns(|| format!("apply_mds {}", i)), &mut state)?;
         }
+
         for i in full_rounds_over_2..(full_rounds_over_2 + self.parameters.partial_rounds) {
             self.apply_ark(cs.ns(|| format!("apply_ark {}", i)), &mut state, i)?;
             self.apply_s_box(cs.ns(|| format!("apply_s_box {}", i)), &mut state, false)?;
@@ -131,7 +137,7 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
         mut rate_start_index: usize,
         elements: &[FpGadget<F>],
     ) -> Result<(), SynthesisError> {
-        if elements.len() == 0 {
+        if elements.is_empty() {
             return Ok(());
         }
 
@@ -140,10 +146,10 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
         let mut loop_counter = 0;
         loop {
             // if we can finish in this call
-            if rate_start_index + remaining_elements.len() <= self.parameters.rate {
+            if rate_start_index + remaining_elements.len() <= RATE {
                 for (i, element) in remaining_elements.iter().enumerate() {
-                    self.state[self.parameters.capacity + i + rate_start_index]
-                        .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), &element)?;
+                    self.state[CAPACITY + i + rate_start_index]
+                        .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), element)?;
                 }
                 self.mode = DuplexSpongeMode::Absorbing {
                     next_absorb_index: rate_start_index + remaining_elements.len(),
@@ -152,10 +158,10 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
                 return Ok(());
             }
             // otherwise absorb (rate - rate_start_index) elements
-            let num_elements_absorbed = self.parameters.rate - rate_start_index;
+            let num_elements_absorbed = RATE - rate_start_index;
             for (i, element) in remaining_elements.iter().enumerate().take(num_elements_absorbed) {
-                self.state[self.parameters.capacity + i + rate_start_index]
-                    .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), &element)?;
+                self.state[CAPACITY + i + rate_start_index]
+                    .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), element)?;
             }
             self.permute(cs.ns(|| format!("permute {}", loop_counter)))?;
             // the input elements got truncated by num elements absorbed
@@ -177,10 +183,9 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
         let mut loop_counter = 0;
         loop {
             // if we can finish in this call
-            if rate_start_index + remaining_output.len() <= self.parameters.rate {
+            if rate_start_index + remaining_output.len() <= RATE {
                 remaining_output.clone_from_slice(
-                    &self.state[self.parameters.capacity + rate_start_index
-                        ..(self.parameters.capacity + remaining_output.len() + rate_start_index)],
+                    &self.state[CAPACITY + rate_start_index..(CAPACITY + remaining_output.len() + rate_start_index)],
                 );
                 self.mode = DuplexSpongeMode::Squeezing {
                     next_squeeze_index: rate_start_index + remaining_output.len(),
@@ -188,14 +193,13 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
                 return Ok(());
             }
             // otherwise squeeze (rate - rate_start_index) elements
-            let num_elements_squeezed = self.parameters.rate - rate_start_index;
+            let num_elements_squeezed = RATE - rate_start_index;
             remaining_output[..num_elements_squeezed].clone_from_slice(
-                &self.state[self.parameters.capacity + rate_start_index
-                    ..(self.parameters.capacity + num_elements_squeezed + rate_start_index)],
+                &self.state[CAPACITY + rate_start_index..(CAPACITY + num_elements_squeezed + rate_start_index)],
             );
 
             // Unless we are done with squeezing in this call, permute.
-            if remaining_output.len() != self.parameters.rate {
+            if remaining_output.len() != RATE {
                 self.permute(cs.ns(|| format!("permute {}", loop_counter)))?;
             }
             // Repeat with updated output slices and rate start index
@@ -207,21 +211,27 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
     }
 }
 
-impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadget<F> {
+impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize>
+    AllocGadget<PoseidonParameters<F, RATE, CAPACITY>, F> for PoseidonSpongeGadget<F, RATE, CAPACITY>
+{
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PoseidonParameters<F>>,
+        T: Borrow<PoseidonParameters<F, RATE, CAPACITY>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let parameters = value_gen()?.borrow().clone();
+        let parameters = Arc::new(value_gen()?.borrow().clone());
 
-        Ok(Self::new(cs, &parameters))
+        Ok(Self::with_parameters(cs, &parameters))
     }
 
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<PoseidonParameters<F>>, CS: ConstraintSystem<F>>(
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonParameters<F, RATE, CAPACITY>>,
+        CS: ConstraintSystem<F>,
+    >(
         _cs: CS,
         _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -230,7 +240,7 @@ impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadg
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PoseidonParameters<F>>,
+        T: Borrow<PoseidonParameters<F, RATE, CAPACITY>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -240,12 +250,20 @@ impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadg
     }
 }
 
-impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeGadget<F> {
-    type Parameters = PoseidonParameters<F>;
+impl<F: PoseidonDefaultParametersField, const RATE: usize>
+    DefaultCapacityAlgebraicSpongeVar<F, PoseidonSponge<F, RATE, 1>, RATE> for PoseidonSpongeGadget<F, RATE, 1>
+{
+}
 
-    fn new<CS: ConstraintSystem<F>>(mut cs: CS, parameters: &Self::Parameters) -> Self {
+impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize>
+    AlgebraicSpongeVar<F, PoseidonSponge<F, RATE, CAPACITY>, RATE, CAPACITY>
+    for PoseidonSpongeGadget<F, RATE, CAPACITY>
+{
+    type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
+
+    fn with_parameters<CS: ConstraintSystem<F>>(mut cs: CS, parameters: &Self::Parameters) -> Self {
         let zero = FpGadget::<F>::zero(cs.ns(|| "zero")).unwrap();
-        let state = vec![zero; parameters.rate + parameters.capacity];
+        let state = vec![zero; RATE + CAPACITY];
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
         Self {
@@ -253,6 +271,19 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             state,
             mode,
         }
+    }
+
+    fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F, RATE, CAPACITY>) -> Self {
+        let params = pfs.parameters.clone();
+        let mut sponge_var = Self::with_parameters(cs.ns(|| "alloc sponge"), &params);
+
+        for (i, state_elem) in pfs.state.iter().enumerate() {
+            sponge_var.state[i] =
+                FpGadget::<F>::alloc_constant(cs.ns(|| format!("alloc_elems_{}", i)), || Ok(*state_elem)).unwrap();
+        }
+        sponge_var.mode = pfs.mode.clone();
+
+        sponge_var
     }
 
     fn absorb<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a FpGadget<F>>>(
@@ -268,14 +299,14 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             res
         };
 
-        if input.len() == 0 {
+        if input.is_empty() {
             return Ok(());
         }
 
         match self.mode {
             DuplexSpongeMode::Absorbing { next_absorb_index } => {
                 let mut absorb_index = next_absorb_index;
-                if absorb_index == self.parameters.rate {
+                if absorb_index == RATE {
                     self.permute(cs.ns(|| "absorb permute"))?;
                     absorb_index = 0;
                 }
@@ -308,7 +339,7 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             }
             DuplexSpongeMode::Squeezing { next_squeeze_index } => {
                 let mut squeeze_index = next_squeeze_index;
-                if squeeze_index == self.parameters.rate {
+                if squeeze_index == RATE {
                     self.permute(cs.ns(|| "squeeze permute"))?;
                     squeeze_index = 0;
                 }
@@ -339,8 +370,8 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         mut cs: CS,
         input: &[FpGadget<F>],
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
-        let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc"), &params);
+        let params = Arc::new(F::get_default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap());
+        let mut sponge = PoseidonSpongeGadget::<F, RATE, 1>::with_parameters(cs.ns(|| "alloc"), &params);
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
         let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())

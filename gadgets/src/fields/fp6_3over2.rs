@@ -107,7 +107,7 @@ where
         // c1 = (a0 + a1) * (b0 + b1) - v0 - v1 + NONRESIDUE * v2
         //    = (a0 + a1) * b1 - v1
         let c1 = a0_plus_a1
-            .mul(cs.ns(|| "third mul"), &c1)?
+            .mul(cs.ns(|| "third mul"), c1)?
             .sub(cs.ns(|| "second sub"), &v1)?;
         // c2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
         //    = v1
@@ -131,7 +131,7 @@ where
         let a0_plus_a2 = self.c0.add(cs.ns(|| "a0 + a2"), &self.c2)?;
 
         let b1_plus_b2 = c1.clone();
-        let b0_plus_b1 = c0.add(cs.ns(|| "b0 + b1"), &c1)?;
+        let b0_plus_b1 = c0.add(cs.ns(|| "b0 + b1"), c1)?;
         let b0_plus_b2 = c0.clone();
 
         let c0 = {
@@ -481,7 +481,7 @@ where
             self.get_value().and_then(|val| val.inverse()).get()
         })?;
         let one = Self::one(cs.ns(|| "one"))?;
-        inverse.mul_equals(cs.ns(|| "check inverse"), &self, &one)?;
+        inverse.mul_equals(cs.ns(|| "check inverse"), self, &one)?;
         Ok(inverse)
     }
 
@@ -592,7 +592,7 @@ where
             let mut inner = half_v0
                 .sub(c0_cs.ns(|| "sub1"), &half_v1)?
                 .sub(c0_cs.ns(|| "sub2"), &one_sixth_v2)?
-                .add(c0_cs.ns(|| "add3"), &one_sixth_v3)?
+                .add(c0_cs.ns(|| "add3"), one_sixth_v3)?
                 .sub(c0_cs.ns(|| "sub4"), &two_v4)?;
             let non_residue_times_inner = inner.mul_by_constant_in_place(&mut c0_cs, &P::NONRESIDUE)?;
             v0.add(c0_cs.ns(|| "add5"), non_residue_times_inner)?
@@ -608,7 +608,7 @@ where
                 .negate_in_place(c1_cs.ns(|| "neg1"))?
                 .add(c1_cs.ns(|| "add1"), &v1)?
                 .sub(c1_cs.ns(|| "sub2"), one_third_v2)?
-                .sub(c1_cs.ns(|| "sub3"), &one_sixth_v3)?
+                .sub(c1_cs.ns(|| "sub3"), one_sixth_v3)?
                 .add(c1_cs.ns(|| "add4"), &two_v4)?
                 .add(c1_cs.ns(|| "add5"), &non_residue_v4)?
         };

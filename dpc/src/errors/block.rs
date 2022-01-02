@@ -28,10 +28,13 @@ pub enum BlockError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    Message(String),
+    CRHError(#[from] snarkvm_algorithms::CRHError),
 
     #[error("{}", _0)]
-    TransactionError(#[from] crate::TransactionError),
+    MerkleError(#[from] snarkvm_algorithms::MerkleError),
+
+    #[error("{}", _0)]
+    Message(String),
 }
 
 impl From<std::io::Error> for BlockError {

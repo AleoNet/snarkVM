@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fiat_shamir::{AlgebraicSponge, FiatShamirError, FiatShamirRng},
+    fiat_shamir::{DefaultCapacityAlgebraicSponge, FiatShamirError, FiatShamirRng},
     PhantomData,
     Vec,
 };
+use smallvec::SmallVec;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     nonnative::{
@@ -32,23 +33,42 @@ use snarkvm_utilities::{FromBits, ToBits};
 use rand_core::{Error, RngCore};
 
 /// An RNG from any algebraic sponge
-pub struct FiatShamirAlgebraicSpongeRng<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>> {
+#[derive(Clone, Debug)]
+pub struct FiatShamirAlgebraicSpongeRng<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    S: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+> {
     /// The algebraic sponge.
     pub(super) s: S,
     #[doc(hidden)]
-    _target_field: PhantomData<TargetField>,
-    #[doc(hidden)]
-    _base_field: PhantomData<BaseField>,
+    _phantom: PhantomData<(TargetField, BaseField)>,
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>>
-    FiatShamirRng<TargetField, BaseField> for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
+impl<TargetField, BaseField, S> FiatShamirRng<TargetField, BaseField>
+    for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    S: DefaultCapacityAlgebraicSponge<BaseField, 6>,
 {
+    type Parameters = S::Parameters;
+
+    fn sample_params() -> Self::Parameters {
+        S::sample_parameters()
+    }
+
     fn new() -> Self {
         Self {
-            s: S::new(),
-            _target_field: PhantomData,
-            _base_field: PhantomData,
+            s: S::with_default_parameters(),
+            _phantom: PhantomData,
+        }
+    }
+
+    fn with_parameters(params: &Self::Parameters) -> Self {
+        Self {
+            s: S::with_parameters(params),
+            _phantom: PhantomData,
         }
     }
 
@@ -95,8 +115,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
         Ok(Self::get_elements_from_sponge(&mut self.s, num, false))
     }
 
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError> {
-        Ok(self.s.squeeze(num))
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError> {
+        Ok(self.s.squeeze_field_elements(num))
     }
 
     fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
@@ -104,7 +124,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>> RngCore
+impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>> RngCore
     for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
     fn next_u32(&mut self) -> u32 {
@@ -141,7 +161,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
         let len = dest.len() * 8;
 
         let num_of_elements = (capacity + len - 1) / len;
-        let elements = self.s.squeeze(num_of_elements);
+        let elements = self.s.squeeze_field_elements(num_of_elements);
 
         let mut bits = Vec::<bool>::new();
         for elem in elements.iter() {
@@ -173,7 +193,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>>
+impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>>
     FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions), both of which are P::BaseField.
@@ -250,7 +270,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
         let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
-        let src_elements = sponge.squeeze(num_elements);
+        let src_elements = sponge.squeeze_field_elements(num_elements);
         let mut dest_bits = Vec::<bool>::new();
 
         let skip = (BaseField::Parameters::REPR_SHAVE_BITS + 1) as usize;

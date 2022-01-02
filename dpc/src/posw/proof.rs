@@ -14,125 +14,334 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Network;
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use serde::{
-    de::{Error as DeserializeError, SeqAccess, Visitor},
-    ser::SerializeTuple,
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
-};
-use std::{
-    fmt::{
-        Debug,
-        Display,
-        Formatter,
-        {self},
-    },
+use crate::{Network, PoSWError};
+use snarkvm_algorithms::{crh::sha256d_to_u64, SNARK};
+use snarkvm_utilities::{
+    fmt,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::Deref,
+    str::FromStr,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
 };
 
-/// A Proof of Succinct Work is a SNARK proof.
-#[derive(Clone, PartialEq, Eq)]
-pub struct ProofOfSuccinctWork<N: Network>(N::PoSWProof);
+use anyhow::{anyhow, Result};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
-impl<N: Network> ProofOfSuccinctWork<N> {
+/// A wrapper enum for a PoSW proof.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PoSWProof<N: Network> {
+    NonHiding(N::PoSWProof),
+    Hiding(crate::testnet2::DeprecatedPoSWProof<N>),
+}
+
+impl<N: Network> PoSWProof<N> {
+    ///
+    /// Initializes a new instance of a PoSW proof.
+    ///
     pub fn new(proof: N::PoSWProof) -> Self {
-        Self(proof)
+        Self::NonHiding(proof)
     }
 
-    /// Returns the proof size in bytes.
-    pub fn size() -> usize {
-        N::POSW_PROOF_SIZE_IN_BYTES
+    ///
+    /// Initializes a new instance of a hiding PoSW proof.
+    ///
+    pub fn new_hiding(proof: crate::testnet2::DeprecatedPoSWProof<N>) -> Self {
+        Self::Hiding(proof)
+    }
+
+    ///
+    /// Returns `true` if the PoSW proof is hiding.
+    ///
+    pub fn is_hiding(&self) -> bool {
+        match self {
+            Self::NonHiding(..) => false,
+            Self::Hiding(..) => true,
+        }
+    }
+
+    ///
+    /// Returns the proof difficulty, determined by double-hashing the proof bytes to a u64.
+    ///
+    pub fn to_proof_difficulty(&self) -> Result<u64> {
+        Ok(sha256d_to_u64(&self.to_bytes_le()?))
+    }
+
+    ///
+    /// Returns `true` if the PoSW proof is valid.
+    ///
+    pub fn verify(
+        &self,
+        verifying_key: &<<N as Network>::PoSWSNARK as SNARK>::VerifyingKey,
+        inputs: &[N::InnerScalarField],
+    ) -> bool {
+        match self {
+            Self::NonHiding(proof) => {
+                // Ensure the proof is valid.
+                if !<<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof).unwrap() {
+                    eprintln!("PoSW proof verification failed");
+                    return false;
+                }
+            }
+            Self::Hiding(proof) => {
+                let verifying_key =
+                    match <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::VerifyingKey::from_bytes_le(
+                        &verifying_key.to_bytes_le().unwrap(),
+                    ) {
+                        Ok(vk) => vk,
+                        Err(error) => {
+                            eprintln!("Failed to read deprecated PoSW VK from bytes: {}", error);
+                            return false;
+                        }
+                    };
+
+                // Ensure the proof is valid.
+                if !<crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs.to_vec(), proof)
+                    .unwrap()
+                {
+                    eprintln!("[deprecated] PoSW proof verification failed");
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    /// Returns the PoSW proof size in bytes.
+    pub fn size(&self) -> usize {
+        N::HEADER_PROOF_SIZE_IN_BYTES
     }
 }
 
-impl<N: Network> From<&N::PoSWProof> for ProofOfSuccinctWork<N> {
-    #[inline]
-    fn from(proof: &N::PoSWProof) -> Self {
-        Self::new(proof.clone())
-    }
-}
-
-impl<N: Network> FromBytes for ProofOfSuccinctWork<N> {
+impl<N: Network> FromBytes for PoSWProof<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self::new(FromBytes::read_le(&mut reader)?))
+        let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
+        reader.read_exact(&mut buffer)?;
+
+        if buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
+            if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
+                return Ok(Self::NonHiding(proof));
+            }
+        } else if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
+            return Ok(Self::Hiding(proof));
+        }
+
+        Err(PoSWError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
     }
 }
 
-impl<N: Network> ToBytes for ProofOfSuccinctWork<N> {
+impl<N: Network> ToBytes for PoSWProof<N> {
     #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write_le(&mut writer)
-    }
-}
-
-impl<'de, N: Network> Deserialize<'de> for ProofOfSuccinctWork<N> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ArrayVisitor<N: Network>(PhantomData<N>);
-
-        impl<'de, N: Network> Visitor<'de> for ArrayVisitor<N> {
-            type Value = ProofOfSuccinctWork<N>;
-
-            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-                formatter.write_str("a valid proof")
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        match self {
+            Self::NonHiding(proof) => {
+                let mut buffer = proof.to_bytes_le().unwrap(); // TODO (howardwu): Handle this unwrap.
+                buffer.resize(N::HEADER_PROOF_SIZE_IN_BYTES, 0u8);
+                buffer.write_le(writer)
             }
-
-            fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<ProofOfSuccinctWork<N>, S::Error> {
-                let mut bytes = vec![0; ProofOfSuccinctWork::<N>::size()];
-                for b in &mut bytes[..] {
-                    *b = seq
-                        .next_element()?
-                        .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
-                }
-                Ok(ProofOfSuccinctWork::read_le(&bytes[..]).expect("Failed to deserialize proof"))
-            }
+            Self::Hiding(proof) => proof.write_le(writer),
         }
-
-        deserializer.deserialize_tuple(Self::size(), ArrayVisitor::<N>(PhantomData))
     }
 }
 
-impl<N: Network> Serialize for ProofOfSuccinctWork<N> {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let mut tup = s.serialize_tuple(Self::size())?;
-        for byte in &self.to_bytes_le().expect("Failed to serialize proof") {
-            tup.serialize_element(byte)?;
-        }
-        tup.end()
+impl<N: Network> FromStr for PoSWProof<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(header: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(header)?)
     }
 }
 
-impl<N: Network> Display for ProofOfSuccinctWork<N> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl<N: Network> fmt::Display for PoSWProof<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
-            hex::encode(&self.to_bytes_le().expect("Failed to serialize proof for Display"))
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
         )
     }
 }
 
-impl<N: Network> Debug for ProofOfSuccinctWork<N> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ProofOfSuccinctWork({})",
-            hex::encode(&self.to_bytes_le().expect("Failed to serialize proof for Debug"))
-        )
+impl<N: Network> Serialize for PoSWProof<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => {
+                let mut header = serializer.serialize_struct("PoSWProof", 1)?;
+                match self {
+                    Self::NonHiding(proof) => header.serialize_field("non_hiding", proof)?,
+                    Self::Hiding(proof) => header.serialize_field("hiding", proof)?,
+                }
+                header.end()
+            }
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
     }
 }
 
-impl<N: Network> Deref for ProofOfSuccinctWork<N> {
-    type Target = N::PoSWProof;
+impl<'de, N: Network> Deserialize<'de> for PoSWProof<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let proof = serde_json::Value::deserialize(deserializer)?;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+                if let Ok(proof) = serde_json::from_value(proof["non_hiding"].clone()) {
+                    Ok(Self::NonHiding(proof))
+                } else if let Ok(proof) = serde_json::from_value(proof["hiding"].clone()) {
+                    Ok(Self::Hiding(proof))
+                } else {
+                    Err(anyhow!("Invalid human-readable deserialization")).map_err(de::Error::custom)?
+                }
+            }
+            false => {
+                FromBytesDeserializer::<Self>::deserialize(deserializer, "PoSW proof", N::HEADER_PROOF_SIZE_IN_BYTES)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{prelude::*, testnet1::Testnet1, testnet2::Testnet2, Block};
+    use snarkvm_utilities::ToBytes;
+
+    use core::sync::atomic::AtomicBool;
+    use rand::thread_rng;
+
+    #[test]
+    fn test_posw_no_zk() {
+        let rng = &mut thread_rng();
+        let recipient = Account::<Testnet2>::new(rng).address();
+        let terminator = AtomicBool::new(false);
+
+        let mut ledger = Ledger::<Testnet2>::new().unwrap();
+
+        // Check the genesis block.
+        // This will use a hiding PoSW Marlin mode.
+        {
+            assert_eq!(0, ledger.latest_block_height());
+            let latest_block_header = ledger.latest_block().unwrap().header().clone();
+            let latest_proof = latest_block_header.proof();
+            assert_eq!(
+                latest_proof.to_bytes_le().unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
+            assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
+            assert!(latest_proof.is_hiding());
+        }
+
+        // Check block 1.
+        // This will use a hiding PoSW Marlin mode.
+        {
+            ledger.mine_next_block(recipient, true, &terminator, rng).unwrap();
+            assert_eq!(1, ledger.latest_block_height());
+
+            let latest_block_header = ledger.latest_block().unwrap().header().clone();
+            let latest_proof = latest_block_header.proof();
+            assert_eq!(
+                latest_proof.to_bytes_le().unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
+            assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
+            assert!(latest_proof.is_hiding());
+        }
+
+        // Check block 2.
+        // This will use a non-hiding PoSW Marlin mode.
+        {
+            ledger.mine_next_block(recipient, true, &terminator, rng).unwrap();
+            assert_eq!(2, ledger.latest_block_height());
+
+            let latest_block_header = ledger.latest_block().unwrap().header().clone();
+            let latest_proof = latest_block_header.proof();
+            assert_eq!(
+                latest_proof.to_bytes_le().unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            ); // NOTE: Marlin proofs use compressed serialization
+            assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
+            assert!(!latest_proof.is_hiding());
+        }
+    }
+
+    #[test]
+    fn test_genesis_proof() {
+        use snarkvm_parameters::Genesis;
+        {
+            let block =
+                Block::<Testnet1>::read_le(&snarkvm_parameters::testnet1::GenesisBlock::load_bytes()[..]).unwrap();
+            let proof = block.header().proof();
+            assert!(!proof.is_hiding());
+            assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet1::HEADER_PROOF_SIZE_IN_BYTES);
+            assert_eq!(
+                bincode::serialize(&proof).unwrap().len(),
+                Testnet1::HEADER_PROOF_SIZE_IN_BYTES
+            );
+        }
+        {
+            let block =
+                Block::<Testnet2>::read_le(&snarkvm_parameters::testnet2::GenesisBlock::load_bytes()[..]).unwrap();
+            let proof = block.header().proof();
+            assert!(proof.is_hiding());
+            assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
+            assert_eq!(
+                bincode::serialize(&proof).unwrap().len(),
+                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
+            );
+        }
+    }
+
+    #[test]
+    fn test_proof_serde_json() {
+        {
+            let proof = Testnet1::genesis_block().header().proof().clone();
+
+            // Serialize
+            let expected_string = proof.to_string();
+            let candidate_string = serde_json::to_string(&proof).unwrap();
+            assert_eq!(1134, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(expected_string, candidate_string);
+
+            // Deserialize
+            assert_eq!(proof, PoSWProof::from_str(&candidate_string).unwrap());
+            assert_eq!(proof, serde_json::from_str(&candidate_string).unwrap());
+        }
+        {
+            let proof = Testnet2::genesis_block().header().proof().clone();
+
+            // Serialize
+            let expected_string = proof.to_string();
+            let candidate_string = serde_json::to_string(&proof).unwrap();
+            assert_eq!(1258, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(expected_string, candidate_string);
+
+            // Deserialize
+            assert_eq!(proof, PoSWProof::from_str(&candidate_string).unwrap());
+            assert_eq!(proof, serde_json::from_str(&candidate_string).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_proof_bincode() {
+        {
+            let proof = Testnet1::genesis_block().header().proof().clone();
+
+            let expected_bytes = proof.to_bytes_le().unwrap();
+            assert_eq!(&expected_bytes[..], &bincode::serialize(&proof).unwrap()[..]);
+
+            assert_eq!(proof, PoSWProof::read_le(&expected_bytes[..]).unwrap());
+            assert_eq!(proof, bincode::deserialize(&expected_bytes[..]).unwrap());
+        }
+        {
+            let proof = Testnet2::genesis_block().header().proof().clone();
+
+            let expected_bytes = proof.to_bytes_le().unwrap();
+            assert_eq!(&expected_bytes[..], &bincode::serialize(&proof).unwrap()[..]);
+
+            assert_eq!(proof, PoSWProof::read_le(&expected_bytes[..]).unwrap());
+            assert_eq!(proof, bincode::deserialize(&expected_bytes[..]).unwrap());
+        }
     }
 }

@@ -17,6 +17,9 @@
 pub mod account;
 pub use account::*;
 
+pub mod bech32m;
+pub use bech32m::*;
+
 pub mod block;
 pub use block::*;
 
@@ -25,9 +28,6 @@ pub use posw::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod transaction;
-pub use transaction::*;
 
 pub mod virtual_machine;
 pub use virtual_machine::*;

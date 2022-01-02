@@ -43,7 +43,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         // Construct the input length as a field element.
         let input_length = {
             let mut buffer = input.len().to_le_bytes().to_vec();
-            buffer.resize(F::size_in_bits() + 7 / 8, 0u8);
+            buffer.resize((F::size_in_bits() + 7) / 8, 0u8);
             F::from_bytes_le(&buffer)?
         };
 
@@ -53,7 +53,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         preimage.extend_from_slice(input);
 
         // Evaluate the preimage.
-        let output = PoseidonCryptoHash::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::evaluate(preimage.as_slice())?;
+        let output = PoseidonCryptoHash::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::setup().evaluate(preimage.as_slice());
 
         end_timer!(timer);
         Ok(output)

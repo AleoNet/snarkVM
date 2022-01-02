@@ -48,7 +48,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.43"
+version = "1.0.52"
 
 [dependencies.derivative]
 version = "2"
@@ -57,10 +57,10 @@ version = "2"
 version = "0.9"
 
 [dependencies.itertools]
-version = "0.10.1"
+version = "0.10.3"
 
 [dependencies.num-bigint]
-version = "0.4.2"
+version = "0.4.3"
 default-features = false
 optional = true
 

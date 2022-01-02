@@ -18,7 +18,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
-use snarkvm_fields::ToConstraintField;
+use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -107,20 +107,32 @@ where
     PairingE: PairingEngine,
     P: PairingGadget<PairingE>,
 {
-    _pairing_engine: PhantomData<PairingE>,
-    _pairing_gadget: PhantomData<P>,
+    _phantom: PhantomData<(PairingE, P)>,
 }
 
 impl<PairingE, P, V> SNARKVerifierGadget<Groth16<PairingE, V>> for Groth16VerifierGadget<PairingE, P>
 where
     PairingE: PairingEngine,
-    V: ToConstraintField<PairingE::Fr>,
+    V: ToConstraintField<PairingE::Fr> + Clone,
     P: PairingGadget<PairingE>,
 {
     type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
     type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = ProofGadget<PairingE, P>;
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, P>;
+
+    fn input_gadget_from_bytes<CS: ConstraintSystem<PairingE::Fq>>(
+        _cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError> {
+        // First, we allocate the input according to the `ToConstraintField` impl wrt PairingE::Fr.
+        let max_size = (<PairingE::Fr as PrimeField>::Parameters::CAPACITY / 8) as usize;
+        let bits = bytes
+            .chunks(max_size)
+            .map(|chunk| chunk.iter().flat_map(|bytes| bytes.bits.iter()).copied().collect())
+            .collect::<Vec<_>>();
+        Ok(BooleanInputGadget::new(bits))
+    }
 
     fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
@@ -143,7 +155,7 @@ where
             let mut cs = cs.ns(|| "Process input");
             let mut g_ic = gamma_abc_g1_iter.next().cloned().unwrap();
             for (i, (input, b)) in public_inputs.val.iter().zip(gamma_abc_g1_iter).enumerate() {
-                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.into_iter().copied())?;
+                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.iter().copied())?;
             }
             g_ic
         };

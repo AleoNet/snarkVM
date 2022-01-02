@@ -14,19 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Network;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
+use crate::{AleoAmount, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Copy, Clone, Debug)]
 pub struct InnerPublicVariables<N: Network> {
     /// Transition ID
-    pub(super) transition_id: N::TransitionID,
-
+    transition_id: N::TransitionID,
+    value_balance: AleoAmount,
+    ledger_root: N::LedgerRoot,
+    local_transitions_root: N::TransactionID,
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
     /// Program ID
@@ -37,34 +37,60 @@ impl<N: Network> InnerPublicVariables<N> {
     pub(crate) fn blank() -> Self {
         Self {
             transition_id: Default::default(),
+            value_balance: AleoAmount::ZERO,
+            ledger_root: N::LedgerRoot::default(),
+            local_transitions_root: Default::default(),
             program_id: Some(N::ProgramID::default()),
         }
     }
 
-    pub(crate) fn new(transition_id: N::TransitionID, program_id: Option<N::ProgramID>) -> Self {
+    pub(crate) fn new(
+        transition_id: N::TransitionID,
+        value_balance: AleoAmount,
+        ledger_root: N::LedgerRoot,
+        local_transitions_root: N::TransactionID,
+        program_id: Option<N::ProgramID>,
+    ) -> Self {
         Self {
             transition_id,
+            value_balance,
+            ledger_root,
+            local_transitions_root,
             program_id,
         }
     }
 
-    /// Returns the transaction ID.
+    /// Returns the transition ID.
     pub(crate) fn transition_id(&self) -> N::TransitionID {
         self.transition_id
     }
+
+    /// Returns the value balance of the transition.
+    pub(crate) fn value_balance(&self) -> AleoAmount {
+        self.value_balance
+    }
+
+    /// Returns the ledger root.
+    pub(crate) fn ledger_root(&self) -> N::LedgerRoot {
+        self.ledger_root
+    }
+
+    pub(crate) fn local_transitions_root(&self) -> N::TransactionID {
+        self.local_transitions_root
+    }
 }
 
-impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N>
-where
-    MerkleTreeDigest<N::CommitmentsTreeParameters>: ToConstraintField<N::InnerScalarField>,
-{
+impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
+        v.extend_from_slice(&self.ledger_root.to_field_elements()?);
+        v.extend_from_slice(&self.local_transitions_root.to_field_elements()?);
 
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         }
 
+        v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
         v.extend_from_slice(&self.transition_id.to_field_elements()?);
 
         Ok(v)

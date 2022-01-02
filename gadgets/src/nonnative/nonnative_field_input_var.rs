@@ -197,7 +197,7 @@ where
 impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF> {
     fn from_field_elements<CS: ConstraintSystem<CF>>(
         mut cs: CS,
-        field_elements: &Vec<FpGadget<CF>>,
+        field_elements: &[FpGadget<CF>],
     ) -> Result<Self, SynthesisError> {
         // TODO (raychu86): Use constraint system specified optimization goal.
 

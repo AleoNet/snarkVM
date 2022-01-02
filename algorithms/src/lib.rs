@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![deny(unused_import_braces, trivial_casts, bare_trait_objects)]
-#![deny(unused_qualifications, variant_size_differences, stable_features)]
-#![deny(non_shorthand_field_patterns, unused_attributes)]
-#![deny(renamed_and_removed_lints, unused_allocation, unused_comparisons)]
-#![deny(const_err, unused_must_use, unused_mut, private_in_public)]
-#![deny(unused_extern_crates, trivial_numeric_casts)]
-// #![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate derivative;
