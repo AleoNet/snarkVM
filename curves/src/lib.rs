@@ -16,14 +16,10 @@
 
 #![allow(clippy::module_inception)]
 #![forbid(unsafe_code)]
-// Documentation
 // #![cfg_attr(nightly, feature(doc_cfg, external_doc))]
 // TODO (howardwu): Reenable after completing documentation in snarkVM-models.
 // #![cfg_attr(nightly, warn(missing_docs))]
-
-// once rust 1.54 is release
-// #![doc = include_str!("../documentation/the_aleo_curves/00_overview.md")]
-#![cfg_attr(nightly, doc(include = "../documentation/the_aleo_curves/00_overview.md"))]
+#![doc = include_str!("../documentation/the_aleo_curves/00_overview.md")]
 
 #[macro_use]
 extern crate derivative;

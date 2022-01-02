@@ -256,9 +256,7 @@ impl<P: Parameters> Group for Projective<P> {
 
     #[inline]
     fn double_in_place(&mut self) {
-        if self.is_zero() {
-            return;
-        } else {
+        if !self.is_zero() {
             // https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl
 
             // XX = X1^2

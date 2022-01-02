@@ -142,7 +142,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
-        self.mul(P::COFACTOR_INV).into()
+        self.mul(P::COFACTOR_INV)
     }
 
     fn into_projective(&self) -> Projective<P> {
@@ -260,7 +260,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
 
 impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
     fn mul_assign(&mut self, other: P::ScalarField) {
-        *self = self.mul(other).into()
+        *self = self.mul(other)
     }
 }
 
