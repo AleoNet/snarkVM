@@ -377,7 +377,7 @@ impl<E: PairingEngine> KZG10<E> {
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - &vk.h.mul(point).into_projective();
+        let inner = vk.beta_h.into_projective() - vk.h.mul(point).into_projective();
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
