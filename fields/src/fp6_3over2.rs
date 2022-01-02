@@ -66,15 +66,15 @@ impl<P: Fp6Parameters> Fp6<P> {
     }
 
     pub fn mul_by_fp(&mut self, element: &<P::Fp2Params as Fp2Parameters>::Fp) {
-        self.c0.mul_by_fp(&element);
-        self.c1.mul_by_fp(&element);
-        self.c2.mul_by_fp(&element);
+        self.c0.mul_by_fp(element);
+        self.c1.mul_by_fp(element);
+        self.c2.mul_by_fp(element);
     }
 
     pub fn mul_by_fp2(&mut self, element: &Fp2<P::Fp2Params>) {
-        self.c0.mul_assign(&element);
-        self.c1.mul_assign(&element);
-        self.c2.mul_assign(&element);
+        self.c0.mul_assign(element);
+        self.c1.mul_assign(element);
+        self.c2.mul_assign(element);
     }
 
     pub fn mul_by_1(&mut self, c1: &Fp2<P::Fp2Params>) {
@@ -266,10 +266,7 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
             tmp2.mul_assign(&c0);
             tmp1.add_assign(tmp2);
 
-            match tmp1.inverse() {
-                Some(t) => Some(Self::new(t * c0, t * c1, t * c2)),
-                None => None,
-            }
+            tmp1.inverse().map(|t| Self::new(t * c0, t * c1, t * c2))
         }
     }
 

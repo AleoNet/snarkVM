@@ -76,7 +76,7 @@ impl<N: Network> Transactions<N> {
     /// Returns `true` if the transactions are well-formed.
     pub fn is_valid(&self) -> bool {
         // Ensure the transactions list is not empty.
-        if self.transactions.len() == 0 {
+        if self.transactions.is_empty() {
             eprintln!("Cannot process validity checks on an empty transactions list");
             return false;
         }
@@ -226,7 +226,7 @@ impl<N: Network> FromStr for Transactions<N> {
     type Err = anyhow::Error;
 
     fn from_str(transactions: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&transactions)?)
+        Ok(serde_json::from_str(transactions)?)
     }
 }
 

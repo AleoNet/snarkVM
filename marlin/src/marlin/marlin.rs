@@ -616,7 +616,7 @@ impl<
             }
 
             let mut new_input = vec![TargetField::one()];
-            new_input.extend_from_slice(&public_input);
+            new_input.extend_from_slice(public_input);
             new_input.resize(core::cmp::max(public_input.len(), domain_x.size()), TargetField::zero());
             assert!(new_input.first().unwrap().is_one());
             new_input
@@ -643,7 +643,7 @@ impl<
         // First round
 
         if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -661,7 +661,7 @@ impl<
         // --------------------------------------------------------------------
         // Second round
         if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(&second_commitments);
+            fs_rng.absorb_native_field_elements(second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[1].field_elements,
@@ -678,7 +678,7 @@ impl<
         // --------------------------------------------------------------------
         // Third round
         if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(&third_commitments);
+            fs_rng.absorb_native_field_elements(third_commitments);
             if !proof.prover_messages[2].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[2].field_elements,

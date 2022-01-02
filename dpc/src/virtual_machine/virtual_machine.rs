@@ -187,6 +187,7 @@ impl<N: Network> VirtualMachine<N> {
     }
 
     /// Returns a response based on the current state of the virtual machine.
+    #[allow(clippy::too_many_arguments)]
     fn evaluate<R: Rng + CryptoRng>(
         &self,
         request: &Request<N>,
@@ -226,7 +227,7 @@ impl<N: Network> VirtualMachine<N> {
         let mut response_builder = ResponseBuilder::new()
             .add_request(request.clone())
             .add_output(Output::new(
-                function_inputs.recipient.clone(),
+                function_inputs.recipient,
                 function_inputs.amount,
                 function_inputs.record_payload.clone(),
                 Some(program_id),
@@ -235,7 +236,7 @@ impl<N: Network> VirtualMachine<N> {
         // Add the change address if the balance is not zero.
         if !caller_balance.is_zero() {
             response_builder = response_builder.add_output(Output::new(
-                function_inputs.caller.clone(),
+                function_inputs.caller,
                 caller_balance,
                 Default::default(),
                 None,
@@ -257,6 +258,7 @@ impl<N: Network> VirtualMachine<N> {
 
     // TODO (raychu86): Temporary solution. Handle execution elsewhere.
     /// Executes the request of a particular program execution and returns a transaction.
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_program<R: Rng + CryptoRng>(
         mut self,
         request: &Request<N>,
@@ -300,7 +302,7 @@ impl<N: Network> VirtualMachine<N> {
             Some(program_id),
         );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private.clone());
+        let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
         assert!(N::InnerSNARK::verify(
@@ -326,7 +328,7 @@ impl<N: Network> VirtualMachine<N> {
         // Construct the outer circuit public and private variables.
         let outer_public = OuterPublicVariables::new(inner_public, N::inner_circuit_id());
         let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof.into(), execution);
-        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private.clone());
+        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
         let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
 
         assert!(N::OuterSNARK::verify(
@@ -336,7 +338,7 @@ impl<N: Network> VirtualMachine<N> {
         )?);
 
         // Construct the transition.
-        let transition = Transition::<N>::new(&request, &response, outer_proof.into())?;
+        let transition = Transition::<N>::new(request, &response, outer_proof.into())?;
 
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;

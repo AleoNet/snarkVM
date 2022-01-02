@@ -120,7 +120,7 @@ impl<N: Network> BlockHeader<N> {
         // Ensure the block header is well-formed.
         match block_header.is_valid() {
             true => Ok(block_header),
-            false => Err(BlockError::Message("Invalid block header".to_string()).into()),
+            false => Err(BlockError::Message("Invalid block header".to_string())),
         }
     }
 
@@ -131,7 +131,7 @@ impl<N: Network> BlockHeader<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Mine the block.
-        let block_header = N::posw().mine(&block_template, terminator, rng)?;
+        let block_header = N::posw().mine(block_template, terminator, rng)?;
 
         // Ensure the block header is valid.
         match block_header.is_valid() {
@@ -150,11 +150,11 @@ impl<N: Network> BlockHeader<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Instantiate the circuit.
-        let mut circuit = PoSWCircuit::<N>::new(&block_template, UniformRand::rand(rng))?;
+        let mut circuit = PoSWCircuit::<N>::new(block_template, UniformRand::rand(rng))?;
 
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.
-        let proof = N::posw().prove_once_unchecked(&mut circuit, &block_template, terminator, rng)?;
+        let proof = N::posw().prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
 
         // Construct a block header.
         Ok(Self {
@@ -193,7 +193,7 @@ impl<N: Network> BlockHeader<N> {
                 // Ensure the timestamp in the block is greater than 0.
                 self.metadata.timestamp > 0i64
                     // Ensure the PoSW proof is valid.
-                    && N::posw().verify_from_block_header(&self)
+                    && N::posw().verify_from_block_header(self)
             }
         }
     }
@@ -209,7 +209,7 @@ impl<N: Network> BlockHeader<N> {
             // Ensure the cumulative weight in the genesis block is 0u128.
             && self.metadata.cumulative_weight == 0u128
             // Ensure the PoSW proof is valid.
-            && N::posw().verify_from_block_header(&self)
+            && N::posw().verify_from_block_header(self)
     }
 
     /// Returns the previous ledger root from the block header.
@@ -339,7 +339,7 @@ impl<N: Network> FromStr for BlockHeader<N> {
     type Err = anyhow::Error;
 
     fn from_str(header: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&header)?)
+        Ok(serde_json::from_str(header)?)
     }
 }
 

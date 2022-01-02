@@ -197,7 +197,7 @@ impl<N: Network> FromStr for BlockTemplate<N> {
     type Err = anyhow::Error;
 
     fn from_str(transactions: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&transactions)?)
+        Ok(serde_json::from_str(transactions)?)
     }
 }
 

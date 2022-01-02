@@ -53,7 +53,7 @@ impl<N: Network> Function<N> for Noop<N> {
         cs: &mut CS,
         public: &ProgramPublicVariables<N>,
     ) -> Result<(), SynthesisError> {
-        SynthesizedCircuit::Noop(public.clone()).generate_constraints(cs)?;
+        SynthesizedCircuit::Noop(*public).generate_constraints(cs)?;
         Ok(())
     }
 
@@ -63,9 +63,12 @@ impl<N: Network> Function<N> for Noop<N> {
         public: ProgramPublicVariables<N>,
         _private: &dyn ProgramPrivateVariables<N>,
     ) -> Result<N::ProgramProof> {
-        let circuit = SynthesizedCircuit::Noop(public.clone());
-        let proof =
-            <N::ProgramSNARK as SNARK>::prove(N::noop_circuit_proving_key(), &circuit, &mut rand::thread_rng())?.into();
+        let proof = <N::ProgramSNARK as SNARK>::prove(
+            N::noop_circuit_proving_key(),
+            &SynthesizedCircuit::Noop(public),
+            &mut rand::thread_rng(),
+        )?
+        .into();
         assert!(self.verify(&public, &proof));
         Ok(proof)
     }
@@ -74,6 +77,12 @@ impl<N: Network> Function<N> for Noop<N> {
     fn verify(&self, public: &ProgramPublicVariables<N>, proof: &N::ProgramProof) -> bool {
         <N::ProgramSNARK as SNARK>::verify(N::noop_circuit_verifying_key(), public, proof)
             .expect("Failed to verify noop function proof")
+    }
+}
+
+impl<N: Network> Default for Noop<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

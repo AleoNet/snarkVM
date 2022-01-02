@@ -204,6 +204,12 @@ impl<N: Network> ResponseBuilder<N> {
     }
 }
 
+impl<N: Network> Default for ResponseBuilder<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
