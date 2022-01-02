@@ -62,6 +62,7 @@ impl<'a, F: Field> From<&'a SparsePolynomial<F>> for DenseOrSparsePolynomial<'a,
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<F: Field> Into<DensePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
     fn into(self) -> DensePolynomial<F> {
         match self {

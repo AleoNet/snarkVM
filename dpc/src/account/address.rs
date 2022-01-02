@@ -146,7 +146,7 @@ impl<N: Network> FromStr for Address<N> {
             return Err(AccountError::InvalidCharacterLength(address.len()));
         }
 
-        let (hrp, data, variant) = bech32::decode(&address)?;
+        let (hrp, data, variant) = bech32::decode(address)?;
         if hrp != account_format::ADDRESS_PREFIX {
             return Err(AccountError::InvalidPrefix(hrp));
         }

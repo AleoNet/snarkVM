@@ -76,8 +76,8 @@ impl<P: Fp12Parameters> Fp12<P> {
     }
 
     pub fn mul_by_fp(&mut self, element: &<<P::Fp6Params as Fp6Parameters>::Fp2Params as Fp2Parameters>::Fp) {
-        self.c0.mul_by_fp(&element);
-        self.c1.mul_by_fp(&element);
+        self.c0.mul_by_fp(element);
+        self.c1.mul_by_fp(element);
     }
 
     pub fn conjugate(&mut self) {
@@ -90,12 +90,12 @@ impl<P: Fp12Parameters> Fp12<P> {
         let a2 = self.c0.c2 * c0;
         let a = Fp6::new(a0, a1, a2);
         let mut b = self.c1;
-        b.mul_by_01(&c3, &c4);
+        b.mul_by_01(c3, c4);
 
         let c0 = *c0 + c3;
         let c1 = c4;
         let mut e = self.c0 + self.c1;
-        e.mul_by_01(&c0, &c1);
+        e.mul_by_01(&c0, c1);
         self.c1 = e - (a + b);
         self.c0 = a + Self::mul_fp6_by_nonresidue(&b);
     }

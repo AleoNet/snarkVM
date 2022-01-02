@@ -82,31 +82,19 @@ impl<N: Network> Operation<N> {
     }
 
     pub fn is_noop(&self) -> bool {
-        match self {
-            Self::Noop => true,
-            _ => false,
-        }
+        matches!(self, Self::Noop)
     }
 
     pub fn is_coinbase(&self) -> bool {
-        match self {
-            Self::Coinbase(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Coinbase(..))
     }
 
     pub fn is_transfer(&self) -> bool {
-        match self {
-            Self::Transfer(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Transfer(..))
     }
 
     pub fn is_evaluate(&self) -> bool {
-        match self {
-            Self::Evaluate(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Evaluate(..))
     }
 }
 

@@ -237,7 +237,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             (-beta, "col".into()),
             (F::one(), "row_col".into()),
         ]);
-        b *= gamma * g_2_at_gamma + &(t_at_beta / k_size);
+        b *= gamma * g_2_at_gamma + (t_at_beta / k_size);
 
         let mut inner_sumcheck = a;
         inner_sumcheck -= &b;
@@ -322,7 +322,7 @@ pub trait UnnormalizedBivariateLagrangePoly<F: PrimeField> {
 impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F> {
     fn eval_unnormalized_bivariate_lagrange_poly(&self, x: F, y: F) -> F {
         if x != y {
-            (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y)) / &(x - y)
+            (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y)) / (x - y)
         } else {
             self.size_as_field_element * x.pow(&[(self.size() - 1) as u64])
         }

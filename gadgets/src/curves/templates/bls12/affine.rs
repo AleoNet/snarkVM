@@ -685,13 +685,7 @@ where
 {
     fn to_minimal_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let mut res_bits = self.x.to_bits_le(cs.ns(|| "X Coordinate To Bits"))?;
-        res_bits.push(
-            self.y
-                .to_bits_le(cs.ns(|| "Y Coordinate To Bits"))?
-                .first()
-                .unwrap()
-                .clone(),
-        );
+        res_bits.push(*self.y.to_bits_le(cs.ns(|| "Y Coordinate To Bits"))?.first().unwrap());
         res_bits.push(self.infinity);
         Ok(res_bits)
     }

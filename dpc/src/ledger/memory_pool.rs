@@ -28,6 +28,7 @@ pub struct MemoryPool<N: Network> {
     /// The list of unconfirmed commitments.
     commitments: HashSet<N::Commitment>,
     /// The set of open requests.
+    #[allow(dead_code)]
     requests: HashSet<Request<N>>,
 }
 
@@ -120,7 +121,7 @@ impl<N: Network> MemoryPool<N> {
     }
 
     /// Clear a list of transactions (and associated state) from the memory pool.
-    pub fn remove_transactions(&mut self, transactions: &Vec<Transaction<N>>) {
+    pub fn remove_transactions(&mut self, transactions: &[Transaction<N>]) {
         // This code section executes atomically.
 
         let mut memory_pool = self.clone();
@@ -143,5 +144,11 @@ impl<N: Network> MemoryPool<N> {
         self.transactions = Default::default();
         self.serial_numbers = Default::default();
         self.commitments = Default::default();
+    }
+}
+
+impl<N: Network> Default for MemoryPool<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }

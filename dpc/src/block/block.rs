@@ -333,7 +333,7 @@ impl<N: Network> FromStr for Block<N> {
     type Err = anyhow::Error;
 
     fn from_str(block: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&block)?)
+        Ok(serde_json::from_str(block)?)
     }
 }
 

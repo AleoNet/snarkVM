@@ -183,7 +183,7 @@ where
             eprintln!("before PC combining commitments: constraints: {}", cs.num_constraints());
         }
 
-        let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
+        let zero = PG::G1Gadget::zero(cs.ns(|| "g1_zero"))?;
 
         // Accumulate commitments and evaluations for each query.
         //
@@ -228,12 +228,10 @@ where
             let mut degree_bound_comms = Vec::<PG::G1Gadget>::new();
             let mut shift_powers = Vec::<PG::G2PreparedGadget>::new();
 
-            let mut opening_challenges_counter = 0;
-
             for (j, (commitment_lcs, value)) in comms_to_combine.into_iter().zip(values_to_combine).enumerate() {
+                let opening_challenges_counter = j;
                 let challenge = opening_challenges[opening_challenges_counter].clone();
                 let challenge_bits = opening_challenges_bits[opening_challenges_counter].clone();
-                opening_challenges_counter += 1;
 
                 for (k, commitment_lc) in commitment_lcs.iter().enumerate() {
                     let LCInfoEntry {
@@ -303,7 +301,7 @@ where
                                 let mut new_encoded = comm_times_challenge.clone();
                                 new_encoded = new_encoded.add(
                                     cs.ns(|| format!("new_encoded_add_base_power_{}_{}_{}_{}", i, j, k, l)),
-                                    &base_power,
+                                    base_power,
                                 )?;
 
                                 comm_times_challenge = PG::G1Gadget::conditionally_select(
@@ -447,7 +445,7 @@ where
                     if let Some(random_v) = &proof.random_v {
                         gamma_g_multiplier_reduced = gamma_g_multiplier_reduced.add(
                             &mut cs.ns(|| format!("gamma_g_multiplier_plus_randomizer_times_random_v_{}", i)),
-                            &random_v,
+                            random_v,
                         )?;
                     }
                     total_c = total_c.add(
@@ -558,7 +556,7 @@ where
             }
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
-            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)
+            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), rhs)
         }
     }
 }
@@ -675,7 +673,7 @@ where
             cs,
             prepared_verification_key,
             lc_info.as_slice(),
-            &query_set,
+            query_set,
             &evaluations,
             proofs,
             &rand_data.opening_challenges,

@@ -40,7 +40,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         Ok(Self {
             tree: Arc::new(MerkleTree::<N::LedgerRootParameters>::new::<N::BlockHash>(
                 Arc::new(N::ledger_root_parameters().clone()),
-                &vec![],
+                &[],
             )?),
             block_hashes: Default::default(),
             current_index: 0,
@@ -76,8 +76,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         }
 
         // Ensure the block hashes do not already exist in the tree.
-        let duplicate_block_hashes: Vec<_> = block_hashes.iter().filter(|c| self.contains_block_hash(c)).collect();
-        if !duplicate_block_hashes.is_empty() {
+        if block_hashes.iter().any(|c| self.contains_block_hash(c)) {
             return Err(anyhow!("The list of given block hashes contains duplicates"));
         }
 
@@ -88,14 +87,14 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         self.tree = match self.current_index {
             0 => Arc::new(MerkleTree::<N::LedgerRootParameters>::new::<N::BlockHash>(
                 Arc::new(N::ledger_root_parameters().clone()),
-                &block_hashes,
+                block_hashes,
             )?),
-            _ => Arc::new(self.tree.rebuild(self.current_index as usize, &block_hashes)?),
+            _ => Arc::new(self.tree.rebuild(self.current_index as usize, block_hashes)?),
         };
 
         self.block_hashes.extend(
             block_hashes
-                .into_iter()
+                .iter()
                 .enumerate()
                 .map(|(index, block_hash)| (*block_hash, start_index + index as u32)),
         );

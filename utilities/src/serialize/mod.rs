@@ -41,8 +41,7 @@ pub const fn number_of_bits_and_bytes(num_bits: usize) -> (usize, usize) {
 /// Return the number of bytes required to represent the given number of bits.
 #[inline]
 pub const fn number_of_bits_to_number_of_bytes(num_bits: usize) -> usize {
-    let num_bytes = (num_bits + 7) / 8;
-    num_bytes
+    (num_bits + 7) / 8
 }
 
 #[test]

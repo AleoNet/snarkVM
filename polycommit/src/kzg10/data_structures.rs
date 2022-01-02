@@ -269,16 +269,16 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
         let supported_bits = E::Fr::size_in_bits();
 
         let mut prepared_g = Vec::<E::G1Affine>::new();
-        let mut g = E::G1Projective::from(vk.g.clone());
+        let mut g = E::G1Projective::from(vk.g);
         for _ in 0..supported_bits {
-            prepared_g.push(g.clone().into());
+            prepared_g.push(g.into());
             g.double_in_place();
         }
 
         let mut prepared_gamma_g = Vec::<E::G1Affine>::new();
-        let mut gamma_g = E::G1Projective::from(vk.gamma_g.clone());
+        let mut gamma_g = E::G1Projective::from(vk.gamma_g);
         for _ in 0..supported_bits {
-            prepared_gamma_g.push(gamma_g.clone().into());
+            prepared_gamma_g.push(gamma_g.into());
             gamma_g.double_in_place();
         }
 
@@ -365,12 +365,12 @@ impl<E: PairingEngine> PreparedCommitment<E> {
     /// prepare `PreparedCommitment` from `Commitment`
     pub fn prepare(comm: &Commitment<E>) -> Self {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(comm.0.clone());
+        let mut cur = E::G1Projective::from(comm.0);
 
         let supported_bits = E::Fr::size_in_bits();
 
         for _ in 0..supported_bits {
-            prepared_comm.push(cur.clone().into());
+            prepared_comm.push(cur.into());
             cur.double_in_place();
         }
 

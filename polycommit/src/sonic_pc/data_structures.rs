@@ -39,9 +39,9 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
     /// prepare `PreparedCommitment` from `Commitment`
     fn prepare(&self) -> PreparedCommitment<E> {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(self.0.clone());
+        let mut cur = E::G1Projective::from(self.0);
         for _ in 0..128 {
-            prepared_comm.push(cur.clone().into());
+            prepared_comm.push(cur.into());
             cur.double_in_place();
         }
 
@@ -173,7 +173,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
         }
 
         if let Some(shifted_powers_of_gamma_g) = &shifted_powers_of_gamma_g {
-            for (_key, value) in shifted_powers_of_gamma_g {
+            for value in shifted_powers_of_gamma_g.values() {
                 hash_input.extend_from_slice(
                     &value
                         .to_bytes_le()
@@ -272,7 +272,7 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         }
 
         if let Some(shifted_powers_of_gamma_g) = &self.shifted_powers_of_gamma_g {
-            for (_key, value) in shifted_powers_of_gamma_g {
+            for value in shifted_powers_of_gamma_g.values() {
                 hash_input.extend_from_slice(
                     &value
                         .to_bytes_le()
@@ -359,11 +359,9 @@ impl_bytes!(VerifierKey);
 impl<E: PairingEngine> VerifierKey<E> {
     /// Find the appropriate shift for the degree bound.
     pub fn get_shift_power(&self, degree_bound: usize) -> Option<E::G2Affine> {
-        self.degree_bounds_and_neg_powers_of_h.as_ref().and_then(|v| {
-            v.binary_search_by(|(d, _)| d.cmp(&degree_bound))
-                .ok()
-                .map(|i| v[i].1.clone())
-        })
+        self.degree_bounds_and_neg_powers_of_h
+            .as_ref()
+            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1))
     }
 
     pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {

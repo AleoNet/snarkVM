@@ -178,7 +178,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
                 parameters
                     .inverse_powers_of_g
                     .iter()
-                    .map(|(d, affine)| (*d, (*affine).clone()))
+                    .map(|(d, affine)| (*d, *affine))
                     .collect::<Vec<(usize, E::G1Affine)>>(),
             )
         };
@@ -229,7 +229,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
                 ck.supported_degree(),
                 ck.max_degree,
                 enforced_degree_bounds,
-                &p,
+                p,
             )?;
 
             if terminator.load(Ordering::Relaxed) {
@@ -250,7 +250,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
                     .shifted_powers(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
                 let (shifted_comm, shifted_rand) =
-                    kzg10::KZG10::commit(&shifted_powers, &polynomial, hiding_bound, terminator, Some(rng))?;
+                    kzg10::KZG10::commit(&shifted_powers, polynomial, hiding_bound, terminator, Some(rng))?;
                 (Some(shifted_comm), Some(shifted_rand))
             } else {
                 (None, None)
@@ -295,7 +295,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
                 ck.supported_degree(),
                 ck.max_degree,
                 enforced_degree_bounds,
-                &polynomial,
+                polynomial,
             )?;
 
             // compute challenge^j and challenge^{j+1}.
@@ -310,7 +310,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
                 enforce_degree_bound = true;
                 let shifted_rand = rand.shifted_rand.as_ref().unwrap();
                 let (witness, shifted_rand_witness) =
-                    kzg10::KZG10::compute_witness_polynomial(polynomial.polynomial(), point, &shifted_rand)?;
+                    kzg10::KZG10::compute_witness_polynomial(polynomial.polynomial(), point, shifted_rand)?;
                 let challenge_j_1 = challenge_j * opening_challenge;
 
                 let shifted_witness = shift_polynomial(ck, &witness, degree_bound);
@@ -434,7 +434,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         end_timer!(norm_time);
         let proof_time = start_timer!(|| "Checking KZG10::Proof");
         let result =
-            kzg10::KZG10::batch_check(&vk.vk, &combined_comms, &combined_queries, &combined_evals, &proof, rng)?;
+            kzg10::KZG10::batch_check(&vk.vk, &combined_comms, &combined_queries, &combined_evals, proof, rng)?;
         end_timer!(proof_time);
         Ok(result)
     }
@@ -520,7 +520,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
             ck,
             lc_polynomials.iter(),
             lc_commitments.iter(),
-            &query_set,
+            query_set,
             opening_challenge,
             lc_randomness.iter(),
             rng,
@@ -605,7 +605,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         Self::batch_check(
             vk,
             &lc_commitments,
-            &query_set,
+            query_set,
             &evaluations,
             proof,
             opening_challenge,
@@ -687,7 +687,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
             ck,
             lc_polynomials.iter(),
             lc_commitments.iter(),
-            &query_set,
+            query_set,
             opening_challenges,
             lc_randomness.iter(),
         )?;
@@ -770,7 +770,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         Self::batch_check_individual_opening_challenges(
             vk,
             &lc_commitments,
-            &query_set,
+            query_set,
             &evaluations,
             proof,
             opening_challenges,
@@ -808,13 +808,12 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             let degree_bound = polynomial.degree_bound();
             assert_eq!(degree_bound.is_some(), rand.shifted_rand.is_some());
 
-            let enforced_degree_bounds: Option<&[usize]> =
-                ck.enforced_degree_bounds.as_ref().map(|bounds| bounds.as_slice());
+            let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
                 ck.max_degree,
                 enforced_degree_bounds,
-                &polynomial,
+                polynomial,
             )?;
 
             // compute challenge^j and challenge^{j+1}.
@@ -831,7 +830,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                 enforce_degree_bound = true;
                 let shifted_rand = rand.shifted_rand.as_ref().unwrap();
                 let (witness, shifted_rand_witness) =
-                    kzg10::KZG10::<E>::compute_witness_polynomial(polynomial.polynomial(), *point, &shifted_rand)?;
+                    kzg10::KZG10::<E>::compute_witness_polynomial(polynomial.polynomial(), *point, shifted_rand)?;
 
                 let challenge_j_1 = opening_challenges(opening_challenge_counter);
                 opening_challenge_counter += 1;
@@ -947,7 +946,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         }
         end_timer!(open_time);
 
-        Ok(proofs.into())
+        Ok(proofs)
     }
 
     /// Verifies that `value` is the evaluation at `x` of the polynomial
@@ -999,7 +998,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         assert_eq!(proof.len(), combined_queries.len());
         let proof_time = start_timer!(|| "Checking KZG10::Proof");
         let result =
-            kzg10::KZG10::batch_check(&vk.vk, &combined_comms, &combined_queries, &combined_evals, &proof, rng)?;
+            kzg10::KZG10::batch_check(&vk.vk, &combined_comms, &combined_queries, &combined_evals, proof, rng)?;
         end_timer!(proof_time);
         Ok(result)
     }
@@ -1090,7 +1089,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                 assert_eq!(degree_bound.is_some(), commitment.commitment().shifted_comm.is_some());
 
                 let v_i = evaluations
-                    .get(&(label.clone(), point.clone()))
+                    .get(&(label.clone(), *point))
                     .ok_or(Error::MissingEvaluation {
                         label: label.to_string(),
                     })?;
@@ -1108,7 +1107,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             end_timer!(lc_time);
 
             combined_comms.push(c);
-            combined_queries.push(point.clone());
+            combined_queries.push(*point);
             combined_evals.push(v);
         }
         let norm_time = start_timer!(|| "Normalizing combined commitments");
@@ -1147,7 +1146,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                 let shift_power = vk
                     .get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value).into();
+                let mut adjusted_comm = shifted_comm - shift_power.mul(value).into_projective();
                 adjusted_comm.mul_assign(challenge_i_1);
                 combined_comm += &adjusted_comm;
             }
@@ -1191,7 +1190,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                     .get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
 
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value).into();
+                let mut adjusted_comm = shifted_comm - shift_power.mul(value).into_projective();
 
                 adjusted_comm.mul_assign(challenge_i_1);
                 combined_comm += &adjusted_comm;

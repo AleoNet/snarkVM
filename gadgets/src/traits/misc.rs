@@ -22,7 +22,7 @@ pub trait MergeGadget<F: PrimeField>: Clone {
     fn merge<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
     fn merge_in_place<CS: ConstraintSystem<F>>(&mut self, cs: CS, other: &Self) -> Result<(), SynthesisError>;
     fn merge_many<CS: ConstraintSystem<F>>(mut cs: CS, elems: &[Self]) -> Result<Self, SynthesisError> {
-        assert!(elems.len() >= 1);
+        assert!(!elems.is_empty());
 
         let mut res = elems[0].clone();
         for (i, elem) in elems.iter().skip(1).enumerate() {

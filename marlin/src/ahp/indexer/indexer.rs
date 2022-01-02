@@ -49,9 +49,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         crate::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
         ics.make_matrices_square();
 
-        let mut a = ics.a_matrix();
-        let mut b = ics.b_matrix();
-        let mut c = ics.c_matrix();
+        let a = ics.a_matrix();
+        let b = ics.b_matrix();
+        let c = ics.c_matrix();
 
         let joint_matrix = sum_matrices(&a, &b, &c);
 
@@ -96,7 +96,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
-        let joint_arith = arithmetize_matrix(&joint_matrix, &mut a, &mut b, &mut c, domain_k, domain_h, x_domain);
+        let joint_arith = arithmetize_matrix(&joint_matrix, &a, &b, &c, domain_k, domain_h, x_domain);
         end_timer!(joint_arithmetization_time);
 
         end_timer!(index_time);

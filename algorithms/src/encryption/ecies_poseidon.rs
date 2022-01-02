@@ -200,13 +200,11 @@ where
             }
         }
 
-        randomizer.and_then(|randomizer| {
-            Some(
-                randomizer
-                    .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
-                    .into_affine()
-                    .to_x_coordinate(),
-            )
+        randomizer.map(|randomizer| {
+            randomizer
+                .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
+                .into_affine()
+                .to_x_coordinate()
         })
     }
 
@@ -239,7 +237,7 @@ where
         // Convert the message into bits.
         let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
-            let mut byte = byte.clone();
+            let mut byte = *byte;
             for _ in 0..8 {
                 plaintext_bits.push(byte & 1 == 1);
                 byte >>= 1;
@@ -296,21 +294,19 @@ where
             )?);
         }
         for (i, sponge_randomizer) in sponge_randomizers.iter().enumerate() {
-            plaintext_elements[i] = plaintext_elements[i] - sponge_randomizer;
+            plaintext_elements[i] -= sponge_randomizer;
         }
 
         // Unpack the packed bits.
         if plaintext_elements.is_empty() {
             return Err(EncryptionError::Message(
                 "The packed field elements must consist of at least one field element.".to_string(),
-            )
-            .into());
+            ));
         }
         if plaintext_elements.last().unwrap().is_zero() {
             return Err(EncryptionError::Message(
                 "The packed field elements must end with a non-zero element.".to_string(),
-            )
-            .into());
+            ));
         }
 
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
@@ -333,8 +329,7 @@ where
         if bits.len() % 8 != 0 {
             return Err(EncryptionError::Message(
                 "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
-            )
-            .into());
+            ));
         }
         // Here we do not use assertion since it can cause Rust panicking.
 

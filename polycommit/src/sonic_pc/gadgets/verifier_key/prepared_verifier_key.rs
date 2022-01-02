@@ -83,6 +83,7 @@ where
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<TargetCurve, BaseCurve, PG> Into<VerifierKeyVar<TargetCurve, BaseCurve, PG>>
     for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
 where
@@ -92,7 +93,7 @@ where
 {
     fn into(self) -> VerifierKeyVar<TargetCurve, BaseCurve, PG> {
         match self.origin_vk {
-            Some(vk) => vk.clone(),
+            Some(vk) => vk,
             None => {
                 eprintln!("Missing original vk");
                 panic!()

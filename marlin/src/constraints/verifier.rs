@@ -234,8 +234,8 @@ where
         let (num_opening_challenges, num_batching_rands, comm, query_set, evaluations) =
             AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_comm_query_eval_set(
                 cs.ns(|| "verifier_comm_query_eval_set"),
-                &prepared_verifying_key,
-                &proof,
+                prepared_verifying_key,
+                proof,
                 &verifier_state,
             )?;
 

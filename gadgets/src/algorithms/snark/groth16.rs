@@ -155,7 +155,7 @@ where
             let mut cs = cs.ns(|| "Process input");
             let mut g_ic = gamma_abc_g1_iter.next().cloned().unwrap();
             for (i, (input, b)) in public_inputs.val.iter().zip(gamma_abc_g1_iter).enumerate() {
-                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.into_iter().copied())?;
+                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.iter().copied())?;
             }
             g_ic
         };

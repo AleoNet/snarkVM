@@ -91,21 +91,17 @@ where
                 .map(|(i, p)| ProofVar::alloc_constant(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
-            #[allow(clippy::type_complexity)]
             let evals: Option<
                 Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
-            > = match evaluations {
-                None => None,
-                Some(evals_inner) => Some(
-                    evals_inner
-                        .iter()
-                        .enumerate()
-                        .map(|(i, e)| {
-                            NonNativeFieldVar::alloc_constant(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
-                        })
-                        .collect(),
-                ),
-            };
+            > = evaluations.map(|evals_inner| {
+                evals_inner
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| {
+                        NonNativeFieldVar::alloc_constant(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
+                    })
+                    .collect()
+            });
 
             Self { proofs, evals }
         })
@@ -135,21 +131,15 @@ where
                 .map(|(i, p)| ProofVar::alloc(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
-            #[allow(clippy::type_complexity)]
             let evals: Option<
                 Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
-            > = match evaluations {
-                None => None,
-                Some(evals_inner) => Some(
-                    evals_inner
-                        .iter()
-                        .enumerate()
-                        .map(|(i, e)| {
-                            NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
-                        })
-                        .collect(),
-                ),
-            };
+            > = evaluations.map(|evals_inner| {
+                evals_inner
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap())
+                    .collect()
+            });
 
             Self { proofs, evals }
         })
@@ -179,21 +169,17 @@ where
                 .map(|(i, p)| ProofVar::alloc_input(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
-            #[allow(clippy::type_complexity)]
             let evals: Option<
                 Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
-            > = match evaluations {
-                None => None,
-                Some(evals_inner) => Some(
-                    evals_inner
-                        .iter()
-                        .enumerate()
-                        .map(|(i, e)| {
-                            NonNativeFieldVar::alloc_input(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
-                        })
-                        .collect(),
-                ),
-            };
+            > = evaluations.map(|evals_inner| {
+                evals_inner
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| {
+                        NonNativeFieldVar::alloc_input(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
+                    })
+                    .collect()
+            });
 
             Self { proofs, evals }
         })

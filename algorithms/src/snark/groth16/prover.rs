@@ -208,7 +208,7 @@ where
     let b_g2_acc_time = start_timer!(|| "Compute B in G2");
     let b_query = &params.b_g2_query;
     let s_g2 = params.vk.delta_g2.mul(s);
-    let g2_b = calculate_coeff(s_g2.into(), &b_query, params.vk.beta_g2, &assignment);
+    let g2_b = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
 
     end_timer!(b_g2_acc_time);
 
@@ -216,7 +216,7 @@ where
     let c_acc_time = start_timer!(|| "Compute C");
 
     let h_query = &params.h_query;
-    let h_acc = VariableBaseMSM::multi_scalar_mul(&h_query, &h_assignment);
+    let h_acc = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
 
     let l_aux_source = &params.l_query;
     let l_aux_acc = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);

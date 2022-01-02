@@ -194,7 +194,7 @@ impl<
         // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = PC::trim(
-            &universal_srs,
+            universal_srs,
             index.max_degree(),
             supported_hiding_bound,
             Some(&coefficient_support),
@@ -283,7 +283,7 @@ impl<
         if MM::RECURSION {
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
-            fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
+            fs_rng.absorb_nonnative_field_elements(padded_public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(
                 &to_bytes_le![
@@ -448,9 +448,7 @@ impl<
         // Sanity check, whose length should be updated if the underlying structs are updated.
         assert_eq!(
             polynomials.len(),
-            AHPForR1CS::<TargetField, MM>::polynomial_labels()
-                .collect::<Vec<_>>()
-                .len()
+            AHPForR1CS::<TargetField, MM>::polynomial_labels().count()
         );
 
         // Gather commitments in one vector.
@@ -504,7 +502,7 @@ impl<
                 .iter()
                 .find(|lc| &lc.label == label)
                 .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
-            let evaluation = polynomials.get_lc_eval(&lc, *point)?;
+            let evaluation = polynomials.get_lc_eval(lc, *point)?;
             if !AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
                 evaluations_unsorted.push((label.to_string(), evaluation));
             }
@@ -616,7 +614,7 @@ impl<
             }
 
             let mut new_input = vec![TargetField::one()];
-            new_input.extend_from_slice(&public_input);
+            new_input.extend_from_slice(public_input);
             new_input.resize(core::cmp::max(public_input.len(), domain_x.size()), TargetField::zero());
             assert!(new_input.first().unwrap().is_one());
             new_input
@@ -643,7 +641,7 @@ impl<
         // First round
 
         if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -661,7 +659,7 @@ impl<
         // --------------------------------------------------------------------
         // Second round
         if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(&second_commitments);
+            fs_rng.absorb_native_field_elements(second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[1].field_elements,
@@ -678,7 +676,7 @@ impl<
         // --------------------------------------------------------------------
         // Third round
         if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(&third_commitments);
+            fs_rng.absorb_native_field_elements(third_commitments);
             if !proof.prover_messages[2].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[2].field_elements,

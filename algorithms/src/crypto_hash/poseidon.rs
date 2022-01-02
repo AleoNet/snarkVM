@@ -317,7 +317,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
     // Absorbs everything in elements, this does not end in an absorbtion.
     fn absorb_internal(&mut self, mut rate_start: usize, elements: &[F]) {
-        if elements.len() == 0 {
+        if elements.is_empty() {
             return;
         }
 
@@ -459,7 +459,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
     }
 
     fn absorb(&mut self, input: &[F]) {
-        if input.len() == 0 {
+        if input.is_empty() {
             return;
         }
 
@@ -648,9 +648,9 @@ pub fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
     let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
     let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
 
-    for i in 0..(RATE + 1) {
-        for j in 0..(RATE + 1) {
-            mds[i][j] = (xs[i] + &ys[j]).inverse().unwrap();
+    for (i, x) in xs.iter().enumerate().take(RATE + 1) {
+        for (j, y) in ys.iter().enumerate().take(RATE + 1) {
+            mds[i][j] = (*x + y).inverse().unwrap();
         }
     }
 

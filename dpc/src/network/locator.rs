@@ -92,8 +92,8 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for AleoLo
             return Err(Bech32mError::InvalidCharacterLength(string.len()));
         }
 
-        let (hrp, data, variant) = bech32::decode(&string)?;
-        if hrp.as_bytes() != &PREFIX.to_le_bytes() {
+        let (hrp, data, variant) = bech32::decode(string)?;
+        if hrp.as_bytes() != PREFIX.to_le_bytes() {
             return Err(Bech32mError::InvalidPrefix(hrp));
         };
         if data.is_empty() {
@@ -173,6 +173,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Borrow<F> for Aleo
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Into<Vec<F>> for AleoLocator<F, PREFIX> {
     #[inline]
     fn into(self) -> Vec<F> {

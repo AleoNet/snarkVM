@@ -67,7 +67,7 @@ where
 
     fn with_parameters(params: &Self::Parameters) -> Self {
         Self {
-            s: S::with_parameters(&params),
+            s: S::with_parameters(params),
             _phantom: PhantomData,
         }
     }

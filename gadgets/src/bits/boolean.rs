@@ -491,7 +491,7 @@ impl Boolean {
             cur = if let Some(b) = cur {
                 Some(Boolean::and(cs.ns(|| format!("AND {}", i)), &b, next)?)
             } else {
-                Some(next.clone())
+                Some(*next)
             };
         }
 
@@ -675,7 +675,7 @@ impl Boolean {
                 or_result = Boolean::or(
                     cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
                     &or_result,
-                    &should_be_zero,
+                    should_be_zero,
                 )?;
                 let _ = bits_iter.next().unwrap();
             }
@@ -737,7 +737,7 @@ impl Boolean {
                 or_result = Boolean::or(
                     cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
                     &or_result,
-                    &should_be_zero,
+                    should_be_zero,
                 )?;
                 let _ = bits_iter.next().unwrap();
             }
@@ -983,7 +983,7 @@ impl<F: PrimeField> CondSelectGadget<F> for Boolean {
 
 impl<F: PrimeField> ToConstraintFieldGadget<F> for Boolean {
     fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
-        let var = FpGadget::from_boolean(cs.ns(|| "fp_from_boolean"), self.clone())?;
+        let var = FpGadget::from_boolean(cs.ns(|| "fp_from_boolean"), *self)?;
         Ok(vec![var])
     }
 }
