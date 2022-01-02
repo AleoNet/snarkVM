@@ -83,6 +83,7 @@ where
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<TargetCurve, BaseCurve, PG> Into<VerifierKeyVar<TargetCurve, BaseCurve, PG>>
     for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
 where

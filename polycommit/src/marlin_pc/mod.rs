@@ -520,7 +520,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
             ck,
             lc_polynomials.iter(),
             lc_commitments.iter(),
-            &query_set,
+            query_set,
             opening_challenge,
             lc_randomness.iter(),
             rng,
@@ -1146,7 +1146,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                 let shift_power = vk
                     .get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value).into();
+                let mut adjusted_comm = shifted_comm - shift_power.mul(value).into_projective();
                 adjusted_comm.mul_assign(challenge_i_1);
                 combined_comm += &adjusted_comm;
             }
@@ -1190,7 +1190,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                     .get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
 
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value).into();
+                let mut adjusted_comm = shifted_comm - shift_power.mul(value).into_projective();
 
                 adjusted_comm.mul_assign(challenge_i_1);
                 combined_comm += &adjusted_comm;

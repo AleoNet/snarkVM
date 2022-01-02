@@ -179,7 +179,6 @@ where
                 .map(|(i, p)| ProofVar::alloc_input(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
-            #[allow(clippy::type_complexity)]
             let evals: Option<
                 Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
             > = match evaluations {

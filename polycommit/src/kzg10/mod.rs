@@ -192,7 +192,7 @@ impl<E: PairingEngine> KZG10<E> {
                 let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
 
                 for (i, affine) in list.iter().zip(affines.iter()) {
-                    map.insert(*i, affine.clone());
+                    map.insert(*i, *affine);
                 }
 
                 map
@@ -237,7 +237,7 @@ impl<E: PairingEngine> KZG10<E> {
             hiding_bound,
         ));
 
-        let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(&polynomial);
+        let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
         let mut commitment = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &plain_coeffs);
@@ -313,7 +313,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_witness_polynomial: Option<&Polynomial<E::Fr>>,
     ) -> Result<Proof<E>, Error> {
         Self::check_degree_is_too_large(witness_polynomial.degree(), powers.size())?;
-        let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(&witness_polynomial);
+        let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
         let witness_comm_time = start_timer!(|| "Computing commitment to witness polynomial");
         let mut w = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &witness_coeffs);
@@ -377,7 +377,7 @@ impl<E: PairingEngine> KZG10<E> {
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - &vk.h.mul(point).into();
+        let inner = vk.beta_h.into_projective() - &vk.h.mul(point).into_projective();
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
@@ -416,7 +416,7 @@ impl<E: PairingEngine> KZG10<E> {
             if let Some(random_v) = proof.random_v {
                 gamma_g_multiplier += &(randomizer * random_v);
             }
-            total_c += &c.mul(randomizer).into();
+            total_c += &c.mul(randomizer);
             total_w += &w.mul(randomizer).into();
             // We don't need to sample randomizers from the full field,
             // only from 128-bit strings.
@@ -473,11 +473,11 @@ impl<E: PairingEngine> KZG10<E> {
         }
     }
 
-    pub(crate) fn check_degrees_and_bounds<'a>(
+    pub(crate) fn check_degrees_and_bounds(
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &'a LabeledPolynomial<E::Fr>,
+        p: &LabeledPolynomial<E::Fr>,
     ) -> Result<(), Error> {
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(Error::UnsupportedDegreeBound(bound))?;

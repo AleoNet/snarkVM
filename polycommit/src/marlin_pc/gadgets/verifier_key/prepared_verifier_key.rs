@@ -72,7 +72,7 @@ where
     ) -> Result<Vec<PG::G1Gadget>, SynthesisError> {
         // Search the bound using PIR
         if self.degree_bounds_and_prepared_shift_powers.is_none() {
-            return Err(SynthesisError::UnexpectedIdentity);
+            Err(SynthesisError::UnexpectedIdentity)
         } else {
             let prepared_degree_bounds_and_shift_powers = self.degree_bounds_and_prepared_shift_powers.clone().unwrap();
 
@@ -98,7 +98,7 @@ where
             for (i, pir_gadget) in pir_vector_gadgets.iter().enumerate() {
                 let temp = FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
                     cs.ns(|| format!("from_boolean_{}", i)),
-                    pir_gadget.clone(),
+                    *pir_gadget,
                 )?;
 
                 sum = sum.add(cs.ns(|| format!("sum_add_pir{}", i)), &temp)?;
@@ -136,9 +136,9 @@ where
                 )?;
             }
 
-            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), &bound)?;
+            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), bound)?;
 
-            return Ok(found_shift_power);
+            Ok(found_shift_power)
         }
     }
 }
@@ -161,6 +161,7 @@ where
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<TargetCurve, BaseCurve, PG> Into<VerifierKeyVar<TargetCurve, BaseCurve, PG>>
     for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
 where

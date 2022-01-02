@@ -379,7 +379,9 @@ where
                 cs.ns(|| format!("prepare g{}", i)),
                 || g.ok_or(SynthesisError::AssignmentMissing),
             )?);
-            g.as_mut().map(|g| g.double_in_place());
+            if let Some(g) = g.as_mut() {
+                g.double_in_place()
+            }
         }
 
         let mut gamma_g = self.gamma_g.get_value();
@@ -388,7 +390,9 @@ where
                 cs.ns(|| format!("prepare_gamma_g{}", i)),
                 || gamma_g.ok_or(SynthesisError::AssignmentMissing),
             )?);
-            gamma_g.as_mut().map(|gamma_g| gamma_g.double_in_place());
+            if let Some(gamma_g) = gamma_g.as_mut() {
+                gamma_g.double_in_place()
+            }
         }
 
         let prepared_h = self

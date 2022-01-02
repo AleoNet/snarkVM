@@ -203,16 +203,14 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         };
 
         let degree_bounds_and_prepared_neg_powers_of_h =
-            if let Some(degree_bounds_and_neg_powers_of_h) = &degree_bounds_and_neg_powers_of_h {
-                Some(
+            degree_bounds_and_neg_powers_of_h
+                .as_ref()
+                .map(|degree_bounds_and_neg_powers_of_h| {
                     degree_bounds_and_neg_powers_of_h
                         .iter()
                         .map(|(d, affine)| (*d, affine.prepare()))
-                        .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>(),
-                )
-            } else {
-                None
-            };
+                        .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
+                });
 
         let kzg10_vk = kzg10::VerifierKey::<E> {
             g,
