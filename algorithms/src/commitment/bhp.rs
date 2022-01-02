@@ -40,7 +40,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
     fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into();
+        let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
 
         // Next, compute the random base.
         let random_base_message = format!("{} for random base", message);

@@ -130,6 +130,7 @@ impl<F: PrimeField> SparsePolynomial<F> {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<F: Field> Into<DensePolynomial<F>> for SparsePolynomial<F> {
     fn into(self) -> DensePolynomial<F> {
         let mut other = vec![F::zero(); self.degree() + 1];

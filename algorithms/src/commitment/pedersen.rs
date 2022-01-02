@@ -60,7 +60,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             ));
         }
 
-        let mut output = self.crh.hash(&input)?.into_projective();
+        let mut output = self.crh.hash(input)?.into_projective();
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
@@ -136,7 +136,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
         }
 
         Ok(Self {
-            crh: PedersenCRH::from(bases).into(),
+            crh: PedersenCRH::from(bases),
             random_base,
         })
     }

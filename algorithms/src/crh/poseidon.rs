@@ -87,7 +87,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.0.parameters()
+        self.0.parameters()
     }
 }
 
