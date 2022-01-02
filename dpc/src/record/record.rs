@@ -252,9 +252,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Decode the plaintext bytes into the record contents.
-    fn decode_plaintext(
-        plaintext: &Vec<u8>,
-    ) -> Result<(Address<N>, AleoAmount, Payload<N>, N::ProgramID), RecordError> {
+    fn decode_plaintext(plaintext: &[u8]) -> Result<(Address<N>, AleoAmount, Payload<N>, N::ProgramID), RecordError> {
         assert_eq!(
             1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES + N::ProgramID::data_size_in_bytes(),
             plaintext.len()
@@ -314,7 +312,7 @@ impl<N: Network> FromStr for Record<N> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&record)?)
+        Ok(serde_json::from_str(record)?)
     }
 }
 

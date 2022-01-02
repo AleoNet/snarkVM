@@ -151,8 +151,12 @@ impl<N: Network> ResponseBuilder<N> {
             .unzip();
 
         // Ensure the input records have the correct program ID.
-        for i in 0..(function_type.input_count() as usize) {
-            if input_records[i].program_id() != program_id {
+        for (i, input_record) in input_records
+            .iter()
+            .enumerate()
+            .take(function_type.input_count() as usize)
+        {
+            if input_record.program_id() != program_id {
                 return Err(anyhow!("Program ID in input record {} is incorrect", i));
             }
         }

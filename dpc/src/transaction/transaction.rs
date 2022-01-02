@@ -192,7 +192,7 @@ impl<N: Network> Transaction<N> {
             }
 
             // Update the local transitions tree.
-            if let Err(error) = transitions.add(&transition) {
+            if let Err(error) = transitions.add(transition) {
                 eprintln!("Transaction failed to update local transitions tree: {}", error);
                 return false;
             }
@@ -320,18 +320,18 @@ impl<N: Network> Transaction<N> {
         // Initialize a transitions tree.
         let mut transitions_tree = Transitions::<N>::new()?;
         // Add all given transition IDs to the tree.
-        transitions_tree.add_all(&self.transitions())?;
+        transitions_tree.add_all(self.transitions())?;
         // Return the local proof for the transitions tree.
         transitions_tree.to_local_proof(record_commitment)
     }
 
     /// Transaction ID := MerkleTree(transition IDs)
     #[inline]
-    pub(crate) fn compute_transaction_id(transitions: &Vec<Transition<N>>) -> Result<N::TransactionID> {
+    pub(crate) fn compute_transaction_id(transitions: &[Transition<N>]) -> Result<N::TransactionID> {
         // Initialize a transitions tree.
         let mut transitions_tree = Transitions::<N>::new()?;
         // Add all given transition IDs to the tree.
-        transitions_tree.add_all(&transitions)?;
+        transitions_tree.add_all(transitions)?;
         // Return the root of the transitions tree.
         Ok(transitions_tree.root())
     }
@@ -367,7 +367,7 @@ impl<N: Network> FromStr for Transaction<N> {
     type Err = anyhow::Error;
 
     fn from_str(transaction: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&transaction)?)
+        Ok(serde_json::from_str(transaction)?)
     }
 }
 

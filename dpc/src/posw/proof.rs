@@ -74,12 +74,12 @@ impl<N: Network> PoSWProof<N> {
     pub fn verify(
         &self,
         verifying_key: &<<N as Network>::PoSWSNARK as SNARK>::VerifyingKey,
-        inputs: &Vec<N::InnerScalarField>,
+        inputs: &[N::InnerScalarField],
     ) -> bool {
         match self {
             Self::NonHiding(proof) => {
                 // Ensure the proof is valid.
-                if !<<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, inputs, proof).unwrap() {
+                if !<<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof).unwrap() {
                     eprintln!("PoSW proof verification failed");
                     return false;
                 }
@@ -97,7 +97,9 @@ impl<N: Network> PoSWProof<N> {
                     };
 
                 // Ensure the proof is valid.
-                if !<crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, inputs, proof).unwrap() {
+                if !<crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs.to_vec(), proof)
+                    .unwrap()
+                {
                     eprintln!("[deprecated] PoSW proof verification failed");
                     return false;
                 }
@@ -123,10 +125,8 @@ impl<N: Network> FromBytes for PoSWProof<N> {
             if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
                 return Ok(Self::NonHiding(proof));
             }
-        } else {
-            if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
-                return Ok(Self::Hiding(proof));
-            }
+        } else if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
+            return Ok(Self::Hiding(proof));
         }
 
         Err(PoSWError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
@@ -151,7 +151,7 @@ impl<N: Network> FromStr for PoSWProof<N> {
     type Err = anyhow::Error;
 
     fn from_str(header: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&header)?)
+        Ok(serde_json::from_str(header)?)
     }
 }
 

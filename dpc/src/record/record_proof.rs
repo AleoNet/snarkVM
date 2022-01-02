@@ -39,9 +39,10 @@ impl<N: Network> RecordProof<N> {
     /// Initializes a new dummy instance of `RecordProof`.
     ///
     pub fn new_dummy(local_proof: LocalProof<N>) -> Result<Self> {
-        let mut record_proof = Self::default();
-        record_proof.local_proof = local_proof;
-        Ok(record_proof)
+        Ok(Self {
+            local_proof,
+            ..Default::default()
+        })
     }
 
     ///
@@ -135,7 +136,7 @@ impl<N: Network> RecordProof<N> {
 
     /// Returns the transaction inclusion proof.
     pub fn transaction_inclusion_proof(&self) -> &MerklePath<N::TransactionIDParameters> {
-        &self.local_proof.transaction_inclusion_proof()
+        self.local_proof.transaction_inclusion_proof()
     }
 
     /// Returns the transition ID.
@@ -145,7 +146,7 @@ impl<N: Network> RecordProof<N> {
 
     /// Returns the transition inclusion proof.
     pub fn transition_inclusion_proof(&self) -> &MerklePath<N::TransitionIDParameters> {
-        &self.local_proof.transition_inclusion_proof()
+        self.local_proof.transition_inclusion_proof()
     }
 
     /// Returns the commitment.

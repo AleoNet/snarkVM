@@ -206,11 +206,9 @@ impl<N: Network> Request<N> {
         let program_id = {
             let program_id = OnceCell::new();
             for record in &self.records {
-                if record.program_id() != *N::noop_program_id() {
-                    if program_id.set(record.program_id()).is_err() {
-                        eprintln!("Request records contains more than 1 distinct program ID");
-                        return false;
-                    }
+                if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+                    eprintln!("Request records contains more than 1 distinct program ID");
+                    return false;
                 }
             }
             *program_id.get_or_init(|| *N::noop_program_id())
@@ -319,10 +317,8 @@ impl<N: Network> Request<N> {
     pub fn to_program_id(&self) -> Result<N::ProgramID> {
         let program_id = OnceCell::new();
         for record in &self.records {
-            if record.program_id() != *N::noop_program_id() {
-                if program_id.set(record.program_id()).is_err() {
-                    return Err(anyhow!("Request records contains more than 1 distinct program ID"));
-                }
+            if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+                return Err(anyhow!("Request records contains more than 1 distinct program ID"));
             }
         }
         Ok(*program_id.get_or_init(|| *N::noop_program_id()))

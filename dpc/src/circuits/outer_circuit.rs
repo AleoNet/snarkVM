@@ -138,7 +138,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
         <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
             ledger_root_fe_inner_snark,
             local_transitions_root_fe_inner_snark,
-            program_id_fe.clone(),
+            program_id_fe,
             value_balance_fe,
             transition_id_fe_inner_snark,
         ])?;
@@ -255,7 +255,6 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 }
 
 fn alloc_inner_snark_input_field_element<
-    'a,
     N: Network,
     V: ToConstraintField<N::InnerScalarField> + ?Sized,
     CS: ConstraintSystem<N::OuterScalarField>,
@@ -271,7 +270,7 @@ fn alloc_inner_snark_input_field_element<
         input_gadgets.push(
             <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_input(
                 cs.ns(|| format!("alloc_input_field_element_{}_{}", name, j)),
-                || Ok(vec![(*field_element).clone()]),
+                || Ok(vec![*field_element]),
             )?,
         )
     }

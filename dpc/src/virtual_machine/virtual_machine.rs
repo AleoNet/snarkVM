@@ -187,7 +187,6 @@ impl<N: Network> VirtualMachine<N> {
     }
 
     /// Returns a response based on the current state of the virtual machine.
-    #[allow(clippy::too_many_arguments)]
     fn evaluate<R: Rng + CryptoRng>(
         &self,
         request: &Request<N>,
@@ -258,7 +257,6 @@ impl<N: Network> VirtualMachine<N> {
 
     // TODO (raychu86): Temporary solution. Handle execution elsewhere.
     /// Executes the request of a particular program execution and returns a transaction.
-    #[allow(clippy::too_many_arguments)]
     pub fn execute_program<R: Rng + CryptoRng>(
         mut self,
         request: &Request<N>,

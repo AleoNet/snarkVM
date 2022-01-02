@@ -98,7 +98,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         const MAXIMUM_MINING_DURATION: i64 = 600; // 600 seconds = 10 minutes.
 
         // Instantiate the circuit.
-        let mut circuit = PoSWCircuit::<N>::new(&block_template, UniformRand::rand(rng))?;
+        let mut circuit = PoSWCircuit::<N>::new(block_template, UniformRand::rand(rng))?;
 
         let mut iteration = 1;
         loop {
@@ -106,7 +106,9 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             if iteration % 100 == 0
                 && Utc::now().timestamp() >= block_template.block_timestamp() + MAXIMUM_MINING_DURATION
             {
-                return Err(PoSWError::Message("Failed mine block in the allowed mining duration".to_string()).into());
+                return Err(PoSWError::Message(
+                    "Failed mine block in the allowed mining duration".to_string(),
+                ));
             }
 
             // Run one iteration of PoSW.
@@ -175,7 +177,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         self.verify(
             block_header.height(),
             block_header.difficulty_target(),
-            &vec![*block_header.to_header_root().unwrap(), *block_header.nonce()],
+            &[*block_header.to_header_root().unwrap(), *block_header.nonce()],
             block_header.proof(),
         )
     }
@@ -185,7 +187,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         &self,
         block_height: u32,
         difficulty_target: u64,
-        inputs: &Vec<N::InnerScalarField>,
+        inputs: &[N::InnerScalarField],
         proof: &PoSWProof<N>,
     ) -> bool {
         // Ensure the difficulty target is met.

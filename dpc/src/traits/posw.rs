@@ -66,7 +66,7 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
         &self,
         block_height: u32,
         difficulty_target: u64,
-        inputs: &Vec<N::InnerScalarField>,
+        inputs: &[N::InnerScalarField],
         proof: &PoSWProof<N>,
     ) -> bool;
 }

@@ -132,7 +132,7 @@ impl<N: Network> Blocks<N> {
         match height == 0 {
             true => Ok(N::genesis_block().clone()),
             false => Ok(Block::from(
-                self.get_previous_block_hash(height)?.clone(),
+                self.get_previous_block_hash(height)?,
                 self.get_block_header(height)?.clone(),
                 self.get_block_transactions(height)?.clone(),
             )?),
@@ -247,7 +247,7 @@ impl<N: Network> Blocks<N> {
                 Blocks::<N>::compute_difficulty_target(current_block.header(), block.timestamp(), block.height())
             } else if N::NETWORK_ID == 2 {
                 let anchor_block_header = self.get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
-                Blocks::<N>::compute_difficulty_target(&anchor_block_header, block.timestamp(), block.height())
+                Blocks::<N>::compute_difficulty_target(anchor_block_header, block.timestamp(), block.height())
             } else {
                 Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height())
             };
@@ -326,7 +326,7 @@ impl<N: Network> Blocks<N> {
         &self,
         block_hash: &N::BlockHash,
     ) -> Result<MerklePath<N::LedgerRootParameters>> {
-        Ok(self.ledger_tree.to_ledger_inclusion_proof(block_hash)?)
+        self.ledger_tree.to_ledger_inclusion_proof(block_hash)
     }
 
     ///
@@ -346,7 +346,7 @@ impl<N: Network> Blocks<N> {
             // Initialize a transitions tree.
             let mut transitions_tree = Transitions::<N>::new()?;
             // Add all given transition IDs to the tree.
-            transitions_tree.add_all(&transaction.transitions())?;
+            transitions_tree.add_all(transaction.transitions())?;
             // Return the local proof for the transitions tree.
             transitions_tree.to_local_proof(commitment)?
         };

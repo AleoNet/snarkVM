@@ -37,7 +37,7 @@ impl<N: Network> Transitions<N> {
         Ok(Self {
             tree: Arc::new(MerkleTree::<N::TransactionIDParameters>::new::<N::TransitionID>(
                 Arc::new(N::transaction_id_parameters().clone()),
-                &vec![],
+                &[],
             )?),
             transitions: Default::default(),
             current_index: 0,
@@ -68,7 +68,7 @@ impl<N: Network> Transitions<N> {
     }
 
     /// Adds all given transitions to the tree, returning the start and ending index in the tree.
-    pub(crate) fn add_all(&mut self, transitions: &Vec<Transition<N>>) -> Result<(u8, u8)> {
+    pub(crate) fn add_all(&mut self, transitions: &[Transition<N>]) -> Result<(u8, u8)> {
         // Ensure the current index has not reached the maximum number of transitions permitted in software.
         if self.current_index >= N::NUM_TRANSITIONS
             || self.current_index + transitions.len() as u8 >= N::NUM_TRANSITIONS
@@ -110,7 +110,7 @@ impl<N: Network> Transitions<N> {
 
     /// Returns the index for the given transition, if it exists.
     pub(crate) fn get_transition_index(&self, transition_id: &N::TransitionID) -> Option<&u8> {
-        self.transitions.get(transition_id).and_then(|(index, _)| Some(index))
+        self.transitions.get(transition_id).map(|(index, _)| index)
     }
 
     /// Returns the local transitions root.

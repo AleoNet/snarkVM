@@ -105,7 +105,7 @@ impl<
     /// Reads in a bech32m string.
     #[inline]
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (hrp, data, variant) = bech32::decode(&string)?;
+        let (hrp, data, variant) = bech32::decode(string)?;
         if hrp != Self::prefix() {
             return Err(Bech32mError::InvalidPrefix(hrp));
         };

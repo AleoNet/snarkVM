@@ -137,12 +137,12 @@ impl<N: Network> Transition<N> {
                 true => true,
                 false => {
                     eprintln!("Transition proof failed to verify");
-                    return false;
+                    false
                 }
             },
             Err(error) => {
                 eprintln!("Failed to validate transition proof: {:?}", error);
-                return false;
+                false
             }
         }
     }

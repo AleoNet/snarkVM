@@ -135,12 +135,7 @@ impl<N: Network> Program<N> {
         }
 
         // Ensure the functions do not already exist in the tree.
-        if function_ids
-            .iter()
-            .filter(|id| self.contains_function(id))
-            .next()
-            .is_some()
-        {
+        if function_ids.iter().any(|id| self.contains_function(id)) {
             return Err(anyhow!("Some given functions already exist in the program"));
         }
 
