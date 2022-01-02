@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::module_inception)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate derivative;
