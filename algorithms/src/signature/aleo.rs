@@ -160,7 +160,7 @@ where
 
         // Compute the powers of G.
         let g_bases = {
-            let (base, _, _) = hash_to_curve::<TEAffine<TE>>(&message);
+            let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
 
             let mut g = base.into_projective();
             let mut g_bases = Vec::with_capacity(<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize);
@@ -207,9 +207,7 @@ where
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = g_sk_sig + g_r_sig + g_sk_prf;
-
-        public_key
+        g_sk_sig + g_r_sig + g_sk_prf
     }
 
     ///
@@ -288,10 +286,10 @@ where
         let g_sk_sig = Self::recover_from_x_coordinate(root_public_key)?;
 
         // Compute G^sk_sig^c.
-        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), &verifier_challenge);
+        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), verifier_challenge);
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = self.g_scalar_multiply(&prover_response) + g_sk_sig_c;
+        let g_r = self.g_scalar_multiply(prover_response) + g_sk_sig_c;
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
@@ -356,7 +354,7 @@ where
 
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField {
         // Use Poseidon as a random oracle.
-        let output = self.crypto_hash.evaluate(&input);
+        let output = self.crypto_hash.evaluate(input);
 
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
         let mut bits = output.to_repr().to_bits_le();

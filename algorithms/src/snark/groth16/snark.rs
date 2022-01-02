@@ -86,7 +86,7 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + Clone> SNARK for Groth16<E,
         let input = input.to_field_elements()?;
         end_timer!(conversion_time);
         let verification = start_timer!(|| format!("Verify proof w/ input len: {}", input.len()));
-        let result = verify_proof(&prepared_verifying_key, proof, &input)?;
+        let result = verify_proof(prepared_verifying_key, proof, &input)?;
         end_timer!(verification);
         end_timer!(verify_time);
         Ok(result)
