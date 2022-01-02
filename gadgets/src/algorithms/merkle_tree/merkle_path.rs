@@ -55,15 +55,15 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadge
         for (i, (bit, sibling)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
             let left_hash = HG::OutputGadget::conditionally_select(
                 cs.ns(|| format!("cond_select_left_{}", i)),
-                &bit,
-                &sibling,
+                bit,
+                sibling,
                 &curr_hash,
             )?;
             let right_hash = HG::OutputGadget::conditionally_select(
                 cs.ns(|| format!("cond_select_right_{}", i)),
-                &bit,
+                bit,
                 &curr_hash,
-                &sibling,
+                sibling,
             )?;
 
             curr_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
@@ -85,8 +85,8 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadge
         old_leaf: impl ToBytesGadget<F>,
         new_leaf: impl ToBytesGadget<F>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
-        self.check_membership(cs.ns(|| "check_membership"), &crh, &old_root, &old_leaf)?;
-        Ok(self.calculate_root(cs.ns(|| "calculate_root"), &crh, &new_leaf)?)
+        self.check_membership(cs.ns(|| "check_membership"), crh, old_root, &old_leaf)?;
+        self.calculate_root(cs.ns(|| "calculate_root"), crh, &new_leaf)
     }
 
     pub fn update_and_check<CS: ConstraintSystem<F>>(
@@ -98,9 +98,9 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadge
         old_leaf: impl ToBytesGadget<F>,
         new_leaf: impl ToBytesGadget<F>,
     ) -> Result<(), SynthesisError> {
-        let actual_new_root = self.update_leaf(cs.ns(|| "check_membership"), &crh, &old_root, &old_leaf, &new_leaf)?;
+        let actual_new_root = self.update_leaf(cs.ns(|| "check_membership"), crh, old_root, &old_leaf, &new_leaf)?;
 
-        actual_new_root.enforce_equal(cs.ns(|| "enforce_equal_roots"), &new_root)?;
+        actual_new_root.enforce_equal(cs.ns(|| "enforce_equal_roots"), new_root)?;
 
         Ok(())
     }
@@ -205,7 +205,7 @@ where
         for (i, node) in merkle_path.path.iter().enumerate() {
             path.push(HGadget::OutputGadget::alloc(
                 &mut cs.ns(|| format!("alloc_node_{}", i)),
-                || Ok(node.clone()),
+                || Ok(*node),
             )?);
         }
 
@@ -231,7 +231,7 @@ where
         for (i, node) in merkle_path.path.iter().enumerate() {
             path.push(HGadget::OutputGadget::alloc_input(
                 &mut cs.ns(|| format!("alloc_input_node_{}", i)),
-                || Ok(node.clone()),
+                || Ok(*node),
             )?);
         }
 

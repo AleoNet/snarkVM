@@ -264,7 +264,7 @@ where
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let ciphertext_randomizer = Self::recover_ciphertext_randomizer(value_gen()?.borrow().clone())?;
+        let ciphertext_randomizer = Self::recover_ciphertext_randomizer(*value_gen()?.borrow())?;
         Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || {
             Ok(ciphertext_randomizer)
         })?))
@@ -274,7 +274,7 @@ where
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let ciphertext_randomizer = Self::recover_ciphertext_randomizer(value_gen()?.borrow().clone())?;
+        let ciphertext_randomizer = Self::recover_ciphertext_randomizer(*value_gen()?.borrow())?;
         Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || {
             Ok(ciphertext_randomizer)
         })?))
@@ -285,7 +285,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let point = if let Ok(pk) = value_gen() {
-            Self::recover_ciphertext_randomizer(pk.borrow().clone())?
+            Self::recover_ciphertext_randomizer(*pk.borrow())?
         } else {
             TEAffine::<TE>::default()
         };
@@ -293,7 +293,7 @@ where
         let x_coordinate_gadget =
             FpGadget::<TE::BaseField>::alloc_input(cs.ns(|| "input x coordinate"), || Ok(point.x))?;
         let allocated_gadget =
-            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point.clone()))?;
+            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point))?;
 
         allocated_gadget
             .x
@@ -416,7 +416,7 @@ where
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let public_key = value_gen()?.borrow().clone();
+        let public_key = *value_gen()?.borrow();
         Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(public_key))?))
     }
 
@@ -424,7 +424,7 @@ where
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let public_key = value_gen()?.borrow().clone();
+        let public_key = *value_gen()?.borrow();
         Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(public_key))?))
     }
 
@@ -433,7 +433,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let point = if let Ok(pk) = value_gen() {
-            pk.borrow().clone()
+            *pk.borrow()
         } else {
             TEAffine::<TE>::default()
         };
@@ -441,7 +441,7 @@ where
         let x_coordinate_gadget =
             FpGadget::<TE::BaseField>::alloc_input(cs.ns(|| "input x coordinate"), || Ok(point.x))?;
         let allocated_gadget =
-            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point.clone()))?;
+            TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point))?;
 
         allocated_gadget
             .x
@@ -582,7 +582,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             let mut generator_powers = Vec::new();
             let mut generator = self.encryption.parameters().into_projective();
             for _ in 0..num_powers {
-                generator_powers.push(generator.clone());
+                generator_powers.push(generator);
                 generator.double_in_place();
             }
             TEProjective::<TE>::batch_normalization(&mut generator_powers);
@@ -647,9 +647,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         // Put the bytes of the x coordinate of the randomness group element
         // into the beginning of the ciphertext.
-        let generator = TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc generator"), || {
-            Ok(self.encryption.parameters().clone())
-        })?;
+        let generator =
+            TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc generator"), || Ok(*self.encryption.parameters()))?;
         let ciphertext_randomizer =
             ECIESPoseidonCiphertextRandomizerGadget(<TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
                 &generator,
