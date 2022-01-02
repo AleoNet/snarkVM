@@ -20,7 +20,5 @@ pub use fixed_base::*;
 #[cfg(test)]
 pub mod tests;
 
-#[allow(unsafe_code)]
 pub mod variable_base;
-#[allow(unsafe_code)]
 pub use variable_base::*;
