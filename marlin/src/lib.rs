@@ -24,6 +24,8 @@
 //! matrices are square). Furthermore, Marlin only supports instances where the
 //! public inputs are of size one less than a power of 2 (i.e., 2^n - 1).
 #![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate snarkvm_profiler;

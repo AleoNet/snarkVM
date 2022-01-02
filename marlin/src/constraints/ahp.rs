@@ -158,7 +158,7 @@ impl<
             if !message.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     cs.ns(|| "absorb_nonnative_field_elements"),
-                    &message,
+                    message,
                     OptimizationType::Weight,
                 )?;
             }
@@ -233,7 +233,7 @@ impl<
             if !message.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     cs.ns(|| "absorb_nonnative_field_elements"),
-                    &message,
+                    message,
                     OptimizationType::Weight,
                 )?;
             }
@@ -293,7 +293,7 @@ impl<
             if !message.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     cs.ns(|| "absorb_nonnative_field_elements"),
-                    &message,
+                    message,
                     OptimizationType::Weight,
                 )?;
             }
@@ -370,8 +370,8 @@ impl<
             cs.ns(|| "prepared_eval_bivariable_vanishing_polynomial"),
             &alpha,
             &beta,
-            &v_h_at_alpha,
-            &v_h_at_beta,
+            v_h_at_alpha,
+            v_h_at_beta,
         )?;
 
         let z_b_at_beta = evals
@@ -420,7 +420,7 @@ impl<
             terms: vec![(LinearCombinationCoeffVar::One, "t".into())],
         };
 
-        let eta_c_mul_z_b_at_beta = eta_c.mul(cs.ns(|| "eta_c_mul_z_b_at_beta"), &z_b_at_beta)?;
+        let eta_c_mul_z_b_at_beta = eta_c.mul(cs.ns(|| "eta_c_mul_z_b_at_beta"), z_b_at_beta)?;
         let eta_a_add_above = eta_a.add(cs.ns(|| "eta_a_add_eta_c"), &eta_c_mul_z_b_at_beta)?;
 
         let outer_sumcheck_terms = {
@@ -436,7 +436,7 @@ impl<
                 LinearCombinationCoeffVar::Var(
                     r_alpha_at_beta
                         .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b"), &eta_b)?
-                        .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b_mul_z_b_at_beta"), &z_b_at_beta)?,
+                        .mul(cs.ns(|| "r_alpha_at_beta_mul_eta_b_mul_z_b_at_beta"), z_b_at_beta)?,
                 ),
                 LCTerm::One,
             ));
@@ -462,7 +462,7 @@ impl<
             ));
             terms.push((
                 LinearCombinationCoeffVar::Var(
-                    (beta.mul(cs.ns(|| "beta_mul_g_1_at_beta"), &g_1_at_beta))?.negate(cs.ns(|| "negate_beta_g1"))?,
+                    (beta.mul(cs.ns(|| "beta_mul_g_1_at_beta"), g_1_at_beta))?.negate(cs.ns(|| "negate_beta_g1"))?,
                 ),
                 LCTerm::One,
             ));
@@ -488,7 +488,7 @@ impl<
 
         let g_2_at_gamma = evals.get(&g_2_lc_gadget.label).unwrap();
 
-        let v_h_at_alpha_beta = v_h_at_alpha.mul(cs.ns(|| "v_h_alpha_mul_v_h_beta"), &v_h_at_beta)?;
+        let v_h_at_alpha_beta = v_h_at_alpha.mul(cs.ns(|| "v_h_alpha_mul_v_h_beta"), v_h_at_beta)?;
 
         let domain_k_size_gadget =
             NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "domain_k_size"), || {
@@ -511,7 +511,7 @@ impl<
             .zip(domain_k_size_in_vk_bit_decomposition.iter())
             .enumerate()
         {
-            left.enforce_equal(cs.ns(|| format!("domain_k_enforce_equal_{}", i)), &right)?;
+            left.enforce_equal(cs.ns(|| format!("domain_k_enforce_equal_{}", i)), right)?;
         }
 
         for (i, bit) in domain_k_size_bit_decomposition.iter().skip(32).enumerate() {
@@ -521,7 +521,7 @@ impl<
             )?;
         }
 
-        let gamma_mul_g_2 = gamma.mul(cs.ns(|| "gamma_mul_g_2"), &g_2_at_gamma)?;
+        let gamma_mul_g_2 = gamma.mul(cs.ns(|| "gamma_mul_g_2"), g_2_at_gamma)?;
         let t_div_domain_k = t_at_beta.mul(cs.ns(|| "t_div_domain_k"), &inv_domain_k_size_gadget)?;
         let b_expr_at_gamma_last_term = gamma_mul_g_2.add(cs.ns(|| "b_expr_at_gamma_last_term"), &t_div_domain_k)?;
 
@@ -744,21 +744,21 @@ impl<
         evaluations_gadget.0.insert(
             LabeledPointVar {
                 name: "vanishing_poly_h_alpha".to_string(),
-                value: alpha.clone(),
+                value: alpha,
             },
             (*proof.evaluations.get("vanishing_poly_h_alpha").unwrap()).clone(),
         );
         evaluations_gadget.0.insert(
             LabeledPointVar {
                 name: "vanishing_poly_h_beta".to_string(),
-                value: beta.clone(),
+                value: beta,
             },
             (*proof.evaluations.get("vanishing_poly_h_beta").unwrap()).clone(),
         );
         evaluations_gadget.0.insert(
             LabeledPointVar {
                 name: "vanishing_poly_k_gamma".to_string(),
-                value: gamma.clone(),
+                value: gamma,
             },
             (*proof.evaluations.get("vanishing_poly_k_gamma").unwrap()).clone(),
         );

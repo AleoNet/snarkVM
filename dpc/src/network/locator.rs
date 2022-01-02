@@ -173,6 +173,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Borrow<F> for Aleo
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Into<Vec<F>> for AleoLocator<F, PREFIX> {
     #[inline]
     fn into(self) -> Vec<F> {

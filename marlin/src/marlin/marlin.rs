@@ -194,7 +194,7 @@ impl<
         // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = PC::trim(
-            &universal_srs,
+            universal_srs,
             index.max_degree(),
             supported_hiding_bound,
             Some(&coefficient_support),
@@ -283,7 +283,7 @@ impl<
         if MM::RECURSION {
             fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
-            fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
+            fs_rng.absorb_nonnative_field_elements(padded_public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(
                 &to_bytes_le![
@@ -448,9 +448,7 @@ impl<
         // Sanity check, whose length should be updated if the underlying structs are updated.
         assert_eq!(
             polynomials.len(),
-            AHPForR1CS::<TargetField, MM>::polynomial_labels()
-                .collect::<Vec<_>>()
-                .len()
+            AHPForR1CS::<TargetField, MM>::polynomial_labels().count()
         );
 
         // Gather commitments in one vector.
@@ -504,7 +502,7 @@ impl<
                 .iter()
                 .find(|lc| &lc.label == label)
                 .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
-            let evaluation = polynomials.get_lc_eval(&lc, *point)?;
+            let evaluation = polynomials.get_lc_eval(lc, *point)?;
             if !AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
                 evaluations_unsorted.push((label.to_string(), evaluation));
             }

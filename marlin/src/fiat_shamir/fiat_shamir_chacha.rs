@@ -79,9 +79,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
 {
     type Parameters = ();
 
-    fn sample_params() -> Self::Parameters {
-        ()
-    }
+    fn sample_params() -> Self::Parameters {}
 
     fn new() -> Self {
         Self {
