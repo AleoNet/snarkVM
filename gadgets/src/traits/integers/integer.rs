@@ -53,11 +53,11 @@ pub trait Integer: Debug + Clone {
         let bits = self.to_bits_le();
         let bits_len = bits.len();
 
-        dbg!(&bits);
+        dbg!(&bits[bits_len - 1..]);
         dbg!(bits_len);
 
         if Target::SIZE <= Self::SIZE {
-            if bits[bits_len..].contains(&Boolean::Constant(true)) {
+            if bits[bits_len - 1..].contains(&Boolean::Constant(true)) {
                 todo!("too big to fit into target size")
             }
 
