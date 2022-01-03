@@ -41,6 +41,7 @@ use snarkvm_utilities::{
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
+use rayon::prelude::*;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
@@ -298,14 +299,23 @@ impl<N: Network> Transaction<N> {
 
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
-    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> Vec<Record<N>> {
-        self.transitions
-            .iter()
-            .flat_map(Transition::ciphertexts)
-            .filter(|ciphertext| ciphertext.is_owner(account_view_key))
-            .filter_map(|ciphertext| Record::from_account_view_key(account_view_key, ciphertext).ok())
-            .filter(|record| !record.is_dummy())
-            .collect()
+    pub fn to_decrypted_records(&self, account_view_key: &ViewKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
+        // Parallelize if greater than 500
+        if self.transitions.len() > 500 {
+            self.transitions
+                .into_par_iter()
+                .flat_map(Transition::ciphertexts)
+                .filter(|ciphertext| ciphertext.is_owner(account_view_key))
+                .filter_map(|ciphertext| Record::from_account_view_key(account_view_key, ciphertext).ok())
+                .filter(|record| !record.is_dummy())
+        } else {
+            self.transitions
+                .iter()
+                .flat_map(Transition::ciphertexts)
+                .filter(|ciphertext| ciphertext.is_owner(account_view_key))
+                .filter_map(|ciphertext| Record::from_account_view_key(account_view_key, ciphertext).ok())
+                .filter(|record| !record.is_dummy())
+        }
     }
 
     /// Returns the decrypted records using record view key events, if they exist.
