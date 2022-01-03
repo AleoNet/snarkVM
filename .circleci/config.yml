@@ -271,6 +271,27 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-fmt-cache
 
+  bench:
+    machine:
+      resource_class: gpu.nvidia.medium
+      image: ubuntu-2004-cuda-11.4:202110-01
+    steps:
+      - checkout
+      - run:
+          name: Prepare environment and install dependencies
+          command: |
+            sudo apt-get update -y && sudo apt-get install -y clang llvm-dev llvm pkg-config xz-utils make libssl-dev libssl-dev
+            wget "https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"
+            chmod +x rustup-init
+            ./rustup-init -y
+            export SCCACHE_CACHE_SIZE=200M            
+      - run:
+          name: Benchmark "cargo bench --bench posw"
+          command: |
+            echo "In this directory: $(pwd)"
+            cd dpc && cargo bench --bench posw
+
+
 workflows:
   version: 2
   main-workflow:
@@ -290,3 +311,4 @@ workflows:
       - r1cs
       - utilities
       - fmt
+      - bench
