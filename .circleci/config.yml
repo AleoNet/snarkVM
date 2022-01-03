@@ -273,7 +273,8 @@ jobs:
 
   bench:
     machine:
-      resource_class: gpu.nvidia.medium
+      # not available - probably due to pricing plan resource_class: gpu.nvidia.medium
+      resource_class: gpu.nvidia.small
       image: ubuntu-2004-cuda-11.4:202110-01
     steps:
       - checkout
