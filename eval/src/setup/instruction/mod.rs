@@ -19,17 +19,33 @@ use std::{borrow::Cow, convert::TryInto};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     integers::{UInt16, UInt32, UInt8},
-    Boolean, CondSelectGadget, EqGadget, EvaluateEqGadget, Integer as IntegerTrait, ToBitsLEGadget,
+    Boolean,
+    CondSelectGadget,
+    EqGadget,
+    EvaluateEqGadget,
+    Integer as IntegerTrait,
 };
 use snarkvm_ir::{
-    ArrayInitRepeatData, CallCoreData, CastData, Instruction, Integer as IrInteger, LogData, LogLevel, PredicateData,
-    QueryData, Type, Value, VarData,
+    ArrayInitRepeatData,
+    CallCoreData,
+    CastData,
+    Instruction,
+    Integer as IrInteger,
+    LogData,
+    LogLevel,
+    PredicateData,
+    QueryData,
+    Value,
+    VarData,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
     errors::{ArrayError, ValueError},
-    operations, ConstrainedValue, GroupType, Integer,
+    operations,
+    ConstrainedValue,
+    GroupType,
+    Integer,
 };
 
 use anyhow::{anyhow, Result};
@@ -326,7 +342,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
             }
             Instruction::Cast(CastData { destination, arguments }) => {
                 let mut arguments = arguments.into_iter();
-                let _from = match arguments.next().unwrap() {
+                let from = match arguments.next().unwrap() {
                     int @ Value::Integer(_) => self.resolve(int, cs)?,
                     reference @ Value::Ref(_) => self.resolve(reference, cs)?,
                     f => {
@@ -334,33 +350,10 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                         todo!("not an int")
                     }
                 };
-                let _as_type = match arguments.next() {
-                    Some(Value::Str(x)) => match x.as_str() {
-                        "i8" => Type::I8,
-                        "i16" => Type::I16,
-                        "i32" => Type::I32,
-                        "i64" => Type::I64,
-                        "i128" => Type::I128,
-                        "u8" => Type::U8,
-                        "u16" => Type::U16,
-                        "u32" => Type::U32,
-                        "u64" => Type::U64,
-                        "u128" => Type::U128,
-                        _ => return Err(anyhow!("Can only cast to int type but recieved: {}", x)),
-                    },
-                    a => {
-                        dbg!(&a);
-                        todo!("not a string")
-                    }
-                };
 
-                // let from_as_bits: Vec<Boolean> = from.into_owned().to_bits_le();
-                todo!("you shall not pass till bits and bytes is merged ");
-
-                /*  let output = match as_type {
-
-                };
-                self.store(*destination, output) */
+                let integer = from.extract_integer().unwrap();
+                let casted = ConstrainedValue::Integer(integer.clone().cast(arguments.next())?);
+                self.store(*destination, casted)
             }
         }
         Ok(None)

@@ -16,6 +16,8 @@
 
 //! Conversion of integer declarations to constraints in Leo.
 
+use anyhow::{anyhow, Result};
+
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_gadgets::{
     boolean::Boolean,
@@ -32,7 +34,7 @@ use snarkvm_gadgets::{
     },
     Integer as IntegerGadget,
 };
-use snarkvm_ir::{Integer as IrInteger, Value};
+use snarkvm_ir::{Integer as IrInteger, Type, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use std::{convert::TryInto, fmt};
 
@@ -131,6 +133,30 @@ impl Integer {
     pub fn to_bits_le(&self) -> Vec<Boolean> {
         let integer = self;
         match_integer!(integer => integer.to_bits_le())
+    }
+
+    pub fn cast(self, target_type: Option<&Value>) -> Result<Self> {
+        let integer = self;
+
+        match target_type {
+            Some(Value::Str(x)) => match x.as_str() {
+                "i8" => Ok(Integer::I8(match_integer!(integer => integer.cast::<Int8>()))),
+                "i16" => Ok(Integer::I16(match_integer!(integer => integer.cast::<Int16>()))),
+                "i32" => Ok(Integer::I32(match_integer!(integer => integer.cast::<Int32>()))),
+                "i64" => Ok(Integer::I64(match_integer!(integer => integer.cast::<Int64>()))),
+                "i128" => Ok(Integer::I128(match_integer!(integer => integer.cast::<Int128>()))),
+                "u8" => Ok(Integer::U8(match_integer!(integer => integer.cast::<UInt8>()))),
+                "u16" => Ok(Integer::U16(match_integer!(integer => integer.cast::<UInt16>()))),
+                "u32" => Ok(Integer::U32(match_integer!(integer => integer.cast::<UInt32>()))),
+                "u64" => Ok(Integer::U64(match_integer!(integer => integer.cast::<UInt64>()))),
+                "u128" => Ok(Integer::U128(match_integer!(integer => integer.cast::<UInt128>()))),
+                _ => return Err(anyhow!("Can only cast to int type but recieved: {}", x)),
+            },
+            a => {
+                dbg!(&a);
+                todo!("not a string")
+            }
+        }
     }
 
     pub fn is_allocated(&self) -> bool {

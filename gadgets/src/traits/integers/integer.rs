@@ -25,6 +25,7 @@ pub trait Integer: Debug + Clone {
     type UnsignedIntegerType;
 
     const SIZE: usize;
+    const SIGNED: bool;
 
     fn constant(value: Self::IntegerType) -> Self;
 
@@ -47,4 +48,28 @@ pub trait Integer: Debug + Clone {
     fn from_bits_le(bits: &[Boolean]) -> Self;
 
     fn get_value(&self) -> Option<String>;
+
+    fn cast<Target: Integer>(&self) -> Target {
+        let bits = self.to_bits_le();
+        // let bits_len = bits.len();
+
+        if Target::SIZE <= Self::SIZE {
+            // if bits[bits_len..].contains()
+
+            Target::from_bits_le(&bits[0..Target::SIZE])
+        } else {
+            let mut bits = bits;
+            if Self::SIGNED {
+                let last_bit = bits[bits.len() - 1].clone();
+                for _ in Self::SIZE..Target::SIZE {
+                    bits.push(last_bit.clone());
+                }
+            } else {
+                for _ in Self::SIZE..Target::SIZE {
+                    bits.push(Boolean::Constant(false));
+                }
+            }
+            Target::from_bits_le(&bits[0..Target::SIZE])
+        }
+    }
 }
