@@ -51,7 +51,10 @@ pub trait Integer: Debug + Clone {
 
     fn cast<Target: Integer>(&self) -> Target {
         let bits = self.to_bits_le();
-        // let bits_len = bits.len();
+        let bits_len = bits.len();
+
+        dbg!(&bits);
+        dbg!(bits_len);
 
         if Target::SIZE <= Self::SIZE {
             // if bits[bits_len..].contains()
