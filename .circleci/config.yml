@@ -281,9 +281,10 @@ jobs:
           name: Prepare environment and install dependencies
           command: |
             sudo apt-get update -y && sudo apt-get install -y clang llvm-dev llvm pkg-config xz-utils make libssl-dev libssl-dev
-            wget "https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"
-            chmod +x rustup-init
-            ./rustup-init -y
+            # wget "https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"
+            # chmod +x rustup-init
+            # ./rustup-init -y
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
             export SCCACHE_CACHE_SIZE=200M            
       - run:
           name: Benchmark "cargo bench --bench posw"
