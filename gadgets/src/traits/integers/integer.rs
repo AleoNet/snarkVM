@@ -51,13 +51,14 @@ pub trait Integer: Debug + Clone {
 
     fn cast<Target: Integer>(&self) -> Target {
         let bits = self.to_bits_le();
-        let bits_len = bits.len();
 
-        dbg!(&bits[bits_len - 1..]);
-        dbg!(bits_len);
+        dbg!(&bits[Target::SIZE * 8..]);
 
         if Target::SIZE <= Self::SIZE {
-            if bits[bits_len - 1..].contains(&Boolean::Constant(true)) {
+            // here we grab the size of the target integer
+            // then since bits are le we check if the bits beyond target
+            // size are too big. if so we should error out.
+            if bits[Target::SIZE * 8..].contains(&Boolean::Constant(true)) {
                 todo!("too big to fit into target size")
             }
 
