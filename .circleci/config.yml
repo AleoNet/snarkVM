@@ -284,7 +284,7 @@ jobs:
             # wget "https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"
             # chmod +x rustup-init
             # ./rustup-init -y
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -sSf | sh -s -- -y
             export SCCACHE_CACHE_SIZE=200M            
       - run:
           name: Benchmark "cargo bench --bench posw"
