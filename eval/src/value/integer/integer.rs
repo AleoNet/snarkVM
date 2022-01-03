@@ -34,7 +34,7 @@ use snarkvm_gadgets::{
     },
     Integer as IntegerGadget,
 };
-use snarkvm_ir::{Integer as IrInteger, Type, Value};
+use snarkvm_ir::{Integer as IrInteger, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use std::{convert::TryInto, fmt};
 

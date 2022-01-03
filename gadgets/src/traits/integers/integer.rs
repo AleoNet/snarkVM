@@ -57,7 +57,9 @@ pub trait Integer: Debug + Clone {
         dbg!(bits_len);
 
         if Target::SIZE <= Self::SIZE {
-            // if bits[bits_len..].contains()
+            if bits[bits_len..].contains(&Boolean::Constant(true)) {
+                todo!("too big to fit into target size")
+            }
 
             Target::from_bits_le(&bits[0..Target::SIZE])
         } else {
