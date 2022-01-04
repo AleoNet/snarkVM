@@ -352,7 +352,7 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                 };
 
                 let integer = from.extract_integer().unwrap();
-                let casted = ConstrainedValue::Integer(integer.clone().cast(arguments.next())?);
+                let casted = ConstrainedValue::Integer(integer.clone().cast(cs, arguments.next())?);
                 self.store(*destination, casted)
             }
         }

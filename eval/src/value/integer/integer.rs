@@ -16,8 +16,6 @@
 
 //! Conversion of integer declarations to constraints in Leo.
 
-use anyhow::{anyhow, Result};
-
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_gadgets::{
     boolean::Boolean,
@@ -32,6 +30,7 @@ use snarkvm_gadgets::{
         integers::{Add, Div, Mul, Neg, Pow, Sub},
         select::CondSelectGadget,
     },
+    Cast,
     Integer as IntegerGadget,
 };
 use snarkvm_ir::{Integer as IrInteger, Value};
@@ -135,28 +134,65 @@ impl Integer {
         match_integer!(integer => integer.to_bits_le())
     }
 
-    pub fn cast(self, target_type: Option<&Value>) -> Result<Self> {
+    pub fn cast<F: PrimeField, CS: ConstraintSystem<F>>(
+        self,
+        cs: &mut CS,
+        target_type: Option<&Value>,
+    ) -> Result<Self, IntegerError> {
         let integer = self;
 
-        match target_type {
+        let result = match target_type {
             Some(Value::Str(x)) => match x.as_str() {
-                "i8" => Ok(Integer::I8(match_integer!(integer => integer.cast::<Int8>()))),
-                "i16" => Ok(Integer::I16(match_integer!(integer => integer.cast::<Int16>()))),
-                "i32" => Ok(Integer::I32(match_integer!(integer => integer.cast::<Int32>()))),
-                "i64" => Ok(Integer::I64(match_integer!(integer => integer.cast::<Int64>()))),
-                "i128" => Ok(Integer::I128(match_integer!(integer => integer.cast::<Int128>()))),
-                "u8" => Ok(Integer::U8(match_integer!(integer => integer.cast::<UInt8>()))),
-                "u16" => Ok(Integer::U16(match_integer!(integer => integer.cast::<UInt16>()))),
-                "u32" => Ok(Integer::U32(match_integer!(integer => integer.cast::<UInt32>()))),
-                "u64" => Ok(Integer::U64(match_integer!(integer => integer.cast::<UInt64>()))),
-                "u128" => Ok(Integer::U128(match_integer!(integer => integer.cast::<UInt128>()))),
-                _ => return Err(anyhow!("Can only cast to int type but recieved: {}", x)),
+                "i8" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+
+                    Integer::I8(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "i16" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::I16(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "i32" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::I32(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "i64" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::I64(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "i128" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::I128(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "u8" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::U8(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "u16" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::U16(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "u32" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::U32(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "u64" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::U64(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                "u128" => {
+                    let unique_namespace = format!("enforce {} as {}", integer, x);
+                    Integer::U128(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
+                }
+                _ => todo!("ah"),
             },
             a => {
                 dbg!(&a);
                 todo!("not a string")
             }
-        }
+        };
+
+        Ok(result)
     }
 
     pub fn is_allocated(&self) -> bool {

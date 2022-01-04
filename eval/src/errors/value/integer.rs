@@ -23,9 +23,9 @@ use snarkvm_r1cs::SynthesisError;
 pub enum IntegerError {
     #[error("{}", _0)]
     Error(String),
-    #[error("{}", _0)]
+    #[error(transparent)]
     SignedIntegerError(#[from] SignedIntegerError),
-    #[error("{}", _0)]
+    #[error(transparent)]
     UnsignedIntegerError(#[from] UnsignedIntegerError),
 }
 

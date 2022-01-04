@@ -128,7 +128,6 @@ macro_rules! uint_impl_common {
             type UnsignedGadget = $name;
             type UnsignedIntegerType = $_type;
 
-            const SIGNED: bool = false;
             const SIZE: usize = $size;
 
             fn constant(value: $_type) -> Self {

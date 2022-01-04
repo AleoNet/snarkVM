@@ -17,6 +17,9 @@
 pub mod add;
 pub use add::*;
 
+pub mod cast;
+pub use cast::*;
+
 pub mod div;
 pub use div::*;
 

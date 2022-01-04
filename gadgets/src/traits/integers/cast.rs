@@ -14,8 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod cast;
-pub use cast::*;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::ConstraintSystem;
 
-pub mod cmp;
-pub use cmp::*;
+/// Returns the Integer as the Target Type.
+pub trait Cast<F: Field, Target>
+where
+    Self: std::marker::Sized,
+{
+    type ErrorType;
+
+    fn cast<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Target, Self::ErrorType>;
+}
