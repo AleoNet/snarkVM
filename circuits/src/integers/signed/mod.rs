@@ -16,7 +16,8 @@
 
 // pub mod add;
 // pub mod double;
-// pub mod equal;
+pub mod equal;
+pub mod less_than;
 // pub mod inv;
 // pub mod mul;
 // pub mod neg;

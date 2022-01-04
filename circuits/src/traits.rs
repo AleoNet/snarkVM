@@ -83,6 +83,14 @@ pub trait Equal<Rhs: ?Sized = Self> {
     fn is_neq(&self, other: &Rhs) -> Self::Output;
 }
 
+pub trait LessThan<Rhs: ?Sized = Self> {
+    type Boolean: BooleanTrait;
+    type Output;
+
+    /// Returns `true` if `self` is less than `other`.
+    fn is_lt(&self, other: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for performing `a AND b`.
 pub trait And<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
