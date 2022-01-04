@@ -14,45 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod add;
-// pub mod double;
-// pub mod equal;
-// pub mod inv;
-// pub mod mul;
-// pub mod neg;
-// pub mod one;
-// pub mod sub;
-// pub mod zero;
-
 use crate::{boolean::Boolean, traits::*, Environment, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O, Zero as Z};
 
-use num_traits::{AsPrimitive, Bounded, One, PrimInt, Signed as NumSigned, Zero};
+use num_traits::{AsPrimitive, Bounded, One, PrimInt, Unsigned as NumUnsigned, Zero};
 use std::{
     fmt,
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-pub type I8<E> = Signed<E, i8, 8>;
-pub type I16<E> = Signed<E, i16, 16>;
-pub type I32<E> = Signed<E, i32, 32>;
-pub type I64<E> = Signed<E, i64, 64>;
-pub type I128<E> = Signed<E, i128, 128>;
+pub type U8<E> = Unsigned<E, u8, 8>;
+pub type U16<E> = Unsigned<E, u16, 16>;
+pub type U32<E> = Unsigned<E, u32, 32>;
+pub type U64<E> = Unsigned<E, u64, 64>;
+pub type U128<E> = Unsigned<E, u128, 128>;
 
 #[derive(Clone)]
-pub struct Signed<E: Environment, I, const SIZE: usize> {
+pub struct Unsigned<E: Environment, I, const SIZE: usize> {
     bits_le: Vec<Boolean<E>>,
     phantom: PhantomData<I>,
 }
 
-impl<E: Environment, I, const SIZE: usize> Signed<E, I, SIZE>
+impl<E: Environment, I, const SIZE: usize> Unsigned<E, I, SIZE>
 where
-    I: 'static + PrimInt + NumSigned + Bounded + Zero + One,
+    I: 'static + PrimInt + NumUnsigned + Bounded + Zero + One,
     bool: AsPrimitive<I>,
 {
-    /// Initializes a new signed integer.
+    /// Initializes a new unsigned integer.
     pub fn new(mode: Mode, value: I) -> Self {
         let mut bits_le = Vec::with_capacity(SIZE);
         let mut value = value.to_le();
@@ -66,31 +56,23 @@ where
         }
     }
 
-    /// Returns `true` if the signed integer is a constant.
+    /// Returns `true` if the unsigned integer is a constant.
     pub fn is_constant(&self) -> bool {
         self.bits_le.iter().all(|bit| bit.is_constant() == true)
     }
 
-    /// Ejects the signed integer as a constant signed integer value.
+    /// Ejects the unsigned integer as a constant unsigned integer value.
     pub fn eject_value(&self) -> I {
-        let base = if self.bits_le[SIZE - 1].eject_value() == true {
-            I::min_value()
-        } else {
-            I::zero()
-        };
-
-        let mut magnitude = I::zero();
-        for i in (0..SIZE - 1).rev() {
-            magnitude = (magnitude << 1) ^ self.bits_le[i].eject_value().as_();
-        }
-
-        base + magnitude
+        self.bits_le
+            .iter()
+            .rev()
+            .fold(I::zero(), |value, bit| (value << 1) ^ bit.eject_value().as_())
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> fmt::Debug for Signed<E, I, SIZE>
+impl<E: Environment, I, const SIZE: usize> fmt::Debug for Unsigned<E, I, SIZE>
 where
-    I: 'static + PrimInt + NumSigned + Bounded + Zero + One + fmt::Display,
+    I: 'static + PrimInt + NumUnsigned + Bounded + Zero + One + fmt::Display,
     bool: AsPrimitive<I>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -104,9 +86,9 @@ mod test {
     use crate::Circuit;
 
     #[test]
-    fn test_i8() {
-        for i in i8::MIN..=i8::MAX {
-            let integer = I8::<Circuit>::new(Mode::Constant, i);
+    fn test_u8() {
+        for i in u8::MIN..=u8::MAX {
+            let integer = U8::<Circuit>::new(Mode::Constant, i);
             assert_eq!(integer.eject_value(), i);
         }
     }
