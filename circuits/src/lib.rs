@@ -26,6 +26,9 @@ pub use fields::*;
 pub mod group;
 pub use group::*;
 
+pub mod integers;
+pub use integers::*;
+
 pub mod models;
 pub use models::*;
 
