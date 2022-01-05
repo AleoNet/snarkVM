@@ -14,6 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+
 pub mod address;
 pub use address::*;
 

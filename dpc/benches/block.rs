@@ -98,7 +98,7 @@ fn block_transactions_serialization(c: &mut Criterion) {
 }
 
 fn transaction_serialization(c: &mut Criterion) {
-    let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap().clone();
+    let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
     bench_serialization(c, "Transaction", transaction);
 }
 

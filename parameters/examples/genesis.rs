@@ -52,12 +52,12 @@ pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
             .len()
     );
 
-    Ok(genesis_block.to_bytes_le()?)
+    genesis_block.to_bytes_le()
 }
 
 pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
     let mut file = File::create(path)?;
-    file.write_all(&bytes)?;
+    file.write_all(bytes)?;
     Ok(())
 }
 

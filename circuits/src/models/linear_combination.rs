@@ -235,7 +235,7 @@ impl<F: PrimeField> Add<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn add(self, other: Variable<F>) -> Self::Output {
-        self + &other
+        self + other
     }
 }
 
@@ -315,7 +315,7 @@ impl<F: PrimeField> Sub<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn sub(self, other: Variable<F>) -> Self::Output {
-        self - &other
+        self - other
     }
 }
 
@@ -355,7 +355,7 @@ impl<F: PrimeField> Mul<F> for LinearCombination<F> {
     type Output = Self;
 
     fn mul(self, coefficient: F) -> Self::Output {
-        self * &coefficient
+        self * coefficient
     }
 }
 
@@ -364,7 +364,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 
     fn mul(self, coefficient: &F) -> Self::Output {
         let mut output = self.clone();
-        output.constant = output.constant * coefficient;
+        output.constant *= coefficient;
         output
             .terms
             .iter_mut()
@@ -401,7 +401,7 @@ mod tests {
     #[test]
     fn test_two() {
         let one = <Circuit as Environment>::BaseField::one();
-        let two = one + &one;
+        let two = one + one;
 
         let candidate = LinearCombination::one() + LinearCombination::one();
         assert_eq!(two, candidate.constant);
