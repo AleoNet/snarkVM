@@ -253,7 +253,7 @@ mod tests {
                 Fr,
                 Fq,
                 MultiPC,
-                FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
+                FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
                 MarlinRecursiveMode,
             >;
 
