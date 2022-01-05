@@ -32,9 +32,13 @@ pub use fields::*;
 pub mod group;
 pub use group::*;
 
+// TODO (howardwu): This is temporary until the models interface is stabilized.
+#[allow(unused)]
 pub mod models;
 pub use models::*;
 
+// TODO (howardwu): This is temporary until the programs interface is stabilized.
+#[allow(unused)]
 pub mod programs;
 pub use programs::*;
 

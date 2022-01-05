@@ -234,8 +234,9 @@ impl<F: PrimeField> Neg for &LinearCombination<F> {
 impl<F: PrimeField> Add<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
+    #[allow(clippy::op_ref)]
     fn add(self, other: Variable<F>) -> Self::Output {
-        self + other
+        self + &other
     }
 }
 
@@ -314,8 +315,9 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
 impl<F: PrimeField> Sub<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
+    #[allow(clippy::op_ref)]
     fn sub(self, other: Variable<F>) -> Self::Output {
-        self - other
+        self - &other
     }
 }
 
@@ -354,8 +356,9 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for &LinearCombination<F> {
 impl<F: PrimeField> Mul<F> for LinearCombination<F> {
     type Output = Self;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, coefficient: F) -> Self::Output {
-        self * coefficient
+        self * &coefficient
     }
 }
 
