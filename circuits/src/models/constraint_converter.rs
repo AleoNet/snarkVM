@@ -259,7 +259,8 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(200, 200, 300).unwrap();
+            let max_degree =
+                snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().cs.borrow()).unwrap();
