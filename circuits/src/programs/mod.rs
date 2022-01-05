@@ -16,7 +16,6 @@
 
 use crate::{traits::*, Affine, BaseField, Boolean, Environment};
 
-use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
 
@@ -31,10 +30,7 @@ pub enum Value<E: Environment> {
 impl<E: Environment> Value<E> {
     /// Returns `true` if the value type is a register.
     fn is_register(&self) -> bool {
-        match self {
-            Self::Register(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Register(..))
     }
 
     /// Returns the value from a register, otherwise passes the loaded value through.

@@ -15,9 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::identity_op)]
 #![allow(clippy::module_inception)]
-#![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
 pub mod address;
 pub use address::*;

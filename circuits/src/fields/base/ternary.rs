@@ -32,7 +32,7 @@ impl<E: Environment> Ternary for BaseField<E> {
         // Constant `first` and `second`
         else if first.is_constant() && second.is_constant() {
             let not_condition = BaseField::from(&!condition);
-            let condition = BaseField::from(&condition);
+            let condition = BaseField::from(condition);
             (condition * first) + (not_condition * second)
         }
         // Variables

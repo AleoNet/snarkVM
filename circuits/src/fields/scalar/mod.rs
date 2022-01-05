@@ -56,7 +56,7 @@ impl<E: Environment> ScalarField<E> {
     /// Returns `true` if the scalar field is a constant.
     ///
     pub fn is_constant(&self) -> bool {
-        self.0.iter().next().unwrap().is_constant()
+        self.0.get(0).unwrap().is_constant()
     }
 
     ///

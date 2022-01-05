@@ -154,19 +154,19 @@ mod tests {
                 let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.eject_value());
+                assert!(is_eq.eject_value()); // true
 
                 let a = BaseField::<Circuit>::new(Mode::Private, one);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(false, is_eq.eject_value());
+                assert!(!is_eq.eject_value()); // false
 
                 let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator - one);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(false, is_eq.eject_value());
+                assert!(!is_eq.eject_value()); // false
 
-                accumulator = accumulator + &one;
+                accumulator += one;
             }
         }
 
@@ -179,14 +179,14 @@ mod tests {
                 let b = BaseField::<Circuit>::new(Mode::Constant, accumulator);
 
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.eject_value());
+                assert!(is_eq.eject_value());
 
                 assert_eq!((i + 1) * 3, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(0, scope.num_private_in_scope());
                 assert_eq!(0, scope.num_constraints_in_scope());
 
-                accumulator = accumulator + &one;
+                accumulator += one;
             }
         });
 
@@ -198,7 +198,7 @@ mod tests {
                 let a = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.eject_value());
+                assert!(is_eq.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!((i + 1) * 2, scope.num_public_in_scope());
@@ -206,7 +206,7 @@ mod tests {
                 assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                accumulator = accumulator + &one;
+                accumulator += one;
             }
         });
 
@@ -218,7 +218,7 @@ mod tests {
                 let a = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.eject_value());
+                assert!(is_eq.eject_value());
 
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(i + 1, scope.num_public_in_scope());
@@ -226,7 +226,7 @@ mod tests {
                 assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
-                accumulator = accumulator + &one;
+                accumulator += one;
             }
         });
 
@@ -238,7 +238,7 @@ mod tests {
                 let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
-                assert_eq!(true, is_eq.eject_value());
+                assert!(is_eq.eject_value());
                 assert!(scope.is_satisfied());
 
                 assert_eq!(0, scope.num_constants_in_scope());
@@ -246,7 +246,7 @@ mod tests {
                 assert_eq!((i + 1) * 4, scope.num_private_in_scope());
                 assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
 
-                accumulator = accumulator + &one;
+                accumulator += one;
             }
         });
     }

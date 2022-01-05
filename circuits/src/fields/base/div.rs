@@ -41,6 +41,7 @@ impl<E: Environment> DivAssign<Self> for BaseField<E> {
 }
 
 impl<E: Environment> DivAssign<&Self> for BaseField<E> {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn div_assign(&mut self, other: &Self) {
         *self *= other.inv();
     }

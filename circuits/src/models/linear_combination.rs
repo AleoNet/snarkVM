@@ -212,7 +212,7 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
 
     #[inline]
     fn neg(self) -> Self::Output {
-        let mut output = self.clone();
+        let mut output = self;
         output.constant = -output.constant;
         output
             .terms
@@ -363,7 +363,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     type Output = Self;
 
     fn mul(self, coefficient: &F) -> Self::Output {
-        let mut output = self.clone();
+        let mut output = self;
         output.constant *= coefficient;
         output
             .terms

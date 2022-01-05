@@ -106,7 +106,7 @@ impl Environment for Circuit {
     {
         CB.with(|cb| {
             // Fetch a copy of the current environment.
-            let current = Self::cs().clone();
+            let current = Self::cs();
 
             // Set the entire environment to the new scope, and run the logic.
             let scope = current.clone().new_scope(name);
