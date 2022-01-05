@@ -16,7 +16,7 @@
 
 use snarkvm_curves::{
     bls12_377::{Fq, Fr, G1Affine, G1Projective},
-    traits::{AffineCurve, Group, ProjectiveCurve},
+    traits::{AffineCurve, Group},
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::BitIteratorBE;
@@ -71,13 +71,13 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
         window_lengths.push(overflow_size);
     }
 
-    let window_lengths_buf = DeviceBox::new_ffi(&context.handle, &window_lengths[..])?;
-    let bases_in_buf = DeviceBox::new_ffi(&context.handle, &mapped_bases[..])?;
-    let scalars_in_buf = DeviceBox::new_ffi(&context.handle, &request.scalars[..])?;
+    let window_lengths_buf = DeviceBox::new_ffi(context.handle, &window_lengths[..])?;
+    let bases_in_buf = DeviceBox::new_ffi(context.handle, &mapped_bases[..])?;
+    let scalars_in_buf = DeviceBox::new_ffi(context.handle, &request.scalars[..])?;
     context.output_buf.memset_d32_stream(0, context.stream)?;
 
     let buckets = DeviceBox::alloc(
-        &context.handle,
+        context.handle,
         context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3,
     )?;
 
@@ -224,10 +224,9 @@ pub(super) fn msm_cuda<G: AffineCurve>(
         unimplemented!("trying to use cuda for unsupported curve");
     }
 
-    if bases.len() < scalars.len() {
-        scalars = &scalars[..bases.len()];
-    } else if bases.len() > scalars.len() {
-        bases = &bases[..scalars.len()];
+    match bases.len() < scalars.len() {
+        true => scalars = &scalars[..bases.len()],
+        false => bases = &bases[..scalars.len()],
     }
 
     if scalars.len() < 4 {
@@ -255,13 +254,13 @@ pub(super) fn msm_cuda<G: AffineCurve>(
 
 #[cfg(test)]
 mod tests {
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
-    use snarkvm_curves::bls12_377::Fq;
+    use super::*;
+    use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
     use snarkvm_fields::{Field, PrimeField};
     use snarkvm_utilities::UniformRand;
 
-    use super::*;
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
 
     #[repr(C)]
     struct ProjectiveAffine {
@@ -375,7 +374,7 @@ mod tests {
 
         let output: Vec<Fq> = run_roundtrip("mul_test", &inputs[..]);
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] * &input[1];
+            let rust_out = input[0] * input[1];
             let output = output.to_repr_unchecked();
             let rust_out = rust_out.to_repr_unchecked();
 
@@ -416,7 +415,7 @@ mod tests {
         let output: Vec<Fq> = run_roundtrip("add_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] + &input[1];
+            let rust_out = input[0] + input[1];
             let output = output.to_repr_unchecked();
             let rust_out = rust_out.to_repr_unchecked();
 
@@ -439,7 +438,7 @@ mod tests {
         let output = run_roundtrip("add_projective_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] + &input[1];
+            let rust_out = input[0] + input[1];
 
             assert_eq!(&rust_out, output);
         }
@@ -480,7 +479,7 @@ mod tests {
         for (input, output) in inputs.iter().zip(output.iter()) {
             let a = G1Affine::new(input[0].x, input[0].y, false);
             let b = G1Affine::new(input[1].x, input[1].y, false);
-            let rust_out: G1Projective = a.into_projective() + &b.into_projective();
+            let rust_out: G1Projective = a.into_projective() + b.into_projective();
             assert_eq!(&rust_out, output);
         }
     }
@@ -518,7 +517,7 @@ mod tests {
         let output: Vec<Fq> = run_roundtrip("sub_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] - &input[1];
+            let rust_out = input[0] - input[1];
             let output = output.to_repr_unchecked();
             let rust_out = rust_out.to_repr_unchecked();
             if rust_out != output {
