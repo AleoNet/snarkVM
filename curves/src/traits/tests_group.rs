@@ -29,7 +29,7 @@ pub fn group_test<G: Group>(a: G, mut b: G) {
     let fr_one = G::ScalarField::one();
     let fr_two = fr_one + fr_one;
     assert!(zero == zero);
-    assert_eq!(zero.is_zero(), true);
+    assert!(zero.is_zero()); // true
     assert_eq!(a.mul(fr_one), a);
     assert_eq!(a.mul(fr_two), a + a);
     assert_eq!(a.mul(fr_zero), zero);

@@ -557,6 +557,7 @@ impl<N: Network> Blocks<N> {
 }
 
 #[cfg(test)]
+#[allow(clippy::comparison_chain)]
 mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
