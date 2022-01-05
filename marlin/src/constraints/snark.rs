@@ -222,7 +222,7 @@ pub mod test {
             let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&vk.clone().into(), &vec![c], &proof).unwrap(),
+                TestSNARK::verify(&vk.clone(), &vec![c], &proof).unwrap(),
                 "The native verification check fails."
             );
 
@@ -303,7 +303,7 @@ pub mod test {
         let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
         assert!(
-            TestSNARK::verify(&vk.clone().into(), &vec![c], &proof).unwrap(),
+            TestSNARK::verify(&vk, &vec![c], &proof).unwrap(),
             "The native verification check fails."
         );
 
@@ -364,6 +364,7 @@ pub mod test {
 }
 
 #[cfg(test)]
+#[allow(clippy::upper_case_acronyms)]
 pub mod multiple_input_tests {
     use core::ops::MulAssign;
 
@@ -496,9 +497,8 @@ pub mod multiple_input_tests {
             let proof_gadget =
                 ProofVar::<F, ConstraintF, PC, PCG>::alloc(cs.ns(|| "proof"), || Ok(self.proof.clone()))?;
 
-            let input_gadget = NonNativeFieldInputVar::<F, ConstraintF>::alloc(cs.ns(|| "input 2"), || {
-                Ok(vec![self.c.clone(), self.c.clone()])
-            })?;
+            let input_gadget =
+                NonNativeFieldInputVar::<F, ConstraintF>::alloc(cs.ns(|| "input 2"), || Ok(vec![self.c, self.c]))?;
 
             let output = MarlinVerificationGadget::<F, ConstraintF, PC, PCG, MM>::verify::<_, FS, FSG>(
                 cs.ns(|| "verify"),
@@ -553,7 +553,7 @@ pub mod multiple_input_tests {
             let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&vk.clone().into(), &[c.clone(), c].to_vec(), &proof).unwrap(),
+                TestSNARK::verify(&vk.clone(), &[c, c].to_vec(), &proof).unwrap(),
                 "The native verification check fails."
             );
 
@@ -562,7 +562,7 @@ pub mod multiple_input_tests {
 
             let input_gadget = <TestSNARKGadget as SNARKVerifierGadget<TestSNARK>>::InputGadget::alloc_input(
                 cs.ns(|| "alloc_input_gadget"),
-                || Ok(vec![c.clone(), c]),
+                || Ok(vec![c, c]),
             )
             .unwrap();
 
@@ -634,7 +634,7 @@ pub mod multiple_input_tests {
             let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&vk.clone().into(), &[c.clone(), c].to_vec(), &proof).unwrap(),
+                TestSNARK::verify(&vk.clone(), &[c, c].to_vec(), &proof).unwrap(),
                 "The native verification check fails."
             );
 
@@ -642,7 +642,7 @@ pub mod multiple_input_tests {
             let mut cs = TestConstraintSystem::<Fq>::new();
 
             let circuit = VerifierCircuit::<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG> {
-                c: c.clone(),
+                c,
                 verifying_key: vk,
                 proof,
                 _f: PhantomData,
@@ -691,13 +691,13 @@ pub mod multiple_input_tests {
         let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
         assert!(
-            TestSNARK::verify(&vk.clone().into(), &[c.clone(), c].to_vec(), &proof).unwrap(),
+            TestSNARK::verify(&vk, &[c, c].to_vec(), &proof).unwrap(),
             "The native verification check fails."
         );
 
         // Initialize constraint system.
         let nested_circuit = VerifierCircuit::<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG> {
-            c: c.clone(),
+            c,
             verifying_key: vk,
             proof,
             _f: PhantomData,
@@ -717,7 +717,7 @@ pub mod multiple_input_tests {
         let nested_proof = NestedSNARK::prove(&nested_pk, &nested_circuit, &mut rng).unwrap();
 
         assert!(
-            NestedSNARK::verify(&nested_vk.clone().into(), &vec![], &nested_proof).unwrap(),
+            NestedSNARK::verify(&nested_vk, &vec![], &nested_proof).unwrap(),
             "The native verification check fails."
         );
     }
