@@ -257,7 +257,7 @@ mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
     use snarkvm_fields::{Field, One, PrimeField};
-    use snarkvm_utilities::{FromBytes, UniformRand};
+    use snarkvm_utilities::UniformRand;
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -540,10 +540,10 @@ mod tests {
             y: Fq::one(),
         };
 
-        let inputs = vec![vec![cuda_infinite.clone(), cuda_infinite.clone()]];
+        let inputs = vec![vec![cuda_infinite.clone(), cuda_infinite]];
         let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
 
-        let rust_out: G1Projective = infinite.into_projective() + &infinite.into_projective();
+        let rust_out: G1Projective = infinite.into_projective() + infinite.into_projective();
         assert_eq!(rust_out, output[0]);
     }
 
@@ -557,7 +557,7 @@ mod tests {
         };
 
         let inputs = vec![vec![ProjectiveAffine {
-            projective: projective.clone(),
+            projective,
             affine: cuda_infinite,
         }]];
 
