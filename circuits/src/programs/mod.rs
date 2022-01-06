@@ -129,6 +129,8 @@ pub enum Instruction<E: Environment> {
     Store(Value<E>, Register<E>),
     /// Adds `first` with `second`, storing the outcome in `register`.
     Add(Value<E>, Value<E>, Register<E>),
+    /// Subtracts `first` from `second`, storing the outcome in `register`.
+    Sub(Value<E>, Value<E>, Register<E>),
 }
 
 impl<E: Environment> Instruction<E> {
@@ -137,6 +139,7 @@ impl<E: Environment> Instruction<E> {
         match self {
             Self::Store(..) => 0,
             Self::Add(..) => 1,
+            Self::Sub(..) => 2,
         }
     }
 
@@ -145,6 +148,7 @@ impl<E: Environment> Instruction<E> {
         match self {
             Self::Store(..) => self.store(),
             Self::Add(..) => self.add(),
+            Self::Sub(..) => self.sub(),
         }
     }
 
@@ -168,6 +172,23 @@ impl<E: Environment> Instruction<E> {
         match (first.to_value(), second.to_value()) {
             (Value::BaseField(a), Value::BaseField(b)) => register.store(&Value::BaseField(a + b)),
             (Value::Group(a), Value::Group(b)) => register.store(&Value::Group(a + b)),
+            _ => unreachable!(),
+        }
+    }
+
+
+    /// Subtracts `first` from `second`, storing the outcome in `register`.
+    fn sub(&self) {
+        // Load the values and register.
+        let (first, second, register) = match self {
+            Self::Sub(first, second, register) => (first, second, register),
+            _ => unreachable!(),
+        };
+
+        // Perform the operation.
+        match (first.to_value(), second.to_value()) {
+            (Value::BaseField(a), Value::BaseField(b)) => register.store(&Value::BaseField(a - b)),
+            (Value::Group(a), Value::Group(b)) => register.store(&Value::Group(a - b)),
             _ => unreachable!(),
         }
     }
