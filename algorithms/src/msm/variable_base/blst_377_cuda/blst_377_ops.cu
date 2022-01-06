@@ -430,6 +430,27 @@ __device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_
         http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-mmadd-2007-bl
     */
 
+    // The points can't be 0.
+    if (is_blst_p1_affine_zero(p2)) {
+        memcpy(out->X, p1->X, sizeof(blst_fp));
+        memcpy(out->Y, p1->Y, sizeof(blst_fp));
+
+        if (is_blst_p1_affine_zero(p1)) {
+            memcpy(out->Z, 0, sizeof(blst_fp));
+        } else {
+            memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
+        }
+
+        return;
+    }
+
+    // mmadd-2007-bl does not support equal values for p1 and p2.
+    // If `p1` and `p2` are equal, use the doubling algorithm.
+    if(is_blst_fp_eq(p1->X, p2->X) && is_blst_fp_eq(p1->Y, p2->Y)) {
+        blst_p1_double(out, p1);
+        return;
+    }
+
     // H = X2-X1
     blst_fp h;
     blst_fp_sub(h, p2->X, p1->X);

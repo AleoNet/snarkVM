@@ -256,7 +256,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(
 mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
-    use snarkvm_fields::{Field, PrimeField};
+    use snarkvm_fields::{Field, One, PrimeField};
     use snarkvm_utilities::UniformRand;
 
     use rand::SeedableRng;
@@ -530,5 +530,40 @@ mod tests {
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
         }
+    }
+
+    #[test]
+    fn test_cuda_affine_add_infinity() {
+        let infinite = G1Affine::new(Fq::zero(), Fq::one(), true);
+        let cuda_infinite = CudaAffine {
+            x: Fq::zero(),
+            y: Fq::one(),
+        };
+
+        let inputs = vec![vec![cuda_infinite.clone(), cuda_infinite]];
+        let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
+
+        let rust_out: G1Projective = infinite.into_projective() + infinite.into_projective();
+        assert_eq!(rust_out, output[0]);
+    }
+
+    #[test]
+    fn test_cuda_projective_affine_add_infinity() {
+        let mut projective = G1Projective::zero();
+
+        let cuda_infinite = CudaAffine {
+            x: Fq::zero(),
+            y: Fq::one(),
+        };
+
+        let inputs = vec![vec![ProjectiveAffine {
+            projective,
+            affine: cuda_infinite,
+        }]];
+
+        let output: Vec<G1Projective> = run_roundtrip("add_projective_affine_test", &inputs[..]);
+
+        projective.add_assign_mixed(&G1Affine::new(Fq::zero(), Fq::one(), true));
+        assert_eq!(projective, output[0]);
     }
 }
