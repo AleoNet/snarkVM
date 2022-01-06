@@ -80,6 +80,7 @@ impl<N: Network> PoSWProof<N> {
             Self::NonHiding(proof) => {
                 // Ensure the proof is valid.
                 if !<<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof).unwrap() {
+                    #[cfg(debug_assertions)]
                     eprintln!("PoSW proof verification failed");
                     return false;
                 }
@@ -100,6 +101,7 @@ impl<N: Network> PoSWProof<N> {
                 if !<crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs.to_vec(), proof)
                     .unwrap()
                 {
+                    #[cfg(debug_assertions)]
                     eprintln!("[deprecated] PoSW proof verification failed");
                     return false;
                 }
