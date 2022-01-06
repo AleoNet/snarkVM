@@ -88,17 +88,17 @@
 	.param .b64 _Z15blst_fp_inversePyPKy_param_1
 )
 ;
-.global .align 8 .b8 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P[48] = {1, 0, 0, 0, 0, 192, 8, 133, 0, 0, 0, 48, 68, 93, 11, 23, 0, 72, 9, 186, 47, 98, 243, 30, 143, 19, 245, 0, 243, 217, 34, 26, 59, 73, 161, 108, 192, 5, 59, 198, 234, 16, 197, 23, 70, 58, 174, 1};
-.global .align 8 .b8 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ZERO[48];
-.global .align 8 .b8 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ONE[48] = {104, 255, 255, 255, 255, 255, 205, 2, 177, 255, 255, 127, 131, 159, 64, 81, 242, 63, 125, 138, 169, 179, 125, 159, 5, 99, 124, 110, 183, 151, 78, 123, 232, 132, 60, 128, 191, 149, 244, 76, 154, 244, 253, 226, 97, 102, 141, 0};
-.global .align 8 .b8 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_R2[48] = {34, 205, 0, 148, 108, 104, 134, 183, 177, 49, 4, 176, 170, 252, 41, 3, 109, 180, 214, 98, 17, 241, 165, 34, 172, 195, 125, 130, 3, 125, 223, 191, 249, 11, 121, 65, 240, 146, 126, 131, 136, 75, 145, 30, 203, 252, 109, 0};
-.global .align 8 .u64 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_p0 = -8860621160618917889;
+.global .align 8 .b8 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P[48] = {1, 0, 0, 0, 0, 192, 8, 133, 0, 0, 0, 48, 68, 93, 11, 23, 0, 72, 9, 186, 47, 98, 243, 30, 143, 19, 245, 0, 243, 217, 34, 26, 59, 73, 161, 108, 192, 5, 59, 198, 234, 16, 197, 23, 70, 58, 174, 1};
+.global .align 8 .b8 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ZERO[48];
+.global .align 8 .b8 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ONE[48] = {104, 255, 255, 255, 255, 255, 205, 2, 177, 255, 255, 127, 131, 159, 64, 81, 242, 63, 125, 138, 169, 179, 125, 159, 5, 99, 124, 110, 183, 151, 78, 123, 232, 132, 60, 128, 191, 149, 244, 76, 154, 244, 253, 226, 97, 102, 141, 0};
+.global .align 8 .b8 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_R2[48] = {34, 205, 0, 148, 108, 104, 134, 183, 177, 49, 4, 176, 170, 252, 41, 3, 109, 180, 214, 98, 17, 241, 165, 34, 172, 195, 125, 130, 3, 125, 223, 191, 249, 11, 121, 65, 240, 146, 126, 131, 136, 75, 145, 30, 203, 252, 109, 0};
+.global .align 8 .u64 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_p0 = -8860621160618917889;
 .extern .global .align 8 .b8 BLS12_377_ZERO_PROJECTIVE[144];
 
-.func _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2_(
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_0,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_1,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_2
+.func _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2_(
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_0,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_1,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_2
 )
 {
 	.reg .b64 	%rd<6>;
@@ -110,13 +110,13 @@ func_begin0:
 
 	.loc 3 7 1
 
-	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_0];
-	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_1];
-	ld.param.u64 	%rd3, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_2];
+	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_0];
+	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_1];
+	ld.param.u64 	%rd3, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2__param_2];
 func_exec_begin0:
 	.loc	3 8 3
 tmp0:
-	mov.u64 	%rd4, __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
+	mov.u64 	%rd4, __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
 	cvta.global.u64 	%rd5, %rd4;
 	// Callseq Start 0
 	{
@@ -147,10 +147,10 @@ tmp1:
 func_end0:
 }
 
-.func _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2_(
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_0,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_1,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_2
+.func _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2_(
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_0,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_1,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_2
 )
 {
 	.reg .b64 	%rd<6>;
@@ -162,13 +162,13 @@ func_begin1:
 
 	.loc 3 13 1
 
-	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_0];
-	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_1];
-	ld.param.u64 	%rd3, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_2];
+	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_0];
+	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_1];
+	ld.param.u64 	%rd3, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2__param_2];
 func_exec_begin1:
 	.loc	3 14 3
 tmp2:
-	mov.u64 	%rd4, __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
+	mov.u64 	%rd4, __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
 	cvta.global.u64 	%rd5, %rd4;
 	// Callseq Start 1
 	{
@@ -199,10 +199,10 @@ tmp3:
 func_end1:
 }
 
-.func _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2_(
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_0,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_1,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_2
+.func _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2_(
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_0,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_1,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_2
 )
 {
 	.reg .b64 	%rd<7>;
@@ -214,13 +214,13 @@ func_begin2:
 
 	.loc 3 22 1
 
-	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_0];
-	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_1];
-	ld.param.u64 	%rd3, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_2];
+	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_0];
+	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_1];
+	ld.param.u64 	%rd3, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2__param_2];
 func_exec_begin2:
 	.loc	3 23 3
 tmp4:
-	mov.u64 	%rd4, __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
+	mov.u64 	%rd4, __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
 	cvta.global.u64 	%rd5, %rd4;
 	mov.u64 	%rd6, -8860621160618917889;
 	// Callseq Start 2
@@ -255,9 +255,9 @@ tmp5:
 func_end2:
 }
 
-.func _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy(
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_0,
-	.param .b64 _ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_1
+.func _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy(
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_0,
+	.param .b64 _ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_1
 )
 {
 	.reg .b64 	%rd<6>;
@@ -269,12 +269,12 @@ func_begin3:
 
 	.loc 3 25 1
 
-	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_0];
-	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_1];
+	ld.param.u64 	%rd1, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_0];
+	ld.param.u64 	%rd2, [_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy_param_1];
 func_exec_begin3:
 	.loc	3 26 3
 tmp6:
-	mov.u64 	%rd3, __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
+	mov.u64 	%rd3, __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P;
 	cvta.global.u64 	%rd4, %rd3;
 	mov.u64 	%rd5, -8860621160618917889;
 	// Callseq Start 3
@@ -335,7 +335,7 @@ tmp8:
 	.param .b64 param1;
 	st.param.b64	[param1+0], %rd2;
 	call.uni 
-	_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy, 
+	_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_sqrEPyPKy, 
 	(
 	param0, 
 	param1
@@ -381,7 +381,7 @@ tmp10:
 	.param .b64 param2;
 	st.param.b64	[param2+0], %rd3;
 	call.uni 
-	_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2_, 
+	_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_addEPyPKyS2_, 
 	(
 	param0, 
 	param1, 
@@ -684,7 +684,7 @@ tmp22:
 	.param .b64 param2;
 	st.param.b64	[param2+0], %rd3;
 	call.uni 
-	_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2_, 
+	_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_subEPyPKyS2_, 
 	(
 	param0, 
 	param1, 
@@ -731,7 +731,7 @@ tmp24:
 	.param .b64 param2;
 	st.param.b64	[param2+0], %rd3;
 	call.uni 
-	_ZN62_INTERNAL_40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2_, 
+	_ZN62_INTERNAL_40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test11blst_fp_mulEPyPKyS2_, 
 	(
 	param0, 
 	param1, 
@@ -832,12 +832,12 @@ tmp29:
 func_end14:
 }
 
-	.file	1 "/home/raymond/aleo/snarkVM/algorithms/src/msm/variable_base/blst_377_cuda/./tests.cu", 1641432423, 1635
-	.file	2 "/home/raymond/aleo/snarkVM/algorithms/src/msm/variable_base/blst_377_cuda/./types.h", 1641500010, 1912
-	.file	3 "/home/raymond/aleo/snarkVM/algorithms/src/msm/variable_base/blst_377_cuda/./blst_377_ops.h", 1641432423, 1759
+	.file	1 "/home/aleo/snarkVM/algorithms/src/msm/variable_base/blst_377_cuda/./tests.cu", 1641501246, 1635
+	.file	2 "/home/aleo/snarkVM/algorithms/src/msm/variable_base/blst_377_cuda/./types.h", 1641501271, 1912
+	.file	3 "/home/aleo/snarkVM/algorithms/src/msm/variable_base/blst_377_cuda/./blst_377_ops.h", 1641501246, 1759
 
 .section .debug_info {
- .b32 3254
+ .b32 3246
  .b8 2
  .b8 0
  .b32 .debug_abbrev
@@ -881,14 +881,6 @@ func_end14:
  .b8 111
  .b8 109
  .b8 101
- .b8 47
- .b8 114
- .b8 97
- .b8 121
- .b8 109
- .b8 111
- .b8 110
- .b8 100
  .b8 47
  .b8 97
  .b8 108
@@ -966,12 +958,12 @@ func_end14:
  .b8 80
 
  .b8 0
- .b32 237
+ .b32 229
  .b8 2
  .b8 46
  .b8 9
  .b8 3
- .b64 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P
+ .b64 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_P
  .b8 95
  .b8 95
  .b8 110
@@ -1002,10 +994,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1057,19 +1049,19 @@ func_end14:
  .b8 5
  .b8 3
 
- .b32 249
+ .b32 241
  .b8 4
 
- .b32 288
+ .b32 280
  .b8 5
 
  .b8 0
  .b8 5
 
- .b32 254
+ .b32 246
  .b8 6
 
- .b32 266
+ .b32 258
  .b8 108
  .b8 105
  .b8 109
@@ -1129,12 +1121,12 @@ func_end14:
  .b8 79
 
  .b8 0
- .b32 237
+ .b32 229
  .b8 2
  .b8 51
  .b8 9
  .b8 3
- .b64 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ZERO
+ .b64 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ZERO
  .b8 95
  .b8 95
  .b8 110
@@ -1165,10 +1157,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1238,12 +1230,12 @@ func_end14:
  .b8 69
 
  .b8 0
- .b32 237
+ .b32 229
  .b8 2
  .b8 52
  .b8 9
  .b8 3
- .b64 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ONE
+ .b64 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_ONE
  .b8 95
  .b8 95
  .b8 110
@@ -1274,10 +1266,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1345,12 +1337,12 @@ func_end14:
  .b8 50
 
  .b8 0
- .b32 237
+ .b32 229
  .b8 2
  .b8 53
  .b8 9
  .b8 3
- .b64 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_R2
+ .b64 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_R2
  .b8 95
  .b8 95
  .b8 110
@@ -1381,10 +1373,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1451,12 +1443,12 @@ func_end14:
  .b8 48
 
  .b8 0
- .b32 249
+ .b32 241
  .b8 2
  .b8 61
  .b8 9
  .b8 3
- .b64 __nv_static_53__40_tmpxft_000153f4_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_p0
+ .b64 __nv_static_53__40_tmpxft_00016123_00000000_6_tests_cpp1_ii_sqr_test_BLS12_377_p0
  .b8 95
  .b8 95
  .b8 110
@@ -1487,10 +1479,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1570,7 +1562,7 @@ func_end14:
  .b8 69
 
  .b8 0
- .b32 824
+ .b32 816
  .b8 1
  .b8 2
  .b8 62
@@ -1607,10 +1599,10 @@ func_end14:
  .b8 5
  .b8 5
 
- .b32 829
+ .b32 821
  .b8 6
 
- .b32 842
+ .b32 834
  .b8 98
  .b8 108
  .b8 115
@@ -1639,7 +1631,7 @@ func_end14:
  .b8 88
 
  .b8 0
- .b32 888
+ .b32 880
  .b8 2
  .b8 36
  .b8 0
@@ -1649,7 +1641,7 @@ func_end14:
  .b8 89
 
  .b8 0
- .b32 888
+ .b32 880
  .b8 2
  .b8 36
  .b8 48
@@ -1659,7 +1651,7 @@ func_end14:
  .b8 90
 
  .b8 0
- .b32 888
+ .b32 880
  .b8 2
  .b8 36
  .b8 96
@@ -1667,7 +1659,7 @@ func_end14:
  .b8 0
  .b8 6
 
- .b32 901
+ .b32 893
  .b8 98
  .b8 108
  .b8 115
@@ -1679,10 +1671,10 @@ func_end14:
  .b8 0
  .b8 3
 
- .b32 254
+ .b32 246
  .b8 4
 
- .b32 288
+ .b32 280
  .b8 5
 
  .b8 0
@@ -1717,10 +1709,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1808,10 +1800,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -1872,7 +1864,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 7
- .b32 1172
+ .b32 1164
  .b64 func_begin0
  .b64 func_end0
  .b8 1
@@ -1886,7 +1878,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 7
- .b32 3199
+ .b32 3191
  .b8 6
  .b8 144
  .b8 177
@@ -1902,7 +1894,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 7
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 178
@@ -1918,7 +1910,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 7
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 179
@@ -1967,10 +1959,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -2058,10 +2050,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -2122,7 +2114,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 13
- .b32 1172
+ .b32 1164
  .b64 func_begin1
  .b64 func_end1
  .b8 1
@@ -2136,7 +2128,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 13
- .b32 3199
+ .b32 3191
  .b8 6
  .b8 144
  .b8 177
@@ -2152,7 +2144,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 13
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 178
@@ -2168,7 +2160,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 13
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 179
@@ -2209,10 +2201,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -2300,10 +2292,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -2364,7 +2356,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 22
- .b32 1172
+ .b32 1164
  .b64 func_begin2
  .b64 func_end2
  .b8 1
@@ -2378,7 +2370,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 22
- .b32 3199
+ .b32 3191
  .b8 6
  .b8 144
  .b8 177
@@ -2394,7 +2386,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 22
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 178
@@ -2410,7 +2402,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 22
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 179
@@ -2451,10 +2443,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -2539,10 +2531,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -2600,7 +2592,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 25
- .b32 1172
+ .b32 1164
  .b64 func_begin3
  .b64 func_end3
  .b8 1
@@ -2614,7 +2606,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 25
- .b32 3199
+ .b32 3191
  .b8 6
  .b8 144
  .b8 177
@@ -2630,7 +2622,7 @@ func_end14:
  .b8 0
  .b8 3
  .b8 25
- .b32 3205
+ .b32 3197
  .b8 6
  .b8 144
  .b8 178
@@ -2664,7 +2656,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 5
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin4
  .b64 func_end4
@@ -2679,7 +2671,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 5
- .b32 3199
+ .b32 3191
  .b8 9
  .b8 3
  .b64 sqr_test_param_0
@@ -2691,7 +2683,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 5
- .b32 3205
+ .b32 3197
  .b8 9
  .b8 3
  .b64 sqr_test_param_1
@@ -2721,7 +2713,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 9
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin5
  .b64 func_end5
@@ -2736,7 +2728,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 9
- .b32 3199
+ .b32 3191
  .b8 9
  .b8 3
  .b64 add_test_param_0
@@ -2748,7 +2740,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 9
- .b32 3211
+ .b32 3203
  .b8 9
  .b8 3
  .b64 add_test_param_1
@@ -2800,7 +2792,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 13
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin6
  .b64 func_end6
@@ -2815,7 +2807,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 13
- .b32 3217
+ .b32 3209
  .b8 9
  .b8 3
  .b64 add_projective_test_param_0
@@ -2827,7 +2819,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 13
- .b32 3223
+ .b32 3215
  .b8 9
  .b8 3
  .b64 add_projective_test_param_1
@@ -2885,7 +2877,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 17
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin7
  .b64 func_end7
@@ -2900,7 +2892,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 17
- .b32 3217
+ .b32 3209
  .b8 9
  .b8 3
  .b64 double_projective_test_param_0
@@ -2912,7 +2904,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 17
- .b32 3223
+ .b32 3215
  .b8 9
  .b8 3
  .b64 double_projective_test_param_1
@@ -2978,7 +2970,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 26
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin8
  .b64 func_end8
@@ -2993,7 +2985,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 26
- .b32 3217
+ .b32 3209
  .b8 9
  .b8 3
  .b64 add_projective_affine_test_param_0
@@ -3005,7 +2997,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 26
- .b32 3229
+ .b32 3221
  .b8 9
  .b8 3
  .b64 add_projective_affine_test_param_1
@@ -3049,7 +3041,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 30
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin9
  .b64 func_end9
@@ -3064,7 +3056,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 30
- .b32 3217
+ .b32 3209
  .b8 9
  .b8 3
  .b64 add_affine_test_param_0
@@ -3076,7 +3068,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 30
- .b32 3240
+ .b32 3232
  .b8 9
  .b8 3
  .b64 add_affine_test_param_1
@@ -3134,7 +3126,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 34
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin10
  .b64 func_end10
@@ -3149,7 +3141,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 34
- .b32 3251
+ .b32 3243
  .b8 9
  .b8 3
  .b64 affine_round_trip_test_param_0
@@ -3161,7 +3153,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 34
- .b32 3240
+ .b32 3232
  .b8 9
  .b8 3
  .b64 affine_round_trip_test_param_1
@@ -3188,7 +3180,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 35
- .b32 829
+ .b32 821
  .b8 11
  .b8 3
  .b64 __local_depot10
@@ -3222,7 +3214,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 40
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin11
  .b64 func_end11
@@ -3237,7 +3229,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 40
- .b32 3199
+ .b32 3191
  .b8 9
  .b8 3
  .b64 sub_test_param_0
@@ -3249,7 +3241,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 40
- .b32 3211
+ .b32 3203
  .b8 9
  .b8 3
  .b64 sub_test_param_1
@@ -3279,7 +3271,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 44
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin12
  .b64 func_end12
@@ -3294,7 +3286,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 44
- .b32 3199
+ .b32 3191
  .b8 9
  .b8 3
  .b64 mul_test_param_0
@@ -3306,7 +3298,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 44
- .b32 3211
+ .b32 3203
  .b8 9
  .b8 3
  .b64 mul_test_param_1
@@ -3338,7 +3330,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 48
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin13
  .b64 func_end13
@@ -3353,7 +3345,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 48
- .b32 3199
+ .b32 3191
  .b8 9
  .b8 3
  .b64 div2_test_param_0
@@ -3365,7 +3357,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 48
- .b32 3205
+ .b32 3197
  .b8 9
  .b8 3
  .b64 div2_test_param_1
@@ -3403,7 +3395,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 52
- .b32 1172
+ .b32 1164
  .b8 1
  .b64 func_begin14
  .b64 func_end14
@@ -3418,7 +3410,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 52
- .b32 3199
+ .b32 3191
  .b8 9
  .b8 3
  .b64 inverse_test_param_0
@@ -3430,7 +3422,7 @@ func_end14:
  .b8 0
  .b8 1
  .b8 52
- .b32 3205
+ .b32 3197
  .b8 9
  .b8 3
  .b64 inverse_test_param_1
@@ -3462,7 +3454,7 @@ func_end14:
  .b8 88
 
  .b8 0
- .b32 888
+ .b32 880
  .b8 2
  .b8 35
  .b8 0
@@ -3472,7 +3464,7 @@ func_end14:
  .b8 89
 
  .b8 0
- .b32 888
+ .b32 880
  .b8 2
  .b8 35
  .b8 48
@@ -3480,7 +3472,7 @@ func_end14:
  .b8 0
  .b8 6
 
- .b32 3078
+ .b32 3070
  .b8 98
  .b8 108
  .b8 115
@@ -3535,7 +3527,7 @@ func_end14:
  .b8 101
 
  .b8 0
- .b32 829
+ .b32 821
  .b8 1
  .b8 22
  .b8 0
@@ -3550,7 +3542,7 @@ func_end14:
  .b8 101
 
  .b8 0
- .b32 3120
+ .b32 3112
  .b8 1
  .b8 23
  .b8 144
@@ -3558,41 +3550,41 @@ func_end14:
  .b8 0
  .b8 18
 
- .b32 254
+ .b32 246
  .b8 12
  .b8 18
 
- .b32 249
+ .b32 241
  .b8 12
  .b8 18
 
- .b32 237
+ .b32 229
  .b8 12
  .b8 18
 
- .b32 829
+ .b32 821
  .b8 12
  .b8 18
 
- .b32 824
+ .b32 816
  .b8 12
  .b8 18
 
- .b32 3235
- .b8 12
- .b8 5
-
- .b32 3140
- .b8 18
-
- .b32 3246
+ .b32 3227
  .b8 12
  .b8 5
 
- .b32 3120
+ .b32 3132
  .b8 18
 
- .b32 3120
+ .b32 3238
+ .b8 12
+ .b8 5
+
+ .b32 3112
+ .b8 18
+
+ .b32 3112
  .b8 12
  .b8 0
 }
@@ -4099,8 +4091,8 @@ func_end14:
  .b8 2
  .b8 0
  .b32 .debug_info
- .b32 3254
- .b32 2106
+ .b32 3246
+ .b32 2098
  .b8 97
  .b8 100
  .b8 100
@@ -4122,7 +4114,7 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 2019
+ .b32 2011
  .b8 97
  .b8 100
  .b8 100
@@ -4133,7 +4125,7 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 2720
+ .b32 2712
  .b8 115
  .b8 117
  .b8 98
@@ -4144,7 +4136,7 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 2330
+ .b32 2322
  .b8 97
  .b8 100
  .b8 100
@@ -4173,7 +4165,61 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 913
+ .b32 2546
+ .b8 97
+ .b8 102
+ .b8 102
+ .b8 105
+ .b8 110
+ .b8 101
+ .b8 95
+ .b8 114
+ .b8 111
+ .b8 117
+ .b8 110
+ .b8 100
+ .b8 95
+ .b8 116
+ .b8 114
+ .b8 105
+ .b8 112
+ .b8 95
+ .b8 116
+ .b8 101
+ .b8 115
+ .b8 116
+ .b8 0
+
+ .b32 2799
+ .b8 109
+ .b8 117
+ .b8 108
+ .b8 95
+ .b8 116
+ .b8 101
+ .b8 115
+ .b8 116
+ .b8 0
+
+ .b32 2445
+ .b8 97
+ .b8 100
+ .b8 100
+ .b8 95
+ .b8 97
+ .b8 102
+ .b8 102
+ .b8 105
+ .b8 110
+ .b8 101
+ .b8 95
+ .b8 116
+ .b8 101
+ .b8 115
+ .b8 116
+ .b8 0
+
+ .b32 905
  .b8 95
  .b8 90
  .b8 78
@@ -4203,10 +4249,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -4265,7 +4311,7 @@ func_end14:
  .b8 95
  .b8 0
 
- .b32 1178
+ .b32 1170
  .b8 95
  .b8 90
  .b8 78
@@ -4295,10 +4341,10 @@ func_end14:
  .b8 48
  .b8 48
  .b8 49
- .b8 53
+ .b8 54
+ .b8 49
+ .b8 50
  .b8 51
- .b8 102
- .b8 52
  .b8 95
  .b8 48
  .b8 48
@@ -4357,102 +4403,7 @@ func_end14:
  .b8 95
  .b8 0
 
- .b32 2554
- .b8 97
- .b8 102
- .b8 102
- .b8 105
- .b8 110
- .b8 101
- .b8 95
- .b8 114
- .b8 111
- .b8 117
- .b8 110
- .b8 100
- .b8 95
- .b8 116
- .b8 114
- .b8 105
- .b8 112
- .b8 95
- .b8 116
- .b8 101
- .b8 115
- .b8 116
- .b8 0
-
- .b32 2807
- .b8 109
- .b8 117
- .b8 108
- .b8 95
- .b8 116
- .b8 101
- .b8 115
- .b8 116
- .b8 0
-
- .b32 1437
- .b8 95
- .b8 90
- .b8 78
- .b8 54
- .b8 50
- .b8 95
- .b8 73
- .b8 78
- .b8 84
- .b8 69
- .b8 82
- .b8 78
- .b8 65
- .b8 76
- .b8 95
- .b8 52
- .b8 48
- .b8 95
- .b8 116
- .b8 109
- .b8 112
- .b8 120
- .b8 102
- .b8 116
- .b8 95
- .b8 48
- .b8 48
- .b8 48
- .b8 49
- .b8 53
- .b8 51
- .b8 102
- .b8 52
- .b8 95
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 95
- .b8 54
- .b8 95
- .b8 116
- .b8 101
- .b8 115
- .b8 116
- .b8 115
- .b8 95
- .b8 99
- .b8 112
- .b8 112
- .b8 49
- .b8 95
- .b8 105
- .b8 105
- .b8 95
+ .b32 1924
  .b8 115
  .b8 113
  .b8 114
@@ -4461,138 +4412,9 @@ func_end14:
  .b8 101
  .b8 115
  .b8 116
- .b8 49
- .b8 49
- .b8 98
- .b8 108
- .b8 115
- .b8 116
- .b8 95
- .b8 102
- .b8 112
- .b8 95
- .b8 109
- .b8 117
- .b8 108
- .b8 69
- .b8 80
- .b8 121
- .b8 80
- .b8 75
- .b8 121
- .b8 83
- .b8 50
- .b8 95
  .b8 0
 
- .b32 2453
- .b8 97
- .b8 100
- .b8 100
- .b8 95
- .b8 97
- .b8 102
- .b8 102
- .b8 105
- .b8 110
- .b8 101
- .b8 95
- .b8 116
- .b8 101
- .b8 115
- .b8 116
- .b8 0
-
- .b32 1696
- .b8 95
- .b8 90
- .b8 78
- .b8 54
- .b8 50
- .b8 95
- .b8 73
- .b8 78
- .b8 84
- .b8 69
- .b8 82
- .b8 78
- .b8 65
- .b8 76
- .b8 95
- .b8 52
- .b8 48
- .b8 95
- .b8 116
- .b8 109
- .b8 112
- .b8 120
- .b8 102
- .b8 116
- .b8 95
- .b8 48
- .b8 48
- .b8 48
- .b8 49
- .b8 53
- .b8 51
- .b8 102
- .b8 52
- .b8 95
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 48
- .b8 95
- .b8 54
- .b8 95
- .b8 116
- .b8 101
- .b8 115
- .b8 116
- .b8 115
- .b8 95
- .b8 99
- .b8 112
- .b8 112
- .b8 49
- .b8 95
- .b8 105
- .b8 105
- .b8 95
- .b8 115
- .b8 113
- .b8 114
- .b8 95
- .b8 116
- .b8 101
- .b8 115
- .b8 116
- .b8 49
- .b8 49
- .b8 98
- .b8 108
- .b8 115
- .b8 116
- .b8 95
- .b8 102
- .b8 112
- .b8 95
- .b8 115
- .b8 113
- .b8 114
- .b8 69
- .b8 80
- .b8 121
- .b8 80
- .b8 75
- .b8 121
- .b8 0
-
- .b32 2215
+ .b32 2207
  .b8 100
  .b8 111
  .b8 117
@@ -4617,7 +4439,66 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 1932
+ .b32 1429
+ .b8 95
+ .b8 90
+ .b8 78
+ .b8 54
+ .b8 50
+ .b8 95
+ .b8 73
+ .b8 78
+ .b8 84
+ .b8 69
+ .b8 82
+ .b8 78
+ .b8 65
+ .b8 76
+ .b8 95
+ .b8 52
+ .b8 48
+ .b8 95
+ .b8 116
+ .b8 109
+ .b8 112
+ .b8 120
+ .b8 102
+ .b8 116
+ .b8 95
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 49
+ .b8 54
+ .b8 49
+ .b8 50
+ .b8 51
+ .b8 95
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 95
+ .b8 54
+ .b8 95
+ .b8 116
+ .b8 101
+ .b8 115
+ .b8 116
+ .b8 115
+ .b8 95
+ .b8 99
+ .b8 112
+ .b8 112
+ .b8 49
+ .b8 95
+ .b8 105
+ .b8 105
+ .b8 95
  .b8 115
  .b8 113
  .b8 114
@@ -4626,9 +4507,31 @@ func_end14:
  .b8 101
  .b8 115
  .b8 116
+ .b8 49
+ .b8 49
+ .b8 98
+ .b8 108
+ .b8 115
+ .b8 116
+ .b8 95
+ .b8 102
+ .b8 112
+ .b8 95
+ .b8 109
+ .b8 117
+ .b8 108
+ .b8 69
+ .b8 80
+ .b8 121
+ .b8 80
+ .b8 75
+ .b8 121
+ .b8 83
+ .b8 50
+ .b8 95
  .b8 0
 
- .b32 2894
+ .b32 2886
  .b8 100
  .b8 105
  .b8 118
@@ -4640,7 +4543,7 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 2983
+ .b32 2975
  .b8 105
  .b8 110
  .b8 118
@@ -4655,7 +4558,7 @@ func_end14:
  .b8 116
  .b8 0
 
- .b32 753
+ .b32 745
  .b8 66
  .b8 76
  .b8 83
@@ -4681,6 +4584,95 @@ func_end14:
  .b8 73
  .b8 86
  .b8 69
+ .b8 0
+
+ .b32 1688
+ .b8 95
+ .b8 90
+ .b8 78
+ .b8 54
+ .b8 50
+ .b8 95
+ .b8 73
+ .b8 78
+ .b8 84
+ .b8 69
+ .b8 82
+ .b8 78
+ .b8 65
+ .b8 76
+ .b8 95
+ .b8 52
+ .b8 48
+ .b8 95
+ .b8 116
+ .b8 109
+ .b8 112
+ .b8 120
+ .b8 102
+ .b8 116
+ .b8 95
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 49
+ .b8 54
+ .b8 49
+ .b8 50
+ .b8 51
+ .b8 95
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 48
+ .b8 95
+ .b8 54
+ .b8 95
+ .b8 116
+ .b8 101
+ .b8 115
+ .b8 116
+ .b8 115
+ .b8 95
+ .b8 99
+ .b8 112
+ .b8 112
+ .b8 49
+ .b8 95
+ .b8 105
+ .b8 105
+ .b8 95
+ .b8 115
+ .b8 113
+ .b8 114
+ .b8 95
+ .b8 116
+ .b8 101
+ .b8 115
+ .b8 116
+ .b8 49
+ .b8 49
+ .b8 98
+ .b8 108
+ .b8 115
+ .b8 116
+ .b8 95
+ .b8 102
+ .b8 112
+ .b8 95
+ .b8 115
+ .b8 113
+ .b8 114
+ .b8 69
+ .b8 80
+ .b8 121
+ .b8 80
+ .b8 75
+ .b8 121
  .b8 0
 
  .b32 0
