@@ -16,7 +16,6 @@
 
 use crate::{traits::*, Affine, BaseField, Boolean, Environment};
 
-use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
 

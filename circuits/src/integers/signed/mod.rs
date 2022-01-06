@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod add;
+pub mod add;
 // pub mod double;
 pub mod equal;
 pub mod less_than;
@@ -27,9 +27,9 @@ pub mod less_than;
 
 use crate::{boolean::Boolean, traits::*, Environment, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{Field as F, One as O, Zero as Z};
+use snarkvm_fields::Field as F;
 
-use num_traits::{AsPrimitive, Bounded, One, PrimInt, Signed as NumSigned, Zero};
+use num_traits::{AsPrimitive, Bounded, One as NumOne, PrimInt, Signed as NumSigned, Zero as NumZero};
 use std::{
     fmt,
     marker::PhantomData,
@@ -48,9 +48,11 @@ pub struct Signed<E: Environment, I, const SIZE: usize> {
     phantom: PhantomData<I>,
 }
 
+// TODO (@pranav) the bound `bool: AsPrimitive<I>` looks a little unclean
+//  Could be removed by manually implementing the cast
 impl<E: Environment, I, const SIZE: usize> Signed<E, I, SIZE>
 where
-    I: 'static + PrimInt + NumSigned + Bounded + Zero + One,
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne,
     bool: AsPrimitive<I>,
 {
     /// Initializes a new signed integer.
@@ -91,7 +93,7 @@ where
 
 impl<E: Environment, I, const SIZE: usize> fmt::Debug for Signed<E, I, SIZE>
 where
-    I: 'static + PrimInt + NumSigned + Bounded + Zero + One + fmt::Display,
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + fmt::Display,
     bool: AsPrimitive<I>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

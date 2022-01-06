@@ -16,7 +16,7 @@
 
 use crate::{boolean::Boolean, traits::*, Environment, Mode};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{Field as F, One as O, Zero as Z};
+use snarkvm_fields::Field as F;
 
 use num_traits::{AsPrimitive, Bounded, One, PrimInt, Unsigned as NumUnsigned, Zero};
 use std::{

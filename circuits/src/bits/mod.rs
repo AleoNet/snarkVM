@@ -14,29 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod address;
-pub use address::*;
+// TODO (@pranav) Reorganize where this module is kept
+//  Keeping here while prototyping
 
-pub mod boolean;
-pub use boolean::*;
+pub mod adder;
+pub use adder::*;
 
-pub mod bits;
-pub use bits::*;
-
-pub mod fields;
-pub use fields::*;
-
-pub mod group;
-pub use group::*;
-
-pub mod integers;
-pub use integers::*;
-
-pub mod models;
-pub use models::*;
-
-pub mod programs;
-pub use programs::*;
-
-pub mod traits;
-pub use traits::*;
+pub mod rca;
+pub use rca::*;
