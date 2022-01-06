@@ -490,7 +490,18 @@ __device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_
         memcpy(out->Y, p1->Y, sizeof(blst_fp));
 
         if (is_blst_p1_affine_zero(p1)) {
-            memcpy(out->Z, 0, sizeof(blst_fp));
+            memcpy(out->Z, BLS12_377_ZERO, sizeof(blst_fp));
+        } else {
+            memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
+        }
+
+        return;
+    } else if (is_blst_p1_affine_zero(p1)) {
+        memcpy(out->X, p2->X, sizeof(blst_fp));
+        memcpy(out->Y, p2->Y, sizeof(blst_fp));
+
+        if (is_blst_p1_affine_zero(p2)) {
+            memcpy(out->Z, BLS12_377_ZERO, sizeof(blst_fp));
         } else {
             memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
         }
