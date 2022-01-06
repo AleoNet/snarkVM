@@ -128,11 +128,11 @@ mod tests {
         assert_eq!(0, Circuit::num_constraints());
 
         let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value()); // false
         assert!(Circuit::is_satisfied());
 
         let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value()); // true
         assert!(Circuit::is_satisfied());
 
         assert_eq!(2, Circuit::num_constants());
@@ -149,11 +149,11 @@ mod tests {
         assert_eq!(0, Circuit::num_constraints());
 
         let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value()); // false
         assert!(Circuit::is_satisfied());
 
         let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value()); // true
         assert!(Circuit::is_satisfied());
 
         assert_eq!(0, Circuit::num_constants());
@@ -170,11 +170,11 @@ mod tests {
         assert_eq!(0, Circuit::num_constraints());
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value()); // false
         assert!(Circuit::is_satisfied());
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value()); // true
         assert!(Circuit::is_satisfied());
 
         assert_eq!(0, Circuit::num_constants());

@@ -30,7 +30,7 @@ pub mod to_bits;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, Mode};
-use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
+use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
 use std::fmt;
@@ -56,7 +56,7 @@ impl<E: Environment> ScalarField<E> {
     /// Returns `true` if the scalar field is a constant.
     ///
     pub fn is_constant(&self) -> bool {
-        self.0.iter().next().unwrap().is_constant()
+        self.0.get(0).unwrap().is_constant()
     }
 
     ///

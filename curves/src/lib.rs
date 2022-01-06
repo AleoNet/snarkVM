@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(clippy::module_inception)]
 #![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
 // #![cfg_attr(nightly, feature(doc_cfg, external_doc))]
 // TODO (howardwu): Reenable after completing documentation in snarkVM-models.
 // #![cfg_attr(nightly, warn(missing_docs))]

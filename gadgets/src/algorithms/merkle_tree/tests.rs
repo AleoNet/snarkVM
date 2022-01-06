@@ -54,20 +54,20 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
     use_bad_root: bool,
 ) {
     let parameters = P::setup("merkle_tree_test");
-    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves).unwrap();
     let root = tree.root();
     let mut satisfied = true;
     for (i, leaf) in leaves.iter().enumerate() {
         let mut cs = TestConstraintSystem::<F>::new();
         let proof = tree.generate_proof(i, &leaf).unwrap();
-        assert!(proof.verify(&root, &leaf).unwrap());
+        assert!(proof.verify(root, &leaf).unwrap());
 
         // Allocate Merkle tree root
         let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| format!("new_digest_{}", i)), || {
             if use_bad_root {
                 Ok(<P::H as CRH>::Output::default())
             } else {
-                Ok(root.clone())
+                Ok(*root)
             }
         })
         .unwrap();
@@ -122,7 +122,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     use_bad_root: bool,
 ) {
     let parameters = P::setup("merkle_tree_test");
-    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves).unwrap();
     let root = tree.root();
 
     let mut cs = TestConstraintSystem::<F>::new();
@@ -164,7 +164,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     let given_root = if use_bad_root {
         <P::H as CRH>::Output::default()
     } else {
-        root.clone()
+        *root
     };
 
     let given_root_gadget =
@@ -185,13 +185,13 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
 
 fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(leaves: &[[u8; 30]]) {
     let merkle_parameters = Arc::new(P::setup("merkle_tree_test"));
-    let tree = MerkleTree::<P>::new(merkle_parameters.clone(), &leaves[..]).unwrap();
+    let tree = MerkleTree::<P>::new(merkle_parameters.clone(), leaves).unwrap();
     let root = tree.root();
 
     let mut satisfied = true;
     for (i, leaf) in leaves.iter().enumerate() {
         let proof = tree.generate_proof(i, &leaf).unwrap();
-        assert!(proof.verify(&root, &leaf).unwrap());
+        assert!(proof.verify(root, &leaf).unwrap());
 
         let mut updated_leaves = leaves.to_vec();
         updated_leaves[i] = [u8::MAX; 30];
@@ -200,18 +200,18 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
         let new_proof = new_tree.generate_proof(i, &updated_leaves[i]).unwrap();
         let new_root = new_tree.root();
 
-        assert!(new_proof.verify(&new_root, &updated_leaves[i]).unwrap());
+        assert!(new_proof.verify(new_root, &updated_leaves[i]).unwrap());
 
         let mut cs = TestConstraintSystem::<F>::new();
 
         let crh = HG::alloc_constant(&mut cs.ns(|| "crh"), || Ok(merkle_parameters.crh())).unwrap();
 
         // Allocate Merkle tree root
-        let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "root"), || Ok(root.clone())).unwrap();
+        let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "root"), || Ok(root)).unwrap();
 
         // Allocate new Merkle tree root
         let new_root =
-            <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "new_root"), || Ok(new_root.clone())).unwrap();
+            <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "new_root"), || Ok(new_root)).unwrap();
 
         let path = MerklePathGadget::<_, HG, _>::alloc(&mut cs.ns(|| "path"), || Ok(proof)).unwrap();
 

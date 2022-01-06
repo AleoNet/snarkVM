@@ -242,7 +242,7 @@ mod tests {
         let mut lc = LinearCombination::empty(label.clone());
         lc.push((Fr::one(), label.to_string().into()));
         lc_s.push(lc);
-        query_set.insert((label, ("rand".into(), random_point.clone())));
+        query_set.insert((label, ("rand".into(), random_point)));
 
         let challenge = Fr::rand(rng);
 
