@@ -300,7 +300,7 @@ impl<N: Network> Transaction<N> {
     pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
         self.transitions
             .iter()
-            .flat_map(|transition| transition.to_decrypted_records(decryption_key))
+            .flat_map(move |transition| transition.to_decrypted_records(decryption_key.clone()))
     }
 
     /// Returns the decrypted records using record view key events, if they exist.

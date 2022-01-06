@@ -201,19 +201,27 @@ impl<N: Network> Transition<N> {
 
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
-    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
+    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> Box<dyn Iterator<Item = Record<N>> + '_> {
         match decryption_key {
-            DecryptionKey::AccountViewKey(account_view_key) => self
-                .ciphertexts
-                .iter()
-                .filter(move |ciphertext| ciphertext.is_owner(&account_view_key))
-                .filter_map(move |ciphertext| Record::from_account_view_key(&account_view_key, ciphertext).ok())
-                .filter(|record| !record.is_dummy()),
-            DecryptionKey::RecordViewKey(record_view_key) => self
-                .ciphertexts
-                .iter()
-                .filter_map(|ciphertext| Record::from_record_view_key(record_view_key, *ciphertext).ok())
-                .filter(|record| !record.is_dummy()),
+            DecryptionKey::AccountViewKey(account_view_key) => {
+                let account_view_key_clone = account_view_key.clone();
+
+                Box::new(
+                    self.ciphertexts
+                        .iter()
+                        .filter(move |ciphertext| ciphertext.is_owner(&account_view_key_clone))
+                        .filter_map(move |ciphertext| Record::from_account_view_key(&account_view_key, ciphertext).ok())
+                        .filter(|record| !record.is_dummy()),
+                )
+            }
+            DecryptionKey::RecordViewKey(record_view_key) => Box::new(
+                self.ciphertexts
+                    .iter()
+                    .filter_map(move |ciphertext| {
+                        Record::<N>::from_record_view_key(record_view_key.clone(), &ciphertext).ok()
+                    })
+                    .filter(|record| !record.is_dummy()),
+            ),
         }
     }
 

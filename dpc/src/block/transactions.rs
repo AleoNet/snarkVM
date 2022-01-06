@@ -181,7 +181,7 @@ impl<N: Network> Transactions<N> {
     pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
         self.transactions
             .iter()
-            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
+            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key.clone()))
     }
 }
 
