@@ -14,20 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod ciphertext;
-pub use ciphertext::*;
+use crate::{Network, ViewKey};
 
-pub mod decryption_key;
-pub use decryption_key::*;
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
+)]
+pub enum DecryptionKey<N: Network> {
+    AccountViewKey(ViewKey<N>),
+    RecordViewKey(N::RecordViewKey),
+}
 
-pub mod payload;
-pub use payload::*;
+impl<N: Network> From<&ViewKey<N>> for DecryptionKey<N> {
+    fn from(account_view_key: &ViewKey<N>) -> Self {
+        Self::AccountViewKey(account_view_key.clone())
+    }
+}
 
-pub mod record;
-pub use record::*;
-
-pub mod record_proof;
-pub use record_proof::*;
-
-#[cfg(test)]
-mod tests;
+impl<N: Network> From<&N::RecordViewKey> for DecryptionKey<N> {
+    fn from(record_view_key: &N::RecordViewKey) -> Self {
+        Self::RecordViewKey(record_view_key.clone())
+    }
+}

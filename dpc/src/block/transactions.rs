@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, BlockError, Network, Record, Transaction, ViewKey};
+use crate::{AleoAmount, BlockError, DecryptionKey, Network, Record, Transaction};
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_utilities::{has_duplicates, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -178,13 +178,10 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns records from the transactions belonging to the given account view key.
-    pub fn to_decrypted_records<'a>(
-        &'a self,
-        account_view_key: &'a ViewKey<N>,
-    ) -> impl Iterator<Item = Record<N>> + '_ {
+    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
         self.transactions
             .iter()
-            .flat_map(move |transaction| transaction.to_decrypted_records(account_view_key))
+            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     }
 }
 
@@ -287,7 +284,7 @@ mod tests {
         // Craft a Transactions struct with 1 coinbase record.
         let transactions = Transactions::from(&vec![transaction]).unwrap();
         let decrypted_records = transactions
-            .to_decrypted_records(&account.view_key())
+            .to_decrypted_records(account.view_key().into())
             .collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 

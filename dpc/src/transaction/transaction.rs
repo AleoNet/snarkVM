@@ -26,7 +26,6 @@ use crate::{
     Request,
     Transition,
     Transitions,
-    ViewKey,
     VirtualMachine,
 };
 use snarkvm_utilities::{
@@ -298,16 +297,10 @@ impl<N: Network> Transaction<N> {
 
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
-    pub fn to_decrypted_records<'a>(
-        &'a self,
-        account_view_key: &'a ViewKey<N>,
-    ) -> impl Iterator<Item = Record<N>> + '_ {
+    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
         self.transitions
             .iter()
-            .flat_map(Transition::ciphertexts)
-            .filter(move |ciphertext| ciphertext.is_owner(account_view_key))
-            .filter_map(move |ciphertext| Record::from_account_view_key(account_view_key, ciphertext).ok())
-            .filter(|record| !record.is_dummy())
+            .flat_map(|transition| transition.to_decrypted_records(decryption_key))
     }
 
     /// Returns the decrypted records using record view key events, if they exist.
@@ -454,7 +447,7 @@ mod tests {
         let (transaction, expected_record) =
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
         let decrypted_records = transaction
-            .to_decrypted_records(&account.view_key())
+            .to_decrypted_records(account.view_key().into())
             .collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 

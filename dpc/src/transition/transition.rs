@@ -199,6 +199,24 @@ impl<N: Network> Transition<N> {
         &self.proof
     }
 
+    /// Returns records from the transaction belonging to the given account view key.
+    #[inline]
+    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
+        match decryption_key {
+            DecryptionKey::AccountViewKey(account_view_key) => self
+                .ciphertexts
+                .iter()
+                .filter(move |ciphertext| ciphertext.is_owner(&account_view_key))
+                .filter_map(move |ciphertext| Record::from_account_view_key(&account_view_key, ciphertext).ok())
+                .filter(|record| !record.is_dummy()),
+            DecryptionKey::RecordViewKey(record_view_key) => self
+                .ciphertexts
+                .iter()
+                .filter_map(|ciphertext| Record::from_record_view_key(record_view_key, *ciphertext).ok())
+                .filter(|record| !record.is_dummy()),
+        }
+    }
+
     /// Returns the decrypted records using record view key events, if they exist.
     #[inline]
     pub fn to_records(&self) -> impl Iterator<Item = Record<N>> + fmt::Debug + '_ {
