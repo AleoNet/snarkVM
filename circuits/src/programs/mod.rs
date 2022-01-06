@@ -79,38 +79,6 @@ impl<E: Environment> Register<E> {
 
 pub type Registers<E> = Vec<Register<E>>;
 
-pub struct Memory<E: Environment> {
-    registers: Registers<E>,
-}
-
-impl<E: Environment> Memory<E> {
-    /// Allocates a new register in memory, returning the new register.
-    fn new_register(&mut self) -> Register<E> {
-        let register = Register::new(self.registers.len() as u32);
-        self.registers.push(register.clone());
-        register
-    }
-
-    /// Returns the number of registers allocated.
-    fn num_registers(&self) -> u32 {
-        self.registers.len() as u32
-    }
-}
-
-impl<E: Environment> From<Registers<E>> for Memory<E> {
-    /// Returns an instance of memory from registers.
-    fn from(registers: Registers<E>) -> Self {
-        Self { registers }
-    }
-}
-
-impl<E: Environment> Default for Memory<E> {
-    /// Returns a new instance of memory.
-    fn default() -> Self {
-        Self::from(Registers::<E>::default())
-    }
-}
-
 pub enum Instruction<E: Environment> {
     /// Stores `value` into `register`, if `register` is not already set.
     Store(Value<E>, Register<E>),
@@ -181,7 +149,7 @@ impl<E: Environment> Instruction<E> {
 }
 
 pub struct Function<E: Environment> {
-    registers: Memory<E>,
+    registers: Registers<E>,
     instructions: Vec<Instruction<E>>,
 }
 
@@ -189,14 +157,16 @@ impl<E: Environment> Function<E> {
     /// Initializes a new instance of a function.
     fn new() -> Self {
         Self {
-            registers: Memory::default(),
+            registers: Registers::default(),
             instructions: Vec::new(),
         }
     }
 
     /// Allocates a new register in memory, returning the new register.
     fn new_register(&mut self) -> Register<E> {
-        self.registers.new_register()
+        let register = Register::new(self.registers.len() as u32);
+        self.registers.push(register.clone());
+        register
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
@@ -220,7 +190,7 @@ impl<E: Environment> Function<E> {
 
     /// Returns the number of registers allocated.
     fn num_registers(&self) -> u32 {
-        self.registers.num_registers()
+        self.registers.len() as u32
     }
 }
 
@@ -281,3 +251,35 @@ mod tests {
         }
     }
 }
+
+// pub struct Memory<E: Environment> {
+//     registers: Registers<E>,
+// }
+//
+// impl<E: Environment> Memory<E> {
+//     /// Allocates a new register in memory, returning the new register.
+//     fn new_register(&mut self) -> Register<E> {
+//         let register = Register::new(self.registers.len() as u32);
+//         self.registers.push(register.clone());
+//         register
+//     }
+//
+//     /// Returns the number of registers allocated.
+//     fn num_registers(&self) -> u32 {
+//         self.registers.len() as u32
+//     }
+// }
+//
+// impl<E: Environment> From<Registers<E>> for Memory<E> {
+//     /// Returns an instance of memory from registers.
+//     fn from(registers: Registers<E>) -> Self {
+//         Self { registers }
+//     }
+// }
+//
+// impl<E: Environment> Default for Memory<E> {
+//     /// Returns a new instance of memory.
+//     fn default() -> Self {
+//         Self::from(Registers::<E>::default())
+//     }
+// }
