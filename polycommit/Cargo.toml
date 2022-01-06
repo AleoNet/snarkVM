@@ -86,7 +86,7 @@ version = "1"
 optional = true
 
 [dev-dependencies.blake2]
-version = "0.9"
+version = "0.10"
 default-features = false
 
 [dev-dependencies.snarkvm-marlin]
