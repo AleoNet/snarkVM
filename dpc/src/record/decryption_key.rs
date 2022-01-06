@@ -27,14 +27,14 @@ pub enum DecryptionKey<N: Network> {
     RecordViewKey(N::RecordViewKey),
 }
 
-impl<N: Network> From<&ViewKey<N>> for DecryptionKey<N> {
-    fn from(account_view_key: &ViewKey<N>) -> Self {
-        Self::AccountViewKey(account_view_key.clone())
+impl<N: Network> DecryptionKey<N> {
+    fn from_record_view_key(record_view_key: &N::RecordViewKey) -> Self {
+        Self::RecordViewKey(record_view_key.clone())
     }
 }
 
-impl<N: Network> From<&N::RecordViewKey> for DecryptionKey<N> {
-    fn from(record_view_key: &N::RecordViewKey) -> Self {
-        Self::RecordViewKey(record_view_key.clone())
+impl<N: Network> From<&ViewKey<N>> for DecryptionKey<N> {
+    fn from(account_view_key: &ViewKey<N>) -> Self {
+        Self::AccountViewKey(account_view_key.clone())
     }
 }
