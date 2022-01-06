@@ -451,7 +451,7 @@ mod tests {
         // Craft a transaction with 1 coinbase record.
         let (transaction, expected_record) =
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
-        let decrypted_records = transaction.to_decrypted_records(&account.view_key());
+        let decrypted_records = transaction.to_decrypted_records(account.view_key());
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = decrypted_records.first().unwrap();

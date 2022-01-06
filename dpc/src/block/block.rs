@@ -563,7 +563,7 @@ mod tests {
         // Deserialize
         assert_eq!(
             expected_block_hash,
-            <Testnet2 as Network>::BlockHash::from_str(&expected_string).unwrap()
+            <Testnet2 as Network>::BlockHash::from_str(expected_string).unwrap()
         );
         assert_eq!(expected_block_hash, serde_json::from_str(&candidate_string).unwrap());
     }

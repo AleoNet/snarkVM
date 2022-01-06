@@ -1781,7 +1781,7 @@ dependencies = [
  "blake2",
  "criterion",
  "derivative",
- "digest",
+ "digest 0.9.0",
  "itertools",
  "num-bigint",
  "num-integer",

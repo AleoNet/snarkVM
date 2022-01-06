@@ -49,7 +49,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
                         "Public variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc_input(|| format!("Public {}", i), || Ok(value.clone()))?;
+                    let gadget = cs.alloc_input(|| format!("Public {}", i), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_r1cs::Index::Public((index + 1) as usize),
@@ -77,7 +77,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
                         "Private variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc(|| format!("Private {}", i), || Ok(value.clone()))?;
+                    let gadget = cs.alloc(|| format!("Private {}", i), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_r1cs::Index::Private(i),
@@ -253,13 +253,14 @@ mod tests {
                 Fr,
                 Fq,
                 MultiPC,
-                FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
+                FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
                 MarlinRecursiveMode,
             >;
 
             let rng = &mut test_rng();
 
-            let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(200, 200, 300).unwrap();
+            let max_degree =
+                snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().cs.borrow()).unwrap();

@@ -282,7 +282,7 @@ mod tests {
         matrix[row]
             .iter()
             .find_map(|(f, i)| (i == &col).then(|| *f))
-            .unwrap_or(F::zero())
+            .unwrap_or_else(F::zero)
     }
 
     #[test]

@@ -16,7 +16,6 @@
 
 use crate::{traits::*, Affine, BaseField, Boolean, Environment};
 
-use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
 
@@ -31,10 +30,7 @@ pub enum Value<E: Environment> {
 impl<E: Environment> Value<E> {
     /// Returns `true` if the value type is a register.
     fn is_register(&self) -> bool {
-        match self {
-            Self::Register(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Register(..))
     }
 
     /// Returns the value from a register, otherwise passes the loaded value through.
@@ -101,7 +97,11 @@ impl<E: Environment> Memory<E> {
         match self.registers.get(locator.0 as usize) {
             Some(register) => match register.get().is_some() {
                 true => panic!("Register {} is already set", locator.0),
-                false => register.set(value.clone()),
+                false => {
+                    if register.set(value.clone()).is_err() {
+                        panic!("Register {} failed to store value", locator.0);
+                    }
+                }
             },
             None => panic!("Failed to locate register {}", locator.0),
         };

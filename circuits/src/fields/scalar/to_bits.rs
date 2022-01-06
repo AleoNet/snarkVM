@@ -140,8 +140,8 @@ mod tests {
         fn check_bits_le(candidate: ScalarField<Circuit>) {
             for (i, bit) in candidate.to_bits_le().iter().enumerate() {
                 match i == 0 {
-                    true => assert_eq!(true, bit.eject_value()),
-                    false => assert_eq!(false, bit.eject_value()),
+                    true => assert!(bit.eject_value()),
+                    false => assert!(!bit.eject_value()),
                 }
             }
         }
@@ -150,8 +150,8 @@ mod tests {
         fn check_bits_be(candidate: ScalarField<Circuit>) {
             for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
                 match i == 0 {
-                    true => assert_eq!(true, bit.eject_value()),
-                    false => assert_eq!(false, bit.eject_value()),
+                    true => assert!(bit.eject_value()),
+                    false => assert!(!bit.eject_value()),
                 }
             }
         }

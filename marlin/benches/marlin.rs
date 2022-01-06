@@ -195,8 +195,8 @@ fn snark_verify(c: &mut Criterion) {
 
     c.bench_function("snark_verify", move |b| {
         b.iter(|| {
-            let verification = MarlinInst::verify(&params.1, &vec![z], &proof).unwrap();
-            assert_eq!(verification, true);
+            let verification = MarlinInst::verify(&params.1, &[z], &proof).unwrap();
+            assert!(verification);
         })
     });
 }

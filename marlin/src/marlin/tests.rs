@@ -63,7 +63,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
         for i in 0..(self.num_constraints - 1) {
             cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
         }
-        cs.enforce(|| format!("constraint_final"), |lc| lc + c, |lc| lc + b, |lc| lc + d);
+        cs.enforce(|| "constraint_final", |lc| lc + c, |lc| lc + b, |lc| lc + d);
 
         Ok(())
     }
