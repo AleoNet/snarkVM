@@ -24,6 +24,9 @@ use snarkvm_utilities::BitIteratorBE;
 use cuda_oxide::*;
 use std::{any::TypeId, rc::Rc};
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 pub struct CudaRequest {
     bases: Vec<G1Affine>,
     scalars: Vec<Fr>,
@@ -53,9 +56,7 @@ struct CudaAffine {
 }
 
 fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, ErrorCode> {
-    let mapped_bases: Vec<_> = request
-        .bases
-        .iter()
+    let mapped_bases: Vec<_> = cfg_iter!(request.bases)
         .map(|affine| CudaAffine {
             x: affine.x,
             y: affine.y,

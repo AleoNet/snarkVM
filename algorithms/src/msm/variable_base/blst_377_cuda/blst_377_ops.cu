@@ -191,6 +191,60 @@ __device__ void blst_p1_double(blst_p1* out, const blst_p1* in) {
     blst_fp_sub(out->Y, out->Y, c3);
 }
 
+__device__ void blst_p1_double_affine(blst_p1* out, const blst_p1_affine* p) {
+    /*
+        dbl-2009-l from
+        http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+    */
+
+    // A = X1^2
+    blst_fp A;
+    blst_fp_sqr(A, p->X);
+
+    // B = Y1^2
+    blst_fp B;
+    blst_fp_sqr(B, p->Y);
+
+    // C = B^2
+    blst_fp C;
+    blst_fp_sqr(C, B);
+
+    // D = 2 * ((X1 + B)^2 - A - C)
+    blst_fp X1B;
+    blst_fp_add(X1B, p->X, B);
+    blst_fp_sqr(X1B, X1B);
+    blst_fp_sub(X1B, X1B, A);
+    blst_fp_sub(X1B, X1B, C);
+    blst_fp D;
+    blst_fp_add(D, X1B, X1B);
+
+    // E = 3 * A
+    blst_fp E;
+    blst_fp_add(E, A, A);
+    blst_fp_add(E, E, A);
+
+    // F = E^2
+    blst_fp F;
+    blst_fp_sqr(F, E);
+
+    // X3 = F - 2*D
+    memcpy(out->X, F, sizeof(blst_fp));
+    blst_fp_sub(out->X, out->X, D);
+    blst_fp_sub(out->X, out->X, D);
+
+    // Y3 = E*(D - X3) - 8*C
+    blst_fp C8;
+    blst_fp_add(C8, C, C);
+    blst_fp_add(C8, C8, C8);
+    blst_fp_add(C8, C8, C8);
+    blst_fp_sub(D, D, out->X);
+    blst_fp_mul(E, E, D);
+    blst_fp_sub(out->Y, E, C8);
+
+    // Z3 = 2*Y1
+    blst_fp_add(out->Z, p->Y, p->Y);
+}
+
 __device__ void blst_p1_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2) {
     if (is_blst_p1_affine_zero(p2)) {
         memcpy(out, p1, sizeof(blst_p1));
@@ -436,7 +490,18 @@ __device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_
         memcpy(out->Y, p1->Y, sizeof(blst_fp));
 
         if (is_blst_p1_affine_zero(p1)) {
-            memcpy(out->Z, 0, sizeof(blst_fp));
+            memcpy(out->Z, BLS12_377_ZERO, sizeof(blst_fp));
+        } else {
+            memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
+        }
+
+        return;
+    } else if (is_blst_p1_affine_zero(p1)) {
+        memcpy(out->X, p2->X, sizeof(blst_fp));
+        memcpy(out->Y, p2->Y, sizeof(blst_fp));
+
+        if (is_blst_p1_affine_zero(p2)) {
+            memcpy(out->Z, BLS12_377_ZERO, sizeof(blst_fp));
         } else {
             memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
         }
@@ -447,7 +512,7 @@ __device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_
     // mmadd-2007-bl does not support equal values for p1 and p2.
     // If `p1` and `p2` are equal, use the doubling algorithm.
     if(is_blst_fp_eq(p1->X, p2->X) && is_blst_fp_eq(p1->Y, p2->Y)) {
-        blst_p1_double(out, p1);
+        blst_p1_double_affine(out, p1);
         return;
     }
 
