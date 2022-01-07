@@ -15,8 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::{BaseField, One, RippleCarryAdder, Zero};
 use num_traits::CheckedAdd;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 
 impl<E: Environment, I, const SIZE: usize> Add<Self> for Signed<E, I, SIZE>
 where
@@ -30,6 +31,7 @@ where
     }
 }
 
+// TODO (@pranav) Do we need to optimize the number of contraints generated?
 impl<E: Environment, I, const SIZE: usize> Add<&Self> for Signed<E, I, SIZE>
 where
     I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd,
@@ -38,6 +40,10 @@ where
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
+        // Make some arbitrary bounds for ourselves to avoid overflows
+        // in the base field
+        assert!(E::BaseField::size_in_bits() >= SIZE);
+
         // Determine the variable mode.
         let mode = match self.is_constant() && other.is_constant() {
             true => Mode::Constant,
@@ -52,18 +58,44 @@ where
         let (this, that) = (self, other);
 
         // Directly compute the sum, check for overflow.
-        // TODO (@pranav) Do we want a better error recovery mechanism?
-        let value = this
-            .eject_value()
-            .checked_add(&that.eject_value())
-            .expect("Signed integer overflow");
+        let value = match this.eject_value().checked_add(&that.eject_value()) {
+            Some(value) => value,
+            None => E::halt("Signed integer overflow during addition."),
+        };
 
         if mode.is_constant() {
             return Signed::new(mode, value);
         }
 
-        //let result = Signed::new(mode, value);
-        return Signed::new(mode, value);
+        let mut bits = this.bits_le.add_bits(&other.bits_le);
+        let _carry = bits.pop();
+
+        assert_eq!(bits.len(), SIZE);
+
+        // Iterate over each bit_gadget of result and add each bit to
+        // the linear combination
+        let mut field_value = BaseField::zero();
+        let mut coeff = BaseField::one();
+        for bit in bits {
+            field_value += coeff.clone() * BaseField::from(&bit);
+            coeff = coeff.double();
+        }
+
+        let mut result_bits = Vec::new();
+        let mut coeff = BaseField::one();
+        for i in 0..SIZE {
+            // get bit value
+            let mask = I::one() << i;
+
+            let bit = Boolean::<E>::new(mode, value & mask == mask);
+            field_value -= coeff.clone() * BaseField::from(&bit);
+            coeff = coeff.double();
+            result_bits.push(bit);
+        }
+
+        E::enforce(|| (E::zero(), E::zero(), field_value));
+
+        Signed::from_bits(result_bits)
     }
 }
 
@@ -196,9 +228,9 @@ mod tests {
             let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, expected, &a, &b, 4, 0, 0, 0);
+            check_add(&name, expected, &a, &b, 64, 0, 0, 0);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, expected, &a, &b, 4, 0, 0, 0);
+            check_add_assign(&name, expected, &a, &b, 64, 0, 0, 0);
         }
     }
 
@@ -216,9 +248,9 @@ mod tests {
             let b = Signed::<Circuit, i64, 64>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, expected, &a, &b, 2, 0, 3, 3);
+            check_add(&name, expected, &a, &b, 1, 0, 225, 63);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, expected, &a, &b, 2, 0, 3, 3);
+            check_add_assign(&name, expected, &a, &b, 64, 0, 64, 63);
         }
     }
 
@@ -236,7 +268,7 @@ mod tests {
             let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, expected, &a, &b, 2, 0, 3, 3);
+            check_add(&name, expected, &a, &b, 1, 0, 128, 3);
             let name = format!("AddAssign: a + b {}", i);
             check_add_assign(&name, expected, &a, &b, 2, 0, 3, 3);
         }
@@ -356,9 +388,9 @@ mod tests {
             let b = Signed::<Circuit, i64, 64>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, expected, &a, &b, 2, 0, 6, 6);
+            check_add(&name, expected, &a, &b, 1, 0, 509, 891);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, expected, &a, &b, 2, 0, 6, 6);
+            check_add_assign(&name, expected, &a, &b, 1, 0, 509, 891);
         }
     }
 }

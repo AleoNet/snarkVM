@@ -20,9 +20,10 @@ pub mod equal;
 pub mod less_than;
 // pub mod inv;
 // pub mod mul;
-// pub mod neg;
+pub mod neg;
 // pub mod one;
-// pub mod sub;
+pub mod sub;
+pub mod ternary;
 // pub mod zero;
 
 use crate::{boolean::Boolean, traits::*, Environment, Mode};
@@ -30,6 +31,7 @@ use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::Field as F;
 
 use num_traits::{AsPrimitive, Bounded, One as NumOne, PrimInt, Signed as NumSigned, Zero as NumZero};
+use snarkvm_utilities::FromBits;
 use std::{
     fmt,
     marker::PhantomData,
@@ -66,6 +68,19 @@ where
         Self {
             bits_le,
             phantom: Default::default(),
+        }
+    }
+
+    // TODO: (@pranav) Implement From?
+    /// Initialize a new signed integer from a vector of Booleans.
+    fn from_bits(bits: Vec<Boolean<E>>) -> Self {
+        if bits.len() != SIZE {
+            E::halt("Incorrect number of bits to convert to Signed")
+        } else {
+            Signed {
+                bits_le: bits,
+                phantom: Default::default(),
+            }
         }
     }
 
