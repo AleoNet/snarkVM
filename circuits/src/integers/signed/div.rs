@@ -16,12 +16,12 @@
 
 use super::*;
 
-use num_traits::{CheckedDiv};
+use num_traits::CheckedDiv;
 
 impl<E: Environment, I, const SIZE: usize> Div<Self> for Signed<E, I, SIZE>
-    where
-        I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
-        bool: AsPrimitive<I>,
+where
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
+    bool: AsPrimitive<I>,
 {
     type Output = Self;
 
@@ -31,9 +31,9 @@ impl<E: Environment, I, const SIZE: usize> Div<Self> for Signed<E, I, SIZE>
 }
 
 impl<E: Environment, I, const SIZE: usize> Div<&Self> for Signed<E, I, SIZE>
-    where
-        I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
-        bool: AsPrimitive<I>,
+where
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
+    bool: AsPrimitive<I>,
 {
     type Output = Self;
 
@@ -44,9 +44,9 @@ impl<E: Environment, I, const SIZE: usize> Div<&Self> for Signed<E, I, SIZE>
 }
 
 impl<E: Environment, I, const SIZE: usize> Div<Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-    where
-        I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
-        bool: AsPrimitive<I>,
+where
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
+    bool: AsPrimitive<I>,
 {
     type Output = Signed<E, I, SIZE>;
 
@@ -56,9 +56,9 @@ impl<E: Environment, I, const SIZE: usize> Div<Signed<E, I, SIZE>> for &Signed<E
 }
 
 impl<E: Environment, I, const SIZE: usize> Div<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-    where
-        I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
-        bool: AsPrimitive<I>,
+where
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
+    bool: AsPrimitive<I>,
 {
     type Output = Signed<E, I, SIZE>;
 
@@ -68,9 +68,9 @@ impl<E: Environment, I, const SIZE: usize> Div<&Signed<E, I, SIZE>> for &Signed<
 }
 
 impl<E: Environment, I, const SIZE: usize> DivAssign<Self> for Signed<E, I, SIZE>
-    where
-        I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
-        bool: AsPrimitive<I>,
+where
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
+    bool: AsPrimitive<I>,
 {
     fn div_assign(&mut self, other: Self) {
         *self /= &other;
@@ -78,9 +78,9 @@ impl<E: Environment, I, const SIZE: usize> DivAssign<Self> for Signed<E, I, SIZE
 }
 
 impl<E: Environment, I, const SIZE: usize> DivAssign<&Self> for Signed<E, I, SIZE>
-    where
-        I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
-        bool: AsPrimitive<I>,
+where
+    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv,
+    bool: AsPrimitive<I>,
 {
     fn div_assign(&mut self, other: &Self) {
         *self = self.clone() / other;

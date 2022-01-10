@@ -19,8 +19,8 @@ pub mod add;
 pub mod equal;
 pub mod less_than;
 // pub mod inv;
-pub mod mul;
 pub mod div;
+pub mod mul;
 // pub mod pow;
 pub mod neg;
 // pub mod one;
@@ -37,7 +37,7 @@ use snarkvm_utilities::FromBits;
 use std::{
     fmt,
     marker::PhantomData,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 pub type I8<E> = Signed<E, i8, 8>;

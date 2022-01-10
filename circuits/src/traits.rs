@@ -47,6 +47,7 @@ pub trait BaseFieldTrait:
 {
 }
 
+// TODO why not use num_traits::Zero?
 /// Representation of the zero value.
 pub trait Zero {
     type Boolean: BooleanTrait;
