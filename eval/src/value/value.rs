@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Char, FieldType, GroupType, Integer};
+use crate::{errors::ValueError, Address, Char, FieldType, GroupType, Integer};
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::Boolean,
-    traits::{eq::ConditionalEqGadget, select::CondSelectGadget},
+    traits::{eq::ConditionalEqGadget, select::CondSelectGadget, Cast},
+    Integer as IntegerGadget,
 };
 use snarkvm_ir::Type;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -150,6 +151,33 @@ impl<F: PrimeField, G: GroupType<F>> fmt::Display for ConstrainedValue<F, G> {
 
                 write!(f, "({})", values)
             }
+        }
+    }
+}
+
+// The goal here is to say the target implements from_bits
+// Then we can have more generic approach and rather than bubbling
+// up the IntegerGadget we could appropriately expect the right type
+impl<F: PrimeField, G: GroupType<F>, Target: IntegerGadget> Cast<F, Target> for ConstrainedValue<F, G> {
+    type ErrorType = ValueError;
+    type Output = Target;
+
+    fn cast<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self::Output, Self::ErrorType> {
+        use ConstrainedValue::*;
+
+        match self {
+            Address(_) => Err(ValueError::Error("Casting is not supported for addresses.".to_string())),
+            Boolean(_) => Err(ValueError::Error("Casting is not supported for booleans".to_string())),
+            Char(_) => Err(ValueError::Error("Casting is not supported for chars".to_string())),
+            Field(_) => Err(ValueError::Error("Casting is not supported for fields".to_string())),
+            Group(_) => Err(ValueError::Error("Casting is not supported for groups".to_string())),
+            Integer(integer) => Ok(integer.cast(cs)?),
+
+            // Arrays
+            Array(_) => Err(ValueError::Error("Casting is not supported for arrays".to_string())),
+
+            // Tuples
+            Tuple(_) => Err(ValueError::Error("Casting is not supported for tuples".to_string())),
         }
     }
 }

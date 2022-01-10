@@ -23,6 +23,7 @@ where
     Self: std::marker::Sized,
 {
     type ErrorType;
+    type Output;
 
-    fn cast<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Target, Self::ErrorType>;
+    fn cast<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self::Output, Self::ErrorType>;
 }

@@ -23,6 +23,9 @@ pub use alloc::*;
 pub mod bits;
 pub use bits::*;
 
+pub mod cast;
+pub use cast::*;
+
 pub mod curves;
 pub use curves::*;
 

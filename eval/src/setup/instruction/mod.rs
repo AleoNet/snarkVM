@@ -20,6 +20,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     integers::{UInt16, UInt32, UInt8},
     Boolean,
+    Cast,
     CondSelectGadget,
     EqGadget,
     EvaluateEqGadget,
@@ -341,19 +342,47 @@ impl<'a, F: PrimeField, G: GroupType<F>> EvaluatorState<'a, F, G> {
                 self.store(*destination, out);
             }
             Instruction::Cast(CastData { destination, arguments }) => {
-                let mut arguments = arguments.into_iter();
-                let from = match arguments.next().unwrap() {
-                    int @ Value::Integer(_) => self.resolve(int, cs)?,
-                    reference @ Value::Ref(_) => self.resolve(reference, cs)?,
-                    f => {
-                        dbg!(&f);
-                        todo!("not an int")
-                    }
+                let value = arguments.get(0).unwrap();
+                let from = self.resolve(value, cs)?.into_owned();
+
+                let casted = match arguments.get(1).unwrap() {
+                    Value::Str(x) => match x.as_str() {
+                        "u8" => ConstrainedValue::Integer(Integer::U8(
+                            from.cast(cs.ns(|| format!("enforce {} as u8", from)))?,
+                        )),
+                        "u16" => ConstrainedValue::Integer(Integer::U16(
+                            from.cast(cs.ns(|| format!("enforce {} as u16", from)))?,
+                        )),
+                        "u32" => ConstrainedValue::Integer(Integer::U32(
+                            from.cast(cs.ns(|| format!("enforce {} as u32", from)))?,
+                        )),
+                        "u64" => ConstrainedValue::Integer(Integer::U64(
+                            from.cast(cs.ns(|| format!("enforce {} as u64", from)))?,
+                        )),
+                        "u128" => ConstrainedValue::Integer(Integer::U128(
+                            from.cast(cs.ns(|| format!("enforce {} as u128", from)))?,
+                        )),
+                        "i8" => ConstrainedValue::Integer(Integer::I8(
+                            from.cast(cs.ns(|| format!("enforce {} as i8", from)))?,
+                        )),
+                        "i16" => ConstrainedValue::Integer(Integer::I16(
+                            from.cast(cs.ns(|| format!("enforce {} as i16", from)))?,
+                        )),
+                        "i32" => ConstrainedValue::Integer(Integer::I32(
+                            from.cast(cs.ns(|| format!("enforce {} as i32", from)))?,
+                        )),
+                        "i64" => ConstrainedValue::Integer(Integer::I64(
+                            from.cast(cs.ns(|| format!("enforce {} as i64", from)))?,
+                        )),
+                        "i128" => ConstrainedValue::Integer(Integer::I128(
+                            from.cast(cs.ns(|| format!("enforce {} as i128", from)))?,
+                        )),
+                        _ => return Err(anyhow!("Invalid Target Type for casting.")),
+                    },
+                    _ => return Err(anyhow!("Incorrect type passed to casting as arguement")),
                 };
 
-                let integer = from.extract_integer().unwrap();
-                let casted = ConstrainedValue::Integer(integer.clone().cast(cs, arguments.next())?);
-                self.store(*destination, casted)
+                self.store(*destination, casted);
             }
         }
         Ok(None)

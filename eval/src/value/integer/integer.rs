@@ -134,67 +134,6 @@ impl Integer {
         match_integer!(integer => integer.to_bits_le())
     }
 
-    pub fn cast<F: PrimeField, CS: ConstraintSystem<F>>(
-        self,
-        cs: &mut CS,
-        target_type: Option<&Value>,
-    ) -> Result<Self, IntegerError> {
-        let integer = self;
-
-        let result = match target_type {
-            Some(Value::Str(x)) => match x.as_str() {
-                "i8" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-
-                    Integer::I8(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "i16" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::I16(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "i32" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::I32(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "i64" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::I64(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "i128" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::I128(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "u8" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::U8(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "u16" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::U16(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "u32" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::U32(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "u64" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::U64(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                "u128" => {
-                    let unique_namespace = format!("enforce {} as {}", integer, x);
-                    Integer::U128(match_integer!(integer => integer.cast(cs.ns(|| unique_namespace))?))
-                }
-                _ => todo!("ah"),
-            },
-            a => {
-                dbg!(&a);
-                todo!("not a string")
-            }
-        };
-
-        Ok(result)
-    }
-
     pub fn is_allocated(&self) -> bool {
         self.to_bits_le()
             .into_iter()
@@ -417,5 +356,16 @@ impl<F: PrimeField> CondSelectGadget<F> for Integer {
 
     fn cost() -> usize {
         unimplemented!() // cannot determine which integer we are enforcing
+    }
+}
+
+impl<F: PrimeField, Target: IntegerGadget> Cast<F, Target> for Integer {
+    type ErrorType = IntegerError;
+    type Output = Target;
+
+    fn cast<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self::Output, Self::ErrorType> {
+        let integer = self;
+
+        Ok(match_integer!(integer => integer.cast(cs)?))
     }
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SignedIntegerError, integers::int::*, traits::integers::Cast, Boolean, Integer};
+use crate::{errors::SignedIntegerError, integers::int::*, traits::Cast, Boolean, Integer};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -22,11 +22,12 @@ macro_rules! cast_int_impl {
     ($($gadget: ident)*) => ($(
         impl<F: PrimeField, Target: Integer> Cast<F, Target> for $gadget {
             type ErrorType = SignedIntegerError;
+			type Output = Target;
 
             fn cast<CS: ConstraintSystem<F>>(
                 &self,
                 _cs: CS,
-            ) -> Result<Target, Self::ErrorType> {
+            ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
 				// If the target type is smaller than the larger type
