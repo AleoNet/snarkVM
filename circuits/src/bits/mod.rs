@@ -22,3 +22,6 @@ pub use adder::*;
 
 pub mod rca;
 pub use rca::*;
+
+pub mod sign_extend;
+pub use sign_extend::*;
