@@ -21,20 +21,20 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for Signe
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let value = -self.eject_value();
+        // Determine the variable mode.
+        let mode = match self.is_constant() && other.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        };
 
-        //TODO (@pranav) Understand why the `gadgets/` implementation doesn't explicitly check that the result is well formed
-        // flip all bits
-        let flipped: Vec<Boolean<E>> = self.bits_le.iter().map(|bit| !bit).collect();
+        if mode.is_constant() {
+            return Signed::new(mode, self.eject_value().wrapping_neg());
+        }
 
-        // add one
-        let mut one = vec![Boolean::new(Mode::Constant, true)];
-        one.append(&mut vec![Boolean::new(Mode::Constant, false); SIZE - 1]);
+        let flipped = Signed::from_bits(self.bits_le.iter().map(|bit| !bit).collect());
+        let mut one = Signed::new(Mode::Constant, I::one());
 
-        let mut bits = flipped.add_bits(&one);
-        let _carry = bits.pop(); // we already accounted for overflow above
-
-        Signed::from_bits(bits)
+        flipped.add(one)
     }
 }
 

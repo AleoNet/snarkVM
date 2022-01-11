@@ -33,10 +33,6 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<&Self> fo
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        // Make some arbitrary bounds for ourselves to avoid overflows
-        // in the base field
-        assert!(E::BaseField::size_in_bits() >= SIZE);
-
         // Determine the variable mode.
         let mode = match self.is_constant() && other.is_constant() {
             true => Mode::Constant,
