@@ -17,7 +17,7 @@
 use super::*;
 use itertools::all;
 
-impl<E: Environment, I, const SIZE: usize> Equal<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Equal<Self> for Signed<E, I, SIZE> {
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 

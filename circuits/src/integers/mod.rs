@@ -19,3 +19,61 @@ pub use signed::*;
 
 pub mod unsigned;
 pub use unsigned::*;
+
+use num_traits::{
+    Bounded,
+    NumOps,
+    One as NumOne,
+    PrimInt,
+    Signed,
+    Unsigned,
+    WrappingAdd,
+    WrappingMul,
+    WrappingNeg,
+    Zero as NumZero,
+};
+use snarkvm_utilities::{
+    cmp::Ordering,
+    ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub},
+};
+use std::fmt::Debug;
+
+// TODO (@pranav) Could do a refactor where we create a generic Integer struct with trait
+//  bound PrimitiveInteger and implement Add, Eq, Mul, etc. Functionality specific to a
+//  signed or unsigned integer could be implemented with further trait bounds on Integer.
+//  While this would reduce duplication, it would allow signed and unsigned integers to
+//  "interact" with each other, which seems unsafe.
+
+// TODO (@pranav) Do we need a better name for these?
+//  In general, need to consider appropriate naming for this entire module.
+/// Trait bound for integer values. Common to both signed and unsigned integers.
+pub trait PrimitiveInteger:
+    'static + Debug + PrimInt + Bounded + NumZero + NumOne + WrappingAdd + WrappingMul + WrappingNeg
+{
+}
+
+/// Trait bound for signed integer values.
+pub trait PrimitiveSignedInteger: PrimitiveInteger + Signed {}
+
+/// Trait bound for unsigned integer values.
+pub trait PrimitiveUnsignedInteger: PrimitiveInteger + Unsigned {}
+
+// TODO (@pranav) Could have gone with extensive "where" clauses but
+//  felt that this was cleaner. Suggestions?
+impl PrimitiveInteger for i8 {}
+impl PrimitiveInteger for i16 {}
+impl PrimitiveInteger for i32 {}
+impl PrimitiveInteger for i64 {}
+impl PrimitiveSignedInteger for i8 {}
+impl PrimitiveSignedInteger for i16 {}
+impl PrimitiveSignedInteger for i32 {}
+impl PrimitiveSignedInteger for i64 {}
+
+impl PrimitiveInteger for u8 {}
+impl PrimitiveInteger for u16 {}
+impl PrimitiveInteger for u32 {}
+impl PrimitiveInteger for u64 {}
+impl PrimitiveUnsignedInteger for u8 {}
+impl PrimitiveUnsignedInteger for u16 {}
+impl PrimitiveUnsignedInteger for u32 {}
+impl PrimitiveUnsignedInteger for u64 {}

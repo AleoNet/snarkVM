@@ -15,22 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{BaseField, One, RippleCarryAdder, Zero};
-use num_traits::CheckedNeg;
-use snarkvm_fields::PrimeField;
+use crate::RippleCarryAdder;
 
-impl<E: Environment, I, const SIZE: usize> Neg for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let value = match self.eject_value().checked_neg() {
-            Some(value) => value,
-            None => E::halt("Signed integer overflow during negation."),
-        };
+        let value = -self.eject_value();
 
         //TODO (@pranav) Understand why the `gadgets/` implementation doesn't explicitly check that the result is well formed
         // flip all bits
@@ -47,11 +38,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Neg for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn neg(self) -> Self::Output {

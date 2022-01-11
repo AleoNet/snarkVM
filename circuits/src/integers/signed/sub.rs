@@ -15,13 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use num_traits::{CheckedAdd, CheckedNeg};
 
-impl<E: Environment, I, const SIZE: usize> Sub<Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<Self> for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self::Output {
@@ -29,11 +24,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Sub<&Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<&Self> for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn sub(self, other: &Self) -> Self::Output {
@@ -41,11 +32,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Sub<Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn sub(self, other: Signed<E, I, SIZE>) -> Self::Output {
@@ -53,11 +40,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Sub<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn sub(self, other: &Signed<E, I, SIZE>) -> Self::Output {
@@ -65,21 +48,13 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> SubAssign<Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> SubAssign<Self> for Signed<E, I, SIZE> {
     fn sub_assign(&mut self, other: Self) {
         *self -= &other;
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> SubAssign<&Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> SubAssign<&Self> for Signed<E, I, SIZE> {
     fn sub_assign(&mut self, other: &Self) {
         *self = self.clone() + -other;
     }

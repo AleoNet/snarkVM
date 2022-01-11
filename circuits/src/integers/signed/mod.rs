@@ -21,19 +21,15 @@ pub mod less_than;
 // pub mod inv;
 pub mod div;
 pub mod mul;
-// pub mod pow;
+//pub mod pow;
 pub mod neg;
 // pub mod one;
 pub mod sub;
 pub mod ternary;
 // pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, Mode};
-use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
-use snarkvm_fields::Field as F;
+use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveSignedInteger};
 
-use num_traits::{AsPrimitive, Bounded, One as NumOne, PrimInt, Signed as NumSigned, Zero as NumZero};
-use snarkvm_utilities::FromBits;
 use std::{
     fmt,
     marker::PhantomData,
@@ -47,19 +43,13 @@ pub type I64<E> = Signed<E, i64, 64>;
 pub type I128<E> = Signed<E, i128, 128>;
 
 #[derive(Clone)]
-pub struct Signed<E: Environment, I, const SIZE: usize> {
+pub struct Signed<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> {
     bits_le: Vec<Boolean<E>>,
     phantom: PhantomData<I>,
 }
 
-// TODO (@pranav) the bound `bool: AsPrimitive<I>` looks a little unclean
-//  Could be removed by manually implementing the cast
-impl<E: Environment, I, const SIZE: usize> Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne,
-    bool: AsPrimitive<I>,
-{
-    /// Initializes a new signed integer.
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Signed<E, I, SIZE> {
+    /// Initializes a new integer.
     pub fn new(mode: Mode, value: I) -> Self {
         let mut bits_le = Vec::with_capacity(SIZE);
         let mut value = value.to_le();
@@ -74,19 +64,19 @@ where
     }
 
     // TODO: (@pranav) Implement From?
-    /// Initialize a new signed integer from a vector of Booleans.
+    /// Initialize a new integer from a vector of Booleans.
     fn from_bits(bits: Vec<Boolean<E>>) -> Self {
         if bits.len() != SIZE {
             E::halt("Incorrect number of bits to convert to Signed")
         } else {
-            Signed {
+            Self {
                 bits_le: bits,
                 phantom: Default::default(),
             }
         }
     }
 
-    /// Returns `true` if the signed integer is a constant.
+    /// Returns `true` if the integer is a constant.
     pub fn is_constant(&self) -> bool {
         self.bits_le.iter().all(|bit| bit.is_constant() == true)
     }
@@ -100,21 +90,26 @@ where
         };
 
         let mut magnitude = I::zero();
+
         for i in (0..SIZE - 1).rev() {
-            magnitude = (magnitude << 1) ^ self.bits_le[i].eject_value().as_();
+            // TODO (@pranav) This explicit cast could be eliminated by using a trait bound
+            //  `bool: AsPrimitive<I>`. This however requires the trait bound to be expressed
+            //  for every implementation of Signed that uses `eject_value` which looks unclean.
+            let bit_value = if self.bits_le[i].eject_value() {
+                I::one()
+            } else {
+                I::zero()
+            };
+            magnitude = (magnitude << 1) ^ bit_value;
         }
 
         base + magnitude
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> fmt::Debug for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + fmt::Display,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> fmt::Debug for Signed<E, I, SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.eject_value())
+        write!(f, "{:?}", self.eject_value())
     }
 }
 

@@ -16,14 +16,7 @@
 
 use super::*;
 
-use crate::RippleCarryAdder;
-use num_traits::{CheckedAdd, CheckedDiv, CheckedNeg};
-
-impl<E: Environment, I, const SIZE: usize> Div<Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Self> for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn div(self, other: Self) -> Self::Output {
@@ -31,11 +24,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Div<&Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn div(self, other: &Self) -> Self::Output {
@@ -139,11 +128,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Div<Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn div(self, other: Signed<E, I, SIZE>) -> Self::Output {
@@ -151,11 +136,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Div<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn div(self, other: &Signed<E, I, SIZE>) -> Self::Output {
@@ -163,21 +144,13 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> DivAssign<Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> DivAssign<Self> for Signed<E, I, SIZE> {
     fn div_assign(&mut self, other: Self) {
         *self /= &other;
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> DivAssign<&Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedDiv + CheckedAdd + CheckedNeg,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> DivAssign<&Self> for Signed<E, I, SIZE> {
     fn div_assign(&mut self, other: &Self) {
         *self = self.clone() / other;
     }

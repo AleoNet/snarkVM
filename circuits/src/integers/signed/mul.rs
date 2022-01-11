@@ -17,15 +17,10 @@
 use super::*;
 
 use crate::{BaseField, One, RippleCarryAdder, SignExtend, Zero};
-use num_traits::CheckedMul;
 use snarkvm_fields::PrimeField;
 use std::iter;
 
-impl<E: Environment, I, const SIZE: usize> Mul<Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedMul,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<Self> for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self::Output {
@@ -33,11 +28,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Mul<&Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedMul,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> for Signed<E, I, SIZE> {
     type Output = Self;
 
     fn mul(self, other: &Self) -> Self::Output {
@@ -136,11 +127,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Mul<Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedMul,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn mul(self, other: Signed<E, I, SIZE>) -> Self::Output {
@@ -148,11 +135,7 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> Mul<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedMul,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
     type Output = Signed<E, I, SIZE>;
 
     fn mul(self, other: &Signed<E, I, SIZE>) -> Self::Output {
@@ -160,21 +143,13 @@ where
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> MulAssign<Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedMul,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> MulAssign<Self> for Signed<E, I, SIZE> {
     fn mul_assign(&mut self, other: Self) {
         *self *= &other;
     }
 }
 
-impl<E: Environment, I, const SIZE: usize> MulAssign<&Self> for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne + CheckedMul,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> MulAssign<&Self> for Signed<E, I, SIZE> {
     fn mul_assign(&mut self, other: &Self) {
         *self = self.clone() * other;
     }
@@ -404,16 +379,16 @@ mod tests {
             };
 
             // Constant
-            let base = Signed::<Circuit, i64, 64>::new(Mode::Constant, multiplicand);
-            let scalar = Signed::<Circuit, i64, 64>::new(Mode::Constant, multiplier);
-            let candidate_a = base * scalar;
-            assert_eq!(expected, candidate_a.eject_value());
+            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, multiplicand);
+            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, multiplier);
+            let candidate = a * b;
+            assert_eq!(expected, candidate.eject_value());
 
             // Private
-            let base = Signed::<Circuit, i64, 64>::new(Mode::Private, multiplicand);
-            let scalar = Signed::<Circuit, i64, 64>::new(Mode::Private, multiplier);
-            let candidate_b = base * scalar;
-            assert_eq!(expected, candidate_b.eject_value());
+            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, multiplicand);
+            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, multiplier);
+            let candidate = a * b;
+            assert_eq!(expected, candidate.eject_value());
         }
     }
 }

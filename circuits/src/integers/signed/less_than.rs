@@ -15,9 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use itertools::all;
 
-impl<E: Environment, I, const SIZE: usize> LessThan<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> LessThan<Self> for Signed<E, I, SIZE> {
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 

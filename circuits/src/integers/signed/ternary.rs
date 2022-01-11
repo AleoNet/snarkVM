@@ -15,15 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{BaseField, One, RippleCarryAdder, Zero};
-use num_traits::CheckedAdd;
-use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 
-impl<E: Environment, I, const SIZE: usize> Ternary for Signed<E, I, SIZE>
-where
-    I: 'static + PrimInt + NumSigned + Bounded + NumZero + NumOne,
-    bool: AsPrimitive<I>,
-{
+impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Ternary for Signed<E, I, SIZE> {
     type Boolean = Boolean<E>;
     type Output = Self;
 
