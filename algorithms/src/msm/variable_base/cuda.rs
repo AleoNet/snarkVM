@@ -71,7 +71,7 @@ fn load_cuda_program() -> Result<Program, GPUError> {
     };
 
     eprintln!(
-        "Using '{}' as CUDA device with {} bytes of memory",
+        "\nUsing '{}' as CUDA device with {} bytes of memory",
         device.name(),
         device.memory()
     );
