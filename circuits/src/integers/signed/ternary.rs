@@ -16,7 +16,9 @@
 
 use super::*;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Ternary for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Ternary
+    for Signed<E, I, U, SIZE>
+{
     type Boolean = Boolean<E>;
     type Output = Self;
 
@@ -42,8 +44,8 @@ mod tests {
         name: &str,
         expected: i64,
         condition: Boolean<Circuit>,
-        a: Signed<Circuit, i64, 64>,
-        b: Signed<Circuit, i64, 64>,
+        a: Signed<Circuit, i64, u64, 64>,
+        b: Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,

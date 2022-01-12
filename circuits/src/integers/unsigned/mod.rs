@@ -62,7 +62,7 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Unsigned<E,
 
     // TODO: (@pranav) Implement From?
     /// Initialize a new integer from a vector of Booleans.
-    fn from_bits(bits: Vec<Boolean<E>>) -> Self {
+    pub(crate) fn from_bits(bits: Vec<Boolean<E>>) -> Self {
         if bits.len() != SIZE {
             E::halt("Incorrect number of bits to convert to Signed")
         } else {

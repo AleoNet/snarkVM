@@ -17,7 +17,9 @@
 use super::*;
 use crate::RippleCarryAdder;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Neg
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -44,8 +46,10 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for Signe
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Neg
+    for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
     fn neg(self) -> Self::Output {
         -(self.clone())
@@ -65,7 +69,7 @@ mod tests {
     fn check_neg(
         name: &str,
         expected: i64,
-        candidate_input: Signed<Circuit, i64, 64>,
+        candidate_input: Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -90,7 +94,7 @@ mod tests {
             let value: i64 = UniformRand::rand(&mut thread_rng());
             let expected = value.wrapping_neg();
 
-            let candidate_input = Signed::<Circuit, i64, 64>::new(Mode::Constant, value);
+            let candidate_input = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, value);
             check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -102,7 +106,7 @@ mod tests {
             let value: i64 = UniformRand::rand(&mut thread_rng());
             let expected = value.wrapping_neg();
 
-            let candidate_input = Signed::<Circuit, i64, 64>::new(Mode::Public, value);
+            let candidate_input = Signed::<Circuit, i64, u64, 64>::new(Mode::Public, value);
             check_neg(&format!("NEG Public {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -114,7 +118,7 @@ mod tests {
             let value: i64 = UniformRand::rand(&mut thread_rng());
             let expected = value.wrapping_neg();
 
-            let candidate_input = Signed::<Circuit, i64, 64>::new(Mode::Private, value);
+            let candidate_input = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, value);
             check_neg(&format!("NEG Private {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }

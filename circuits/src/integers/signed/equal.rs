@@ -17,7 +17,9 @@
 use super::*;
 use itertools::all;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Equal<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Equal<Self>
+    for Signed<E, I, U, SIZE>
+{
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 
@@ -65,8 +67,8 @@ mod tests {
         // Constant == Constant
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             Circuit::scoped(&format!("Constant Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
@@ -92,8 +94,8 @@ mod tests {
         // Constant == Public
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             Circuit::scoped(&format!("Constant and Public Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
@@ -121,8 +123,8 @@ mod tests {
         // Public == Constant
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             Circuit::scoped(&format!("Public and Constant Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
@@ -150,8 +152,8 @@ mod tests {
         // Public == Public
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             Circuit::scoped(&format!("Public Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);
@@ -179,8 +181,8 @@ mod tests {
         // Private == Private
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
 
             Circuit::scoped(&format!("Private Equals {}", i), |scope| {
                 let equals = a.is_eq(&b);

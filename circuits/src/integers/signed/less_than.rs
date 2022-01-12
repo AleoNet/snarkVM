@@ -16,7 +16,9 @@
 
 use super::*;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> LessThan<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> LessThan<Self>
+    for Signed<E, I, U, SIZE>
+{
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 

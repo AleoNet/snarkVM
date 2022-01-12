@@ -20,7 +20,9 @@ use crate::{BaseField, One, RippleCarryAdder, SignExtend, Zero};
 use snarkvm_fields::PrimeField;
 use std::iter;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Mul<Self>
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     fn mul(self, other: Self) -> Self::Output {
@@ -28,7 +30,9 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<Self> for
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Mul<&Self>
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     fn mul(self, other: &Self) -> Self::Output {
@@ -102,29 +106,37 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> fo
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>
+    Mul<Signed<E, I, U, SIZE>> for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
-    fn mul(self, other: Signed<E, I, SIZE>) -> Self::Output {
+    fn mul(self, other: Signed<E, I, U, SIZE>) -> Self::Output {
         (*self).clone() * other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>
+    Mul<&Signed<E, I, U, SIZE>> for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
-    fn mul(self, other: &Signed<E, I, SIZE>) -> Self::Output {
+    fn mul(self, other: &Signed<E, I, U, SIZE>) -> Self::Output {
         (*self).clone() * other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> MulAssign<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> MulAssign<Self>
+    for Signed<E, I, U, SIZE>
+{
     fn mul_assign(&mut self, other: Self) {
         *self *= &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> MulAssign<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> MulAssign<&Self>
+    for Signed<E, I, U, SIZE>
+{
     fn mul_assign(&mut self, other: &Self) {
         *self = self.clone() * other;
     }
@@ -144,8 +156,8 @@ mod tests {
     fn check_mul(
         name: &str,
         expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        a: &Signed<Circuit, i64, u64, 64>,
+        b: &Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -174,8 +186,8 @@ mod tests {
     fn check_mul_assign(
         name: &str,
         expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        a: &Signed<Circuit, i64, u64, 64>,
+        b: &Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -354,14 +366,14 @@ mod tests {
             };
 
             // Constant
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, multiplicand);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, multiplier);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, multiplicand);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, multiplier);
             let candidate = a * b;
             assert_eq!(expected, candidate.eject_value());
 
             // Private
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, multiplicand);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, multiplier);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, multiplicand);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, multiplier);
             let candidate = a * b;
             assert_eq!(expected, candidate.eject_value());
         }

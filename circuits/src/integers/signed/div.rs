@@ -17,7 +17,9 @@
 use super::*;
 use crate::unsigned::Unsigned;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<Self>
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     fn div(self, other: Self) -> Self::Output {
@@ -25,7 +27,9 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Self> for
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self>
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     // TODO (@pranav) Would a more efficient division algorithm in a traditional sense
@@ -91,59 +95,15 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> fo
         let self_absolute_value = Signed::ternary(a_msb, &self.clone().neg(), &self.clone());
         let other_absolute_value = Signed::ternary(other_msb, &other.clone().neg(), &other.clone());
 
-        println!(
-            "Self: {:?}, Self Abs {:?}, Other: {:?}, Other Abs {:?}",
-            self.eject_value(),
-            self_absolute_value.eject_value(),
-            other.eject_value(),
-            other_absolute_value.eject_value()
-        );
+        let unsigned_quotient = Unsigned::<E, U, SIZE>::from_bits(self_absolute_value.bits_le)
+            / Unsigned::<E, U, SIZE>::from_bits(other_absolute_value.bits_le);
 
-        //let mut quotient_bits = Vec::with_capacity(SIZE);
-        let mut remainder: Signed<E, I, SIZE> = Signed::new(mode, I::zero());
-
-        let self_unsigned_value = self_absolute_value.eject_value().to_u64().unwrap();
-        let other_unsigned_value = other_absolute_value.eject_value().to_u64().unwrap();
-        let quotient = Unsigned::<E, u64, SIZE>::new(mode, self_unsigned_value)
-            / Unsigned::<E, u64, SIZE>::new(mode, other_unsigned_value);
-        let quotient_bits = quotient.bits_le;
-        // // TODO (@pranav) Fix use of clones for `remainder`
-        // // for i := n - 1 .. 0 do
-        // for bit in self_absolute_value.bits_le.iter().rev() {
-        //     // R := R << 1
-        //     remainder = remainder.clone().add(&remainder);
-        //
-        //     // R(0) := N(i)
-        //     let remainder_plus_one = remainder.clone().add(&Signed::new(Mode::Constant, I::one()));
-        //     remainder = Signed::ternary(bit, &remainder_plus_one, &remainder.clone());
-        //
-        //     // if R ≥ D
-        //     let r_larger_or_equal_to_d = !remainder.is_lt(&other_absolute_value);
-        //
-        //     // compute R - D
-        //     let r_sub_d = remainder.clone().sub(&other_absolute_value);
-        //
-        //     remainder = Signed::ternary(&r_larger_or_equal_to_d, &r_sub_d, &remainder.clone());
-        //
-        //     // Q(i) := 1
-        //     quotient_bits.push(r_larger_or_equal_to_d);
-        // }
-
-        let quotient = Signed::from_bits(quotient_bits);
-
-        let negated_quotient = Signed::ternary(&positive, &quotient.clone(), &quotient.clone().neg());
+        let quotient = Signed::from_bits(unsigned_quotient.bits_le);
+        let signed_quotient = Signed::ternary(&positive, &quotient, &(&quotient).neg());
         let result = Signed::ternary(
             &wrapping_condition,
             &Signed::new(mode, I::min_value()),
-            &negated_quotient,
-        );
-
-        println!(
-            "Raw quotient: {:?}, Neg quotient: {:?}, Result: {:?}, MIN: {:?}",
-            quotient.eject_value(),
-            negated_quotient.eject_value(),
-            result.eject_value(),
-            I::min_value()
+            &signed_quotient,
         );
 
         // Check that the computed result matches the expected one.
@@ -156,29 +116,37 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> fo
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>
+    Div<Signed<E, I, U, SIZE>> for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
-    fn div(self, other: Signed<E, I, SIZE>) -> Self::Output {
+    fn div(self, other: Signed<E, I, U, SIZE>) -> Self::Output {
         (*self).clone() / other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>
+    Div<&Signed<E, I, U, SIZE>> for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
-    fn div(self, other: &Signed<E, I, SIZE>) -> Self::Output {
+    fn div(self, other: &Signed<E, I, U, SIZE>) -> Self::Output {
         (*self).clone() / other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> DivAssign<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<Self>
+    for Signed<E, I, U, SIZE>
+{
     fn div_assign(&mut self, other: Self) {
         *self /= &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> DivAssign<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<&Self>
+    for Signed<E, I, U, SIZE>
+{
     fn div_assign(&mut self, other: &Self) {
         *self = self.clone() / other;
     }
@@ -198,8 +166,8 @@ mod tests {
     fn check_div(
         name: &str,
         expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        a: &Signed<Circuit, i64, u64, 64>,
+        b: &Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -228,8 +196,8 @@ mod tests {
     fn check_div_assign(
         name: &str,
         expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        a: &Signed<Circuit, i64, u64, 64>,
+        b: &Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -405,14 +373,14 @@ mod tests {
             let expected = dividend.wrapping_div(divisor);
 
             // Constant
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, dividend);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, divisor);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, dividend);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, divisor);
             let candidate = a / b;
             assert_eq!(expected, candidate.eject_value());
 
             // Private
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, dividend);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, divisor);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, dividend);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, divisor);
             let candidate = a / b;
             println!("Expression: {:?} / {:?}", dividend, divisor);
             assert_eq!(expected, candidate.eject_value());

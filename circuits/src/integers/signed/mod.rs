@@ -28,8 +28,9 @@ pub mod sub;
 pub mod ternary;
 // pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveSignedInteger};
+use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
 
+use num_traits::real::Real;
 use std::{
     fmt,
     marker::PhantomData,
@@ -37,19 +38,19 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-pub type I8<E> = Signed<E, i8, 8>;
-pub type I16<E> = Signed<E, i16, 16>;
-pub type I32<E> = Signed<E, i32, 32>;
-pub type I64<E> = Signed<E, i64, 64>;
-pub type I128<E> = Signed<E, i128, 128>;
+pub type I8<E> = Signed<E, i8, u8, 8>;
+pub type I16<E> = Signed<E, i16, u16, 16>;
+pub type I32<E> = Signed<E, i32, u32, 32>;
+pub type I64<E> = Signed<E, i64, u64, 64>;
+pub type I128<E> = Signed<E, i128, u128, 128>;
 
 #[derive(Clone)]
-pub struct Signed<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> {
+pub struct Signed<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> {
     bits_le: Vec<Boolean<E>>,
-    phantom: PhantomData<I>,
+    phantom: PhantomData<(I, U)>,
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Signed<E, I, U, SIZE> {
     /// Initializes a new integer.
     pub fn new(mode: Mode, value: I) -> Self {
         if SIZE == 0 {
@@ -115,7 +116,9 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Signed<E, I, 
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> fmt::Debug for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> fmt::Debug
+    for Signed<E, I, U, SIZE>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
     }

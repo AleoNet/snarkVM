@@ -16,7 +16,9 @@
 
 use super::*;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Sub<Self>
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     fn sub(self, other: Self) -> Self::Output {
@@ -24,7 +26,9 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<Self> for
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Sub<&Self>
+    for Signed<E, I, U, SIZE>
+{
     type Output = Self;
 
     fn sub(self, other: &Self) -> Self::Output {
@@ -32,29 +36,37 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<&Self> fo
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>
+    Sub<Signed<E, I, U, SIZE>> for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
-    fn sub(self, other: Signed<E, I, SIZE>) -> Self::Output {
+    fn sub(self, other: Signed<E, I, U, SIZE>) -> Self::Output {
         (*self).clone() - other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Sub<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>
+    Sub<&Signed<E, I, U, SIZE>> for &Signed<E, I, U, SIZE>
+{
+    type Output = Signed<E, I, U, SIZE>;
 
-    fn sub(self, other: &Signed<E, I, SIZE>) -> Self::Output {
+    fn sub(self, other: &Signed<E, I, U, SIZE>) -> Self::Output {
         (*self).clone() - other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> SubAssign<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<Self>
+    for Signed<E, I, U, SIZE>
+{
     fn sub_assign(&mut self, other: Self) {
         *self -= &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> SubAssign<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<&Self>
+    for Signed<E, I, U, SIZE>
+{
     fn sub_assign(&mut self, other: &Self) {
         *self = self.clone() + -other;
     }
@@ -73,8 +85,8 @@ mod tests {
     fn check_sub(
         name: &str,
         expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        a: &Signed<Circuit, i64, u64, 64>,
+        b: &Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -103,8 +115,8 @@ mod tests {
     fn check_sub_assign(
         name: &str,
         expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        a: &Signed<Circuit, i64, u64, 64>,
+        b: &Signed<Circuit, i64, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -141,8 +153,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 4, 0, 0, 0);
@@ -161,8 +173,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
@@ -181,8 +193,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
@@ -201,8 +213,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
@@ -221,8 +233,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
@@ -241,8 +253,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -261,8 +273,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -281,8 +293,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -301,8 +313,8 @@ mod tests {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -323,14 +335,14 @@ mod tests {
             };
 
             // Constant
-            let first_signed = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let second_signed = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let first_signed = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
+            let second_signed = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
             let candidate_a = first_signed - second_signed;
             assert_eq!(expected, candidate_a.eject_value());
 
             // Private
-            let first_signed = Signed::<Circuit, i64, 64>::new(Mode::Private, first);
-            let second_signed = Signed::<Circuit, i64, 64>::new(Mode::Private, second);
+            let first_signed = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, first);
+            let second_signed = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, second);
             let candidate_b = first_signed - second_signed;
             assert_eq!(expected, candidate_b.eject_value());
         }
