@@ -150,6 +150,7 @@ version = "1"
 
 [dependencies.rust-gpu-tools]
 version = "0.5.0"
+optional = true
 
 [dependencies.serde]
 version = "1.0"
@@ -241,4 +242,4 @@ signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
-cuda = [ ]
+cuda = [ "rust-gpu-tools" ]
