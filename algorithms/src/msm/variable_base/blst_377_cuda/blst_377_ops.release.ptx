@@ -64,15 +64,15 @@
 	.param .b64 _Z11add_mod_384PyPKyS1_S1__param_3
 )
 ;
-.global .align 8 .b8 __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P[48] = {1, 0, 0, 0, 0, 192, 8, 133, 0, 0, 0, 48, 68, 93, 11, 23, 0, 72, 9, 186, 47, 98, 243, 30, 143, 19, 245, 0, 243, 217, 34, 26, 59, 73, 161, 108, 192, 5, 59, 198, 234, 16, 197, 23, 70, 58, 174, 1};
-.global .align 8 .b8 __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO[48];
-.global .align 8 .b8 __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE[48] = {104, 255, 255, 255, 255, 255, 205, 2, 177, 255, 255, 127, 131, 159, 64, 81, 242, 63, 125, 138, 169, 179, 125, 159, 5, 99, 124, 110, 183, 151, 78, 123, 232, 132, 60, 128, 191, 149, 244, 76, 154, 244, 253, 226, 97, 102, 141, 0};
-.global .align 8 .b8 __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_R2[48] = {34, 205, 0, 148, 108, 104, 134, 183, 177, 49, 4, 176, 170, 252, 41, 3, 109, 180, 214, 98, 17, 241, 165, 34, 172, 195, 125, 130, 3, 125, 223, 191, 249, 11, 121, 65, 240, 146, 126, 131, 136, 75, 145, 30, 203, 252, 109, 0};
-.global .align 8 .u64 __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_p0 = -8860621160618917889;
+.global .align 8 .b8 __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P[48] = {1, 0, 0, 0, 0, 192, 8, 133, 0, 0, 0, 48, 68, 93, 11, 23, 0, 72, 9, 186, 47, 98, 243, 30, 143, 19, 245, 0, 243, 217, 34, 26, 59, 73, 161, 108, 192, 5, 59, 198, 234, 16, 197, 23, 70, 58, 174, 1};
+.global .align 8 .b8 __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO[48];
+.global .align 8 .b8 __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE[48] = {104, 255, 255, 255, 255, 255, 205, 2, 177, 255, 255, 127, 131, 159, 64, 81, 242, 63, 125, 138, 169, 179, 125, 159, 5, 99, 124, 110, 183, 151, 78, 123, 232, 132, 60, 128, 191, 149, 244, 76, 154, 244, 253, 226, 97, 102, 141, 0};
+.global .align 8 .b8 __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_R2[48] = {34, 205, 0, 148, 108, 104, 134, 183, 177, 49, 4, 176, 170, 252, 41, 3, 109, 180, 214, 98, 17, 241, 165, 34, 172, 195, 125, 130, 3, 125, 223, 191, 249, 11, 121, 65, 240, 146, 126, 131, 136, 75, 145, 30, 203, 252, 109, 0};
+.global .align 8 .u64 __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_p0 = -8860621160618917889;
 .visible .global .align 8 .b8 BLS12_377_ZERO_PROJECTIVE[144] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 255, 255, 255, 255, 255, 205, 2, 177, 255, 255, 127, 131, 159, 64, 81, 242, 63, 125, 138, 169, 179, 125, 159, 5, 99, 124, 110, 183, 151, 78, 123, 232, 132, 60, 128, 191, 149, 244, 76, 154, 244, 253, 226, 97, 102, 141, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 .visible .global .align 8 .b8 BLS12_377_ZERO_AFFINE[96] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 255, 255, 255, 255, 255, 205, 2, 177, 255, 255, 127, 131, 159, 64, 81, 242, 63, 125, 138, 169, 179, 125, 159, 5, 99, 124, 110, 183, 151, 78, 123, 232, 132, 60, 128, 191, 149, 244, 76, 154, 244, 253, 226, 97, 102, 141, 0};
 .visible .global .align 8 .b8 BLS12_377_R[32] = {1, 0, 0, 0, 0, 128, 17, 10, 1, 0, 0, 208, 254, 118, 170, 89, 1, 176, 55, 92, 30, 77, 180, 96, 86, 165, 44, 154, 94, 101, 171, 18};
-.global .align 8 .b8 __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BIGINT_ONE[48] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+.global .align 8 .b8 __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BIGINT_ONE[48] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 .visible .func _Z15blst_fp_inversePyPKy(
 	.param .b64 _Z15blst_fp_inversePyPKy_param_0,
@@ -170,7 +170,7 @@ BB0_36:
 	
 	//{
 	}// Callseq End 8
-	mov.u64 	%rd82, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd82, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd83, %rd82;
 	// Callseq Start 9
 	{
@@ -276,7 +276,7 @@ BB0_16:
 	bra.uni 	BB0_17;
 
 BB0_17:
-	mov.u64 	%rd56, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd56, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd57, %rd56;
 	// Callseq Start 1
 	{
@@ -356,7 +356,7 @@ BB0_21:
 	bra.uni 	BB0_22;
 
 BB0_22:
-	mov.u64 	%rd68, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd68, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd69, %rd68;
 	// Callseq Start 4
 	{
@@ -469,7 +469,7 @@ BB0_35:
 	
 	//{
 	}// Callseq End 6
-	mov.u64 	%rd76, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd76, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd77, %rd76;
 	// Callseq Start 7
 	{
@@ -726,7 +726,7 @@ BB1_48:
 	
 	//{
 	}// Callseq End 18
-	mov.u64 	%rd102, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd102, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd103, %rd102;
 	// Callseq Start 19
 	{
@@ -832,7 +832,7 @@ BB1_28:
 	bra.uni 	BB1_29;
 
 BB1_29:
-	mov.u64 	%rd76, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd76, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd77, %rd76;
 	// Callseq Start 11
 	{
@@ -912,7 +912,7 @@ BB1_33:
 	bra.uni 	BB1_34;
 
 BB1_34:
-	mov.u64 	%rd88, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd88, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd89, %rd88;
 	// Callseq Start 14
 	{
@@ -1025,7 +1025,7 @@ BB1_47:
 	
 	//{
 	}// Callseq End 16
-	mov.u64 	%rd96, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd96, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd97, %rd96;
 	// Callseq Start 17
 	{
@@ -1099,7 +1099,7 @@ BB1_56:
 	st.local.v4.u32 	[%rd114+32], {%r45, %r46, %r47, %r48};
 
 BB1_58:
-	mov.u64 	%rd119, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd119, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd120, %rd119;
 	mov.u64 	%rd121, -8860621160618917889;
 	add.u64 	%rd122, %SP, 0;
@@ -1226,7 +1226,7 @@ BB1_64:
 	mov.u64 	%rd144, 0;
 
 BB1_66:
-	mov.u64 	%rd135, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd135, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd136, %rd135, %rd144;
 	ld.global.u8 	%rs5, [%rd136];
 	add.s64 	%rd137, %rd33, %rd144;
@@ -1297,7 +1297,7 @@ BB2_7:
 BB2_8:
 	add.s64 	%rd15, %rd4, 96;
 	add.s64 	%rd16, %rd5, 48;
-	mov.u64 	%rd17, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd17, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd18, %rd17;
 	mov.u64 	%rd19, -8860621160618917889;
 	// Callseq Start 24
@@ -1819,7 +1819,7 @@ BB2_8:
 	cvta.local.u64 	%SP, %SPL;
 	ld.param.u64 	%rd5, [_Z21blst_p1_double_affineP7blst_p1PK14blst_p1_affine_param_0];
 	ld.param.u64 	%rd7, [_Z21blst_p1_double_affineP7blst_p1PK14blst_p1_affine_param_1];
-	mov.u64 	%rd8, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd8, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd9, %rd8;
 	mov.u64 	%rd10, -8860621160618917889;
 	add.u64 	%rd11, %SP, 0;
@@ -2385,7 +2385,7 @@ BB4_6:
 	@%p12 bra 	BB4_34;
 
 BB4_12:
-	mov.u64 	%rd33, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd33, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd34, %rd33;
 	mov.u64 	%rd35, -8860621160618917889;
 	add.u64 	%rd36, %SP, 0;
@@ -3655,7 +3655,7 @@ BB4_37:
 	mov.u64 	%rd120, 0;
 
 BB4_39:
-	mov.u64 	%rd111, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd111, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd112, %rd111, %rd120;
 	ld.global.u8 	%rs4, [%rd112];
 	add.s64 	%rd113, %rd13, %rd120;
@@ -3961,7 +3961,7 @@ BB5_140:
 	bra.uni 	BB5_152;
 
 BB5_153:
-	mov.u64 	%rd428, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd428, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd429, %rd428;
 	mov.u64 	%rd430, -8860621160618917889;
 	add.u64 	%rd431, %SP, 1392;
@@ -4533,7 +4533,7 @@ BB5_84:
 	@%p92 bra 	BB5_112;
 
 BB5_90:
-	mov.u64 	%rd278, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd278, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd279, %rd278;
 	mov.u64 	%rd280, -8860621160618917889;
 	add.u64 	%rd281, %SP, 144;
@@ -5239,7 +5239,7 @@ BB5_111:
 	bra.uni 	BB5_190;
 
 BB5_152:
-	mov.u64 	%rd410, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd410, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd411, %rd410;
 	add.u64 	%rd412, %SP, 336;
 	// Callseq Start 233
@@ -5745,7 +5745,7 @@ BB5_38:
 
 BB5_44:
 	add.s64 	%rd172, %rd103, 96;
-	mov.u64 	%rd173, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd173, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd174, %rd173;
 	mov.u64 	%rd175, -8860621160618917889;
 	add.u64 	%rd176, %SP, 144;
@@ -6967,7 +6967,7 @@ BB5_102:
 
 BB5_27:
 	add.s64 	%rd131, %rd103, 96;
-	mov.u64 	%rd132, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd132, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd133, %rd132;
 	mov.u64 	%rd134, -8860621160618917889;
 	add.u64 	%rd135, %SP, 192;
@@ -8319,7 +8319,7 @@ BB5_184:
 	mov.u64 	%rd521, 0;
 
 BB5_185:
-	mov.u64 	%rd486, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
+	mov.u64 	%rd486, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
 	add.s64 	%rd487, %rd486, %rd521;
 	ld.global.u8 	%rs27, [%rd487];
 	add.s64 	%rd488, %rd95, %rd521;
@@ -8384,7 +8384,7 @@ BB5_169:
 	mov.u64 	%rd517, 0;
 
 BB5_170:
-	mov.u64 	%rd466, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
+	mov.u64 	%rd466, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
 	add.s64 	%rd467, %rd466, %rd517;
 	ld.global.u8 	%rs23, [%rd467];
 	add.s64 	%rd468, %rd83, %rd517;
@@ -8412,7 +8412,7 @@ BB5_182:
 	mov.u64 	%rd520, 0;
 
 BB5_183:
-	mov.u64 	%rd482, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd482, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd483, %rd482, %rd520;
 	ld.global.u8 	%rs26, [%rd483];
 	add.s64 	%rd484, %rd92, %rd520;
@@ -8450,7 +8450,7 @@ BB5_115:
 	mov.u64 	%rd507, 0;
 
 BB5_117:
-	mov.u64 	%rd358, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd358, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd359, %rd358, %rd507;
 	ld.global.u8 	%rs13, [%rd359];
 	add.s64 	%rd360, %rd47, %rd507;
@@ -8465,7 +8465,7 @@ BB5_167:
 	mov.u64 	%rd516, 0;
 
 BB5_168:
-	mov.u64 	%rd462, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd462, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd463, %rd462, %rd516;
 	ld.global.u8 	%rs22, [%rd463];
 	add.s64 	%rd464, %rd80, %rd516;
@@ -8516,7 +8516,7 @@ BB5_69:
 	mov.u64 	%rd500, 0;
 
 BB5_71:
-	mov.u64 	%rd253, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd253, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd254, %rd253, %rd500;
 	ld.global.u8 	%rs6, [%rd254];
 	add.s64 	%rd255, %rd26, %rd500;
@@ -8659,7 +8659,7 @@ BB6_12:
 
 BB6_25:
 	add.s64 	%rd7, %rd36, 48;
-	mov.u64 	%rd86, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd86, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd87, %rd86;
 	mov.u64 	%rd88, -8860621160618917889;
 	add.u64 	%rd89, %SP, 624;
@@ -9152,7 +9152,7 @@ BB6_26:
 	bra.uni 	BB6_58;
 
 BB6_24:
-	mov.u64 	%rd70, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd70, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd71, %rd70;
 	add.u64 	%rd72, %SP, 240;
 	// Callseq Start 270
@@ -9638,7 +9638,7 @@ BB6_56:
 	mov.u64 	%rd155, 0;
 
 BB6_57:
-	mov.u64 	%rd144, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
+	mov.u64 	%rd144, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
 	add.s64 	%rd145, %rd144, %rd155;
 	ld.global.u8 	%rs9, [%rd145];
 	add.s64 	%rd146, %rd32, %rd155;
@@ -9706,7 +9706,7 @@ BB6_41:
 	mov.u64 	%rd151, 0;
 
 BB6_42:
-	mov.u64 	%rd124, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
+	mov.u64 	%rd124, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ZERO;
 	add.s64 	%rd125, %rd124, %rd151;
 	ld.global.u8 	%rs5, [%rd125];
 	add.s64 	%rd126, %rd20, %rd151;
@@ -9721,7 +9721,7 @@ BB6_54:
 	mov.u64 	%rd154, 0;
 
 BB6_55:
-	mov.u64 	%rd140, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd140, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd141, %rd140, %rd154;
 	ld.global.u8 	%rs8, [%rd141];
 	add.s64 	%rd142, %rd29, %rd154;
@@ -9736,7 +9736,7 @@ BB6_39:
 	mov.u64 	%rd150, 0;
 
 BB6_40:
-	mov.u64 	%rd120, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
+	mov.u64 	%rd120, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_ONE;
 	add.s64 	%rd121, %rd120, %rd150;
 	ld.global.u8 	%rs4, [%rd121];
 	add.s64 	%rd122, %rd17, %rd150;
@@ -9769,7 +9769,7 @@ BB6_40:
 	ld.param.u64 	%rd21, [_Z28blst_p1_add_affine_to_affineP14blst_p1_affinePKS_S2__param_2];
 	add.s64 	%rd22, %rd20, 48;
 	add.s64 	%rd23, %rd21, 48;
-	mov.u64 	%rd24, __nv_static_60__47_tmpxft_000160f2_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
+	mov.u64 	%rd24, __nv_static_60__47_tmpxft_0000e978_00000000_6_blst_377_ops_cpp1_ii_59a7af50_BLS12_377_P;
 	cvta.global.u64 	%rd25, %rd24;
 	add.u64 	%rd26, %SP, 240;
 	// Callseq Start 307
