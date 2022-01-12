@@ -10,12 +10,12 @@ The easiest way to install the CUDA toolkit on linux is to run:
   
   nvcc --version
   ```
-  
+
 The alternative is to follow the instructions below:
 
 - Windows or Linux - https://developer.nvidia.com/cuda-downloads
 - macOS - https://developer.nvidia.com/nvidia-cuda-toolkit-developer-tools-mac-hosts
-  
+
 
 ### 2. Build the snarkVM MSM CUDA Program
 
