@@ -175,7 +175,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
             total
         })
         + lowest;
-    return Ok(final_result);
+    Ok(final_result)
 }
 
 /// Initialize the cuda request handler.
@@ -270,7 +270,7 @@ mod tests {
             for input in inputs {
                 let output_buf = program.create_buffer_from_slice(&vec![0u8; out_size]).unwrap();
 
-                let input_buf = program.create_buffer_from_slice(&input).unwrap();
+                let input_buf = program.create_buffer_from_slice(input).unwrap();
 
                 let kernel = program.create_kernel(name, 1, 1).unwrap();
                 kernel.arg(&output_buf).arg(&input_buf).run().unwrap();
