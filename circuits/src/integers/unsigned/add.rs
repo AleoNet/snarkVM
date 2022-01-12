@@ -20,7 +20,7 @@ use num_traits::WrappingAdd;
 use snarkvm_fields::PrimeField;
 use std::num::Wrapping;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Add<Self> for Unsigned<E, I, SIZE> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
@@ -29,7 +29,8 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<Self> for
 }
 
 // TODO (@pranav) Do we need to optimize the number of contraints generated?
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<&Self> for Signed<E, I, SIZE> {
+//  This has the same implementation as signed addition? Can we dedup?
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Add<&Self> for Unsigned<E, I, SIZE> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
@@ -44,7 +45,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<&Self> fo
 
         // If the resulting value is a constant, return it directly.
         if mode.is_constant() {
-            return Signed::new(mode, value);
+            return Unsigned::new(mode, value);
         }
 
         let mut bits = self.bits_le.add_bits(&other.bits_le);
@@ -62,29 +63,33 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<&Self> fo
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Add<Unsigned<E, I, SIZE>>
+    for &Unsigned<E, I, SIZE>
+{
+    type Output = Unsigned<E, I, SIZE>;
 
-    fn add(self, other: Signed<E, I, SIZE>) -> Self::Output {
+    fn add(self, other: Unsigned<E, I, SIZE>) -> Self::Output {
         (*self).clone() + other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Add<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Add<&Unsigned<E, I, SIZE>>
+    for &Unsigned<E, I, SIZE>
+{
+    type Output = Unsigned<E, I, SIZE>;
 
-    fn add(self, other: &Signed<E, I, SIZE>) -> Self::Output {
+    fn add(self, other: &Unsigned<E, I, SIZE>) -> Self::Output {
         (*self).clone() + other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> AddAssign<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> AddAssign<Self> for Unsigned<E, I, SIZE> {
     fn add_assign(&mut self, other: Self) {
         *self += &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> AddAssign<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> AddAssign<&Self> for Unsigned<E, I, SIZE> {
     fn add_assign(&mut self, other: &Self) {
         *self = self.clone() + other;
     }
@@ -103,9 +108,9 @@ mod tests {
 
     fn check_add(
         name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        expected: u64,
+        a: &Unsigned<Circuit, u64, 64>,
+        b: &Unsigned<Circuit, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -133,9 +138,9 @@ mod tests {
 
     fn check_add_assign(
         name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        expected: u64,
+        a: &Unsigned<Circuit, u64, 64>,
+        b: &Unsigned<Circuit, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -165,12 +170,12 @@ mod tests {
     #[test]
     fn test_constant_plus_constant() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 64, 0, 0, 0);
@@ -182,12 +187,12 @@ mod tests {
     #[test]
     fn test_constant_plus_public() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Public, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 1, 0, 225, 63);
@@ -199,12 +204,12 @@ mod tests {
     #[test]
     fn test_public_plus_constant() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Public, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Public, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 1, 0, 128, 3);
@@ -216,12 +221,12 @@ mod tests {
     #[test]
     fn test_constant_plus_private() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 2, 0, 3, 3);
@@ -233,12 +238,12 @@ mod tests {
     #[test]
     fn test_private_plus_constant() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Private, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 2, 0, 3, 3);
@@ -250,12 +255,12 @@ mod tests {
     #[test]
     fn test_public_plus_public() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Public, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Public, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Public, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -267,12 +272,12 @@ mod tests {
     #[test]
     fn test_public_plus_private() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Public, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Public, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -284,12 +289,12 @@ mod tests {
     #[test]
     fn test_private_plus_public() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Public, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Private, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 2, 0, 6, 6);
@@ -301,12 +306,12 @@ mod tests {
     #[test]
     fn test_private_plus_private() {
         for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
+            let first: u64 = UniformRand::rand(&mut thread_rng());
+            let second: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = (Wrapping(first) + Wrapping(second)).0;
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, first);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, second);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Private, first);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, expected, &a, &b, 1, 0, 509, 891);

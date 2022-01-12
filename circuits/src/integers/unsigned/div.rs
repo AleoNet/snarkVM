@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::unsigned::Unsigned;
+use std::ops::{Div, DivAssign};
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<Self> for Unsigned<E, I, SIZE> {
     type Output = Self;
 
     fn div(self, other: Self) -> Self::Output {
@@ -25,7 +25,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Self> for
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> for Unsigned<E, I, SIZE> {
     type Output = Self;
 
     // TODO (@pranav) Would a more efficient division algorithm in a traditional sense
@@ -44,26 +44,17 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> fo
             E::halt("Division by zero.")
         }
 
-        // Wrapped division.
-        let value = if self_value == I::min_value() && other_value == (I::zero() - I::one()) {
-            I::min_value()
-        } else {
-            self_value / other_value
-        };
+        let value = self_value / other_value;
 
         if mode.is_constant() {
-            return Signed::new(mode, value);
+            return Unsigned::new(mode, value);
         }
 
-        // N / D pseudocode:
+        // pseudocode:
         //
         // if D = 0 then error(DivisionByZeroException) end
-        //
-        // positive = msb(N) == msb(D) -- if msb's equal, return positive result
-        //
         // Q := 0                  -- Initialize quotient and remainder to zero
         // R := 0
-        //
         // for i := n − 1 .. 0 do  -- Where n is number of bits in N
         //   R := R << 1           -- Left-shift R by 1 bit
         //   R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
@@ -72,113 +63,71 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Self> fo
         //     Q(i) := 1
         //   end
         // end
-        //
-        // if positive then           -- positive result
-        //    Q
-        // else
-        //    !Q                      -- negative result
 
-        // If self is MIN and other is -1, then return MIN
-        let self_is_min = self.is_eq(&Signed::new(Mode::Constant, I::min_value()));
-        let other_is_minus_one = other.is_eq(&Signed::new(Mode::Constant, I::zero() - I::one())); //TODO (@pranav) wrapping sub?
-        let wrapping_condition = self_is_min.and(&other_is_minus_one);
+        let mut quotient_bits = Vec::with_capacity(SIZE);
+        let mut remainder: Unsigned<E, I, SIZE> = Unsigned::new(mode, I::zero());
 
-        // Division by zero is already checked above.
-        let a_msb = self.bits_le.last().unwrap();
-        let other_msb = other.bits_le.last().unwrap();
-        let positive = a_msb.is_eq(&other_msb);
+        // TODO (@pranav) Fix use of clones for `remainder`
+        // for i := n - 1 .. 0 do
+        for bit in self.bits_le.iter().rev() {
+            // R := R << 1
+            remainder = remainder.clone().add(&remainder);
 
-        let self_absolute_value = Signed::ternary(a_msb, &self.clone().neg(), &self.clone());
-        let other_absolute_value = Signed::ternary(other_msb, &other.clone().neg(), &other.clone());
+            // R(0) := N(i)
+            let remainder_plus_one = remainder.clone().add(&Unsigned::new(Mode::Constant, I::one()));
+            remainder = Unsigned::ternary(bit, &remainder_plus_one, &remainder.clone());
 
-        println!(
-            "Self: {:?}, Self Abs {:?}, Other: {:?}, Other Abs {:?}",
-            self.eject_value(),
-            self_absolute_value.eject_value(),
-            other.eject_value(),
-            other_absolute_value.eject_value()
-        );
+            // if R ≥ D
+            let r_larger_or_equal_to_d = !remainder.is_lt(other);
 
-        //let mut quotient_bits = Vec::with_capacity(SIZE);
-        let mut remainder: Signed<E, I, SIZE> = Signed::new(mode, I::zero());
+            // compute R - D
+            let r_sub_d = remainder.clone().sub(other);
 
-        let self_unsigned_value = self_absolute_value.eject_value().to_u64().unwrap();
-        let other_unsigned_value = other_absolute_value.eject_value().to_u64().unwrap();
-        let quotient = Unsigned::<E, u64, SIZE>::new(mode, self_unsigned_value)
-            / Unsigned::<E, u64, SIZE>::new(mode, other_unsigned_value);
-        let quotient_bits = quotient.bits_le;
-        // // TODO (@pranav) Fix use of clones for `remainder`
-        // // for i := n - 1 .. 0 do
-        // for bit in self_absolute_value.bits_le.iter().rev() {
-        //     // R := R << 1
-        //     remainder = remainder.clone().add(&remainder);
-        //
-        //     // R(0) := N(i)
-        //     let remainder_plus_one = remainder.clone().add(&Signed::new(Mode::Constant, I::one()));
-        //     remainder = Signed::ternary(bit, &remainder_plus_one, &remainder.clone());
-        //
-        //     // if R ≥ D
-        //     let r_larger_or_equal_to_d = !remainder.is_lt(&other_absolute_value);
-        //
-        //     // compute R - D
-        //     let r_sub_d = remainder.clone().sub(&other_absolute_value);
-        //
-        //     remainder = Signed::ternary(&r_larger_or_equal_to_d, &r_sub_d, &remainder.clone());
-        //
-        //     // Q(i) := 1
-        //     quotient_bits.push(r_larger_or_equal_to_d);
-        // }
+            remainder = Unsigned::ternary(&r_larger_or_equal_to_d, &r_sub_d, &remainder.clone());
 
-        let quotient = Signed::from_bits(quotient_bits);
+            // Q(i) := 1
+            quotient_bits.push(r_larger_or_equal_to_d);
+        }
 
-        let negated_quotient = Signed::ternary(&positive, &quotient.clone(), &quotient.clone().neg());
-        let result = Signed::ternary(
-            &wrapping_condition,
-            &Signed::new(mode, I::min_value()),
-            &negated_quotient,
-        );
-
-        println!(
-            "Raw quotient: {:?}, Neg quotient: {:?}, Result: {:?}, MIN: {:?}",
-            quotient.eject_value(),
-            negated_quotient.eject_value(),
-            result.eject_value(),
-            I::min_value()
-        );
+        quotient_bits.reverse();
 
         // Check that the computed result matches the expected one.
         for i in 0..SIZE {
             let mask = I::one() << i;
             let value_bit = Boolean::<E>::new(mode, value & mask == mask);
-            value_bit.is_eq(&result.bits_le[i]);
+            value_bit.is_eq(&quotient_bits[i]);
         }
-        result
+        Unsigned::from_bits(quotient_bits)
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<Unsigned<E, I, SIZE>>
+    for &Unsigned<E, I, SIZE>
+{
+    type Output = Unsigned<E, I, SIZE>;
 
-    fn div(self, other: Signed<E, I, SIZE>) -> Self::Output {
+    fn div(self, other: Unsigned<E, I, SIZE>) -> Self::Output {
         (*self).clone() / other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Div<&Signed<E, I, SIZE>> for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Unsigned<E, I, SIZE>>
+    for &Unsigned<E, I, SIZE>
+{
+    type Output = Unsigned<E, I, SIZE>;
 
-    fn div(self, other: &Signed<E, I, SIZE>) -> Self::Output {
+    fn div(self, other: &Unsigned<E, I, SIZE>) -> Self::Output {
         (*self).clone() / other
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> DivAssign<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<Self> for Unsigned<E, I, SIZE> {
     fn div_assign(&mut self, other: Self) {
         *self /= &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> DivAssign<&Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<&Self> for Unsigned<E, I, SIZE> {
     fn div_assign(&mut self, other: &Self) {
         *self = self.clone() / other;
     }
@@ -197,9 +146,9 @@ mod tests {
 
     fn check_div(
         name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        expected: u64,
+        a: &Unsigned<Circuit, u64, 64>,
+        b: &Unsigned<Circuit, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -227,9 +176,9 @@ mod tests {
 
     fn check_div_assign(
         name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, 64>,
-        b: &Signed<Circuit, i64, 64>,
+        expected: u64,
+        a: &Unsigned<Circuit, u64, 64>,
+        b: &Unsigned<Circuit, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -259,15 +208,15 @@ mod tests {
     #[test]
     fn test_constant_div_constant() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Constant, dividend);
-            let b = Signed::new(Mode::Constant, divisor);
+            let a = Unsigned::new(Mode::Constant, dividend);
+            let b = Unsigned::new(Mode::Constant, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 1757, 0, 0, 0);
@@ -279,15 +228,15 @@ mod tests {
     #[test]
     fn test_constant_div_public() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Constant, dividend);
-            let b = Signed::new(Mode::Public, divisor);
+            let a = Unsigned::new(Mode::Constant, dividend);
+            let b = Unsigned::new(Mode::Public, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 757, 0, 2500, 2500);
@@ -299,15 +248,15 @@ mod tests {
     #[test]
     fn test_constant_div_private() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Constant, dividend);
-            let b = Signed::new(Mode::Private, divisor);
+            let a = Unsigned::new(Mode::Constant, dividend);
+            let b = Unsigned::new(Mode::Private, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 757, 0, 2500, 2500);
@@ -319,15 +268,15 @@ mod tests {
     #[test]
     fn test_public_div_public() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Public, dividend);
-            let b = Signed::new(Mode::Public, divisor);
+            let a = Unsigned::new(Mode::Public, dividend);
+            let b = Unsigned::new(Mode::Public, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
@@ -339,15 +288,15 @@ mod tests {
     #[test]
     fn test_public_div_private() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Public, dividend);
-            let b = Signed::new(Mode::Private, divisor);
+            let a = Unsigned::new(Mode::Public, dividend);
+            let b = Unsigned::new(Mode::Private, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
@@ -359,15 +308,15 @@ mod tests {
     #[test]
     fn test_private_div_public() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Private, dividend);
-            let b = Signed::new(Mode::Public, divisor);
+            let a = Unsigned::new(Mode::Private, dividend);
+            let b = Unsigned::new(Mode::Public, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
@@ -379,15 +328,15 @@ mod tests {
     #[test]
     fn test_private_div_private() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = match dividend.checked_div(divisor) {
                 Some(expected) => expected,
                 None => continue,
             };
-            let a = Signed::new(Mode::Private, dividend);
-            let b = Signed::new(Mode::Private, divisor);
+            let a = Unsigned::new(Mode::Private, dividend);
+            let b = Unsigned::new(Mode::Private, divisor);
 
             let name = format!("Div: a / b {}", i);
             check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
@@ -399,22 +348,21 @@ mod tests {
     #[test]
     fn test_div_matches() {
         for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+            let dividend: u64 = UniformRand::rand(&mut thread_rng());
+            let divisor: u64 = UniformRand::rand(&mut thread_rng());
 
             let expected = dividend.wrapping_div(divisor);
 
             // Constant
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, dividend);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, divisor);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, dividend);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, divisor);
             let candidate = a / b;
             assert_eq!(expected, candidate.eject_value());
 
             // Private
-            let a = Signed::<Circuit, i64, 64>::new(Mode::Private, dividend);
-            let b = Signed::<Circuit, i64, 64>::new(Mode::Private, divisor);
+            let a = Unsigned::<Circuit, u64, 64>::new(Mode::Private, dividend);
+            let b = Unsigned::<Circuit, u64, 64>::new(Mode::Private, divisor);
             let candidate = a / b;
-            println!("Expression: {:?} / {:?}", dividend, divisor);
             assert_eq!(expected, candidate.eject_value());
         }
     }

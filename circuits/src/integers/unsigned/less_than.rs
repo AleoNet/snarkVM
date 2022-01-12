@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> LessThan<Self> for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> LessThan<Self> for Unsigned<E, I, SIZE> {
     type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 
@@ -29,13 +29,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> LessThan<Self
         let mut result = Boolean::new(Mode::Constant, false);
         let mut prev_bits_equal = Boolean::new(Mode::Constant, true);
 
-        let mut reversed_bit_pairs = self.bits_le.iter().zip(other.bits_le.iter()).rev();
-        let (self_msb, other_msb) = reversed_bit_pairs.next().expect("Signed must contain at least one bit");
-
-        result = result.or(&prev_bits_equal.and(&self_msb.and(&!other_msb)));
-        prev_bits_equal = prev_bits_equal.and(&!self_msb.xor(other_msb));
-
-        for (self_bit, other_bit) in reversed_bit_pairs {
+        for (self_bit, other_bit) in self.bits_le.iter().zip(other.bits_le.iter()).rev() {
             result = result.or(&prev_bits_equal.and(&(!self_bit).and(other_bit)));
             prev_bits_equal = prev_bits_equal.and(&!(self_bit.xor(other_bit)));
         }
@@ -59,8 +53,8 @@ mod tests {
     //    // Constant == Constant
     //    for i in 0..ITERATIONS {
     //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+    //        let a = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+    //        let b = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
     //        Circuit::scoped(&format!("Constant Less Than {}", i), |scope| {
     //            let equals = a.is_eq(&b);
@@ -86,8 +80,8 @@ mod tests {
     //    // Constant == Public
     //    for i in 0..ITERATIONS {
     //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+    //        let a = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+    //        let b = Unsigned::<Circuit, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
     //        Circuit::scoped(&format!("Constant and Public Less Than {}", i), |scope| {
     //            let equals = a.is_eq(&b);
@@ -115,8 +109,8 @@ mod tests {
     //    // Public == Constant
     //    for i in 0..ITERATIONS {
     //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+    //        let a = Unsigned::<Circuit, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+    //        let b = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
     //        Circuit::scoped(&format!("Public and Constant Less Than {}", i), |scope| {
     //            let equals = a.is_eq(&b);
@@ -144,8 +138,8 @@ mod tests {
     //    // Public == Public
     //    for i in 0..ITERATIONS {
     //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+    //        let a = Unsigned::<Circuit, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+    //        let b = Unsigned::<Circuit, u64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
     //        Circuit::scoped(&format!("Public Less Than {}", i), |scope| {
     //            let equals = a.is_eq(&b);
@@ -173,8 +167,8 @@ mod tests {
     //    // Private == Private
     //    for i in 0..ITERATIONS {
     //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+    //        let a = Unsigned::<Circuit, u64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+    //        let b = Unsigned::<Circuit, u64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
 
     //        Circuit::scoped(&format!("Private Less Than {}", i), |scope| {
     //            let equals = a.is_eq(&b);

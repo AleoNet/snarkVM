@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod add;
+pub mod div;
+pub mod equal;
+pub mod less_than;
+pub mod neg;
+pub mod sub;
+pub mod ternary;
+
 use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveInteger, PrimitiveUnsignedInteger};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::Field as F;
@@ -33,7 +41,7 @@ pub type U128<E> = Unsigned<E, u128, 128>;
 
 #[derive(Clone)]
 pub struct Unsigned<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> {
-    bits_le: Vec<Boolean<E>>,
+    pub(crate) bits_le: Vec<Boolean<E>>,
     phantom: PhantomData<I>,
 }
 

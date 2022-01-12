@@ -18,6 +18,7 @@ use crate::{And, Boolean, Environment, Or, Xor};
 
 // TODO (@pranav) Reorganize where this code is kept
 //  Keeping here while prototyping
+//  Impl this as BitAnd for Boolean
 
 /// Single bit binary adder with carry bit
 /// https://en.wikipedia.org/wiki/Adder_(electronics)#Full_adder

@@ -17,18 +17,18 @@
 use super::*;
 use crate::RippleCarryAdder;
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for Signed<E, I, SIZE> {
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Neg for Unsigned<E, I, SIZE> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
         let value = self.eject_value().wrapping_neg();
 
         if self.is_constant() {
-            return Signed::new(Mode::Constant, value);
+            return Unsigned::new(Mode::Constant, value);
         }
 
-        let flipped = Signed::from_bits(self.bits_le.iter().map(|bit| !bit).collect());
-        let mut one = Signed::new(Mode::Constant, I::one());
+        let flipped = Unsigned::from_bits(self.bits_le.iter().map(|bit| !bit).collect());
+        let mut one = Unsigned::new(Mode::Constant, I::one());
         let result = flipped.add(one);
 
         // TODO (@pranav) Is this check necessary? It does not seem to be done in the corresponding
@@ -44,8 +44,8 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for Signe
     }
 }
 
-impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Neg for &Signed<E, I, SIZE> {
-    type Output = Signed<E, I, SIZE>;
+impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Neg for &Unsigned<E, I, SIZE> {
+    type Output = Unsigned<E, I, SIZE>;
 
     fn neg(self) -> Self::Output {
         -(self.clone())
@@ -64,8 +64,8 @@ mod tests {
 
     fn check_neg(
         name: &str,
-        expected: i64,
-        candidate_input: Signed<Circuit, i64, 64>,
+        expected: u64,
+        candidate_input: Unsigned<Circuit, u64, 64>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -87,10 +87,10 @@ mod tests {
     fn test_neg_constant() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let value: i64 = UniformRand::rand(&mut thread_rng());
+            let value: u64 = UniformRand::rand(&mut thread_rng());
             let expected = value.wrapping_neg();
 
-            let candidate_input = Signed::<Circuit, i64, 64>::new(Mode::Constant, value);
+            let candidate_input = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, value);
             check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -99,10 +99,10 @@ mod tests {
     fn test_neg_public() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let value: i64 = UniformRand::rand(&mut thread_rng());
+            let value: u64 = UniformRand::rand(&mut thread_rng());
             let expected = value.wrapping_neg();
 
-            let candidate_input = Signed::<Circuit, i64, 64>::new(Mode::Public, value);
+            let candidate_input = Unsigned::<Circuit, u64, 64>::new(Mode::Public, value);
             check_neg(&format!("NEG Public {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -111,10 +111,10 @@ mod tests {
     fn test_neg_private() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let value: i64 = UniformRand::rand(&mut thread_rng());
+            let value: u64 = UniformRand::rand(&mut thread_rng());
             let expected = value.wrapping_neg();
 
-            let candidate_input = Signed::<Circuit, i64, 64>::new(Mode::Private, value);
+            let candidate_input = Unsigned::<Circuit, u64, 64>::new(Mode::Private, value);
             check_neg(&format!("NEG Private {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }

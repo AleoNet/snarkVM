@@ -21,7 +21,9 @@ pub mod unsigned;
 pub use unsigned::*;
 
 use num_traits::{
+    AsPrimitive,
     Bounded,
+    NumCast,
     NumOps,
     One as NumOne,
     PrimInt,
@@ -48,7 +50,7 @@ use std::fmt::Debug;
 //  In general, need to consider appropriate naming for this entire module.
 /// Trait bound for integer values. Common to both signed and unsigned integers.
 pub trait PrimitiveInteger:
-    'static + Debug + PrimInt + Bounded + NumZero + NumOne + WrappingAdd + WrappingMul + WrappingNeg
+    'static + Debug + PrimInt + Bounded + NumZero + NumOne + WrappingAdd + WrappingMul + WrappingNeg + NumCast
 {
 }
 
@@ -64,16 +66,20 @@ impl PrimitiveInteger for i8 {}
 impl PrimitiveInteger for i16 {}
 impl PrimitiveInteger for i32 {}
 impl PrimitiveInteger for i64 {}
+impl PrimitiveInteger for i128 {}
 impl PrimitiveSignedInteger for i8 {}
 impl PrimitiveSignedInteger for i16 {}
 impl PrimitiveSignedInteger for i32 {}
 impl PrimitiveSignedInteger for i64 {}
+impl PrimitiveSignedInteger for i128 {}
 
 impl PrimitiveInteger for u8 {}
 impl PrimitiveInteger for u16 {}
 impl PrimitiveInteger for u32 {}
 impl PrimitiveInteger for u64 {}
+impl PrimitiveInteger for u128 {}
 impl PrimitiveUnsignedInteger for u8 {}
 impl PrimitiveUnsignedInteger for u16 {}
 impl PrimitiveUnsignedInteger for u32 {}
 impl PrimitiveUnsignedInteger for u64 {}
+impl PrimitiveUnsignedInteger for u128 {}

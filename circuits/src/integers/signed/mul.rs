@@ -38,11 +38,8 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> fo
             false => Mode::Private,
         };
 
-        // Directly compute the sum, check for overflow.
-        let value = match self.eject_value().checked_mul(&other.eject_value()) {
-            Some(value) => value,
-            None => E::halt("Signed integer overflow during multiplication."),
-        };
+        // Directly compute the product, wrapping if necessary.
+        let value = self.eject_value().wrapping_mul(&other.eject_value());
 
         if mode.is_constant() {
             return Signed::new(mode, value);
@@ -61,12 +58,10 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> fo
         // return res
 
         // Sign extend to double precision
-        let size = SIZE * 2;
+        let a = Boolean::sign_extend(&self.bits_le, SIZE * 2);
+        let b = Boolean::sign_extend(&other.bits_le, SIZE * 2);
 
-        let a = Boolean::sign_extend(&self.bits_le, size);
-        let b = Boolean::sign_extend(&other.bits_le, size);
-
-        let mut bits = vec![Boolean::new(mode, false); size];
+        let mut bits = vec![Boolean::new(mode, false); SIZE];
 
         // Compute double and add algorithm
         let mut to_add = Vec::new();
@@ -75,7 +70,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> fo
             // double
             a_shifted.extend(iter::repeat(Boolean::new(mode, false)).take(i));
             a_shifted.extend_from_slice(&a);
-            a_shifted.truncate(size);
+            a_shifted.truncate(SIZE);
 
             // conditionally add
             to_add.reserve(a_shifted.len());
@@ -96,32 +91,12 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Mul<&Self> fo
         // Truncate the bits to the size of the integer
         bits.truncate(SIZE);
 
-        // Make some arbitrary bounds for ourselves to avoid overflows
-        // in the scalar field
-        assert!(E::BaseField::size_in_bits() >= SIZE);
-
-        // Iterate over each bit_gadget of result and add each bit to
-        // the linear combination
-        let mut field_value = BaseField::zero();
-        let mut coeff = BaseField::one();
-        for bit in bits.iter() {
-            field_value += coeff.clone() * BaseField::from(&bit);
-            coeff = coeff.double();
-        }
-
-        let mut result_bits = Vec::new();
-        let mut coeff = BaseField::one();
+        // Check that the computed result matches the expected one.
         for i in 0..SIZE {
-            // get bit value
             let mask = I::one() << i;
-
-            let bit = Boolean::<E>::new(mode, value & mask == mask);
-            field_value -= coeff.clone() * BaseField::from(&bit);
-            coeff = coeff.double();
-            result_bits.push(bit);
+            let value_bit = Boolean::<E>::new(mode, value & mask == mask);
+            value_bit.is_eq(&bits[i]);
         }
-
-        E::enforce(|| (E::zero(), E::zero(), field_value));
 
         Signed::from_bits(bits)
     }

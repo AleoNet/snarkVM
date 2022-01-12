@@ -33,6 +33,7 @@ use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveSignedInteg
 use std::{
     fmt,
     marker::PhantomData,
+    num::NonZeroUsize,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -51,6 +52,10 @@ pub struct Signed<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> 
 impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Signed<E, I, SIZE> {
     /// Initializes a new integer.
     pub fn new(mode: Mode, value: I) -> Self {
+        if SIZE == 0 {
+            E::halt("Signed must have a size greater than zero.")
+        }
+
         let mut bits_le = Vec::with_capacity(SIZE);
         let mut value = value.to_le();
         for _ in 0..SIZE {
@@ -66,13 +71,16 @@ impl<E: Environment, I: PrimitiveSignedInteger, const SIZE: usize> Signed<E, I, 
     // TODO: (@pranav) Implement From?
     /// Initialize a new integer from a vector of Booleans.
     fn from_bits(bits: Vec<Boolean<E>>) -> Self {
+        if SIZE == 0 {
+            E::halt("Signed must have a size greater than zero.")
+        }
         if bits.len() != SIZE {
             E::halt("Incorrect number of bits to convert to Signed")
-        } else {
-            Self {
-                bits_le: bits,
-                phantom: Default::default(),
-            }
+        }
+
+        Self {
+            bits_le: bits,
+            phantom: Default::default(),
         }
     }
 
