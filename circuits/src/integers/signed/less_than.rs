@@ -52,153 +52,105 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::thread_rng;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
 
-    //const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 100;
 
-    //#[test]
-    //fn test_is_eq() {
-    //    // Constant == Constant
-    //    for i in 0..ITERATIONS {
-    //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<I>,
+    {
+        for i in 0..iterations {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
+            let expected = first < second;
 
-    //        Circuit::scoped(&format!("Constant Less Than {}", i), |scope| {
-    //            let equals = a.is_eq(&b);
-    //            assert!(!equals.eject_value());
+            let a = Signed::<Circuit, I, U, SIZE>::new(mode_a, first);
+            let b = Signed::<Circuit, I, U, SIZE>::new(mode_b, second);
 
-    //            assert_eq!(2, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(0, scope.num_private_in_scope());
-    //            assert_eq!(0, scope.num_constraints_in_scope());
-    //        });
+            Circuit::scoped(&format!("Less Than {}", i), |scope| {
+                let less_than = a.is_lt(&b);
+                assert_eq!(expected, less_than.eject_value());
+                if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
+                    assert_eq!(num_constants, scope.num_constants_in_scope());
+                    assert_eq!(num_public, scope.num_public_in_scope());
+                    assert_eq!(num_private, scope.num_private_in_scope());
+                    assert_eq!(num_constraints, scope.num_constraints_in_scope());
+                }
+                Circuit::is_satisfied();
+            });
+        }
+    }
 
-    //        Circuit::scoped(&format!("Constant Not Less Than {}", i), |scope| {
-    //            let equals = a.is_neq(&b);
-    //            assert!(equals.eject_value());
+    #[test]
+    fn test_i8_is_lt_all_modes() {
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
+    }
 
-    //            assert_eq!(2, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(0, scope.num_private_in_scope());
-    //            assert_eq!(0, scope.num_constraints_in_scope());
-    //        });
-    //    }
+    #[test]
+    fn test_i16_is_lt_all_modes() {
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+    }
 
-    //    // Constant == Public
-    //    for i in 0..ITERATIONS {
-    //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+    #[test]
+    fn test_i32_is_lt_all_modes() {
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
+    }
 
-    //        Circuit::scoped(&format!("Constant and Public Less Than {}", i), |scope| {
-    //            let equals = a.is_eq(&b);
-    //            assert!(!equals.eject_value());
+    #[test]
+    fn test_i64_is_lt_all_modes() {
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+    }
 
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-
-    //        Circuit::scoped(&format!("Constant and Public Not Less Than {}", i), |scope| {
-    //            let equals = a.is_neq(&b);
-    //            assert!(equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-    //    }
-
-    //    // Public == Constant
-    //    for i in 0..ITERATIONS {
-    //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-
-    //        Circuit::scoped(&format!("Public and Constant Less Than {}", i), |scope| {
-    //            let equals = a.is_eq(&b);
-    //            assert!(!equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-
-    //        Circuit::scoped(&format!("Public and Constant Not Less Than {}", i), |scope| {
-    //            let equals = a.is_neq(&b);
-    //            assert!(equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-    //    }
-
-    //    // Public == Public
-    //    for i in 0..ITERATIONS {
-    //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-
-    //        Circuit::scoped(&format!("Public Less Than {}", i), |scope| {
-    //            let equals = a.is_eq(&b);
-    //            assert!(!equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-
-    //        Circuit::scoped(&format!("Public Not Less Than {}", i), |scope| {
-    //            let equals = a.is_neq(&b);
-    //            assert!(equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-    //    }
-
-    //    // Private == Private
-    //    for i in 0..ITERATIONS {
-    //        // Sample two random elements.
-    //        let a = Signed::<Circuit, i64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
-    //        let b = Signed::<Circuit, i64, 64>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
-
-    //        Circuit::scoped(&format!("Private Less Than {}", i), |scope| {
-    //            let equals = a.is_eq(&b);
-    //            assert!(!equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-
-    //        Circuit::scoped(&format!("Private Not Less Than {}", i), |scope| {
-    //            let equals = a.is_neq(&b);
-    //            assert!(equals.eject_value());
-
-    //            assert_eq!(0, scope.num_constants_in_scope());
-    //            assert_eq!(0, scope.num_public_in_scope());
-    //            assert_eq!(5, scope.num_private_in_scope());
-    //            assert_eq!(8, scope.num_constraints_in_scope());
-    //            assert!(scope.is_satisfied());
-    //        });
-    //    }
-    //}
+    #[test]
+    fn test_i128_is_lt_all_modes() {
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
+    }
 }

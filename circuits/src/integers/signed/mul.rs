@@ -67,8 +67,8 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 
         let mut bits = vec![Boolean::new(mode, false); SIZE];
 
-        // Compute double and add algorithm
-        let mut to_add = Vec::new();
+        // Compute double and mul algorithm
+        let mut to_mul = Vec::new();
         let mut a_shifted = Vec::new();
         for (i, b_bit) in b.iter().enumerate() {
             // double
@@ -76,20 +76,20 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
             a_shifted.extend_from_slice(&a);
             a_shifted.truncate(SIZE);
 
-            // conditionally add
-            to_add.reserve(a_shifted.len());
+            // conditionally mul
+            to_mul.reserve(a_shifted.len());
             for a_bit in a_shifted.iter() {
                 let selected_bit = Boolean::ternary(b_bit, a_bit, &Boolean::new(mode, false));
 
-                to_add.push(selected_bit);
+                to_mul.push(selected_bit);
             }
 
-            bits = bits.add_bits(&to_add);
+            bits = bits.add_bits(&to_mul);
             let _carry = bits.pop();
-            to_add.clear();
+            to_mul.clear();
             a_shifted.clear();
         }
-        drop(to_add);
+        drop(to_mul);
         drop(a_shifted);
 
         // Truncate the bits to the size of the integer
@@ -149,209 +149,107 @@ mod tests {
     use num_traits::CheckedMul;
     use snarkvm_utilities::UniformRand;
 
-    use rand::thread_rng;
+    use crate::integers::signed::test_utilities::check_operation;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
 
     const ITERATIONS: usize = 10;
 
-    fn check_mul(
-        name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, u64, 64>,
-        b: &Signed<Circuit, i64, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let candidate = a * b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} * {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<I>,
+    {
+        for i in 0..iterations {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
 
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
-
-    fn check_mul_assign(
-        name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, u64, 64>,
-        b: &Signed<Circuit, i64, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let mut candidate = a.clone();
-            candidate *= b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} * {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
-
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
-
-    #[test]
-    fn test_constant_times_constant() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Constant, multiplicand);
-            let b = Signed::new(Mode::Constant, multiplier);
+            let expected = first.wrapping_mul(&second);
+            let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+            let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 1757, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 1757, 0, 0, 0);
+            let compute_candidate = || &a * &b;
+            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
+
+            let name = format!("MulAssign: a *= b {}", i);
+            let compute_candidate = || {
+                let mut candidate = (&a).clone();
+                candidate *= &b;
+                candidate
+            };
+            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_constant_times_public() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Constant, multiplicand);
-            let b = Signed::new(Mode::Public, multiplier);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 757, 0, 2500, 2500);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 757, 0, 2500, 2500);
-        }
+    fn test_i8_mul_all_modes() {
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
     }
 
     #[test]
-    fn test_constant_times_private() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Constant, multiplicand);
-            let b = Signed::new(Mode::Private, multiplier);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 757, 0, 2500, 2500);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 757, 0, 2500, 2500);
-        }
+    fn test_i16_mul_all_modes() {
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_times_public() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Public, multiplicand);
-            let b = Signed::new(Mode::Public, multiplier);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
+    fn test_i32_mul_all_modes() {
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_times_private() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Public, multiplicand);
-            let b = Signed::new(Mode::Private, multiplier);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
+    fn test_i64_mul_all_modes() {
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
     }
 
     #[test]
-    fn test_private_times_public() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Private, multiplicand);
-            let b = Signed::new(Mode::Public, multiplier);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
-    }
-
-    #[test]
-    fn test_private_times_private() {
-        for i in 0..ITERATIONS {
-            let multiplicand: i64 = UniformRand::rand(&mut thread_rng());
-            let multiplier: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match multiplicand.checked_mul(multiplier) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::new(Mode::Private, multiplicand);
-            let b = Signed::new(Mode::Private, multiplier);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
+    fn test_i128_mul_all_modes() {
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
     }
 
     #[test]

@@ -21,7 +21,7 @@ pub mod less_than;
 // pub mod inv;
 pub mod div;
 pub mod mul;
-//pub mod pow;
+//pub mod pow; TODO (@pranav)
 pub mod neg;
 // pub mod one;
 pub mod sub;
@@ -100,7 +100,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 
         let mut magnitude = I::zero();
 
-        for i in (0..SIZE - 1).rev() {
+        for i in (0..(SIZE - 1)).rev() {
             // TODO (@pranav) This explicit cast could be eliminated by using a trait bound
             //  `bool: AsPrimitive<I>`. This however requires the trait bound to be expressed
             //  for every implementation of Signed that uses `eject_value` which looks unclean.
@@ -111,7 +111,6 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
             };
             magnitude = (magnitude << 1) ^ bit_value;
         }
-
         base + magnitude
     }
 }
@@ -128,12 +127,114 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 mod test {
     use super::*;
     use crate::Circuit;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
+    use snarkvm_utilities::UniformRand;
+
+    const ITERATIONS: usize = 1000;
+
+    struct IntegerAllocTester<I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> {
+        iterations: usize,
+        _phantom: PhantomData<(I, U)>,
+    }
+
+    impl<I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> IntegerAllocTester<I, U, SIZE>
+    where
+        Standard: Distribution<I>,
+    {
+        fn new(iterations: usize) -> Self {
+            Self {
+                iterations,
+                _phantom: Default::default(),
+            }
+        }
+
+        fn run_test(&self, mode: Mode) {
+            for _ in 0..self.iterations {
+                let value: I = UniformRand::rand(&mut thread_rng());
+                let integer = Signed::<Circuit, I, U, SIZE>::new(mode, value);
+                assert_eq!(mode.is_constant(), integer.is_constant());
+                assert_eq!(integer.eject_value(), value);
+            }
+
+            assert_eq!(
+                Signed::<Circuit, I, U, SIZE>::new(mode, I::min_value()).eject_value(),
+                I::min_value()
+            );
+            assert_eq!(
+                Signed::<Circuit, I, U, SIZE>::new(mode, I::max_value()).eject_value(),
+                I::max_value()
+            );
+        }
+    }
 
     #[test]
     fn test_i8() {
-        for i in i8::MIN..=i8::MAX {
-            let integer = I8::<Circuit>::new(Mode::Constant, i);
-            assert_eq!(integer.eject_value(), i);
-        }
+        IntegerAllocTester::<i8, u8, 8>::new(ITERATIONS).run_test(Mode::Constant);
+        IntegerAllocTester::<i8, u8, 8>::new(ITERATIONS).run_test(Mode::Public);
+        IntegerAllocTester::<i8, u8, 8>::new(ITERATIONS).run_test(Mode::Private);
+    }
+
+    #[test]
+    fn test_i16() {
+        IntegerAllocTester::<i16, u16, 16>::new(ITERATIONS).run_test(Mode::Constant);
+        IntegerAllocTester::<i16, u16, 16>::new(ITERATIONS).run_test(Mode::Public);
+        IntegerAllocTester::<i16, u16, 16>::new(ITERATIONS).run_test(Mode::Private);
+    }
+
+    #[test]
+    fn test_i32() {
+        IntegerAllocTester::<i32, u32, 32>::new(ITERATIONS).run_test(Mode::Constant);
+        IntegerAllocTester::<i32, u32, 32>::new(ITERATIONS).run_test(Mode::Public);
+        IntegerAllocTester::<i32, u32, 32>::new(ITERATIONS).run_test(Mode::Private);
+    }
+
+    #[test]
+    fn test_i64() {
+        IntegerAllocTester::<i64, u64, 64>::new(ITERATIONS).run_test(Mode::Constant);
+        IntegerAllocTester::<i64, u64, 64>::new(ITERATIONS).run_test(Mode::Public);
+        IntegerAllocTester::<i64, u64, 64>::new(ITERATIONS).run_test(Mode::Private);
+    }
+
+    #[test]
+    fn test_i128() {
+        IntegerAllocTester::<i128, u128, 128>::new(ITERATIONS).run_test(Mode::Constant);
+        IntegerAllocTester::<i128, u128, 128>::new(ITERATIONS).run_test(Mode::Public);
+        IntegerAllocTester::<i128, u128, 128>::new(ITERATIONS).run_test(Mode::Private);
+    }
+}
+
+#[cfg(test)]
+pub mod test_utilities {
+    use super::*;
+    use crate::{Circuit, Environment, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
+
+    /// Checks that a given candidate gadget matches the expected result. Optionally checks
+    /// that the number of constants, public variables, private variables, and constraints
+    /// for the corresponding circuit matches some expected number.
+    pub fn check_operation<
+        E: Environment,
+        I: PrimitiveSignedInteger,
+        U: PrimitiveUnsignedInteger,
+        const SIZE: usize,
+    >(
+        name: &str,
+        expected: I,
+        compute_candidate: &dyn Fn() -> Signed<E, I, U, SIZE>,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) {
+        E::scoped(name, |scope| {
+            let candidate = compute_candidate();
+            assert_eq!(expected, candidate.eject_value());
+            if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
+                assert_eq!(num_constants, scope.num_constants_in_scope());
+                assert_eq!(num_public, scope.num_public_in_scope());
+                assert_eq!(num_private, scope.num_private_in_scope());
+                assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            }
+            assert!(E::is_satisfied());
+        });
     }
 }

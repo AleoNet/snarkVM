@@ -78,249 +78,108 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::thread_rng;
+    use crate::integers::signed::test_utilities::check_operation;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
 
     const ITERATIONS: usize = 100;
 
-    fn check_sub(
-        name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, u64, 64>,
-        b: &Signed<Circuit, i64, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let candidate = a - b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} - {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<I>,
+    {
+        for i in 0..iterations {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
 
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
-
-    fn check_sub_assign(
-        name: &str,
-        expected: i64,
-        a: &Signed<Circuit, i64, u64, 64>,
-        b: &Signed<Circuit, i64, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let mut candidate = a.clone();
-            candidate -= b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} - {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
-
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
-
-    #[test]
-    fn test_constant_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
+            //TODO: (@pranav) Wrapping sub
+            let expected = first.wrapping_add(&second);
+            let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+            let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 4, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 4, 0, 0, 0);
+            let compute_candidate = || &a - &b;
+            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
+
+            let name = format!("SubAssign: a -= b {}", i);
+            let compute_candidate = || {
+                let mut candidate = (&a).clone();
+                candidate -= &b;
+                candidate
+            };
+            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_constant_minus_public() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 3, 3);
-        }
+    fn test_i8_sub_all_modes() {
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 3, 3);
-        }
+    fn test_i16_sub_all_modes() {
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
     }
 
     #[test]
-    fn test_constant_minus_private() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 3, 3);
-        }
+    fn test_i32_sub_all_modes() {
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
     }
 
     #[test]
-    fn test_private_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 3, 3);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 3, 3);
-        }
+    fn test_i64_sub_all_modes() {
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_minus_public() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 6, 6);
-        }
-    }
-
-    #[test]
-    fn test_public_minus_private() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 6, 6);
-        }
-    }
-
-    #[test]
-    fn test_private_minus_public() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 6, 6);
-        }
-    }
-
-    #[test]
-    fn test_private_minus_private() {
-        for i in 0..ITERATIONS {
-            let first: i64 = UniformRand::rand(&mut thread_rng());
-            let second: i64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match first.checked_sub(second) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, first);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, expected, &a, &b, 2, 0, 6, 6);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, expected, &a, &b, 2, 0, 6, 6);
-        }
+    fn test_i128_sub_all_modes() {
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
     }
 
     #[test]

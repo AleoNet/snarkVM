@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{And, Boolean, Environment, Or, Xor};
+use crate::{And, Boolean, Environment, Mode, Or, Xor};
 
 // TODO (@pranav) Reorganize where this code is kept
 //  Keeping here while prototyping

@@ -26,6 +26,7 @@ use num_traits::{
     NumCast,
     NumOps,
     One as NumOne,
+    Pow,
     PrimInt,
     Signed,
     Unsigned,
@@ -38,7 +39,7 @@ use snarkvm_utilities::{
     cmp::Ordering,
     ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub},
 };
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 // TODO (@pranav) Could do a refactor where we create a generic Integer struct with trait
 //  bound PrimitiveInteger and implement Add, Eq, Mul, etc. Functionality specific to a
@@ -50,7 +51,7 @@ use std::fmt::Debug;
 //  In general, need to consider appropriate naming for this entire module.
 /// Trait bound for integer values. Common to both signed and unsigned integers.
 pub trait PrimitiveInteger:
-    'static + Debug + PrimInt + Bounded + NumZero + NumOne + WrappingAdd + WrappingMul + WrappingNeg + NumCast
+    'static + Debug + Display + PrimInt + Bounded + NumZero + NumOne + WrappingAdd + WrappingMul + WrappingNeg + NumCast
 {
 }
 
