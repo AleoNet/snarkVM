@@ -135,74 +135,62 @@ mod test {
 
     const ITERATIONS: usize = 1000;
 
-    struct IntegerAllocTester<I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> {
+    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
         iterations: usize,
-        _phantom: PhantomData<(I, U)>,
-    }
-
-    impl<I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> IntegerAllocTester<I, U, SIZE>
-    where
+        mode: Mode,
+    ) where
         Standard: Distribution<I>,
     {
-        fn new(iterations: usize) -> Self {
-            Self {
-                iterations,
-                _phantom: Default::default(),
-            }
+        for _ in 0..iterations {
+            let value: I = UniformRand::rand(&mut thread_rng());
+            let integer = Signed::<Circuit, I, U, SIZE>::new(mode, value);
+            assert_eq!(mode.is_constant(), integer.is_constant());
+            assert_eq!(integer.eject_value(), value);
         }
 
-        fn run_test(&self, mode: Mode) {
-            for _ in 0..self.iterations {
-                let value: I = UniformRand::rand(&mut thread_rng());
-                let integer = Signed::<Circuit, I, U, SIZE>::new(mode, value);
-                assert_eq!(mode.is_constant(), integer.is_constant());
-                assert_eq!(integer.eject_value(), value);
-            }
-
-            assert_eq!(
-                Signed::<Circuit, I, U, SIZE>::new(mode, I::min_value()).eject_value(),
-                I::min_value()
-            );
-            assert_eq!(
-                Signed::<Circuit, I, U, SIZE>::new(mode, I::max_value()).eject_value(),
-                I::max_value()
-            );
-        }
+        assert_eq!(
+            Signed::<Circuit, I, U, SIZE>::new(mode, I::min_value()).eject_value(),
+            I::min_value()
+        );
+        assert_eq!(
+            Signed::<Circuit, I, U, SIZE>::new(mode, I::max_value()).eject_value(),
+            I::max_value()
+        );
     }
 
     #[test]
     fn test_i8() {
-        IntegerAllocTester::<i8, u8, 8>::new(ITERATIONS).run_test(Mode::Constant);
-        IntegerAllocTester::<i8, u8, 8>::new(ITERATIONS).run_test(Mode::Public);
-        IntegerAllocTester::<i8, u8, 8>::new(ITERATIONS).run_test(Mode::Private);
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private);
     }
 
     #[test]
     fn test_i16() {
-        IntegerAllocTester::<i16, u16, 16>::new(ITERATIONS).run_test(Mode::Constant);
-        IntegerAllocTester::<i16, u16, 16>::new(ITERATIONS).run_test(Mode::Public);
-        IntegerAllocTester::<i16, u16, 16>::new(ITERATIONS).run_test(Mode::Private);
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private);
     }
 
     #[test]
     fn test_i32() {
-        IntegerAllocTester::<i32, u32, 32>::new(ITERATIONS).run_test(Mode::Constant);
-        IntegerAllocTester::<i32, u32, 32>::new(ITERATIONS).run_test(Mode::Public);
-        IntegerAllocTester::<i32, u32, 32>::new(ITERATIONS).run_test(Mode::Private);
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private);
     }
 
     #[test]
     fn test_i64() {
-        IntegerAllocTester::<i64, u64, 64>::new(ITERATIONS).run_test(Mode::Constant);
-        IntegerAllocTester::<i64, u64, 64>::new(ITERATIONS).run_test(Mode::Public);
-        IntegerAllocTester::<i64, u64, 64>::new(ITERATIONS).run_test(Mode::Private);
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private);
     }
 
     #[test]
     fn test_i128() {
-        IntegerAllocTester::<i128, u128, 128>::new(ITERATIONS).run_test(Mode::Constant);
-        IntegerAllocTester::<i128, u128, 128>::new(ITERATIONS).run_test(Mode::Public);
-        IntegerAllocTester::<i128, u128, 128>::new(ITERATIONS).run_test(Mode::Private);
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private);
     }
 }
 

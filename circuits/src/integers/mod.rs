@@ -33,6 +33,7 @@ use num_traits::{
     WrappingAdd,
     WrappingMul,
     WrappingNeg,
+    WrappingSub,
     Zero as NumZero,
 };
 use snarkvm_utilities::{
@@ -51,7 +52,19 @@ use std::fmt::{Debug, Display};
 //  In general, need to consider appropriate naming for this entire module.
 /// Trait bound for integer values. Common to both signed and unsigned integers.
 pub trait PrimitiveInteger:
-    'static + Debug + Display + PrimInt + Bounded + NumZero + NumOne + WrappingAdd + WrappingMul + WrappingNeg + NumCast
+    'static
+    + Debug
+    + Display
+    + PrimInt
+    + Bounded
+    + NumZero
+    + NumOne
+    + WrappingAdd
+    + WrappingMul
+    + WrappingNeg
+    + WrappingSub
+    + WrappingDiv
+    + NumCast
 {
 }
 
@@ -84,3 +97,39 @@ impl PrimitiveUnsignedInteger for u16 {}
 impl PrimitiveUnsignedInteger for u32 {}
 impl PrimitiveUnsignedInteger for u64 {}
 impl PrimitiveUnsignedInteger for u128 {}
+
+// TODO (@pranav) Find a better place for this
+//   Taken from/extending num_traits
+macro_rules! wrapping_impl {
+    ($trait_name:ident, $method:ident, $t:ty) => {
+        impl $trait_name for $t {
+            #[inline]
+            fn $method(&self, v: &Self) -> Self {
+                <$t>::$method(*self, *v)
+            }
+        }
+    };
+    ($trait_name:ident, $method:ident, $t:ty, $rhs:ty) => {
+        impl $trait_name<$rhs> for $t {
+            #[inline]
+            fn $method(&self, v: &$rhs) -> Self {
+                <$t>::$method(*self, *v)
+            }
+        }
+    };
+}
+
+pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
+    fn wrapping_div(&self, v: &Self) -> Self;
+}
+
+wrapping_impl!(WrappingDiv, wrapping_div, u8);
+wrapping_impl!(WrappingDiv, wrapping_div, u16);
+wrapping_impl!(WrappingDiv, wrapping_div, u32);
+wrapping_impl!(WrappingDiv, wrapping_div, u64);
+wrapping_impl!(WrappingDiv, wrapping_div, u128);
+wrapping_impl!(WrappingDiv, wrapping_div, i8);
+wrapping_impl!(WrappingDiv, wrapping_div, i16);
+wrapping_impl!(WrappingDiv, wrapping_div, i32);
+wrapping_impl!(WrappingDiv, wrapping_div, i64);
+wrapping_impl!(WrappingDiv, wrapping_div, i128);

@@ -47,13 +47,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
         if other_value == I::zero() {
             E::halt("Division by zero.")
         }
-
-        // Wrapped division.
-        let value = if self_value == I::min_value() && other_value == (I::zero() - I::one()) {
-            I::min_value()
-        } else {
-            self_value / other_value
-        };
+        let value = self_value.wrapping_div(&other_value);
 
         if mode.is_constant() {
             return Signed::new(mode, value);
@@ -177,8 +171,7 @@ mod tests {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
-            //TODO: (@pranav) Wrapping div
-            let expected = first.wrapping_add(&second);
+            let expected = first.wrapping_div(&second);
             let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
             let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
 

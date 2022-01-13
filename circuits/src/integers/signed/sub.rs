@@ -98,8 +98,7 @@ mod tests {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
-            //TODO: (@pranav) Wrapping sub
-            let expected = first.wrapping_add(&second);
+            let expected = first.wrapping_sub(&second);
             let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
             let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
 

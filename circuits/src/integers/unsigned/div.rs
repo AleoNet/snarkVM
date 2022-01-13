@@ -43,8 +43,7 @@ impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> 
         if other_value == U::zero() {
             E::halt("Division by zero.")
         }
-
-        let value = self_value / other_value;
+        let value = self_value.wrapping_div(&other_value);
 
         if mode.is_constant() {
             return Unsigned::new(mode, value);
@@ -158,8 +157,7 @@ mod tests {
             let first: U = UniformRand::rand(&mut thread_rng());
             let second: U = UniformRand::rand(&mut thread_rng());
 
-            //TODO: (@pranav) Wrapping div
-            let expected = first.wrapping_add(&second);
+            let expected = first.wrapping_div(&second);
             let a = Unsigned::<E, U, SIZE>::new(mode_a, first);
             let b = Unsigned::<E, U, SIZE>::new(mode_b, second);
 

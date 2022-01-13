@@ -100,13 +100,68 @@ impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> fmt::Debug 
 mod test {
     use super::*;
     use crate::Circuit;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
+    use snarkvm_utilities::UniformRand;
+
+    const ITERATIONS: usize = 1000;
+
+    fn run_test<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(iterations: usize, mode: Mode)
+    where
+        Standard: Distribution<U>,
+    {
+        for _ in 0..iterations {
+            let value: U = UniformRand::rand(&mut thread_rng());
+            let integer = Unsigned::<Circuit, U, SIZE>::new(mode, value);
+            assert_eq!(mode.is_constant(), integer.is_constant());
+            assert_eq!(integer.eject_value(), value);
+        }
+
+        assert_eq!(
+            Unsigned::<Circuit, U, SIZE>::new(mode, U::min_value()).eject_value(),
+            U::min_value()
+        );
+        assert_eq!(
+            Unsigned::<Circuit, U, SIZE>::new(mode, U::max_value()).eject_value(),
+            U::max_value()
+        );
+    }
 
     #[test]
-    fn test_u8() {
-        for i in u8::MIN..=u8::MAX {
-            let integer = U8::<Circuit>::new(Mode::Constant, i);
-            assert_eq!(integer.eject_value(), i);
-        }
+    fn test_i8() {
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private);
+    }
+
+    #[test]
+    fn test_i16() {
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private);
+    }
+
+    #[test]
+    fn test_i32() {
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private);
+    }
+
+    #[test]
+    fn test_i64() {
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private);
+    }
+
+    #[test]
+    fn test_i128() {
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant);
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public);
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private);
     }
 }
 
