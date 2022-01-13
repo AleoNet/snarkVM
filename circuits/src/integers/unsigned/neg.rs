@@ -17,7 +17,7 @@
 use super::*;
 use crate::RippleCarryAdder;
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Neg for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Neg for Unsigned<E, U, SIZE> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -28,14 +28,14 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Neg for Uns
         }
 
         let flipped = Unsigned::from_bits(self.bits_le.iter().map(|bit| !bit).collect());
-        let mut one = Unsigned::new(Mode::Constant, I::one());
+        let mut one = Unsigned::new(Mode::Constant, U::one());
         let result = flipped.add(one);
 
         // TODO (@pranav) Is this check necessary? It does not seem to be done in the corresponding
         //   gadget implementation.
         // Check that the computed result is correct
         for i in 0..SIZE {
-            let mask = I::one() << i;
+            let mask = U::one() << i;
             let value_bit = Boolean::<E>::new(Mode::Private, value & mask == mask);
             value_bit.is_eq(&result.bits_le[i]);
         }
@@ -44,8 +44,8 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Neg for Uns
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Neg for &Unsigned<E, I, SIZE> {
-    type Output = Unsigned<E, I, SIZE>;
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Neg for &Unsigned<E, U, SIZE> {
+    type Output = Unsigned<E, U, SIZE>;
 
     fn neg(self) -> Self::Output {
         -(self.clone())
@@ -58,64 +58,68 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::thread_rng;
+    use crate::integers::unsigned::test_utilities::check_operation;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 1000;
 
-    fn check_neg(
-        name: &str,
-        expected: u64,
-        candidate_input: Unsigned<Circuit, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let candidate_output = -candidate_input;
-            assert_eq!(expected, candidate_output.eject_value());
+    fn run_test<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<U>,
+    {
+        for i in 0..iterations {
+            let first: U = UniformRand::rand(&mut thread_rng());
 
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
+            let expected = first.wrapping_neg();
+            let a = Unsigned::<E, U, SIZE>::new(mode, first);
 
-    #[test]
-    fn test_neg_constant() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let value: u64 = UniformRand::rand(&mut thread_rng());
-            let expected = value.wrapping_neg();
-
-            let candidate_input = Unsigned::<Circuit, u64, 64>::new(Mode::Constant, value);
-            check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 0, 0, 0, 0);
+            let name = format!("Neg: -a {}", i);
+            let compute_candidate = || {
+                let a = Unsigned::<E, U, SIZE>::new(mode, first);
+                -a
+            };
+            check_operation::<E, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_neg_public() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let value: u64 = UniformRand::rand(&mut thread_rng());
-            let expected = value.wrapping_neg();
-
-            let candidate_input = Unsigned::<Circuit, u64, 64>::new(Mode::Public, value);
-            check_neg(&format!("NEG Public {}", i), expected, candidate_input, 0, 0, 0, 0);
-        }
+    fn test_i8_neg_all_modes() {
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Some((8, 0, 0, 0)));
     }
 
     #[test]
-    fn test_neg_private() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let value: u64 = UniformRand::rand(&mut thread_rng());
-            let expected = value.wrapping_neg();
+    fn test_i16_neg_all_modes() {
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Some((16, 0, 0, 0)));
+    }
 
-            let candidate_input = Unsigned::<Circuit, u64, 64>::new(Mode::Private, value);
-            check_neg(&format!("NEG Private {}", i), expected, candidate_input, 0, 0, 0, 0);
-        }
+    #[test]
+    fn test_i32_neg_all_modes() {
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Some((32, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i64_neg_all_modes() {
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Some((64, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i128_neg_all_modes() {
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Some((128, 0, 0, 0)));
     }
 }

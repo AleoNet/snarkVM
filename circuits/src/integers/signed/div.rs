@@ -279,7 +279,6 @@ mod tests {
             let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, dividend);
             let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, divisor);
             let candidate = a / b;
-            println!("Expression: {:?} / {:?}", dividend, divisor);
             assert_eq!(expected, candidate.eject_value());
         }
     }

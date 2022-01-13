@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Ternary for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Ternary for Unsigned<E, U, SIZE> {
     type Boolean = Boolean<E>;
     type Output = Self;
 
@@ -36,359 +36,384 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::thread_rng;
+    use crate::integers::unsigned::test_utilities::check_operation;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
 
-    fn check_ternary(
-        name: &str,
-        expected: u64,
-        condition: Boolean<Circuit>,
-        a: Unsigned<Circuit, u64, 64>,
-        b: Unsigned<Circuit, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let candidate = Unsigned::ternary(&condition, &a, &b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} ? {} : {})",
-                expected,
-                candidate.eject_value(),
-                condition.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+    const ITERATIONS: usize = 10;
 
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
+    fn run_test<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        condition: bool,
+        mode_condition: Mode,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<U>,
+    {
+        for i in 0..iterations {
+            let first: U = UniformRand::rand(&mut thread_rng());
+            let second: U = UniformRand::rand(&mut thread_rng());
+
+            let expected = if condition { first } else { second };
+            let a = Unsigned::new(mode_a, first);
+            let b = Unsigned::new(mode_b, second);
+            let name = format!("Ternary {}", i);
+            let compute_candidate = || Unsigned::ternary(&Boolean::new(mode_condition, condition), &a, &b);
+            check_operation::<E, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
+        }
     }
 
     #[test]
-    fn test_constant_condition() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
+    #[rustfmt::skip]
+    fn test_i8_ternary_all_modes() {
+        // Boolean(Constant, false)
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
 
-        // false ? Constant : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Constant, true)
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
 
-        // false ? Constant : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Public, false)
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
 
-        // false ? Public : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Public, true)
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
 
-        // false ? Public : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Private, false)
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
 
-        // false ? Public : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Private : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Constant : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Public : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Public : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Public : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Private : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Private, true)
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_condition_and_constant_inputs() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
+    #[rustfmt::skip]
+    fn test_i16_ternary_all_modes() {
+        // Boolean(Constant, false)
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
 
-        // false ? Constant : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Constant, true)
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
 
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Public, false)
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+
+        // Boolean(Public, true)
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+
+        // Boolean(Private, false)
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+
+        // Boolean(Private, true)
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_condition_and_mixed_inputs() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
+    #[rustfmt::skip]
+    fn test_i32_ternary_all_modes() {
+        // Boolean(Constant, false)
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
 
-        // false ? Constant : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Constant, true)
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
 
-        // false ? Public : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Public, false)
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
 
-        // true ? Constant : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Public, true)
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
 
-        // true ? Public : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Private, false)
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
+
+        // Boolean(Private, true)
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
     }
 
     #[test]
-    fn test_private_condition_and_constant_inputs() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
+    #[rustfmt::skip]
+    fn test_i64_ternary_all_modes() {
+        // Boolean(Constant, false)
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
 
-        // false ? Constant : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Constant, true)
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
 
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+        // Boolean(Public, false)
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+
+        // Boolean(Public, true)
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+
+        // Boolean(Private, false)
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+
+        // Boolean(Private, true)
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
     }
 
     #[test]
-    fn test_private_condition_and_mixed_inputs() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
+    #[rustfmt::skip]
+    fn test_i128_ternary_all_modes() {
+        // Boolean(Constant, false)
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Constant, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
 
-        // false ? Constant : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Constant, true)
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Constant, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
 
-        // false ? Public : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Public, false)
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Public, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
 
-        // true ? Constant : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Public, true)
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Public, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
 
-        // true ? Public : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
-    }
+        // Boolean(Private, false)
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, false, Mode::Private, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
 
-    #[test]
-    fn test_public_condition_and_variable_inputs() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
-
-        // false ? Public : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // false ? Public : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
-
-        // false ? Private : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // false ? Private : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Public : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Public : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Private : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Private : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
-    }
-
-    #[test]
-    fn test_private_condition_and_variable_inputs() {
-        let first: u64 = UniformRand::rand(&mut thread_rng());
-        let second: u64 = UniformRand::rand(&mut thread_rng());
-
-        // false ? Public : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // false ? Public : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
-
-        // false ? Private : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // false ? Private : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Public : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Public : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Private : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
-
-        // true ? Private : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Unsigned::new(Mode::Constant, first);
-        let b = Unsigned::new(Mode::Constant, second);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
+        // Boolean(Private, true)
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, true, Mode::Private, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
     }
 }

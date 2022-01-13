@@ -40,18 +40,18 @@ pub type U64<E> = Unsigned<E, u64, 64>;
 pub type U128<E> = Unsigned<E, u128, 128>;
 
 #[derive(Clone)]
-pub struct Unsigned<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> {
+pub struct Unsigned<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> {
     pub(crate) bits_le: Vec<Boolean<E>>,
-    phantom: PhantomData<I>,
+    phantom: PhantomData<U>,
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Unsigned<E, U, SIZE> {
     /// Initializes a new integer.
-    pub fn new(mode: Mode, value: I) -> Self {
+    pub fn new(mode: Mode, value: U) -> Self {
         let mut bits_le = Vec::with_capacity(SIZE);
         let mut value = value.to_le();
         for _ in 0..SIZE {
-            bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
+            bits_le.push(Boolean::new(mode, value & U::one() == U::one()));
             value = value >> 1;
         }
         Self {
@@ -79,18 +79,18 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Unsigned<E,
     }
 
     /// Ejects the unsigned integer as a constant unsigned integer value.
-    pub fn eject_value(&self) -> I {
-        self.bits_le.iter().rev().fold(I::zero(), |value, bit| {
+    pub fn eject_value(&self) -> U {
+        self.bits_le.iter().rev().fold(U::zero(), |value, bit| {
             // TODO (@pranav) This explicit cast could be eliminated by using a trait bound
             //  `bool: AsPrimitive<I>`. This however requires the trait bound to be expressed
             //  for every implementation of Signed that uses `eject_value` which feels unclean.
-            let bit_value = if bit.eject_value() { I::one() } else { I::zero() };
+            let bit_value = if bit.eject_value() { U::one() } else { U::zero() };
             (value << 1) ^ bit_value
         })
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> fmt::Debug for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> fmt::Debug for Unsigned<E, U, SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
     }
@@ -107,5 +107,33 @@ mod test {
             let integer = U8::<Circuit>::new(Mode::Constant, i);
             assert_eq!(integer.eject_value(), i);
         }
+    }
+}
+
+#[cfg(test)]
+pub mod test_utilities {
+    use super::*;
+    use crate::{Circuit, Environment, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
+
+    /// Checks that a given candidate gadget matches the expected result. Optionally checks
+    /// that the number of constants, public variables, private variables, and constraints
+    /// for the corresponding circuit matches some expected number.
+    pub fn check_operation<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        name: &str,
+        expected: U,
+        compute_candidate: &dyn Fn() -> Unsigned<E, U, SIZE>,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) {
+        E::scoped(name, |scope| {
+            let candidate = compute_candidate();
+            assert_eq!(expected, candidate.eject_value());
+            if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
+                assert_eq!(num_constants, scope.num_constants_in_scope());
+                assert_eq!(num_public, scope.num_public_in_scope());
+                assert_eq!(num_private, scope.num_private_in_scope());
+                assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            }
+            assert!(E::is_satisfied());
+        });
     }
 }

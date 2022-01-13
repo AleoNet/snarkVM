@@ -64,9 +64,7 @@ mod tests {
             let a = Signed::new(mode_a, first);
             let b = Signed::new(mode_b, second);
             let name = format!("Ternary {}", i);
-            let compute_candidate = || {
-                Signed::ternary(&Boolean::new(mode_condition, condition), &a, &b);
-            };
+            let compute_candidate = || Signed::ternary(&Boolean::new(mode_condition, condition), &a, &b);
             check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }

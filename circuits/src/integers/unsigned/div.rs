@@ -17,7 +17,7 @@
 use super::*;
 use std::ops::{Div, DivAssign};
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<Self> for Unsigned<E, U, SIZE> {
     type Output = Self;
 
     fn div(self, other: Self) -> Self::Output {
@@ -25,7 +25,7 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<Self> f
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> for Unsigned<E, U, SIZE> {
     type Output = Self;
 
     // TODO (@pranav) Would a more efficient division algorithm in a traditional sense
@@ -40,7 +40,7 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> 
         // Directly compute the quotient, wrapping if neccessary. Check for division by zero.
         let self_value = self.eject_value();
         let other_value = other.eject_value();
-        if other_value == I::zero() {
+        if other_value == U::zero() {
             E::halt("Division by zero.")
         }
 
@@ -65,7 +65,7 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> 
         // end
 
         let mut quotient_bits = Vec::with_capacity(SIZE);
-        let mut remainder: Unsigned<E, I, SIZE> = Unsigned::new(mode, I::zero());
+        let mut remainder: Unsigned<E, U, SIZE> = Unsigned::new(mode, U::zero());
 
         // TODO (@pranav) Fix use of clones for `remainder`
         // for i := n - 1 .. 0 do
@@ -74,7 +74,7 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> 
             remainder = remainder.clone().add(&remainder);
 
             // R(0) := N(i)
-            let remainder_plus_one = remainder.clone().add(&Unsigned::new(Mode::Constant, I::one()));
+            let remainder_plus_one = remainder.clone().add(&Unsigned::new(Mode::Constant, U::one()));
             remainder = Unsigned::ternary(bit, &remainder_plus_one, &remainder.clone());
 
             // if R ≥ D
@@ -93,7 +93,7 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> 
 
         // Check that the computed result matches the expected one.
         for i in 0..SIZE {
-            let mask = I::one() << i;
+            let mask = U::one() << i;
             let value_bit = Boolean::<E>::new(mode, value & mask == mask);
             value_bit.is_eq(&quotient_bits[i]);
         }
@@ -101,33 +101,33 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Self> 
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<Unsigned<E, I, SIZE>>
-    for &Unsigned<E, I, SIZE>
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<Unsigned<E, U, SIZE>>
+    for &Unsigned<E, U, SIZE>
 {
-    type Output = Unsigned<E, I, SIZE>;
+    type Output = Unsigned<E, U, SIZE>;
 
-    fn div(self, other: Unsigned<E, I, SIZE>) -> Self::Output {
+    fn div(self, other: Unsigned<E, U, SIZE>) -> Self::Output {
         (*self).clone() / other
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Unsigned<E, I, SIZE>>
-    for &Unsigned<E, I, SIZE>
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Div<&Unsigned<E, U, SIZE>>
+    for &Unsigned<E, U, SIZE>
 {
-    type Output = Unsigned<E, I, SIZE>;
+    type Output = Unsigned<E, U, SIZE>;
 
-    fn div(self, other: &Unsigned<E, I, SIZE>) -> Self::Output {
+    fn div(self, other: &Unsigned<E, U, SIZE>) -> Self::Output {
         (*self).clone() / other
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<Self> for Unsigned<E, U, SIZE> {
     fn div_assign(&mut self, other: Self) {
         *self /= &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<&Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<&Self> for Unsigned<E, U, SIZE> {
     fn div_assign(&mut self, other: &Self) {
         *self = self.clone() / other;
     }
@@ -136,213 +136,110 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> DivAssign<&
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
-    use num_traits::CheckedDiv;
+    use crate::{unsigned::test_utilities::check_operation, Circuit};
     use snarkvm_utilities::UniformRand;
 
-    use rand::thread_rng;
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: usize = 1;
 
-    fn check_div(
-        name: &str,
-        expected: u64,
-        a: &Unsigned<Circuit, u64, 64>,
-        b: &Unsigned<Circuit, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let candidate = a / b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} / {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+    fn run_test<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<U>,
+    {
+        for i in 0..iterations {
+            let first: U = UniformRand::rand(&mut thread_rng());
+            let second: U = UniformRand::rand(&mut thread_rng());
 
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
-
-    fn check_div_assign(
-        name: &str,
-        expected: u64,
-        a: &Unsigned<Circuit, u64, 64>,
-        b: &Unsigned<Circuit, u64, 64>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, |scope| {
-            let mut candidate = a.clone();
-            candidate /= b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} / {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
-
-            // assert_eq!(num_constants, scope.num_constants_in_scope());
-            // assert_eq!(num_public, scope.num_public_in_scope());
-            // assert_eq!(num_private, scope.num_private_in_scope());
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
-        });
-    }
-
-    #[test]
-    fn test_constant_div_constant() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Constant, dividend);
-            let b = Unsigned::new(Mode::Constant, divisor);
+            //TODO: (@pranav) Wrapping div
+            let expected = first.wrapping_add(&second);
+            let a = Unsigned::<E, U, SIZE>::new(mode_a, first);
+            let b = Unsigned::<E, U, SIZE>::new(mode_b, second);
 
             let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 1757, 0, 0, 0);
+            let compute_candidate = || &a / &b;
+            check_operation::<E, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
+
             let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 1757, 0, 0, 0);
+            let compute_candidate = || {
+                let mut candidate = (&a).clone();
+                candidate /= &b;
+                candidate
+            };
+            check_operation::<E, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_constant_div_public() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Constant, dividend);
-            let b = Unsigned::new(Mode::Public, divisor);
-
-            let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 757, 0, 2500, 2500);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 757, 0, 2500, 2500);
-        }
+    fn test_u8_div_all_modes() {
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
     }
 
     #[test]
-    fn test_constant_div_private() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Constant, dividend);
-            let b = Unsigned::new(Mode::Private, divisor);
-
-            let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 757, 0, 2500, 2500);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 757, 0, 2500, 2500);
-        }
+    fn test_u16_div_all_modes() {
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_div_public() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Public, dividend);
-            let b = Unsigned::new(Mode::Public, divisor);
-
-            let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
+    fn test_u32_div_all_modes() {
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
     }
 
     #[test]
-    fn test_public_div_private() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Public, dividend);
-            let b = Unsigned::new(Mode::Private, divisor);
-
-            let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
+    fn test_u64_div_all_modes() {
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
     }
 
     #[test]
-    fn test_private_div_public() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Private, dividend);
-            let b = Unsigned::new(Mode::Public, divisor);
-
-            let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
-    }
-
-    #[test]
-    fn test_private_div_private() {
-        for i in 0..ITERATIONS {
-            let dividend: u64 = UniformRand::rand(&mut thread_rng());
-            let divisor: u64 = UniformRand::rand(&mut thread_rng());
-
-            let expected = match dividend.checked_div(divisor) {
-                Some(expected) => expected,
-                None => continue,
-            };
-            let a = Unsigned::new(Mode::Private, dividend);
-            let b = Unsigned::new(Mode::Private, divisor);
-
-            let name = format!("Div: a / b {}", i);
-            check_div(&name, expected, &a, &b, 755, 0, 3255, 3255);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, expected, &a, &b, 755, 0, 3255, 3255);
-        }
+    fn test_u128_div_all_modes() {
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
     }
 
     #[test]
