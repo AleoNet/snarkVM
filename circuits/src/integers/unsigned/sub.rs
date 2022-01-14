@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Sub<Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Sub<Self> for Unsigned<E, U, SIZE> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self::Output {
@@ -24,43 +24,45 @@ impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Sub<Self> f
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Sub<&Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Sub<&Self> for Unsigned<E, U, SIZE> {
     type Output = Self;
 
     fn sub(self, other: &Self) -> Self::Output {
-        self + -other
+        let flipped = Self::from_bits(other.bits_le.iter().map(|bit| !bit).collect());
+        let mut one = Unsigned::new(Mode::Constant, U::one());
+        self + &flipped.add(&one)
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Sub<Unsigned<E, I, SIZE>>
-    for &Unsigned<E, I, SIZE>
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Sub<Unsigned<E, U, SIZE>>
+    for &Unsigned<E, U, SIZE>
 {
-    type Output = Unsigned<E, I, SIZE>;
+    type Output = Unsigned<E, U, SIZE>;
 
-    fn sub(self, other: Unsigned<E, I, SIZE>) -> Self::Output {
+    fn sub(self, other: Unsigned<E, U, SIZE>) -> Self::Output {
         (*self).clone() - other
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> Sub<&Unsigned<E, I, SIZE>>
-    for &Unsigned<E, I, SIZE>
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Sub<&Unsigned<E, U, SIZE>>
+    for &Unsigned<E, U, SIZE>
 {
-    type Output = Unsigned<E, I, SIZE>;
+    type Output = Unsigned<E, U, SIZE>;
 
-    fn sub(self, other: &Unsigned<E, I, SIZE>) -> Self::Output {
+    fn sub(self, other: &Unsigned<E, U, SIZE>) -> Self::Output {
         (*self).clone() - other
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<Self> for Unsigned<E, U, SIZE> {
     fn sub_assign(&mut self, other: Self) {
         *self -= &other;
     }
 }
 
-impl<E: Environment, I: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<&Self> for Unsigned<E, I, SIZE> {
+impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<&Self> for Unsigned<E, U, SIZE> {
     fn sub_assign(&mut self, other: &Self) {
-        *self = self.clone() + -other;
+        *self = self.clone() - other;
     }
 }
 
