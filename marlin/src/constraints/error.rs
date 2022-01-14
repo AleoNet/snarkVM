@@ -18,9 +18,6 @@ use crate::{ahp::AHPError, marlin::MarlinError, String, ToString};
 
 use core::fmt::{Debug, Display, Formatter};
 
-#[cfg(not(feature = "std"))]
-use core::fmt::{Debug, Formatter};
-
 /// Error handling for Marlin constraints.
 pub struct MarlinConstraintsError {
     /// Error message.
