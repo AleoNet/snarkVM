@@ -23,18 +23,19 @@ use crate::{
     integers::uint::UInt8,
     traits::{alloc::AllocGadget, eq::EqGadget},
     Boolean,
+    ToBitsLEGadget,
 };
 
 pub trait SignatureGadget<S: SignatureScheme, F: Field>: AllocGadget<S, F> {
+    type ComputeKeyGadget: ToBitsLEGadget<F> + Clone;
     type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
     type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
-    fn randomize_public_key<CS: ConstraintSystem<F>>(
+    fn compute_key<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        public_key: &Self::PublicKeyGadget,
-        randomizer: &[UInt8],
-    ) -> Result<Self::PublicKeyGadget, SynthesisError>;
+        signature: &Self::SignatureGadget,
+    ) -> Result<Self::ComputeKeyGadget, SynthesisError>;
 
     fn verify<CS: ConstraintSystem<F>>(
         &self,

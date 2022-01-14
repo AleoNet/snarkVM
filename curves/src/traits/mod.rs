@@ -20,6 +20,11 @@ pub use group::*;
 pub mod pairing_engine;
 pub use pairing_engine::*;
 
+#[cfg(test)]
+pub mod tests_field;
+
+#[cfg(test)]
 pub mod tests_group;
 
+#[cfg(test)]
 pub mod tests_curve;

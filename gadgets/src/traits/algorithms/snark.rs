@@ -26,6 +26,8 @@ use crate::{
     ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
+    ToMinimalBitsGadget,
+    UInt8,
 };
 
 pub trait PrepareGadget<T, F: PrimeField> {
@@ -38,7 +40,8 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         + ToConstraintFieldGadget<S::BaseField>
         + ToBytesGadget<S::BaseField>
         + PrepareGadget<Self::PreparedVerificationKeyGadget, S::BaseField>
-        + AllocBytesGadget<Vec<u8>, S::BaseField>;
+        + AllocBytesGadget<Vec<u8>, S::BaseField>
+        + ToMinimalBitsGadget<S::BaseField>;
     type ProofGadget: AllocGadget<S::Proof, S::BaseField> + AllocBytesGadget<Vec<u8>, S::BaseField>;
     type InputGadget: Clone
         + AllocGadget<Vec<S::ScalarField>, S::BaseField>
@@ -47,7 +50,12 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         + MergeGadget<S::BaseField>
         + ?Sized;
 
-    fn check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
+    fn input_gadget_from_bytes<CS: ConstraintSystem<S::BaseField>>(
+        cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError>;
+
+    fn check_verify<CS: ConstraintSystem<S::BaseField>>(
         mut cs: CS,
         verification_key: &Self::VerificationKeyGadget,
         input: &Self::InputGadget,
@@ -62,7 +70,7 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         )
     }
 
-    fn prepared_check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
+    fn prepared_check_verify<CS: ConstraintSystem<S::BaseField>>(
         cs: CS,
         prepared_verification_key: &Self::PreparedVerificationKeyGadget,
         input: &Self::InputGadget,

@@ -120,8 +120,8 @@ impl R1CStoQAP {
             .zip(cfg_iter!(&prover.at))
             .zip(cfg_iter!(&prover.bt))
             .for_each(|(((a, b), at_i), bt_i)| {
-                *a = evaluate_constraint::<E>(&at_i, &full_input_assignment, num_inputs);
-                *b = evaluate_constraint::<E>(&bt_i, &full_input_assignment, num_inputs);
+                *a = evaluate_constraint::<E>(at_i, &full_input_assignment, num_inputs);
+                *b = evaluate_constraint::<E>(bt_i, &full_input_assignment, num_inputs);
             });
 
         a[num_constraints..(num_inputs + num_constraints)].clone_from_slice(&full_input_assignment[..num_inputs]);

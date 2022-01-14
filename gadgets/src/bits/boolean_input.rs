@@ -95,19 +95,47 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
     ) -> Result<Self, SynthesisError> {
         let obj = value_gen()?;
 
-        // convert the elements into booleans (little-endian)
-        let mut res = Vec::<Vec<Boolean>>::new();
-        for (i, elem) in obj.borrow().iter().enumerate() {
+        // Step 1: obtain the bits of the F field elements
+        let mut src_bits = Vec::<bool>::new();
+        for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
+            bits.extend_from_slice(&vec![false; F::size_in_bits() - bits.len()]);
 
-            let mut booleans = Vec::<Boolean>::new();
-            for (j, bit) in bits.iter().enumerate() {
-                booleans.push(Boolean::alloc(cs.ns(|| format!("alloc_bit_{}_{}", i, j)), || Ok(*bit))?);
+            src_bits.append(&mut bits);
+        }
+
+        // Step 2: repack the bits as CF field elements
+        let capacity = <CF::Parameters as FieldParameters>::CAPACITY;
+
+        // Step 3: allocate the CF field elements as input
+        let mut src_booleans = Vec::<Boolean>::with_capacity(src_bits.len());
+        for (i, chunk) in src_bits.chunks(capacity as usize).enumerate() {
+            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
+
+            let elem_gadget = FpGadget::<CF>::alloc(cs.ns(|| format!("alloc_elem_{}", i)), || Ok(elem))?;
+
+            let mut lc = LinearCombination::zero();
+            let mut coeff = CF::one();
+
+            for (j, bit) in chunk.iter().enumerate() {
+                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(bit))?;
+
+                lc = &lc + boolean.lc(CS::one(), CF::one()) * coeff;
+                coeff.double_in_place();
+
+                src_booleans.push(boolean);
             }
 
-            res.push(booleans);
+            lc = &elem_gadget.get_variable().clone().neg() + lc;
+            cs.enforce(|| format!("bit_decomposition_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
+
+        // Step 4: unpack them back to bits
+        let res = src_booleans
+            .chunks(F::size_in_bits())
+            .map(|f| f.to_vec())
+            .collect::<Vec<Vec<Boolean>>>();
 
         Ok(Self {
             val: res,
@@ -127,9 +155,8 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
-            for _ in bits.len()..F::size_in_bits() {
-                bits.push(false);
-            }
+            bits.extend_from_slice(&vec![false; F::size_in_bits() - bits.len()]);
+
             src_bits.append(&mut bits);
         }
 
@@ -176,7 +203,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
 impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanInputGadget<F, CF> {
     fn from_field_elements<CS: ConstraintSystem<CF>>(
         mut cs: CS,
-        field_elements: &Vec<FpGadget<CF>>,
+        field_elements: &[FpGadget<CF>],
     ) -> Result<Self, SynthesisError> {
         // Step 1: obtain the booleans of the CF field variables
         let mut src_booleans = Vec::<Boolean>::new();
@@ -288,7 +315,7 @@ mod test {
         if field_elements.len() <= 1 {
             vec![
                 UInt8::alloc_input_vec_le(
-                    cs.ns(|| format!("Allocate field elements")),
+                    cs.ns(|| "Allocate field elements".to_string()),
                     &to_bytes_le![field_elements].unwrap(),
                 )
                 .unwrap(),
@@ -321,7 +348,7 @@ mod test {
         for i in 0..1 {
             let field_element = Fr::rand(rng);
             let field_element_gadget =
-                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element.clone())).unwrap();
+                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element)).unwrap();
 
             field_elements.push(field_element);
             field_element_gadgets.push(field_element_gadget);

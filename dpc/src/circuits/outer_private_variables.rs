@@ -14,52 +14,39 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, Parameters};
-use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
+use crate::{Execution, Network};
+use snarkvm_algorithms::traits::SNARK;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct OuterPrivateVariables<C: Parameters> {
-    pub(super) inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
-    pub(super) inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-    pub(super) program_proofs: Vec<Execution<C>>,
-    pub(super) program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    pub(super) program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    pub(super) local_data_root: C::LocalDataRoot,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct OuterPrivateVariables<N: Network> {
+    pub(super) inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
+    pub(super) inner_proof: N::InnerProof,
+    pub(super) execution: Execution<N>,
 }
 
-impl<C: Parameters> OuterPrivateVariables<C> {
-    pub fn blank(
-        inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
-        inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        execution: Execution<C>,
+impl<N: Network> OuterPrivateVariables<N> {
+    pub(crate) fn blank(
+        inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
+        inner_proof: N::InnerProof,
+        execution: Execution<N>,
     ) -> Self {
         Self {
-            inner_snark_vk,
-            inner_snark_proof,
-            program_proofs: vec![execution.clone(); C::NUM_TOTAL_RECORDS],
-            program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default(),
-            program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
-            local_data_root: C::LocalDataRoot::default(),
+            inner_verifying_key,
+            inner_proof,
+            execution,
         }
     }
 
-    pub fn new(
-        inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
-        inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_proofs: Vec<Execution<C>>,
-        program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-        program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-        local_data_root: C::LocalDataRoot,
+    pub(crate) fn new(
+        inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
+        inner_proof: N::InnerProof,
+        execution: Execution<N>,
     ) -> Self {
-        assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
         Self {
-            inner_snark_vk,
-            inner_snark_proof,
-            program_proofs,
-            program_commitment,
-            program_randomness,
-            local_data_root,
+            inner_verifying_key,
+            inner_proof,
+            execution,
         }
     }
 }

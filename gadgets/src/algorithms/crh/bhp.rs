@@ -16,8 +16,7 @@
 
 use crate::{
     bits::Boolean,
-    integers::uint::UInt8,
-    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
+    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
 use snarkvm_algorithms::crh::{BHPCRH, BOWE_HOPWOOD_CHUNK_SIZE};
 use snarkvm_curves::ProjectiveCurve;
@@ -30,7 +29,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 pub struct BHPCRHGadget<
     G: ProjectiveCurve,
     F: PrimeField,
-    GG: CurveGadget<G, F>,
+    GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
@@ -39,8 +38,13 @@ pub struct BHPCRHGadget<
     _group: PhantomData<GG>,
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<
+    G: ProjectiveCurve,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -80,26 +84,46 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<
+    F: PrimeField,
+    G: ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type OutputGadget = GG;
+    type OutputGadget = GG::BaseFieldGadget;
 
-    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget_on_bits<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        input: Vec<UInt8>,
+        input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        // Pad the input bytes.
-        let mut padded_input_bytes = input;
-        padded_input_bytes.resize(WINDOW_SIZE * NUM_WINDOWS / 8, UInt8::constant(0u8));
-        assert_eq!(padded_input_bytes.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
+        let output = self.check_evaluation_gadget_on_bits_inner(cs, input)?;
+        Ok(output.to_x_coordinate())
+    }
+}
 
-        // Pad the input bits if it is not the current length.
-        let mut input_in_bits: Vec<_> = padded_input_bytes
-            .into_iter()
-            .flat_map(|byte| byte.to_bits_le())
-            .collect();
+impl<
+    F: PrimeField,
+    G: ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+{
+    pub(crate) fn check_evaluation_gadget_on_bits_inner<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        input: Vec<Boolean>,
+    ) -> Result<GG, SynthesisError> {
+        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS);
+
+        // Pad the input bytes.
+        let mut input_in_bits = input;
+        input_in_bits.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
+        assert_eq!(input_in_bits.len(), WINDOW_SIZE * NUM_WINDOWS);
+
         if (input_in_bits.len()) % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
             let current_length = input_in_bits.len();
             let target_length = current_length + BOWE_HOPWOOD_CHUNK_SIZE - current_length % BOWE_HOPWOOD_CHUNK_SIZE;
@@ -116,10 +140,6 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
             .map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
 
-        Ok(GG::three_bit_signed_digit_scalar_multiplication(
-            cs,
-            &self.crh.bases,
-            input_in_bits,
-        )?)
+        GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
     }
 }

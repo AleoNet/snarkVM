@@ -499,7 +499,7 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 impl<P: Fp256Parameters> Debug for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp256({})", self.to_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 

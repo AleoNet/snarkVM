@@ -17,7 +17,7 @@
 use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
 use snarkvm_curves::{traits::PairingEngine, Group};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::ops::{Add, AddAssign};
 use rand_core::RngCore;
@@ -193,13 +193,13 @@ impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
                 for (d, shift_power) in degree_bounds_and_shift_powers {
                     let mut prepared_shift_power = Vec::<E::G1Affine>::new();
 
-                    let mut cur = E::G1Projective::from(shift_power.clone());
+                    let mut cur = E::G1Projective::from(*shift_power);
                     for _ in 0..supported_bits {
-                        prepared_shift_power.push(cur.clone().into());
+                        prepared_shift_power.push(cur.into());
                         cur.double_in_place();
                     }
 
-                    res.push((d.clone(), prepared_shift_power));
+                    res.push((*d, prepared_shift_power));
                 }
 
                 Some(res)
@@ -233,6 +233,18 @@ pub struct Commitment<E: PairingEngine> {
     pub(crate) shifted_comm: Option<kzg10::Commitment<E>>,
 }
 impl_bytes!(Commitment);
+
+impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let comm_bits = self.comm.to_minimal_bits();
+
+        if let Some(shifted_comm) = &self.shifted_comm {
+            [comm_bits, shifted_comm.to_minimal_bits()].concat()
+        } else {
+            comm_bits
+        }
+    }
+}
 
 impl<E: PairingEngine> PCCommitment for Commitment<E> {
     #[inline]
@@ -288,8 +300,7 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
     /// Prepare commitment to a polynomial that optionally enforces a degree bound.
     fn prepare(&self) -> PreparedCommitment<E> {
         let prepared_commitment = kzg10::PreparedCommitment::<E>::prepare(&self.comm);
-
-        let shifted_commitment = self.shifted_comm.clone();
+        let shifted_commitment = self.shifted_comm;
 
         PreparedCommitment::<E> {
             prepared_comm: prepared_commitment,

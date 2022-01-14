@@ -30,7 +30,11 @@ use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, Projectiv
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{marker::PhantomData, ops::Mul};
+use core::{
+    marker::PhantomData,
+    ops::Mul,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use rand_core::RngCore;
 
 #[cfg(feature = "parallel")]
@@ -188,7 +192,7 @@ impl<E: PairingEngine> KZG10<E> {
                 let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
 
                 for (i, affine) in list.iter().zip(affines.iter()) {
-                    map.insert(*i, affine.clone());
+                    map.insert(*i, *affine);
                 }
 
                 map
@@ -222,6 +226,7 @@ impl<E: PairingEngine> KZG10<E> {
         powers: &Powers<E>,
         polynomial: &Polynomial<E::Fr>,
         hiding_bound: Option<usize>,
+        terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Commitment<E>, Randomness<E>), Error> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
@@ -232,11 +237,15 @@ impl<E: PairingEngine> KZG10<E> {
             hiding_bound,
         ));
 
-        let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(&polynomial);
+        let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
         let mut commitment = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &plain_coeffs);
         end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(Error::Terminated);
+        }
 
         let mut randomness = Randomness::empty();
         if let Some(hiding_degree) = hiding_bound {
@@ -254,6 +263,10 @@ impl<E: PairingEngine> KZG10<E> {
         let random_commitment =
             VariableBaseMSM::multi_scalar_mul(&powers.powers_of_gamma_g, random_ints.as_slice()).into_affine();
         end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(Error::Terminated);
+        }
 
         commitment.add_assign_mixed(&random_commitment);
 
@@ -300,7 +313,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_witness_polynomial: Option<&Polynomial<E::Fr>>,
     ) -> Result<Proof<E>, Error> {
         Self::check_degree_is_too_large(witness_polynomial.degree(), powers.size())?;
-        let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(&witness_polynomial);
+        let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
         let witness_comm_time = start_timer!(|| "Computing commitment to witness polynomial");
         let mut w = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &witness_coeffs);
@@ -364,7 +377,7 @@ impl<E: PairingEngine> KZG10<E> {
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - &vk.h.mul(point).into();
+        let inner = vk.beta_h.into_projective() - vk.h.mul(point).into_projective();
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
@@ -403,7 +416,7 @@ impl<E: PairingEngine> KZG10<E> {
             if let Some(random_v) = proof.random_v {
                 gamma_g_multiplier += &(randomizer * random_v);
             }
-            total_c += &c.mul(randomizer).into();
+            total_c += &c.mul(randomizer);
             total_w += &w.mul(randomizer).into();
             // We don't need to sample randomizers from the full field,
             // only from 128-bit strings.
@@ -460,11 +473,11 @@ impl<E: PairingEngine> KZG10<E> {
         }
     }
 
-    pub(crate) fn check_degrees_and_bounds<'a>(
+    pub(crate) fn check_degrees_and_bounds(
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &'a LabeledPolynomial<E::Fr>,
+        p: &LabeledPolynomial<E::Fr>,
     ) -> Result<(), Error> {
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(Error::UnsupportedDegreeBound(bound))?;
@@ -539,6 +552,20 @@ mod tests {
     }
 
     #[test]
+    fn kzg10_universal_params_serialization_test() {
+        let rng = &mut test_rng();
+
+        let degree = 4;
+        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
+
+        let pp_bytes = pp.to_bytes_le().unwrap();
+        let pp_recovered: UniversalParams<Bls12_377> = FromBytes::read_le(&pp_bytes[..]).unwrap();
+        let pp_recovered_bytes = pp_recovered.to_bytes_le().unwrap();
+
+        assert_eq!(&pp_bytes, &pp_recovered_bytes);
+    }
+
+    #[test]
     fn add_commitments_test() {
         let rng = &mut test_rng();
         let p = Polynomial::from_coefficients_slice(&[
@@ -557,8 +584,8 @@ mod tests {
         let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
 
         let hiding_bound = None;
-        let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, Some(rng)).unwrap();
-        let (f_comm, _) = KZG10::commit(&powers, &f_p, hiding_bound, Some(rng)).unwrap();
+        let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
+        let (f_comm, _) = KZG10::commit(&powers, &f_p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
         let mut f_comm_2 = Commitment::empty();
         f_comm_2 += (f, &comm);
 
@@ -576,7 +603,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, degree);
             let p = Polynomial::rand(degree, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -599,7 +626,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, 2);
             let p = Polynomial::rand(1, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -632,7 +659,7 @@ mod tests {
             for _ in 0..10 {
                 let p = Polynomial::rand(degree, rng);
                 let hiding_bound = Some(1);
-                let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
+                let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
                 let value = p.evaluate(point);
                 let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;

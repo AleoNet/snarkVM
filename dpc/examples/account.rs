@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet2::Testnet2Parameters, Account, AccountScheme};
+use snarkvm_dpc::{testnet2::Testnet2, Account, AccountScheme};
 
 use rand::thread_rng;
 
 fn main() {
-    let account = Account::<Testnet2Parameters>::new(&mut thread_rng()).unwrap();
+    let account = Account::<Testnet2>::new(&mut thread_rng());
     println!("{}", account);
 }

@@ -18,7 +18,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
-use snarkvm_fields::ToConstraintField;
+use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -29,11 +29,13 @@ use crate::{
         eq::EqGadget,
     },
     AllocBytesGadget,
+    Boolean,
     BooleanInputGadget,
     FpGadget,
     PrepareGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
+    ToMinimalBitsGadget,
     UInt8,
 };
 use snarkvm_utilities::FromBytes;
@@ -105,20 +107,32 @@ where
     PairingE: PairingEngine,
     P: PairingGadget<PairingE>,
 {
-    _pairing_engine: PhantomData<PairingE>,
-    _pairing_gadget: PhantomData<P>,
+    _phantom: PhantomData<(PairingE, P)>,
 }
 
 impl<PairingE, P, V> SNARKVerifierGadget<Groth16<PairingE, V>> for Groth16VerifierGadget<PairingE, P>
 where
     PairingE: PairingEngine,
-    V: ToConstraintField<PairingE::Fr>,
+    V: ToConstraintField<PairingE::Fr> + Clone,
     P: PairingGadget<PairingE>,
 {
     type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
     type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = ProofGadget<PairingE, P>;
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, P>;
+
+    fn input_gadget_from_bytes<CS: ConstraintSystem<PairingE::Fq>>(
+        _cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError> {
+        // First, we allocate the input according to the `ToConstraintField` impl wrt PairingE::Fr.
+        let max_size = (<PairingE::Fr as PrimeField>::Parameters::CAPACITY / 8) as usize;
+        let bits = bytes
+            .chunks(max_size)
+            .map(|chunk| chunk.iter().flat_map(|bytes| bytes.bits.iter()).copied().collect())
+            .collect::<Vec<_>>();
+        Ok(BooleanInputGadget::new(bits))
+    }
 
     fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
@@ -141,7 +155,7 @@ where
             let mut cs = cs.ns(|| "Process input");
             let mut g_ic = gamma_abc_g1_iter.next().cloned().unwrap();
             for (i, (input, b)) in public_inputs.val.iter().zip(gamma_abc_g1_iter).enumerate() {
-                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.into_iter().copied())?;
+                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.iter().copied())?;
             }
             g_ic
         };
@@ -164,6 +178,29 @@ where
 
         test.enforce_equal(cs.ns(|| "Test 1"), &alpha_g1_beta_g2)?;
         Ok(())
+    }
+}
+
+impl<PairingE, P> ToMinimalBitsGadget<PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
+where
+    PairingE: PairingEngine,
+    P: PairingGadget<PairingE>,
+{
+    fn to_minimal_bits<CS: ConstraintSystem<PairingE::Fq>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let alpha_g1_booleans = self.alpha_g1.to_minimal_bits(cs.ns(|| "alpha_g1"))?;
+        let beta_g2_booleans = self.beta_g2.to_minimal_bits(cs.ns(|| "beta_g2"))?;
+        let gamma_g2_booleans = self.gamma_g2.to_minimal_bits(cs.ns(|| "gamma_g2"))?;
+        let delta_g2_booleans = self.delta_g2.to_minimal_bits(cs.ns(|| "delta_g2"))?;
+        let gamma_abc_g1_booleans = self.gamma_abc_g1.to_minimal_bits(cs.ns(|| "gamma_abc_g1"))?;
+
+        Ok([
+            alpha_g1_booleans,
+            beta_g2_booleans,
+            gamma_g2_booleans,
+            delta_g2_booleans,
+            gamma_abc_g1_booleans,
+        ]
+        .concat())
     }
 }
 

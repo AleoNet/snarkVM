@@ -14,29 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
-use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
+use crate::Network;
+use snarkvm_algorithms::merkle_tree::MerklePath;
 
 use anyhow::Result;
 
-/// The record commitment tree is a core state tree of the ledger.
-pub trait RecordCommitmentTree<C: Parameters>: Sized {
-    /// Return the latest state root of the record commitment tree.
-    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::RecordCommitmentTreeParameters>>;
+/// The ledger tree is a core state tree.
+pub trait LedgerTreeScheme<N: Network>: Sized {
+    /// Initializes an empty ledger tree.
+    fn new() -> Result<Self>;
 
-    /// Check that st_{ts} is a valid state root for some (past) record commitment tree.
-    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool;
+    /// Adds the given commitment to the tree, returning its index in the tree.
+    fn add(&mut self, block_hash: &N::BlockHash) -> Result<u32>;
 
-    /// Returns true if the given commitment exists in the record commitment tree.
-    fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool;
+    /// Adds all given block hashes to the tree, returning the start and ending index in the tree.
+    fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u32, u32)>;
 
-    /// Returns the Merkle path to the latest state root for a given record commitment,
-    /// if it exists in the record commitment tree.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::RecordCommitmentTreeParameters>>;
-}
+    /// Returns `true` if the given block hash exists.
+    fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool;
 
-/// The record serial number tree is a core state tree of the ledger.
-pub trait RecordSerialNumberTree<C: Parameters>: Sized {
-    /// Returns true if the given serial number exists in the record serial number tree.
-    fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool;
+    /// Returns the index for the given block hash, if it exists.
+    fn get_block_hash_index(&self, block_hash: &N::BlockHash) -> Option<&u32>;
+
+    /// Returns the ledger root.
+    fn root(&self) -> N::LedgerRoot;
+
+    /// Returns the Merkle path for a given block hash.
+    fn to_ledger_inclusion_proof(&self, block_hash: &N::BlockHash) -> Result<MerklePath<N::LedgerRootParameters>>;
 }

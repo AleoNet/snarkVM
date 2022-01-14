@@ -22,6 +22,7 @@ use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,13 +34,13 @@ pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WIN
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G::Affine;
-    type Parameters = (Vec<Vec<G>>, Vec<G>);
+    type Output = <G::Affine as AffineCurve>::BaseField;
+    type Parameters = (Arc<Vec<Vec<G>>>, Vec<G>);
     type Randomness = G::ScalarField;
 
     fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into();
+        let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
 
         // Next, compute the random base.
         let random_base_message = format!("{} for random base", message);
@@ -58,8 +59,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+        let num_bits = input.len() * 8;
         // If the input is too long, return an error.
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
+        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CommitmentError::IncorrectInputLength(
                 input.len(),
                 WINDOW_SIZE,
@@ -67,7 +69,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             ));
         }
 
-        let mut output = self.bhp_crh.hash(&input)?.into_projective();
+        // Convert input bytes to bits.
+        let bits = input
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
+
+        let mut output = self.bhp_crh.hash_bits_inner(bits, num_bits)?;
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
@@ -77,7 +84,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        Ok(output.into_affine())
+        let affine = output.into_affine();
+        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
+        Ok(affine.to_x_coordinate())
     }
 
     fn parameters(&self) -> Self::Parameters {
@@ -85,10 +94,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Vec<Vec<G>>, Vec<G>)>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Arc<Vec<Vec<G>>>, Vec<G>)>
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn from((bases, random_base): (Vec<Vec<G>>, Vec<G>)) -> Self {
+    fn from((bases, random_base): (Arc<Vec<Vec<G>>>, Vec<G>)) -> Self {
         Self {
             bhp_crh: bases.into(),
             random_base,

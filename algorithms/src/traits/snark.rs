@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SNARKError;
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::atomic::AtomicBool};
 
 /// Defines a trait that describes preparing from an unprepared version to a prepare version.
 pub trait Prepare<T> {
@@ -34,12 +34,12 @@ pub enum SRS<'a, R: Rng + CryptoRng, T> {
     Universal(&'a T),
 }
 
-pub trait SNARK {
+pub trait SNARK: Clone + Debug {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
 
     type PreparedVerifyingKey: Clone;
-    type Proof: Clone + Debug + ToBytes + FromBytes + Send + Sync;
+    type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
@@ -55,7 +55,8 @@ pub trait SNARK {
         + Prepare<Self::PreparedVerifyingKey>
         + From<Self::PreparedVerifyingKey>
         + From<Self::ProvingKey>
-        + ToConstraintField<Self::BaseField>;
+        + ToConstraintField<Self::BaseField>
+        + ToMinimalBits;
 
     fn universal_setup<R: Rng + CryptoRng>(
         _config: &Self::UniversalSetupConfig,
@@ -72,6 +73,15 @@ pub trait SNARK {
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
+        rng: &mut R,
+    ) -> Result<Self::Proof, SNARKError> {
+        Self::prove_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
+    }
+
+    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &C,
+        terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 

@@ -17,9 +17,10 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{from_bytes_le_to_bits_le, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::{
+    borrow::Cow,
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
 };
@@ -35,24 +36,19 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Output = G::Affine;
     type Parameters = Vec<Vec<G>>;
 
-    const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
-
     fn setup(message: &str) -> Self {
         Self::bases(message).into()
     }
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        if (input.len() * 8) > WINDOW_SIZE * NUM_WINDOWS {
+    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
         // Pad the input if it is not the current length.
-        let mut input = input;
-        let mut padded_input = vec![];
-        if (input.len() * 8) < WINDOW_SIZE * NUM_WINDOWS {
-            padded_input.extend_from_slice(input);
-            padded_input.resize((WINDOW_SIZE * NUM_WINDOWS) / 8, 0u8);
-            input = padded_input.as_slice();
+        let mut padded_input = Cow::Borrowed(input);
+        if padded_input.len() < WINDOW_SIZE * NUM_WINDOWS {
+            padded_input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, false);
         }
 
         if self.bases.len() != NUM_WINDOWS {
@@ -65,8 +61,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         }
 
         // Compute sum of h_i^{m_i} for all i.
-        let bits = from_bytes_le_to_bits_le(input).collect::<Vec<_>>();
-        let result = bits
+        let result = padded_input
             .chunks(WINDOW_SIZE)
             .zip(&self.bases)
             .map(|(bits, powers)| {

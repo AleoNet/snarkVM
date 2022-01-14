@@ -14,48 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(clippy::module_inception)]
-#![deny(unused_import_braces, unused_qualifications, trivial_casts, trivial_numeric_casts)]
-#![deny(
-    single_use_lifetimes,
-    unused_qualifications,
-    variant_size_differences,
-    stable_features,
-    unreachable_pub
-)]
-#![deny(
-    non_shorthand_field_patterns,
-    unused_attributes,
-    unused_imports,
-    unused_extern_crates
-)]
-#![deny(
-    renamed_and_removed_lints,
-    stable_features,
-    unused_allocation,
-    unused_comparisons,
-    bare_trait_objects
-)]
-#![deny(
-    const_err,
-    unused_must_use,
-    unused_mut,
-    unused_unsafe,
-    private_in_public,
-    unsafe_code
-)]
 #![forbid(unsafe_code)]
-#![cfg_attr(feature = "clippy", deny(warnings))]
-#![cfg_attr(feature = "clippy", feature(plugin))]
-#![cfg_attr(feature = "clippy", plugin(clippy))]
-#![cfg_attr(feature = "clippy", allow(inline_always))]
-#![cfg_attr(feature = "clippy", allow(too_many_arguments))]
-#![cfg_attr(feature = "clippy", allow(unreadable_literal))]
-#![cfg_attr(feature = "clippy", allow(many_single_char_names))]
-#![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
-
-#[macro_use]
-extern crate snarkvm_profiler;
+#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate derivative;
@@ -66,26 +28,26 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
+pub mod block;
+pub use block::*;
+
 pub mod circuits;
 pub use circuits::*;
-
-pub mod dpc;
-pub use dpc::*;
 
 pub mod errors;
 pub use errors::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod ledger;
+pub use ledger::*;
 
-pub mod program;
-pub use program::*;
+pub mod network;
+pub use network::*;
+
+pub mod posw;
+pub use posw::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod state;
-pub use state::*;
 
 pub mod traits;
 pub use traits::*;
@@ -93,16 +55,22 @@ pub use traits::*;
 pub mod transaction;
 pub use transaction::*;
 
+pub mod transition;
+pub use transition::*;
+
+pub mod virtual_machine;
+pub use virtual_machine::*;
+
 pub mod prelude {
     pub use crate::{
         account::*,
-        circuits::*,
-        dpc::*,
+        block::*,
         errors::*,
-        program::*,
+        ledger::*,
         record::*,
-        state::*,
         traits::*,
         transaction::*,
+        transition::*,
+        virtual_machine::*,
     };
 }

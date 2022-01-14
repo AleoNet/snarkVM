@@ -29,23 +29,22 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand::{CryptoRng, Rng};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 /// Note: V should serialize its contents to `Vec<E::Fr>` in the same order as
 /// during the constraint generation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Groth16<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> {
-    _engine: PhantomData<E>,
-    _verifier_input: PhantomData<V>,
+pub struct Groth16<E: PairingEngine, V: ToConstraintField<E::Fr> + Clone> {
+    _phantom: PhantomData<(E, V)>,
 }
 
-impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for Groth16<E, V> {
+impl<E: PairingEngine, V: ToConstraintField<E::Fr> + Clone> SNARK for Groth16<E, V> {
     type BaseField = E::Fq;
     type PreparedVerifyingKey = PreparedVerifyingKey<E>;
     type Proof = Proof<E>;
     type ProvingKey = ProvingKey<E>;
     type ScalarField = E::Fr;
-    type UniversalSetupConfig = ();
+    type UniversalSetupConfig = usize;
     type UniversalSetupParameters = ();
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
@@ -64,9 +63,11 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for Groth16<E
         Ok((pp, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    // terminator not implemented for Groth16
+    fn prove_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
+        _terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proof_time = start_timer!(|| "{Groth 2016}::Prove");
@@ -85,7 +86,7 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for Groth16<E
         let input = input.to_field_elements()?;
         end_timer!(conversion_time);
         let verification = start_timer!(|| format!("Verify proof w/ input len: {}", input.len()));
-        let result = verify_proof(&prepared_verifying_key, proof, &input)?;
+        let result = verify_proof(prepared_verifying_key, proof, &input)?;
         end_timer!(verification);
         end_timer!(verify_time);
         Ok(result)

@@ -17,20 +17,14 @@
 pub mod account;
 pub use account::*;
 
-pub mod dpc;
-pub use dpc::*;
+pub mod function;
+pub use function::*;
 
 pub mod ledger;
 pub use ledger::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod network;
+pub use network::*;
 
-pub mod program;
-pub use program::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod transaction;
-pub use transaction::*;
+pub mod posw;
+pub use posw::*;

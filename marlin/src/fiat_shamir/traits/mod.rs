@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod algebraic_sponge;
-pub use algebraic_sponge::*;
+pub use snarkvm_algorithms::traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode};
 
-mod algebraic_sponge_gadget;
-pub use algebraic_sponge_gadget::*;
+pub use snarkvm_gadgets::traits::{AlgebraicSpongeVar, DefaultCapacityAlgebraicSpongeVar};
 
 mod fiat_shamir;
 pub use fiat_shamir::*;

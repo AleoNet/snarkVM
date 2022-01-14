@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fiat_shamir::FiatShamirRng, FiatShamirError, PhantomData, Vec};
+use smallvec::SmallVec;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 
-use core::num::NonZeroU32;
+use core::{fmt::Debug, num::NonZeroU32};
 use digest::Digest;
 use rand_chacha::ChaChaRng;
 use rand_core::{Error, RngCore, SeedableRng};
@@ -27,20 +28,17 @@ use rand_core::{Error, RngCore, SeedableRng};
 /// the seed based on new messages in the proof transcript.
 /// Use a ChaCha stream cipher to generate the actual pseudorandom bits.
 /// Use a digest function to do absorbing.
-pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D: Digest> {
+#[derive(Clone, Debug)]
+pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> {
     /// The ChaCha RNG.
     r: Option<ChaChaRng>,
     /// The initial seed for the RNG.
     seed: Option<Vec<u8>>,
     #[doc(hidden)]
-    _target_field: PhantomData<TargetField>,
-    #[doc(hidden)]
-    _base_field: PhantomData<BaseField>,
-    #[doc(hidden)]
-    _digest: PhantomData<D>,
+    _phantom: PhantomData<(TargetField, BaseField, D)>,
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> RngCore
+impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> RngCore
     for FiatShamirChaChaRng<TargetField, BaseField, D>
 {
     #[inline]
@@ -76,17 +74,23 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> RngCore
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> FiatShamirRng<TargetField, BaseField>
+impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> FiatShamirRng<TargetField, BaseField>
     for FiatShamirChaChaRng<TargetField, BaseField, D>
 {
+    type Parameters = ();
+
+    fn sample_params() -> Self::Parameters {}
+
     fn new() -> Self {
         Self {
             r: None,
             seed: None,
-            _target_field: PhantomData,
-            _base_field: PhantomData,
-            _digest: PhantomData,
+            _phantom: PhantomData,
         }
+    }
+
+    fn with_parameters(_params: &Self::Parameters) -> Self {
+        Self::new()
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], _: OptimizationType) {
@@ -146,14 +150,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> FiatShamirRng<Ta
         Ok(res)
     }
 
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError> {
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError> {
         // Ensure the RNG is initialized.
         let rng = match &mut self.r {
             Some(rng) => rng,
             None => return Err(FiatShamirError::UninitializedRNG),
         };
 
-        let mut res = Vec::<BaseField>::new();
+        let mut res = SmallVec::with_capacity(num);
         for _ in 0..num {
             res.push(BaseField::rand(rng));
         }

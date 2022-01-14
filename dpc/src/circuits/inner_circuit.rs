@@ -14,31 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
+use crate::{InnerPrivateVariables, InnerPublicVariables, Network, Payload};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
     bits::{Boolean, ToBytesGadget},
     integers::{int::Int64, uint::UInt8},
     traits::{
-        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+        algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
+    ComparatorGadget,
+    EvaluateLtGadget,
+    ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
+use itertools::Itertools;
+use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
+
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct InnerCircuit<C: Parameters> {
-    public: InnerPublicVariables<C>,
-    private: InnerPrivateVariables<C>,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct InnerCircuit<N: Network> {
+    public: InnerPublicVariables<N>,
+    private: InnerPrivateVariables<N>,
 }
 
-impl<C: Parameters> InnerCircuit<C> {
+impl<N: Network> InnerCircuit<N> {
     pub fn blank() -> Self {
         Self {
             public: InnerPublicVariables::blank(),
@@ -46,831 +52,839 @@ impl<C: Parameters> InnerCircuit<C> {
         }
     }
 
-    pub fn new(public: InnerPublicVariables<C>, private: InnerPrivateVariables<C>) -> Self {
+    pub fn new(public: InnerPublicVariables<N>, private: InnerPrivateVariables<N>) -> Self {
         Self { public, private }
     }
 }
 
-impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
-    fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
+impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> {
+    fn generate_constraints<CS: ConstraintSystem<N::InnerScalarField>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        execute_inner_circuit::<C, CS>(cs, &self.public, &self.private)
-    }
-}
+        let public = &self.public;
+        let private = &self.private;
 
-pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarField>>(
-    cs: &mut CS,
-    public: &InnerPublicVariables<C>,
-    private: &InnerPrivateVariables<C>,
-) -> Result<(), SynthesisError> {
-    // In the inner circuit, these two variables must be allocated as public inputs.
-    debug_assert!(public.program_commitment.is_some());
-    debug_assert!(public.local_data_root.is_some());
+        // In the inner circuit, this variable must be allocated as public input.
+        debug_assert!(public.program_id.is_some());
 
-    let (
-        account_commitment_parameters,
-        account_encryption_parameters,
-        account_signature_parameters,
-        record_commitment_parameters,
-        encrypted_record_crh,
-        program_commitment_parameters,
-        local_data_crh,
-        local_data_commitment_parameters,
-        serial_number_nonce_crh,
-        record_commitment_tree_parameters,
-    ) = {
-        let cs = &mut cs.ns(|| "Declare parameters");
-
-        let account_commitment_parameters =
-            C::AccountCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare account commitment parameters"), || {
-                Ok(C::account_commitment_scheme().clone())
-            })?;
-
-        let account_encryption_parameters =
-            C::AccountEncryptionGadget::alloc_constant(&mut cs.ns(|| "Declare account encryption parameters"), || {
-                Ok(C::account_encryption_scheme().clone())
-            })?;
-
-        let account_signature_parameters =
-            C::AccountSignatureGadget::alloc_constant(&mut cs.ns(|| "Declare account signature parameters"), || {
-                Ok(C::account_signature_scheme().clone())
-            })?;
-
-        let record_commitment_parameters =
-            C::RecordCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
-                Ok(C::record_commitment_scheme().clone())
-            })?;
-
-        let encrypted_record_crh_parameters = C::EncryptedRecordCRHGadget::alloc_constant(
-            &mut cs.ns(|| "Declare record ciphertext CRH parameters"),
-            || Ok(C::encrypted_record_crh().clone()),
-        )?;
-
-        let program_commitment_parameters =
-            C::ProgramCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare program commitment parameters"), || {
-                Ok(C::program_commitment_scheme().clone())
-            })?;
-
-        let local_data_crh_parameters =
-            C::LocalDataCRHGadget::alloc_constant(&mut cs.ns(|| "Declare local data CRH parameters"), || {
-                Ok(C::local_data_crh().clone())
-            })?;
-
-        let local_data_commitment_parameters = C::LocalDataCommitmentGadget::alloc_constant(
-            &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment_scheme().clone()),
-        )?;
-
-        let serial_number_nonce_crh_parameters = C::SerialNumberNonceCRHGadget::alloc_constant(
-            &mut cs.ns(|| "Declare serial number nonce CRH parameters"),
-            || Ok(C::serial_number_nonce_crh().clone()),
-        )?;
-
-        let record_commitment_tree_parameters =
-            C::RecordCommitmentTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
-                Ok(C::record_commitment_tree_parameters().crh())
-            })?;
-
-        (
-            account_commitment_parameters,
+        let (
             account_encryption_parameters,
             account_signature_parameters,
             record_commitment_parameters,
-            encrypted_record_crh_parameters,
-            program_commitment_parameters,
-            local_data_crh_parameters,
-            local_data_commitment_parameters,
-            serial_number_nonce_crh_parameters,
-            record_commitment_tree_parameters,
-        )
-    };
-
-    // Declares a constant for a 0 value in a record.
-    let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
-    // Declares a constant for an empty payload in a record.
-    let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
-
-    let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-        &mut cs.ns(|| "Declare ledger digest"),
-        || Ok(public.ledger_digest),
-    )?;
-
-    let mut old_serial_numbers_gadgets = Vec::with_capacity(private.input_records.len());
-    let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
-    let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
-    let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
-
-    for (i, (((record, witness), account_private_key), given_serial_number)) in private
-        .input_records
-        .iter()
-        .zip(&private.input_witnesses)
-        .zip(&private.private_keys)
-        .zip(&public.kernel.serial_numbers)
-        .enumerate()
-    {
-        let cs = &mut cs.ns(|| format!("Process input record {}", i));
-
-        // Declare record contents
-        let (
-            given_program_id,
-            given_owner,
-            given_is_dummy,
-            given_value,
-            given_payload,
-            given_serial_number_nonce_bytes,
-            given_commitment,
-            given_commitment_randomness,
+            transition_id_crh,
+            transaction_id_crh,
+            transactions_root_crh,
+            block_header_root_crh,
+            block_hash_crh,
+            ledger_root_crh,
         ) = {
-            let declare_cs = &mut cs.ns(|| "Declare input record");
+            let cs = &mut cs.ns(|| "Declare parameters");
 
-            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
-            old_program_ids_gadgets.push(given_program_id.clone());
-
-            // No need to check that commitments, public keys and hashes are in
-            // prime order subgroup because the commitment and CRH parameters
-            // are trusted, and so when we recompute these, the newly computed
-            // values will always be in correct subgroup. If the input cm, pk
-            // or hash is incorrect, then it will not match the computed equivalent.
-            let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
-            >>::PublicKeyGadget::alloc(
-                &mut declare_cs.ns(|| "given_record_owner"),
-                || Ok(record.owner().to_encryption_key()),
+            let account_encryption_parameters = N::AccountEncryptionGadget::alloc_constant(
+                &mut cs.ns(|| "Declare account encryption parameters"),
+                || Ok(N::account_encryption_scheme().clone()),
             )?;
 
-            let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
-
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
-
-            let given_payload =
-                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
-
-            let given_serial_number_nonce_bytes = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_serial_number_nonce_bytes"),
-                &record.serial_number_nonce().to_bytes_le()?,
+            let account_signature_parameters = N::AccountSignatureGadget::alloc_constant(
+                &mut cs.ns(|| "Declare account signature parameters"),
+                || Ok(N::account_signature_scheme().clone()),
             )?;
 
-            let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
-            )?;
-            old_record_commitments_gadgets.push(given_commitment.clone());
+            let record_commitment_parameters =
+                N::CommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
+                    Ok(N::commitment_scheme().clone())
+                })?;
 
-            let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
-            >>::RandomnessGadget::alloc(
-                &mut declare_cs.ns(|| "given_commitment_randomness"),
-                || Ok(record.commitment_randomness()),
+            let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transition ID CRH parameters"),
+                || Ok(N::transition_id_parameters().crh()),
+            )?;
+
+            let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transaction CRH parameters"),
+                || Ok(N::transaction_id_parameters().crh()),
+            )?;
+
+            let transactions_root_crh = N::TransactionsRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transactions root CRH parameters"),
+                || Ok(N::transactions_root_parameters().crh()),
+            )?;
+
+            let block_header_root_crh = N::BlockHeaderRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the block header root CRH parameters"),
+                || Ok(N::block_header_root_parameters().crh()),
+            )?;
+
+            let block_hash_crh =
+                N::BlockHashCRHGadget::alloc_constant(&mut cs.ns(|| "Declare the block hash CRH parameters"), || {
+                    Ok(N::block_hash_crh().clone())
+                })?;
+
+            let ledger_root_crh = N::LedgerRootCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the ledger root CRH parameters"),
+                || Ok(N::ledger_root_parameters().crh()),
             )?;
 
             (
-                given_program_id,
+                account_encryption_parameters,
+                account_signature_parameters,
+                record_commitment_parameters,
+                transition_id_crh,
+                transaction_id_crh,
+                transactions_root_crh,
+                block_header_root_crh,
+                block_hash_crh,
+                ledger_root_crh,
+            )
+        };
+
+        // Declares a constant for a 0 value in a record.
+        let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
+        // Declares a constant for an empty payload in a record.
+        let empty_payload = UInt8::constant_vec(&Payload::<N>::default().to_bytes_le()?);
+        // Declare the noop program ID as bytes.
+        let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
+
+        // TODO: directly allocate these as the appropriate number of constant zero field elements
+        // (i.e., no constraints)
+        let zero_value_field_elements =
+            zero_value.to_constraint_field(&mut cs.ns(|| "convert zero value to field elements"))?;
+        let empty_payload_field_elements =
+            empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
+        let noop_program_id_field_elements =
+            noop_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert noop program ID to field elements"))?;
+
+        // Declare the ledger root.
+        let ledger_root = <N::LedgerRootCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            &mut cs.ns(|| "Declare the ledger root"),
+            || Ok(public.ledger_root()),
+        )?;
+
+        // Declare the local transitions root.
+        let local_transitions_root = <N::TransactionIDCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            &mut cs.ns(|| "Declare the local transitions root"),
+            || Ok(public.local_transitions_root()),
+        )?;
+
+        // Declare the transition signature .
+        let signature = <N::AccountSignatureGadget as SignatureGadget<
+            N::AccountSignatureScheme,
+            N::InnerScalarField,
+        >>::SignatureGadget::alloc(&mut cs.ns(|| "Declare the transition signature"), || {
+            Ok(&*private.signature)
+        })?;
+
+        /* //////////////////////////////////////////////////////////////////////////// */
+        /* ///////////////////////////// INPUT RECORDS //////////////////////////////// */
+        /* //////////////////////////////////////////////////////////////////////////// */
+
+        let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
+        let mut input_owners = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+
+        for (i, (record, ledger_proof)) in private
+            .input_records
+            .iter()
+            .zip_eq(private.ledger_proofs.iter())
+            .enumerate()
+        {
+            let cs = &mut cs.ns(|| format!("Process input record {}", i));
+
+            // Declare record contents
+            let (
                 given_owner,
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_serial_number_nonce_bytes,
-                given_commitment,
-                given_commitment_randomness,
-            )
-        };
+                given_program_id,
+                given_randomizer,
+                given_record_view_key,
+            ) = {
+                let declare_cs = &mut cs.ns(|| "Declare input record");
 
-        // **********************************************************************************
-        // Check that the commitment appears on the ledger,
-        // i.e., the membership witness is valid with respect to the record commitment root.
-        // **********************************************************************************
-        {
-            let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
+                // No need to check that commitments, public keys and hashes are in
+                // prime order subgroup because the commitment and CRH parameters
+                // are trusted, and so when we recompute these, the newly computed
+                // values will always be in correct subgroup. If the input cm, pk
+                // or hash is incorrect, then it will not match the computed equivalent.
 
-            let witness_gadget = MerklePathGadget::<_, C::RecordCommitmentTreeCRHGadget, _>::alloc(
-                &mut witness_cs.ns(|| "Declare membership witness"),
-                || Ok(witness),
-            )?;
+                let given_owner = <N::AccountSignatureGadget as SignatureGadget<
+                    N::AccountSignatureScheme,
+                    N::InnerScalarField,
+                >>::PublicKeyGadget::alloc(
+                    &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
+                )?;
 
-            witness_gadget.conditionally_check_membership(
-                &mut witness_cs.ns(|| "Perform ledger membership witness check"),
-                &record_commitment_tree_parameters,
-                &digest_gadget,
-                &given_commitment,
-                &given_is_dummy.not(),
-            )?;
+                let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
+
+                let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
+
+                let given_payload =
+                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
+
+                let given_program_id = UInt8::alloc_vec(
+                    &mut declare_cs.ns(|| "given_program_id"),
+                    &record.program_id().to_bytes_le()?,
+                )?;
+
+                let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::CiphertextRandomizer::alloc(
+                    &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
+                )?;
+
+                let given_record_view_key = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::SymmetricKeyGadget::alloc(
+                    &mut declare_cs.ns(|| "given_record_view_key"),
+                    || Ok(*record.record_view_key().clone()),
+                )?;
+
+                (
+                    given_owner,
+                    given_is_dummy,
+                    given_value,
+                    given_payload,
+                    given_program_id,
+                    given_randomizer,
+                    given_record_view_key,
+                )
+            };
+
+            // *******************************************************************
+            // Check that the record is well-formed.
+            // *******************************************************************
+            let (commitment, is_dummy) = {
+                let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
+
+                // *******************************************************************
+                // Convert the owner, dummy flag, value, payload, program ID, and randomizer into bits.
+                // *******************************************************************
+
+                let given_owner_bytes =
+                    given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert given_owner to bytes"))?;
+                let given_is_dummy_bytes =
+                    given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
+                let given_value_bytes =
+                    given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
+
+                // Perform noop safety checks.
+                {
+                    let given_value_field_elements = given_value_bytes
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
+                    let given_payload_field_elements = given_payload
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
+                    let given_program_id_field_elements = given_program_id
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given program ID to field elements"))?;
+
+                    given_value_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the input record {} is empty, enforce it has a value of 0", i)),
+                        &zero_value_field_elements,
+                        &given_is_dummy,
+                    )?;
+                    given_payload_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the input record {} is empty, enforce it has an empty payload", i)),
+                        &empty_payload_field_elements,
+                        &given_is_dummy,
+                    )?;
+                    given_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the input record {} is empty, enforce it has a noop program ID", i)),
+                        &noop_program_id_field_elements,
+                        &given_is_dummy,
+                    )?;
+
+                    input_program_ids.push(given_program_id_field_elements);
+                }
+
+                // *******************************************************************
+                // Compute the record commitment and check that it matches the declared commitment.
+                // *******************************************************************
+
+                let mut plaintext = Vec::new();
+                plaintext.extend_from_slice(&given_owner_bytes);
+                plaintext.extend_from_slice(&given_is_dummy_bytes);
+                plaintext.extend_from_slice(&given_value_bytes);
+                plaintext.extend_from_slice(&given_payload);
+                plaintext.extend_from_slice(&given_program_id);
+
+                let ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
+                    &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
+                    &given_record_view_key,
+                    &plaintext,
+                )?;
+
+                let record_view_key_commitment = account_encryption_parameters.check_symmetric_key_commitment(
+                    &mut commitment_cs.ns(|| format!("input record {} check_symmetric_key_commitment", i)),
+                    &given_record_view_key,
+                )?;
+
+                let given_randomizer_bytes =
+                    given_randomizer.to_bytes(&mut commitment_cs.ns(|| "Convert given_randomizer to bytes"))?;
+                let record_view_key_commitment_bytes = record_view_key_commitment
+                    .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
+
+                let mut commitment_input = Vec::with_capacity(
+                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                );
+                commitment_input.extend_from_slice(&given_randomizer_bytes);
+                commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
+                commitment_input.extend_from_slice(&ciphertext);
+
+                let candidate_commitment = record_commitment_parameters
+                    .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
+
+                let candidate_commitment_bytes =
+                    candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
+
+                input_owners.push(given_owner);
+                input_commitments_bytes.extend_from_slice(&candidate_commitment_bytes);
+                input_values.push(given_value);
+
+                (candidate_commitment, given_is_dummy)
+            };
+
+            // ********************************************************************
+            // Check that the serial number is derived correctly.
+            // ********************************************************************
+            {
+                let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
+
+                let sk_prf_bits = {
+                    let compute_key = N::AccountSignatureGadget::compute_key(
+                        &account_signature_parameters,
+                        &mut sn_cs.ns(|| "Compute key"),
+                        &signature,
+                    )?;
+                    compute_key.to_bits_le_strict(&mut sn_cs.ns(|| "Compute key to bits"))?
+                };
+
+                let sk_prf = Boolean::le_bits_to_fp_var(&mut sn_cs.ns(|| "Bits to FpGadget"), &sk_prf_bits)?;
+
+                let candidate_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
+                    N::SerialNumberPRF,
+                    N::InnerScalarField,
+                >>::check_evaluation_gadget(
+                    &mut sn_cs.ns(|| "Compute serial number"),
+                    &sk_prf,
+                    &vec![commitment.clone()],
+                )?;
+
+                // Convert input serial numbers to bytes.
+                let candidate_serial_number_bytes = candidate_serial_number
+                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
+
+                input_serial_numbers_bytes.push(candidate_serial_number_bytes);
+            };
+
+            // **********************************************************************************
+            // Check that the commitment appears on the ledger or prior transition,
+            // i.e., the membership witness is valid with respect to the ledger root.
+            // **********************************************************************************
+            {
+                // Ensure each commitment is either 1) in the ledger, 2) from a prior local transition, or 3) a dummy.
+                let ledger_cs = &mut cs.ns(|| "Check ledger proof");
+
+                // Compute the transition ID.
+                let transition_inclusion_proof = MerklePathGadget::<_, N::TransitionIDCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the transition ID inclusion proof"),
+                    || Ok(ledger_proof.transition_inclusion_proof()),
+                )?;
+                let candidate_transition_id = transition_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the transition inclusion proof computation"),
+                    &transition_id_crh,
+                    &commitment,
+                )?;
+
+                // Compute the transaction ID.
+                let transaction_id_inclusion_proof = MerklePathGadget::<_, N::TransactionIDCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the transaction ID inclusion proof"),
+                    || Ok(ledger_proof.transaction_inclusion_proof()),
+                )?;
+                let candidate_transaction_id = transaction_id_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the transaction ID inclusion proof computation"),
+                    &transaction_id_crh,
+                    &candidate_transition_id,
+                )?;
+
+                // Determine if the commitment is local.
+                let is_local = candidate_transaction_id.is_eq(
+                    &mut ledger_cs.ns(|| "Check if the local transitions root matches the candidate transaction ID"),
+                    &local_transitions_root,
+                )?;
+
+                // Determine if the commitment is local or dummy.
+                let is_local_or_dummy = Boolean::or(
+                    &mut ledger_cs.ns(|| "Determine if the commitment is local or dummy"),
+                    &is_local,
+                    &is_dummy,
+                )?;
+
+                // Compute the transactions root.
+                let ledger_transactions_root_inclusion_proof =
+                    MerklePathGadget::<_, N::TransactionsRootCRHGadget, _>::alloc(
+                        &mut ledger_cs.ns(|| "Declare the ledger transactions root inclusion proof"),
+                        || Ok(ledger_proof.transactions_inclusion_proof()),
+                    )?;
+                let candidate_ledger_transactions_root = ledger_transactions_root_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the ledger transactions root inclusion proof computation"),
+                    &transactions_root_crh,
+                    &candidate_transaction_id,
+                )?;
+
+                // Compute the block header root.
+                let block_header_root_inclusion_proof = MerklePathGadget::<_, N::BlockHeaderRootCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the block header root inclusion proof"),
+                    || Ok(ledger_proof.block_header_inclusion_proof()),
+                )?;
+                let candidate_block_header_root = block_header_root_inclusion_proof.calculate_root(
+                    &mut ledger_cs.ns(|| "Perform the block header root inclusion proof computation"),
+                    &block_header_root_crh,
+                    &candidate_ledger_transactions_root,
+                )?;
+
+                // Declare the previous block hash.
+                let previous_block_hash = UInt8::alloc_vec(
+                    &mut ledger_cs.ns(|| "Allocate network id"),
+                    &ledger_proof.previous_block_hash().to_bytes_le()?,
+                )?;
+
+                // Construct the block hash preimage.
+                let mut preimage = Vec::new();
+                preimage.extend_from_slice(&previous_block_hash);
+                preimage.extend_from_slice(
+                    &candidate_block_header_root.to_bytes(&mut ledger_cs.ns(|| "block_header_root"))?,
+                );
+
+                // Compute the block hash.
+                let candidate_block_hash =
+                    block_hash_crh.check_evaluation_gadget(&mut ledger_cs.ns(|| "Compute the block hash"), preimage)?;
+
+                // Ensure the ledger root inclusion proof is valid.
+                let ledger_root_inclusion_proof = MerklePathGadget::<_, N::LedgerRootCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the ledger root inclusion proof"),
+                    || Ok(ledger_proof.ledger_root_inclusion_proof()),
+                )?;
+                ledger_root_inclusion_proof.conditionally_check_membership(
+                    &mut ledger_cs.ns(|| "Perform the ledger root inclusion proof check"),
+                    &ledger_root_crh,
+                    &ledger_root,
+                    &candidate_block_hash,
+                    &is_local_or_dummy.not(),
+                )?;
+            }
         }
         // ********************************************************************
 
-        // ********************************************************************
-        // Check that the account address and private key form a valid key
-        // pair.
-        // ********************************************************************
+        // *******************************************************************
+        // Check that the signature is valid.
+        // *******************************************************************
+        {
+            let signature_cs = &mut cs.ns(|| "Check that the signature is valid");
 
-        let (sk_prf, pk_sig) = {
-            // Declare variables for account contents.
-            let account_cs = &mut cs.ns(|| "Check account");
+            // Enforce that the input owners are the same address.
+            let mut current_owner = &input_owners[0];
+            for (i, next_owner) in input_owners.iter().take(N::NUM_INPUT_RECORDS).skip(1).enumerate() {
+                // Enforce the owners are equal.
+                current_owner.enforce_equal(signature_cs.ns(|| format!("check_owners_match_{}", i)), next_owner)?;
+                // Update the current owner.
+                current_owner = next_owner;
+            }
 
-            // Allocate the account private key.
-            let (pk_sig, sk_prf, r_pk) = {
-                let pk_sig_native = account_private_key.pk_sig();
-                let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
-                    C::AccountSignatureScheme,
-                    C::InnerScalarField,
+            let mut signature_message = Vec::new();
+            signature_message.extend_from_slice(&input_commitments_bytes);
+            // signature_message.extend_from_slice(&inputs_digest);
+            // signature_message.extend_from_slice(&fee);
+
+            let signature_verification = account_signature_parameters.verify(
+                signature_cs.ns(|| "signature_verify"),
+                &input_owners[0],
+                &signature_message,
+                &signature,
+            )?;
+
+            signature_verification.enforce_equal(signature_cs.ns(|| "check_verification"), &Boolean::constant(true))?;
+        }
+
+        /* //////////////////////////////////////////////////////////////////////////// */
+        /* //////////////////////////// OUTPUT RECORDS //////////////////////////////// */
+        /* //////////////////////////////////////////////////////////////////////////// */
+
+        let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+
+        for (j, (record, encryption_randomness)) in private
+            .output_records
+            .iter()
+            .zip_eq(&private.encryption_randomness)
+            .enumerate()
+        {
+            let cs = &mut cs.ns(|| format!("Process output record {}", j));
+
+            let (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer) = {
+                let declare_cs = &mut cs.ns(|| "Declare output record");
+
+                let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
                 >>::PublicKeyGadget::alloc(
-                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(pk_sig_native)
-                )?;
-                let sk_prf =
-                    C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &account_private_key.sk_prf);
-                let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
-                    C::AccountCommitmentScheme,
-                    C::InnerScalarField,
-                >>::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
-                    Ok(&account_private_key.r_pk)
-                })?;
-
-                (pk_sig, sk_prf, r_pk)
-            };
-
-            // Construct the account view key.
-            let candidate_account_view_key = {
-                let mut account_view_key_input = pk_sig.to_bytes(&mut account_cs.ns(|| "pk_sig to_bytes"))?;
-                account_view_key_input.extend_from_slice(&sk_prf);
-
-                // This is the record decryption key.
-                let candidate_account_commitment = account_commitment_parameters.check_commitment_gadget(
-                    &mut account_cs.ns(|| "Compute the account commitment."),
-                    &account_view_key_input,
-                    &r_pk,
+                    &mut declare_cs.ns(|| "given_record_owner"), || Ok(*record.owner())
                 )?;
 
-                // TODO (howardwu): Enforce 6 MSB bits are 0.
-                {
-                    // TODO (howardwu): Enforce 6 MSB bits are 0.
-                }
+                let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-                // Enforce the account commitment bytes (padded) correspond to the
-                // given account's view key bytes (padded). This is equivalent to
-                // verifying that the base field element from the computed account
-                // commitment contains the same bit-value as the scalar field element
-                // computed from the given account private key.
-                {
-                    // Derive the given account view key based on the given account private key.
-                    let given_account_view_key = <C::AccountEncryptionGadget as EncryptionGadget<
-                        C::AccountEncryptionScheme,
-                        C::InnerScalarField,
-                    >>::PrivateKeyGadget::alloc(
-                        &mut account_cs.ns(|| "Allocate account view key"),
-                        || {
-                            account_private_key
-                                .to_decryption_key()
-                                .map_err(|_| SynthesisError::AssignmentMissing)
-                        },
-                    )?;
+                let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
-                    let given_account_view_key_bytes =
-                        given_account_view_key.to_bytes(&mut account_cs.ns(|| "given_account_view_key to_bytes"))?;
+                let given_payload =
+                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
-                    let candidate_account_commitment_bytes = candidate_account_commitment
-                        .to_bytes(&mut account_cs.ns(|| "candidate_account_commitment to_bytes"))?;
+                let given_program_id = UInt8::alloc_vec(
+                    &mut declare_cs.ns(|| "given_program_id"),
+                    &record.program_id().to_bytes_le()?,
+                )?;
 
-                    candidate_account_commitment_bytes.enforce_equal(
-                        &mut account_cs.ns(|| "Check that candidate and given account view keys are equal"),
-                        &given_account_view_key_bytes,
-                    )?;
+                let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::CiphertextRandomizer::alloc(
+                    &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
+                )?;
 
-                    given_account_view_key
-                }
+                (
+                    given_owner,
+                    given_is_dummy,
+                    given_value,
+                    given_payload,
+                    given_program_id,
+                    given_randomizer,
+                )
             };
+            // ********************************************************************
 
-            // Construct and verify the record owner - account address.
+            // *******************************************************************
+            // Check that the record is well-formed.
+            // *******************************************************************
             {
-                let candidate_record_owner = account_encryption_parameters.check_public_key_gadget(
-                    &mut account_cs.ns(|| "Compute the candidate record owner - account address"),
-                    &candidate_account_view_key,
+                let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
+
+                // *******************************************************************
+                // Convert the owner, dummy flag, value, payload, program ID, and randomizer into bits.
+                // *******************************************************************
+
+                let given_owner_bytes =
+                    given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert given_owner to bytes"))?;
+                let given_is_dummy_bytes =
+                    given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
+                let given_value_bytes =
+                    given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
+
+                // Perform noop safety checks.
+                {
+                    let given_value_field_elements = given_value_bytes
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
+                    let given_payload_field_elements = given_payload
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given payload to field elements"))?;
+                    let given_program_id_field_elements = given_program_id
+                        .to_constraint_field(&mut commitment_cs.ns(|| "convert given program ID to field elements"))?;
+
+                    given_value_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the output record {} is empty, enforce it has a value of 0", j)),
+                        &zero_value_field_elements,
+                        &given_is_dummy,
+                    )?;
+                    given_payload_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the output record {} is empty, enforce it has an empty payload", j)),
+                        &empty_payload_field_elements,
+                        &given_is_dummy,
+                    )?;
+                    given_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs
+                            .ns(|| format!("If the output record {} is empty, enforce it has a noop program ID", j)),
+                        &noop_program_id_field_elements,
+                        &given_is_dummy,
+                    )?;
+
+                    output_program_ids.push(given_program_id_field_elements);
+                }
+
+                // *******************************************************************
+                // Check that the record ciphertext and commitment are well-formed.
+                // *******************************************************************
+
+                let mut plaintext = Vec::new();
+                plaintext.extend_from_slice(&given_owner_bytes);
+                plaintext.extend_from_slice(&given_is_dummy_bytes);
+                plaintext.extend_from_slice(&given_value_bytes);
+                plaintext.extend_from_slice(&given_payload);
+                plaintext.extend_from_slice(&given_program_id);
+
+                let encryption_randomness = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::ScalarRandomnessGadget::alloc(
+                    &mut commitment_cs.ns(|| format!("output record {} encryption_randomness", j)),
+                    || Ok(encryption_randomness),
                 )?;
 
-                candidate_record_owner.enforce_equal(
-                    &mut account_cs.ns(|| "Check that declared and computed addresses are equal"),
-                    &given_owner,
+                let (candidate_ciphertext_randomizer, ciphertext, record_view_key) = account_encryption_parameters
+                    .check_encryption_from_scalar_randomness(
+                        &mut commitment_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
+                        &encryption_randomness,
+                        &given_owner,
+                        &plaintext,
+                    )?;
+
+                // Ensure the given randomizer is correct.
+                candidate_ciphertext_randomizer.enforce_equal(
+                    &mut commitment_cs.ns(|| "Check that the given randomizer matches public input"),
+                    &given_randomizer,
+                )?;
+
+                // *******************************************************************
+                // Compute the record commitment and check that it matches the declared commitment.
+                // *******************************************************************
+
+                let record_view_key_commitment = account_encryption_parameters.check_symmetric_key_commitment(
+                    &mut commitment_cs.ns(|| format!("output record {} check_symmetric_key_commitment", j)),
+                    &record_view_key,
+                )?;
+
+                let given_randomizer_bytes =
+                    given_randomizer.to_bytes(&mut commitment_cs.ns(|| "Convert given_randomizer to bytes"))?;
+                let record_view_key_commitment_bytes = record_view_key_commitment
+                    .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
+
+                let mut commitment_input = Vec::with_capacity(
+                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                );
+                commitment_input.extend_from_slice(&given_randomizer_bytes);
+                commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
+                commitment_input.extend_from_slice(&ciphertext);
+
+                let candidate_commitment = record_commitment_parameters
+                    .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
+
+                let candidate_commitment_bytes =
+                    candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
+
+                output_commitments_bytes.push(candidate_commitment_bytes);
+                output_values.push(given_value);
+            };
+        }
+        // *******************************************************************
+
+        // *******************************************************************
+        // Check that program ID is declared by the input and output records.
+        // *******************************************************************
+        {
+            let program_cs = &mut cs.ns(|| "Check that program ID is well-formed");
+
+            // Allocate the program ID.
+            let executable_program_id_field_elements = {
+                let executable_program_id_bytes = UInt8::alloc_input_vec_le(
+                    &mut program_cs.ns(|| "Allocate executable_program_id"),
+                    &public.program_id.as_ref().unwrap().to_bytes_le()?,
+                )?;
+                executable_program_id_bytes
+                    .to_constraint_field(&mut program_cs.ns(|| "convert executable program ID to field elements"))?
+            };
+
+            // Declare the required number of inputs for this function type.
+            let number_of_inputs =
+                &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_inputs for executable"), &[private
+                    .function_type
+                    .input_count()])?[0];
+            {
+                let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
+                let is_inputs_size_correct = number_of_inputs.less_than_or_equal(
+                    &mut program_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
+                    &number_of_input_records,
+                )?;
+                is_inputs_size_correct.enforce_equal(
+                    &mut program_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
+                    &Boolean::constant(true),
                 )?;
             }
 
-            (sk_prf, pk_sig)
-        };
-        // ********************************************************************
+            // Declare the required number of outputs for this function type.
+            let number_of_outputs =
+                &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_outputs for executable"), &[private
+                    .function_type
+                    .output_count()])?[0];
+            {
+                let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);
+                let is_outputs_size_correct = number_of_outputs.less_than_or_equal(
+                    &mut program_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
+                    &number_of_output_records,
+                )?;
+                is_outputs_size_correct.enforce_equal(
+                    &mut program_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
+                    &Boolean::constant(true),
+                )?;
+            }
 
-        // ********************************************************************
-        // Check that the serial number is derived correctly.
-        // ********************************************************************
-        {
-            let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
+            for (i, input_program_id_field_elements) in input_program_ids.iter().take(N::NUM_INPUT_RECORDS).enumerate()
+            {
+                let input_cs = &mut program_cs.ns(|| format!("Check input record {} on executable", i));
 
-            let prf_seed = sk_prf;
-            let randomizer = <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
-                &mut sn_cs.ns(|| "Compute pk_sig randomizer"),
-                &prf_seed,
-                &given_serial_number_nonce_bytes,
-            )?;
-            let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
+                let input_index = UInt8::constant(i as u8);
 
-            let candidate_serial_number_gadget = account_signature_parameters.randomize_public_key(
-                &mut sn_cs.ns(|| "Compute serial number"),
-                &pk_sig,
-                &randomizer_bytes,
-            )?;
-
-            let given_serial_number_gadget = <C::AccountSignatureGadget as SignatureGadget<
-                C::AccountSignatureScheme,
-                C::InnerScalarField,
-            >>::PublicKeyGadget::alloc_input(
-                &mut sn_cs.ns(|| "Declare given serial number"),
-                || Ok(given_serial_number),
-            )?;
-
-            candidate_serial_number_gadget.enforce_equal(
-                &mut sn_cs.ns(|| "Check that given and computed serial numbers are equal"),
-                &given_serial_number_gadget,
-            )?;
-
-            // Convert input serial numbers to bytes
-            let bytes = candidate_serial_number_gadget
-                .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
-            old_serial_numbers_bytes_gadgets.extend_from_slice(&bytes);
-
-            old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
-        };
-        // ********************************************************************
-
-        // *******************************************************************
-        // Check that the record is well-formed.
-        // *******************************************************************
-        {
-            let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
-
-            // Perform noop safety checks.
-            given_value.conditional_enforce_equal(
-                &mut commitment_cs.ns(|| format!("If the input record {} is a noop, enforce it has a value of 0", i)),
-                &zero_value,
-                &given_is_dummy,
-            )?;
-            given_payload.conditional_enforce_equal(
-                &mut commitment_cs
-                    .ns(|| format!("If the input record {} is a noop, enforce it has an empty payload", i)),
-                &empty_payload,
-                &given_is_dummy,
-            )?;
-
-            // Compute the record commitment and check that it matches the declared commitment.
-            let record_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
-            let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
-
-            let mut commitment_input = Vec::new();
-            commitment_input.extend_from_slice(&given_program_id);
-            commitment_input.extend_from_slice(&record_owner_bytes);
-            commitment_input.extend_from_slice(&is_dummy_bytes);
-            commitment_input.extend_from_slice(&given_value);
-            commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
-
-            let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
-                &mut commitment_cs.ns(|| "Compute commitment"),
-                &commitment_input,
-                &given_commitment_randomness,
-            )?;
-
-            candidate_commitment.enforce_equal(
-                &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
-                &given_commitment,
-            )?;
-        }
-    }
-
-    let mut new_record_commitments_gadgets = Vec::with_capacity(private.output_records.len());
-    let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
-
-    for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
-        .output_records
-        .iter()
-        .zip(&public.kernel.commitments)
-        .zip(&private.encrypted_record_randomizers)
-        .zip(&public.encrypted_record_hashes)
-        .enumerate()
-    {
-        let cs = &mut cs.ns(|| format!("Process output record {}", j));
-
-        let (
-            given_program_id,
-            given_owner,
-            given_is_dummy,
-            given_value,
-            given_payload,
-            given_serial_number_nonce,
-            given_serial_number_nonce_bytes,
-            given_commitment,
-            given_commitment_randomness,
-        ) = {
-            let declare_cs = &mut cs.ns(|| "Declare output record");
-
-            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
-            new_program_ids_gadgets.push(given_program_id.clone());
-
-            let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
-            >>::PublicKeyGadget::alloc(
-                &mut declare_cs.ns(|| "given_record_owner"),
-                || Ok(record.owner().to_encryption_key()),
-            )?;
-
-            let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
-
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
-
-            let given_payload =
-                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
-
-            let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
-                C::SerialNumberNonceCRH,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "given_serial_number_nonce"),
-                || Ok(record.serial_number_nonce()),
-            )?;
-
-            let given_serial_number_nonce_bytes =
-                given_serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
-
-            let given_commitment = {
-                let record_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                    C::RecordCommitmentScheme,
-                    C::InnerScalarField,
-                >>::OutputGadget::alloc(
-                    &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
+                let requires_check = input_index.less_than(
+                    &mut input_cs.ns(|| format!("less than for input {}", i)),
+                    number_of_inputs,
                 )?;
 
-                let public_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                    C::RecordCommitmentScheme,
-                    C::InnerScalarField,
-                >>::OutputGadget::alloc_input(
-                    &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
+                input_program_id_field_elements.conditional_enforce_equal(
+                    &mut input_cs.ns(|| format!("Check input program ID, if not dummy - {}", i)),
+                    &executable_program_id_field_elements,
+                    &requires_check,
                 )?;
 
-                record_commitment.enforce_equal(
-                    &mut declare_cs.ns(|| "Check that record commitment matches the public commitment"),
-                    &public_commitment,
+                input_program_id_field_elements.conditional_enforce_equal(
+                    &mut input_cs
+                        .ns(|| format!("If the input record {} is beyond, enforce it has a noop program ID", i)),
+                    &noop_program_id_field_elements,
+                    &requires_check.not(),
+                )?;
+            }
+
+            for (j, output_program_id_field_elements) in
+                output_program_ids.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
+            {
+                let output_cs = &mut program_cs.ns(|| format!("Check output record {} on executable", j));
+
+                let output_index = UInt8::constant(j as u8);
+
+                let requires_check = output_index.less_than(
+                    &mut output_cs.ns(|| format!("less than for output {}", j)),
+                    number_of_outputs,
                 )?;
 
-                record_commitment
-            };
-            new_record_commitments_gadgets.push(given_commitment.clone());
+                output_program_id_field_elements.conditional_enforce_equal(
+                    &mut output_cs.ns(|| format!("Check output program ID, if not dummy - {}", j)),
+                    &executable_program_id_field_elements,
+                    &requires_check,
+                )?;
 
-            let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
-            >>::RandomnessGadget::alloc(
-                &mut declare_cs.ns(|| "given_commitment_randomness"),
-                || Ok(record.commitment_randomness()),
-            )?;
-
-            (
-                given_program_id,
-                given_owner,
-                given_is_dummy,
-                given_value,
-                given_payload,
-                given_serial_number_nonce,
-                given_serial_number_nonce_bytes,
-                given_commitment,
-                given_commitment_randomness,
-            )
-        };
+                output_program_id_field_elements.conditional_enforce_equal(
+                    &mut output_cs
+                        .ns(|| format!("If the output record {} is beyond, enforce it has a noop program ID", j)),
+                    &noop_program_id_field_elements,
+                    &requires_check.not(),
+                )?;
+            }
+        }
         // ********************************************************************
 
         // *******************************************************************
-        // Check that the serial number nonce is computed correctly.
+        // Check that the value balance is valid.
         // *******************************************************************
         {
-            let sn_cs = &mut cs.ns(|| "Check that serial number nonce is computed correctly");
+            let mut cs = cs.ns(|| "Check that the value balance is valid.");
 
-            let record_position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8);
-            let mut serial_number_nonce_input_bytes_le = vec![record_position];
-            serial_number_nonce_input_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
+            let mut candidate_value_balance = Int64::zero();
 
-            let candidate_serial_number_nonce = serial_number_nonce_crh.check_evaluation_gadget(
-                &mut sn_cs.ns(|| "Compute serial number nonce"),
-                serial_number_nonce_input_bytes_le,
+            for (i, input_value) in input_values.iter().enumerate() {
+                // Enforce the record value has positive value that is less than 2^63.
+                for (j, bit) in input_value.to_bits_be()[0..2].iter().enumerate() {
+                    bit.enforce_equal(
+                        cs.ns(|| format!("enforce input {} bit {} is 0", i, j)),
+                        &Boolean::constant(false),
+                    )?;
+                }
+
+                candidate_value_balance = candidate_value_balance
+                    .add(cs.ns(|| format!("add input record {} value", i)), input_value)
+                    .unwrap();
+            }
+
+            for (j, output_value) in output_values.iter().enumerate() {
+                // Enforce the record value has positive value that is less than 2^63.
+                for (k, bit) in output_value.to_bits_be()[0..2].iter().enumerate() {
+                    bit.enforce_equal(
+                        cs.ns(|| format!("enforce output {} bit {} is 0", j, k)),
+                        &Boolean::constant(false),
+                    )?;
+                }
+
+                candidate_value_balance = candidate_value_balance
+                    .sub(cs.ns(|| format!("sub output record {} value", j)), output_value)
+                    .unwrap();
+            }
+
+            let candidate_value_balance_bytes = candidate_value_balance.to_bytes(cs.ns(|| "value_balance_bytes"))?;
+            let candidate_value_balance_field_elements = candidate_value_balance_bytes
+                .to_constraint_field(&mut cs.ns(|| "convert candidate value balance to field elements"))?;
+
+            let given_value_balance_bytes = UInt8::alloc_input_vec_le(
+                &mut cs.ns(|| "Allocate given_value_balance"),
+                &public.value_balance().to_bytes_le()?,
             )?;
+            let given_value_balance_field_elements = given_value_balance_bytes
+                .to_constraint_field(&mut cs.ns(|| "convert given value balance to field elements"))?;
 
-            candidate_serial_number_nonce.enforce_equal(
-                &mut sn_cs.ns(|| "Check that computed nonce matches provided nonce"),
-                &given_serial_number_nonce,
+            candidate_value_balance_field_elements.enforce_equal(
+                &mut cs.ns(|| "enforce the value balance is equal"),
+                &given_value_balance_field_elements,
             )?;
-        }
-        // *******************************************************************
+        };
 
-        // *******************************************************************
-        // Check that the record is well-formed.
-        // *******************************************************************
+        // ********************************************************************
+        // Check the transition ID is well-formed.
+        // ********************************************************************
         {
-            let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
+            let mut cs = cs.ns(|| "Check that the transition ID is valid.");
 
-            // Perform noop safety checks.
-            given_value.conditional_enforce_equal(
-                &mut commitment_cs.ns(|| format!("If the output record {} is a noop, enforce it has a value of 0", j)),
-                &zero_value,
-                &given_is_dummy,
-            )?;
-            given_payload.conditional_enforce_equal(
-                &mut commitment_cs
-                    .ns(|| format!("If the output record {} is a noop, enforce it has an empty payload", j)),
-                &empty_payload,
-                &given_is_dummy,
-            )?;
+            // Encode the leaves for the transition ID.
+            let mut transition_leaves = vec![];
+            transition_leaves.extend_from_slice(&input_serial_numbers_bytes);
+            transition_leaves.extend_from_slice(&output_commitments_bytes);
 
-            // Compute the record commitment and check that it matches the declared commitment.
-            let given_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
-            let given_is_dummy_bytes =
-                given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
+            // Sanity check that the correct number of leaves are allocated.
+            // Note: This is *not* enforced in the circuit.
+            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), transition_leaves.len());
 
-            let mut commitment_input = Vec::new();
-            commitment_input.extend_from_slice(&given_program_id);
-            commitment_input.extend_from_slice(&given_owner_bytes);
-            commitment_input.extend_from_slice(&given_is_dummy_bytes);
-            commitment_input.extend_from_slice(&given_value);
-            commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
+            // Allocate the hashed leaves.
+            let hashed_transition_leaves = transition_leaves
+                .iter()
+                .enumerate()
+                .map(|(i, leaf)| {
+                    transition_id_crh.check_evaluation_gadget(
+                        &mut cs.ns(|| format!("Compute the transition leaf {}", i)),
+                        leaf.clone(),
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
-            let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
-                &mut commitment_cs.ns(|| "Compute record commitment"),
-                &commitment_input,
-                &given_commitment_randomness,
-            )?;
-            candidate_commitment.enforce_equal(
-                &mut commitment_cs.ns(|| "Check that computed commitment matches public input"),
-                &given_commitment,
-            )?;
-        }
+            let candidate_transition_id =
+                compute_root::<<N::TransitionIDParameters as MerkleParameters>::H, N::TransitionIDCRHGadget, _, _>(
+                    &mut cs.ns(|| "Compute the transition ID"),
+                    &transition_id_crh,
+                    &hashed_transition_leaves,
+                )?;
 
-        // *******************************************************************
-
-        // *******************************************************************
-        // Check that the record encryption is well-formed.
-        // *******************************************************************
-        {
-            let encryption_cs = &mut cs.ns(|| "Check that record encryption is well-formed");
-
-            // Check serialization
-
-            // *******************************************************************
-            // Convert program id, value, payload, serial number nonce, and commitment randomness into bits.
-
-            let plaintext_bytes = {
-                let mut res = vec![];
-
-                // Program ID
-                res.extend_from_slice(&given_program_id);
-
-                // Value
-                res.extend_from_slice(&given_value);
-
-                // Payload
-                res.extend_from_slice(&given_payload);
-
-                // Serial number nonce
-                res.extend_from_slice(&given_serial_number_nonce_bytes);
-
-                // Commitment randomness
-                let given_commitment_randomness_bytes = given_commitment_randomness
-                    .to_bytes(&mut encryption_cs.ns(|| "Convert commitment randomness to bytes"))?;
-                res.extend_from_slice(&given_commitment_randomness_bytes);
-
-                res
-            };
-
-            // *******************************************************************
-            // Construct the record encryption
-
-            let encryption_randomness_gadget = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
-            >>::RandomnessGadget::alloc(
-                &mut encryption_cs.ns(|| format!("output record {} encryption_randomness", j)),
-                || Ok(encryption_randomness),
-            )?;
-
-            let candidate_encrypted_record_gadget = account_encryption_parameters.check_encryption_gadget(
-                &mut encryption_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
-                &encryption_randomness_gadget,
-                &given_owner,
-                &plaintext_bytes,
-            )?;
-
-            // *******************************************************************
-            // Check that the encrypted record hash is correct
-
-            let encrypted_record_hash_gadget = <C::EncryptedRecordCRHGadget as CRHGadget<
-                C::EncryptedRecordCRH,
-                C::InnerScalarField,
+            let given_transition_id = <N::TransitionIDCRHGadget as CRHGadget<
+                N::TransitionIDCRH,
+                N::InnerScalarField,
             >>::OutputGadget::alloc_input(
-                &mut encryption_cs.ns(|| format!("output record {} encrypted record hash", j)),
-                || Ok(encrypted_record_hash),
+                &mut cs.ns(|| "Allocate given transition ID"),
+                || Ok(public.transition_id()),
             )?;
 
-            let candidate_encrypted_record_gadget_field_elements = candidate_encrypted_record_gadget
-                .to_constraint_field(
-                    &mut encryption_cs.ns(|| format!("convert encrypted record {} to field elements", j)),
-                )?;
-
-            let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget_on_field_elements(
-                &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
-                candidate_encrypted_record_gadget_field_elements,
-            )?;
-
-            encrypted_record_hash_gadget.enforce_equal(
-                encryption_cs.ns(|| format!("output record {} encrypted record hash is valid", j)),
-                &candidate_encrypted_record_hash,
-            )?;
+            candidate_transition_id
+                .enforce_equal(&mut cs.ns(|| "Check that transition ID is valid"), &given_transition_id)?;
         }
+
+        Ok(())
     }
-    // *******************************************************************
-
-    // *******************************************************************
-    // Check that program commitment is well-formed.
-    // *******************************************************************
-    {
-        let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
-
-        let mut input = Vec::new();
-        for id_gadget in old_program_ids_gadgets.iter().take(C::NUM_INPUT_RECORDS) {
-            input.extend_from_slice(id_gadget);
-        }
-        for id_gadget in new_program_ids_gadgets.iter().take(C::NUM_OUTPUT_RECORDS) {
-            input.extend_from_slice(id_gadget);
-        }
-
-        let given_commitment_randomness =
-            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::RandomnessGadget::alloc(
-                &mut commitment_cs.ns(|| "given_commitment_randomness"),
-                || Ok(&private.program_randomness),
-            )?;
-
-        let given_commitment =
-            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::OutputGadget::alloc_input(
-                &mut commitment_cs.ns(|| "given_commitment"),
-                || Ok(public.program_commitment.as_ref().unwrap()),
-            )?;
-
-        let candidate_commitment = program_commitment_parameters.check_commitment_gadget(
-            &mut commitment_cs.ns(|| "candidate_commitment"),
-            &input,
-            &given_commitment_randomness,
-        )?;
-
-        candidate_commitment.enforce_equal(
-            &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
-            &given_commitment,
-        )?;
-    }
-    // ********************************************************************
-
-    // ********************************************************************
-    // Check that the local data root is valid
-    // ********************************************************************
-    {
-        let mut cs = cs.ns(|| "Check that local data root is valid.");
-
-        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), &public.kernel.memo)?;
-        let network_id = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &[public.kernel.network_id])?;
-
-        let mut old_record_commitment_bytes = vec![];
-        for i in 0..C::NUM_INPUT_RECORDS {
-            let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
-
-            let mut input_bytes = vec![];
-            input_bytes.extend_from_slice(&[UInt8::constant(i as u8)]);
-            input_bytes.extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes(&mut cs.ns(|| "serial_number"))?);
-            input_bytes.extend_from_slice(&old_record_commitments_gadgets[i].to_bytes(&mut cs.ns(|| "commitment"))?);
-            input_bytes.extend_from_slice(&memo);
-            input_bytes.extend_from_slice(&network_id);
-
-            let commitment_randomness = <C::LocalDataCommitmentGadget as CommitmentGadget<
-                C::LocalDataCommitmentScheme,
-                C::InnerScalarField,
-            >>::RandomnessGadget::alloc(
-                cs.ns(|| format!("Allocate old record local data commitment randomness {}", i)),
-                || Ok(&private.local_data_leaf_randomizers[i]),
-            )?;
-
-            let commitment = local_data_commitment_parameters.check_commitment_gadget(
-                cs.ns(|| format!("Commit to old record local data {}", i)),
-                &input_bytes,
-                &commitment_randomness,
-            )?;
-
-            old_record_commitment_bytes
-                .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "old_record_local_data"))?);
-        }
-
-        let mut new_record_commitment_bytes = Vec::new();
-        for j in 0..C::NUM_OUTPUT_RECORDS {
-            let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
-
-            let mut input_bytes = vec![];
-            input_bytes.extend_from_slice(&[UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8)]);
-            input_bytes
-                .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes(&mut cs.ns(|| "record_commitment"))?);
-            input_bytes.extend_from_slice(&memo);
-            input_bytes.extend_from_slice(&network_id);
-
-            let commitment_randomness = <C::LocalDataCommitmentGadget as CommitmentGadget<
-                C::LocalDataCommitmentScheme,
-                C::InnerScalarField,
-            >>::RandomnessGadget::alloc(
-                cs.ns(|| format!("Allocate new record local data commitment randomness {}", j)),
-                || Ok(&private.local_data_leaf_randomizers[C::NUM_INPUT_RECORDS + j]),
-            )?;
-
-            let commitment = local_data_commitment_parameters.check_commitment_gadget(
-                cs.ns(|| format!("Commit to new record local data {}", j)),
-                &input_bytes,
-                &commitment_randomness,
-            )?;
-
-            new_record_commitment_bytes
-                .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "new_record_local_data"))?);
-        }
-
-        let inner1_commitment_hash = local_data_crh.check_evaluation_gadget(
-            cs.ns(|| "Compute to local data commitment inner1 hash"),
-            old_record_commitment_bytes,
-        )?;
-
-        let inner2_commitment_hash = local_data_crh.check_evaluation_gadget(
-            cs.ns(|| "Compute to local data commitment inner2 hash"),
-            new_record_commitment_bytes,
-        )?;
-
-        let mut inner_commitment_hash_bytes = Vec::new();
-        inner_commitment_hash_bytes
-            .extend_from_slice(&inner1_commitment_hash.to_bytes(&mut cs.ns(|| "inner1_commitment_hash"))?);
-        inner_commitment_hash_bytes
-            .extend_from_slice(&inner2_commitment_hash.to_bytes(&mut cs.ns(|| "inner2_commitment_hash"))?);
-
-        let candidate_local_data_root = local_data_crh.check_evaluation_gadget(
-            cs.ns(|| "Compute to local data commitment root"),
-            inner_commitment_hash_bytes,
-        )?;
-
-        let given_local_data_root =
-            <C::LocalDataCRHGadget as CRHGadget<C::LocalDataCRH, C::InnerScalarField>>::OutputGadget::alloc_input(
-                cs.ns(|| "Allocate local data root"),
-                || Ok(public.local_data_root.unwrap()),
-            )?;
-
-        candidate_local_data_root.enforce_equal(
-            &mut cs.ns(|| "Check that local data root is valid"),
-            &given_local_data_root,
-        )?;
-    }
-    // *******************************************************************
-
-    // *******************************************************************
-    // Check that the value balance is valid
-    // *******************************************************************
-    {
-        let mut cs = cs.ns(|| "Check that the value balance is valid.");
-
-        let given_value_balance =
-            Int64::alloc_input_fe(cs.ns(|| "given_value_balance"), public.kernel.value_balance.0)?;
-
-        let mut candidate_value_balance = Int64::zero();
-
-        for (i, old_record) in private.input_records.iter().enumerate() {
-            let value = old_record.value as i64;
-            let record_value = Int64::alloc(cs.ns(|| format!("old record {} value", i)), || Ok(value))?;
-
-            candidate_value_balance = candidate_value_balance
-                .add(cs.ns(|| format!("add old record {} value", i)), &record_value)
-                .unwrap();
-        }
-
-        for (j, new_record) in private.output_records.iter().enumerate() {
-            let value = new_record.value as i64;
-            let record_value = Int64::alloc(cs.ns(|| format!("new record {} value", j)), || Ok(value))?;
-
-            candidate_value_balance = candidate_value_balance
-                .sub(cs.ns(|| format!("sub new record {} value", j)), &record_value)
-                .unwrap();
-        }
-
-        // Enforce that given_value_balance is equivalent to candidate_value_balance
-        given_value_balance.enforce_equal(
-            cs.ns(|| "given_value_balance == candidate_value_balance"),
-            &candidate_value_balance,
-        )?;
-    }
-
-    Ok(())
 }

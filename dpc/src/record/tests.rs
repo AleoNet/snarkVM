@@ -14,69 +14,44 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    record::encrypted::*,
-    testnet2::*,
-    Account,
-    AccountScheme,
-    NoopProgram,
-    Parameters,
-    Payload,
-    Record,
-    ViewKey,
-    PAYLOAD_SIZE,
-};
-use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
-use snarkvm_utilities::{FromBytes, UniformRand};
+use crate::{testnet2::*, Account, AccountScheme, AleoAmount, Network, Payload, Record, ViewKey};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use std::ops::Deref;
 
-pub(crate) const ITERATIONS: usize = 5;
+pub(crate) const ITERATIONS: usize = 25;
 
 #[test]
-fn test_record_encryption() {
-    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
+fn test_record_ciphertext() {
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+        let account = Account::<Testnet2>::new(rng);
 
-        for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        let value: i64 = rng.gen();
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
+        rng.fill(&mut payload);
 
-            let sn_nonce_input: [u8; 32] = rng.gen();
-            let value = rng.gen();
-            let mut payload = [0u8; PAYLOAD_SIZE];
-            rng.fill(&mut payload);
+        let expected_record = Record::new(
+            account.address(),
+            AleoAmount::from_i64(value),
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            rng,
+        )
+        .unwrap();
 
-            // Sample a new record commitment randomness.
-            let commitment_randomness =
-                <<Testnet2Parameters as Parameters>::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(
-                    &mut rng,
-                );
+        // Encrypt the record.
+        let record_ciphertext = expected_record.ciphertext();
+        assert_eq!(
+            Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES,
+            (*record_ciphertext).to_bytes_le().unwrap().len()
+        );
 
-            let given_record = Record::new_input(
-                noop_program.deref(),
-                dummy_account.address,
-                false,
-                value,
-                Payload::from_bytes_le(&payload).unwrap(),
-                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                    .hash(&sn_nonce_input)
-                    .unwrap(),
-                commitment_randomness,
-            )
-            .unwrap();
-
-            // Encrypt the record
-            let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
-
-            // Decrypt the record
-            let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
-
-            assert_eq!(given_record, decrypted_record);
-        }
+        // Decrypt the record.
+        let account_view_key = ViewKey::from_private_key(account.private_key());
+        let candidate_record = Record::from_account_view_key(&account_view_key, record_ciphertext).unwrap();
+        assert_eq!(expected_record, candidate_record);
     }
 }

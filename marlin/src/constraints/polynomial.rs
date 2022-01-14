@@ -65,10 +65,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AlgebraForAHP<TargetField, 
         y_prepared: &NonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<NonNativeFieldVar<TargetField, BaseField>, SynthesisError> {
         // Compute `x - y`.
-        let denominator = x.sub(cs.ns(|| "denominator"), &y)?;
+        let denominator = x.sub(cs.ns(|| "denominator"), y)?;
 
         // Compute `x_prepared - y_prepared`.
-        let numerator = x_prepared.sub(cs.ns(|| "numerator"), &y_prepared)?;
+        let numerator = x_prepared.sub(cs.ns(|| "numerator"), y_prepared)?;
         let denominator_invert = denominator.inverse(cs.ns(|| "denominator_inverse"))?;
 
         // Compute `(x - y) / (x_prepared - y_prepared)`.

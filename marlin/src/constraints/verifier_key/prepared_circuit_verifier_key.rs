@@ -25,7 +25,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use crate::{
     constraints::verifier::MarlinVerificationGadget,
-    marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey},
+    marlin::{CircuitVerifyingKey, MarlinMode, PreparedCircuitVerifyingKey},
     FiatShamirRng,
     FiatShamirRngVar,
     PhantomData,
@@ -42,6 +42,7 @@ pub struct PreparedCircuitVerifyingKeyVar<
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    MM: MarlinMode,
 > {
     /// The size of domain h
     pub domain_h_size: u64,
@@ -58,7 +59,7 @@ pub struct PreparedCircuitVerifyingKeyVar<
     /// The Fiat-Shamir Rng
     pub fs_rng: R,
 
-    pub pr: PhantomData<PR>,
+    pub pr: PhantomData<(PR, MM)>,
 }
 
 impl<
@@ -68,7 +69,8 @@ impl<
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
-> Clone for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+    MM: MarlinMode,
+> Clone for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R, MM>
 {
     fn clone(&self) -> Self {
         PreparedCircuitVerifyingKeyVar {
@@ -84,9 +86,9 @@ impl<
     }
 }
 
-impl<TargetField, BaseField, PC, PCG, PR, R>
-    AllocGadget<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>, BaseField>
-    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+impl<TargetField, BaseField, PC, PCG, PR, R, MM>
+    AllocGadget<PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R, MM>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
@@ -94,12 +96,13 @@ where
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    MM: MarlinMode,
 {
     #[inline]
     fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>>,
     {
         let tmp = value_gen()?;
         let obj = tmp.borrow();
@@ -133,7 +136,7 @@ where
 
         let mut fs_rng_raw = PR::new();
         fs_rng_raw.absorb_bytes(&to_bytes_le![
-            &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
+            &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG, MM>::PROTOCOL_NAME
         ]?);
 
         let fs_rng = {
@@ -165,7 +168,7 @@ where
     fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(_cs: CS, _value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>>,
     {
         unimplemented!();
         // the overhead is not worthwhile
@@ -175,15 +178,16 @@ where
     fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(_cs: CS, _value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>>,
     {
         unimplemented!();
         // the overhead is not worthwhile
     }
 }
 
-impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<TargetField, BaseField, PC>, BaseField>
-    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+impl<TargetField, BaseField, PC, PCG, PR, R, MM>
+    AllocGadget<CircuitVerifyingKey<TargetField, BaseField, PC, MM>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R, MM>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
@@ -191,12 +195,13 @@ where
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    MM: MarlinMode,
 {
     #[inline]
     fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC, MM>>,
     {
         let tmp = value_gen()?;
         let vk = tmp.borrow();
@@ -206,11 +211,10 @@ where
     }
 
     #[inline]
-    #[inline]
     fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC, MM>>,
     {
         let tmp = value_gen()?;
         let vk = tmp.borrow();
@@ -223,7 +227,7 @@ where
     fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC, MM>>,
     {
         let tmp = value_gen()?;
         let vk = tmp.borrow();
@@ -234,6 +238,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::upper_case_acronyms)]
 mod test {
     use core::ops::MulAssign;
 
@@ -255,98 +260,19 @@ mod test {
         FiatShamirAlgebraicSpongeRng,
         FiatShamirAlgebraicSpongeRngVar,
         PoseidonSponge,
-        PoseidonSpongeVar,
+        PoseidonSpongeGadget as PoseidonSpongeVar,
     };
 
     use super::*;
     use crate::constraints::verifier_key::CircuitVerifyingKeyVar;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type MultiPC = SonicKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinTestnet1Mode>;
 
     type MultiPCVar = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
-
-    #[test]
-    fn test_alloc() {
-        let rng = &mut test_rng();
-
-        let cs = &mut TestConstraintSystem::<Fq>::new();
-
-        let num_constraints = 25;
-        let num_variables = 25;
-
-        // Construct the circuit verifier key.
-
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
-        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
-
-        let a = Fr::rand(rng);
-        let b = Fr::rand(rng);
-        let mut c = a;
-        c.mul_assign(&b);
-        let mut d = c;
-        d.mul_assign(&b);
-
-        let circ = Circuit {
-            a: Some(a),
-            b: Some(b),
-            num_constraints,
-            num_variables,
-        };
-
-        let (_circuit_pk, circuit_vk) = MarlinInst::circuit_setup(&universal_srs, &circ).unwrap();
-
-        let prepared_circuit_vk = circuit_vk.prepare();
-
-        // Allocate the circuit vk gadget.
-        let prepared_circuit_vk_gadget =
-            PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc_constant(
-                cs.ns(|| "alloc_prepared_vk"),
-                || Ok(prepared_circuit_vk.clone()),
-            )
-            .unwrap();
-
-        // Enforce that the native vk and vk gadget elements are equivalent.
-
-        assert_eq!(
-            prepared_circuit_vk.domain_h_size,
-            prepared_circuit_vk_gadget.domain_h_size
-        );
-        assert_eq!(
-            prepared_circuit_vk.domain_k_size,
-            prepared_circuit_vk_gadget.domain_k_size
-        );
-
-        for (i, (prepared_commitment, prepared_commitment_gadget)) in prepared_circuit_vk
-            .prepared_index_comms
-            .iter()
-            .zip(prepared_circuit_vk_gadget.prepared_index_comms)
-            .enumerate()
-        {
-            let expected_prepared_commitment_gadget =
-                <MultiPCVar as PCCheckVar<_, _, _>>::PreparedCommitmentVar::alloc(
-                    cs.ns(|| format!("alloc_prepared_commitment_{}", i)),
-                    || Ok(prepared_commitment),
-                )
-                .unwrap();
-
-            for (j, (expected_comm, comm)) in expected_prepared_commitment_gadget
-                .prepared_comm
-                .iter()
-                .zip(prepared_commitment_gadget.prepared_comm)
-                .enumerate()
-            {
-                expected_comm
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_comm_{}_{}", i, j)), &comm)
-                    .unwrap();
-            }
-        }
-
-        assert!(cs.is_satisfied());
-    }
 
     #[test]
     fn test_prepare() {
@@ -358,7 +284,7 @@ mod test {
         let num_variables = 25;
 
         // Construct the circuit verifier key.
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinTestnet1Mode>::max_degree(100, 25, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let a = Fr::rand(rng);
@@ -380,12 +306,11 @@ mod test {
         let prepared_circuit_vk = circuit_vk.prepare();
 
         // Allocate the circuit vk gadget.
-        let circuit_vk_gadget =
-            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
+        let prepared_circuit_vk_gadget: PreparedCircuitVerifyingKeyVar<_, _, _, _, FS, FSG, _> =
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar, _>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
+                .unwrap()
+                .prepare(cs.ns(|| "Prepare"))
                 .unwrap();
-
-        let prepared_circuit_vk_gadget: PreparedCircuitVerifyingKeyVar<_, _, _, _, FS, FSG> =
-            circuit_vk_gadget.prepare(cs.ns(|| "prepare")).unwrap();
 
         // Enforce that the native vk and vk gadget elements are equivalent.
 

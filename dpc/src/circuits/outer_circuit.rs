@@ -14,94 +14,80 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, OuterPrivateVariables, OuterPublicVariables, Parameters};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
+use crate::{Execution, Network, OuterPrivateVariables, OuterPublicVariables};
+use snarkvm_algorithms::traits::{MerkleParameters, SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
-    bits::ToBytesGadget,
     traits::{
-        algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
+        algorithms::{CRHGadget, SNARKVerifierGadget},
         alloc::AllocGadget,
         eq::EqGadget,
     },
     MergeGadget,
     ToBitsLEGadget,
-    ToConstraintFieldGadget,
+    ToBytesGadget,
+    ToMinimalBitsGadget,
+    UInt8,
 };
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-
-use itertools::Itertools;
+use snarkvm_utilities::ToBytes;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct OuterCircuit<C: Parameters> {
-    public: OuterPublicVariables<C>,
-    private: OuterPrivateVariables<C>,
+#[derivative(Clone(bound = "N: Network"))]
+pub struct OuterCircuit<N: Network> {
+    public: OuterPublicVariables<N>,
+    private: OuterPrivateVariables<N>,
 }
 
-impl<C: Parameters> OuterCircuit<C> {
+impl<N: Network> OuterCircuit<N> {
     pub fn blank(
-        inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
-        inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        execution: Execution<C>,
+        inner_verifying_key: <N::InnerSNARK as SNARK>::VerifyingKey,
+        inner_proof: N::InnerProof,
+        execution: Execution<N>,
     ) -> Self {
         Self {
             public: OuterPublicVariables::blank(),
-            private: OuterPrivateVariables::blank(inner_snark_vk, inner_snark_proof, execution),
+            private: OuterPrivateVariables::blank(inner_verifying_key, inner_proof, execution),
         }
     }
 
-    pub fn new(public: OuterPublicVariables<C>, private: OuterPrivateVariables<C>) -> Self {
+    pub fn new(public: OuterPublicVariables<N>, private: OuterPrivateVariables<N>) -> Self {
         Self { public, private }
     }
 }
 
-impl<C: Parameters> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
-where
-    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
-{
-    fn generate_constraints<CS: ConstraintSystem<C::OuterScalarField>>(
+impl<N: Network> ConstraintSynthesizer<N::OuterScalarField> for OuterCircuit<N> {
+    fn generate_constraints<CS: ConstraintSystem<N::OuterScalarField>>(
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        execute_outer_circuit::<C, CS>(cs, &self.public, &self.private)
+        execute_outer_circuit::<N, CS>(cs, &self.public, &self.private)
     }
 }
 
-pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarField>>(
+pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarField>>(
     cs: &mut CS,
-    public: &OuterPublicVariables<C>,
-    private: &OuterPrivateVariables<C>,
+    public: &OuterPublicVariables<N>,
+    private: &OuterPrivateVariables<N>,
 ) -> Result<(), SynthesisError> {
-    // Access the outer public variables.
-    let OuterPublicVariables {
-        inner_public_variables: inner_public,
-        inner_circuit_id,
-    } = public;
-
-    // In the outer circuit, these two variables must be allocated as witness,
-    // as they are not included in the transaction.
-    debug_assert!(inner_public.program_commitment.is_none());
-    debug_assert!(inner_public.local_data_root.is_none());
-
     // ************************************************************************
     // Declare public parameters.
     // ************************************************************************
 
-    let program_id_commitment_parameters =
-        C::ProgramCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
-            Ok(C::program_commitment_scheme().clone())
+    let function_id_crh =
+        N::FunctionIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare function_id_crh_parameters"), || {
+            Ok(N::function_id_crh().clone())
         })?;
 
-    let program_circuit_id_crh = C::ProgramCircuitIDCRHGadget::alloc_constant(
-        &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
-        || Ok(C::program_circuit_id_crh().clone()),
-    )?;
+    let program_functions_tree_crh =
+        N::ProgramIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare program_functions_tree_crh_parameters"), || {
+            Ok(N::program_id_parameters().crh().clone())
+        })?;
 
     let inner_circuit_id_crh =
-        C::InnerCircuitIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
-            Ok(C::inner_circuit_id_crh().clone())
+        N::InnerCircuitIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
+            Ok(N::inner_circuit_id_crh().clone())
         })?;
 
     // ************************************************************************
@@ -110,113 +96,70 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     // Declare inner circuit public variables as inner circuit field elements
 
-    let ledger_digest_fe =
-        alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
+    let ledger_root_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.ledger_root(), "ledger root inner snark")?;
 
-    let serial_number_fe = {
-        let mut serial_number_fe_vec = Vec::with_capacity(inner_public.kernel.serial_numbers.len());
-        for (index, sn) in inner_public.kernel.serial_numbers.iter().enumerate() {
-            let this_serial_number_fe =
-                alloc_inner_snark_input_field_element::<C, _, _>(cs, sn, &format!("serial number {}", index))?;
-
-            serial_number_fe_vec.push(this_serial_number_fe);
-        }
-
-        <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
-            cs.ns(|| "serial number"),
-            &serial_number_fe_vec,
-        )?
-    };
-
-    let commitment_and_encrypted_record_hash_fe = {
-        let mut commitment_and_encrypted_record_hash_fe_vec =
-            Vec::with_capacity(inner_public.kernel.commitments.len() * C::NUM_OUTPUT_RECORDS);
-        for (index, (cm, encrypted_record_hash)) in inner_public
-            .kernel
-            .commitments
-            .iter()
-            .zip_eq(inner_public.encrypted_record_hashes.iter())
-            .enumerate()
-        {
-            let commitment_fe =
-                alloc_inner_snark_input_field_element::<C, _, _>(cs, cm, &format!("commitment {}", index))?;
-            let encrypted_record_hash_fe = alloc_inner_snark_input_field_element::<C, _, _>(
-                cs,
-                encrypted_record_hash,
-                &format!("encrypted_record_hash {}", index),
-            )?;
-
-            commitment_and_encrypted_record_hash_fe_vec.push(commitment_fe);
-            commitment_and_encrypted_record_hash_fe_vec.push(encrypted_record_hash_fe);
-        }
-
-        <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
-            cs.ns(|| "commitment_and_encrypted_record_hash"),
-            &commitment_and_encrypted_record_hash_fe_vec,
-        )?
-    };
-
-    let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.kernel.memo, "memo")?;
-
-    let network_id_fe =
-        alloc_inner_snark_input_field_element::<C, _, _>(cs, &[inner_public.kernel.network_id], "network id")?;
-
-    let value_balance_fe = alloc_inner_snark_input_field_element::<C, _, _>(
+    let local_transitions_root_fe_inner_snark = alloc_inner_snark_input_field_element::<N, _, _>(
         cs,
-        &inner_public.kernel.value_balance.0.to_le_bytes(),
+        &public.local_transitions_root(),
+        "local transitions root inner snark",
+    )?;
+
+    let program_id_bytes = UInt8::alloc_vec(
+        &mut cs.ns(|| "Given Program ID bytes"),
+        &private.execution.program_id.to_bytes_le()?[..],
+    )?;
+    let program_id_fe =
+        N::InnerSNARKGadget::input_gadget_from_bytes(cs.ns(|| "Given Program ID fe"), &program_id_bytes)?;
+
+    let value_balance_fe = alloc_inner_snark_input_field_element::<N, _, _>(
+        cs,
+        &public.value_balance().to_bytes_le()?[..],
         "value balance",
     )?;
 
-    let program_commitment_fe =
-        alloc_inner_snark_field_element::<C, _, _>(cs, &private.program_commitment, "program commitment")?;
-
-    let local_data_root_fe_inner_snark =
-        alloc_inner_snark_field_element::<C, _, _>(cs, &private.local_data_root, "local data root inner snark")?;
-
-    let local_data_root_fe_program_snark =
-        alloc_program_snark_field_element::<C, _, _>(cs, &private.local_data_root, "local data root program snark")?;
-
+    let transition_id_fe_inner_snark =
+        alloc_inner_snark_input_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID inner snark")?;
+    let transition_id_fe_program_snark =
+        alloc_program_snark_field_element::<N, _, _>(cs, &public.transition_id(), "transition ID program snark")?;
     {
         // Construct inner snark input as bits
-        let local_data_root_input_inner_snark_bits =
-            local_data_root_fe_inner_snark.to_bits_le(cs.ns(|| "local data root inner snark to bits"))?;
-        let local_data_root_input_program_snark_bits =
-            local_data_root_fe_program_snark.to_bits_le(cs.ns(|| "local data root program snark to bits"))?;
-        local_data_root_input_inner_snark_bits.enforce_equal(
-            cs.ns(|| "local data root equality"),
-            &local_data_root_input_program_snark_bits,
+        let transition_id_input_inner_snark_bits =
+            transition_id_fe_inner_snark.to_bits_le(cs.ns(|| "transition ID inner snark to bits"))?;
+        let transition_id_input_program_snark_bits =
+            transition_id_fe_program_snark.to_bits_le(cs.ns(|| "transition ID program snark to bits"))?;
+        transition_id_input_inner_snark_bits.enforce_equal(
+            cs.ns(|| "transition ID equality"),
+            &transition_id_input_program_snark_bits,
         )?;
     }
 
     let inner_snark_input =
-        <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
-            ledger_digest_fe,
-            serial_number_fe,
-            commitment_and_encrypted_record_hash_fe,
-            program_commitment_fe,
-            memo_fe,
-            network_id_fe,
-            local_data_root_fe_inner_snark,
+        <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
+            ledger_root_fe_inner_snark,
+            local_transitions_root_fe_inner_snark,
+            program_id_fe,
             value_balance_fe,
+            transition_id_fe_inner_snark,
         ])?;
 
     // ************************************************************************
     // Verify the inner circuit proof.
     // ************************************************************************
 
-    let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+    let inner_verifying_key = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit verifying key"),
-        || Ok(&private.inner_snark_vk),
+        || Ok(&private.inner_verifying_key),
     )?;
 
-    let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
+    let inner_snark_proof = <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(&private.inner_snark_proof),
+        || Ok(&*private.inner_proof),
     )?;
 
-    C::InnerSNARKGadget::check_verify(
-        &mut cs.ns(|| "Check that proof is satisfied"),
-        &inner_snark_vk,
+    N::InnerSNARKGadget::check_verify(
+        &mut cs.ns(|| "Check that the inner circuit proof is satisfied"),
+        &inner_verifying_key,
         &inner_snark_input,
         &inner_snark_proof,
     )?;
@@ -224,57 +167,61 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // ************************************************************************
     // Verify each circuit exist in declared program and verify their proofs.
     // ************************************************************************
-
-    let mut program_ids = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
-    for (index, input) in private.program_proofs.iter().enumerate().take(C::NUM_TOTAL_RECORDS) {
-        let cs = &mut cs.ns(|| format!("Check program for record {}", index));
-
-        let program_circuit_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
-            &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&input.proof),
-        )?;
+    {
+        let cs = &mut cs.ns(|| "Check execution for program");
 
         let program_circuit_verifying_key =
-            <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+            <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
                 &mut cs.ns(|| "Allocate program circuit verifying key"),
-                || Ok(&input.verifying_key),
+                || Ok(&private.execution.verifying_key),
             )?;
 
-        let program_circuit_verifying_key_field_elements = program_circuit_verifying_key
-            .to_constraint_field(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
+        // Check that the program ID is derived correctly.
+        {
+            // Verify that the claimed circuit ID is a valid Merkle path in the program circuits tree.
+            let program_circuit_verifying_key_bits = program_circuit_verifying_key
+                .to_minimal_bits(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
-        let claimed_circuit_id = program_circuit_id_crh.check_evaluation_gadget_on_field_elements(
-            &mut cs.ns(|| "Compute circuit ID"),
-            program_circuit_verifying_key_field_elements,
-        )?;
+            let claimed_circuit_id = function_id_crh.check_evaluation_gadget_on_bits(
+                &mut cs.ns(|| "Compute circuit ID"),
+                program_circuit_verifying_key_bits,
+            )?;
 
-        let claimed_circuit_id_bytes =
-            claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
+            let program_path_gadget = MerklePathGadget::<_, N::ProgramIDCRHGadget, _>::alloc(
+                &mut cs.ns(|| "Declare program path for circuit"),
+                || Ok(&private.execution.program_path),
+            )?;
 
-        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramCircuitIDCRHGadget, _>::alloc(
-            &mut cs.ns(|| "Declare program path for circuit"),
-            || Ok(&input.program_path),
-        )?;
+            let claimed_program_id = program_path_gadget.calculate_root(
+                &mut cs.ns(|| "calculate_program_id"),
+                &program_functions_tree_crh,
+                claimed_circuit_id,
+            )?;
 
-        let claimed_program_id = death_program_merkle_path_gadget.calculate_root(
-            &mut cs.ns(|| "calculate_program_id"),
-            &program_circuit_id_crh,
-            claimed_circuit_id_bytes,
-        )?;
+            let claimed_program_id_bytes =
+                claimed_program_id.to_bytes_strict(&mut cs.ns(|| "claimed program id to bytes"))?;
 
-        let claimed_program_id_bytes =
-            claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
+            claimed_program_id_bytes.enforce_equal(
+                &mut cs.ns(|| "Check that declared and computed program IDs are equal"),
+                &program_id_bytes,
+            )?;
+        }
 
-        program_ids.push(claimed_program_id_bytes);
+        // Verify the proof.
 
-        let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
+        let position_fe = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
-            || Ok(vec![C::InnerScalarField::from(index as u128)]),
+            || Ok(vec![N::InnerScalarField::from(0u128)]),
         )?;
-        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &transition_id_fe_program_snark)?;
 
-        C::ProgramSNARKGadget::check_verify(
-            &mut cs.ns(|| "Check that proof is satisfied"),
+        let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
+            &mut cs.ns(|| "Allocate program circuit proof"),
+            || Ok(&*private.execution.proof),
+        )?;
+
+        N::ProgramSNARKGadget::check_verify(
+            &mut cs.ns(|| "Check that the program proof is satisfied"),
             &program_circuit_verifying_key,
             &program_input,
             &program_circuit_proof,
@@ -284,59 +231,20 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // ********************************************************************
 
     // ********************************************************************
-    // Check that the program commitment is derived correctly.
-    // ********************************************************************
-    {
-        let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
-
-        let mut input = Vec::new();
-        for id in program_ids.iter().take(C::NUM_TOTAL_RECORDS) {
-            input.extend_from_slice(&id);
-        }
-
-        let given_commitment_randomness =
-            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
-                &mut commitment_cs.ns(|| "Commitment randomness"),
-                || Ok(&private.program_randomness),
-            )?;
-
-        let given_commitment =
-            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc(
-                &mut commitment_cs.ns(|| "Commitment output"),
-                || Ok(&private.program_commitment),
-            )?;
-
-        let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(
-            &mut commitment_cs.ns(|| "Compute commitment"),
-            &input,
-            &given_commitment_randomness,
-        )?;
-
-        candidate_commitment.enforce_equal(
-            &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
-            &given_commitment,
-        )?;
-    }
-
-    // ********************************************************************
-
-    // ********************************************************************
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_field_elements =
-        inner_snark_vk.to_constraint_field(&mut cs.ns(|| "Convert inner snark vk to field elements"))?;
+    let inner_verifying_key_bits =
+        inner_verifying_key.to_minimal_bits(&mut cs.ns(|| "Convert inner snark vk to bits"))?;
 
     let given_inner_circuit_id =
-        <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
+        <N::InnerCircuitIDCRHGadget as CRHGadget<_, N::OuterScalarField>>::OutputGadget::alloc_input(
             &mut cs.ns(|| "Inner circuit ID"),
-            || Ok(inner_circuit_id),
+            || Ok(public.inner_circuit_id()),
         )?;
 
-    let candidate_inner_circuit_id = inner_circuit_id_crh.check_evaluation_gadget_on_field_elements(
-        &mut cs.ns(|| "Compute inner circuit ID"),
-        inner_snark_vk_field_elements,
-    )?;
+    let candidate_inner_circuit_id = inner_circuit_id_crh
+        .check_evaluation_gadget_on_bits(&mut cs.ns(|| "Compute inner circuit ID"), inner_verifying_key_bits)?;
 
     candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),
@@ -346,60 +254,43 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     Ok(())
 }
 
-fn alloc_inner_snark_field_element<
-    C: Parameters,
-    V: ToConstraintField<C::InnerScalarField>,
-    CS: ConstraintSystem<C::OuterScalarField>,
->(
-    cs: &mut CS,
-    var: &V,
-    name: &str,
-) -> Result<<C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget, SynthesisError> {
-    let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
-    <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc(
-        cs.ns(|| format!("alloc_field_element_{}", name)),
-        || Ok(field_elements),
-    )
-}
-
 fn alloc_inner_snark_input_field_element<
-    'a,
-    C: Parameters,
-    V: ToConstraintField<C::InnerScalarField>,
-    CS: ConstraintSystem<C::OuterScalarField>,
+    N: Network,
+    V: ToConstraintField<N::InnerScalarField> + ?Sized,
+    CS: ConstraintSystem<N::OuterScalarField>,
 >(
     cs: &mut CS,
     var: &V,
     name: &str,
-) -> Result<<C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget, SynthesisError> {
+) -> Result<<N::InnerSNARKGadget as SNARKVerifierGadget<N::InnerSNARK>>::InputGadget, SynthesisError> {
     let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
     // allocate the field elements one by one
     let mut input_gadgets = Vec::with_capacity(field_elements.len());
     for (j, field_element) in field_elements.iter().enumerate() {
         input_gadgets.push(
-            <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_input(
+            <N::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_input(
                 cs.ns(|| format!("alloc_input_field_element_{}_{}", name, j)),
-                || Ok(vec![(*field_element).clone()]),
+                || Ok(vec![*field_element]),
             )?,
         )
     }
-    <C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget::merge_many(
+    <N::InnerSNARKGadget as SNARKVerifierGadget<N::InnerSNARK>>::InputGadget::merge_many(
         cs.ns(|| format!("alloc_input_field_element_{}_merge", name)),
         &input_gadgets,
     )
 }
 
 fn alloc_program_snark_field_element<
-    C: Parameters,
-    V: ToConstraintField<C::InnerScalarField>,
-    CS: ConstraintSystem<C::OuterScalarField>,
+    N: Network,
+    V: ToConstraintField<N::InnerScalarField>,
+    CS: ConstraintSystem<N::OuterScalarField>,
 >(
     cs: &mut CS,
     var: &V,
     name: &str,
-) -> Result<<C::ProgramSNARKGadget as SNARKVerifierGadget<C::ProgramSNARK>>::InputGadget, SynthesisError> {
+) -> Result<<N::ProgramSNARKGadget as SNARKVerifierGadget<N::ProgramSNARK>>::InputGadget, SynthesisError> {
     let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
-    <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc(
+    <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc(
         cs.ns(|| format!("alloc_field_element_{}", name)),
         || Ok(field_elements),
     )

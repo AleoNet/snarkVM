@@ -20,7 +20,15 @@ use crate::{
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    rand::UniformRand,
+    serialize::*,
+    FromBytes,
+    ToBits,
+    ToBytes,
+    ToMinimalBits,
+};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -118,7 +126,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         unimplemented!()
     }
 
-    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
+    fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut res = Projective::zero();
         for i in bits {
             res.double_in_place();
@@ -134,7 +142,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
-        self.mul(P::COFACTOR_INV).into()
+        self.mul(P::COFACTOR_INV)
     }
 
     fn into_projective(&self) -> Projective<P> {
@@ -164,6 +172,15 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             let x3b = P::add_b(&((self.x.square() * self.x) + P::mul_by_a(&self.x)));
             y2 == x3b
         }
+    }
+}
+
+impl<P: Parameters> ToMinimalBits for Affine<P> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        let mut res_bits = self.x.to_bits_le();
+        res_bits.push(*self.y.to_bits_le().first().unwrap());
+        res_bits.push(self.infinity);
+        res_bits
     }
 }
 
@@ -243,7 +260,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
 
 impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
     fn mul_assign(&mut self, other: P::ScalarField) {
-        *self = self.mul(other).into()
+        *self = self.mul(other)
     }
 }
 

@@ -14,19 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{Field, FieldParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
-use snarkvm_utilities::{
-    biginteger::{BigInteger, BigInteger256},
-    ToBytes,
-};
+use snarkvm_utilities::biginteger::{BigInteger, BigInteger256};
 
 use crate::{
-    bits::{
-        boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
-    },
-    integers::uint::{UInt, UInt8},
+    bits::boolean::{AllocatedBit, Boolean},
+    integers::uint::UInt,
     traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
@@ -222,7 +216,7 @@ impl UInt for UInt128 {
         // }
         // return res
 
-        let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
+        let is_constant = Boolean::constant(Self::result_is_constant(self, other));
         let constant_result = Self::constant(0u128);
         let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_0u128"), || Ok(0u128))?;
         let zero_result = Self::conditionally_select(
@@ -248,7 +242,7 @@ impl UInt for UInt128 {
 
                 Self::conditionally_select(
                     &mut cs.ns(|| format!("calculate_product_{}", i)),
-                    &bit,
+                    bit,
                     &current_left_shift,
                     &zero_result,
                 )
@@ -288,7 +282,7 @@ impl<F: PrimeField> Pow<F> for UInt128 {
         // }
         // res
 
-        let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
+        let is_constant = Boolean::constant(Self::result_is_constant(self, other));
         let constant_result = Self::constant(1u128);
         let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_1u128"), || Ok(1u128))?;
         let mut result = Self::conditionally_select(
@@ -310,11 +304,11 @@ impl<F: PrimeField> Pow<F> for UInt128 {
                 &square,
             )?;
 
-            let mul_by_self = result.mul(cs.ns(|| format!("multiply_by_self_{}", i)), &self).unwrap();
+            let mul_by_self = result.mul(cs.ns(|| format!("multiply_by_self_{}", i)), self).unwrap();
 
             result = Self::conditionally_select(
                 &mut cs.ns(|| format!("mul_by_self_or_result_{}", i)),
-                &bit,
+                bit,
                 &mul_by_self,
                 &result,
             )?;

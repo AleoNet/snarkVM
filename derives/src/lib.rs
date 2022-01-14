@@ -163,11 +163,8 @@ fn impl_deserialize_field(ty: &Type) -> (TokenStream, TokenStream) {
     // Check if type is a tuple.
     match ty {
         Type::Tuple(tuple) => {
-            let (compressed_fields, uncompressed_fields): (Vec<_>, Vec<_>) = tuple
-                .elems
-                .iter()
-                .map(|elem_ty| impl_deserialize_field(elem_ty))
-                .unzip();
+            let (compressed_fields, uncompressed_fields): (Vec<_>, Vec<_>) =
+                tuple.elems.iter().map(impl_deserialize_field).unzip();
             (
                 quote! { (#(#compressed_fields)*), },
                 quote! { (#(#uncompressed_fields)*), },

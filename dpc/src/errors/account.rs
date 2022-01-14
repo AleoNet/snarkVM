@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::errors::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
+use snarkvm_algorithms::errors::{EncryptionError, PRFError, SignatureError};
 
 #[derive(Debug, Error)]
 pub enum AccountError {
@@ -22,19 +22,13 @@ pub enum AccountError {
     AnyhowError(#[from] anyhow::Error),
 
     #[error("{}", _0)]
-    CommitmentError(#[from] CommitmentError),
-
-    #[error("{}", _0)]
-    CRHError(#[from] CRHError),
+    Bech32Error(#[from] bech32::Error),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
-
-    #[error("invalid account commitment")]
-    InvalidAccountCommitment,
 
     #[error("invalid byte length: {}", _0)]
     InvalidByteLength(usize),
@@ -48,11 +42,8 @@ pub enum AccountError {
     #[error("invalid prefix bytes: {:?}", _0)]
     InvalidPrefixBytes(Vec<u8>),
 
-    #[error("invalid account private key")]
-    InvalidPrivateKey,
-
-    #[error("invalid account private key seed")]
-    InvalidPrivateKeySeed,
+    #[error("invalid variant")]
+    InvalidVariant,
 
     #[error("{}", _0)]
     Message(String),
@@ -70,14 +61,14 @@ impl From<base58::FromBase58Error> for AccountError {
     }
 }
 
-impl From<bech32::Error> for AccountError {
-    fn from(error: bech32::Error) -> Self {
-        AccountError::Crate("bech32", format!("{:?}", error))
-    }
-}
-
 impl From<std::io::Error> for AccountError {
     fn from(error: std::io::Error) -> Self {
         AccountError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+impl From<AccountError> for std::io::Error {
+    fn from(error: AccountError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

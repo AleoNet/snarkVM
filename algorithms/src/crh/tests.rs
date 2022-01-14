@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH, BHPCRH},
+    crh::{PedersenCRH, PedersenCompressedCRH, BHPCRH},
     traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
@@ -46,11 +46,6 @@ fn pedersen_compressed_crh_serialization() {
 #[test]
 fn bowe_hopwood_crh_serialization() {
     crh_serialization::<BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
-}
-
-#[test]
-fn bowe_hopwood_compressed_crh_serialization() {
-    crh_serialization::<BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]

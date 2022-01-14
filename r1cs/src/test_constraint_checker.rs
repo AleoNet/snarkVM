@@ -64,6 +64,11 @@ impl<F: Field> TestConstraintChecker<F> {
     pub fn num_constraints(&self) -> usize {
         self.num_constraints
     }
+
+    #[inline]
+    pub fn public_inputs(&self) -> Vec<F> {
+        self.public_variables[1..].to_vec()
+    }
 }
 
 impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
@@ -121,17 +126,15 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         let b = eval_lc(b(LinearCombination::zero()).0);
         let c = eval_lc(c(LinearCombination::zero()).0);
 
-        if a * b != c {
-            if self.first_unsatisfied_constraint.is_none() {
-                self.found_unsatisfactory_constraint = true;
+        if a * b != c && self.first_unsatisfied_constraint.is_none() {
+            self.found_unsatisfactory_constraint = true;
 
-                let new = annotation().as_ref().to_string();
-                assert!(!new.contains('/'), "'/' is not allowed in names");
+            let new = annotation().as_ref().to_string();
+            assert!(!new.contains('/'), "'/' is not allowed in names");
 
-                let mut path = self.segments.clone();
-                path.push(new);
-                self.first_unsatisfied_constraint = Some(path.join("/"));
-            }
+            let mut path = self.segments.clone();
+            path.push(new);
+            self.first_unsatisfied_constraint = Some(path.join("/"));
         }
     }
 

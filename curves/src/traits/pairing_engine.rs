@@ -16,11 +16,12 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
-use snarkvm_utilities::{biginteger::BigInteger, serialize::*, BitIteratorBE, ToBytes};
+use snarkvm_utilities::{biginteger::BigInteger, serialize::*, ToBytes, ToMinimalBits};
 
+use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, iter};
 
-pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
+pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
     type Fr: PrimeField + SquareRootField + Into<<Self::Fr as PrimeField>::BigInteger>;
 
@@ -156,10 +157,13 @@ pub trait ProjectiveCurve:
 pub trait AffineCurve:
     Group
     + Sized
+    + Serialize
+    + DeserializeOwned
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize
     + From<<Self as AffineCurve>::Projective>
+    + ToMinimalBits
 {
     type BaseField: Field;
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
@@ -196,8 +200,9 @@ pub trait AffineCurve:
     /// random group elements from a hash-function or RNG output.
     fn from_random_bytes(bytes: &[u8]) -> Option<Self>;
 
-    /// Multiply this element by a scalar field element in BigInteger form.
-    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> Self::Projective;
+    /// Multiply this element by a big-endian boolean representation of
+    /// an integer.
+    fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Self::Projective;
 
     /// Multiply this element by the cofactor.
     #[must_use]
@@ -228,7 +233,16 @@ pub trait AffineCurve:
 
 pub trait PairingCurve: AffineCurve {
     type Engine: PairingEngine<Fr = Self::ScalarField>;
-    type Prepared: CanonicalSerialize + CanonicalDeserialize + ToBytes + Default + Clone + Send + Sync + Debug + 'static;
+    type Prepared: CanonicalSerialize
+        + CanonicalDeserialize
+        + ToBytes
+        + FromBytes
+        + Default
+        + Clone
+        + Send
+        + Sync
+        + Debug
+        + 'static;
     type PairWith: PairingCurve<PairWith = Self>;
     type PairingResult: Field;
 

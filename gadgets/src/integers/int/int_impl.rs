@@ -81,6 +81,13 @@ macro_rules! int_impl {
                 self.bits.clone()
             }
 
+            fn to_bits_be(&self) -> Vec<Boolean> {
+                debug_assert_eq!(self.bits.len(), $size);
+                let mut res = self.bits.clone();
+                res.reverse();
+                res
+            }
+
             fn from_bits_le(bits: &[Boolean]) -> Self {
                 assert_eq!(bits.len(), $size);
 

@@ -24,12 +24,6 @@ pub enum RecordError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
-    #[error("Failed to build Record data type. See console logs for error")]
-    BuilderError,
-
-    #[error("Cannot verify the provided record commitment")]
-    CannotVerifyCommitment,
-
     #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
 
@@ -39,32 +33,17 @@ pub enum RecordError {
     #[error("{}", _0)]
     CRHError(#[from] CRHError),
 
-    #[error("Attempted to set `value: {}` on a dummy record", _0)]
-    DummyMustBeZero(u64),
-
     #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
 
     #[error("{}", _0)]
     FromHexError(#[from] hex::FromHexError),
 
-    #[error("Given private key does not correspond to the record owner")]
-    IncorrectPrivateKey,
+    #[error("Given compute key does not correspond to the record owner")]
+    IncorrectComputeKey,
 
-    #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
-    InvalidCommitment,
-
-    #[error("Invalid output record position - {}", _0)]
-    InvalidOutputPosition(u8),
-
-    #[error("Missing Record field: {0}")]
-    MissingField(String),
-
-    #[error("Missing commitment randomness")]
-    MissingRandomness,
-
-    #[error("Attempted to set `is_dummy: true` on a record with a non-zero value")]
-    NonZeroValue,
+    #[error("Invalid commitment. Expected {}, found {}", _0, _1)]
+    InvalidCommitment(String, String),
 
     #[error("{}", _0)]
     PRFError(#[from] PRFError),
@@ -73,8 +52,20 @@ pub enum RecordError {
     SignatureError(#[from] SignatureError),
 }
 
+impl From<serde_json::Error> for RecordError {
+    fn from(error: serde_json::Error) -> Self {
+        RecordError::Crate("serde_json::Error", format!("{:?}", error))
+    }
+}
+
 impl From<std::io::Error> for RecordError {
     fn from(error: std::io::Error) -> Self {
         RecordError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+impl From<RecordError> for std::io::Error {
+    fn from(error: RecordError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

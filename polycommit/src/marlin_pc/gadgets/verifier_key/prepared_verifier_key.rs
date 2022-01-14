@@ -72,7 +72,7 @@ where
     ) -> Result<Vec<PG::G1Gadget>, SynthesisError> {
         // Search the bound using PIR
         if self.degree_bounds_and_prepared_shift_powers.is_none() {
-            return Err(SynthesisError::UnexpectedIdentity);
+            Err(SynthesisError::UnexpectedIdentity)
         } else {
             let prepared_degree_bounds_and_shift_powers = self.degree_bounds_and_prepared_shift_powers.clone().unwrap();
 
@@ -98,7 +98,7 @@ where
             for (i, pir_gadget) in pir_vector_gadgets.iter().enumerate() {
                 let temp = FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
                     cs.ns(|| format!("from_boolean_{}", i)),
-                    pir_gadget.clone(),
+                    *pir_gadget,
                 )?;
 
                 sum = sum.add(cs.ns(|| format!("sum_add_pir{}", i)), &temp)?;
@@ -136,9 +136,9 @@ where
                 )?;
             }
 
-            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), &bound)?;
+            sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), bound)?;
 
-            return Ok(found_shift_power);
+            Ok(found_shift_power)
         }
     }
 }
@@ -161,6 +161,7 @@ where
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<TargetCurve, BaseCurve, PG> Into<VerifierKeyVar<TargetCurve, BaseCurve, PG>>
     for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
 where
@@ -170,7 +171,7 @@ where
 {
     fn into(self) -> VerifierKeyVar<TargetCurve, BaseCurve, PG> {
         match self.origin_vk {
-            Some(vk) => vk.clone(),
+            Some(vk) => vk,
             None => {
                 eprintln!("Missing original vk");
                 panic!()
@@ -452,10 +453,7 @@ mod tests {
                     .unwrap();
 
                     shift_power_gadget
-                        .enforce_equal(
-                            cs.ns(|| format!("enforce_equals_shift_power_{}_{}", i, j)),
-                            &shift_power,
-                        )
+                        .enforce_equal(cs.ns(|| format!("enforce_equals_shift_power_{}_{}", i, j)), shift_power)
                         .unwrap();
                 }
             }
@@ -498,10 +496,7 @@ mod tests {
             .enumerate()
         {
             g_element_gadget
-                .enforce_equal(
-                    cs.ns(|| format!("enforce_equals_prepared_g_{}", i)),
-                    &expected_g_element,
-                )
+                .enforce_equal(cs.ns(|| format!("enforce_equals_prepared_g_{}", i)), expected_g_element)
                 .unwrap();
         }
 
@@ -546,7 +541,7 @@ mod tests {
                 assert_eq!(expected_degree_bounds, degree_bounds);
 
                 fp_gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equals_fp_gadget_{}", i)), &expected_fp_gadget)
+                    .enforce_equal(cs.ns(|| format!("enforce_equals_fp_gadget_{}", i)), expected_fp_gadget)
                     .unwrap();
 
                 for (j, (expected_shift_power, shift_power)) in
@@ -560,7 +555,7 @@ mod tests {
                     shift_power
                         .enforce_equal(
                             cs.ns(|| format!("enforce_equals_shift_power_{}_{}", i, j)),
-                            &expected_shift_power,
+                            expected_shift_power,
                         )
                         .unwrap();
                 }
@@ -590,7 +585,7 @@ mod tests {
         let bound_gadget = FpGadget::alloc(cs.ns(|| "alloc_bound"), || Ok(bound_field)).unwrap();
 
         // Construct the verifying key.
-        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&vec![bound])).unwrap();
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&[bound])).unwrap();
         let pvk = vk.prepare();
 
         // Allocate the vk gadget.

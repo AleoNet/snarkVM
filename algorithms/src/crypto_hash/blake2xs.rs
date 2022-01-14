@@ -62,9 +62,7 @@ impl Blake2Xs {
             .hash_length(32)
             .node_offset(xof_digest_length_node_offset)
             .personal(persona)
-            .hash(&input)
-            .as_bytes()
-            .to_vec();
+            .hash(input);
 
         let mut output = vec![];
 
@@ -79,7 +77,7 @@ impl Blake2Xs {
             };
 
             // Compute the next part of the output digest.
-            output.extend_from_slice(&blake2s_simd::Params::new()
+            output.extend_from_slice(blake2s_simd::Params::new()
                 .hash_length(digest_length)
                 .fanout(0)
                 .max_depth(0)
@@ -87,7 +85,7 @@ impl Blake2Xs {
                 .node_offset(xof_digest_length_node_offset | (node_offset as u64))
                 .inner_hash_length(32)
                 .personal(persona)
-                .hash(&input_digest)
+                .hash(input_digest.as_bytes())
                 .as_bytes());
         }
 

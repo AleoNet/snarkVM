@@ -28,6 +28,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
     },
+    ToBitsBEGadget,
 };
 
 pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + Clone + Sized {
@@ -35,11 +36,17 @@ pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + C
         + CondSelectGadget<F>
         + EqGadget<F>
         + ToBytesGadget<F>
+        + ToBitsBEGadget<F>
         + AllocGadget<C::Output, F>
         + Clone
         + Sized
         + Debug;
     type RandomnessGadget: AllocGadget<C::Randomness, F> + ToBytesGadget<F> + Clone;
+
+    fn randomness_from_bytes<CS: ConstraintSystem<F>>(
+        cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::RandomnessGadget, SynthesisError>;
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
         &self,

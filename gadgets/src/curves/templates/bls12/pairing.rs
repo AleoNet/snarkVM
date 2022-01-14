@@ -137,7 +137,7 @@ where
             if i {
                 for (k, &mut (p, ref mut coeffs)) in pairs.iter_mut().enumerate() {
                     let cs = cs.ns(|| format!("Addition input {}", k));
-                    Self::ell(cs, &mut f, &coeffs.next().unwrap(), &p.0)?;
+                    Self::ell(cs, &mut f, coeffs.next().unwrap(), &p.0)?;
                 }
             }
         }

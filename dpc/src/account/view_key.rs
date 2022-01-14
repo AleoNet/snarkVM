@@ -14,64 +14,49 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::Parameters, AccountError, PrivateKey};
-use snarkvm_algorithms::{traits::EncryptionScheme, SignatureScheme};
+use crate::{account_format, AccountError, Network, PrivateKey};
+use snarkvm_algorithms::EncryptionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
-use rand::{CryptoRng, Rng};
 use std::{
-    convert::TryFrom,
     fmt,
     io::{Read, Result as IoResult, Write},
+    ops::Deref,
     str::FromStr,
 };
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: Parameters"),
-    Clone(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Clone(bound = "N: Network"),
+    Default(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct ViewKey<C: Parameters> {
-    pub decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey,
-}
+pub struct ViewKey<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey);
 
-impl<C: Parameters> ViewKey<C> {
+impl<N: Network> ViewKey<N> {
     /// Creates a new account view key from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
-        Ok(Self {
-            decryption_key: private_key.to_decryption_key()?,
-        })
-    }
-
-    /// Signs a message using the account view key.
-    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<C::AccountSignature, AccountError> {
-        let signature_private_key = FromBytes::from_bytes_le(&self.decryption_key.to_bytes_le()?)?;
-        Ok(C::account_signature_scheme().sign(&signature_private_key, message, rng)?)
+    pub fn from_private_key(private_key: &PrivateKey<N>) -> Self {
+        Self(private_key.to_decryption_key())
     }
 }
 
-impl<C: Parameters> TryFrom<PrivateKey<C>> for ViewKey<C> {
-    type Error = AccountError;
-
+impl<N: Network> From<PrivateKey<N>> for ViewKey<N> {
     /// Creates a new account view key from an account private key.
-    fn try_from(private_key: PrivateKey<C>) -> Result<Self, Self::Error> {
-        Self::try_from(&private_key)
+    fn from(private_key: PrivateKey<N>) -> Self {
+        Self::from(&private_key)
     }
 }
 
-impl<C: Parameters> TryFrom<&PrivateKey<C>> for ViewKey<C> {
-    type Error = AccountError;
-
+impl<N: Network> From<&PrivateKey<N>> for ViewKey<N> {
     /// Creates a new account view key from an account private key.
-    fn try_from(private_key: &PrivateKey<C>) -> Result<Self, Self::Error> {
+    fn from(private_key: &PrivateKey<N>) -> Self {
         Self::from_private_key(private_key)
     }
 }
 
-impl<C: Parameters> FromStr for ViewKey<C> {
+impl<N: Network> FromStr for ViewKey<N> {
     type Err = AccountError;
 
     /// Reads in an account view key string.
@@ -85,44 +70,45 @@ impl<C: Parameters> FromStr for ViewKey<C> {
             return Err(AccountError::InvalidPrefixBytes(data[0..7].to_vec()));
         }
 
-        let mut reader = &data[7..];
-
-        Ok(Self {
-            decryption_key: FromBytes::read_le(&mut reader)?,
-        })
+        Ok(Self(FromBytes::read_le(&data[7..])?))
     }
 }
 
-impl<C: Parameters> FromBytes for ViewKey<C> {
+impl<N: Network> FromBytes for ViewKey<N> {
     /// Reads in an account view key buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self {
-            decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&mut reader)?,
-        })
+        Ok(Self(FromBytes::read_le(&mut reader)?))
     }
 }
 
-impl<C: Parameters> ToBytes for ViewKey<C> {
+impl<N: Network> ToBytes for ViewKey<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.decryption_key.write_le(&mut writer)
+        self.0.write_le(&mut writer)
     }
 }
 
-impl<C: Parameters> fmt::Display for ViewKey<C> {
+impl<N: Network> fmt::Display for ViewKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut view_key = [0u8; 39];
         view_key[0..7].copy_from_slice(&account_format::VIEW_KEY_PREFIX);
-
-        self.decryption_key
+        self.0
             .write_le(&mut view_key[7..39])
-            .expect("decryption_key formatting failed");
+            .expect("view key formatting failed");
 
         write!(f, "{}", view_key.to_base58())
     }
 }
 
-impl<C: Parameters> fmt::Debug for ViewKey<C> {
+impl<N: Network> fmt::Debug for ViewKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ViewKey {{ decryption_key: {:?} }}", self.decryption_key)
+        write!(f, "ViewKey {{ decryption_key: {:?} }}", self.0)
+    }
+}
+
+impl<N: Network> Deref for ViewKey<N> {
+    type Target = <N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

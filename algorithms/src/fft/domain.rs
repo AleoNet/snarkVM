@@ -474,12 +474,12 @@ pub(crate) fn parallel_radix2_fft<T: DomainCoeff<F>, F: FftField>(a: &mut [T], o
         let omega_step = omega.pow(&[(j * m_div_num_chunks) as u64]);
 
         let mut elt = F::one();
-        for i in 0..m_div_num_chunks {
+        for (i, tmp_t) in tmp.iter_mut().enumerate().take(m_div_num_chunks) {
             for s in 0..num_chunks {
                 let idx = (i + (s * m_div_num_chunks)) % m;
                 let mut t = a[idx];
                 t *= elt;
-                tmp[i] += t;
+                *tmp_t += t;
                 elt *= &omega_step;
             }
             elt *= &omega_j;

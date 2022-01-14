@@ -20,7 +20,7 @@ use snarkvm_utilities::{error, errors::SerializationError, serialize::*, ToBytes
 
 /// Each prover message that is not a list of oracles is a list of field elements.
 #[repr(transparent)]
-#[derive(Clone, Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ProverMessage<F: Field> {
     /// The field elements that make up the message
     pub field_elements: Vec<F>,

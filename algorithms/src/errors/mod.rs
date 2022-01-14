@@ -20,12 +20,6 @@ pub use commitment::*;
 pub mod crh;
 pub use crh::*;
 
-pub mod crypto_hash;
-pub use crypto_hash::*;
-
-pub mod encoding;
-pub use encoding::*;
-
 pub mod encryption;
 pub use encryption::*;
 

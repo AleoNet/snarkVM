@@ -15,17 +15,27 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fiat_shamir::FiatShamirError, Vec};
+use smallvec::SmallVec;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 
+use core::fmt::Debug;
 use rand_core::RngCore;
 
 // TODO (raychu86): Remove unnecessary Result types
 
 /// Trait for a Fiat-Shamir RNG.
-pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore {
+pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone + Debug + RngCore {
+    type Parameters;
+
+    /// Samples parameters.
+    fn sample_params() -> Self::Parameters;
+
     /// Initializes an RNG.
     fn new() -> Self;
+
+    /// Initializes an RNG with the provided parameters.
+    fn with_parameters(params: &Self::Parameters) -> Self;
 
     /// Takes in field elements.
     fn absorb_nonnative_field_elements(&mut self, elements: &[TargetField], ty: OptimizationType);
@@ -44,7 +54,7 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore
     ) -> Result<Vec<TargetField>, FiatShamirError>;
 
     /// Takes in field elements.
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError>;
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError>;
 
     /// Takes out field elements of 128 bits.
     fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError>;

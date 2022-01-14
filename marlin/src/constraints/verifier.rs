@@ -30,17 +30,21 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
     PoseidonSponge,
-    PoseidonSpongeVar,
+    PoseidonSpongeGadget,
     String,
     Vec,
 };
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar},
     traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
+    AllocGadget,
+    Integer,
     PrepareGadget,
+    ToBytesGadget,
+    UInt8,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
@@ -51,22 +55,23 @@ pub struct MarlinVerificationGadget<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
->(
-    PhantomData<TargetField>,
-    PhantomData<BaseField>,
-    PhantomData<PC>,
-    PhantomData<PCG>,
-);
+    MM: MarlinMode,
+>(PhantomData<(TargetField, BaseField, PC, PCG, MM)>);
 
 /// Fiat Shamir Algebraic Sponge RNG type
-pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
+pub type FSA<InnerField, OuterField> =
+    FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField, 6, 1>>;
 
 /// Fiat Shamir Algebraic Sponge RNG Gadget type
-pub type FSG<InnerField, OuterField> =
-    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
+pub type FSG<InnerField, OuterField> = FiatShamirAlgebraicSpongeRngVar<
+    InnerField,
+    OuterField,
+    PoseidonSponge<OuterField, 6, 1>,
+    PoseidonSpongeGadget<OuterField, 6, 1>,
+>;
 
 impl<TargetField, BaseField, PC, PCG, FS, MM, V> SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>
-    for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
+    for MarlinVerificationGadget<TargetField, BaseField, PC, PCG, MM>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
@@ -74,7 +79,7 @@ where
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    V: ToConstraintField<TargetField>,
+    V: ToConstraintField<TargetField> + Clone,
 {
     type InputGadget = NonNativeFieldInputVar<TargetField, BaseField>;
     type PreparedVerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
@@ -84,9 +89,39 @@ where
         PCG,
         FSA<TargetField, BaseField>,
         FSG<TargetField, BaseField>,
+        MM,
     >;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
-    type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
+    type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, MM>;
+
+    fn input_gadget_from_bytes<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        bytes: &[UInt8],
+    ) -> Result<Self::InputGadget, SynthesisError> {
+        // First, we allocate the input according to the `ToConstraintField` impl wrt S::BaseField.
+        let max_size = (TargetField::Parameters::CAPACITY / 8) as usize;
+        // Obtain the values of the field elements corresponding to each `max_size` chunk.
+        let values = bytes.iter().map(|byte| byte.value.unwrap_or(0u8)).collect::<Vec<_>>();
+        let values: Vec<TargetField> = values.to_field_elements().unwrap();
+
+        // Allocate the input as non-native field elements.
+        let input = NonNativeFieldInputVar::alloc_checked(cs.ns(|| "Construct input var"), || Ok(values))?;
+        // Convert the input to bytes
+        let input_bytes = input.val.to_bytes_strict(cs.ns(|| "Input to bytes"))?;
+
+        // Chunk and pad the original input bytes according to the `ToConstraintField` impl
+        let bytes_per_fe = ((TargetField::Parameters::MODULUS_BITS + 7) / 8) as usize;
+        let padded_bytes = bytes
+            .chunks(max_size)
+            .flat_map(|chunk| {
+                let mut chunk = chunk.to_vec();
+                chunk.resize(bytes_per_fe, UInt8::constant(0));
+                chunk
+            })
+            .collect::<Vec<_>>();
+        padded_bytes.enforce_equal(cs.ns(|| "Enforce equality between bytes"), &input_bytes)?;
+        Ok(input)
+    }
 
     fn check_verify<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
@@ -118,7 +153,7 @@ where
     }
 }
 
-impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
+impl<TargetField, BaseField, PC, PCG, MM: MarlinMode> MarlinVerificationGadget<TargetField, BaseField, PC, PCG, MM>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
@@ -135,32 +170,35 @@ where
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        prepared_verifying_key: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>,
+        prepared_verifying_key: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R, MM>,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
-    ) -> Result<Boolean, MarlinError<PC::Error>> {
+    ) -> Result<Boolean, MarlinError> {
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
-        eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before AHP: constraints: {}", cs.num_constraints());
+        }
 
-        let public_input = {
-            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
-
-            let mut new_input = public_input.to_vec();
+        let padded_public_input = {
+            let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
+            new_input.extend_from_slice(public_input);
+            let domain_x = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();
             new_input.resize(
-                core::cmp::max(public_input.len(), domain_x.size() - 1),
+                core::cmp::max(new_input.len(), domain_x.size()),
                 NonNativeFieldVar::<TargetField, BaseField>::Constant(TargetField::zero()),
             );
             new_input
         };
 
+        // let input_bytes = padded_public_input.to_bytes_strict(&mut cs.ns(|| "input_to_bytes"))?;
         fs_rng.absorb_nonnative_field_elements(
-            cs.ns(|| "initial_absorb_nonnative_field_elements"),
-            &public_input,
+            &mut cs.ns(|| "absorb_input_bytes"),
+            &padded_public_input,
             OptimizationType::Weight,
         )?;
 
-        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_first_round(
+        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_first_round(
             cs.ns(|| "verifier_first_round"),
             prepared_verifying_key.domain_h_size,
             prepared_verifying_key.domain_k_size,
@@ -169,7 +207,7 @@ where
             &proof.prover_messages[0].field_elements,
         )?;
 
-        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_second_round(
+        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_second_round(
             cs.ns(|| "verifier_second_round"),
             verifier_state,
             &mut fs_rng,
@@ -177,7 +215,7 @@ where
             &proof.prover_messages[1].field_elements,
         )?;
 
-        let verifier_state = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_third_round(
+        let verifier_state = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_third_round(
             cs.ns(|| "verifier_third_round"),
             verifier_state,
             &mut fs_rng,
@@ -185,24 +223,19 @@ where
             &proof.prover_messages[2].field_elements,
         )?;
 
-        let mut formatted_public_input = vec![NonNativeFieldVar::one(cs.ns(|| "nonnative_one"))?];
-        for elem in public_input.iter().cloned() {
-            formatted_public_input.push(elem);
-        }
-
-        let lc = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_decision(
+        let lc = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_decision(
             cs.ns(|| "verifier_decision"),
-            &formatted_public_input,
+            &padded_public_input,
             &proof.evaluations,
             verifier_state.clone(),
             &prepared_verifying_key.domain_k_size_gadget,
         )?;
 
         let (num_opening_challenges, num_batching_rands, comm, query_set, evaluations) =
-            AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_comm_query_eval_set(
+            AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_comm_query_eval_set(
                 cs.ns(|| "verifier_comm_query_eval_set"),
-                &prepared_verifying_key,
-                &proof,
+                prepared_verifying_key,
+                proof,
                 &verifier_state,
             )?;
 
@@ -234,7 +267,9 @@ where
             num_batching_rands,
         )?;
 
-        eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        if cfg!(debug_assertions) {
+            eprintln!("before PC checks: constraints: {}", cs.num_constraints());
+        }
 
         let rand_data = PCCheckRandomDataVar::<TargetField, BaseField> {
             opening_challenges,
@@ -262,10 +297,10 @@ where
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        verifying_key: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>,
+        verifying_key: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, MM>,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
-    ) -> Result<Boolean, MarlinError<PC::Error>> {
+    ) -> Result<Boolean, MarlinError> {
         eprintln!("before prepared_VK: constraints: {}", cs.num_constraints());
 
         let prepared_verifying_key = verifying_key.prepare(cs.ns(|| "prepare"))?;
@@ -279,6 +314,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::upper_case_acronyms)]
 mod test {
     use core::ops::MulAssign;
 
@@ -307,7 +343,7 @@ mod test {
             FiatShamirAlgebraicSpongeRng,
             FiatShamirAlgebraicSpongeRngVar,
             PoseidonSponge,
-            PoseidonSpongeVar,
+            PoseidonSpongeGadget as PoseidonSpongeVar,
         },
         marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
     };
@@ -317,8 +353,8 @@ mod test {
     type PC = SonicKZG10<Bls12_377>;
     type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq, 6, 1>, PoseidonSpongeVar<Fq, 6, 1>>;
 
     type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 
@@ -326,7 +362,7 @@ mod test {
     fn verifier_test() {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(10000, 25, 10000).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(10000, 25, 10000).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let num_constraints = 10000;
@@ -360,7 +396,7 @@ mod test {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
         // BEGIN: ivk to ivk_gadget
-        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, PC, PCGadget> =
+        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, PC, PCGadget, MarlinRecursiveMode> =
             CircuitVerifyingKeyVar::alloc(cs.ns(|| "alloc_circuit_vk"), || Ok(circuit_vk)).unwrap();
         // END: ivk to ivk_gadget
 
@@ -454,7 +490,7 @@ mod test {
         };
         // END: proof to proof_gadget
 
-        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget>::verify::<_, FS, FSG>(
+        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>::verify::<_, FS, FSG>(
             cs.ns(|| "marlin_verification"),
             &ivk_gadget,
             &public_input_gadget,

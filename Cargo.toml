@@ -20,12 +20,12 @@ edition = "2018"
 [workspace]
 members = [
   "algorithms",
+  "circuits",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",
   "fields",
   "gadgets",
-  "ledger",
   "marlin", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
   "parameters",
   "polycommit", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
@@ -51,8 +51,8 @@ default = ["core"]
 #
 # If you need more granular control of members and/or member features,
 # please import the requisite crates directly and enable features as needed.
-core = ["dpc", "ledger", "utilities"]
-full = ["algorithms", "curves", "dpc", "fields", "gadgets", "ledger", "parameters", "r1cs", "utilities"]
+core = ["dpc", "utilities"]
+full = ["algorithms", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
@@ -60,10 +60,13 @@ curves = ["snarkvm-curves"]
 dpc = ["snarkvm-dpc"]
 fields = ["snarkvm-fields"]
 gadgets = ["snarkvm-gadgets"]
-ledger = ["snarkvm-ledger"]
 parameters = ["snarkvm-parameters"]
 r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
+
+## snarkVM workspace specific ##
+cuda = ["snarkvm-algorithms/cuda"]
+parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
 ## snarkVM CLI ##
 cli = ["anyhow", "colored", "self_update", "structopt", "thiserror"]
@@ -96,11 +99,6 @@ path = "./gadgets"
 version = "0.7.5"
 optional = true
 
-[dependencies.snarkvm-ledger]
-path = "./ledger"
-version = "0.7.5"
-optional = true
-
 [dependencies.snarkvm-parameters]
 path = "./parameters"
 version = "0.7.5"
@@ -117,7 +115,7 @@ version = "0.7.5"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.42"
+version = "1.0.52"
 optional = true
 
 [dependencies.colored]
@@ -125,7 +123,7 @@ version = "2"
 optional = true
 
 [dependencies.self_update]
-version = "0.27"
+version = "0.28"
 optional = true
 
 [dependencies.structopt]

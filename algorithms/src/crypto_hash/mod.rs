@@ -20,9 +20,6 @@ pub use blake2xs::*;
 pub mod grain_lfsr;
 pub use grain_lfsr::*;
 
-pub mod sponge;
-pub use sponge::*;
-
 pub mod poseidon;
 pub use poseidon::*;
 

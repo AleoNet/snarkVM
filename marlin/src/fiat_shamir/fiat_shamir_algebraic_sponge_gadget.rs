@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::DefaultCapacityAlgebraicSponge;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsBEGadget},
@@ -26,14 +27,11 @@ use snarkvm_gadgets::{
     },
     overhead,
     traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
+    DefaultCapacityAlgebraicSpongeVar,
 };
 use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 
-use crate::fiat_shamir::{
-    traits::{AlgebraicSpongeVar, FiatShamirRngVar},
-    AlgebraicSponge,
-    FiatShamirAlgebraicSpongeRng,
-};
+use crate::fiat_shamir::{traits::FiatShamirRngVar, FiatShamirAlgebraicSpongeRng};
 
 use crate::{PhantomData, Vec};
 
@@ -42,8 +40,8 @@ use crate::{PhantomData, Vec};
 pub struct FiatShamirAlgebraicSpongeRngVar<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PS: AlgebraicSponge<BaseField>,
-    S: AlgebraicSpongeVar<BaseField, PS>,
+    PS: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSpongeVar<BaseField, PS, 6>,
 > {
     /// Algebraic sponge gadget.
     pub s: S,
@@ -58,8 +56,8 @@ pub struct FiatShamirAlgebraicSpongeRngVar<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PS: AlgebraicSponge<BaseField>,
-    S: AlgebraicSpongeVar<BaseField, PS>,
+    PS: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSpongeVar<BaseField, PS, 6>,
 > FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions),
@@ -136,37 +134,37 @@ impl<
         for (i, elem) in src.iter().enumerate() {
             match elem {
                 NonNativeFieldVar::Constant(c) => {
-                    let v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc_constant(
-                        cs.ns(|| format!("alloc_constant_{}", i)),
-                        || Ok(c),
+                    let v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::constant(
+                        &mut cs.ns(|| format!("alloc_constant_{}", i)),
+                        *c,
                     )?;
 
-                    for limb in v.limbs.iter() {
+                    for limb in v.limbs {
                         let num_of_additions_over_normal_form =
                             if v.num_of_additions_over_normal_form == BaseField::zero() {
                                 BaseField::one()
                             } else {
                                 v.num_of_additions_over_normal_form
                             };
-                        src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
+                        src_limbs.push((limb, num_of_additions_over_normal_form));
                     }
                 }
                 NonNativeFieldVar::Var(v) => {
-                    for limb in v.limbs.iter() {
+                    for limb in v.limbs.clone() {
                         let num_of_additions_over_normal_form =
                             if v.num_of_additions_over_normal_form == BaseField::zero() {
                                 BaseField::one()
                             } else {
                                 v.num_of_additions_over_normal_form
                             };
-                        src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
+                        src_limbs.push((limb, num_of_additions_over_normal_form));
                     }
                 }
             }
         }
 
         let dest_limbs = Self::compress_gadgets(cs.ns(|| "compress_gadgets"), &src_limbs, ty)?;
-        sponge.absorb(cs.ns(|| "absorb"), &dest_limbs)?;
+        sponge.absorb(cs.ns(|| "absorb"), dest_limbs.iter())?;
         Ok(())
     }
 
@@ -180,7 +178,7 @@ impl<
         let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
-        let src_elements = sponge.squeeze(cs.ns(|| "squeeze"), num_elements)?;
+        let src_elements = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), num_elements)?;
         let mut dest_bits = Vec::<Boolean>::new();
 
         for (i, elem) in src_elements.iter().enumerate() {
@@ -311,14 +309,14 @@ impl<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PS: AlgebraicSponge<BaseField>,
-    S: AlgebraicSpongeVar<BaseField, PS>,
+    PS: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSpongeVar<BaseField, PS, 6>,
 > FiatShamirRngVar<TargetField, BaseField, FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>>
     for FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self {
         Self {
-            s: S::new(cs),
+            s: S::with_parameters(cs, &PS::sample_parameters()),
             _target_field: PhantomData,
             _base_field: PhantomData,
             _sponge: PhantomData,
@@ -351,7 +349,7 @@ impl<
         cs: CS,
         elems: &[FpGadget<BaseField>],
     ) -> Result<(), SynthesisError> {
-        self.s.absorb(cs, elems)?;
+        self.s.absorb(cs, elems.iter())?;
         Ok(())
     }
 
@@ -402,7 +400,7 @@ impl<
             cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
 
-        self.s.absorb(cs.ns(|| "absorb"), &gadgets)
+        self.s.absorb(cs.ns(|| "absorb"), gadgets.iter())
     }
 
     fn squeeze_native_field_elements<CS: ConstraintSystem<BaseField>>(
@@ -410,7 +408,7 @@ impl<
         cs: CS,
         num: usize,
     ) -> Result<Vec<FpGadget<BaseField>>, SynthesisError> {
-        self.s.squeeze(cs, num)
+        self.s.squeeze_field_elements(cs, num)
     }
 
     fn squeeze_field_elements<CS: ConstraintSystem<BaseField>>(
@@ -460,16 +458,13 @@ mod tests {
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
-    use crate::fiat_shamir::{
-        fiat_shamir_poseidon_sponge::PoseidonSponge,
-        fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
-        traits::FiatShamirRng,
-    };
+    use crate::fiat_shamir::{traits::FiatShamirRng, PoseidonSpongeGadget};
+    use snarkvm_algorithms::crypto_hash::PoseidonSponge;
 
     use super::*;
 
-    type PS = PoseidonSponge<Fq>;
-    type PSGadget = PoseidonSpongeVar<Fq>;
+    type PS = PoseidonSponge<Fq, 6, 1>;
+    type PSGadget = PoseidonSpongeGadget<Fq, 6, 1>;
     type FS = FiatShamirAlgebraicSpongeRng<Fq, Fq, PS>;
     type FSGadget = FiatShamirAlgebraicSpongeRngVar<Fq, Fq, PS, PSGadget>;
 
@@ -597,47 +592,6 @@ mod tests {
             println!("\n=========================================================");
         }
         assert!(cs.is_satisfied());
-    }
-
-    #[test]
-    fn test_fiat_shamir_algebraic_sponge_rng_constant() {
-        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
-
-        for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fq>::new();
-
-            // Generate random element.
-            let num_bytes: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
-            let element: Vec<u8> = (0..num_bytes).map(|_| u8::rand(&mut rng)).collect();
-
-            // Create a new FS rng.
-            let mut fs_rng = FS::new();
-            fs_rng.absorb_bytes(&element);
-
-            // Allocate an fs_rng gadget from the existing `fs_rng`.
-            let mut fs_rng_gadget = FSGadget::constant(cs.ns(|| format!("fs_rng_gadget_constant_{}", i)), &fs_rng);
-
-            // Get bits from the `fs_rng` and `fs_rng_gadget`.
-            let num_bits = num_bytes * 8;
-            let bits = FS::get_bits_from_sponge(&mut fs_rng.s, num_bits);
-            let bit_gadgets = FSGadget::get_booleans_from_sponge(
-                cs.ns(|| format!("get_booleans_from_sponge_{}", i)),
-                &mut fs_rng_gadget.s,
-                num_bits,
-            )
-            .unwrap();
-
-            // Check that the bit results are equivalent.
-            for (j, (bit_gadget, bit)) in bit_gadgets.iter().zip(bits).enumerate() {
-                // Allocate a boolean from the native bit.
-                let alloc_boolean = Boolean::alloc(cs.ns(|| format!("alloc_boolean_{}_{}", i, j)), || Ok(bit)).unwrap();
-
-                // Check that the boolean gadgets are equivalent.
-                bit_gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}", i, j)), &alloc_boolean)
-                    .unwrap();
-            }
-        }
     }
 
     #[test]

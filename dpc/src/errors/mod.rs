@@ -17,17 +17,17 @@
 pub mod account;
 pub use account::*;
 
-pub mod circuit;
-pub use circuit::*;
+pub mod bech32m;
+pub use bech32m::*;
 
-pub mod dpc;
-pub use dpc::*;
+pub mod block;
+pub use block::*;
 
-pub mod program;
-pub use program::*;
+pub mod posw;
+pub use posw::*;
 
 pub mod record;
 pub use record::*;
 
-pub mod transaction;
-pub use transaction::*;
+pub mod virtual_machine;
+pub use virtual_machine::*;

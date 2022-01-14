@@ -15,6 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::module_inception)]
+#![forbid(unsafe_code)]
+
+#[cfg(feature = "wasm")]
+#[macro_use]
+extern crate alloc;
 
 #[macro_use]
 extern crate thiserror;

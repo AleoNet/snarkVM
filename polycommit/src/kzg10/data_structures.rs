@@ -25,6 +25,7 @@ use snarkvm_utilities::{
     error,
     errors::SerializationError,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
+    FromBytes,
     ToBytes,
 };
 
@@ -59,7 +60,130 @@ pub struct UniversalParams<E: PairingEngine> {
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
-impl_bytes!(UniversalParams);
+impl<E: PairingEngine> FromBytes for UniversalParams<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        // Deserialize `powers_of_g`.
+        let powers_of_g_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut powers_of_g = Vec::with_capacity(powers_of_g_len as usize);
+        for _ in 0..powers_of_g_len {
+            let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            powers_of_g.push(power_of_g);
+        }
+
+        // Deserialize `powers_of_gamma_g`.
+        let mut powers_of_gamma_g = BTreeMap::new();
+        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        for _ in 0..powers_of_gamma_g_num_elements {
+            let key: u32 = FromBytes::read_le(&mut reader)?;
+            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+
+            powers_of_gamma_g.insert(key as usize, power_of_gamma_g);
+        }
+
+        // Deserialize `h`.
+        let h: E::G2Affine = FromBytes::read_le(&mut reader)?;
+
+        // Deserialize `beta_h`.
+        let beta_h: E::G2Affine = FromBytes::read_le(&mut reader)?;
+
+        // Deserialize `supported_degree_bounds`.
+        let supported_degree_bounds_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut supported_degree_bounds = Vec::with_capacity(supported_degree_bounds_len as usize);
+        for _ in 0..supported_degree_bounds_len {
+            let degree_bound: u32 = FromBytes::read_le(&mut reader)?;
+            supported_degree_bounds.push(degree_bound as usize);
+        }
+
+        // Deserialize `inverse_powers_of_g`.
+        let mut inverse_powers_of_g = BTreeMap::new();
+        let inverse_powers_of_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        for _ in 0..inverse_powers_of_g_num_elements {
+            let key: u32 = FromBytes::read_le(&mut reader)?;
+            let inverse_power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+
+            inverse_powers_of_g.insert(key as usize, inverse_power_of_g);
+        }
+
+        // Deserialize `inverse_neg_powers_of_h`.
+        let mut inverse_neg_powers_of_h = BTreeMap::new();
+        let inverse_neg_powers_of_h_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        for _ in 0..inverse_neg_powers_of_h_num_elements {
+            let key: u32 = FromBytes::read_le(&mut reader)?;
+            let neg_power_of_h: E::G2Affine = FromBytes::read_le(&mut reader)?;
+
+            inverse_neg_powers_of_h.insert(key as usize, neg_power_of_h);
+        }
+
+        // Deserialize `prepared_h`.
+        let prepared_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
+
+        // Deserialize `prepared_beta_h`.
+        let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self {
+            powers_of_g,
+            powers_of_gamma_g,
+            h,
+            beta_h,
+            supported_degree_bounds,
+            inverse_powers_of_g,
+            inverse_neg_powers_of_h,
+            prepared_h,
+            prepared_beta_h,
+        })
+    }
+}
+
+impl<E: PairingEngine> ToBytes for UniversalParams<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        // Serialize `powers_of_g`.
+        (self.powers_of_g.len() as u32).write_le(&mut writer)?;
+        for power in &self.powers_of_g {
+            power.write_le(&mut writer)?;
+        }
+
+        // Serialize `powers_of_gamma_g`.
+        (self.powers_of_gamma_g.len() as u32).write_le(&mut writer)?;
+        for (key, power_of_gamma_g) in &self.powers_of_gamma_g {
+            (*key as u32).write_le(&mut writer)?;
+            power_of_gamma_g.write_le(&mut writer)?;
+        }
+
+        // Serialize `h`.
+        self.h.write_le(&mut writer)?;
+
+        // Serialize `beta_h`.
+        self.beta_h.write_le(&mut writer)?;
+
+        // Serialize `supported_degree_bounds`.
+        (self.supported_degree_bounds.len() as u32).write_le(&mut writer)?;
+        for degree_bound in &self.supported_degree_bounds {
+            (*degree_bound as u32).write_le(&mut writer)?;
+        }
+
+        // Serialize `inverse_powers_of_g`.
+        (self.inverse_powers_of_g.len() as u32).write_le(&mut writer)?;
+        for (key, inverse_power_of_g) in &self.inverse_powers_of_g {
+            (*key as u32).write_le(&mut writer)?;
+            inverse_power_of_g.write_le(&mut writer)?;
+        }
+
+        // Serialize `inverse_neg_powers_of_h`.
+        (self.inverse_neg_powers_of_h.len() as u32).write_le(&mut writer)?;
+        for (key, inverse_neg_power_of_g) in &self.inverse_neg_powers_of_h {
+            (*key as u32).write_le(&mut writer)?;
+            inverse_neg_power_of_g.write_le(&mut writer)?;
+        }
+
+        // Serialize `prepared_h`.
+        self.prepared_h.write_le(&mut writer)?;
+
+        // Serialize `prepared_beta_h`.
+        self.prepared_beta_h.write_le(&mut writer)?;
+
+        Ok(())
+    }
+}
 
 impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     fn max_degree(&self) -> usize {
@@ -145,16 +269,16 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
         let supported_bits = E::Fr::size_in_bits();
 
         let mut prepared_g = Vec::<E::G1Affine>::new();
-        let mut g = E::G1Projective::from(vk.g.clone());
+        let mut g = E::G1Projective::from(vk.g);
         for _ in 0..supported_bits {
-            prepared_g.push(g.clone().into());
+            prepared_g.push(g.into());
             g.double_in_place();
         }
 
         let mut prepared_gamma_g = Vec::<E::G1Affine>::new();
-        let mut gamma_g = E::G1Projective::from(vk.gamma_g.clone());
+        let mut gamma_g = E::G1Projective::from(vk.gamma_g);
         for _ in 0..supported_bits {
-            prepared_gamma_g.push(gamma_g.clone().into());
+            prepared_gamma_g.push(gamma_g.into());
             gamma_g.double_in_place();
         }
 
@@ -185,6 +309,12 @@ pub struct Commitment<E: PairingEngine>(
 );
 
 impl_bytes!(Commitment);
+
+impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        self.0.to_minimal_bits()
+    }
+}
 
 impl<E: PairingEngine> PCCommitment for Commitment<E> {
     #[inline]
@@ -235,12 +365,12 @@ impl<E: PairingEngine> PreparedCommitment<E> {
     /// prepare `PreparedCommitment` from `Commitment`
     pub fn prepare(comm: &Commitment<E>) -> Self {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(comm.0.clone());
+        let mut cur = E::G1Projective::from(comm.0);
 
         let supported_bits = E::Fr::size_in_bits();
 
         for _ in 0..supported_bits {
-            prepared_comm.push(cur.clone().into());
+            prepared_comm.push(cur.into());
             cur.double_in_place();
         }
 
@@ -350,4 +480,8 @@ pub struct Proof<E: PairingEngine> {
 }
 impl_bytes!(Proof);
 
-impl<E: PairingEngine> PCProof for Proof<E> {}
+impl<E: PairingEngine> PCProof for Proof<E> {
+    fn is_hiding(&self) -> bool {
+        self.random_v.is_some()
+    }
+}

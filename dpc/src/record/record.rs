@@ -14,308 +14,477 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Parameters, Payload, PrivateKey, ProgramScheme, RecordError, RecordScheme};
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
-use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
+use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
+use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
 
+use anyhow::anyhow;
 use rand::{CryptoRng, Rng};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
-    io::{Read, Result as IoResult, Write},
+    io::{Cursor, Read, Result as IoResult, Write},
+    ops::Deref,
     str::FromStr,
 };
 
-fn default_program_id<C: CRH>() -> Vec<u8> {
-    C::Output::default().to_bytes_le().unwrap()
-}
-
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters"),
-    Clone(bound = "C: Parameters"),
-    PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters")
+    Debug(bound = "N: Network"),
+    Clone(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
 )]
-pub struct Record<C: Parameters> {
-    #[derivative(Default(value = "default_program_id::<C::ProgramCircuitIDCRH>()"))]
-    pub(crate) program_id: Vec<u8>,
-    pub(crate) owner: Address<C>,
-    pub(crate) is_dummy: bool,
-    // TODO (raychu86) use AleoAmount which will guard the value range
-    pub(crate) value: u64,
-    pub(crate) payload: Payload,
-    pub(crate) serial_number_nonce: C::SerialNumberNonce,
-    pub(crate) commitment: C::RecordCommitment,
-    pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+pub struct Record<N: Network> {
+    owner: Address<N>,
+    value: AleoAmount,
+    payload: Payload<N>,
+    program_id: N::ProgramID,
+    record_view_key: N::RecordViewKey,
+    ciphertext: N::RecordCiphertext,
 }
 
-impl<C: Parameters> Record<C> {
-    /// Returns a new noop input record.
-    pub fn new_noop_input<R: Rng + CryptoRng>(
-        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-        noop_program: &dyn ProgramScheme<C>,
-        owner: Address<C>,
-        rng: &mut R,
-    ) -> Result<Self, RecordError> {
-        // Sample a new record commitment randomness.
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-
-        Self::new_input(
-            noop_program,
+impl<N: Network> Record<N> {
+    /// Returns a new noop record.
+    pub fn new_noop<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
+        Self::new(
             owner,
-            true,
-            0,
-            Payload::default(),
-            C::serial_number_nonce_crh().hash(&rng.gen::<[u8; 32]>())?,
-            commitment_randomness,
-        )
-    }
-
-    /// Returns a new input record.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_input(
-        program: &dyn ProgramScheme<C>,
-        owner: Address<C>,
-        is_dummy: bool,
-        value: u64,
-        payload: Payload,
-        serial_number_nonce: C::SerialNumberNonce,
-        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
-    ) -> Result<Self, RecordError> {
-        Self::from(
-            &program.program_id().to_bytes_le()?,
-            owner,
-            is_dummy,
-            value,
-            payload,
-            serial_number_nonce,
-            commitment_randomness,
-        )
-    }
-
-    /// Returns a new noop output record.
-    pub fn new_noop_output<R: Rng + CryptoRng>(
-        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
-        noop_program: &dyn ProgramScheme<C>,
-        owner: Address<C>,
-        position: u8,
-        joint_serial_numbers: Vec<u8>,
-        rng: &mut R,
-    ) -> Result<Self, RecordError> {
-        Self::new_output(
-            noop_program,
-            owner,
-            true,
-            0,
-            Payload::default(),
-            position,
-            joint_serial_numbers,
+            AleoAmount::ZERO,
+            Payload::<N>::default(),
+            *N::noop_program_id(),
             rng,
         )
     }
 
-    /// Returns a new output record.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_output<R: Rng + CryptoRng>(
-        program: &dyn ProgramScheme<C>,
-        owner: Address<C>,
-        is_dummy: bool,
-        value: u64,
-        payload: Payload,
-        position: u8,
-        joint_serial_numbers: Vec<u8>,
+    /// Returns a new record.
+    pub fn new<R: Rng + CryptoRng>(
+        owner: Address<N>,
+        value: AleoAmount,
+        payload: Payload<N>,
+        program_id: N::ProgramID,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
-        // Ensure the output record position is valid.
-        if (position as usize) < C::NUM_INPUT_RECORDS {
-            return Err(RecordError::InvalidOutputPosition(position));
-        }
-
-        // Compute the serial number nonce.
-        let serial_number_nonce = C::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
-        // Sample a new record commitment randomness.
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-
+        // Generate the ciphertext parameters.
+        let (_randomness, randomizer, record_view_key) =
+            N::account_encryption_scheme().generate_asymmetric_key(&*owner, rng);
         Self::from(
-            &program.program_id().to_bytes_le()?,
             owner,
-            is_dummy,
             value,
             payload,
-            serial_number_nonce,
-            commitment_randomness,
+            program_id,
+            randomizer.into(),
+            record_view_key.into(),
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// Returns a record from the given inputs.
     pub fn from(
-        program_id: &Vec<u8>,
-        owner: Address<C>,
-        is_dummy: bool,
-        value: u64,
-        payload: Payload,
-        serial_number_nonce: C::SerialNumberNonce,
-        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
+        owner: Address<N>,
+        value: AleoAmount,
+        payload: Payload<N>,
+        program_id: N::ProgramID,
+        randomizer: N::RecordRandomizer,
+        record_view_key: N::RecordViewKey,
     ) -> Result<Self, RecordError> {
-        // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
-        let commitment_input = to_bytes_le![
-            program_id,          // 384 bits = 48 bytes
-            owner,               // 256 bits = 32 bytes
-            is_dummy,            // 1 bit = 1 byte
-            value,               // 64 bits = 8 bytes
-            payload,             // 1024 bits = 128 bytes
-            serial_number_nonce  // 256 bits = 32 bytes
-        ]?;
+        // Encode the record contents into plaintext bytes.
+        let plaintext = Self::encode_plaintext(owner, value, &payload, program_id)?;
 
-        // Compute the record commitment.
-        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
+        // Encrypt the record bytes.
+        let ciphertext = Ciphertext::<N>::from(
+            randomizer,
+            N::account_encryption_scheme()
+                .generate_symmetric_key_commitment(&record_view_key)
+                .into(),
+            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
+        )?;
 
         Ok(Self {
-            program_id: program_id.clone(),
             owner,
-            is_dummy,
             value,
             payload,
-            serial_number_nonce,
-            commitment,
-            commitment_randomness,
+            program_id,
+            record_view_key,
+            ciphertext: ciphertext.into(),
         })
     }
 
-    // TODO (howardwu) - Change the private_key input to a signature_public_key.
-    pub fn to_serial_number(
-        &self,
-        private_key: &PrivateKey<C>,
-    ) -> Result<
-        (
-            C::AccountSignaturePublicKey,
-            <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
-        ),
-        RecordError,
-    > {
-        let timer = start_timer!(|| "Generate serial number");
+    /// Returns a record from the given account view key and ciphertext.
+    pub fn from_account_view_key(
+        account_view_key: &ViewKey<N>,
+        ciphertext: &N::RecordCiphertext,
+    ) -> Result<Self, RecordError> {
+        // Compute the record view key.
+        let record_view_key = match N::account_encryption_scheme()
+            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())
+        {
+            Some(record_view_key) => record_view_key.into(),
+            None => return Err(anyhow!("Failed to compute record view key due to malformed account view key").into()),
+        };
 
-        // TODO (howardwu) - Implement after removing parameters from the inputs.
-        // // Check that the private key corresponds with the owner of the record.
-        // if self.owner != &Address::<C>::from_private_key(private_key)? {
-        //     return Err(RecordError::IncorrectPrivateKey);
-        // }
+        // Decrypt the record ciphertext.
+        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
+        let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
-        // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
-        let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
-        let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature_scheme().randomize_public_key(private_key.pk_sig(), &randomizer)?;
-
-        end_timer!(timer);
-        Ok((serial_number, randomizer))
-    }
-}
-
-impl<C: Parameters> RecordScheme for Record<C> {
-    type Commitment = C::RecordCommitment;
-    type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
-    type Owner = Address<C>;
-    type Payload = Payload;
-    type SerialNumber = C::AccountSignaturePublicKey;
-    type SerialNumberNonce = C::SerialNumberNonce;
-
-    fn program_id(&self) -> &[u8] {
-        &self.program_id
+        // Ensure the record owner matches.
+        let expected_owner = Address::from_view_key(account_view_key);
+        match owner == expected_owner {
+            true => Ok(Self {
+                owner,
+                value,
+                payload,
+                program_id,
+                record_view_key,
+                ciphertext: ciphertext.clone(),
+            }),
+            false => Err(anyhow!("Decoded incorrect record owner from ciphertext").into()),
+        }
     }
 
-    fn owner(&self) -> &Self::Owner {
-        &self.owner
+    /// Returns a record from the given record view key and ciphertext.
+    pub fn from_record_view_key(
+        record_view_key: N::RecordViewKey,
+        ciphertext: &N::RecordCiphertext,
+    ) -> Result<Self, RecordError> {
+        // Decrypt the record ciphertext.
+        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
+        let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
+
+        Ok(Self {
+            owner,
+            value,
+            payload,
+            program_id,
+            record_view_key,
+            ciphertext: ciphertext.clone(),
+        })
     }
 
-    fn is_dummy(&self) -> bool {
-        self.is_dummy
+    /// Returns `true` if the record is a dummy.
+    pub fn is_dummy(&self) -> bool {
+        self.value.is_zero() && self.payload.is_empty() && self.program_id == *N::noop_program_id()
     }
 
-    fn value(&self) -> u64 {
+    /// Returns the record owner.
+    pub fn owner(&self) -> Address<N> {
+        self.owner
+    }
+
+    /// Returns the record value.
+    pub fn value(&self) -> AleoAmount {
         self.value
     }
 
-    fn payload(&self) -> &Self::Payload {
+    /// Returns the record payload.
+    pub fn payload(&self) -> &Payload<N> {
         &self.payload
     }
 
-    fn serial_number_nonce(&self) -> &Self::SerialNumberNonce {
-        &self.serial_number_nonce
+    /// Returns the program id of this record.
+    pub fn program_id(&self) -> N::ProgramID {
+        self.program_id
     }
 
-    fn commitment(&self) -> Self::Commitment {
-        self.commitment.clone()
+    /// Returns the randomizer used for the ciphertext.
+    pub fn randomizer(&self) -> N::RecordRandomizer {
+        self.ciphertext.deref().randomizer()
     }
 
-    fn commitment_randomness(&self) -> Self::CommitmentRandomness {
-        self.commitment_randomness.clone()
+    /// Returns the view key of this record.
+    pub fn record_view_key(&self) -> &N::RecordViewKey {
+        &self.record_view_key
     }
-}
 
-impl<C: Parameters> ToBytes for Record<C> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        variable_length_integer(self.program_id.len() as u64).write_le(&mut writer)?;
-        self.program_id.write_le(&mut writer)?;
-
-        self.owner.write_le(&mut writer)?;
-        self.is_dummy.write_le(&mut writer)?;
-        self.value.write_le(&mut writer)?;
-        self.payload.write_le(&mut writer)?;
-        self.serial_number_nonce.write_le(&mut writer)?;
-        self.commitment.write_le(&mut writer)?;
-        self.commitment_randomness.write_le(&mut writer)
+    /// Returns the commitment of this record.
+    pub fn commitment(&self) -> N::Commitment {
+        self.ciphertext.deref().commitment()
     }
-}
 
-impl<C: Parameters> FromBytes for Record<C> {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let program_id_size: usize = read_variable_length_integer(&mut reader)?;
-        let mut program_id = Vec::with_capacity(program_id_size);
-        for _ in 0..program_id_size {
-            let byte: u8 = FromBytes::read_le(&mut reader)?;
-            program_id.push(byte);
+    /// Returns this record as ciphertext.
+    pub fn ciphertext(&self) -> &N::RecordCiphertext {
+        &self.ciphertext
+    }
+
+    /// Returns the serial number of the record, given the compute key corresponding to the record owner.
+    pub fn to_serial_number(&self, compute_key: &ComputeKey<N>) -> Result<N::SerialNumber, RecordError> {
+        // Check that the compute key corresponds with the owner of the record.
+        if self.owner != Address::<N>::from_compute_key(compute_key) {
+            return Err(RecordError::IncorrectComputeKey);
         }
 
-        let owner: Address<C> = FromBytes::read_le(&mut reader)?;
-        let is_dummy: bool = FromBytes::read_le(&mut reader)?;
-        let value: u64 = FromBytes::read_le(&mut reader)?;
-        let payload: Payload = FromBytes::read_le(&mut reader)?;
-        let serial_number_nonce: C::SerialNumberNonce = FromBytes::read_le(&mut reader)?;
-        let commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
-        let commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness =
-            FromBytes::read_le(&mut reader)?;
+        // Compute the serial number.
+        // First, convert the program scalar field element to bytes,
+        // and interpret these bytes as a program base field element
+        // For our choice of scalar field and base field (i.e., on TE curves)
+        // scalar field is always smaller than base field, so the bytes always fit without
+        // wraparound.
+        let seed = N::InnerScalarField::from_repr(FromBits::from_bits_le(&compute_key.sk_prf().to_bits_le())).unwrap();
+        let input = self.commitment();
+        let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
 
-        Ok(Self {
-            program_id,
-            owner,
-            is_dummy,
-            value,
-            payload,
-            serial_number_nonce,
-            commitment,
-            commitment_randomness,
-        })
+        Ok(serial_number)
+    }
+
+    /// Encode the record contents into plaintext bytes.
+    fn encode_plaintext(
+        owner: Address<N>,
+        value: AleoAmount,
+        payload: &Payload<N>,
+        program_id: N::ProgramID,
+    ) -> Result<Vec<u8>, RecordError> {
+        // Determine if the record is a dummy.
+        let is_dummy = value.is_zero() && payload.is_empty() && program_id == *N::noop_program_id();
+
+        // Total = 32 + 1 + 8 + 128 + 48 = 217 bytes
+        let plaintext = to_bytes_le![
+            owner,      // 256 bits = 32 bytes
+            is_dummy,   // 1 bit = 1 byte
+            value,      // 64 bits = 8 bytes
+            payload,    // 1024 bits = 128 bytes
+            program_id  // 384 bits = 48 bytes
+        ]?;
+
+        // Ensure the record bytes are within the permitted size.
+        match plaintext.len() <= u16::MAX as usize {
+            true => Ok(plaintext),
+            false => Err(anyhow!("Records must be <= 65535 bytes, found {} bytes", plaintext.len()).into()),
+        }
+    }
+
+    /// Decode the plaintext bytes into the record contents.
+    fn decode_plaintext(plaintext: &[u8]) -> Result<(Address<N>, AleoAmount, Payload<N>, N::ProgramID), RecordError> {
+        assert_eq!(
+            1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES + N::ProgramID::data_size_in_bytes(),
+            plaintext.len()
+        );
+
+        // Decode the plaintext bytes.
+        let mut cursor = Cursor::new(plaintext);
+        let owner = Address::<N>::read_le(&mut cursor)?;
+        let is_dummy = u8::read_le(&mut cursor)?;
+        let value = AleoAmount::read_le(&mut cursor)?;
+        let payload = Payload::read_le(&mut cursor)?;
+        let program_id = N::ProgramID::read_le(&mut cursor)?;
+
+        // Ensure the dummy flag in the record is correct.
+        let expected_dummy = value.is_zero() && payload.is_empty() && program_id == *N::noop_program_id();
+        match is_dummy == expected_dummy as u8 {
+            true => Ok((owner, value, payload, program_id)),
+            false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
+        }
     }
 }
 
-impl<C: Parameters> FromStr for Record<C> {
+impl<N: Network> ToBytes for Record<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.owner.write_le(&mut writer)?;
+        self.value.write_le(&mut writer)?;
+        self.payload.write_le(&mut writer)?;
+        self.program_id.write_le(&mut writer)?;
+        self.randomizer().write_le(&mut writer)?;
+        self.record_view_key.write_le(&mut writer)
+    }
+}
+
+impl<N: Network> FromBytes for Record<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let owner: Address<N> = FromBytes::read_le(&mut reader)?;
+        let value: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let payload: Payload<N> = FromBytes::read_le(&mut reader)?;
+        let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
+        let randomizer: N::RecordRandomizer = FromBytes::read_le(&mut reader)?;
+        let record_view_key: N::RecordViewKey = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self::from(
+            owner,
+            value,
+            payload,
+            program_id,
+            randomizer,
+            record_view_key,
+        )?)
+    }
+}
+
+impl<N: Network> FromStr for Record<N> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
-        Ok(Self::read_le(&hex::decode(record)?[..])?)
+        Ok(serde_json::from_str(record)?)
     }
 }
 
-impl<C: Parameters> fmt::Display for Record<C> {
+impl<N: Network> fmt::Display for Record<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
-            hex::encode(to_bytes_le![self].expect("serialization to bytes failed"))
+            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
         )
+    }
+}
+
+impl<N: Network> Serialize for Record<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => {
+                let mut record = serializer.serialize_struct("Record", 7)?;
+                record.serialize_field("owner", &self.owner)?;
+                record.serialize_field("value", &self.value)?;
+                record.serialize_field("payload", &self.payload)?;
+                record.serialize_field("program_id", &self.program_id)?;
+                record.serialize_field("randomizer", &self.randomizer())?;
+                record.serialize_field("record_view_key", &self.record_view_key)?;
+                record.serialize_field("commitment", &self.commitment())?;
+                record.end()
+            }
+            false => ToBytesSerializer::serialize(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for Record<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let record = serde_json::Value::deserialize(deserializer)?;
+                let commitment: N::Commitment =
+                    serde_json::from_value(record["commitment"].clone()).map_err(de::Error::custom)?;
+
+                // Recover the record.
+                let record = Self::from(
+                    serde_json::from_value(record["owner"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["value"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["payload"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["program_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["randomizer"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(record["record_view_key"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)?;
+
+                // Ensure the commitment matches.
+                match commitment == record.commitment() {
+                    true => Ok(record),
+                    false => Err(RecordError::InvalidCommitment(
+                        commitment.to_string(),
+                        record.commitment().to_string(),
+                    ))
+                    .map_err(de::Error::custom)?,
+                }
+            }
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "record", N::RECORD_SIZE_IN_BYTES),
+        }
+    }
+}
+
+impl<N: Network> Default for Record<N> {
+    fn default() -> Self {
+        Self::from(
+            Default::default(),
+            AleoAmount::ZERO,
+            Default::default(),
+            *N::noop_program_id(),
+            Default::default(),
+            Default::default(),
+        )
+        .expect("Failed to initialize Record::default()")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{testnet2::Testnet2, Address, PrivateKey};
+
+    use rand::thread_rng;
+
+    #[test]
+    fn test_serde_json_noop() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Noop record
+        let expected_record = Record::new_noop(address, rng).unwrap();
+
+        // Serialize
+        let expected_string = expected_record.to_string();
+        let candidate_string = serde_json::to_string(&expected_record).unwrap();
+        assert_eq!(expected_string, candidate_string);
+
+        // Deserialize
+        assert_eq!(expected_record, Record::from_str(&candidate_string).unwrap());
+        assert_eq!(expected_record, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_serde_json() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Output record
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
+        rng.fill(&mut payload);
+        let expected_record = Record::new(
+            address,
+            AleoAmount::from_i64(1234),
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            rng,
+        )
+        .unwrap();
+
+        // Serialize
+        let expected_string = expected_record.to_string();
+        let candidate_string = serde_json::to_string(&expected_record).unwrap();
+        assert_eq!(expected_string, candidate_string);
+
+        // Deserialize
+        assert_eq!(expected_record, Record::from_str(&candidate_string).unwrap());
+        assert_eq!(expected_record, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_bincode_noop() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Noop record
+        let expected_record = Record::new_noop(address, rng).unwrap();
+
+        // Serialize
+        let expected_bytes = expected_record.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_record).unwrap()[..]);
+
+        // Deserialize
+        assert_eq!(expected_record, Record::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_record, bincode::deserialize(&expected_bytes[..]).unwrap());
+    }
+
+    #[test]
+    fn test_bincode() {
+        let rng = &mut thread_rng();
+        let address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+        // Output record
+        let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
+        rng.fill(&mut payload);
+        let expected_record = Record::new(
+            address,
+            AleoAmount::from_i64(1234),
+            Payload::from_bytes_le(&payload).unwrap(),
+            *Testnet2::noop_program_id(),
+            rng,
+        )
+        .unwrap();
+
+        // Serialize
+        let expected_bytes = expected_record.to_bytes_le().unwrap();
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_record).unwrap()[..]);
+
+        // Deserialize
+        assert_eq!(expected_record, Record::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_record, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 }

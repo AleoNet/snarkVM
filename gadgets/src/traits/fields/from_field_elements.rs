@@ -24,6 +24,6 @@ pub trait FromFieldElementsGadget<F: PrimeField, CF: PrimeField>: Sized {
     /// Converts `FpGadget<F>` variables to `self`.
     fn from_field_elements<CS: ConstraintSystem<CF>>(
         cs: CS,
-        field_elements: &Vec<FpGadget<CF>>,
+        field_elements: &[FpGadget<CF>],
     ) -> Result<Self, SynthesisError>;
 }

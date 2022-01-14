@@ -19,6 +19,9 @@
 pub mod arithmetic;
 pub use arithmetic::*;
 
+pub mod bytes;
+pub use bytes::*;
+
 pub mod int_impl;
 pub use int_impl::*;
 

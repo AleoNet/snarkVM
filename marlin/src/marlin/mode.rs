@@ -14,33 +14,49 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::fmt::Debug;
+
 /// A trait to specify the Marlin mode.
-pub trait MarlinMode: Clone {
+pub trait MarlinMode: Clone + Debug + 'static + Sync + Send {
     /// Specifies whether this is for a recursive proof of at least depth-1.
     const RECURSION: bool;
+
+    const ZK: bool;
 }
 
 /// TODO (howardwu): Combine all of the testnet configurations into an environment struct higher up.
 /// The Marlin testnet1 mode does not assume recursive proofs of any depth.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MarlinTestnet1Mode;
 
 impl MarlinMode for MarlinTestnet1Mode {
     const RECURSION: bool = false;
+    const ZK: bool = true;
 }
 
 /// The Marlin testnet2 mode does not assume recursive proofs of any depth.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MarlinTestnet2Mode;
 
 impl MarlinMode for MarlinTestnet2Mode {
     const RECURSION: bool = true;
+    const ZK: bool = true;
 }
 
 /// The Marlin default mode assumes a recursive proof of at least depth-1.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MarlinRecursiveMode;
 
 impl MarlinMode for MarlinRecursiveMode {
     const RECURSION: bool = true;
+    const ZK: bool = true;
+}
+
+/// The Marlin POSW mode does not assume recursive proofs of any depth.
+#[derive(Clone, Debug)]
+pub struct MarlinPoswMode;
+
+impl MarlinMode for MarlinPoswMode {
+    const RECURSION: bool = false;
+    const ZK: bool = false;
 }

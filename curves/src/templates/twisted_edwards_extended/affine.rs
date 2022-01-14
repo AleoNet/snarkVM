@@ -20,7 +20,15 @@ use crate::{
     traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    rand::UniformRand,
+    serialize::*,
+    FromBytes,
+    ToBits,
+    ToBytes,
+    ToMinimalBits,
+};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -161,7 +169,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         })
     }
 
-    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
+    fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut res = Projective::zero();
         for i in bits {
             res.double_in_place();
@@ -177,7 +185,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
-        self.mul(P::COFACTOR_INV).into()
+        self.mul(P::COFACTOR_INV)
     }
 
     fn into_projective(&self) -> Projective<P> {
@@ -206,6 +214,12 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
 
         lhs == rhs
+    }
+}
+
+impl<P: Parameters> ToMinimalBits for Affine<P> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        self.x.to_bits_le()
     }
 }
 
@@ -260,8 +274,8 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for Affine<P> {
         let x1y2 = self.x * other.y;
         let y1x2 = self.y * other.x;
 
-        self.x = (x1y2 + y1x2) / &d1;
-        self.y = (y1y2 - P::mul_by_a(&x1x2)) / &d2;
+        self.x = (x1y2 + y1x2) / d1;
+        self.y = (y1y2 - P::mul_by_a(&x1x2)) / d2;
     }
 }
 
@@ -291,7 +305,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
 
 impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
     fn mul_assign(&mut self, other: P::ScalarField) {
-        *self = self.mul(other).into()
+        *self = self.mul(other)
     }
 }
 

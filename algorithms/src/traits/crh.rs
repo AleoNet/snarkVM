@@ -23,20 +23,26 @@ use std::{
     hash::Hash,
 };
 
-pub trait CRH: Clone + ToBytes + FromBytes + From<<Self as CRH>::Parameters> {
-    type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync + Copy;
+pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as CRH>::Parameters> {
+    type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync;
     type Parameters: Clone + Debug + Eq;
-
-    const INPUT_SIZE_BITS: usize;
 
     fn setup(message: &str) -> Self;
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError>;
+    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+        let bits = input
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        self.hash_bits(&bits)
+    }
+
+    fn hash_bits(&self, input_bits: &[bool]) -> Result<Self::Output, CRHError>;
 
     fn hash_field_elements<F: PrimeField>(&self, input: &[F]) -> Result<Self::Output, CRHError> {
         let mut input_bytes = vec![];
         for elem in input.iter() {
-            input_bytes.append(&mut elem.to_bytes_le()?);
+            input_bytes.extend_from_slice(&elem.to_bytes_le()?);
         }
         self.hash(&input_bytes)
     }

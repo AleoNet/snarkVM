@@ -70,7 +70,7 @@ pub fn msm_standard<G: AffineCurve>(
                         // bucket.
                         // (Recall that `buckets` doesn't have a zero bucket.)
                         if scalar != 0 {
-                            buckets[(scalar - 1) as usize].add_assign_mixed(&base);
+                            buckets[(scalar - 1) as usize].add_assign_mixed(base);
                         }
                     }
                 });

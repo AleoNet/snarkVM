@@ -36,6 +36,10 @@ version = "0.8"
 default-features = false
 features = [ "std_rng" ]
 
+[dependencies.serde]
+version = "1.0"
+default-features = false
+
 [dependencies.thiserror]
 version = "1.0"
 

@@ -1,10 +1,9 @@
-./inner_snark.sh || exit
-
 # These are dependent on each other.
-./universal_srs.sh || exit
-./noop_program_snark.sh || exit
-./outer_snark.sh || exit
+./universal.sh || exit
+./noop.sh || exit
+./inner.sh || exit
+./outer.sh || exit
 
-./posw_snark.sh || exit
+./posw.sh || exit
 
 ./genesis.sh || exit
