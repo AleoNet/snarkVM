@@ -20,9 +20,6 @@ use core::fmt::Debug;
 
 use crate::{ahp::AHPError, fiat_shamir::FiatShamirError};
 
-#[cfg(not(feature = "std"))]
-use core::fmt::Debug;
-
 /// A `enum` specifying the possible failure modes of `Marlin`.
 #[derive(Debug)]
 pub enum MarlinError {
