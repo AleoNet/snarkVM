@@ -142,12 +142,12 @@ mod tests {
     #[test]
     fn test_u8_add_all_modes() {
         run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
         run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
         run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
+        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
         run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
         run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
     }
@@ -155,12 +155,12 @@ mod tests {
     #[test]
     fn test_u16_add_all_modes() {
         run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
         run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
         run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
+        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
         run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
         run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
     }
@@ -168,12 +168,12 @@ mod tests {
     #[test]
     fn test_u32_add_all_modes() {
         run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
         run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
         run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
+        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
         run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
         run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
     }
@@ -181,12 +181,12 @@ mod tests {
     #[test]
     fn test_u64_add_all_modes() {
         run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
         run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
         run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
+        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
         run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
         run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
     }
@@ -194,12 +194,12 @@ mod tests {
     #[test]
     fn test_u128_add_all_modes() {
         run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
         run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
         run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
+        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
         run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
         run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
     }

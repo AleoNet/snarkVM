@@ -29,7 +29,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
     /// TODO (@pranav) Number of constraints; Is extra logical and for Boolean::new(Mode::Constant, true) free?
     ///
     fn is_eq(&self, other: &Self) -> Self::Output {
-        let mut all_bits_eq = self
+        let all_bits_eq = self
             .bits_le
             .iter()
             .zip(other.bits_le.iter())
@@ -58,6 +58,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
+    use crate::integers::test_utilities::check_boolean_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,
@@ -65,7 +66,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+    fn test_is_eq<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
         iterations: usize,
         mode_a: Mode,
         mode_b: Mode,
@@ -76,99 +77,318 @@ mod tests {
         for i in 0..iterations {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
+
             let expected = first == second;
 
-            let a = Signed::<Circuit, I, U, SIZE>::new(mode_a, first);
-            let b = Signed::<Circuit, I, U, SIZE>::new(mode_b, second);
+            let name = format!("Eq: a == b {}", i);
+            let compute_candidate = || {
+                let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+                let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
+                a.is_eq(&b)
+            };
+            check_boolean_operation::<E>(&name, expected, &compute_candidate, circuit_properties);
+        }
+    }
 
-            Circuit::scoped(&format!("Equals {}", i), |scope| {
-                let equals = a.is_eq(&b);
-                assert_eq!(expected, equals.eject_value());
-                if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
-                    assert_eq!(num_constants, scope.num_constants_in_scope());
-                    assert_eq!(num_public, scope.num_public_in_scope());
-                    assert_eq!(num_private, scope.num_private_in_scope());
-                    assert_eq!(num_constraints, scope.num_constraints_in_scope());
-                }
-                Circuit::is_satisfied();
-            });
+    fn test_is_neq<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<I>,
+    {
+        for i in 0..iterations {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
 
-            Circuit::scoped(&format!("Not Equals {}", i), |scope| {
-                let not_equals = a.is_neq(&b);
-                assert_eq!(expected, !(not_equals.eject_value()));
-                if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
-                    assert_eq!(num_constants, scope.num_constants_in_scope());
-                    assert_eq!(num_public, scope.num_public_in_scope());
-                    assert_eq!(num_private, scope.num_private_in_scope());
-                    assert_eq!(num_constraints, scope.num_constraints_in_scope());
-                }
-                Circuit::is_satisfied();
-            });
+            let expected = first != second;
+
+            let name = format!("Neq: a != b {}", i);
+            let compute_candidate = || {
+                let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+                let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
+                a.is_neq(&b)
+            };
+            check_boolean_operation::<E>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_i8_is_eq_all_modes() {
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
+    fn test_i8_is_eq_constant_constant() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((17, 0, 0, 0)));
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((17, 0, 0, 0)));
     }
 
     #[test]
-    fn test_i16_is_eq_all_modes() {
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+    fn test_i8_is_eq_constant_public() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
     }
 
     #[test]
-    fn test_i32_is_eq_all_modes() {
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
+    fn test_i8_is_eq_constant_private() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
     }
 
     #[test]
-    fn test_i64_is_eq_all_modes() {
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+    fn test_i8_is_eq_public_constant() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
     }
 
     #[test]
-    fn test_i128_is_eq_all_modes() {
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
+    fn test_i8_is_eq_public_public() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 16, 15, 46)));
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 16, 15, 46)));
+    }
+
+    #[test]
+    fn test_i8_is_eq_public_private() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 8, 23, 46)));
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 8, 23, 46)));
+    }
+
+    #[test]
+    fn test_i8_is_eq_private_constant() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i8_is_eq_private_public() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 8, 23, 46)));
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 8, 23, 46)));
+    }
+
+    #[test]
+    fn test_i8_is_eq_private_private() {
+        test_is_eq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 31, 46)));
+        test_is_neq::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 31, 46)));
+    }
+
+    // Tests for i16
+
+    #[test]
+    fn test_i16_is_eq_constant_constant() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((33, 0, 0, 0)));
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((33, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i16_is_eq_constant_public() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i16_is_eq_constant_private() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i16_is_eq_public_constant() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i16_is_eq_public_public() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 32, 31, 94)));
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 32, 31, 94)));
+    }
+
+    #[test]
+    fn test_i16_is_eq_public_private() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 16, 47, 94)));
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 16, 47, 94)));
+    }
+
+    #[test]
+    fn test_i16_is_eq_private_constant() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i16_is_eq_private_public() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 16, 47, 94)));
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 16, 47, 94)));
+    }
+
+    #[test]
+    fn test_i16_is_eq_private_private() {
+        test_is_eq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 63, 94)));
+        test_is_neq::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 63, 94)));
+    }
+
+    // Tests for i32
+
+    #[test]
+    fn test_i32_is_eq_constant_constant() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((65, 0, 0, 0)));
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((65, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i32_is_eq_constant_public() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i32_is_eq_constant_private() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i32_is_eq_public_constant() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i32_is_eq_public_public() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 64, 63, 190)));
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 64, 63, 190)));
+    }
+
+    #[test]
+    fn test_i32_is_eq_public_private() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 32, 95, 190)));
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 32, 95, 190)));
+    }
+
+    #[test]
+    fn test_i32_is_eq_private_constant() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i32_is_eq_private_public() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 32, 95, 190)));
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 32, 95, 190)));
+    }
+
+    #[test]
+    fn test_i32_is_eq_private_private() {
+        test_is_eq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 127, 190)));
+        test_is_neq::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 127, 190)));
+    }
+
+    // Tests for i64
+
+    #[test]
+    fn test_i64_is_eq_constant_constant() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((129, 0, 0, 0)));
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((129, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i64_is_eq_constant_public() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i64_is_eq_constant_private() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i64_is_eq_public_constant() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i64_is_eq_public_public() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 128, 127, 382)));
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 128, 127, 382)));
+    }
+
+    #[test]
+    fn test_i64_is_eq_public_private() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 64, 191, 382)));
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 64, 191, 382)));
+    }
+
+    #[test]
+    fn test_i64_is_eq_private_constant() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i64_is_eq_private_public() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 64, 191, 382)));
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 64, 191, 382)));
+    }
+
+    #[test]
+    fn test_i64_is_eq_private_private() {
+        test_is_eq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 255, 382)));
+        test_is_neq::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 255, 382)));
+    }
+
+    // Tests for i128
+
+    #[test]
+    fn test_i128_is_eq_constant_constant() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((257, 0, 0, 0)));
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((257, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i128_is_eq_constant_public() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i128_is_eq_constant_private() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i128_is_eq_public_constant() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i128_is_eq_public_public() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 256, 255, 766)));
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 256, 255, 766)));
+    }
+
+    #[test]
+    fn test_i128_is_eq_public_private() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 128, 383, 766)));
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 128, 383, 766)));
+    }
+
+    #[test]
+    fn test_i128_is_eq_private_constant() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i128_is_eq_private_public() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 128, 383, 766)));
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 128, 383, 766)));
+    }
+
+    #[test]
+    fn test_i128_is_eq_private_private() {
+        test_is_eq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 511, 766)));
+        test_is_neq::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 511, 766)));
     }
 }

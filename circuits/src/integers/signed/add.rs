@@ -57,11 +57,11 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 
         assert_eq!(bits.len(), SIZE);
 
-        for i in 0..SIZE {
-            let mask = I::one() << i;
-            let value_bit = Boolean::<E>::new(mode, value & mask == mask);
-            value_bit.is_eq(&bits[i]);
-        }
+        // for i in 0..SIZE {
+        //     let mask = I::one() << i;
+        //     let value_bit = Boolean::<E>::new(mode, value & mask == mask);
+        //     value_bit.is_eq(&bits[i]);
+        // }
 
         Self::from_bits(bits)
     }
@@ -115,9 +115,9 @@ mod tests {
     };
     use std::num::Wrapping;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 10;
 
-    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+    fn test_add<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
         iterations: usize,
         mode_a: Mode,
         mode_b: Mode,
@@ -130,85 +130,317 @@ mod tests {
             let second: I = UniformRand::rand(&mut thread_rng());
 
             let expected = first.wrapping_add(&second);
-            let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
-            let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
 
             let name = format!("Add: a + b {}", i);
-            let compute_candidate = || &a + &b;
-            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
-
-            let name = format!("AddAssign: a + b {}", i);
             let compute_candidate = || {
-                let mut candidate = (&a).clone();
-                candidate += &b;
-                candidate
+                let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+                let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
+                a + b
+            };
+            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
+        }
+    }
+
+    fn test_add_assign<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<I>,
+    {
+        for i in 0..iterations {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
+
+            let expected = first.wrapping_add(&second);
+
+            let name = format!("AddAssign: a += b {}", i);
+            let compute_candidate = || {
+                let mut a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+                let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
+                a += b;
+                a
             };
             check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_i8_add_all_modes() {
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
+    fn test_i8_add_constant_constant() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((24, 0, 0, 0)));
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((24, 0, 0, 0)));
     }
 
     #[test]
-    fn test_i16_add_all_modes() {
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+    fn test_i8_add_constant_public() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
     }
 
     #[test]
-    fn test_i32_add_all_modes() {
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
+    fn test_i8_add_constant_private() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
     }
 
     #[test]
-    fn test_i64_add_all_modes() {
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+    fn test_i8_add_public_constant() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
     }
 
     #[test]
-    fn test_i128_add_all_modes() {
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
+    fn test_i8_add_public_public() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 16, 45, 106)));
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 16, 45, 106)));
+    }
+
+    #[test]
+    fn test_i8_add_public_private() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 8, 53, 106)));
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 8, 53, 106)));
+    }
+
+    #[test]
+    fn test_i8_add_private_constant() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i8_add_private_public() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 8, 53, 106)));
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 8, 53, 106)));
+    }
+
+    #[test]
+    fn test_i8_add_private_private() {
+        test_add::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 61, 106)));
+        test_add_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 61, 106)));
+    }
+
+    // Tests for i16
+
+    #[test]
+    fn test_i16_add_constant_constant() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((48, 0, 0, 0)));
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((48, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i16_add_constant_public() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i16_add_constant_private() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i16_add_public_constant() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i16_add_public_public() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 32, 93, 218)));
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 32, 93, 218)));
+    }
+
+    #[test]
+    fn test_i16_add_public_private() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 16, 109, 218)));
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 16, 109, 218)));
+    }
+
+    #[test]
+    fn test_i16_add_private_constant() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i16_add_private_public() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 16, 109, 218)));
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 16, 109, 218)));
+    }
+
+    #[test]
+    fn test_i16_add_private_private() {
+        test_add::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 125, 218)));
+        test_add_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 125, 218)));
+    }
+
+    // Tests for i32
+
+    #[test]
+    fn test_i32_add_constant_constant() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((96, 0, 0, 0)));
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((96, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i32_add_constant_public() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i32_add_constant_private() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i32_add_public_constant() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i32_add_public_public() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 64, 189, 442)));
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 64, 189, 442)));
+    }
+
+    #[test]
+    fn test_i32_add_public_private() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 32, 221, 442)));
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 32, 221, 442)));
+    }
+
+    #[test]
+    fn test_i32_add_private_constant() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i32_add_private_public() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 32, 221, 442)));
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 32, 221, 442)));
+    }
+
+    #[test]
+    fn test_i32_add_private_private() {
+        test_add::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 253, 442)));
+        test_add_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 253, 442)));
+    }
+
+    // Tests for i64
+
+    #[test]
+    fn test_i64_add_constant_constant() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((192, 0, 0, 0)));
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((192, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i64_add_constant_public() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i64_add_constant_private() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i64_add_public_constant() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i64_add_public_public() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 128, 381, 890)));
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 128, 381, 890)));
+    }
+
+    #[test]
+    fn test_i64_add_public_private() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 64, 445, 890)));
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 64, 445, 890)));
+    }
+
+    #[test]
+    fn test_i64_add_private_constant() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i64_add_private_public() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 64, 445, 890)));
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 64, 445, 890)));
+    }
+
+    #[test]
+    fn test_i64_add_private_private() {
+        test_add::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 509, 890)));
+        test_add_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 509, 890)));
+    }
+
+    // Tests for i128
+
+    #[test]
+    fn test_i128_add_constant_constant() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((384, 0, 0, 0)));
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((384, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i128_add_constant_public() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i128_add_constant_private() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i128_add_public_constant() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i128_add_public_public() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 256, 765, 1786)));
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((1, 256, 765, 1786)));
+    }
+
+    #[test]
+    fn test_i128_add_public_private() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 128, 893, 1786)));
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((1, 128, 893, 1786)));
+    }
+
+    #[test]
+    fn test_i128_add_private_constant() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i128_add_private_public() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 128, 893, 1786)));
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((1, 128, 893, 1786)));
+    }
+
+    #[test]
+    fn test_i128_add_private_private() {
+        test_add::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 1021, 1786)));
+        test_add_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((1, 0, 1021, 1786)));
     }
 }

@@ -133,3 +133,38 @@ wrapping_impl!(WrappingDiv, wrapping_div, i16);
 wrapping_impl!(WrappingDiv, wrapping_div, i32);
 wrapping_impl!(WrappingDiv, wrapping_div, i64);
 wrapping_impl!(WrappingDiv, wrapping_div, i128);
+
+#[cfg(test)]
+pub mod test_utilities {
+    use crate::{Boolean, Environment};
+
+    // TODO (@pranav) This helper function can be generalized across test_utilities.
+    /// Checks that a given candidate gadget matches the expected result. Optionally checks
+    /// that the number of constants, public variables, private variables, and constraints
+    /// for the corresponding circuit matches some expected number.
+    pub fn check_boolean_operation<E: Environment>(
+        name: &str,
+        expected: bool,
+        compute_candidate: &dyn Fn() -> Boolean<E>,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) {
+        E::scoped(name, |scope| {
+            let candidate = compute_candidate();
+            println!(
+                "Constant: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?}",
+                scope.num_constants_in_scope(),
+                scope.num_public_in_scope(),
+                scope.num_private_in_scope(),
+                scope.num_constraints_in_scope()
+            );
+            assert_eq!(expected, candidate.eject_value());
+            if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
+                assert_eq!(num_constants, scope.num_constants_in_scope());
+                assert_eq!(num_public, scope.num_public_in_scope());
+                assert_eq!(num_private, scope.num_private_in_scope());
+                assert_eq!(num_constraints, scope.num_constraints_in_scope());
+            }
+            assert!(E::is_satisfied());
+        });
+    }
+}

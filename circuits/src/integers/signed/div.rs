@@ -159,7 +159,7 @@ mod tests {
 
     const ITERATIONS: usize = 1;
 
-    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+    fn test_div<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
         iterations: usize,
         mode_a: Mode,
         mode_b: Mode,
@@ -172,107 +172,417 @@ mod tests {
             let second: I = UniformRand::rand(&mut thread_rng());
 
             let expected = first.wrapping_div(&second);
-            let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
-            let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
 
             let name = format!("Div: a / b {}", i);
-            let compute_candidate = || &a / &b;
-            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
-
-            let name = format!("DivAssign: a / b {}", i);
             let compute_candidate = || {
-                let mut candidate = (&a).clone();
-                candidate /= &b;
-                candidate
+                let a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+                let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
+                a / b
+            };
+            check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
+        }
+    }
+
+    fn test_div_assign<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+        iterations: usize,
+        mode_a: Mode,
+        mode_b: Mode,
+        circuit_properties: Option<(usize, usize, usize, usize)>,
+    ) where
+        Standard: Distribution<I>,
+    {
+        for i in 0..iterations {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
+
+            let expected = first.wrapping_div(&second);
+
+            let name = format!("DivAssign: a /= b {}", i);
+            let compute_candidate = || {
+                let mut a = Signed::<E, I, U, SIZE>::new(mode_a, first);
+                let b = Signed::<E, I, U, SIZE>::new(mode_b, second);
+                a /= b;
+                a
             };
             check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_i8_div_all_modes() {
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
+    fn test_i8_div_constant_constant() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((24, 0, 0, 0)));
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((24, 0, 0, 0)));
     }
 
     #[test]
-    fn test_i16_div_all_modes() {
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+    fn test_i8_div_constant_public() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
     }
 
     #[test]
-    fn test_i32_div_all_modes() {
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
+    fn test_i8_div_constant_private() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
     }
 
     #[test]
-    fn test_i64_div_all_modes() {
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+    fn test_i8_div_public_constant() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
     }
 
     #[test]
-    fn test_i128_div_all_modes() {
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
+    fn test_i8_div_public_public() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((221, 16, 2066, 3836)));
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((221, 16, 2066, 3836)));
     }
 
     #[test]
-    fn test_div_matches() {
-        for i in 0..ITERATIONS {
-            let dividend: i64 = UniformRand::rand(&mut thread_rng());
-            let divisor: i64 = UniformRand::rand(&mut thread_rng());
+    fn test_i8_div_public_private() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((221, 8, 2074, 3836)));
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((221, 8, 2074, 3836)));
+    }
 
-            let expected = dividend.wrapping_div(divisor);
+    #[test]
+    fn test_i8_div_private_constant() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
 
-            // Constant
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, dividend);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Constant, divisor);
-            let candidate = a / b;
-            assert_eq!(expected, candidate.eject_value());
+    #[test]
+    fn test_i8_div_private_public() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((221, 8, 2074, 3836)));
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((221, 8, 2074, 3836)));
+    }
 
-            // Private
-            let a = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, dividend);
-            let b = Signed::<Circuit, i64, u64, 64>::new(Mode::Private, divisor);
-            let candidate = a / b;
-            assert_eq!(expected, candidate.eject_value());
-        }
+    #[test]
+    fn test_i8_div_private_private() {
+        test_div::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((221, 0, 2082, 3836)));
+        test_div_assign::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((221, 0, 2082, 3836)));
+    }
+
+    // Tests for i16
+
+    #[test]
+    fn test_i16_div_constant_constant() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((48, 0, 0, 0)));
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((48, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i16_div_constant_public() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i16_div_constant_private() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i16_div_public_constant() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i16_div_public_public() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((693, 32, 8106, 15108)));
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((693, 32, 8106, 15108)));
+    }
+
+    #[test]
+    fn test_i16_div_public_private() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((693, 16, 8122, 15108)));
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((693, 16, 8122, 15108)));
+    }
+
+    #[test]
+    fn test_i16_div_private_constant() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i16_div_private_public() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((693, 16, 8122, 15108)));
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((693, 16, 8122, 15108)));
+    }
+
+    #[test]
+    fn test_i16_div_private_private() {
+        test_div::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((693, 0, 8138, 15108)));
+        test_div_assign::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((693, 0, 8138, 15108)));
+    }
+
+    // Tests for i32
+
+    #[test]
+    fn test_i32_div_constant_constant() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((96, 0, 0, 0)));
+        test_div_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((96, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i32_div_constant_public() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_div_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i32_div_constant_private() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_div_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i32_div_public_constant() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_div_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i32_div_public_public() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((2405, 64, 32090, 59924)));
+        test_div_assign::<Circuit, i32, u32, 32>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Public,
+            Some((2405, 64, 32090, 59924)),
+        );
+    }
+
+    #[test]
+    fn test_i32_div_public_private() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((2405, 32, 32122, 59924)));
+        test_div_assign::<Circuit, i32, u32, 32>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Private,
+            Some((2405, 32, 32122, 59924)),
+        );
+    }
+
+    #[test]
+    fn test_i32_div_private_constant() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_div_assign::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i32_div_private_public() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((2405, 32, 32122, 59924)));
+        test_div_assign::<Circuit, i32, u32, 32>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Public,
+            Some((2405, 32, 32122, 59924)),
+        );
+    }
+
+    #[test]
+    fn test_i32_div_private_private() {
+        test_div::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((2405, 0, 32154, 59924)));
+        test_div_assign::<Circuit, i32, u32, 32>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Private,
+            Some((2405, 0, 32154, 59924)),
+        );
+    }
+
+    // Tests for i64
+
+    #[test]
+    fn test_i64_div_constant_constant() {
+        test_div::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((192, 0, 0, 0)));
+        test_div_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((192, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i64_div_constant_public() {
+        test_div::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_div_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i64_div_constant_private() {
+        test_div::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_div_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i64_div_public_constant() {
+        test_div::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_div_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i64_div_public_public() {
+        test_div::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Public,
+            Some((8901, 128, 127674, 238644)),
+        );
+        test_div_assign::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Public,
+            Some((8901, 128, 127674, 238644)),
+        );
+    }
+
+    #[test]
+    fn test_i64_div_public_private() {
+        test_div::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Private,
+            Some((8901, 64, 127738, 238644)),
+        );
+        test_div_assign::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Private,
+            Some((8901, 64, 127738, 238644)),
+        );
+    }
+
+    #[test]
+    fn test_i64_div_private_constant() {
+        test_div::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_div_assign::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i64_div_private_public() {
+        test_div::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Public,
+            Some((8901, 64, 127738, 238644)),
+        );
+        test_div_assign::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Public,
+            Some((8901, 64, 127738, 238644)),
+        );
+    }
+
+    #[test]
+    fn test_i64_div_private_private() {
+        test_div::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Private,
+            Some((8901, 0, 127802, 238644)),
+        );
+        test_div_assign::<Circuit, i64, u64, 64>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Private,
+            Some((8901, 0, 127802, 238644)),
+        );
+    }
+
+    // Tests for i128
+
+    #[test]
+    fn test_i128_div_constant_constant() {
+        test_div::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((384, 0, 0, 0)));
+        test_div_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((384, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i128_div_constant_public() {
+        test_div::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+        test_div_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_i128_div_constant_private() {
+        test_div::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+        test_div_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_i128_div_public_constant() {
+        test_div::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+        test_div_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i128_div_public_public() {
+        test_div::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Public,
+            Some((34181, 256, 509306, 952436)),
+        );
+        test_div_assign::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Public,
+            Some((34181, 256, 509306, 952436)),
+        );
+    }
+
+    #[test]
+    fn test_i128_div_public_private() {
+        test_div::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Private,
+            Some((34181, 128, 509434, 952436)),
+        );
+        test_div_assign::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Public,
+            Mode::Private,
+            Some((34181, 128, 509434, 952436)),
+        );
+    }
+
+    #[test]
+    fn test_i128_div_private_constant() {
+        test_div::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+        test_div_assign::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_i128_div_private_public() {
+        test_div::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Public,
+            Some((34181, 128, 509434, 952436)),
+        );
+        test_div_assign::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Public,
+            Some((34181, 128, 509434, 952436)),
+        );
+    }
+
+    #[test]
+    fn test_i128_div_private_private() {
+        test_div::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Private,
+            Some((34181, 0, 509562, 952436)),
+        );
+        test_div_assign::<Circuit, i128, u128, 128>(
+            ITERATIONS,
+            Mode::Private,
+            Mode::Private,
+            Some((34181, 0, 509562, 952436)),
+        );
     }
 }

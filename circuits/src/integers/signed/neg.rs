@@ -30,7 +30,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
         }
 
         let flipped = Signed::from_bits(self.bits_le.iter().map(|bit| !bit).collect());
-        let mut one = Signed::new(Mode::Constant, I::one());
+        let one = Signed::new(Mode::Constant, I::one());
         let result = flipped.add(one);
 
         // TODO (@pranav) Is this check necessary? It does not seem to be done in the corresponding
@@ -68,9 +68,9 @@ mod tests {
         thread_rng,
     };
 
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: usize = 100;
 
-    fn run_test<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+    fn test_neg<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize>(
         iterations: usize,
         mode: Mode,
         circuit_properties: Option<(usize, usize, usize, usize)>,
@@ -93,37 +93,85 @@ mod tests {
     }
 
     #[test]
-    fn test_i8_neg_all_modes() {
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Some((8, 0, 0, 0)));
+    fn test_i8_neg_constant() {
+        test_neg::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Constant, Some((16, 0, 0, 0)));
     }
 
     #[test]
-    fn test_i16_neg_all_modes() {
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Some((16, 0, 0, 0)));
+    fn test_i8_neg_public() {
+        test_neg::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Public, Some((9, 8, 30, 60)));
     }
 
     #[test]
-    fn test_i32_neg_all_modes() {
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Some((32, 0, 0, 0)));
+    fn test_i8_neg_private() {
+        test_neg::<Circuit, i8, u8, 8>(ITERATIONS, Mode::Private, Some((9, 0, 38, 60)));
+    }
+
+    // Tests for i16
+
+    #[test]
+    fn test_i16_neg_constant() {
+        test_neg::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Constant, Some((32, 0, 0, 0)));
     }
 
     #[test]
-    fn test_i64_neg_all_modes() {
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Some((64, 0, 0, 0)));
+    fn test_i16_neg_public() {
+        test_neg::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Public, Some((17, 16, 62, 124)));
     }
 
     #[test]
-    fn test_i128_neg_all_modes() {
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Some((128, 0, 0, 0)));
+    fn test_i16_neg_private() {
+        test_neg::<Circuit, i16, u16, 16>(ITERATIONS, Mode::Private, Some((17, 0, 78, 124)));
+    }
+
+    // Tests for i32
+
+    #[test]
+    fn test_i32_neg_constant() {
+        test_neg::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Constant, Some((64, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i32_neg_public() {
+        test_neg::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Public, Some((33, 32, 126, 252)));
+    }
+
+    #[test]
+    fn test_i32_neg_private() {
+        test_neg::<Circuit, i32, u32, 32>(ITERATIONS, Mode::Private, Some((33, 0, 158, 252)));
+    }
+
+    // Tests for i64
+
+    #[test]
+    fn test_i64_neg_constant() {
+        test_neg::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Constant, Some((128, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i64_neg_public() {
+        test_neg::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Public, Some((65, 64, 254, 508)));
+    }
+
+    #[test]
+    fn test_i64_neg_private() {
+        test_neg::<Circuit, i64, u64, 64>(ITERATIONS, Mode::Private, Some((65, 0, 318, 508)));
+    }
+
+    // Tests for i128
+
+    #[test]
+    fn test_i128_neg_constant() {
+        test_neg::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Constant, Some((256, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_i128_neg_public() {
+        test_neg::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Public, Some((129, 128, 510, 1020)));
+    }
+
+    #[test]
+    fn test_i128_neg_private() {
+        test_neg::<Circuit, i128, u128, 128>(ITERATIONS, Mode::Private, Some((129, 0, 638, 1020)));
     }
 }

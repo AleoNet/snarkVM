@@ -27,6 +27,7 @@ pub trait RippleCarryAdder<Rhs: ?Sized = Self> {
 // Generic impl
 impl<E: Environment> RippleCarryAdder for Vec<Boolean<E>> {
     fn add_bits(&self, other: &Self) -> Self {
+        assert!(self.len() > 0 && self.len() == other.len()); //TODO: (@pranav) Halt if not true?
         let mut result = Vec::with_capacity(self.len() + 1);
         let mut carry = Boolean::new(Mode::Constant, false);
         for (a, b) in self.iter().zip(other.iter()) {
