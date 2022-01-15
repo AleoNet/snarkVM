@@ -44,6 +44,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
+    use crate::integers::test_utilities::check_boolean_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,
@@ -51,7 +52,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn run_test<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(
+    fn test_is_lt<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize>(
         iterations: usize,
         mode_a: Mode,
         mode_b: Mode,
@@ -62,87 +63,249 @@ mod tests {
         for i in 0..iterations {
             let first: U = UniformRand::rand(&mut thread_rng());
             let second: U = UniformRand::rand(&mut thread_rng());
+
             let expected = first < second;
 
-            let a = Unsigned::<Circuit, U, SIZE>::new(mode_a, first);
-            let b = Unsigned::<Circuit, U, SIZE>::new(mode_b, second);
-
-            Circuit::scoped(&format!("Less Than {}", i), |scope| {
-                let less_than = a.is_lt(&b);
-                assert_eq!(expected, less_than.eject_value());
-                if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
-                    assert_eq!(num_constants, scope.num_constants_in_scope());
-                    assert_eq!(num_public, scope.num_public_in_scope());
-                    assert_eq!(num_private, scope.num_private_in_scope());
-                    assert_eq!(num_constraints, scope.num_constraints_in_scope());
-                }
-                Circuit::is_satisfied();
-            });
+            let name = format!("Less Than: a < b {}", i);
+            let compute_candidate = || {
+                let a = Unsigned::<E, U, SIZE>::new(mode_a, first);
+                let b = Unsigned::<E, U, SIZE>::new(mode_b, second);
+                a.is_lt(&b)
+            };
+            check_boolean_operation::<E>(&name, expected, &compute_candidate, circuit_properties);
         }
     }
 
     #[test]
-    fn test_i8_is_lt_all_modes() {
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((8, 0, 0, 0)));
-        run_test::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((8, 0, 0, 0)));
+    fn test_u8_is_lt_constant_constant() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Constant, Some((18, 0, 0, 0)));
     }
 
     #[test]
-    fn test_i16_is_lt_all_modes() {
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((16, 0, 0, 0)));
-        run_test::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((16, 0, 0, 0)));
+    fn test_u8_is_lt_constant_public() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Public, None);
     }
 
     #[test]
-    fn test_i32_is_lt_all_modes() {
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((32, 0, 0, 0)));
-        run_test::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((32, 0, 0, 0)));
+    fn test_u8_is_lt_constant_private() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Constant, Mode::Private, None);
     }
 
     #[test]
-    fn test_i64_is_lt_all_modes() {
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((64, 0, 0, 0)));
-        run_test::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((64, 0, 0, 0)));
+    fn test_u8_is_lt_public_constant() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Constant, None);
     }
 
     #[test]
-    fn test_i128_is_lt_all_modes() {
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((128, 0, 0, 0)));
-        run_test::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((128, 0, 0, 0)));
+    fn test_u8_is_lt_public_public() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Public, Some((2, 16, 37, 90)));
+    }
+
+    #[test]
+    fn test_u8_is_lt_public_private() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Public, Mode::Private, Some((2, 8, 45, 90)));
+    }
+
+    #[test]
+    fn test_u8_is_lt_private_constant() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u8_is_lt_private_public() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Public, Some((2, 8, 45, 90)));
+    }
+
+    #[test]
+    fn test_u8_is_lt_private_private() {
+        test_is_lt::<Circuit, u8, 8>(ITERATIONS, Mode::Private, Mode::Private, Some((2, 0, 53, 90)));
+    }
+
+    // Tests for i16
+
+    #[test]
+    fn test_u16_is_lt_constant_constant() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Constant, Some((34, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_u16_is_lt_constant_public() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_u16_is_lt_constant_private() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_u16_is_lt_public_constant() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u16_is_lt_public_public() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Public, Some((2, 32, 77, 186)));
+    }
+
+    #[test]
+    fn test_u16_is_lt_public_private() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Public, Mode::Private, Some((2, 16, 93, 186)));
+    }
+
+    #[test]
+    fn test_u16_is_lt_private_constant() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u16_is_lt_private_public() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Public, Some((2, 16, 93, 186)));
+    }
+
+    #[test]
+    fn test_u16_is_lt_private_private() {
+        test_is_lt::<Circuit, u16, 16>(ITERATIONS, Mode::Private, Mode::Private, Some((2, 0, 109, 186)));
+    }
+
+    // Tests for i32
+
+    #[test]
+    fn test_u32_is_lt_constant_constant() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Constant, Some((66, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_u32_is_lt_constant_public() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_u32_is_lt_constant_private() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_u32_is_lt_public_constant() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u32_is_lt_public_public() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Public, Some((2, 64, 157, 378)));
+    }
+
+    #[test]
+    fn test_u32_is_lt_public_private() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Public, Mode::Private, Some((2, 32, 189, 378)));
+    }
+
+    #[test]
+    fn test_u32_is_lt_private_constant() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u32_is_lt_private_public() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Public, Some((2, 32, 189, 378)));
+    }
+
+    #[test]
+    fn test_u32_is_lt_private_private() {
+        test_is_lt::<Circuit, u32, 32>(ITERATIONS, Mode::Private, Mode::Private, Some((2, 0, 221, 378)));
+    }
+
+    // Tests for i64
+
+    #[test]
+    fn test_u64_is_lt_constant_constant() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Constant, Some((130, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_u64_is_lt_constant_public() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_u64_is_lt_constant_private() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_u64_is_lt_public_constant() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u64_is_lt_public_public() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Public, Some((2, 128, 317, 762)));
+    }
+
+    #[test]
+    fn test_u64_is_lt_public_private() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Public, Mode::Private, Some((2, 64, 381, 762)));
+    }
+
+    #[test]
+    fn test_u64_is_lt_private_constant() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u64_is_lt_private_public() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Public, Some((2, 64, 381, 762)));
+    }
+
+    #[test]
+    fn test_u64_is_lt_private_private() {
+        test_is_lt::<Circuit, u64, 64>(ITERATIONS, Mode::Private, Mode::Private, Some((2, 0, 445, 762)));
+    }
+
+    // Tests for i128
+
+    #[test]
+    fn test_u128_is_lt_constant_constant() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Constant, Some((258, 0, 0, 0)));
+    }
+
+    #[test]
+    fn test_u128_is_lt_constant_public() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Public, None);
+    }
+
+    #[test]
+    fn test_u128_is_lt_constant_private() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Constant, Mode::Private, None);
+    }
+
+    #[test]
+    fn test_u128_is_lt_public_constant() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u128_is_lt_public_public() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Public, Some((2, 256, 637, 1530)));
+    }
+
+    #[test]
+    fn test_u128_is_lt_public_private() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Public, Mode::Private, Some((2, 128, 765, 1530)));
+    }
+
+    #[test]
+    fn test_u128_is_lt_private_constant() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Constant, None);
+    }
+
+    #[test]
+    fn test_u128_is_lt_private_public() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Public, Some((2, 128, 765, 1530)));
+    }
+
+    #[test]
+    fn test_u128_is_lt_private_private() {
+        test_is_lt::<Circuit, u128, 128>(ITERATIONS, Mode::Private, Mode::Private, Some((2, 0, 893, 1530)));
     }
 }
