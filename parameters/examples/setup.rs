@@ -15,19 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, CRH, SNARK, SRS};
-use snarkvm_dpc::{
-    Execution,
-    Function,
-    InnerCircuit,
-    Network,
-    Noop,
-    NoopPrivateVariables,
-    OuterCircuit,
-    PoSWScheme,
-    ProgramPrivateVariables,
-    ProgramPublicVariables,
-    SynthesizedCircuit,
-};
+use snarkvm_dpc::{InnerCircuit, Network, PoSWScheme, SynthesizedCircuit};
 use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinTestnet1Mode};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 

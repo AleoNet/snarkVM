@@ -64,13 +64,9 @@ The Schnorr signature parameters used to authorize delegation of transaction gen
 
 The Groth16 proving key and verifying key for the InnerSNARK.
 
-### Outer SNARK
-
-The Groth16 proving key and verifying key for the OuterSNARK.
-
 ### Noop Program SNARK
 
-The GM17 proving key and verifying key for the Noop Program SNARK.
+The Marlin proving key and verifying key for the Noop Program SNARK.
 
 ### POSW SNARK
 
