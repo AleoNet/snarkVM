@@ -297,10 +297,13 @@ impl<N: Network> Transaction<N> {
 
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
-    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
+    pub fn to_decrypted_records<'a>(
+        &'a self,
+        decryption_key: &'a DecryptionKey<N>,
+    ) -> impl Iterator<Item = Record<N>> + 'a {
         self.transitions
             .iter()
-            .flat_map(move |transition| transition.to_decrypted_records(decryption_key.clone()))
+            .flat_map(move |transition| transition.to_decrypted_records(decryption_key))
     }
 
     /// Returns the decrypted records using record view key events, if they exist.
@@ -447,7 +450,7 @@ mod tests {
         let (transaction, expected_record) =
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
         let decrypted_records = transaction
-            .to_decrypted_records(account.view_key().into())
+            .to_decrypted_records(&account.view_key().into())
             .collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 

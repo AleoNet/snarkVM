@@ -201,28 +201,14 @@ impl<N: Network> Transition<N> {
 
     /// Returns records from the transaction belonging to the given account view key.
     #[inline]
-    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> Box<dyn Iterator<Item = Record<N>> + '_> {
-        match decryption_key {
-            DecryptionKey::AccountViewKey(account_view_key) => {
-                let account_view_key_clone = account_view_key.clone();
-
-                Box::new(
-                    self.ciphertexts
-                        .iter()
-                        .filter(move |ciphertext| ciphertext.is_owner(&account_view_key_clone))
-                        .filter_map(move |ciphertext| Record::from_account_view_key(&account_view_key, ciphertext).ok())
-                        .filter(|record| !record.is_dummy()),
-                )
-            }
-            DecryptionKey::RecordViewKey(record_view_key) => Box::new(
-                self.ciphertexts
-                    .iter()
-                    .filter_map(move |ciphertext| {
-                        Record::<N>::from_record_view_key(record_view_key.clone(), ciphertext).ok()
-                    })
-                    .filter(|record| !record.is_dummy()),
-            ),
-        }
+    pub fn to_decrypted_records<'a>(
+        &'a self,
+        decryption_key: &'a DecryptionKey<N>,
+    ) -> impl Iterator<Item = Record<N>> + 'a {
+        self.ciphertexts
+            .iter()
+            .filter_map(move |ciphertext| Record::<N>::decrypt(decryption_key, ciphertext).ok())
+            .filter(|record| !record.is_dummy())
     }
 
     /// Returns the decrypted records using record view key events, if they exist.
@@ -233,7 +219,7 @@ impl<N: Network> Transition<N> {
             .iter()
             .filter_map(move |event| match event {
                 Event::RecordViewKey(i, record_view_key) => match ciphertexts.get(*i as usize) {
-                    Some(ciphertext) => Record::from_record_view_key(record_view_key.clone(), *ciphertext).ok(),
+                    Some(ciphertext) => Record::from_record_view_key(record_view_key, *ciphertext).ok(),
                     None => None,
                 },
                 _ => None,

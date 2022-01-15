@@ -14,7 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
+use crate::{
+    Address,
+    AleoAmount,
+    Bech32Locator,
+    Ciphertext,
+    ComputeKey,
+    DecryptionKey,
+    Network,
+    Payload,
+    RecordError,
+    ViewKey,
+};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
@@ -109,6 +120,16 @@ impl<N: Network> Record<N> {
         })
     }
 
+    /// Returns a record from the given decryption key and ciphertext.
+    pub fn decrypt(decryption_key: &DecryptionKey<N>, ciphertext: &N::RecordCiphertext) -> Result<Self, RecordError> {
+        match decryption_key {
+            DecryptionKey::AccountViewKey(account_view_key) => {
+                Self::from_account_view_key(account_view_key, ciphertext)
+            }
+            DecryptionKey::RecordViewKey(record_view_key) => Self::from_record_view_key(record_view_key, ciphertext),
+        }
+    }
+
     /// Returns a record from the given account view key and ciphertext.
     pub fn from_account_view_key(
         account_view_key: &ViewKey<N>,
@@ -143,11 +164,11 @@ impl<N: Network> Record<N> {
 
     /// Returns a record from the given record view key and ciphertext.
     pub fn from_record_view_key(
-        record_view_key: N::RecordViewKey,
+        record_view_key: &N::RecordViewKey,
         ciphertext: &N::RecordCiphertext,
     ) -> Result<Self, RecordError> {
         // Decrypt the record ciphertext.
-        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
+        let plaintext = ciphertext.deref().to_plaintext(record_view_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
         Ok(Self {
@@ -155,7 +176,7 @@ impl<N: Network> Record<N> {
             value,
             payload,
             program_id,
-            record_view_key,
+            record_view_key: record_view_key.clone(),
             ciphertext: ciphertext.clone(),
         })
     }

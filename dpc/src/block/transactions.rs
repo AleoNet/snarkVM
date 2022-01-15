@@ -194,10 +194,13 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns records from the transactions belonging to the given account view key.
-    pub fn to_decrypted_records(&self, decryption_key: DecryptionKey<N>) -> impl Iterator<Item = Record<N>> + '_ {
+    pub fn to_decrypted_records<'a>(
+        &'a self,
+        decryption_key: &'a DecryptionKey<N>,
+    ) -> impl Iterator<Item = Record<N>> + 'a {
         self.transactions
             .iter()
-            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key.clone()))
+            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     }
 }
 
@@ -300,7 +303,7 @@ mod tests {
         // Craft a Transactions struct with 1 coinbase record.
         let transactions = Transactions::from(&[transaction]).unwrap();
         let decrypted_records = transactions
-            .to_decrypted_records(account.view_key().into())
+            .to_decrypted_records(&account.view_key().into())
             .collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
