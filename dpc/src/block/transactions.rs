@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, BlockError, Network, Transaction};
+use crate::{AleoAmount, BlockError, DecryptionKey, Network, Record, Transaction};
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_utilities::{has_duplicates, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -192,6 +192,16 @@ impl<N: Network> Transactions<N> {
     ) -> Result<MerklePath<N::TransactionsRootParameters>> {
         Ok(self.tree.generate_proof(index, &leaf)?)
     }
+
+    /// Returns records from the transactions belonging to the given account view key.
+    pub fn to_decrypted_records<'a>(
+        &'a self,
+        decryption_key: &'a DecryptionKey<N>,
+    ) -> impl Iterator<Item = Record<N>> + 'a {
+        self.transactions
+            .iter()
+            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
+    }
 }
 
 impl<N: Network> FromBytes for Transactions<N> {
@@ -278,7 +288,32 @@ impl<N: Network> Deref for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testnet2::Testnet2;
+    use crate::{testnet2::Testnet2, Account, AccountScheme};
+    use rand::thread_rng;
+
+    #[test]
+    fn test_to_decrypted_records() {
+        let rng = &mut thread_rng();
+        let account = Account::<Testnet2>::new(rng);
+
+        // Craft a transaction with 1 coinbase record.
+        let (transaction, expected_record) =
+            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+
+        // Craft a Transactions struct with 1 coinbase record.
+        let transactions = Transactions::from(&[transaction]).unwrap();
+        let decrypted_records = transactions
+            .to_decrypted_records(&account.view_key().into())
+            .collect::<Vec<Record<Testnet2>>>();
+        assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
+
+        let candidate_record = decrypted_records.first().unwrap();
+        assert_eq!(&expected_record, candidate_record);
+        assert_eq!(expected_record.owner(), candidate_record.owner());
+        assert_eq!(expected_record.value(), candidate_record.value());
+        assert_eq!(expected_record.payload(), candidate_record.payload());
+        assert_eq!(expected_record.program_id(), candidate_record.program_id());
+    }
 
     #[test]
     fn test_duplicate_transactions() {
