@@ -16,7 +16,7 @@
 
 use crate::fft::{domain::*, DensePolynomial};
 use rand::Rng;
-use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::bls12_377::{Fr, G1Projective};
 use snarkvm_fields::{FftField, Field, One, Zero};
 use snarkvm_utilities::{rand::UniformRand, test_rng};
 
@@ -100,14 +100,14 @@ fn systematic_lagrange_coefficients_test() {
         let domain_size = 1 << domain_dim;
         let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
         let all_domain_elements: Vec<Fr> = domain.elements().collect();
-        for i in 0..domain_size {
-            let lagrange_coeffs = domain.evaluate_all_lagrange_coefficients(all_domain_elements[i]);
-            for j in 0..domain_size {
+        for (i, element) in all_domain_elements.iter().enumerate().take(domain_size) {
+            let lagrange_coeffs = domain.evaluate_all_lagrange_coefficients(*element);
+            for (j, &coeff) in lagrange_coeffs.iter().enumerate().take(domain_size) {
                 // Lagrange coefficient for the evaluation point, which should be 1
                 if i == j {
-                    assert_eq!(lagrange_coeffs[j], Fr::one());
+                    assert_eq!(coeff, Fr::one());
                 } else {
-                    assert_eq!(lagrange_coeffs[j], Fr::zero());
+                    assert_eq!(coeff, Fr::zero());
                 }
             }
         }
@@ -230,7 +230,7 @@ fn parallel_fft_consistency() {
         serial_radix2_fft(a, omega.inverse().unwrap(), log_n);
         let domain_size_inv = Fr::from(a.len() as u64).inverse().unwrap();
         for coeff in a.iter_mut() {
-            *coeff *= Fr::from(domain_size_inv);
+            *coeff *= domain_size_inv;
         }
     }
 
@@ -288,4 +288,51 @@ fn parallel_fft_consistency() {
     let rng = &mut test_rng();
 
     test_consistency(rng, 10);
+}
+
+#[test]
+fn fft_composition() {
+    fn test_fft_composition<
+        F: FftField,
+        T: crate::fft::DomainCoeff<F> + UniformRand + core::fmt::Debug + Eq,
+        R: Rng,
+    >(
+        rng: &mut R,
+        max_coeffs: usize,
+    ) {
+        for coeffs in 0..max_coeffs {
+            let coeffs = 1 << coeffs;
+
+            let domain = EvaluationDomain::new(coeffs).unwrap();
+
+            let mut v = vec![];
+            for _ in 0..coeffs {
+                v.push(T::rand(rng));
+            }
+            // Fill up with zeros.
+            v.resize(domain.size(), T::zero());
+            let mut v2 = v.clone();
+
+            domain.ifft_in_place(&mut v2);
+            domain.fft_in_place(&mut v2);
+            assert_eq!(v, v2, "ifft(fft(.)) != iden");
+
+            domain.fft_in_place(&mut v2);
+            domain.ifft_in_place(&mut v2);
+            assert_eq!(v, v2, "fft(ifft(.)) != iden");
+
+            domain.coset_ifft_in_place(&mut v2);
+            domain.coset_fft_in_place(&mut v2);
+            assert_eq!(v, v2, "coset_fft(coset_ifft(.)) != iden");
+
+            domain.coset_fft_in_place(&mut v2);
+            domain.coset_ifft_in_place(&mut v2);
+            assert_eq!(v, v2, "coset_ifft(coset_fft(.)) != iden");
+        }
+    }
+
+    let rng = &mut test_rng();
+
+    test_fft_composition::<Fr, Fr, _>(rng, 10);
+    test_fft_composition::<Fr, G1Projective, _>(rng, 10);
 }
