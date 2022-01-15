@@ -191,6 +191,7 @@ fn initialize_cuda_request_handler(input: crossbeam_channel::Receiver<CudaReques
                 program,
             };
 
+            // Handle each cuda request received from the channel.
             while let Ok(request) = input.recv() {
                 let out = handle_cuda_request(&mut context, &request);
 
@@ -198,10 +199,9 @@ fn initialize_cuda_request_handler(input: crossbeam_channel::Receiver<CudaReques
             }
         }
         Err(err) => {
-            eprintln!("Error loading cuda program: {:?}", err);
-            // Always return an error
-            while let Ok(request) = input.recv() {
-                request.response.send(Err(GPUError::DeviceNotFound)).ok();
+            // If the cuda program fails to load, notify the cuda request dispatcher.
+            if let Ok(request) = input.recv() {
+                request.response.send(Err(err)).ok();
             }
         }
     }
