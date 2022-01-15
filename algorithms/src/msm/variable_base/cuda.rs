@@ -180,21 +180,30 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
 /// Initialize the cuda request handler.
 fn initialize_cuda_request_handler(input: crossbeam_channel::Receiver<CudaRequest>) {
-    let program = load_cuda_program().unwrap();
+    match load_cuda_program() {
+        Ok(program) => {
+            let num_groups = (SCALAR_BITS + BIT_WIDTH - 1) / BIT_WIDTH;
 
-    let num_groups = (SCALAR_BITS + BIT_WIDTH - 1) / BIT_WIDTH;
+            let mut context = CudaContext {
+                num_groups: num_groups as u32,
+                pixel_func_name: "msm6_pixel".to_string(),
+                row_func_name: "msm6_collapse_rows".to_string(),
+                program,
+            };
 
-    let mut context = CudaContext {
-        num_groups: num_groups as u32,
-        pixel_func_name: "msm6_pixel".to_string(),
-        row_func_name: "msm6_collapse_rows".to_string(),
-        program,
-    };
+            while let Ok(request) = input.recv() {
+                let out = handle_cuda_request(&mut context, &request);
 
-    while let Ok(request) = input.recv() {
-        let out = handle_cuda_request(&mut context, &request);
-
-        request.response.send(out).ok();
+                request.response.send(out).ok();
+            }
+        }
+        Err(err) => {
+            eprintln!("Error loading cuda program: {:?}", err);
+            // Always return an error
+            while let Ok(request) = input.recv() {
+                request.response.send(Err(GPUError::DeviceNotFound)).ok();
+            }
+        }
     }
 }
 
