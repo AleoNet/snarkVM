@@ -217,7 +217,7 @@ pub fn execute_outer_circuit<N: Network, CS: ConstraintSystem<N::OuterScalarFiel
 
         let program_circuit_proof = <N::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate program circuit proof"),
-            || Ok(&*private.execution.proof),
+            || Ok(&*private.execution.program_proof),
         )?;
 
         N::ProgramSNARKGadget::check_verify(

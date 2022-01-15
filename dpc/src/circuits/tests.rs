@@ -21,7 +21,7 @@ use snarkvm_utilities::{ToBytes, ToMinimalBits};
 
 use rand::thread_rng;
 
-fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, expected_outer_num_constraints: usize) {
+fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) {
     let rng = &mut thread_rng();
 
     let recipient = Account::new(rng);
@@ -57,25 +57,6 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     // Compute the transition ID.
     let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments).unwrap();
-
-    //////////////////////////////////////////////////////////////////////////
-
-    // Compute the noop execution
-    let execution = Execution {
-        program_id: *N::noop_program_id(),
-        program_path: N::noop_program_path().clone(),
-        verifying_key: N::noop_circuit_verifying_key().clone(),
-        proof: Noop::<N>::new()
-            .execute(
-                ProgramPublicVariables::new(transition_id),
-                &NoopPrivateVariables::<N>::new_blank().unwrap(),
-            )
-            .unwrap(),
-    };
-    assert_eq!(
-        N::PROGRAM_PROOF_SIZE_IN_BYTES,
-        N::ProgramProof::to_bytes_le(&execution.proof).unwrap().len()
-    );
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -119,11 +100,11 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
     let (inner_proving_key, inner_verifying_key) =
         <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
-    // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    let inner_circuit_id = <N as Network>::inner_circuit_id_crh()
-        .hash_bits(&inner_verifying_key.to_minimal_bits())
-        .unwrap()
-        .into();
+    // // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
+    // let inner_circuit_id: N::InnerCircuitID = <N as Network>::inner_circuit_id_crh()
+    //     .hash_bits(&inner_verifying_key.to_minimal_bits())
+    //     .unwrap()
+    //     .into();
 
     let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, rng).unwrap();
     assert_eq!(N::INNER_PROOF_SIZE_IN_BYTES, inner_proof.to_bytes_le().unwrap().len());
@@ -133,50 +114,33 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize, 
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Construct the outer circuit public and private variables.
-    let outer_public = OuterPublicVariables::new(inner_public, &inner_circuit_id);
-    let outer_private = OuterPrivateVariables::new(inner_verifying_key, inner_proof.into(), execution);
+    // Compute the noop execution.
+    let execution = Execution::<N>::from(
+        *N::noop_program_id(),
+        N::noop_program_path().clone(),
+        N::noop_circuit_verifying_key().clone(),
+        Noop::<N>::new()
+            .execute(
+                ProgramPublicVariables::new(transition_id),
+                &NoopPrivateVariables::<N>::new_blank().unwrap(),
+            )
+            .unwrap(),
+        inner_proof.into(),
+    )
+    .unwrap();
+    assert_eq!(
+        N::PROGRAM_PROOF_SIZE_IN_BYTES,
+        N::ProgramProof::to_bytes_le(&execution.program_proof).unwrap().len()
+    );
 
-    // Check that the proof check constraint system was satisfied.
-    let mut outer_cs = TestConstraintSystem::<N::OuterScalarField>::new();
-
-    execute_outer_circuit::<N, _>(&mut outer_cs.ns(|| "Outer circuit"), &outer_public, &outer_private).unwrap();
-
-    let candidate_outer_num_constraints = outer_cs.num_constraints();
-
-    if !outer_cs.is_satisfied() {
-        println!("=========================================================");
-        println!("Outer circuit num constraints: {}", candidate_outer_num_constraints);
-        println!("Unsatisfied constraints:\n{}", outer_cs.which_is_unsatisfied().unwrap());
-        println!("=========================================================");
-    }
-
-    println!("=========================================================");
-    println!("Outer circuit num constraints: {}", candidate_outer_num_constraints);
-    assert_eq!(expected_outer_num_constraints, candidate_outer_num_constraints);
-    println!("=========================================================");
-
-    assert!(outer_cs.is_satisfied());
-
-    //////////////////////////////////////////////////////////////////////////
-
-    let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
-
-    // Generate outer circuit parameters and proof.
-    let (outer_proving_key, outer_verifying_key) =
-        <N as Network>::OuterSNARK::setup(&outer_circuit, &mut SRS::CircuitSpecific(rng)).unwrap();
-
-    // // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    // let inner_circuit_id = <N as Network>::inner_circuit_id_crh()
-    //     .hash_bits(&outer_verifying_key.to_minimal_bits())
-    //     .unwrap()
-    //     .into();
-
-    let outer_proof = <N as Network>::OuterSNARK::prove(&outer_proving_key, &outer_circuit, rng).unwrap();
-    assert_eq!(N::OUTER_PROOF_SIZE_IN_BYTES, outer_proof.to_bytes_le().unwrap().len());
-
-    // Verify that the outer circuit proof passes.
-    assert!(<N as Network>::OuterSNARK::verify(&outer_verifying_key, &outer_public, &outer_proof).unwrap());
+    // Verify that the program proof passes.
+    assert!(execution.verify(
+        &inner_verifying_key,
+        transition_id,
+        value_balance,
+        ledger_root,
+        local_transitions_root,
+    ));
 }
 
 mod testnet1 {
@@ -185,7 +149,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(253822, 152307);
+        dpc_execute_circuits_test::<Testnet1>(253822);
     }
 }
 
@@ -195,6 +159,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(253822, 242379);
+        dpc_execute_circuits_test::<Testnet2>(253822);
     }
 }

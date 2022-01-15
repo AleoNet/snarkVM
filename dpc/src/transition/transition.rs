@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{circuits::*, prelude::*};
-use snarkvm_algorithms::{
-    merkle_tree::{MerklePath, MerkleTree},
-    traits::SNARK,
-};
+use crate::prelude::*;
+use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
@@ -51,14 +48,14 @@ pub struct Transition<N: Network> {
     value_balance: AleoAmount,
     /// The events emitted from this transition.
     events: Vec<Event<N>>,
-    /// The zero-knowledge proof attesting to the validity of this transition.
-    proof: N::OuterProof,
+    /// The zero-knowledge proofs attesting to the validity of this transition.
+    execution: Execution<N>,
 }
 
 impl<N: Network> Transition<N> {
     /// Initializes a new instance of a transition.
     #[inline]
-    pub(crate) fn new(request: &Request<N>, response: &Response<N>, proof: N::OuterProof) -> Result<Self> {
+    pub(crate) fn new(request: &Request<N>, response: &Response<N>, execution: Execution<N>) -> Result<Self> {
         // Fetch the serial numbers.
         let serial_numbers = request.to_serial_numbers()?;
 
@@ -69,7 +66,14 @@ impl<N: Network> Transition<N> {
         let events = response.events().clone();
 
         // Construct the transition.
-        Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, proof)
+        Self::from(
+            transition_id,
+            serial_numbers,
+            ciphertexts,
+            value_balance,
+            events,
+            execution,
+        )
     }
 
     /// Constructs an instance of a transition from the given inputs.
@@ -79,7 +83,7 @@ impl<N: Network> Transition<N> {
         ciphertexts: Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
         events: Vec<Event<N>>,
-        proof: N::OuterProof,
+        execution: Execution<N>,
     ) -> Result<Self> {
         // Compute the commitments.
         let commitments = ciphertexts.iter().map(|c| c.commitment()).collect::<Vec<_>>();
@@ -91,7 +95,7 @@ impl<N: Network> Transition<N> {
             ciphertexts,
             value_balance,
             events,
-            proof,
+            execution,
         };
         // Ensure the transition ID matches.
         match transition_id == transition.transition_id() {
@@ -118,33 +122,20 @@ impl<N: Network> Transition<N> {
             return false;
         }
 
-        // Returns `false` if the transition proof is invalid.
-        match N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &OuterPublicVariables::new(
-                InnerPublicVariables::new(
-                    self.transition_id,
-                    self.value_balance,
-                    ledger_root,
-                    local_transitions_root,
-                    None,
-                ),
-                &inner_circuit_id,
-            ),
-            &self.proof,
-        ) {
-            Ok(is_valid) => match is_valid {
-                true => true,
-                false => {
-                    eprintln!("Transition proof failed to verify");
-                    false
-                }
-            },
-            Err(error) => {
-                eprintln!("Failed to validate transition proof: {:?}", error);
-                false
-            }
+        // Returns `false` if the inner circuit ID does not match.
+        if &inner_circuit_id != N::inner_circuit_id() {
+            eprintln!("Invalid inner circuit ID for network {}", N::NETWORK_ID);
+            return false;
         }
+
+        // Returns `false` if the execution is invalid.
+        self.execution.verify(
+            N::inner_verifying_key(),
+            self.transition_id,
+            self.value_balance,
+            ledger_root,
+            local_transitions_root,
+        )
     }
 
     /// Returns `true` if the given serial number exists.
@@ -193,10 +184,10 @@ impl<N: Network> Transition<N> {
         self.events.iter()
     }
 
-    /// Returns a reference to the transition proof.
+    /// Returns a reference to the transition proofs.
     #[inline]
-    pub fn proof(&self) -> &N::OuterProof {
-        &self.proof
+    pub fn execution(&self) -> &Execution<N> {
+        &self.execution
     }
 
     /// Returns records from the transaction belonging to the given account view key.
@@ -321,12 +312,17 @@ impl<N: Network> FromBytes for Transition<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let proof: N::OuterProof = FromBytes::read_le(&mut reader)?;
+        let execution: Execution<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(
-            Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, proof)
-                .expect("Failed to deserialize a transition from bytes"),
+        Ok(Self::from(
+            transition_id,
+            serial_numbers,
+            ciphertexts,
+            value_balance,
+            events,
+            execution,
         )
+        .expect("Failed to deserialize a transition from bytes"))
     }
 }
 
@@ -339,7 +335,7 @@ impl<N: Network> ToBytes for Transition<N> {
         self.value_balance.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
+        self.execution.write_le(&mut writer)
     }
 }
 
@@ -372,7 +368,7 @@ impl<N: Network> Serialize for Transition<N> {
                 transition.serialize_field("ciphertexts", &self.ciphertexts)?;
                 transition.serialize_field("value_balance", &self.value_balance)?;
                 transition.serialize_field("events", &self.events)?;
-                transition.serialize_field("proof", &self.proof)?;
+                transition.serialize_field("execution", &self.execution)?;
                 transition.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -392,7 +388,7 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     serde_json::from_value(transition["ciphertexts"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["value_balance"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["events"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transition["proof"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transition["execution"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)
             }
@@ -420,13 +416,13 @@ mod tests {
             let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(1039, transition_bytes.len(),);
+            assert_eq!(2580, transition_bytes.len(),);
         }
         {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(1039, transition_bytes.len(),);
+            assert_eq!(502671, transition_bytes.len(),);
         }
     }
 
@@ -438,7 +434,11 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2074, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(
+            1005696,
+            candidate_string.len(),
+            "Update me if serialization has changed"
+        );
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -454,7 +454,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(1039, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(502671, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

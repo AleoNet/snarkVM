@@ -237,6 +237,8 @@ pub trait PairingCurve: AffineCurve {
         + CanonicalDeserialize
         + ToBytes
         + FromBytes
+        + PartialEq
+        + Eq
         + Default
         + Clone
         + Send

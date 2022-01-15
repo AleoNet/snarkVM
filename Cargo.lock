@@ -2072,12 +2072,14 @@ dependencies = [
 name = "snarkvm-marlin"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "bincode",
  "blake2",
  "criterion",
  "derivative",
  "digest 0.9.0",
  "hashbrown",
+ "hex",
  "rand",
  "rand_chacha",
  "rand_core",

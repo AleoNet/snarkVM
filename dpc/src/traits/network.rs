@@ -189,7 +189,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
     type ProgramProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
-    type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + ToBytes + FromBytes + ToMinimalBits + Send + Sync;
+    type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + PartialEq + Eq + ToBytes + FromBytes + Serialize + DeserializeOwned + ToMinimalBits + Send + Sync;
     type ProgramProof: Bech32Object<<Self::ProgramSNARK as SNARK>::Proof>;
 
     /// SNARK for PoSW.

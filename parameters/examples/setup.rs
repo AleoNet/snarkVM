@@ -163,70 +163,6 @@ pub fn inner_setup<N: Network>() -> Result<()> {
     Ok(())
 }
 
-/// Runs the outer circuit setup.
-pub fn outer_setup<N: Network>() -> Result<()> {
-    const OUTER_CIRCUIT_METADATA: &str = "outer.metadata";
-    const OUTER_PROVING_KEY: &str = "outer.proving";
-    const OUTER_VERIFYING_KEY: &str = "outer.verifying";
-
-    let (inner_proof, inner_verifying_key) = match N::NETWORK_NAME {
-        "testnet1" => {
-            use snarkvm_parameters::testnet1::{InnerProvingKeyBytes, InnerVerifyingKeyBytes};
-
-            let inner_proving_key =
-                <N::InnerSNARK as SNARK>::ProvingKey::read_le(InnerProvingKeyBytes::load_bytes()?.as_slice())?;
-            let inner_verifying_key =
-                <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
-            let inner_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), &mut thread_rng())?;
-
-            (inner_proof.into(), inner_verifying_key)
-        }
-        "testnet2" => {
-            use snarkvm_parameters::testnet2::{InnerProvingKeyBytes, InnerVerifyingKeyBytes};
-
-            let inner_proving_key =
-                <N::InnerSNARK as SNARK>::ProvingKey::read_le(InnerProvingKeyBytes::load_bytes()?.as_slice())?;
-            let inner_verifying_key =
-                <N::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerVerifyingKeyBytes::load_bytes()?.as_slice())?;
-            let inner_proof = N::InnerSNARK::prove(&inner_proving_key, &InnerCircuit::<N>::blank(), &mut thread_rng())?;
-
-            (inner_proof.into(), inner_verifying_key)
-        }
-        _ => panic!("Invalid network for outer setup"),
-    };
-
-    let (outer_proving_key, outer_verifying_key) = N::OuterSNARK::setup(
-        &OuterCircuit::<N>::blank(inner_verifying_key, inner_proof, Execution {
-            program_id: *N::noop_program_id(),
-            program_path: N::noop_program_path().clone(),
-            verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(
-                ProgramPublicVariables::blank(),
-                &NoopPrivateVariables::<N>::new_blank().unwrap(),
-            )?,
-        }),
-        &mut SRS::CircuitSpecific(&mut thread_rng()),
-    )?;
-
-    let outer_proving_key = outer_proving_key.to_bytes_le()?;
-    let outer_proving_checksum = checksum(&outer_proving_key);
-    let outer_verifying_key = outer_verifying_key.to_bytes_le()?;
-
-    let outer_metadata = json!({
-        "proving_checksum": outer_proving_checksum,
-        "proving_size": outer_proving_key.len(),
-        "verifying_checksum": checksum(&outer_verifying_key),
-        "verifying_size": outer_verifying_key.len(),
-    });
-
-    println!("{}", serde_json::to_string_pretty(&outer_metadata)?);
-    write_metadata(OUTER_CIRCUIT_METADATA, &outer_metadata)?;
-    write_remote(OUTER_PROVING_KEY, &outer_proving_checksum, &outer_proving_key)?;
-    write_local(OUTER_VERIFYING_KEY, &outer_verifying_key)?;
-
-    Ok(())
-}
-
 /// Runs the PoSW circuit setup.
 pub fn posw_setup<N: Network>() -> Result<()> {
     const POSW_CIRCUIT_METADATA: &str = "posw.metadata";
@@ -285,11 +221,6 @@ pub fn main() -> Result<()> {
         "noop" => match args[2].as_str() {
             "testnet1" => noop_setup::<snarkvm_dpc::testnet1::Testnet1>()?,
             "testnet2" => noop_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
-            _ => panic!("Invalid network"),
-        },
-        "outer" => match args[2].as_str() {
-            "testnet1" => outer_setup::<snarkvm_dpc::testnet1::Testnet1>()?,
-            "testnet2" => outer_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
             _ => panic!("Invalid network"),
         },
         "posw" => match args[2].as_str() {

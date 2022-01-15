@@ -2,7 +2,6 @@
 ./universal.sh || exit
 ./noop.sh || exit
 ./inner.sh || exit
-./outer.sh || exit
 
 ./posw.sh || exit
 
