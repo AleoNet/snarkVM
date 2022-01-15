@@ -174,17 +174,27 @@ fn test_roots_of_unity() {
 }
 
 #[test]
+#[cfg(feature = "parallel")]
 fn parallel_fft_consistency() {
     // This implements the Cooley-Turkey FFT, derived from libfqfft
     // The libfqfft implementation uses pseudocode from [CLRS 2n Ed, pp. 864].
     fn serial_radix2_fft(a: &mut [Fr], omega: Fr, log_n: u32) {
+        #[inline]
+        pub(crate) fn bitreverse(mut n: u32, l: u32) -> u32 {
+            let mut r = 0;
+            for _ in 0..l {
+                r = (r << 1) | (n & 1);
+                n >>= 1;
+            }
+            r
+        }
         use core::convert::TryFrom;
-        let n = u64::try_from(a.len()).expect("cannot perform FFTs larger on vectors of len > (1 << 32)");
+        let n = u32::try_from(a.len()).expect("cannot perform FFTs larger on vectors of len > (1 << 32)");
         assert_eq!(n, 1 << log_n);
 
         // swap coefficients in place
         for k in 0..n {
-            let rk = crate::fft::domain::bitrev(k, log_n);
+            let rk = bitreverse(k, log_n);
             if k < rk {
                 a.swap(rk as usize, k as usize);
             }
