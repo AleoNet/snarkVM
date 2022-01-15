@@ -47,11 +47,11 @@ GPU:
 Native:
 ```bash
   cd snarkVM/dpc
-  cargo bench --bench transactions 
+  cargo bench --bench transaction 
 ```
 
 GPU:
 ```bash
   cd snarkVM/dpc
-  cargo bench --bench transactions --features "snarkvm-algorithms/cuda"
+  cargo bench --bench transaction --features "snarkvm-algorithms/cuda"
 ```
