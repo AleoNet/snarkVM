@@ -1021,6 +1021,26 @@ mod test {
     use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
     use super::*;
+    use crate::FullAdder;
+
+    #[test]
+    fn test_add_with_carry() {
+        let mut cs = TestConstraintSystem::<Fr>::new();
+        let a = AllocatedBit::alloc(cs.ns(|| "a"), || Ok(true)).unwrap();
+        let b = AllocatedBit::alloc(cs.ns(|| "b"), || Ok(true)).unwrap();
+        let c = AllocatedBit::alloc(cs.ns(|| "c"), || Ok(false)).unwrap();
+        let (_sum, _next) = Boolean::add(
+            cs.ns(|| "add_with_carry"),
+            &Boolean::from(a),
+            &Boolean::from(b),
+            &Boolean::from(c),
+        )
+        .unwrap();
+        assert!(cs.is_satisfied());
+        assert_eq!(cs.num_public_variables(), 1);
+        assert_eq!(cs.num_private_variables(), 8);
+        assert_eq!(cs.num_constraints(), 8);
+    }
 
     #[test]
     fn test_boolean_to_byte() {
@@ -1063,9 +1083,48 @@ mod test {
                 assert_eq!(c.value.unwrap(), *a_val ^ *b_val);
 
                 assert!(cs.is_satisfied());
+                assert_eq!(cs.num_public_variables(), 1);
+                assert_eq!(cs.num_private_variables(), 3);
+                assert_eq!(cs.num_constraints(), 3);
             }
         }
     }
+
+    #[test]
+    fn test_double_xor() {
+        for a_val in [false, true].iter() {
+            for b_val in [false, true].iter() {
+                for c_val in [false, true].iter() {
+                    let mut cs = TestConstraintSystem::<Fr>::new();
+                    let a = AllocatedBit::alloc(cs.ns(|| "a"), || Ok(*a_val)).unwrap();
+                    let b = AllocatedBit::alloc(cs.ns(|| "b"), || Ok(*b_val)).unwrap();
+                    let c = AllocatedBit::alloc(cs.ns(|| "c"), || Ok(*c_val)).unwrap();
+                    (a.xor(cs.ns(|| "xor_one"), &b).unwrap())
+                        .xor(cs.ns(|| "xor_two"), &c)
+                        .unwrap();
+                    assert!(cs.is_satisfied());
+                    assert_eq!(cs.num_public_variables(), 1);
+                    assert_eq!(cs.num_private_variables(), 5);
+                    assert_eq!(cs.num_constraints(), 5);
+                }
+            }
+        }
+    }
+
+    // #[test]
+    // fn test_two_xor() {
+    //     for a_val in [false, true].iter() {
+    //         for b_val in [false, true].iter() {
+    //             let mut cs = TestConstraintSystem::<Fr>::new();
+    //             let a = AllocatedBit::alloc(cs.ns(|| "a"), || Ok(*a_val)).unwrap();
+    //             let b = AllocatedBit::alloc(cs.ns(|| "b"), || Ok(*b_val)).unwrap();
+    //             let c = a.xor(&mut cs, &b).unwrap();
+    //             assert_eq!(c.value.unwrap(), *a_val ^ *b_val);
+    //
+    //             assert!(cs.is_satisfied());
+    //         }
+    //     }
+    // }
 
     #[test]
     fn test_or() {

@@ -220,7 +220,7 @@ pub mod test_utilities {
                 scope.num_constants_in_scope(),
                 scope.num_public_in_scope(),
                 scope.num_private_in_scope(),
-                scope.num_constraints_in_scope()
+                scope.num_constraints_in_scope(),
             );
             assert_eq!(expected, candidate.eject_value());
             if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {

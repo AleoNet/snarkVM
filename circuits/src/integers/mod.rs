@@ -42,6 +42,10 @@ use snarkvm_utilities::{
 };
 use std::fmt::{Debug, Display};
 
+// TODO (@pranav) Gadget Trait
+//  fn is_constant()
+//  fn eject()_value()
+
 // TODO (@pranav) Could do a refactor where we create a generic Integer struct with trait
 //  bound PrimitiveInteger and implement Add, Eq, Mul, etc. Functionality specific to a
 //  signed or unsigned integer could be implemented with further trait bounds on Integer.

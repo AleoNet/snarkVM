@@ -69,6 +69,8 @@ mod tests {
         }
     }
 
+    // TODO (@pranav) Fix expected circuit properties for all tests
+
     #[test]
     #[rustfmt::skip]
     fn test_i8_ternary_all_modes() {

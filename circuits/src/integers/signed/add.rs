@@ -106,9 +106,10 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{signed::test_utilities::check_operation, Circuit};
+    use crate::{signed::test_utilities::check_operation, Circuit, FullAdder};
     use snarkvm_utilities::UniformRand;
 
+    use crate::integers::test_utilities::check_boolean_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,
@@ -164,6 +165,60 @@ mod tests {
             };
             check_operation::<E, I, U, SIZE>(&name, expected, &compute_candidate, circuit_properties);
         }
+    }
+
+    #[test]
+    fn test_add_with_carry() {
+        let first = true;
+        let second = true;
+
+        let compute_candidate = || {
+            let a = Boolean::<Circuit>::new(Mode::Private, first);
+            let b = Boolean::<Circuit>::new(Mode::Private, second);
+            let c = Boolean::<Circuit>::new(Mode::Private, false);
+
+            let (sum, carry) = a.add_with_carry(&b, &c);
+            sum
+        };
+        check_boolean_operation(
+            "Add with Carry",
+            first ^ second,
+            &compute_candidate,
+            Some((0, 0, 9, 15)),
+        );
+    }
+
+    #[test]
+    fn test_xor() {
+        let first = true;
+        let second = true;
+
+        let compute_candidate = || {
+            let a = Boolean::<Circuit>::new(Mode::Private, first);
+            let b = Boolean::<Circuit>::new(Mode::Private, second);
+            a.xor(&b)
+        };
+        check_boolean_operation("Xor", first ^ second, &compute_candidate, Some((0, 0, 3, 4)));
+    }
+
+    #[test]
+    fn test_double_xor() {
+        let first = true;
+        let second = true;
+        let third = false;
+
+        let compute_candidate = || {
+            let a = Boolean::<Circuit>::new(Mode::Private, first);
+            let b = Boolean::<Circuit>::new(Mode::Private, second);
+            let c = Boolean::<Circuit>::new(Mode::Private, false);
+            (a.xor(&b)).xor(&c)
+        };
+        check_boolean_operation(
+            "Add with Carry",
+            (first ^ second) ^ third,
+            &compute_candidate,
+            Some((0, 0, 5, 7)),
+        );
     }
 
     #[test]
