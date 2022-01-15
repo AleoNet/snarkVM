@@ -218,7 +218,7 @@ impl<N: Network> Transition<N> {
                 self.ciphertexts
                     .iter()
                     .filter_map(move |ciphertext| {
-                        Record::<N>::from_record_view_key(record_view_key.clone(), &ciphertext).ok()
+                        Record::<N>::from_record_view_key(record_view_key.clone(), ciphertext).ok()
                     })
                     .filter(|record| !record.is_dummy()),
             ),

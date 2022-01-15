@@ -29,7 +29,7 @@ pub enum DecryptionKey<N: Network> {
 }
 
 impl<N: Network> DecryptionKey<N> {
-    fn from_record_view_key(record_view_key: &N::RecordViewKey) -> Self {
+    pub fn from_record_view_key(record_view_key: &N::RecordViewKey) -> Self {
         Self::RecordViewKey(record_view_key.clone())
     }
 }
@@ -73,12 +73,10 @@ mod tests {
     #[test]
     fn test_account_view_key_into() {
         let rng = &mut thread_rng();
-
         let account = Account::<Testnet2>::new(rng);
 
         // Conversion should not fail
         let _decryption_key: DecryptionKey<Testnet2> = account.view_key().into();
-        assert!(true);
     }
 
     #[test]
@@ -98,6 +96,5 @@ mod tests {
 
         // Workaround
         let _decryption_key = DecryptionKey::<Testnet2>::from_record_view_key(record.record_view_key());
-        assert!(true);
     }
 }

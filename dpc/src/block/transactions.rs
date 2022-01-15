@@ -298,7 +298,7 @@ mod tests {
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         // Craft a Transactions struct with 1 coinbase record.
-        let transactions = Transactions::from(&vec![transaction]).unwrap();
+        let transactions = Transactions::from(&[transaction]).unwrap();
         let decrypted_records = transactions
             .to_decrypted_records(account.view_key().into())
             .collect::<Vec<Record<Testnet2>>>();
