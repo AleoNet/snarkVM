@@ -30,6 +30,7 @@ use snarkvm_utilities::{
     error,
     errors::SerializationError,
     serialize::*,
+    string::String,
     FromBytes,
     FromBytesDeserializer,
     ToBytes,
