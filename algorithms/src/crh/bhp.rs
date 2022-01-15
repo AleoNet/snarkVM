@@ -119,7 +119,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         generators
     }
 
-    pub fn base_lookup(&self, bases: &Vec<Vec<G>>) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
+    pub fn base_lookup(&self, bases: &[Vec<G>]) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
         self.base_lookup
             .get_or_try_init::<_, ()>(|| {
                 Ok(cfg_iter!(bases)
@@ -127,7 +127,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
                         x.iter()
                             .map(|g| {
                                 let mut out = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
-                                for i in 0..BOWE_HOPWOOD_LOOKUP_SIZE {
+                                for (i, element) in out.iter_mut().enumerate().take(BOWE_HOPWOOD_LOOKUP_SIZE) {
                                     let mut encoded = *g;
                                     if (i & 0x01) != 0 {
                                         encoded += g;
@@ -138,7 +138,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
                                     if (i & 0x04) != 0 {
                                         encoded = encoded.neg();
                                     }
-                                    out[i] = encoded;
+                                    *element = encoded;
                                 }
                                 out
                             })

@@ -24,39 +24,35 @@ use std::{
 
 use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_dpc::{testnet2::Testnet2, Network, PoSWScheme, PoswError};
-use snarkvm_utilities::ToBytes;
+use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWError, PoSWScheme};
+use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
 
 use rand::{rngs::ThreadRng, thread_rng};
 
 #[test]
-fn test_posw_load_and_mine() {
-    // Construct a block header.
-    let mut block_header = Testnet2::genesis_block().header().clone();
-    Testnet2::posw()
-        .mine(&mut block_header, &AtomicBool::new(false), &mut thread_rng())
-        .unwrap();
-
-    assert_eq!(
-        block_header.proof().as_ref().unwrap().to_bytes_le().unwrap().len(),
-        Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-    ); // NOTE: Marlin proofs use compressed serialization
-    assert!(Testnet2::posw().verify(&block_header));
-}
-
-#[test]
 fn test_posw_terminate() {
-    // Construct a block header.
-    let mut block_header = Testnet2::genesis_block().header().clone();
+    // Construct the block template.
+    let block = Testnet2::genesis_block();
+    let block_template = BlockTemplate::new(
+        block.previous_block_hash(),
+        block.height(),
+        block.timestamp(),
+        block.difficulty_target(),
+        block.cumulative_weight(),
+        block.previous_ledger_root(),
+        block.transactions().clone(),
+        block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
+    );
+
     let terminator = Arc::new(AtomicBool::new(false));
     let thread_terminator = terminator.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(1));
         thread_terminator.store(true, Ordering::SeqCst);
     });
-    let result = Testnet2::posw().mine(&mut block_header, &AtomicBool::new(true), &mut thread_rng());
+    let result = Testnet2::posw().mine(&block_template, &AtomicBool::new(true), &mut thread_rng());
 
-    assert!(matches!(result, Err(PoswError::SnarkError(SNARKError::Terminated))));
+    assert!(matches!(result, Err(PoSWError::SNARKError(SNARKError::Terminated))));
 }
 
 /// TODO (howardwu): Update this when testnet2 is live.
@@ -94,7 +90,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
-        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(40000, 40000, 60000).unwrap();
+        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr, MarlinTestnet1Mode>::max_degree(40000, 40000, 60000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
         <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
@@ -104,8 +100,9 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw = Testnet2::posw().clone();
 
-    let generated_proving_key = generated_posw.proving_key().as_ref().unwrap();
-    let loaded_proving_key = loaded_posw.proving_key().as_ref().unwrap();
+    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> =
+        generated_posw.proving_key().as_ref().unwrap();
+    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> = loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;
@@ -136,8 +133,11 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 
-    let a = generated_proving_key.circuit.index_info.max_degree();
-    let b = loaded_proving_key.circuit.index_info.max_degree();
+    let a = generated_proving_key
+        .circuit
+        .index_info
+        .max_degree::<MarlinTestnet1Mode>();
+    let b = loaded_proving_key.circuit.index_info.max_degree::<MarlinTestnet1Mode>();
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 

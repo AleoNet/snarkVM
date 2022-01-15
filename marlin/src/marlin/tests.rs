@@ -63,7 +63,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
         for i in 0..(self.num_constraints - 1) {
             cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
         }
-        cs.enforce(|| format!("constraint_final"), |lc| lc + c, |lc| lc + b, |lc| lc + d);
+        cs.enforce(|| "constraint_final", |lc| lc + c, |lc| lc + b, |lc| lc + d);
 
         Ok(())
     }
@@ -73,7 +73,7 @@ mod marlin {
     use super::*;
     use crate::{
         fiat_shamir::FiatShamirChaChaRng,
-        marlin::{MarlinSNARK, MarlinTestnet1Mode},
+        marlin::{MarlinPoswMode, MarlinSNARK, MarlinTestnet1Mode},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
@@ -88,14 +88,16 @@ mod marlin {
     type MultiPCSonic = SonicKZG10<Bls12_377>;
     type MarlinSonicInst = MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
 
+    type MarlinSonicPoswInst = MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinPoswMode>;
+
     macro_rules! impl_marlin_test {
-        ($test_struct: ident, $marlin_inst: tt) => {
+        ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
             struct $test_struct {}
             impl $test_struct {
                 pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
                     let rng = &mut test_rng();
 
-                    let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 300).unwrap();
+                    let max_degree = crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
 
                     for _ in 0..100 {
@@ -129,8 +131,9 @@ mod marlin {
         };
     }
 
-    impl_marlin_test!(MarlinPCTest, MarlinInst);
-    impl_marlin_test!(SonicPCTest, MarlinSonicInst);
+    impl_marlin_test!(MarlinPCTest, MarlinInst, MarlinTestnet1Mode);
+    impl_marlin_test!(SonicPCTest, MarlinSonicInst, MarlinTestnet1Mode);
+    impl_marlin_test!(SonicPCPoswTest, MarlinSonicPoswInst, MarlinPoswMode);
 
     #[test]
     fn prove_and_verify_with_tall_matrix_big() {
@@ -139,6 +142,7 @@ mod marlin {
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -148,6 +152,7 @@ mod marlin {
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -157,6 +162,7 @@ mod marlin {
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -166,6 +172,7 @@ mod marlin {
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -175,6 +182,7 @@ mod marlin {
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
     }
 }
 
@@ -202,7 +210,7 @@ mod marlin_recursion {
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 300).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         for _ in 0..100 {

@@ -193,13 +193,13 @@ impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
                 for (d, shift_power) in degree_bounds_and_shift_powers {
                     let mut prepared_shift_power = Vec::<E::G1Affine>::new();
 
-                    let mut cur = E::G1Projective::from(shift_power.clone());
+                    let mut cur = E::G1Projective::from(*shift_power);
                     for _ in 0..supported_bits {
-                        prepared_shift_power.push(cur.clone().into());
+                        prepared_shift_power.push(cur.into());
                         cur.double_in_place();
                     }
 
-                    res.push((d.clone(), prepared_shift_power));
+                    res.push((*d, prepared_shift_power));
                 }
 
                 Some(res)
@@ -300,8 +300,7 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
     /// Prepare commitment to a polynomial that optionally enforces a degree bound.
     fn prepare(&self) -> PreparedCommitment<E> {
         let prepared_commitment = kzg10::PreparedCommitment::<E>::prepare(&self.comm);
-
-        let shifted_commitment = self.shifted_comm.clone();
+        let shifted_commitment = self.shifted_comm;
 
         PreparedCommitment::<E> {
             prepared_comm: prepared_commitment,

@@ -28,7 +28,7 @@ use snarkvm_dpc::{
     ProgramPublicVariables,
     SynthesizedCircuit,
 };
-use snarkvm_marlin::ahp::AHPForR1CS;
+use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinTestnet1Mode};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
@@ -54,14 +54,14 @@ fn versioned_filename(filename: &str, checksum: &str) -> String {
 /// Writes the given bytes to the given versioned filename.
 fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(&versioned_filename(filename, version)))?);
-    file.write_all(&bytes)?;
+    file.write_all(bytes)?;
     Ok(())
 }
 
 /// Writes the given bytes to the given filename.
 fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
-    file.write_all(&bytes)?;
+    file.write_all(bytes)?;
     Ok(())
 }
 
@@ -77,7 +77,9 @@ pub fn universal_setup<N: Network>() -> Result<()> {
     const UNIVERSAL_METADATA: &str = "universal.metadata";
     const UNIVERSAL_SRS: &str = "universal.srs";
 
-    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(2000000, 4000000, 8000000).unwrap();
+    let max_degree =
+        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(2000000, 4000000, 8000000)
+            .unwrap();
     let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let universal_srs = universal_srs.to_bytes_le()?;
 
@@ -232,7 +234,8 @@ pub fn posw_setup<N: Network>() -> Result<()> {
     const POSW_VERIFYING_KEY: &str = "posw.verifying";
 
     // TODO: decide the size of the universal setup
-    let max_degree = AHPForR1CS::<<N as Network>::InnerScalarField>::max_degree(40000, 40000, 60000).unwrap();
+    let max_degree =
+        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(40000, 40000, 60000).unwrap();
     let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let srs_bytes = universal_srs.to_bytes_le()?;
     println!("srs\n\tsize - {}", srs_bytes.len());

@@ -90,7 +90,7 @@ impl<N: Network> FromStr for Event<N> {
     type Err = anyhow::Error;
 
     fn from_str(event: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&event)?)
+        Ok(serde_json::from_str(event)?)
     }
 }
 

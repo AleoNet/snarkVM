@@ -16,13 +16,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 //! A crate for polynomial commitment schemes.
-#![deny(unused_import_braces, trivial_casts, bare_trait_objects)]
-#![deny(unused_qualifications, variant_size_differences, stable_features)]
-#![deny(non_shorthand_field_patterns, unused_attributes)]
-#![deny(renamed_and_removed_lints, unused_allocation, unused_comparisons)]
-#![deny(const_err, unused_must_use, unused_mut, private_in_public)]
-#![deny(unused_extern_crates, trivial_numeric_casts)]
 #![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate derivative;
@@ -139,6 +136,12 @@ pub struct BatchLCProof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<
     pub evaluations: Option<Vec<F>>,
 }
 
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> PCProof for BatchLCProof<F, CF, PC> {
+    fn is_hiding(&self) -> bool {
+        self.proof.is_hiding()
+    }
+}
+
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for BatchLCProof<F, CF, PC> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
@@ -187,6 +190,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     type BatchProof: CanonicalSerialize
         + CanonicalDeserialize
         + Clone
+        + PCProof
         + From<Vec<Self::Proof>>
         + Into<Vec<Self::Proof>>
         + PartialEq

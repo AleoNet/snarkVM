@@ -65,7 +65,7 @@ mod test {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
         let a: EdwardsProjective = rand::random();
-        let b: EdwardsProjective = a.clone();
+        let b: EdwardsProjective = a;
         let c: EdwardsProjective = rand::random();
 
         let a = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();

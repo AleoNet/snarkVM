@@ -157,7 +157,7 @@ where
             eprintln!("before PC combining commitments: constraints: {}", cs.num_constraints());
         }
 
-        let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
+        let zero = PG::G1Gadget::zero(cs.ns(|| "g1_zero"))?;
 
         // Accumulate commitments and evaluations for each query.
         let mut combined_queries = Vec::new();
@@ -316,7 +316,7 @@ where
                                 let mut new_encoded = comm_times_challenge.clone();
                                 new_encoded = new_encoded.add(
                                     cs.ns(|| format!("new_encoded_add_base_power_{}_{}_{}_{}", i, j, k, l)),
-                                    &base_power,
+                                    base_power,
                                 )?;
 
                                 comm_times_challenge = PG::G1Gadget::conditionally_select(
@@ -448,7 +448,7 @@ where
                     if let Some(random_v) = &proof.random_v {
                         gamma_g_multiplier_reduced = gamma_g_multiplier_reduced.add(
                             &mut cs.ns(|| format!("gamma_g_multiplier_plus_randomizer_times_random_v_{}", i)),
-                            &random_v,
+                            random_v,
                         )?;
                     }
                     total_c = total_c.add(
@@ -537,7 +537,7 @@ where
             }
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
-            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)
+            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), rhs)
         }
     }
 }
@@ -654,7 +654,7 @@ where
             cs,
             prepared_verification_key,
             lc_info.as_slice(),
-            &query_set,
+            query_set,
             &evaluations,
             proofs,
             &rand_data.opening_challenges,

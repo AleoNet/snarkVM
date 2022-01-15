@@ -157,7 +157,7 @@ mod tests {
         );
 
         // Deserialize
-        assert_eq!(expected_payload, Payload::from_str(&expected_string).unwrap());
+        assert_eq!(expected_payload, Payload::from_str(expected_string).unwrap());
         assert_eq!(expected_payload, serde_json::from_str(&candidate_string).unwrap());
     }
 

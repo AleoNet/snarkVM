@@ -20,6 +20,7 @@ edition = "2018"
 [workspace]
 members = [
   "algorithms",
+  "circuits",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",
@@ -64,6 +65,7 @@ r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
 
 ## snarkVM workspace specific ##
+cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
 ## snarkVM CLI ##
@@ -113,7 +115,7 @@ version = "0.7.5"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.51"
+version = "1.0.52"
 optional = true
 
 [dependencies.colored]

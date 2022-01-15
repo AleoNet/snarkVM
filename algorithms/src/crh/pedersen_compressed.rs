@@ -47,7 +47,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.crh.parameters()
+        self.crh.parameters()
     }
 }
 

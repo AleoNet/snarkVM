@@ -82,6 +82,7 @@ impl PoseidonGrainLFSR {
             }
         }
 
+        #[allow(clippy::needless_range_loop)]
         // b50, ..., b79 are set to 1
         for i in 50..=79 {
             state[i] = true;
@@ -106,7 +107,7 @@ impl PoseidonGrainLFSR {
             let mut new_bit = self.update();
 
             // Loop until the first bit is true
-            while new_bit == false {
+            while !new_bit {
                 // Discard the second bit
                 let _ = self.update();
                 // Obtain another first bit

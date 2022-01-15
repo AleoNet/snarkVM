@@ -137,7 +137,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
         mut rate_start_index: usize,
         elements: &[FpGadget<F>],
     ) -> Result<(), SynthesisError> {
-        if elements.len() == 0 {
+        if elements.is_empty() {
             return Ok(());
         }
 
@@ -149,7 +149,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
             if rate_start_index + remaining_elements.len() <= RATE {
                 for (i, element) in remaining_elements.iter().enumerate() {
                     self.state[CAPACITY + i + rate_start_index]
-                        .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), &element)?;
+                        .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), element)?;
                 }
                 self.mode = DuplexSpongeMode::Absorbing {
                     next_absorb_index: rate_start_index + remaining_elements.len(),
@@ -161,7 +161,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
             let num_elements_absorbed = RATE - rate_start_index;
             for (i, element) in remaining_elements.iter().enumerate().take(num_elements_absorbed) {
                 self.state[CAPACITY + i + rate_start_index]
-                    .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), &element)?;
+                    .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), element)?;
             }
             self.permute(cs.ns(|| format!("permute {}", loop_counter)))?;
             // the input elements got truncated by num elements absorbed
@@ -279,8 +279,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
 
         for (i, state_elem) in pfs.state.iter().enumerate() {
             sponge_var.state[i] =
-                FpGadget::<F>::alloc_constant(cs.ns(|| format!("alloc_elems_{}", i)), || Ok((*state_elem).clone()))
-                    .unwrap();
+                FpGadget::<F>::alloc_constant(cs.ns(|| format!("alloc_elems_{}", i)), || Ok(*state_elem)).unwrap();
         }
         sponge_var.mode = pfs.mode.clone();
 
@@ -300,7 +299,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
             res
         };
 
-        if input.len() == 0 {
+        if input.is_empty() {
             return Ok(());
         }
 

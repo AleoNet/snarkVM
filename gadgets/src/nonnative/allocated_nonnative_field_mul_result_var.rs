@@ -232,7 +232,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         let kp_plus_r_limbs_len = kp_plus_r_gadget.limbs.len();
         for (i, limb) in r_gadget.limbs.iter().rev().enumerate() {
             kp_plus_r_gadget.limbs[kp_plus_r_limbs_len - 1 - i] =
-                kp_plus_r_gadget.limbs[kp_plus_r_limbs_len - 1 - i].add(cs.ns(|| format!("add_limb{}", i)), &limb)?;
+                kp_plus_r_gadget.limbs[kp_plus_r_limbs_len - 1 - i].add(cs.ns(|| format!("add_limb{}", i)), limb)?;
         }
 
         Reducer::<TargetField, BaseField>::group_and_check_equality(

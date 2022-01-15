@@ -83,6 +83,7 @@ where
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<TargetCurve, BaseCurve, PG> Into<VerifierKeyVar<TargetCurve, BaseCurve, PG>>
     for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
 where
@@ -92,7 +93,7 @@ where
 {
     fn into(self) -> VerifierKeyVar<TargetCurve, BaseCurve, PG> {
         match self.origin_vk {
-            Some(vk) => vk.clone(),
+            Some(vk) => vk,
             None => {
                 eprintln!("Missing original vk");
                 panic!()
@@ -239,7 +240,7 @@ mod tests {
         let bound_gadget = FpGadget::alloc(cs.ns(|| "alloc_bound"), || Ok(bound_field)).unwrap();
 
         // Construct the verifying key.
-        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&vec![bound])).unwrap();
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&[bound])).unwrap();
         let pvk = vk.prepare();
 
         // Allocate the vk gadget.

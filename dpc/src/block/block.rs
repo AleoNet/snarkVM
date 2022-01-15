@@ -55,37 +55,26 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new block.
-    pub fn new(template: &BlockTemplate<N>, header: BlockHeader<N>) -> Result<Self> {
+    pub fn mine<R: Rng + CryptoRng>(template: &BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
         assert!(
-            !(*template.transactions()).is_empty(),
-            "Cannot create block with no transactions"
-        );
-
-        // Prepare the variables.
-        let previous_block_hash = template.previous_block_hash();
-        let transactions = template.transactions().clone();
-
-        Ok(Self::from(previous_block_hash, header, transactions)?)
-    }
-
-    /// Initializes a new block.
-    pub fn mine<R: Rng + CryptoRng>(template: BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
-        assert!(
-            !(*template.transactions()).is_empty(),
+            !(*(template.transactions())).is_empty(),
             "Cannot create block with no transactions"
         );
 
         // Compute the block header.
-        let header = BlockHeader::mine(&template, terminator, rng)?;
+        let header = BlockHeader::mine(template, terminator, rng)?;
 
-        Ok(Self::new(&template, header)?)
+        // Construct the block.
+        let previous_block_hash = template.previous_block_hash();
+        let transactions = template.transactions().clone();
+        Ok(Self::from(previous_block_hash, header, transactions)?)
     }
 
     /// Initializes a new genesis block with one coinbase transaction.
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
         let start = Instant::now();
-        let (transaction, _) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
+        let (transaction, coinbase_record) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
         let transactions = Transactions::from(&[transaction])?;
         println!("{} seconds", (Instant::now() - start).as_secs());
 
@@ -104,10 +93,11 @@ impl<N: Network> Block<N> {
             cumulative_weight,
             LedgerTree::<N>::new()?.root(),
             transactions,
+            coinbase_record,
         );
 
         // Construct the genesis block.
-        let block = Self::mine(template, &AtomicBool::new(false), rng)?;
+        let block = Self::mine(&template, &AtomicBool::new(false), rng)?;
 
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
@@ -122,6 +112,8 @@ impl<N: Network> Block<N> {
         header: BlockHeader<N>,
         transactions: Transactions<N>,
     ) -> Result<Self, BlockError> {
+        assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
+
         // Compute the block hash.
         let block_hash = N::block_hash_crh()
             .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
@@ -197,7 +189,10 @@ impl<N: Network> Block<N> {
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
         let candidate_block_reward = AleoAmount::ZERO.sub(self.transactions.net_value_balance()); // Make it a positive number.
         if candidate_block_reward > block_reward {
-            eprintln!("Block reward must be <= {}", block_reward);
+            eprintln!(
+                "Block reward must be <= {}, found {}",
+                block_reward, candidate_block_reward
+            );
             return false;
         }
 
@@ -277,22 +272,7 @@ impl<N: Network> Block<N> {
 
     /// Returns the coinbase transaction for the block.
     pub fn to_coinbase_transaction(&self) -> Result<Transaction<N>> {
-        // Filter out all transactions with a positive value balance.
-        let coinbase_transaction: Vec<_> = self
-            .transactions
-            .iter()
-            .filter(|t| t.value_balance().is_negative())
-            .collect();
-
-        // Ensure there is exactly 1 coinbase transaction.
-        let num_coinbase = coinbase_transaction.len();
-        match num_coinbase == 1 {
-            true => Ok(coinbase_transaction[0].clone()),
-            false => Err(anyhow!(
-                "Block must have 1 coinbase transaction, found {}",
-                num_coinbase
-            )),
-        }
+        self.transactions.to_coinbase_transaction()
     }
 
     ///
@@ -356,7 +336,7 @@ impl<N: Network> FromStr for Block<N> {
     type Err = anyhow::Error;
 
     fn from_str(block: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&block)?)
+        Ok(serde_json::from_str(block)?)
     }
 }
 
@@ -538,7 +518,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(4169, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(4180, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -586,7 +566,7 @@ mod tests {
         // Deserialize
         assert_eq!(
             expected_block_hash,
-            <Testnet2 as Network>::BlockHash::from_str(&expected_string).unwrap()
+            <Testnet2 as Network>::BlockHash::from_str(expected_string).unwrap()
         );
         assert_eq!(expected_block_hash, serde_json::from_str(&candidate_string).unwrap());
     }
@@ -610,5 +590,70 @@ mod tests {
             <Testnet2 as Network>::BlockHash::read_le(&expected_bytes[..]).unwrap()
         );
         assert_eq!(expected_block_hash, bincode::deserialize(&expected_bytes[..]).unwrap());
+    }
+
+    #[test]
+    fn test_testnet2_v12_compatibility() {
+        let block_string = r#"{
+    "block_hash": "ab18xgef6l9gfdnynd9z998688emp4elpwmmzjmed4xg5h3z0zazurqggx44u",
+    "header": {
+        "metadata": {
+            "cumulative_weight": 32498702396,
+            "difficulty_target": 53534725689126,
+            "height": 111135,
+            "timestamp": 1641075192
+        },
+        "nonce": "hn148tj58tt0unjqc9ff2jckkthmm0kul9tdvarcr0mex0ww6agccgqwsqmg3",
+        "previous_ledger_root": "al1qh3mjtza7lzrdpxvxazzkl6cmr3wxr3qy4ctm9r6x497aqdt4qxsz9jzek",
+        "proof": {
+            "non_hiding": "hzkp1qvqqqqqqqqqqqqcqqqqqqqqqqz2ag87aga0uqmn288dgfqw48k4e0v4yaz08fz502qezsemw2y3ncn67s9ktm7sxvrnky8xn2x8x8qzy4n3nae3xch78egrwd3z626zsufge5tppk3csj8rv898q5c8u8vj43vqqspuzawutn5z76ly0qcqqd8jk9mnn6klekk2swsy286atyuylefc2yxxthfyyngcry2ar2n4h6lavmyrevj50w832cm7vzlvqqvqqqqqqqqqqql33969pt7hn43q5kjxrlqv295rlm0753ng78d3gp02n5rn2kywr2rmqrnvc9svre2lc5w6dlkygqztp6z2djwgsqzselscxpph9jw4d8ycr7pkp5avvgu70e9vuq3nuwghu3hg4x99n9e0q53dex8vfqq0rr9qujpjq0zq5x5hflmr7jhj8v2wh30ghef56cfc56e8e4337zrlxun2l5vcad3ffpkpq7tp8tkqsyqqqqqqqqqqqwnn3cf96l2pmfnjgf8dfk3hwy7avtgkrgplg79gvx4yz9j6gs6as3pzcmrfw6j20zp9d0pyknajczjn5l40wu2mtg48zfuxm5l8mz9phywtxh96kuwluky7ntj9jjvx0dzgcf5572l6jdyyh4gkwvpfkqqzqqqqqqqqqqqz9n8kvtd6mezv6u5e9xl7vrctnprw2m7glc0320cy33galudh5ql7ptq8c9ut6vxmvexmykg2wj6w48p6dpmr9n44rnw2plvpm9vzs8slmgae6ty8y25atq4x5nn9uwy77pr5fp7utn52wvfum7yuawwsrz5wl7tqs9x446m8kszx800g9ttuhwvf37yxa77sa6grc4cemvq8sxqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqqqqqqqqqqqvx20dprmst6w5g8cr2s4qnpjm4050lyk6u820vn9w2uzydlljw69nlatn272qvyc8x9tlv2rfhzqpqzc27e3dmvuext5vk7zrt7v786kg0qgtd9f40ly2myzmuz2xzpk2x43pfzl77hgwyu433g32pdxzrqgqqqmwax43"
+        },
+        "transactions_root": "ht1xg2n66hxkssc4wmfx5x37vcwm0q45yml7gldwc5u0a6vq0q44grqr0a973"
+    },
+    "previous_block_hash": "ab1c5s8ddqmhhgthe3tqg3n9gy38v3frvv3e7822r88qwlxhxn8qyqqkahhgh",
+    "transactions": {
+        "transactions": [
+            {
+                "inner_circuit_id": "ic13cstkmt5j4qqzfu5am8jx2rhxm0hqplyzcgzyueefz7n32xl4h53n4xmxvhjyzaq2c0f7l70a4xszau2ryc",
+                "ledger_root": "al1enk2kwh9nuzcj2q9kdutekavlf8ayjqcuszgezsfax8qxn9k0yxqfr9fr2",
+                "transaction_id": "at10g0c3lqfjcdtnfs0f3lsxlwaaygfuz4ejr8h2wyvj6le93sumcgsnm00dx",
+                "transitions": [
+                    {
+                        "ciphertexts": [
+                            "recd12wfaxwl7srwykgs9mge8fhje58vm5frzsmvy0xs7jewv0syrhvxp8w7xa9c5xvye5wvxze9a9fs34ff3u34jzxgnfe7apquak23rkp9r254776qjvp65g8xhszg4l8elhs9v6qau2620w6w92crpm62yp8fwhr3lstynjsm8pzuawnktgtryhdklfr57fyt2llxlrl6uuvvsksp2d9tzxazqx4y6508g3sy2j3kwmx2q7aj78wfpjs0jjcafeaqwk4axuyv08qyldazx2ynj9xwamylljxpv62vua7ed2sjqe9c8fu86ladqm49ny4xwp5vmzf4n5rkn8zlupte2fvzq25eps7s7sq0yjp5ej4rvv5rg8nxa6484ydw0l5zhupskqp3tgv537d4xfls32nyaqxjrdkqltf83ggdeugy5lkjlpuc0kjhae9zyg8qsr6etandqlk8s58nukav",
+                            "recd1x9fnkethz7asd7kgghwumepp7qt3wahmqcjknwd4cm5n3xw38sp3satx3ju0298f4973r6uur43jk8r952rj353fv3llt9z5akpd2qz978rhgql60s3dyv2qpprjd90u8fhz96wwx4jamahqtkc7k44qpt5zrwrtcc9e47xp4j0e2kt840697dmvk4aspcduh606rhjfgrusv8cyfk39hj77dfkfmf48gt3k7c0ysy8usp06g5dnwapvtqq4r7gzg3gvv06yrq5yzycr3wf4ee22szvsa8gjhy2ddyjnspzcd6u2jv8wx5zcu6gtyd3rzptug0sh3ezvgml35aghj0y9ut640mw83d7jjqztayt83dgsnzfl9zesjajee7pf2fg83uzsdgnhsa2fe0vu8mxepwc6zencxr2tznlgyrx7x0mfmn2mkegauvprpqhhtcqrcae9slsqun9886h"
+                        ],
+                        "commitments": [
+                            "cm1j6emu0yy3q8cq4ema9rmvm95uj50rs3w4d29lfs9j7c0yaap5v9s2303sv",
+                            "cm1zxwtj279444cdu7mls45e44jfdmm77xrt8kwxfgatq23mx35zu9sj488j8"
+                        ],
+                        "events": [
+                            {
+                                "id": 1,
+                                "index": 0,
+                                "record_view_key": "rcvk1nxa0lm34cder6mfkn5g9teqlh7svyd30eserjxl94k05x7yl3sxszkxheg"
+                            },
+                            {
+                                "id": 1,
+                                "index": 1,
+                                "record_view_key": "rcvk16ag2e3l8wy6tuxzhfvda85shwndctlct6s5eusegvc8um7wt3czs7zx3sz"
+                            }
+                        ],
+                        "proof": "ozkp184vqqwalphghhu5l2yyqzc899gna5nvnw4e8a6xnef60cue2ax3yc7m2kqu32zg8e0g7g9s7lp0yyhafphfsn9vzw20w3l5yxmzlp2nllp4w9e4xnhg6ms3vzqxhk57w3wmrx773chak3h93mq73dvh5squwc4uftpq30ryu0zcfg3vamkgrq9xdwru7w79x5grd20qc43zk52l74yh9gj3q5yf3hsdqe9dlvy3cmusft4e8zesnrwtnwp7kvcungcc5t4fln6paa9kmt759nz5zf2pz3ugjt3frq4guu4m5u7l7gzqfpftrwpkge9hs5ye86utgezvlh9y09hkkvmtwx6dvdc20jrxflk8cke0wt6428jafqvmv6v24k8pze8tu4m2qq3sse6pft3saz6eupjn79l83fnkycmwgctc9sjmexj5ce686nhrh0npsqzaattrqsz0sqqg2vpcr7",
+                        "serial_numbers": [
+                            "sn1lnezey2ur9vhdewckn6g58vq3sx37emlxudf9v563d6pg5afcy8s6whpc5",
+                            "sn1ey3vm0fszgk7kzmnceh9c0cqjl8lhhpkkenpcuj6yjxqmnp33gyseshehs"
+                        ],
+                        "transition_id": "as15spwcnvq0stkq30drla8fvl5krzhx74mj5s88aas6lq2e8c26gzq3a7v45",
+                        "value_balance": -100000000
+                    }
+                ]
+            }
+        ]
+    }
+}"#;
+        let result = Block::<Testnet2>::from_str(block_string);
+        println!("{:?}", result);
+        assert!(result.is_ok());
     }
 }

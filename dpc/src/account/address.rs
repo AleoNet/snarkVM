@@ -146,7 +146,7 @@ impl<N: Network> FromStr for Address<N> {
             return Err(AccountError::InvalidCharacterLength(address.len()));
         }
 
-        let (hrp, data, variant) = bech32::decode(&address)?;
+        let (hrp, data, variant) = bech32::decode(address)?;
         if hrp != account_format::ADDRESS_PREFIX {
             return Err(AccountError::InvalidPrefix(hrp));
         }
@@ -241,7 +241,7 @@ mod tests {
         );
 
         // Deserialize
-        assert_eq!(expected_address, Address::from_str(&expected_string).unwrap());
+        assert_eq!(expected_address, Address::from_str(expected_string).unwrap());
         assert_eq!(expected_address, serde_json::from_str(&candidate_string).unwrap());
     }
 

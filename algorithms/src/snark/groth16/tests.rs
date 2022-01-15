@@ -105,7 +105,7 @@ mod bls12_377 {
 
         // Deserialize
         assert_eq!(expected_proof, serde_json::from_str(&candidate_string).unwrap());
-        assert_eq!(expected_proof, Proof::from_str(&expected_string).unwrap());
+        assert_eq!(expected_proof, Proof::from_str(expected_string).unwrap());
     }
 
     #[test]
@@ -204,7 +204,7 @@ mod bw6_761 {
 
         // Deserialize
         assert_eq!(expected_proof, serde_json::from_str(&candidate_string).unwrap());
-        assert_eq!(expected_proof, Proof::from_str(&expected_string).unwrap());
+        assert_eq!(expected_proof, Proof::from_str(expected_string).unwrap());
     }
 
     #[test]
@@ -277,7 +277,7 @@ mod serialization {
 
         // Deserialize
         let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&compressed_serialization[..]).unwrap();
-        assert_eq!(recovered_proof.compressed, true);
+        assert!(recovered_proof.compressed);
     }
 
     #[test]
@@ -300,6 +300,6 @@ mod serialization {
 
         // Deserialize
         let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&uncompressed_serialization[..]).unwrap();
-        assert_eq!(recovered_proof.compressed, false);
+        assert!(!recovered_proof.compressed);
     }
 }

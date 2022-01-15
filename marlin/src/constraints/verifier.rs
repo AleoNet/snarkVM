@@ -55,7 +55,8 @@ pub struct MarlinVerificationGadget<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
->(PhantomData<(TargetField, BaseField, PC, PCG)>);
+    MM: MarlinMode,
+>(PhantomData<(TargetField, BaseField, PC, PCG, MM)>);
 
 /// Fiat Shamir Algebraic Sponge RNG type
 pub type FSA<InnerField, OuterField> =
@@ -70,7 +71,7 @@ pub type FSG<InnerField, OuterField> = FiatShamirAlgebraicSpongeRngVar<
 >;
 
 impl<TargetField, BaseField, PC, PCG, FS, MM, V> SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>
-    for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
+    for MarlinVerificationGadget<TargetField, BaseField, PC, PCG, MM>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
@@ -88,9 +89,10 @@ where
         PCG,
         FSA<TargetField, BaseField>,
         FSG<TargetField, BaseField>,
+        MM,
     >;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
-    type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
+    type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, MM>;
 
     fn input_gadget_from_bytes<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
@@ -151,7 +153,7 @@ where
     }
 }
 
-impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
+impl<TargetField, BaseField, PC, PCG, MM: MarlinMode> MarlinVerificationGadget<TargetField, BaseField, PC, PCG, MM>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
@@ -168,7 +170,7 @@ where
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        prepared_verifying_key: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>,
+        prepared_verifying_key: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R, MM>,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
     ) -> Result<Boolean, MarlinError> {
@@ -196,7 +198,7 @@ where
             OptimizationType::Weight,
         )?;
 
-        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_first_round(
+        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_first_round(
             cs.ns(|| "verifier_first_round"),
             prepared_verifying_key.domain_h_size,
             prepared_verifying_key.domain_k_size,
@@ -205,7 +207,7 @@ where
             &proof.prover_messages[0].field_elements,
         )?;
 
-        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_second_round(
+        let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_second_round(
             cs.ns(|| "verifier_second_round"),
             verifier_state,
             &mut fs_rng,
@@ -213,7 +215,7 @@ where
             &proof.prover_messages[1].field_elements,
         )?;
 
-        let verifier_state = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_third_round(
+        let verifier_state = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_third_round(
             cs.ns(|| "verifier_third_round"),
             verifier_state,
             &mut fs_rng,
@@ -221,7 +223,7 @@ where
             &proof.prover_messages[2].field_elements,
         )?;
 
-        let lc = AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_decision(
+        let lc = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_decision(
             cs.ns(|| "verifier_decision"),
             &padded_public_input,
             &proof.evaluations,
@@ -230,10 +232,10 @@ where
         )?;
 
         let (num_opening_challenges, num_batching_rands, comm, query_set, evaluations) =
-            AHPForR1CS::<TargetField, BaseField, PC, PCG>::verifier_comm_query_eval_set(
+            AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_comm_query_eval_set(
                 cs.ns(|| "verifier_comm_query_eval_set"),
-                &prepared_verifying_key,
-                &proof,
+                prepared_verifying_key,
+                proof,
                 &verifier_state,
             )?;
 
@@ -295,7 +297,7 @@ where
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        verifying_key: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>,
+        verifying_key: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, MM>,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
     ) -> Result<Boolean, MarlinError> {
@@ -312,6 +314,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::upper_case_acronyms)]
 mod test {
     use core::ops::MulAssign;
 
@@ -359,7 +362,7 @@ mod test {
     fn verifier_test() {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(10000, 25, 10000).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(10000, 25, 10000).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let num_constraints = 10000;
@@ -393,7 +396,7 @@ mod test {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
         // BEGIN: ivk to ivk_gadget
-        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, PC, PCGadget> =
+        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, PC, PCGadget, MarlinRecursiveMode> =
             CircuitVerifyingKeyVar::alloc(cs.ns(|| "alloc_circuit_vk"), || Ok(circuit_vk)).unwrap();
         // END: ivk to ivk_gadget
 
@@ -487,7 +490,7 @@ mod test {
         };
         // END: proof to proof_gadget
 
-        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget>::verify::<_, FS, FSG>(
+        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>::verify::<_, FS, FSG>(
             cs.ns(|| "marlin_verification"),
             &ivk_gadget,
             &public_input_gadget,

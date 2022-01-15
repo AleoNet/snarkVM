@@ -83,7 +83,7 @@ impl<N: Network> From<&N::AccountSeed> for PrivateKey<N> {
     fn from(seed: &N::AccountSeed) -> Self {
         // Construct the sk_sig domain separator.
         let sk_sig_input = ACCOUNT_SEED_SK_SIG_DOMAIN;
-        let sk_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(&sk_sig_input.as_bytes());
+        let sk_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(sk_sig_input.as_bytes());
 
         // Construct the r_sig domain separator.
         let r_sig_input = format!("{}_{}", ACCOUNT_SEED_R_SIG_DOMAIN, 0);

@@ -97,7 +97,7 @@ impl<F: Field> DensePolynomial<F> {
             return self.coeffs[0];
         }
         let mut powers_of_point = vec![F::one()];
-        let mut cur = point.clone();
+        let mut cur = point;
         for _ in 0..self.degree() {
             powers_of_point.push(cur);
             cur *= point;

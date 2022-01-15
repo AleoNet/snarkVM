@@ -18,22 +18,24 @@ use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::errors::ParameterError;
 
-use std::io::Error as IoError;
-use thiserror::Error;
-
 /// An error when generating/verifying a Proof of Succinct Work
 #[derive(Debug, Error)]
-pub enum PoswError {
+pub enum PoSWError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
+
+    #[error("{}", _0)]
+    BlockError(#[from] crate::BlockError),
 
     /// Thrown if the mask conversion to a field element fails
     #[error(transparent)]
     ConstraintFieldError(#[from] ConstraintFieldError),
 
-    /// Thrown when there's an IO error
-    #[error(transparent)]
-    IoError(#[from] IoError),
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
+
+    #[error("{}", _0)]
+    Message(String),
 
     /// Thrown when the parameters cannot be loaded
     #[error("could not load PoSW parameters: {0}")]
@@ -41,11 +43,17 @@ pub enum PoswError {
 
     /// Thrown when there's an internal error in the underlying SNARK
     #[error(transparent)]
-    SnarkError(#[from] SNARKError),
+    SNARKError(#[from] SNARKError),
 }
 
-impl From<PoswError> for std::io::Error {
-    fn from(error: PoswError) -> Self {
+impl From<std::io::Error> for PoSWError {
+    fn from(error: std::io::Error) -> Self {
+        PoSWError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+impl From<PoSWError> for std::io::Error {
+    fn from(error: PoSWError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

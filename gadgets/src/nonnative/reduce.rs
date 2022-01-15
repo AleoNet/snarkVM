@@ -325,10 +325,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             let eqn_left = left_total_limb
                 .add_constant(cs.ns(|| format!("add_constant_{}", group_id)), &pad_limb)?
                 .add(cs.ns(|| format!("add_carry_in_{}", group_id)), &carry_in)?
-                .sub(
-                    cs.ns(|| format!("sub_right_total_limb_{}", group_id)),
-                    &right_total_limb,
-                )?;
+                .sub(cs.ns(|| format!("sub_right_total_limb_{}", group_id)), right_total_limb)?;
 
             let eqn_right = &carry
                 .mul_by_constant(
@@ -339,7 +336,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             eqn_left.conditional_enforce_equal(
                 cs.ns(|| format!("conditional_enforce_equal_{}", group_id)),
-                &eqn_right,
+                eqn_right,
                 &Boolean::Constant(true),
             )?;
 

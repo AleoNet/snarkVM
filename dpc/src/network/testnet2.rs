@@ -61,7 +61,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_marlin::{
     constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
-    marlin::MarlinTestnet2Mode,
+    marlin::{MarlinPoswMode, MarlinTestnet2Mode},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirChaChaRng,
     PoseidonSponge,
@@ -70,13 +70,28 @@ use snarkvm_parameters::{testnet2::*, Genesis};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
-// TODO (howardwu): TEMPORARY - Resolve me.
-use snarkvm_marlin::marlin::MarlinTestnet1Mode;
-
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
+
+// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+#[cfg(test)]
+pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 1_u32;
+#[cfg(not(test))]
+pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 100_000_u32;
+
+// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
+/// The deprecated Marlin SNARK type used for blocks before `V12_UPGRADE_BLOCK_HEIGHT`.
+pub type DeprecatedPoSWSNARK<N> = MarlinSNARK<
+    <N as Network>::InnerScalarField,
+    <N as Network>::OuterScalarField,
+    SonicKZG10<<N as Network>::InnerCurve>,
+    FiatShamirChaChaRng<<N as Network>::InnerScalarField, <N as Network>::OuterScalarField, Blake2s>,
+    snarkvm_marlin::marlin::MarlinTestnet1Mode,
+    Vec<<N as Network>::InnerScalarField>,
+>;
+pub type DeprecatedPoSWProof<N> = AleoObject<<DeprecatedPoSWSNARK<N> as SNARK>::Proof, { hrp4!("hzkp") }, 771>;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
@@ -139,6 +154,7 @@ impl Network for Testnet2 {
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 1_000_000_000;
     const ALEO_FUTURE_TIME_LIMIT_IN_SECS: i64 = 90;
+    const ALEO_MAXIMUM_FORK_DEPTH: u32 = 4096;
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
@@ -162,12 +178,12 @@ impl Network for Testnet2 {
     type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, { Self::OUTER_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinTestnet2Mode, ProgramPublicVariables<Self>>;
-    type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>>;
+    type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>, MarlinTestnet2Mode>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>, MarlinPoswMode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 

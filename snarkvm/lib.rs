@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
+
 #[cfg(feature = "cli")]
 #[macro_use]
 extern crate thiserror;

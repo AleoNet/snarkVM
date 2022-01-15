@@ -18,7 +18,7 @@
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 
-use crate::{BlockHeader, Network};
+use crate::{BlockTemplate, Network};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::compute_masked_root,
@@ -39,12 +39,12 @@ pub struct PoSWCircuit<N: Network> {
 
 impl<N: Network> PoSWCircuit<N> {
     /// Creates a PoSW circuit from the provided transaction ids and nonce.
-    pub fn new(block_header: &BlockHeader<N>) -> Result<Self> {
-        let tree = block_header.to_header_tree()?;
+    pub fn new(block_template: &BlockTemplate<N>, nonce: N::PoSWNonce) -> Result<Self> {
+        let tree = block_template.to_header_tree()?;
 
         Ok(Self {
             block_header_root: (*tree.root()).into(),
-            nonce: block_header.nonce(),
+            nonce,
             hashed_leaves: tree.hashed_leaves().to_vec(),
         })
     }
@@ -60,6 +60,22 @@ impl<N: Network> PoSWCircuit<N> {
             nonce: Default::default(),
             hashed_leaves: vec![empty_hash; usize::pow(2, N::HEADER_TREE_DEPTH as u32)],
         })
+    }
+
+    /// Returns the public inputs for the PoSW circuit.
+    pub fn to_public_inputs(&self) -> Vec<N::InnerScalarField> {
+        vec![*self.block_header_root, *self.nonce]
+    }
+
+    /// Returns the block nonce.
+    pub fn nonce(&self) -> N::PoSWNonce {
+        self.nonce
+    }
+
+    /// Sets the nonce to the given nonce.
+    /// This method is used by PoSW to iterate over candidate block headers.
+    pub(crate) fn set_nonce(&mut self, nonce: N::PoSWNonce) {
+        self.nonce = nonce;
     }
 }
 
@@ -141,9 +157,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{testnet1::Testnet1, testnet2::Testnet2};
+    use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWProof};
+    use snarkvm_marlin::marlin::MarlinTestnet1Mode;
     use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{FromBytes, ToBytes};
+    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
     use rand::{rngs::ThreadRng, thread_rng, CryptoRng, Rng};
     use std::time::Instant;
@@ -171,8 +188,10 @@ mod test {
     fn posw_proof_test<N: Network, R: Rng + CryptoRng>(rng: &mut R) {
         // Generate the proving and verifying key.
         let (proving_key, verifying_key) = {
-            let max_degree =
-                snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField>::max_degree(20000, 20000, 200000).unwrap();
+            let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<N::InnerScalarField, MarlinTestnet1Mode>::max_degree(
+                20000, 20000, 200000,
+            )
+            .unwrap();
             let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, rng).unwrap();
 
             <<N as Network>::PoSWSNARK as SNARK>::setup::<_, R>(
@@ -182,8 +201,24 @@ mod test {
             .unwrap()
         };
 
+        // Sample a random nonce.
+        let nonce = UniformRand::rand(rng);
+
+        // Construct the block template.
+        let block = N::genesis_block();
+        let block_template = BlockTemplate::new(
+            block.previous_block_hash(),
+            block.height(),
+            block.timestamp(),
+            block.difficulty_target(),
+            block.cumulative_weight(),
+            block.previous_ledger_root(),
+            block.transactions().clone(),
+            block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
+        );
+
         // Construct an assigned circuit.
-        let assigned_circuit = PoSWCircuit::<N>::new(N::genesis_block().header()).unwrap();
+        let assigned_circuit = PoSWCircuit::<N>::new(&block_template, nonce).unwrap();
 
         // Compute the proof.
         let proof = {
@@ -192,7 +227,10 @@ mod test {
             println!("\nPosW elapsed time: {} ms\n", (Instant::now() - timer).as_millis());
             proof
         };
-        assert_eq!(proof.to_bytes_le().unwrap().len(), N::HEADER_PROOF_SIZE_IN_BYTES);
+        assert_eq!(
+            PoSWProof::<N>::new(proof.clone().into()).to_bytes_le().unwrap().len(),
+            N::HEADER_PROOF_SIZE_IN_BYTES
+        );
 
         // Verify the proof is valid on the public inputs.
         let inputs = vec![

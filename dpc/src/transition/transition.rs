@@ -82,7 +82,7 @@ impl<N: Network> Transition<N> {
         proof: N::OuterProof,
     ) -> Result<Self> {
         // Compute the commitments.
-        let commitments = ciphertexts.iter().map(|c| c.commitment()).collect();
+        let commitments = ciphertexts.iter().map(|c| c.commitment()).collect::<Vec<_>>();
         // Construct the transition.
         let transition = Self {
             transition_id: Self::compute_transition_id(&serial_numbers, &commitments)?,
@@ -137,12 +137,12 @@ impl<N: Network> Transition<N> {
                 true => true,
                 false => {
                     eprintln!("Transition proof failed to verify");
-                    return false;
+                    false
                 }
             },
             Err(error) => {
                 eprintln!("Failed to validate transition proof: {:?}", error);
-                return false;
+                false
             }
         }
     }
@@ -269,8 +269,8 @@ impl<N: Network> Transition<N> {
     ///
     #[inline]
     pub(crate) fn compute_transition_id(
-        serial_numbers: &Vec<N::SerialNumber>,
-        commitments: &Vec<N::Commitment>,
+        serial_numbers: &[N::SerialNumber],
+        commitments: &[N::Commitment],
     ) -> Result<N::TransitionID> {
         let leaves = Self::compute_transition_leaves(serial_numbers, commitments)?;
         let tree =
@@ -285,8 +285,8 @@ impl<N: Network> Transition<N> {
     ///
     #[inline]
     pub(crate) fn compute_transition_leaves(
-        serial_numbers: &Vec<N::SerialNumber>,
-        commitments: &Vec<N::Commitment>,
+        serial_numbers: &[N::SerialNumber],
+        commitments: &[N::Commitment],
     ) -> Result<Vec<Vec<u8>>> {
         // Construct the leaves of the transition tree.
         let leaves: Vec<Vec<u8>> = vec![
@@ -361,7 +361,7 @@ impl<N: Network> FromStr for Transition<N> {
     type Err = anyhow::Error;
 
     fn from_str(transition: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&transition)?)
+        Ok(serde_json::from_str(transition)?)
     }
 }
 

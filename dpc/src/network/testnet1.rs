@@ -60,7 +60,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_marlin::{
     constraints::snark::MarlinSNARK,
-    marlin::MarlinTestnet1Mode,
+    marlin::MarlinPoswMode,
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
@@ -133,6 +133,7 @@ impl Network for Testnet1 {
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
     const ALEO_STARTING_SUPPLY_IN_CREDITS: i64 = 1_000_000_000;
     const ALEO_FUTURE_TIME_LIMIT_IN_SECS: i64 = 90;
+    const ALEO_MAXIMUM_FORK_DEPTH: u32 = 4096;
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
@@ -161,7 +162,7 @@ impl Network for Testnet1 {
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinTestnet1Mode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinPoswMode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 

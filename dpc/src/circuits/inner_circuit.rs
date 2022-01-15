@@ -741,7 +741,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let requires_check = input_index.less_than(
                     &mut input_cs.ns(|| format!("less than for input {}", i)),
-                    &number_of_inputs,
+                    number_of_inputs,
                 )?;
 
                 input_program_id_field_elements.conditional_enforce_equal(
@@ -767,7 +767,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let requires_check = output_index.less_than(
                     &mut output_cs.ns(|| format!("less than for output {}", j)),
-                    &number_of_outputs,
+                    number_of_outputs,
                 )?;
 
                 output_program_id_field_elements.conditional_enforce_equal(
@@ -804,7 +804,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 }
 
                 candidate_value_balance = candidate_value_balance
-                    .add(cs.ns(|| format!("add input record {} value", i)), &input_value)
+                    .add(cs.ns(|| format!("add input record {} value", i)), input_value)
                     .unwrap();
             }
 
@@ -818,7 +818,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 }
 
                 candidate_value_balance = candidate_value_balance
-                    .sub(cs.ns(|| format!("sub output record {} value", j)), &output_value)
+                    .sub(cs.ns(|| format!("sub output record {} value", j)), output_value)
                     .unwrap();
             }
 

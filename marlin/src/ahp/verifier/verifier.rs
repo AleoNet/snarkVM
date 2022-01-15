@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::marker::PhantomData;
+
 use crate::{
     ahp::{
         indexer::CircuitInfo,
@@ -21,6 +23,7 @@ use crate::{
         AHPError,
         AHPForR1CS,
     },
+    marlin::MarlinMode,
     traits::FiatShamirRng,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -32,12 +35,12 @@ use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
 
-impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
+impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         index_info: CircuitInfo<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(VerifierFirstMessage<TargetField>, VerifierState<TargetField>), AHPError> {
+    ) -> Result<(VerifierFirstMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
         // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
@@ -69,6 +72,7 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
             first_round_message: Some(message),
             second_round_message: None,
             gamma: None,
+            mode: PhantomData,
         };
 
         Ok((message, new_state))
@@ -76,9 +80,9 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
 
     /// Output the second message and next round state.
     pub fn verifier_second_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
-        mut state: VerifierState<TargetField>,
+        mut state: VerifierState<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField>), AHPError> {
+    ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let beta = elems[0];
         assert!(!state.domain_h.evaluate_vanishing_polynomial(beta).is_zero());
@@ -91,9 +95,9 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
-        mut state: VerifierState<TargetField>,
+        mut state: VerifierState<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<VerifierState<TargetField>, AHPError> {
+    ) -> Result<VerifierState<TargetField, MM>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let gamma = elems[0];
 
@@ -103,10 +107,10 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
 
     /// Output the query state and next round state.
     pub fn verifier_query_set<'a, 'b, R: RngCore>(
-        state: VerifierState<TargetField>,
+        state: VerifierState<TargetField, MM>,
         _: &'a mut R,
-        with_vanishing: bool,
-    ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField>) {
+    ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField, MM>) {
+        let with_vanishing = MM::RECURSION;
         let alpha = state.first_round_message.unwrap().alpha;
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();

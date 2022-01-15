@@ -42,7 +42,7 @@ impl<N: Network> Program<N> {
         let mut program = Self {
             tree: MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
                 Arc::new(N::program_id_parameters().clone()),
-                &vec![],
+                &[],
             )?,
             functions: Default::default(),
             last_function_index: 0,
@@ -58,7 +58,7 @@ impl<N: Network> Program<N> {
         let mut program = Self {
             tree: MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
                 Arc::new(N::program_id_parameters().clone()),
-                &vec![],
+                &[],
             )?,
             functions: Default::default(),
             last_function_index: 0,
@@ -112,7 +112,7 @@ impl<N: Network> Program<N> {
             .rebuild(self.last_function_index as usize, &[function.function_id()])?;
 
         self.functions
-            .insert(function.function_id().clone(), (self.last_function_index, function));
+            .insert(function.function_id(), (self.last_function_index, function));
 
         self.last_function_index += 1;
         Ok(self.last_function_index - 1)
@@ -135,8 +135,7 @@ impl<N: Network> Program<N> {
         }
 
         // Ensure the functions do not already exist in the tree.
-        let duplicate_functions: Vec<_> = function_ids.iter().filter(|id| self.contains_function(id)).collect();
-        if !duplicate_functions.is_empty() {
+        if function_ids.iter().any(|id| self.contains_function(id)) {
             return Err(anyhow!("Some given functions already exist in the program"));
         }
 
@@ -149,7 +148,7 @@ impl<N: Network> Program<N> {
             functions
                 .into_iter()
                 .enumerate()
-                .map(|(index, function)| (function.function_id().clone(), (start_index + index as u8, function))),
+                .map(|(index, function)| (function.function_id(), (start_index + index as u8, function))),
         );
 
         self.last_function_index += num_functions as u8;
@@ -170,6 +169,6 @@ impl<N: Network> Program<N> {
 
     /// Returns the function index given the function ID, if it exists.
     fn get_function_index(&self, function_id: &N::FunctionID) -> Option<u8> {
-        self.functions.get(function_id).and_then(|(index, _)| Some(*index))
+        self.functions.get(function_id).map(|(index, _)| *index)
     }
 }

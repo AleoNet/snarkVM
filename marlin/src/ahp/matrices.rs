@@ -190,7 +190,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     // Recall that we are computing the arithmetization of M^*,
     // where `M^*(i, j) := M(j, i) * u_H(j, j)`.
-    for (r, row) in joint_matrix.into_iter().enumerate() {
+    for (r, row) in joint_matrix.iter().enumerate() {
         for i in row {
             let row_val = elems[r];
             let col_val = elems[output_domain.reindex_by_subdomain(input_domain, *i)];
@@ -199,9 +199,9 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
             row_vec.push(col_val);
             col_vec.push(row_val);
             // We insert zeros if a matrix doesn't contain an entry at the given (row, col) location.
-            val_a_vec.push(a.get(&(r, *i)).copied().unwrap_or(F::zero()));
-            val_b_vec.push(b.get(&(r, *i)).copied().unwrap_or(F::zero()));
-            val_c_vec.push(c.get(&(r, *i)).copied().unwrap_or(F::zero()));
+            val_a_vec.push(a.get(&(r, *i)).copied().unwrap_or_else(F::zero));
+            val_b_vec.push(b.get(&(r, *i)).copied().unwrap_or_else(F::zero));
+            val_c_vec.push(c.get(&(r, *i)).copied().unwrap_or_else(F::zero));
             inverses.push(eq_poly_vals[&col_val]);
 
             count += 1;
@@ -282,7 +282,7 @@ mod tests {
         matrix[row]
             .iter()
             .find_map(|(f, i)| (i == &col).then(|| *f))
-            .unwrap_or(F::zero())
+            .unwrap_or_else(F::zero)
     }
 
     #[test]

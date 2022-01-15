@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Transactions};
+use crate::{BlockHeaderMetadata, Network, Record, Transactions};
+use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
+use anyhow::Result;
 use serde::{de, ser, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
+    sync::Arc,
 };
 
 ///
@@ -36,6 +39,7 @@ pub struct BlockTemplate<N: Network> {
     cumulative_weight: u128,
     previous_ledger_root: N::LedgerRoot,
     transactions: Transactions<N>,
+    coinbase_record: Record<N>,
 }
 
 impl<N: Network> BlockTemplate<N> {
@@ -48,6 +52,7 @@ impl<N: Network> BlockTemplate<N> {
         cumulative_weight: u128,
         previous_ledger_root: N::LedgerRoot,
         transactions: Transactions<N>,
+        coinbase_record: Record<N>,
     ) -> Self {
         assert!(
             !(*transactions).is_empty(),
@@ -62,6 +67,7 @@ impl<N: Network> BlockTemplate<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
+            coinbase_record,
         }
     }
 
@@ -99,6 +105,55 @@ impl<N: Network> BlockTemplate<N> {
     pub fn transactions(&self) -> &Transactions<N> {
         &self.transactions
     }
+
+    /// Returns the coinbase record in the block transactions.
+    pub fn coinbase_record(&self) -> &Record<N> {
+        &self.coinbase_record
+    }
+
+    /// Returns an instance of the block header tree.
+    pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
+        Self::compute_block_header_tree(
+            self.previous_ledger_root,
+            self.transactions.transactions_root(),
+            &BlockHeaderMetadata::new(self),
+        )
+    }
+
+    /// Returns the block header root.
+    pub fn to_header_root(&self) -> Result<N::BlockHeaderRoot> {
+        Ok((*self.to_header_tree()?.root()).into())
+    }
+
+    /// Returns an instance of the block header tree.
+    pub fn compute_block_header_tree(
+        previous_ledger_root: N::LedgerRoot,
+        transactions_root: N::TransactionsRoot,
+        metadata: &BlockHeaderMetadata,
+    ) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
+        let previous_ledger_root = previous_ledger_root.to_bytes_le()?;
+        assert_eq!(previous_ledger_root.len(), 32);
+
+        let transactions_root = transactions_root.to_bytes_le()?;
+        assert_eq!(transactions_root.len(), 32);
+
+        let metadata = metadata.to_bytes_le()?;
+        assert_eq!(metadata.len(), 36);
+
+        let num_leaves = usize::pow(2, N::HEADER_TREE_DEPTH as u32);
+        let mut leaves: Vec<Vec<u8>> = Vec::with_capacity(num_leaves);
+        leaves.push(previous_ledger_root);
+        leaves.push(transactions_root);
+        leaves.push(vec![0u8; 32]);
+        leaves.push(metadata);
+        // Sanity check that the correct number of leaves are allocated.
+        assert_eq!(num_leaves, leaves.len());
+
+        Ok(MerkleTree::<N::BlockHeaderRootParameters>::new(
+            Arc::new(N::block_header_root_parameters().clone()),
+            &leaves,
+        )?)
+    }
 }
 
 impl<N: Network> FromBytes for BlockTemplate<N> {
@@ -110,6 +165,7 @@ impl<N: Network> FromBytes for BlockTemplate<N> {
         let cumulative_weight: u128 = FromBytes::read_le(&mut reader)?;
         let previous_ledger_root: N::LedgerRoot = FromBytes::read_le(&mut reader)?;
         let transactions: Transactions<N> = FromBytes::read_le(&mut reader)?;
+        let coinbase_record: Record<N> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::new(
             previous_block_hash,
@@ -119,6 +175,7 @@ impl<N: Network> FromBytes for BlockTemplate<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
+            coinbase_record,
         ))
     }
 }
@@ -131,7 +188,8 @@ impl<N: Network> ToBytes for BlockTemplate<N> {
         self.difficulty_target.write_le(&mut writer)?;
         self.cumulative_weight.write_le(&mut writer)?;
         self.previous_ledger_root.write_le(&mut writer)?;
-        self.transactions.write_le(&mut writer)
+        self.transactions.write_le(&mut writer)?;
+        self.coinbase_record.write_le(&mut writer)
     }
 }
 
@@ -139,7 +197,7 @@ impl<N: Network> FromStr for BlockTemplate<N> {
     type Err = anyhow::Error;
 
     fn from_str(transactions: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(&transactions)?)
+        Ok(serde_json::from_str(transactions)?)
     }
 }
 
@@ -165,6 +223,7 @@ impl<N: Network> Serialize for BlockTemplate<N> {
                 block_template.serialize_field("cumulative_weight", &self.cumulative_weight)?;
                 block_template.serialize_field("previous_ledger_root", &self.previous_ledger_root)?;
                 block_template.serialize_field("transactions", &self.transactions)?;
+                block_template.serialize_field("coinbase_record", &self.coinbase_record)?;
                 block_template.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -192,6 +251,8 @@ impl<'de, N: Network> Deserialize<'de> for BlockTemplate<N> {
                         .map_err(de::Error::custom)?;
                 let transactions: Transactions<N> =
                     serde_json::from_value(block_template["transactions"].clone()).map_err(de::Error::custom)?;
+                let coinbase_record: Record<N> =
+                    serde_json::from_value(block_template["coinbase_record"].clone()).map_err(de::Error::custom)?;
                 Ok(Self::new(
                     previous_block_hash,
                     block_height,
@@ -200,6 +261,7 @@ impl<'de, N: Network> Deserialize<'de> for BlockTemplate<N> {
                     cumulative_weight,
                     previous_ledger_root,
                     transactions,
+                    coinbase_record,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "block template"),
@@ -224,12 +286,13 @@ mod tests {
             block.cumulative_weight(),
             block.previous_ledger_root(),
             block.transactions().clone(),
+            block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
         );
 
         // Serialize
         let expected_string = expected_template.to_string();
         let candidate_string = serde_json::to_string(&expected_template).unwrap();
-        assert_eq!(2668, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3396, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -252,12 +315,13 @@ mod tests {
             block.cumulative_weight(),
             block.previous_ledger_root(),
             block.transactions().clone(),
+            block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
         );
 
         // Serialize
         let expected_bytes = expected_template.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_template).unwrap();
-        assert_eq!(1223, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1503, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

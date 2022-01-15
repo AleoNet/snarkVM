@@ -76,7 +76,7 @@ pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Clone + Debu
 
 /// Defines the minimal interface of commitment randomness for any polynomial
 /// commitment scheme.
-pub trait PCRandomness: CanonicalSerialize + CanonicalDeserialize + Clone {
+pub trait PCRandomness: CanonicalSerialize + CanonicalDeserialize + Clone + Eq {
     /// Outputs empty randomness that does not hide the commitment.
     fn empty() -> Self;
 
@@ -89,7 +89,15 @@ pub trait PCRandomness: CanonicalSerialize + CanonicalDeserialize + Clone {
 
 /// Defines the minimal interface of evaluation proofs for any polynomial
 /// commitment scheme.
-pub trait PCProof: CanonicalSerialize + CanonicalDeserialize + Clone + ToBytes {}
+pub trait PCProof: CanonicalSerialize + CanonicalDeserialize + Clone + ToBytes {
+    fn is_hiding(&self) -> bool;
+}
+
+impl<P: PCProof> PCProof for Vec<P> {
+    fn is_hiding(&self) -> bool {
+        self.iter().any(|p| p.is_hiding())
+    }
+}
 
 /// A polynomial along with information about its degree bound (if any), and the
 /// maximum number of queries that will be made to it. This latter number determines

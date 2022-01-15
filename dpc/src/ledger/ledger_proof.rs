@@ -57,10 +57,10 @@ impl<N: Network> LedgerProof<N> {
 
     /// Create a new dummy ledger proof.
     pub fn new_dummy(local_proof: LocalProof<N>) -> Result<Self> {
-        let mut ledger_proof: Self = Default::default();
-        ledger_proof.record_proof = RecordProof::new_dummy(local_proof)?;
-
-        Ok(ledger_proof)
+        Ok(Self {
+            record_proof: RecordProof::new_dummy(local_proof)?,
+            ..Default::default()
+        })
     }
 
     /// Returns the ledger root used to prove inclusion of ledger-consumed records.
@@ -90,7 +90,7 @@ impl<N: Network> LedgerProof<N> {
 
     /// Returns the block header inclusion proof.
     pub fn block_header_inclusion_proof(&self) -> &MerklePath<N::BlockHeaderRootParameters> {
-        &self.record_proof.block_header_inclusion_proof()
+        self.record_proof.block_header_inclusion_proof()
     }
 
     /// Returns the transactions root.
@@ -100,7 +100,7 @@ impl<N: Network> LedgerProof<N> {
 
     /// Returns the transactions inclusion proof.
     pub fn transactions_inclusion_proof(&self) -> &MerklePath<N::TransactionsRootParameters> {
-        &self.record_proof.transactions_inclusion_proof()
+        self.record_proof.transactions_inclusion_proof()
     }
 
     /// Returns the transaction ID.
@@ -110,7 +110,7 @@ impl<N: Network> LedgerProof<N> {
 
     /// Returns the transaction inclusion proof.
     pub fn transaction_inclusion_proof(&self) -> &MerklePath<N::TransactionIDParameters> {
-        &self.record_proof.transaction_inclusion_proof()
+        self.record_proof.transaction_inclusion_proof()
     }
 
     /// Returns the transition ID.
@@ -120,7 +120,7 @@ impl<N: Network> LedgerProof<N> {
 
     /// Returns the transition inclusion proof.
     pub fn transition_inclusion_proof(&self) -> &MerklePath<N::TransitionIDParameters> {
-        &self.record_proof.transition_inclusion_proof()
+        self.record_proof.transition_inclusion_proof()
     }
 
     /// Returns the commitment.
@@ -130,7 +130,7 @@ impl<N: Network> LedgerProof<N> {
 
     /// Returns the local proof.
     pub fn local_proof(&self) -> &LocalProof<N> {
-        &self.record_proof.local_proof()
+        self.record_proof.local_proof()
     }
 }
 
