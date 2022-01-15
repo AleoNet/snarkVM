@@ -162,7 +162,7 @@ version = "0.10"
 default-features = false
 
 [dependencies.smallvec]
-version = "1.7"
+version = "1.8"
 default-features = false
 features = [ "const_generics", "const_new" ]
 
