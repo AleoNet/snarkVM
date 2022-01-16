@@ -340,7 +340,7 @@ impl<'a, F: Field> AddAssign<&'a super::SparsePolynomial<F>> for DensePolynomial
             self.coeffs[*i] += b;
         }
         // If the leading coefficient ends up being zero, pop it off.
-        while self.coeffs.last().unwrap().is_zero() {
+        while self.coeffs.last().map_or(false, |c| c.is_zero()) {
             self.coeffs.pop();
         }
     }
@@ -358,7 +358,7 @@ impl<'a, F: Field> Sub<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
             self.coeffs[*i] -= b;
         }
         // If the leading coefficient ends up being zero, pop it off.
-        while self.coeffs.last().unwrap().is_zero() {
+        while self.coeffs.last().map_or(false, |c| c.is_zero()) {
             self.coeffs.pop();
         }
         self
