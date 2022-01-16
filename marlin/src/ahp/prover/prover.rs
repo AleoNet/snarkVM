@@ -292,7 +292,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mut mask_poly = h_1_mask;
             mask_poly += &g_1_mask;
             end_timer!(mask_poly_time);
-            assert!(domain_h.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
+            debug_assert!(domain_h.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
             assert_eq!(mask_poly.degree(), domain_h.size() + 3);
             assert!(mask_poly.degree() <= 3 * domain_h.size() + 2 * zk_bound - 3);
             Some(mask_poly)
@@ -387,8 +387,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
-        assert_eq!(z_a_poly.degree(), domain_h.size());
-        assert_eq!(z_b_poly.degree(), domain_h.size());
+        if MM::ZK {
+            assert_eq!(z_a_poly.degree(), domain_h.size());
+            assert_eq!(z_b_poly.degree(), domain_h.size());
+        } else {
+            assert!(z_a_poly.degree() < domain_h.size());
+            assert!(z_b_poly.degree() < domain_h.size());
+        }
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
         let (r_a, r_b) = state.mz_poly_randomizer.as_ref().unwrap();
         let z_c_poly = if MM::ZK {
