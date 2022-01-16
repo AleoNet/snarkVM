@@ -332,6 +332,41 @@ impl<'a, 'b, F: Field> SubAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
     }
 }
 
+impl<'a, F: Field> AddAssign<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
+    #[inline]
+    fn add_assign(&mut self, other: &'a super::SparsePolynomial<F>) {
+        if self.degree() < other.degree() {
+            self.coeffs.resize(other.degree() + 1, F::zero());
+        }
+        for (i, b) in &other.coeffs {
+            self.coeffs[*i] += b;
+        }
+        // If the leading coefficient ends up being zero, pop it off.
+        while self.coeffs.last().unwrap().is_zero() {
+            self.coeffs.pop();
+        }
+    }
+}
+
+impl<'a, F: Field> Sub<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
+    type Output = Self;
+
+    #[inline]
+    fn sub(mut self, other: &'a super::SparsePolynomial<F>) -> Self::Output {
+        if self.degree() < other.degree() {
+            self.coeffs.resize(other.degree() + 1, F::zero());
+        }
+        for (i, b) in &other.coeffs {
+            self.coeffs[*i] -= b;
+        }
+        // If the leading coefficient ends up being zero, pop it off.
+        while self.coeffs.last().unwrap().is_zero() {
+            self.coeffs.pop();
+        }
+        self
+    }
+}
+
 impl<'a, 'b, F: Field> Div<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
     type Output = DensePolynomial<F>;
 

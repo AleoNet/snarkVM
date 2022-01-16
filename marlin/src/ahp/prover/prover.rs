@@ -32,7 +32,7 @@ use snarkvm_algorithms::{
     cfg_into_iter,
     cfg_iter,
     cfg_iter_mut,
-    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
 };
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
@@ -203,6 +203,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_b: Some(z_b),
             w_poly: None,
             mz_polys: None,
+            mz_poly_randomizer: None,
             zk_bound,
             index,
             verifier_first_message: None,
@@ -260,16 +261,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
         let z_a = state.z_a.clone().unwrap();
         let mut z_a_poly = EvaluationsOnDomain::from_vec_and_domain(z_a, domain_h).interpolate();
+        let r_a = F::rand(rng);
         if MM::ZK {
-            z_a_poly += &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+            z_a_poly += &(&Polynomial::from_coefficients_slice(&[r_a]) * &v_H);
         }
         end_timer!(z_a_poly_time);
 
         let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
         let z_b = state.z_b.clone().unwrap();
         let mut z_b_poly = EvaluationsOnDomain::from_vec_and_domain(z_b, domain_h).interpolate();
+        let r_b = F::rand(rng);
         if MM::ZK {
-            z_b_poly += &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+            z_b_poly += &(&Polynomial::from_coefficients_slice(&[r_b]) * &v_H);
         }
         end_timer!(z_b_poly_time);
 
@@ -310,6 +313,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         state.w_poly = Some(w);
         state.mz_polys = Some((z_a, z_b));
+        state.mz_poly_randomizer = Some((r_a, r_b));
         state.mask_poly = mask_poly;
         end_timer!(round_time);
 
@@ -372,7 +376,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
-        let z_c_poly = z_a_poly.polynomial() * z_b_poly.polynomial();
+        let (r_a, r_b) = state.mz_poly_randomizer.as_ref().unwrap();
+        let z_c_poly = if MM::ZK {
+            let v_H = domain_h.vanishing_polynomial();
+            let r_a_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_a)]));
+            let r_b_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_b)]));
+            let z_a_poly = z_a_poly.polynomial().clone() - &r_a_v_H;
+            let z_b_poly = z_b_poly.polynomial().clone() - &r_b_v_H;
+            let mut z_c = &z_a_poly * &z_b_poly;
+            z_c += {
+                let coeffs = cfg_into_iter!(z_b_poly.coeffs)
+                    .zip(z_a_poly.coeffs)
+                    .map(|(z_b, z_a)| z_b * r_a + z_a * r_b)
+                    .collect();
+                &DensePolynomial::from_coefficients_vec(coeffs)
+            };
+            z_c += &r_a_v_H.mul(&r_b_v_H);
+
+            z_c
+        } else {
+            z_a_poly.polynomial() * z_b_poly.polynomial()
+        };
 
         let mut summed_z_m_coeffs = z_c_poly.coeffs;
         // Note: Can't combine these two loops, because z_c_poly has 2x the degree
