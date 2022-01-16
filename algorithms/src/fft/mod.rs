@@ -33,7 +33,15 @@ use snarkvm_fields::FftField;
 
 /// Types that can be FFT-ed must implement this trait.
 pub trait DomainCoeff<F: FftField>:
-    Copy + Send + Sync + snarkvm_fields::Zero + core::ops::AddAssign + core::ops::SubAssign + core::ops::MulAssign<F>
+    Copy
+    + Send
+    + Sync
+    + core::ops::Add<Output = Self>
+    + core::ops::Sub<Output = Self>
+    + core::ops::AddAssign
+    + core::ops::SubAssign
+    + snarkvm_fields::Zero
+    + core::ops::MulAssign<F>
 {
 }
 
@@ -46,6 +54,8 @@ where
         + snarkvm_fields::Zero
         + core::ops::AddAssign
         + core::ops::SubAssign
-        + core::ops::MulAssign<F>,
+        + core::ops::MulAssign<F>
+        + core::ops::Add<Output = Self>
+        + core::ops::Sub<Output = Self>,
 {
 }

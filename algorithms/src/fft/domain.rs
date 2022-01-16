@@ -27,7 +27,7 @@
 //! by performing an O(n log n) FFT over such a domain.
 
 use crate::fft::{DomainCoeff, SparsePolynomial};
-use snarkvm_fields::{batch_inversion, FftField, FftParameters};
+use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
@@ -36,16 +36,33 @@ use std::fmt;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// Defines the minimum size at which to parallelize.
-/// This is used as the base case in the recursive root of unity method.
-#[cfg(feature = "parallel")]
-const LOG_ROOTS_OF_UNITY_PARALLEL_SIZE: usize = 7;
-
-/// Returns the log2 value of the given number.
-#[cfg(feature = "parallel")]
-fn log2(number: usize) -> usize {
-    (number as f64).log2() as usize
+/// Returns the ceiling of the base-2 logarithm of `x`.
+///
+/// ```
+/// use snarkvm_algorithms::fft::domain::log2;
+///
+/// assert_eq!(log2(16), 4);
+/// assert_eq!(log2(17), 5);
+/// assert_eq!(log2(1), 0);
+/// assert_eq!(log2(0), 0);
+/// assert_eq!(log2(usize::MAX), (core::mem::size_of::<usize>() * 8) as u32);
+/// assert_eq!(log2(1 << 15), 15);
+/// assert_eq!(log2(2usize.pow(18)), 18);
+/// ```
+pub fn log2(x: usize) -> u32 {
+    if x == 0 {
+        0
+    } else if x.is_power_of_two() {
+        1usize.leading_zeros() - x.leading_zeros()
+    } else {
+        0usize.leading_zeros() - x.leading_zeros()
+    }
 }
+
+// minimum size of a parallelized chunk
+#[allow(unused)]
+#[cfg(feature = "parallel")]
+const MIN_PARALLEL_CHUNK_SIZE: usize = 1 << 7;
 
 /// Defines a domain over which finite field (I)FFTs can be performed. Works
 /// only for fields that have a large multiplicative subgroup of size that is
@@ -143,7 +160,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an FFT, modifying the vector in place.
     pub fn fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
         coeffs.resize(self.size(), T::zero());
-        best_fft(coeffs, self.group_gen, self.log_size_of_group)
+        self.in_order_fft_in_place(&mut *coeffs);
     }
 
     /// Compute an IFFT.
@@ -157,8 +174,7 @@ impl<F: FftField> EvaluationDomain<F> {
     #[inline]
     pub fn ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
         evals.resize(self.size(), T::zero());
-        best_fft(evals, self.group_gen_inv, self.log_size_of_group);
-        cfg_iter_mut!(evals).for_each(|val| *val *= self.size_inv);
+        self.in_order_ifft_in_place(&mut *evals);
     }
 
     /// Compute an FFT over a coset of the domain.
@@ -184,16 +200,43 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an IFFT over a coset of the domain, modifying the input vector in place.
     pub fn coset_ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        self.ifft_in_place(evals);
-        Self::distribute_powers(evals, self.generator_inv);
+        evals.resize(self.size(), T::zero());
+        self.in_order_coset_ifft_in_place(&mut *evals);
     }
 
-    fn distribute_powers<T: DomainCoeff<F>>(coeffs: &mut Vec<T>, g: F) {
-        let mut pow = F::one();
-        coeffs.iter_mut().for_each(|c| {
-            *c *= pow;
+    /// Multiply the `i`-th element of `coeffs` with `g^i`.
+    fn distribute_powers<T: DomainCoeff<F>>(coeffs: &mut [T], g: F) {
+        Self::distribute_powers_and_mul_by_const(coeffs, g, F::one());
+    }
+
+    /// Multiply the `i`-th element of `coeffs` with `c*g^i`.
+    #[cfg(not(feature = "parallel"))]
+    fn distribute_powers_and_mul_by_const<T: DomainCoeff<F>>(coeffs: &mut [T], g: F, c: F) {
+        // invariant: pow = c*g^i at the ith iteration of the loop
+        let mut pow = c;
+        coeffs.iter_mut().for_each(|coeff| {
+            *coeff *= pow;
             pow *= &g
         })
+    }
+
+    /// Multiply the `i`-th element of `coeffs` with `c*g^i`.
+    #[cfg(feature = "parallel")]
+    fn distribute_powers_and_mul_by_const<T: DomainCoeff<F>>(coeffs: &mut [T], g: F, c: F) {
+        let min_parallel_chunk_size = 1024;
+        let num_cpus_available = rayon::current_num_threads();
+        let num_elem_per_thread = core::cmp::max(coeffs.len() / num_cpus_available, min_parallel_chunk_size);
+
+        cfg_chunks_mut!(coeffs, num_elem_per_thread)
+            .enumerate()
+            .for_each(|(i, chunk)| {
+                let offset = c * g.pow([(i * num_elem_per_thread) as u64]);
+                let mut pow = offset;
+                chunk.iter_mut().for_each(|coeff| {
+                    *coeff *= pow;
+                    pow *= &g
+                })
+            });
     }
 
     /// Evaluate all the lagrange polynomials defined by this domain at the point
@@ -305,13 +348,65 @@ impl<F: FftField> EvaluationDomain<F> {
 
         result
     }
+}
+
+impl<F: FftField> EvaluationDomain<F> {
+    pub(crate) fn in_order_fft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        self.fft_helper_in_place(x_s, FFTOrder::II)
+    }
+
+    pub(crate) fn in_order_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        self.ifft_helper_in_place(x_s, FFTOrder::II);
+        cfg_iter_mut!(x_s).for_each(|val| *val *= self.size_inv);
+    }
+
+    pub(crate) fn in_order_coset_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        self.ifft_helper_in_place(x_s, FFTOrder::II);
+        let coset_shift = self.generator_inv;
+        Self::distribute_powers_and_mul_by_const(x_s, coset_shift, self.size_inv);
+    }
+
+    fn fft_helper_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T], ord: FFTOrder) {
+        use FFTOrder::*;
+
+        let log_len = log2(x_s.len());
+
+        if ord == OI {
+            self.oi_helper(x_s, self.group_gen);
+        } else {
+            self.io_helper(x_s, self.group_gen);
+        }
+
+        if ord == II {
+            derange(x_s, log_len);
+        }
+    }
+
+    // Handles doing an IFFT with handling of being in order and out of order.
+    // The results here must all be divided by |x_s|,
+    // which is left up to the caller to do.
+    fn ifft_helper_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T], ord: FFTOrder) {
+        use FFTOrder::*;
+
+        let log_len = log2(x_s.len());
+
+        if ord == II {
+            derange(x_s, log_len);
+        }
+
+        if ord == IO {
+            self.io_helper(x_s, self.group_gen_inv);
+        } else {
+            self.oi_helper(x_s, self.group_gen_inv);
+        }
+    }
 
     /// Computes the first `self.size / 2` roots of unity for the entire domain.
     /// e.g. for the domain [1, g, g^2, ..., g^{n - 1}], it computes
     // [1, g, g^2, ..., g^{(n/2) - 1}]
     #[cfg(not(feature = "parallel"))]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
-        Self::compute_powers_serial((self.size as usize) / 2, root)
+        compute_powers_serial((self.size as usize) / 2, root)
     }
 
     /// Computes the first `self.size / 2` roots of unity.
@@ -319,22 +414,21 @@ impl<F: FftField> EvaluationDomain<F> {
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         // TODO: check if this method can replace parallel compute powers.
         let log_size = log2(self.size as usize);
-
-        // Early exit for short inputs.
+        // early exit for short inputs
         if log_size <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
-            Self::compute_powers_serial((self.size as usize) / 2, root)
+            compute_powers_serial((self.size as usize) / 2, root)
         } else {
-            let mut tmp = root;
+            let mut temp = root;
             // w, w^2, w^4, w^8, ..., w^(2^(log_size - 1))
             let log_powers: Vec<F> = (0..(log_size - 1))
                 .map(|_| {
-                    let old_value = tmp;
-                    tmp.square_in_place();
+                    let old_value = temp;
+                    temp.square_in_place();
                     old_value
                 })
                 .collect();
 
-            // Allocate the return array and start the recursion.
+            // allocate the return array and start the recursion
             let mut powers = vec![F::zero(); 1 << (log_size - 1)];
             Self::roots_of_unity_recursive(&mut powers, &log_powers);
             powers
@@ -342,156 +436,253 @@ impl<F: FftField> EvaluationDomain<F> {
     }
 
     #[cfg(feature = "parallel")]
-    fn roots_of_unity_recursive(powers: &mut [F], log_powers: &[F]) {
-        assert_eq!(powers.len(), 1 << log_powers.len());
-
-        // Base case: compute the powers sequentially,
+    fn roots_of_unity_recursive(out: &mut [F], log_powers: &[F]) {
+        assert_eq!(out.len(), 1 << log_powers.len());
+        // base case: just compute the powers sequentially,
         // g = log_powers[0], out = [1, g, g^2, ...]
-        if log_powers.len() <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
-            powers[0] = F::one();
-            for i in 1..powers.len() {
-                powers[i] = powers[i - 1] * log_powers[0];
+        if log_powers.len() <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE as usize {
+            out[0] = F::one();
+            for idx in 1..out.len() {
+                out[idx] = out[idx - 1] * log_powers[0];
             }
             return;
         }
 
-        // Recursive case:
-        // 1. Split log_powers in half.
-        let (lr_low, lr_high) = log_powers.split_at((1 + log_powers.len()) / 2);
-        let mut scr_low = vec![F::default(); 1 << lr_low.len()];
-        let mut scr_high = vec![F::default(); 1 << lr_high.len()];
-
-        // 2. Compute each half individually
+        // recursive case:
+        // 1. split log_powers in half
+        let (lr_lo, lr_hi) = log_powers.split_at((1 + log_powers.len()) / 2);
+        let mut scr_lo = vec![F::default(); 1 << lr_lo.len()];
+        let mut scr_hi = vec![F::default(); 1 << lr_hi.len()];
+        // 2. compute each half individually
         rayon::join(
-            || Self::roots_of_unity_recursive(&mut scr_low, lr_low),
-            || Self::roots_of_unity_recursive(&mut scr_high, lr_high),
+            || Self::roots_of_unity_recursive(&mut scr_lo, lr_lo),
+            || Self::roots_of_unity_recursive(&mut scr_hi, lr_hi),
         );
-
-        // 3. Recombine the halves.
+        // 3. recombine halves
         // At this point, out is a blank slice.
-        powers
-            .par_chunks_mut(scr_low.len())
-            .zip(&scr_high)
-            .for_each(|(power_chunk, scr_high)| {
-                for (power, scr_low) in power_chunk.iter_mut().zip(&scr_low) {
-                    *power = *scr_high * scr_low;
+        out.par_chunks_mut(scr_lo.len())
+            .zip(&scr_hi)
+            .for_each(|(out_chunk, scr_hi)| {
+                for (out_elem, scr_lo) in out_chunk.iter_mut().zip(&scr_lo) {
+                    *out_elem = *scr_hi * scr_lo;
                 }
             });
     }
 
-    fn compute_powers_serial(size: usize, root: F) -> Vec<F> {
-        let mut value = F::one();
-        (0..size)
-            .map(|_| {
-                let old_value = value;
-                value *= &root;
-                old_value
-            })
-            .collect()
-    }
-}
-
-#[allow(unused_variables)]
-#[cfg(not(feature = "parallel"))]
-fn best_fft<T: DomainCoeff<F>, F: FftField>(a: &mut [T], omega: F, log_n: u32) {
-    serial_radix2_fft(a, omega, log_n);
-}
-
-#[cfg(feature = "parallel")]
-fn best_fft<T: DomainCoeff<F>, F: FftField>(a: &mut [T], omega: F, log_n: u32) {
-    let num_cpus = rayon::current_num_threads();
-    let log_cpus = log2_floor(num_cpus);
-
-    if log_n <= log_cpus {
-        serial_radix2_fft::<T, F>(a, omega, log_n);
-    } else {
-        parallel_radix2_fft::<T, F>(a, omega, log_n, log_cpus);
-    }
-}
-
-#[allow(clippy::many_single_char_names)]
-pub(crate) fn serial_radix2_fft<T: DomainCoeff<F>, F: FftField>(a: &mut [T], omega: F, log_n: u32) {
-    #[inline]
-    fn bitreverse(mut n: u32, l: u32) -> u32 {
-        let mut r = 0;
-        for _ in 0..l {
-            r = (r << 1) | (n & 1);
-            n >>= 1;
-        }
-        r
+    #[inline(always)]
+    fn butterfly_fn_io<T: DomainCoeff<F>>(((lo, hi), root): ((&mut T, &mut T), &F)) {
+        let neg = *lo - *hi;
+        *lo += *hi;
+        *hi = neg;
+        *hi *= *root;
     }
 
-    let n = a.len() as u32;
-    assert_eq!(n, 1 << log_n);
-
-    for k in 0..n {
-        let rk = bitreverse(k, log_n);
-        if k < rk {
-            a.swap(rk as usize, k as usize);
-        }
+    #[inline(always)]
+    fn butterfly_fn_oi<T: DomainCoeff<F>>(((lo, hi), root): ((&mut T, &mut T), &F)) {
+        *hi *= *root;
+        let neg = *lo - *hi;
+        *lo += *hi;
+        *hi = neg;
     }
 
-    let mut m = 1;
-    for _ in 0..log_n {
-        let w_m = omega.pow(&[(n / (2 * m)) as u64]);
+    fn apply_butterfly<T: DomainCoeff<F>, G: Fn(((&mut T, &mut T), &F)) + Copy + Sync + Send>(
+        g: G,
+        xi: &mut [T],
+        roots: &[F],
+        step: usize,
+        chunk_size: usize,
+        num_chunks: usize,
+        max_threads: usize,
+        gap: usize,
+    ) {
+        cfg_chunks_mut!(xi, chunk_size).for_each(|cxi| {
+            let (lo, hi) = cxi.split_at_mut(gap);
+            // If the chunk is sufficiently big that parallelism helps,
+            // we parallelize the butterfly operation within the chunk.
 
-        let mut k = 0;
-        while k < n {
-            let mut w = F::one();
-            for j in 0..m {
-                let mut t = a[(k + j + m) as usize];
-                t *= w;
-                let mut tmp = a[(k + j) as usize];
-                tmp -= t;
-                a[(k + j + m) as usize] = tmp;
-                a[(k + j) as usize] += t;
-                w.mul_assign(&w_m);
+            if gap > MIN_GAP_SIZE_FOR_PARALLELISATION && num_chunks < max_threads {
+                cfg_iter_mut!(lo)
+                    .zip(hi)
+                    .zip(cfg_iter!(roots).step_by(step))
+                    .for_each(g);
+            } else {
+                lo.iter_mut().zip(hi).zip(roots.iter().step_by(step)).for_each(g);
             }
+        });
+    }
 
-            k += 2 * m;
+    fn io_helper<T: DomainCoeff<F>>(&self, xi: &mut [T], root: F) {
+        let mut roots = self.roots_of_unity(root);
+        let mut step = 1;
+        let mut first = true;
+
+        #[cfg(feature = "parallel")]
+        let max_threads = rayon::current_num_threads();
+        #[cfg(not(feature = "parallel"))]
+        let max_threads = 1;
+
+        let mut gap = xi.len() / 2;
+        while gap > 0 {
+            // each butterfly cluster uses 2*gap positions
+            let chunk_size = 2 * gap;
+            let num_chunks = xi.len() / chunk_size;
+
+            // Only compact roots to achieve cache locality/compactness if
+            // the roots lookup is done a significant amount of times
+            // Which also implies a large lookup stride.
+            if num_chunks >= MIN_NUM_CHUNKS_FOR_COMPACTION {
+                if !first {
+                    roots = cfg_into_iter!(roots).step_by(step * 2).collect()
+                }
+                step = 1;
+                roots.shrink_to_fit();
+            } else {
+                step = num_chunks;
+            }
+            first = false;
+
+            Self::apply_butterfly(
+                Self::butterfly_fn_io,
+                xi,
+                &roots[..],
+                step,
+                chunk_size,
+                num_chunks,
+                max_threads,
+                gap,
+            );
+
+            gap /= 2;
         }
+    }
 
-        m *= 2;
+    fn oi_helper<T: DomainCoeff<F>>(&self, xi: &mut [T], root: F) {
+        let roots_cache = self.roots_of_unity(root);
+
+        // The `cmp::min` is only necessary for the case where
+        // `MIN_NUM_CHUNKS_FOR_COMPACTION = 1`. Else, notice that we compact
+        // the roots cache by a stride of at least `MIN_NUM_CHUNKS_FOR_COMPACTION`.
+
+        let compaction_max_size =
+            core::cmp::min(roots_cache.len() / 2, roots_cache.len() / MIN_NUM_CHUNKS_FOR_COMPACTION);
+        let mut compacted_roots = vec![F::default(); compaction_max_size];
+
+        #[cfg(feature = "parallel")]
+        let max_threads = rayon::current_num_threads();
+        #[cfg(not(feature = "parallel"))]
+        let max_threads = 1;
+
+        let mut gap = 1;
+        while gap < xi.len() {
+            // each butterfly cluster uses 2*gap positions
+            let chunk_size = 2 * gap;
+            let num_chunks = xi.len() / chunk_size;
+
+            // Only compact roots to achieve cache locality/compactness if
+            // the roots lookup is done a significant amount of times
+            // Which also implies a large lookup stride.
+            let (roots, step) = if num_chunks >= MIN_NUM_CHUNKS_FOR_COMPACTION && gap < xi.len() / 2 {
+                cfg_iter_mut!(compacted_roots[..gap])
+                    .zip(cfg_iter!(roots_cache[..(gap * num_chunks)]).step_by(num_chunks))
+                    .for_each(|(a, b)| *a = *b);
+                (&compacted_roots[..gap], 1)
+            } else {
+                (&roots_cache[..], num_chunks)
+            };
+
+            Self::apply_butterfly(
+                Self::butterfly_fn_oi,
+                xi,
+                roots,
+                step,
+                chunk_size,
+                num_chunks,
+                max_threads,
+                gap,
+            );
+
+            gap *= 2;
+        }
     }
 }
 
+/// The minimum number of chunks at which root compaction
+/// is beneficial.
+const MIN_NUM_CHUNKS_FOR_COMPACTION: usize = 1 << 7;
+
+/// The minimum size of a chunk at which parallelization of `butterfly`s is
+/// beneficial. This value was chosen empirically.
+const MIN_GAP_SIZE_FOR_PARALLELISATION: usize = 1 << 10;
+
+// minimum size at which to parallelize.
 #[cfg(feature = "parallel")]
-pub(crate) fn parallel_radix2_fft<T: DomainCoeff<F>, F: FftField>(a: &mut [T], omega: F, log_n: u32, log_cpus: u32) {
-    assert!(log_n >= log_cpus);
+const LOG_ROOTS_OF_UNITY_PARALLEL_SIZE: u32 = 7;
 
-    let m = a.len();
-    let num_chunks = 1 << (log_cpus as usize);
-    assert_eq!(m % num_chunks, 0);
-    let m_div_num_chunks = m / num_chunks;
+#[inline]
+pub(super) fn bitrev(a: u64, log_len: u32) -> u64 {
+    a.reverse_bits() >> (64 - log_len)
+}
 
-    let mut tmp = vec![vec![T::zero(); m_div_num_chunks]; num_chunks];
-    let new_omega = omega.pow(&[num_chunks as u64]);
-    let new_two_adicity = F::k_adicity(2, m_div_num_chunks);
-
-    tmp.par_iter_mut().enumerate().for_each(|(j, tmp)| {
-        // Shuffle into a sub-FFT
-        let omega_j = omega.pow(&[j as u64]);
-        let omega_step = omega.pow(&[(j * m_div_num_chunks) as u64]);
-
-        let mut elt = F::one();
-        for (i, tmp_t) in tmp.iter_mut().enumerate().take(m_div_num_chunks) {
-            for s in 0..num_chunks {
-                let idx = (i + (s * m_div_num_chunks)) % m;
-                let mut t = a[idx];
-                t *= elt;
-                *tmp_t += t;
-                elt *= &omega_step;
-            }
-            elt *= &omega_j;
+fn derange<T>(xi: &mut [T], log_len: u32) {
+    for idx in 1..(xi.len() as u64 - 1) {
+        let ridx = bitrev(idx, log_len);
+        if idx < ridx {
+            xi.swap(idx as usize, ridx as usize);
         }
+    }
+}
 
-        // Perform sub-FFT
-        serial_radix2_fft(tmp, new_omega, new_two_adicity);
-    });
+#[derive(PartialEq, Eq, Debug)]
+enum FFTOrder {
+    /// Both the input and the output of the FFT must be in-order.
+    II,
+    /// The input of the FFT must be in-order, but the output does not have to
+    /// be.
+    IO,
+    /// The input of the FFT can be out of order, but the output must be
+    /// in-order.
+    OI,
+}
 
-    a.iter_mut()
-        .enumerate()
-        .for_each(|(i, a)| *a = tmp[i % num_chunks][i / num_chunks]);
+pub(crate) fn compute_powers_serial<F: Field>(size: usize, root: F) -> Vec<F> {
+    compute_powers_and_mul_by_const_serial(size, root, F::one())
+}
+
+pub(crate) fn compute_powers_and_mul_by_const_serial<F: Field>(size: usize, root: F, c: F) -> Vec<F> {
+    let mut value = c;
+    (0..size)
+        .map(|_| {
+            let old_value = value;
+            value *= root;
+            old_value
+        })
+        .collect()
+}
+
+#[allow(unused)]
+#[cfg(feature = "parallel")]
+pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
+    if size < MIN_PARALLEL_CHUNK_SIZE {
+        return compute_powers_serial(size, g);
+    }
+    // compute the number of threads we will be using.
+    let num_cpus_available = rayon::current_num_threads();
+    let num_elem_per_thread = core::cmp::max(size / num_cpus_available, MIN_PARALLEL_CHUNK_SIZE);
+    let num_cpus_used = size / num_elem_per_thread;
+
+    // Split up the powers to compute across each thread evenly.
+    let res: Vec<F> = (0..num_cpus_used)
+        .into_par_iter()
+        .flat_map(|i| {
+            let offset = g.pow(&[(i * num_elem_per_thread) as u64]);
+            // Compute the size that this chunks' output should be
+            // (num_elem_per_thread, unless there are less than num_elem_per_thread elements remaining)
+            let num_elements_to_compute = core::cmp::min(size - i * num_elem_per_thread, num_elem_per_thread);
+            let res = compute_powers_and_mul_by_const_serial(num_elements_to_compute, g, offset);
+            res
+        })
+        .collect();
+    res
 }
 
 /// An iterator over the elements of the domain.
@@ -514,27 +705,6 @@ impl<F: FftField> Iterator for Elements<F> {
             Some(cur_elem)
         }
     }
-}
-
-pub(crate) fn log2_floor(num: usize) -> u32 {
-    assert!(num > 0);
-    let mut pow = 0;
-    while (1 << (pow + 1)) <= num {
-        pow += 1;
-    }
-    pow
-}
-
-#[test]
-fn test_log2_floor() {
-    assert_eq!(log2_floor(1), 0);
-    assert_eq!(log2_floor(2), 1);
-    assert_eq!(log2_floor(3), 1);
-    assert_eq!(log2_floor(4), 2);
-    assert_eq!(log2_floor(5), 2);
-    assert_eq!(log2_floor(6), 2);
-    assert_eq!(log2_floor(7), 2);
-    assert_eq!(log2_floor(8), 3);
 }
 
 #[cfg(test)]
