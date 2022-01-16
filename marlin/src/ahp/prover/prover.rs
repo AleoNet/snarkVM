@@ -389,18 +389,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let v_H = domain_h.vanishing_polynomial();
             let r_a_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_a)]));
             let r_b_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_b)]));
-            let z_a_poly = z_a_poly.polynomial().clone() - &r_a_v_H;
-            let z_b_poly = z_b_poly.polynomial().clone() - &r_b_v_H;
-            let mut z_c = &z_a_poly * &z_b_poly;
-            z_c += {
-                let coeffs = cfg_into_iter!(z_b_poly.coeffs)
-                    .zip(z_a_poly.coeffs)
-                    .map(|(z_b, z_a)| z_b * r_a + z_a * r_b)
-                    .collect();
-                &DensePolynomial::from_coefficients_vec(coeffs)
-            };
+            let z_a_poly_det = z_a_poly.polynomial().clone() - &r_a_v_H;
+            let z_b_poly_det = z_b_poly.polynomial().clone() - &r_b_v_H;
+            let mut z_c = &z_a_poly_det * &z_b_poly_det;
             z_c += &r_a_v_H.mul(&r_b_v_H);
+            assert_eq!(z_c.degree(), 2 * domain_h.size());
 
+            let z_a_v_H = z_a_poly_det.mul_by_vanishing_poly(domain_h);
+            drop(z_a_poly_det);
+            let z_b_v_H = z_b_poly_det.mul_by_vanishing_poly(domain_h);
+            drop(z_b_poly_det);
+            cfg_into_iter!(z_a_v_H.coeffs)
+                .zip(z_b_v_H.coeffs)
+                .zip(&mut z_c.coeffs)
+                .for_each(|((z_a, z_b), z_c)| *z_c += z_b * r_a + z_a * r_b);
             z_c
         } else {
             z_a_poly.polynomial() * z_b_poly.polynomial()
