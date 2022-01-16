@@ -224,7 +224,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let domain_h = state.domain_h;
         let zk_bound = state.zk_bound;
 
-        let v_H = domain_h.vanishing_polynomial().into();
+        let v_H = domain_h.vanishing_polynomial();
 
         let x_time = start_timer!(|| "Computing x polynomial and evals");
         let domain_x = state.domain_x;
@@ -253,7 +253,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect();
 
         let w_poly = &EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, domain_h).interpolate()
-            + &(&Polynomial::from_coefficients_slice(&[F::rand(rng)]) * &v_H);
+            + &(&v_H * F::rand(rng)).into();
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(domain_x).unwrap();
         assert!(remainder.is_zero());
         end_timer!(w_poly_time);
@@ -263,7 +263,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut z_a_poly = EvaluationsOnDomain::from_vec_and_domain(z_a, domain_h).interpolate();
         let r_a = F::rand(rng);
         if MM::ZK {
-            z_a_poly += &(&Polynomial::from_coefficients_slice(&[r_a]) * &v_H);
+            z_a_poly += &(&v_H * r_a);
         }
         end_timer!(z_a_poly_time);
 
@@ -272,25 +272,29 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut z_b_poly = EvaluationsOnDomain::from_vec_and_domain(z_b, domain_h).interpolate();
         let r_b = F::rand(rng);
         if MM::ZK {
-            z_b_poly += &(&Polynomial::from_coefficients_slice(&[r_b]) * &v_H);
+            z_b_poly += &(&v_H * r_b);
         }
         end_timer!(z_b_poly_time);
 
         let mask_poly = if MM::ZK {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
             // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
-            let h_1_mask = Polynomial::rand(10, rng); // selected arbitrarily.
+            let h_1_mask = Polynomial::rand(10, rng).coeffs; // selected arbitrarily.
             let h_1_mask: Polynomial<_> =
-                SparsePolynomial::from_coefficients_vec(h_1_mask.coeffs.into_iter().enumerate().collect())
+                SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
                     .mul(&domain_h.vanishing_polynomial())
                     .into();
+            assert_eq!(h_1_mask.degree(), domain_h.size() + 10);
             // multiply g_1_mask by X
-            let g_1_mask =
-                Polynomial::rand(10, rng).naive_mul(&Polynomial::from_coefficients_vec(vec![F::zero(), F::one()]));
+            let mut g_1_mask = Polynomial::rand(5, rng);
+            g_1_mask.coeffs[0] = F::zero();
+
             let mut mask_poly = h_1_mask;
             mask_poly += &g_1_mask;
             let mask_poly_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
+            // mask_poly = v_H.into();
             end_timer!(mask_poly_time);
+            assert_eq!(mask_poly.degree(), domain_h.size() + 10);
             assert!(mask_poly.degree() <= mask_poly_degree);
             Some(mask_poly)
         } else {

@@ -129,6 +129,23 @@ impl<F: PrimeField> SparsePolynomial<F> {
         // unimplemented!("current implementation does not produce evals in correct order")
     }
 }
+impl<F: PrimeField> core::ops::MulAssign<F> for SparsePolynomial<F> {
+    fn mul_assign(&mut self, other: F) {
+        for (_, coeff) in &mut self.coeffs {
+            *coeff *= other;
+        }
+    }
+}
+
+impl<'a, F: PrimeField> core::ops::Mul<F> for &'a SparsePolynomial<F> {
+    type Output = SparsePolynomial<F>;
+
+    fn mul(self, other: F) -> Self::Output {
+        let mut result = self.clone();
+        result *= other;
+        result
+    }
+}
 
 #[allow(clippy::from_over_into)]
 impl<F: Field> Into<DensePolynomial<F>> for SparsePolynomial<F> {
