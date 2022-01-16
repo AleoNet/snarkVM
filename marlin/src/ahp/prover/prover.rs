@@ -279,23 +279,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mask_poly = if MM::ZK {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
             // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
-            let h_1_mask = Polynomial::rand(10, rng).coeffs; // selected arbitrarily.
+            let h_1_mask = Polynomial::rand(3, rng).coeffs; // selected arbitrarily.
             let h_1_mask: Polynomial<_> =
                 SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
                     .mul(&domain_h.vanishing_polynomial())
                     .into();
-            assert_eq!(h_1_mask.degree(), domain_h.size() + 10);
+            assert_eq!(h_1_mask.degree(), domain_h.size() + 3);
             // multiply g_1_mask by X
             let mut g_1_mask = Polynomial::rand(5, rng);
             g_1_mask.coeffs[0] = F::zero();
 
             let mut mask_poly = h_1_mask;
             mask_poly += &g_1_mask;
-            let mask_poly_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
-            // mask_poly = v_H.into();
             end_timer!(mask_poly_time);
-            assert_eq!(mask_poly.degree(), domain_h.size() + 10);
-            assert!(mask_poly.degree() <= mask_poly_degree);
+            assert!(domain_h.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
+            assert_eq!(mask_poly.degree(), domain_h.size() + 3);
+            assert!(mask_poly.degree() <= 3 * domain_h.size() + 2 * zk_bound - 3);
             Some(mask_poly)
         } else {
             None
@@ -388,6 +387,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
+        assert_eq!(z_a_poly.degree(), domain_h.size());
+        assert_eq!(z_b_poly.degree(), domain_h.size());
+        let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
         let (r_a, r_b) = state.mz_poly_randomizer.as_ref().unwrap();
         let z_c_poly = if MM::ZK {
             let v_H = domain_h.vanishing_polynomial();
@@ -395,18 +397,43 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let r_b_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_b)]));
             let z_a_poly_det = z_a_poly.polynomial().clone() - &r_a_v_H;
             let z_b_poly_det = z_b_poly.polynomial().clone() - &r_b_v_H;
+            // z_c = (z_a + r_a * v_H) * (z_b + r_b * v_H);
+            // z_c = z_a * z_b + r_a * z_b * v_H + r_b * z_a * v_H + r_a * r_b * v_H^2;
             let mut z_c = &z_a_poly_det * &z_b_poly_det;
             z_c += &r_a_v_H.mul(&r_b_v_H);
             assert_eq!(z_c.degree(), 2 * domain_h.size());
+            #[cfg(not(feature = "parallel"))]
+            use core::iter::repeat;
+            #[cfg(feature = "parallel")]
+            use rayon::iter::repeat;
 
-            let z_a_v_H = z_a_poly_det.mul_by_vanishing_poly(domain_h);
-            drop(z_a_poly_det);
-            let z_b_v_H = z_b_poly_det.mul_by_vanishing_poly(domain_h);
-            drop(z_b_poly_det);
-            cfg_into_iter!(z_a_v_H.coeffs)
-                .zip(z_b_v_H.coeffs)
+            let zero = F::zero();
+            repeat(&zero)
+                .take(domain_h.size())
+                .chain(&z_a_poly_det.coeffs)
+                .enumerate()
                 .zip(&mut z_c.coeffs)
-                .for_each(|((z_a, z_b), z_c)| *z_c += z_b * r_a + z_a * r_b);
+                .for_each(|((i, c), z_c)| {
+                    let t = if i < domain_h.size() {
+                        z_a_poly_det.coeffs.get(i).map_or(F::zero(), |c| -*c)
+                    } else {
+                        *c
+                    };
+                    *z_c += t * r_b;
+                });
+            repeat(&zero)
+                .take(domain_h.size())
+                .chain(&z_b_poly_det.coeffs)
+                .enumerate()
+                .zip(&mut z_c.coeffs)
+                .for_each(|((i, c), z_c)| {
+                    let t = if i < domain_h.size() {
+                        z_b_poly_det.coeffs.get(i).map_or(F::zero(), |c| -*c)
+                    } else {
+                        *c
+                    };
+                    *z_c += t * r_a;
+                });
             z_c
         } else {
             z_a_poly.polynomial() * z_b_poly.polynomial()
