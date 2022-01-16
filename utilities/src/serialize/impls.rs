@@ -26,7 +26,7 @@ pub use crate::{
 };
 use crate::{serialize::traits::*, SerializationError};
 
-use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, mem::size_of, rc::Rc, sync::Arc};
 
 impl CanonicalSerialize for bool {
     #[inline]
@@ -302,6 +302,9 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     #[inline]
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let len = u64::deserialize(reader)?;
+        if size_of::<T>() * len as usize > 1024 * 1024 * 1024 {
+            return Err(SerializationError::InvalidData);
+        }
         let mut values = Vec::with_capacity(len as usize);
         for _ in 0..len {
             values.push(T::deserialize(reader)?);
@@ -312,6 +315,9 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     #[inline]
     fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let len = u64::deserialize(reader)?;
+        if size_of::<T>() * len as usize > 1024 * 1024 * 1024 {
+            return Err(SerializationError::InvalidData);
+        }
         let mut values = Vec::with_capacity(len as usize);
         for _ in 0..len {
             values.push(T::deserialize_uncompressed(reader)?);
