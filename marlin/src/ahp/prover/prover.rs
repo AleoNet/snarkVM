@@ -278,12 +278,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mask_poly = if MM::ZK {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
+            // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
+            let h_1_mask = Polynomial::rand(10, rng); // selected arbitrarily.
+            let h_1_mask: Polynomial<_> =
+                SparsePolynomial::from_coefficients_vec(h_1_mask.coeffs.into_iter().enumerate().collect())
+                    .mul(&domain_h.vanishing_polynomial())
+                    .into();
+            // multiply g_1_mask by X
+            let g_1_mask =
+                Polynomial::rand(10, rng).naive_mul(&Polynomial::from_coefficients_vec(vec![F::zero(), F::one()]));
+            let mut mask_poly = h_1_mask;
+            mask_poly += &g_1_mask;
             let mask_poly_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
-            let mut mask_poly = Polynomial::rand(mask_poly_degree, rng);
-            let scaled_sigma_1 = (mask_poly.divide_by_vanishing_poly(domain_h).unwrap().1)[0];
-            mask_poly[0] -= &scaled_sigma_1;
             end_timer!(mask_poly_time);
-            assert!(mask_poly.degree() <= 3 * domain_h.size() + 2 * zk_bound - 3);
+            assert!(mask_poly.degree() <= mask_poly_degree);
             Some(mask_poly)
         } else {
             None
