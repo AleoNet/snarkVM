@@ -47,6 +47,26 @@ pub trait BaseFieldTrait:
 {
 }
 
+/// Representation of an integer.
+pub trait IntegerTrait: Add + AddAssign + Clone + Debug
+// + Div
+// + DivAssign
+// + Double
+// + Equal
+// + Inv
+// + Mul
+// + MulAssign
+// + Neg
+// + One
+// + Square
+// + Sub
+// + SubAssign
+// + Ternary
+// + ToBits
+// + Zero
+{
+}
+
 // TODO why not use num_traits::Zero?
 /// Representation of the zero value.
 pub trait Zero {

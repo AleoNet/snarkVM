@@ -128,6 +128,8 @@ pub struct Integer<E: Environment, I: IntegerType, const BITS: usize> {
     phantom: PhantomData<I>,
 }
 
+impl<E: Environment, I: IntegerType, const BITS: usize> IntegerTrait for Integer<E, I, BITS> {}
+
 impl<E: Environment, I: IntegerType, const BITS: usize> Integer<E, I, BITS> {
     /// Initializes a new integer.
     pub fn new(mode: Mode, value: I) -> Self {
