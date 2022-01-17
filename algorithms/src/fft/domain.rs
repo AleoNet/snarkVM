@@ -30,6 +30,7 @@ use crate::fft::{DomainCoeff, SparsePolynomial};
 use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
+use aleo_std::prelude::*;
 use rand::Rng;
 use std::fmt;
 
@@ -362,13 +363,20 @@ impl<F: FftField> EvaluationDomain<F> {
 fn execute_in_threadpool(f: impl FnOnce() + Send) {
     #[cfg(feature = "parallel")]
     {
-        let rayon_threads = rayon::current_num_threads();
-        let num_threads = num_cpus::get_physical().min(rayon_threads);
+        let num_threads = match aleo_std::get_cpu() {
+            Cpu::Intel | Cpu::Unknown => {
+                let rayon_threads = rayon::current_num_threads();
+                num_cpus::get_physical().min(rayon_threads)
+            }
+            Cpu::AMD => rayon::current_num_threads(),
+        };
+
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .build()
             .unwrap();
-        pool.install(|| f());
+
+        pool.install(f);
     }
     #[cfg(not(feature = "parallel"))]
     {
