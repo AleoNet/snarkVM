@@ -49,7 +49,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
                         "Public variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc_input(|| format!("Public {}", i), || Ok(value.clone()))?;
+                    let gadget = cs.alloc_input(|| format!("Public {}", i), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_r1cs::Index::Public((index + 1) as usize),
@@ -77,7 +77,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
                         "Private variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc(|| format!("Private {}", i), || Ok(value.clone()))?;
+                    let gadget = cs.alloc(|| format!("Private {}", i), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_r1cs::Index::Private(i),

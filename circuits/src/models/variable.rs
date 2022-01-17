@@ -16,7 +16,7 @@
 
 use snarkvm_fields::traits::*;
 
-use std::ops::{Add, AddAssign, Neg, Sub};
+// use std::ops::{Add, AddAssign, Neg, Sub};
 
 pub type Index = u64;
 
@@ -29,24 +29,15 @@ pub enum Variable<F: PrimeField> {
 
 impl<F: PrimeField> Variable<F> {
     pub fn is_constant(&self) -> bool {
-        match self {
-            Self::Constant(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Constant(..))
     }
 
     pub fn is_public(&self) -> bool {
-        match self {
-            Self::Public(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Public(..))
     }
 
     pub fn is_private(&self) -> bool {
-        match self {
-            Self::Private(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::Private(..))
     }
 
     /// Returns the `one` constant.

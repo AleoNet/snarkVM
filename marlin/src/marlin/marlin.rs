@@ -774,6 +774,7 @@ impl<
         };
 
         if !evaluations_are_correct {
+            #[cfg(debug_assertions)]
             eprintln!("PC::Check failed");
         }
         end_timer!(verifier_time, || format!(

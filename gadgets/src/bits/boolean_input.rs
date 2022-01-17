@@ -315,7 +315,7 @@ mod test {
         if field_elements.len() <= 1 {
             vec![
                 UInt8::alloc_input_vec_le(
-                    cs.ns(|| format!("Allocate field elements")),
+                    cs.ns(|| "Allocate field elements".to_string()),
                     &to_bytes_le![field_elements].unwrap(),
                 )
                 .unwrap(),
@@ -348,7 +348,7 @@ mod test {
         for i in 0..1 {
             let field_element = Fr::rand(rng);
             let field_element_gadget =
-                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element.clone())).unwrap();
+                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element)).unwrap();
 
             field_elements.push(field_element);
             field_element_gadgets.push(field_element_gadget);

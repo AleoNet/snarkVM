@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::identity_op)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+
 pub mod address;
 pub use address::*;
 
@@ -32,9 +38,13 @@ pub use group::*;
 pub mod integers;
 pub use integers::*;
 
+// TODO (howardwu): This is temporary until the models interface is stabilized.
+#[allow(unused)]
 pub mod models;
 pub use models::*;
 
+// TODO (howardwu): This is temporary until the programs interface is stabilized.
+#[allow(unused)]
 pub mod programs;
 pub use programs::*;
 

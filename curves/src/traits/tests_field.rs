@@ -244,13 +244,13 @@ fn random_sqrt_tests<F: SquareRootField>() {
 pub fn field_test<F: Field>(a: F, b: F) {
     let zero = F::zero();
     assert!(zero == zero);
-    assert_eq!(zero.is_zero(), true);
-    assert_eq!(zero.is_one(), false);
+    assert!(zero.is_zero()); // true
+    assert!(!zero.is_one()); // false
 
     let one = F::one();
     assert!(one == one);
-    assert_eq!(one.is_zero(), false);
-    assert_eq!(one.is_one(), true);
+    assert!(!one.is_zero()); // false
+    assert!(one.is_one()); // true
     assert_eq!(zero + one, one);
 
     let two = one + one;

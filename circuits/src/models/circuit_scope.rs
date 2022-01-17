@@ -41,7 +41,7 @@ impl<F: PrimeField> CircuitScope<F> {
         Self {
             cs: self.cs.clone(),
             scope: format!("{}/{}", self.scope, name),
-            previous: Some(self.scope.clone()),
+            previous: Some(self.scope),
         }
     }
 

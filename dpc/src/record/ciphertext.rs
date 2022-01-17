@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Locator, Network, RecordError, ViewKey};
+use crate::{Bech32Locator, DecryptionKey, Network, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
 use snarkvm_utilities::{
     io::{Cursor, Result as IoResult},
@@ -25,7 +25,7 @@ use snarkvm_utilities::{
     Write,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 #[derive(Derivative)]
 #[derivative(
@@ -94,10 +94,38 @@ impl<N: Network> Ciphertext<N> {
         &self.record_view_key_commitment
     }
 
-    /// Returns the plaintext corresponding to the record ciphertext.
-    pub fn to_plaintext(&self, record_view_key: &N::RecordViewKey) -> Result<Vec<u8>, RecordError> {
-        // Decrypt the record ciphertext.
-        Ok(N::account_encryption_scheme().decrypt(record_view_key, &self.record_bytes)?)
+    /// Returns the plaintext and record view key corresponding to the record ciphertext.
+    pub fn to_plaintext(&self, decryption_key: &DecryptionKey<N>) -> Result<(Vec<u8>, N::RecordViewKey)> {
+        let record_view_key = match decryption_key {
+            DecryptionKey::AccountViewKey(account_view_key) => {
+                // Compute the candidate record view key.
+                match N::account_encryption_scheme().generate_symmetric_key(&account_view_key, *self.randomizer) {
+                    Some(candidate_record_view_key) => candidate_record_view_key.into(),
+                    None => {
+                        return Err(anyhow!(
+                            "The given account view key does not correspond to this ciphertext"
+                        ));
+                    }
+                }
+            }
+            DecryptionKey::RecordViewKey(record_view_key) => record_view_key.clone(),
+        };
+
+        // Compute the record view key commitment.
+        let candidate_record_view_key_commitment =
+            N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key);
+
+        // Check if the computed record view key commitment matches.
+        match *self.record_view_key_commitment == candidate_record_view_key_commitment {
+            // Decrypt the record ciphertext.
+            true => {
+                let plaintext = N::account_encryption_scheme().decrypt(&record_view_key, &self.record_bytes)?;
+                Ok((plaintext, record_view_key))
+            }
+            false => Err(anyhow!(
+                "The given record view key does not correspond to this ciphertext"
+            )),
+        }
     }
 }
 

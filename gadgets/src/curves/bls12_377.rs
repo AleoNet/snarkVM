@@ -221,7 +221,7 @@ mod test {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
         let a: G1 = rand::random();
-        let b: G1 = a.clone();
+        let b: G1 = a;
         let c: G1 = rand::random();
 
         let a = G1Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();
@@ -246,7 +246,7 @@ mod test {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
         let a: G2 = rand::random();
-        let b: G2 = a.clone();
+        let b: G2 = a;
         let c: G2 = rand::random();
 
         let a = G2Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();

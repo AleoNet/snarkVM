@@ -27,10 +27,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn is_constant(&self) -> bool {
-        match self {
-            Self::Constant => true,
-            _ => false,
-        }
+        matches!(self, Self::Constant)
     }
 }
 

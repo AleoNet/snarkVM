@@ -48,7 +48,7 @@ mod tests {
             let mut expected = one;
             let mut candidate = BaseField::<Circuit>::new(Mode::Constant, one);
 
-            for i in 0..ITERATIONS {
+            for _ in 0..ITERATIONS {
                 expected = expected.square();
                 candidate = candidate.square();
                 assert_eq!(expected, candidate.eject_value());

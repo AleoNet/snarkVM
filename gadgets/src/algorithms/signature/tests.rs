@@ -39,8 +39,8 @@ mod aleo {
         let signature_scheme = TestSignatureScheme::setup("aleo_signature_verification_test");
         let private_key = signature_scheme.generate_private_key(rng);
         let public_key = signature_scheme.generate_public_key(&private_key);
-        let signature = signature_scheme.sign(&private_key, &message, rng).unwrap();
-        assert!(signature_scheme.verify(&public_key, &message, &signature).unwrap());
+        let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+        assert!(signature_scheme.verify(&public_key, message, &signature).unwrap());
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
@@ -104,10 +104,10 @@ mod aleo {
         let signature_scheme = TestSignatureScheme::setup("failed_aleo_signature_verification_test");
         let private_key = signature_scheme.generate_private_key(rng);
         let public_key = signature_scheme.generate_public_key(&private_key);
-        let signature = signature_scheme.sign(&private_key, &message, rng).unwrap();
+        let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
 
-        assert!(signature_scheme.verify(&public_key, &message, &signature).unwrap());
-        assert!(!signature_scheme.verify(&public_key, &bad_message, &signature).unwrap());
+        assert!(signature_scheme.verify(&public_key, message, &signature).unwrap());
+        assert!(!signature_scheme.verify(&public_key, bad_message, &signature).unwrap());
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 

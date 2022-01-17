@@ -314,6 +314,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::upper_case_acronyms)]
 mod test {
     use core::ops::MulAssign;
 
