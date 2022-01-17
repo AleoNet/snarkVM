@@ -62,7 +62,7 @@ impl<E: Environment, I: IntegerType, const BITS: usize> IntegerTrait<I> for Inte
         self.bits_le.iter().all(|bit| bit.is_constant() == true)
     }
 
-    /// Ejects the unsigned integer as a constant unsigned integer value.
+    /// Ejects the integer as a constant integer value.
     fn eject_value(&self) -> I {
         self.bits_le.iter().rev().fold(I::zero(), |value, bit| {
             // TODO (@pranav) This explicit cast could be eliminated by using a trait bound
@@ -75,7 +75,7 @@ impl<E: Environment, I: IntegerType, const BITS: usize> IntegerTrait<I> for Inte
 }
 
 impl<E: Environment, I: IntegerType, const BITS: usize> Integer<E, I, BITS> {
-    /// Initialize a new integer from a vector of Booleans.
+    /// Initialize a new integer from a vector of `Boolean`.
     pub(crate) fn from_bits(bits_le: Vec<Boolean<E>>) -> Self {
         if bits_le.len() != BITS {
             E::halt(format!(
