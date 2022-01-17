@@ -156,7 +156,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u8_add_constant_constant() {
+    fn test_u8_constant_plus_constant() {
         for i in 0..ITERATIONS {
             let first: u8 = UniformRand::rand(&mut thread_rng());
             let second: u8 = UniformRand::rand(&mut thread_rng());
@@ -173,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u8_add_constant_public() {
+    fn test_u8_constant_plus_public() {
         for i in 0..ITERATIONS {
             let first: u8 = UniformRand::rand(&mut thread_rng());
             let second: u8 = UniformRand::rand(&mut thread_rng());
