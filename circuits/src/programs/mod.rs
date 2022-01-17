@@ -42,87 +42,42 @@ impl<E: Environment> Value<E> {
     }
 }
 
-#[derive(Copy, Clone)]
-struct Locator(u32);
-
 #[derive(Clone)]
-pub struct Register<E: Environment>(Locator, Rc<RefCell<Memory<E>>>);
+pub struct Register<E: Environment>(u32, Rc<RefCell<OnceCell<Value<E>>>>);
 
 impl<E: Environment> Register<E> {
+    /// Returns a new instance of a register.
+    fn new(locator: u32) -> Register<E> {
+        Self(locator, Default::default())
+    }
+
     /// Returns `true` if the register at the given locator is already set.
     fn is_set(&self) -> bool {
-        self.1.borrow().is_register_set(self.0)
+        self.1.borrow().get().is_some()
     }
 
     /// Attempts to store value into the register.
     fn store(&self, value: &Value<E>) {
-        self.1.borrow_mut().store(self.0, value);
+        match self.1.borrow().get().is_some() {
+            true => panic!("Register {} is already set", self.0),
+            false => {
+                if self.1.borrow().set(value.clone()).is_err() {
+                    panic!("Register {} failed to store value", self.0);
+                }
+            }
+        }
     }
 
     /// Attempts to load the value from the register.
     fn load(&self) -> Value<E> {
-        self.1.borrow().load(self.0).clone()
+        match self.1.borrow().get() {
+            Some(value) => value.clone(),
+            None => panic!("Register {} is not set", self.0),
+        }
     }
 }
 
-pub struct Memory<E: Environment> {
-    registers: Vec<OnceCell<Value<E>>>,
-}
-
-impl<E: Environment> Memory<E> {
-    /// Initializes a new instance of memory.
-    fn new() -> Self {
-        Self {
-            registers: Default::default(),
-        }
-    }
-
-    /// Allocates a new register in memory, returning the new register locator.
-    fn new_register(&mut self) -> Locator {
-        let locator = Locator(self.registers.len() as u32);
-        self.registers.push(OnceCell::new());
-        locator
-    }
-
-    /// Returns `true` if the register at the given locator is already set.
-    fn is_register_set(&self, locator: Locator) -> bool {
-        match self.registers.get(locator.0 as usize) {
-            Some(register) => register.get().is_some(),
-            None => panic!("Failed to locate register {}", locator.0),
-        }
-    }
-
-    /// Attempts to store value into the register.
-    fn store(&self, locator: Locator, value: &Value<E>) {
-        match self.registers.get(locator.0 as usize) {
-            Some(register) => match register.get().is_some() {
-                true => panic!("Register {} is already set", locator.0),
-                false => {
-                    if register.set(value.clone()).is_err() {
-                        panic!("Register {} failed to store value", locator.0);
-                    }
-                }
-            },
-            None => panic!("Failed to locate register {}", locator.0),
-        };
-    }
-
-    /// Attempts to load the value from the register.
-    fn load(&self, locator: Locator) -> &Value<E> {
-        match self.registers.get(locator.0 as usize) {
-            Some(register) => match register.get() {
-                Some(value) => value,
-                None => panic!("Register {} is not set", locator.0),
-            },
-            None => panic!("Failed to locate register {}", locator.0),
-        }
-    }
-
-    /// Returns the number of registers allocated.
-    fn num_registers(&self) -> u32 {
-        self.registers.len() as u32
-    }
-}
+pub type Registers<E> = Vec<Register<E>>;
 
 pub enum Instruction<E: Environment> {
     /// Stores `value` into `register`, if `register` is not already set.
@@ -176,7 +131,6 @@ impl<E: Environment> Instruction<E> {
         }
     }
 
-
     /// Subtracts `first` from `second`, storing the outcome in `register`.
     fn sub(&self) {
         // Load the values and register.
@@ -195,7 +149,7 @@ impl<E: Environment> Instruction<E> {
 }
 
 pub struct Function<E: Environment> {
-    memory: Rc<RefCell<Memory<E>>>,
+    registers: Registers<E>,
     instructions: Vec<Instruction<E>>,
 }
 
@@ -203,15 +157,16 @@ impl<E: Environment> Function<E> {
     /// Initializes a new instance of a function.
     fn new() -> Self {
         Self {
-            memory: Rc::new(RefCell::new(Memory::new())),
+            registers: Registers::default(),
             instructions: Vec::new(),
         }
     }
 
     /// Allocates a new register in memory, returning the new register.
     fn new_register(&mut self) -> Register<E> {
-        let locator = self.memory.borrow_mut().new_register();
-        Register(locator, self.memory.clone())
+        let register = Register::new(self.registers.len() as u32);
+        self.registers.push(register.clone());
+        register
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
@@ -235,23 +190,23 @@ impl<E: Environment> Function<E> {
 
     /// Returns the number of registers allocated.
     fn num_registers(&self) -> u32 {
-        self.memory.borrow().num_registers()
+        self.registers.len() as u32
     }
 }
 
 pub struct HelloWorld<E: Environment> {
     function: Function<E>,
-    outputs: Vec<Register<E>>,
+    outputs: Registers<E>,
 }
 
 impl<E: Environment> HelloWorld<E> {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
     pub fn new(inputs: [Value<E>; 2]) -> Self {
         let mut function = Function::new();
-        let mut outputs = Vec::new();
+        let mut outputs = Registers::new();
 
         // Allocate a new register for each input, and store each input in the register.
-        let mut registers = Vec::with_capacity(2);
+        let mut registers = Registers::with_capacity(2);
         for input in inputs {
             registers.push(function.new_input(input));
         }
@@ -296,3 +251,35 @@ mod tests {
         }
     }
 }
+
+// pub struct Memory<E: Environment> {
+//     registers: Registers<E>,
+// }
+//
+// impl<E: Environment> Memory<E> {
+//     /// Allocates a new register in memory, returning the new register.
+//     fn new_register(&mut self) -> Register<E> {
+//         let register = Register::new(self.registers.len() as u32);
+//         self.registers.push(register.clone());
+//         register
+//     }
+//
+//     /// Returns the number of registers allocated.
+//     fn num_registers(&self) -> u32 {
+//         self.registers.len() as u32
+//     }
+// }
+//
+// impl<E: Environment> From<Registers<E>> for Memory<E> {
+//     /// Returns an instance of memory from registers.
+//     fn from(registers: Registers<E>) -> Self {
+//         Self { registers }
+//     }
+// }
+//
+// impl<E: Environment> Default for Memory<E> {
+//     /// Returns a new instance of memory.
+//     fn default() -> Self {
+//         Self::from(Registers::<E>::default())
+//     }
+// }
