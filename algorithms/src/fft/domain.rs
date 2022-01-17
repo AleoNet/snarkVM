@@ -159,8 +159,10 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an FFT, modifying the vector in place.
     pub fn fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
-        coeffs.resize(self.size(), T::zero());
-        self.in_order_fft_in_place(&mut *coeffs);
+        execute_in_threadpool(|| {
+            coeffs.resize(self.size(), T::zero());
+            self.in_order_fft_in_place(&mut *coeffs);
+        });
     }
 
     /// Compute an IFFT.
@@ -173,8 +175,10 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an IFFT, modifying the vector in place.
     #[inline]
     pub fn ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        evals.resize(self.size(), T::zero());
-        self.in_order_ifft_in_place(&mut *evals);
+        execute_in_threadpool(|| {
+            evals.resize(self.size(), T::zero());
+            self.in_order_ifft_in_place(&mut *evals);
+        });
     }
 
     /// Compute an FFT over a coset of the domain.
@@ -187,8 +191,10 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an FFT over a coset of the domain, modifying the input vector
     /// in place.
     pub fn coset_fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
-        Self::distribute_powers(coeffs, F::multiplicative_generator());
-        self.fft_in_place(coeffs);
+        execute_in_threadpool(|| {
+            Self::distribute_powers(coeffs, F::multiplicative_generator());
+            self.fft_in_place(coeffs);
+        });
     }
 
     /// Compute an IFFT over a coset of the domain.
@@ -200,8 +206,10 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an IFFT over a coset of the domain, modifying the input vector in place.
     pub fn coset_ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        evals.resize(self.size(), T::zero());
-        self.in_order_coset_ifft_in_place(&mut *evals);
+        execute_in_threadpool(|| {
+            evals.resize(self.size(), T::zero());
+            self.in_order_coset_ifft_in_place(&mut *evals);
+        });
     }
 
     /// Multiply the `i`-th element of `coeffs` with `g^i`.
@@ -347,6 +355,24 @@ impl<F: FftField> EvaluationDomain<F> {
         cfg_iter_mut!(result).zip(other_evals).for_each(|(a, b)| *a *= b);
 
         result
+    }
+}
+
+#[inline(always)]
+fn execute_in_threadpool(f: impl FnOnce() + Send) {
+    #[cfg(feature = "parallel")]
+    {
+        let rayon_threads = rayon::current_num_threads();
+        let num_threads = num_cpus::get_physical().min(rayon_threads);
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+            .unwrap();
+        pool.install(|| f());
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        f();
     }
 }
 
