@@ -330,8 +330,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             if terminator.load(Ordering::Relaxed) {
                 return Err(Error::Terminated);
             }
-            let mut seed = [0u8; 32];
-            rng.fill_bytes(&mut seed);
+            let seed = rng.0.as_mut().map(|r| {
+                let mut seed = [0u8; 32];
+                r.fill_bytes(&mut seed);
+                seed
+            });
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
@@ -344,7 +347,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let hiding_bound = labeled_polynomial.hiding_bound();
             let label = labeled_polynomial.label().clone();
             let func = move || {
-                let mut rng = Some(rand::rngs::StdRng::from_seed(seed));
+                let mut rng = seed.map(rand::rngs::StdRng::from_seed);
 
                 let commit_time = start_timer!(|| format!(
                     "Polynomial {} of degree {}, degree bound {:?}, and hiding bound {:?}",
