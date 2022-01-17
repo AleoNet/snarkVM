@@ -14,22 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bits;
-pub use bits::*;
+pub mod helpers;
 
-pub mod signed;
-pub use signed::*;
+pub mod add;
+// pub mod div;
+// pub mod equal;
+// pub mod less_than;
+// pub mod sub;
+// pub mod ternary;
 
-pub mod unsigned;
-pub use unsigned::*;
+use crate::{boolean::Boolean, traits::*, Environment, Mode};
 
 use num_traits::{
     Bounded,
     NumCast,
     One as NumOne,
     PrimInt,
-    Signed,
-    Unsigned,
     WrappingAdd,
     WrappingMul,
     WrappingNeg,
@@ -37,67 +37,12 @@ use num_traits::{
     Zero as NumZero,
 };
 use snarkvm_utilities::ops::Div;
-use std::fmt::{Debug, Display};
-
-// TODO (@pranav) Gadget Trait
-//  fn is_constant()
-//  fn eject()_value()
-
-// TODO (@pranav) Could do a refactor where we create a generic Integer struct with trait
-//  bound PrimitiveInteger and implement Add, Eq, Mul, etc. Functionality specific to a
-//  signed or unsigned integer could be implemented with further trait bounds on Integer.
-//  While this would reduce duplication, it would allow signed and unsigned integers to
-//  "interact" with each other, which seems unsafe.
-
-// TODO (@pranav) Do we need a better name for these?
-//  In general, need to consider appropriate naming for this entire module.
-/// Trait bound for integer values. Common to both signed and unsigned integers.
-pub trait PrimitiveInteger:
-    'static
-    + Debug
-    + Display
-    + PrimInt
-    + Bounded
-    + NumZero
-    + NumOne
-    + WrappingAdd
-    + WrappingMul
-    + WrappingNeg
-    + WrappingSub
-    + WrappingDiv
-    + NumCast
-{
-}
-
-/// Trait bound for signed integer values.
-pub trait PrimitiveSignedInteger: PrimitiveInteger + Signed {}
-
-/// Trait bound for unsigned integer values.
-pub trait PrimitiveUnsignedInteger: PrimitiveInteger + Unsigned {}
-
-// TODO (@pranav) Could have gone with extensive "where" clauses but
-//  felt that this was cleaner. Suggestions?
-impl PrimitiveInteger for i8 {}
-impl PrimitiveInteger for i16 {}
-impl PrimitiveInteger for i32 {}
-impl PrimitiveInteger for i64 {}
-impl PrimitiveInteger for i128 {}
-impl PrimitiveSignedInteger for i8 {}
-impl PrimitiveSignedInteger for i16 {}
-impl PrimitiveSignedInteger for i32 {}
-impl PrimitiveSignedInteger for i64 {}
-impl PrimitiveSignedInteger for i128 {}
-
-impl PrimitiveInteger for u8 {}
-impl PrimitiveInteger for u16 {}
-impl PrimitiveInteger for u32 {}
-impl PrimitiveInteger for u64 {}
-impl PrimitiveInteger for u128 {}
-impl PrimitiveUnsignedInteger for u8 {}
-impl PrimitiveUnsignedInteger for u16 {}
-impl PrimitiveUnsignedInteger for u32 {}
-impl PrimitiveUnsignedInteger for u64 {}
-impl PrimitiveUnsignedInteger for u128 {}
+use std::{
+    fmt,
+    fmt::{Debug, Display},
+    marker::PhantomData,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 
 // TODO (@pranav) Find a better place for this
 //   Taken from/extending num_traits
@@ -135,37 +80,165 @@ wrapping_impl!(WrappingDiv, wrapping_div, i32);
 wrapping_impl!(WrappingDiv, wrapping_div, i64);
 wrapping_impl!(WrappingDiv, wrapping_div, i128);
 
-#[cfg(test)]
-pub mod test_utilities {
-    use crate::{Boolean, Environment};
+/// Trait bound for integer values. Common to both signed and unsigned integers.
+pub trait IntegerType:
+    'static
+    + Debug
+    + Display
+    + PrimInt
+    + Bounded
+    + NumZero
+    + NumOne
+    + WrappingAdd
+    + WrappingMul
+    + WrappingNeg
+    + WrappingSub
+    + WrappingDiv
+    + NumCast
+{
+}
 
-    // TODO (@pranav) This helper function can be generalized across test_utilities.
-    /// Checks that a given candidate gadget matches the expected result. Optionally checks
-    /// that the number of constants, public variables, private variables, and constraints
-    /// for the corresponding circuit matches some expected number.
-    pub fn check_boolean_operation<E: Environment>(
-        name: &str,
-        expected: bool,
-        compute_candidate: &dyn Fn() -> Boolean<E>,
-        circuit_properties: Option<(usize, usize, usize, usize)>,
-    ) {
-        E::scoped(name, |scope| {
-            let candidate = compute_candidate();
-            println!(
-                "Constant: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?}",
-                scope.num_constants_in_scope(),
-                scope.num_public_in_scope(),
-                scope.num_private_in_scope(),
-                scope.num_constraints_in_scope()
-            );
-            assert_eq!(expected, candidate.eject_value());
-            if let Some((num_constants, num_public, num_private, num_constraints)) = circuit_properties {
-                assert_eq!(num_constants, scope.num_constants_in_scope());
-                assert_eq!(num_public, scope.num_public_in_scope());
-                assert_eq!(num_private, scope.num_private_in_scope());
-                assert_eq!(num_constraints, scope.num_constraints_in_scope());
+impl IntegerType for i8 {}
+impl IntegerType for i16 {}
+impl IntegerType for i32 {}
+impl IntegerType for i64 {}
+impl IntegerType for i128 {}
+
+impl IntegerType for u8 {}
+impl IntegerType for u16 {}
+impl IntegerType for u32 {}
+impl IntegerType for u64 {}
+impl IntegerType for u128 {}
+
+pub type U8<E> = Integer<E, u8, { u8::BITS as usize }>;
+pub type U16<E> = Integer<E, u16, { u16::BITS as usize }>;
+pub type U32<E> = Integer<E, u32, { u32::BITS as usize }>;
+pub type U64<E> = Integer<E, u64, { u64::BITS as usize }>;
+pub type U128<E> = Integer<E, u128, { u128::BITS as usize }>;
+
+#[derive(Clone)]
+pub struct Integer<E: Environment, I: IntegerType, const BITS: usize> {
+    bits_le: Vec<Boolean<E>>,
+    phantom: PhantomData<I>,
+}
+
+impl<E: Environment, I: IntegerType, const BITS: usize> Integer<E, I, BITS> {
+    /// Initializes a new integer.
+    pub fn new(mode: Mode, value: I) -> Self {
+        let mut bits_le = Vec::with_capacity(BITS);
+        let mut value = value.to_le();
+        for _ in 0..BITS {
+            bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
+            value = value >> 1;
+        }
+        Self::from_bits(bits_le)
+    }
+
+    /// Initialize a new integer from a vector of Booleans.
+    pub(crate) fn from_bits(bits_le: Vec<Boolean<E>>) -> Self {
+        if bits_le.len() != BITS {
+            E::halt(format!(
+                "Invalid integer format. Expected {} bits, found {} bits.",
+                BITS,
+                bits_le.len()
+            ))
+        } else {
+            Self {
+                bits_le,
+                phantom: Default::default(),
             }
-            assert!(E::is_satisfied());
-        });
+        }
+    }
+
+    /// Returns `true` if the integer is a constant.
+    pub fn is_constant(&self) -> bool {
+        self.bits_le.iter().all(|bit| bit.is_constant() == true)
+    }
+
+    /// Ejects the unsigned integer as a constant unsigned integer value.
+    pub fn eject_value(&self) -> I {
+        self.bits_le.iter().rev().fold(I::zero(), |value, bit| {
+            // TODO (@pranav) This explicit cast could be eliminated by using a trait bound
+            //  `bool: AsPrimitive<I>`. This however requires the trait bound to be expressed
+            //  for every implementation of Signed that uses `eject_value` which feels unclean.
+            let bit_value = if bit.eject_value() { I::one() } else { I::zero() };
+            (value << 1) ^ bit_value
+        })
+    }
+}
+
+impl<E: Environment, I: IntegerType, const BITS: usize> fmt::Debug for Integer<E, I, BITS> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.eject_value())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Circuit;
+    use snarkvm_utilities::UniformRand;
+
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng,
+    };
+
+    const ITERATIONS: usize = 1000;
+
+    fn run_test<E: Environment, I: IntegerType, const BITS: usize>(mode: Mode)
+    where
+        Standard: Distribution<I>,
+    {
+        for _ in 0..ITERATIONS {
+            let value: I = UniformRand::rand(&mut thread_rng());
+            let integer = Integer::<Circuit, I, BITS>::new(mode, value);
+            assert_eq!(mode.is_constant(), integer.is_constant());
+            assert_eq!(integer.eject_value(), value);
+        }
+
+        assert_eq!(
+            Integer::<Circuit, I, BITS>::new(mode, I::min_value()).eject_value(),
+            I::min_value()
+        );
+        assert_eq!(
+            Integer::<Circuit, I, BITS>::new(mode, I::max_value()).eject_value(),
+            I::max_value()
+        );
+    }
+
+    #[test]
+    fn test_i8() {
+        run_test::<Circuit, u8, 8>(Mode::Constant);
+        run_test::<Circuit, u8, 8>(Mode::Public);
+        run_test::<Circuit, u8, 8>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i16() {
+        run_test::<Circuit, u16, 16>(Mode::Constant);
+        run_test::<Circuit, u16, 16>(Mode::Public);
+        run_test::<Circuit, u16, 16>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i32() {
+        run_test::<Circuit, u32, 32>(Mode::Constant);
+        run_test::<Circuit, u32, 32>(Mode::Public);
+        run_test::<Circuit, u32, 32>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i64() {
+        run_test::<Circuit, u64, 64>(Mode::Constant);
+        run_test::<Circuit, u64, 64>(Mode::Public);
+        run_test::<Circuit, u64, 64>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i128() {
+        run_test::<Circuit, u128, 128>(Mode::Constant);
+        run_test::<Circuit, u128, 128>(Mode::Public);
+        run_test::<Circuit, u128, 128>(Mode::Private);
     }
 }

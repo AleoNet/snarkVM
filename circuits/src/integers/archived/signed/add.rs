@@ -40,11 +40,11 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
             false => Mode::Private,
         };
 
-        // Directly compute the sum, check for overflow.
-        let value = self.eject_value().wrapping_add(&other.eject_value());
-
         // If the resulting value is a constant, return it directly.
         if mode.is_constant() {
+            // Directly compute the sum, check for overflow.
+            let value = self.eject_value().wrapping_add(&other.eject_value());
+
             return Signed::new(mode, value);
         }
 

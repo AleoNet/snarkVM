@@ -16,6 +16,8 @@
 
 use crate::{Boolean, Environment, FullAdder, Mode};
 
+use itertools::Itertools;
+
 //TODO (@pranav) Reorganize where this code is kept
 // Keeping here for now while prototyping.
 
@@ -27,10 +29,10 @@ pub trait RippleCarryAdder<Rhs: ?Sized = Self> {
 // Generic impl
 impl<E: Environment> RippleCarryAdder for Vec<Boolean<E>> {
     fn add_bits(&self, other: &Self) -> Self {
-        assert!(self.len() > 0 && self.len() == other.len()); //TODO: (@pranav) Halt if not true?
         let mut result = Vec::with_capacity(self.len() + 1);
         let mut carry = Boolean::new(Mode::Constant, false);
-        for (a, b) in self.iter().zip(other.iter()) {
+
+        for (a, b) in self.iter().zip_eq(other.iter()) {
             let (sum, next) = a.add_with_carry(b, &carry);
 
             carry = next;

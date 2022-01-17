@@ -26,14 +26,12 @@ use crate::{And, Boolean, Environment, Or, Xor};
 /// carry = a AND b OR carry AND (a XOR b)
 /// Returns (sum, carry)
 pub trait FullAdder {
-    //type Boolean: BooleanTrait;
     type Output;
 
     fn add_with_carry(&self, other: &Self, carry: &Self) -> Self::Output;
 }
 
 impl<E: Environment> FullAdder for Boolean<E> {
-    //type Boolean = Boolean<E>;
     type Output = (Boolean<E>, Boolean<E>);
 
     fn add_with_carry(&self, other: &Self, carry: &Self) -> Self::Output {
