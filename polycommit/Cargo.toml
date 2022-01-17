@@ -29,7 +29,7 @@ include = [
   "LICENSE-MIT"
 ]
 license = "GPL-3.0"
-edition = "2021"
+edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"

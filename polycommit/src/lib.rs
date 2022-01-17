@@ -111,6 +111,7 @@ pub mod marlin_pc;
 /// [sonic]: https://eprint.iacr.org/2019/099
 /// [al]: https://eprint.iacr.org/2019/601
 /// [marlin]: https://eprint.iacr.org/2019/1047
+#[macro_use]
 pub mod sonic_pc;
 
 /// `QuerySet` is the set of queries that are to be made to a set of labeled polynomials/equations
@@ -185,7 +186,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     /// The commitment randomness.
     type Randomness: PCRandomness + Clone + Send + Sync;
     /// The evaluation proof for a single point.
-    type Proof: PCProof + Clone;
+    type Proof: PCProof + Clone + Sync + Send;
     /// The evaluation proof for a query set.
     type BatchProof: CanonicalSerialize
         + CanonicalDeserialize
@@ -263,13 +264,12 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         query_set: &QuerySet<F>,
         opening_challenge: F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-        rng: Option<&mut dyn RngCore>,
+        _rng: Option<&mut dyn RngCore>,
     ) -> Result<Self::BatchProof, Error>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
     {
-        let rng = &mut crate::optional_rng::OptionalRng(rng);
         let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
             .into_iter()
             .zip(rands)
@@ -292,8 +292,9 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             labels.1.insert(label);
         }
 
-        let mut proofs = Vec::with_capacity(query_to_labels_map.len());
-        for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {
+
+        let mut proofs: Vec<Box<dyn FnOnce() -> Result<_, _> + Send>> = Vec::with_capacity(query_to_labels_map.len());
+        for (_point_name, (&query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
             let mut query_rands = Vec::with_capacity(labels.len());
             let mut query_comms = Vec::with_capacity(labels.len());
@@ -309,21 +310,23 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             }
 
             let proof_time = start_timer!(|| "Creating proof");
-            let proof = Self::open(
+            let proof = Box::new(move || {Self::open(
                 ck,
                 query_polys,
                 query_comms,
-                *query,
+                query,
                 opening_challenge,
                 query_rands,
-                Some(rng),
-            )?;
+                None,
+            )} as _);
 
             end_timer!(proof_time);
 
             proofs.push(proof);
         }
         end_timer!(open_time);
+        let proofs: Vec<_> = execute_in_parallel!(proofs);
+        let proofs = proofs.into_iter().collect::<Result<Vec<_>, _>>()?;
 
         Ok(proofs.into())
     }
