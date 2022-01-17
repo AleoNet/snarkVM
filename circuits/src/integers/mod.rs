@@ -110,6 +110,12 @@ impl IntegerType for u32 {}
 impl IntegerType for u64 {}
 impl IntegerType for u128 {}
 
+pub type I8<E> = Integer<E, i8, { i8::BITS as usize }>;
+pub type I16<E> = Integer<E, i16, { i16::BITS as usize }>;
+pub type I32<E> = Integer<E, i32, { i32::BITS as usize }>;
+pub type I64<E> = Integer<E, i64, { i64::BITS as usize }>;
+pub type I128<E> = Integer<E, i128, { i128::BITS as usize }>;
+
 pub type U8<E> = Integer<E, u8, { u8::BITS as usize }>;
 pub type U16<E> = Integer<E, u16, { u16::BITS as usize }>;
 pub type U32<E> = Integer<E, u32, { u32::BITS as usize }>;
@@ -209,34 +215,69 @@ mod tests {
 
     #[test]
     fn test_i8() {
+        run_test::<Circuit, i8, 8>(Mode::Constant);
+        run_test::<Circuit, i8, 8>(Mode::Public);
+        run_test::<Circuit, i8, 8>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i16() {
+        run_test::<Circuit, i16, 16>(Mode::Constant);
+        run_test::<Circuit, i16, 16>(Mode::Public);
+        run_test::<Circuit, i16, 16>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i32() {
+        run_test::<Circuit, i32, 32>(Mode::Constant);
+        run_test::<Circuit, i32, 32>(Mode::Public);
+        run_test::<Circuit, i32, 32>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i64() {
+        run_test::<Circuit, i64, 64>(Mode::Constant);
+        run_test::<Circuit, i64, 64>(Mode::Public);
+        run_test::<Circuit, i64, 64>(Mode::Private);
+    }
+
+    #[test]
+    fn test_i128() {
+        run_test::<Circuit, i128, 128>(Mode::Constant);
+        run_test::<Circuit, i128, 128>(Mode::Public);
+        run_test::<Circuit, i128, 128>(Mode::Private);
+    }
+
+    #[test]
+    fn test_u8() {
         run_test::<Circuit, u8, 8>(Mode::Constant);
         run_test::<Circuit, u8, 8>(Mode::Public);
         run_test::<Circuit, u8, 8>(Mode::Private);
     }
 
     #[test]
-    fn test_i16() {
+    fn test_u16() {
         run_test::<Circuit, u16, 16>(Mode::Constant);
         run_test::<Circuit, u16, 16>(Mode::Public);
         run_test::<Circuit, u16, 16>(Mode::Private);
     }
 
     #[test]
-    fn test_i32() {
+    fn test_u32() {
         run_test::<Circuit, u32, 32>(Mode::Constant);
         run_test::<Circuit, u32, 32>(Mode::Public);
         run_test::<Circuit, u32, 32>(Mode::Private);
     }
 
     #[test]
-    fn test_i64() {
+    fn test_u64() {
         run_test::<Circuit, u64, 64>(Mode::Constant);
         run_test::<Circuit, u64, 64>(Mode::Public);
         run_test::<Circuit, u64, 64>(Mode::Private);
     }
 
     #[test]
-    fn test_i128() {
+    fn test_u128() {
         run_test::<Circuit, u128, 128>(Mode::Constant);
         run_test::<Circuit, u128, 128>(Mode::Public);
         run_test::<Circuit, u128, 128>(Mode::Private);
