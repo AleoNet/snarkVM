@@ -141,6 +141,10 @@ optional = true
 features = [ "js" ]
 default-features = false
 
+[dependencies.num_cpus]
+version = "1"
+optional = true
+
 [dependencies.rand_chacha]
 version = "0.3"
 default-features = false
@@ -240,6 +244,6 @@ msm = [ ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
-parallel = [ ]
+parallel = [ "num_cpus" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]
