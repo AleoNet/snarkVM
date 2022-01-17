@@ -37,7 +37,7 @@ use crate::{
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::{rand::UniformRand, Box};
 
 use core::{
     convert::TryInto,
