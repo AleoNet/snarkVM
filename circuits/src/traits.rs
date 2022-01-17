@@ -127,7 +127,7 @@ pub trait BaseFieldTrait:
 }
 
 /// Representation of an integer.
-pub trait IntegerTrait<I: IntegerType>: Add + AddAssign + Clone + Debug
+pub trait IntegerTrait<I: IntegerType>: Add<Output = Self> + AddAssign + Clone + Debug
 // + Div
 // + DivAssign
 // + Double

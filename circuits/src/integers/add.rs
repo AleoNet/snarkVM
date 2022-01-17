@@ -94,18 +94,18 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_add<I: IntegerType, const BITS: usize>(
+    fn check_add<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
-        a: &Integer<Circuit, I, BITS>,
-        b: &Integer<Circuit, I, BITS>,
+        a: &IC,
+        b: &IC,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
         Circuit::scoped(name, |scope| {
-            let candidate = a + b;
+            let candidate = a.clone() + b.clone();
             assert_eq!(
                 expected,
                 candidate.eject_value(),
@@ -124,11 +124,11 @@ mod tests {
         });
     }
 
-    fn check_add_assign<I: IntegerType, const BITS: usize>(
+    fn check_add_assign<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
-        a: &Integer<Circuit, I, BITS>,
-        b: &Integer<Circuit, I, BITS>,
+        a: &IC,
+        b: &IC,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -136,7 +136,7 @@ mod tests {
     ) {
         Circuit::scoped(name, |scope| {
             let mut candidate = a.clone();
-            candidate += b;
+            candidate += b.clone();
             assert_eq!(
                 expected,
                 candidate.eject_value(),
@@ -157,35 +157,41 @@ mod tests {
 
     #[test]
     fn test_u8_constant_plus_constant() {
+        type I = u8;
+        type IC = Integer<Circuit, I, { I::BITS as usize }>;
+
         for i in 0..ITERATIONS {
-            let first: u8 = UniformRand::rand(&mut thread_rng());
-            let second: u8 = UniformRand::rand(&mut thread_rng());
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
             let expected = first.wrapping_add(second);
 
-            let a = Integer::<Circuit, u8, 8>::new(Mode::Constant, first);
-            let b = Integer::<Circuit, u8, 8>::new(Mode::Constant, second);
+            let a = IC::new(Mode::Constant, first);
+            let b = IC::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add::<u8, 8>(&name, expected, &a, &b, 16, 0, 0, 0);
+            check_add::<I, IC>(&name, expected, &a, &b, 16, 0, 0, 0);
             let name = format!("AddAssign: a += b {}", i);
-            check_add_assign::<u8, 8>(&name, expected, &a, &b, 16, 0, 0, 0);
+            check_add_assign::<I, IC>(&name, expected, &a, &b, 16, 0, 0, 0);
         }
     }
 
     #[test]
     fn test_u8_constant_plus_public() {
+        type I = u8;
+        type IC = Integer<Circuit, I, { I::BITS as usize }>;
+
         for i in 0..ITERATIONS {
-            let first: u8 = UniformRand::rand(&mut thread_rng());
-            let second: u8 = UniformRand::rand(&mut thread_rng());
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
             let expected = first.wrapping_add(second);
 
-            let a = Integer::<Circuit, u8, 8>::new(Mode::Constant, first);
-            let b = Integer::<Circuit, u8, 8>::new(Mode::Public, second);
+            let a = IC::new(Mode::Constant, first);
+            let b = IC::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add::<u8, 8>(&name, expected, &a, &b, 1, 0, 1, 0);
+            check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 1, 0);
             let name = format!("AddAssign: a += b {}", i);
-            check_add_assign::<u8, 8>(&name, expected, &a, &b, 16, 0, 16, 0);
+            check_add_assign::<I, IC>(&name, expected, &a, &b, 16, 0, 16, 0);
         }
     }
 
