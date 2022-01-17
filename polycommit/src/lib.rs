@@ -33,6 +33,7 @@ use snarkvm_utilities::{
     error as error_fn,
     errors::SerializationError,
     serialize::*,
+    Box,
     FromBytes,
     ToBytes,
     ToMinimalBits,
