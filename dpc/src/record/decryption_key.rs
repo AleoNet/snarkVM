@@ -34,9 +34,15 @@ impl<N: Network> DecryptionKey<N> {
     }
 }
 
+impl<N: Network> From<ViewKey<N>> for DecryptionKey<N> {
+    fn from(account_view_key: ViewKey<N>) -> Self {
+        Self::AccountViewKey(account_view_key)
+    }
+}
+
 impl<N: Network> From<&ViewKey<N>> for DecryptionKey<N> {
     fn from(account_view_key: &ViewKey<N>) -> Self {
-        Self::AccountViewKey(account_view_key.clone())
+        Self::from(account_view_key.clone())
     }
 }
 
