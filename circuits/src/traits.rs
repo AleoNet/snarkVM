@@ -14,11 +14,90 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use num_traits::Inv;
+use crate::Mode;
+
+use num_traits::{
+    Bounded,
+    Inv,
+    NumCast,
+    One as NumOne,
+    PrimInt,
+    WrappingAdd,
+    WrappingMul,
+    WrappingNeg,
+    WrappingSub,
+    Zero as NumZero,
+};
 use std::{
-    fmt::Debug,
+    fmt::{Debug, Display},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
 };
+
+// TODO (@pranav) Find a better place for this
+//   Taken from/extending num_traits
+macro_rules! wrapping_impl {
+    ($trait_name:ident, $method:ident, $t:ty) => {
+        impl $trait_name for $t {
+            #[inline]
+            fn $method(&self, v: &Self) -> Self {
+                <$t>::$method(*self, *v)
+            }
+        }
+    };
+    ($trait_name:ident, $method:ident, $t:ty, $rhs:ty) => {
+        impl $trait_name<$rhs> for $t {
+            #[inline]
+            fn $method(&self, v: &$rhs) -> Self {
+                <$t>::$method(*self, *v)
+            }
+        }
+    };
+}
+
+pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
+    fn wrapping_div(&self, v: &Self) -> Self;
+}
+
+wrapping_impl!(WrappingDiv, wrapping_div, u8);
+wrapping_impl!(WrappingDiv, wrapping_div, u16);
+wrapping_impl!(WrappingDiv, wrapping_div, u32);
+wrapping_impl!(WrappingDiv, wrapping_div, u64);
+wrapping_impl!(WrappingDiv, wrapping_div, u128);
+wrapping_impl!(WrappingDiv, wrapping_div, i8);
+wrapping_impl!(WrappingDiv, wrapping_div, i16);
+wrapping_impl!(WrappingDiv, wrapping_div, i32);
+wrapping_impl!(WrappingDiv, wrapping_div, i64);
+wrapping_impl!(WrappingDiv, wrapping_div, i128);
+
+/// Trait bound for integer values. Common to both signed and unsigned integers.
+pub trait IntegerType:
+    'static
+    + Debug
+    + Display
+    + PrimInt
+    + Bounded
+    + NumZero
+    + NumOne
+    + WrappingAdd
+    + WrappingMul
+    + WrappingNeg
+    + WrappingSub
+    + WrappingDiv
+    + NumCast
+{
+}
+
+impl IntegerType for i8 {}
+impl IntegerType for i16 {}
+impl IntegerType for i32 {}
+impl IntegerType for i64 {}
+impl IntegerType for i128 {}
+
+impl IntegerType for u8 {}
+impl IntegerType for u16 {}
+impl IntegerType for u32 {}
+impl IntegerType for u64 {}
+impl IntegerType for u128 {}
 
 /// Representation of a boolean.
 pub trait BooleanTrait: And + Clone + Debug + Equal + Nand + Nor + Not + Or + Ternary + Xor {}
@@ -48,7 +127,7 @@ pub trait BaseFieldTrait:
 }
 
 /// Representation of an integer.
-pub trait IntegerTrait: Add + AddAssign + Clone + Debug
+pub trait IntegerTrait<I: IntegerType>: Add + AddAssign + Clone + Debug
 // + Div
 // + DivAssign
 // + Double
@@ -65,6 +144,14 @@ pub trait IntegerTrait: Add + AddAssign + Clone + Debug
 // + ToBits
 // + Zero
 {
+    /// Initializes a new integer.
+    fn new(mode: Mode, value: I) -> Self;
+
+    /// Returns `true` if the integer is a constant.
+    fn is_constant(&self) -> bool;
+
+    /// Ejects the unsigned integer as a constant unsigned integer value.
+    fn eject_value(&self) -> I;
 }
 
 // TODO why not use num_traits::Zero?
