@@ -51,7 +51,7 @@ fn test_record_ciphertext() {
 
         // Decrypt the record.
         let account_view_key = ViewKey::from_private_key(account.private_key());
-        let candidate_record = Record::from_account_view_key(&account_view_key, record_ciphertext).unwrap();
+        let candidate_record = Record::decrypt(&account_view_key.into(), record_ciphertext).unwrap();
         assert_eq!(expected_record, candidate_record);
     }
 }
