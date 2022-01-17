@@ -65,6 +65,7 @@ r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
 
 ## snarkVM workspace specific ##
+cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
 ## snarkVM CLI ##
