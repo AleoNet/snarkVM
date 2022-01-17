@@ -1898,6 +1898,7 @@ dependencies = [
  "hex",
  "itertools",
  "lazy_static",
+ "num_cpus",
  "once_cell",
  "rand",
  "rand_chacha",
