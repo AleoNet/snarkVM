@@ -101,7 +101,11 @@ macro_rules! execute_in_parallel {
             use itertools::Itertools;
             // At most 12 threads per task
             const THREADS_PER_TASK: usize = 12;
-            let threads_per_task: usize = THREADS_PER_TASK.min(rayon::current_num_threads());
+            let threads_per_task: usize = if rayon::current_num_threads() > $tasks.len() * THREADS_PER_TASK {
+                rayon::current_num_threads() / $tasks.len()
+            } else {
+                THREADS_PER_TASK.min(rayon::current_num_threads())
+            };
             let task_chunk_size = rayon::current_num_threads() / threads_per_task
                 + usize::from(rayon::current_num_threads() % threads_per_task != 0);
 
