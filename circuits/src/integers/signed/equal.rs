@@ -16,6 +16,8 @@
 
 use super::*;
 
+use itertools::Itertools;
+
 impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Equal<Self>
     for Signed<E, I, U, SIZE>
 {
@@ -28,14 +30,11 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
     /// TODO (@pranav) Number of constraints; Is extra logical and for Boolean::new(Mode::Constant, true) free?
     ///
     fn is_eq(&self, other: &Self) -> Self::Output {
-        let all_bits_eq = self
-            .bits_le
+        self.bits_le
             .iter()
-            .zip(other.bits_le.iter())
-            .map(|(self_bit, other_bit)| self_bit.is_eq(other_bit));
-        all_bits_eq.fold(Boolean::new(Mode::Constant, true), |prev_bits_eq, next_bit_eq| {
-            prev_bits_eq.and(&next_bit_eq)
-        })
+            .zip_eq(other.bits_le.iter())
+            .map(|(this, that)| this.is_eq(that))
+            .fold(Boolean::new(Mode::Constant, true), Boolean::and)
     }
 
     ///
