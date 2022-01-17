@@ -66,7 +66,7 @@ impl<E: Environment, I: IntegerType, const BITS: usize> AddAssign<&Integer<E, I,
             // Compute the sum and return the new constant.
             *self = Integer::new(Mode::Constant, self.eject_value().wrapping_add(&other.eject_value()));
         } else {
-            let mut bits_le = Vec::with_capacity(BITS + 1);
+            let mut bits_le = Vec::with_capacity(BITS);
             let mut carry = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-carry adder on the bits.
