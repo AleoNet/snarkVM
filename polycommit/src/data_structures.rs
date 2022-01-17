@@ -52,7 +52,9 @@ pub trait PCCommitterKey: CanonicalSerialize + CanonicalDeserialize + Clone + De
 
 /// Defines the minimal interface of verifier keys for any polynomial
 /// commitment scheme.
-pub trait PCVerifierKey: CanonicalSerialize + CanonicalDeserialize + Clone + Debug + ToBytes + FromBytes {
+pub trait PCVerifierKey:
+    CanonicalSerialize + CanonicalDeserialize + Clone + Debug + PartialEq + Eq + ToBytes + FromBytes
+{
     /// Outputs the maximum degree supported by the universal parameters
     /// `Self` was derived from.
     fn max_degree(&self) -> usize;

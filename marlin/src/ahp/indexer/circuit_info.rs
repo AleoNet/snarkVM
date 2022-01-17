@@ -25,7 +25,7 @@ use derivative::Derivative;
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
 #[derive(Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitInfo<F> {
     /// The total number of variables in the constraint system.

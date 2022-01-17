@@ -23,7 +23,6 @@ use crate::{
     Ciphertext,
     InnerPublicVariables,
     Network,
-    OuterPublicVariables,
     PoSWScheme,
     Program,
     ProgramPublicVariables,
@@ -55,19 +54,18 @@ use snarkvm_gadgets::{
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
-        snark::Groth16VerifierGadget,
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
 use snarkvm_marlin::{
-    constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
+    constraints::snark::MarlinSNARK,
     marlin::{MarlinPoswMode, MarlinTestnet2Mode},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirChaChaRng,
     PoseidonSponge,
 };
 use snarkvm_parameters::{testnet2::*, Genesis};
-use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
@@ -126,7 +124,6 @@ impl Network for Testnet2 {
 
     const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
     const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
-    const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
     const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
     const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
@@ -136,7 +133,6 @@ impl Network for Testnet2 {
     const HEADER_SIZE_IN_BYTES: usize = 903;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
-    const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
@@ -171,14 +167,9 @@ impl Network for Testnet2 {
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet2>>;
-    type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, { Self::OUTER_PROOF_SIZE_IN_BYTES }>;
-
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinTestnet2Mode, ProgramPublicVariables<Self>>;
-    type ProgramSNARKGadget = MarlinVerificationGadget<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>, MarlinTestnet2Mode>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
@@ -277,9 +268,6 @@ impl Network for Testnet2 {
     dpc_snark_setup!{Testnet2, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
 
-    dpc_snark_setup!{Testnet2, outer_proving_key, OuterSNARK, ProvingKey, OuterProvingKeyBytes, "outer circuit proving key"}
-    dpc_snark_setup!{Testnet2, outer_verifying_key, OuterSNARK, VerifyingKey, OuterVerifyingKeyBytes, "outer circuit verifying key"}
-
     dpc_snark_setup!{Testnet2, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
     dpc_snark_setup!{Testnet2, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
 
@@ -362,16 +350,6 @@ mod tests {
                 .expect("Failed to hash inner circuit ID")
                 .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
-        );
-    }
-
-    #[test]
-    fn test_outer_circuit_sanity_check() {
-        // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
-        assert_eq!(
-            Testnet2::outer_verifying_key(),
-            &Testnet2::outer_proving_key().vk,
-            "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }
 

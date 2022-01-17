@@ -214,9 +214,14 @@ impl<E: PairingEngine> Powers<'_, E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(
+    Default(bound = ""),
+    Clone(bound = ""),
+    Debug(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
     pub g: E::G1Affine,

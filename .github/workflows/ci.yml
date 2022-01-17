@@ -44,7 +44,7 @@ jobs:
           args: --all-features --examples --all --benches
 
   test-wasm:
-    name: Check Tests (Wasm)
+    name: WASM
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,7 +76,8 @@ jobs:
           wasm-pack test --node
 #          cargo test --target wasm32-unknown-unknown --features wasm
 
-  check-windows:  
+  check-windows:
+    name: Windows
     strategy:
       matrix:
         library: [algorithms, curves, derives, dpc, fields, gadgets, marlin, parameters, polycommit, profiler, r1cs, utilities]

@@ -17,6 +17,9 @@
 pub mod ciphertext;
 pub use ciphertext::*;
 
+pub mod decryption_key;
+pub use decryption_key::*;
+
 pub mod payload;
 pub use payload::*;
 

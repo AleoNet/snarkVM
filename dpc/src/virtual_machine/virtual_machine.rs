@@ -80,17 +80,6 @@ impl<N: Network> VirtualMachine<N> {
         let transition_id = response.transition_id();
         let value_balance = response.value_balance();
 
-        // Compute the noop execution, for now.
-        let execution = Execution {
-            program_id: *N::noop_program_id(),
-            program_path: N::noop_program_path().clone(),
-            verifying_key: N::noop_circuit_verifying_key().clone(),
-            proof: Noop::<N>::new().execute(
-                ProgramPublicVariables::new(transition_id),
-                &NoopPrivateVariables::<N>::new_blank()?,
-            )?,
-        };
-
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
             transition_id,
@@ -109,20 +98,20 @@ impl<N: Network> VirtualMachine<N> {
             &inner_proof
         )?);
 
-        // Construct the outer circuit public and private variables.
-        let outer_public = OuterPublicVariables::new(inner_public, N::inner_circuit_id());
-        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof.into(), execution);
-        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
-        let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
-
-        assert!(N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &outer_public,
-            &outer_proof
-        )?);
+        // Compute the noop execution, for now.
+        let execution = Execution::from(
+            *N::noop_program_id(),
+            N::noop_program_path().clone(),
+            N::noop_circuit_verifying_key().clone(),
+            Noop::<N>::new().execute(
+                ProgramPublicVariables::new(transition_id),
+                &NoopPrivateVariables::<N>::new_blank()?,
+            )?,
+            inner_proof.into(),
+        )?;
 
         // Construct the transition.
-        let transition = Transition::<N>::new(request, &response, outer_proof.into())?;
+        let transition = Transition::<N>::new(request, &response, execution)?;
 
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;
@@ -291,6 +280,13 @@ impl<N: Network> VirtualMachine<N> {
         let transition_id = response.transition_id();
         let value_balance = response.value_balance();
 
+        // Compute the execution.
+        let program_proof = function.execute(ProgramPublicVariables::new(transition_id), private_variables)?;
+        let public_variables = ProgramPublicVariables::new(transition_id);
+
+        assert!(function.verify(&public_variables, &program_proof));
+        assert!(function_path.verify(&program_id, &function.function_id())?);
+
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
             transition_id,
@@ -309,34 +305,16 @@ impl<N: Network> VirtualMachine<N> {
             &inner_proof
         )?);
 
-        // Compute the execution.
-        let proof = function.execute(ProgramPublicVariables::new(transition_id), private_variables)?;
-        let public_variables = ProgramPublicVariables::new(transition_id);
-
-        assert!(function.verify(&public_variables, &proof));
-        assert!(function_path.verify(&program_id, &function.function_id())?);
-
-        let execution = Execution {
+        let execution = Execution::from(
             program_id,
-            program_path: function_path.clone(),
-            verifying_key: function_verifying_key,
-            proof,
-        };
-
-        // Construct the outer circuit public and private variables.
-        let outer_public = OuterPublicVariables::new(inner_public, N::inner_circuit_id());
-        let outer_private = OuterPrivateVariables::new(N::inner_verifying_key().clone(), inner_proof.into(), execution);
-        let outer_circuit = OuterCircuit::<N>::new(outer_public.clone(), outer_private);
-        let outer_proof = N::OuterSNARK::prove(N::outer_proving_key(), &outer_circuit, rng)?;
-
-        assert!(N::OuterSNARK::verify(
-            N::outer_verifying_key(),
-            &outer_public,
-            &outer_proof
-        )?);
+            function_path.clone(),
+            function_verifying_key,
+            program_proof,
+            inner_proof.into(),
+        )?;
 
         // Construct the transition.
-        let transition = Transition::<N>::new(request, &response, outer_proof.into())?;
+        let transition = Transition::<N>::new(request, &response, execution)?;
 
         // Update the state of the virtual machine.
         self.local_transitions.add(&transition)?;

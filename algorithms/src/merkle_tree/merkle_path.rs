@@ -18,8 +18,10 @@ use crate::{
     errors::MerkleError,
     traits::{MerkleParameters, CRH},
 };
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
+use anyhow::Result;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     io::{Read, Result as IoResult, Write},
     sync::Arc,
@@ -29,14 +31,25 @@ pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
-#[derive(Clone, Debug)]
+#[derive(Derivative)]
+#[derivative(Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct MerklePath<P: MerkleParameters> {
+    #[derivative(PartialEq = "ignore")]
     pub parameters: Arc<P>,
     pub path: Vec<MerkleTreeDigest<P>>,
     pub leaf_index: u64,
 }
 
 impl<P: MerkleParameters> MerklePath<P> {
+    /// Returns a new instance of a Merkle path.
+    pub fn from(parameters: Arc<P>, path: Vec<MerkleTreeDigest<P>>, leaf_index: u64) -> Result<Self> {
+        Ok(Self {
+            parameters,
+            path,
+            leaf_index,
+        })
+    }
+
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
         // Check that the given leaf matches the leaf in the membership proof.
         if !self.path.is_empty() {
@@ -96,6 +109,21 @@ impl<P: MerkleParameters> MerklePath<P> {
     }
 }
 
+// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+impl<P: MerkleParameters> Default for MerklePath<P> {
+    fn default() -> Self {
+        let mut path = Vec::with_capacity(P::DEPTH);
+        for _i in 0..P::DEPTH {
+            path.push(MerkleTreeDigest::<P>::default());
+        }
+        Self {
+            parameters: Arc::new(P::setup("unsafe")),
+            path,
+            leaf_index: 0,
+        }
+    }
+}
+
 impl<P: MerkleParameters> FromBytes for MerklePath<P> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -148,17 +176,14 @@ impl<P: MerkleParameters> ToBytes for MerklePath<P> {
     }
 }
 
-// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-impl<P: MerkleParameters> Default for MerklePath<P> {
-    fn default() -> Self {
-        let mut path = Vec::with_capacity(P::DEPTH);
-        for _i in 0..P::DEPTH {
-            path.push(MerkleTreeDigest::<P>::default());
-        }
-        Self {
-            parameters: Arc::new(P::setup("unsafe")),
-            path,
-            leaf_index: 0,
-        }
+impl<P: MerkleParameters> Serialize for MerklePath<P> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ToBytesSerializer::serialize_with_size_encoding(self, serializer)
+    }
+}
+
+impl<'de, P: MerkleParameters> Deserialize<'de> for MerklePath<P> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "Merkle path")
     }
 }
