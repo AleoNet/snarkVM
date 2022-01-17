@@ -66,6 +66,8 @@ use std::{
     vec::Vec,
 };
 
+#[macro_use]
+mod macros;
 /// Data structures used by a polynomial commitment scheme.
 pub mod data_structures;
 pub use data_structures::*;
@@ -112,7 +114,6 @@ pub mod marlin_pc;
 /// [sonic]: https://eprint.iacr.org/2019/099
 /// [al]: https://eprint.iacr.org/2019/601
 /// [marlin]: https://eprint.iacr.org/2019/1047
-#[macro_use]
 pub mod sonic_pc;
 
 /// `QuerySet` is the set of queries that are to be made to a set of labeled polynomials/equations
