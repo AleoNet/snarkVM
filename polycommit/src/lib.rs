@@ -66,8 +66,8 @@ use std::{
     vec::Vec,
 };
 
-#[macro_use]
-mod macros;
+use snarkvm_algorithms::execute_in_parallel;
+
 /// Data structures used by a polynomial commitment scheme.
 pub mod data_structures;
 pub use data_structures::*;
