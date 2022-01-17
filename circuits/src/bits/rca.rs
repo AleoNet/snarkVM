@@ -31,7 +31,7 @@ impl<E: Environment> RippleCarryAdder for Vec<Boolean<E>> {
         let mut result = Vec::with_capacity(self.len() + 1);
         let mut carry = Boolean::new(Mode::Constant, false);
         for (a, b) in self.iter().zip(other.iter()) {
-            let (sum, next) = a.add(b, &carry);
+            let (sum, next) = a.add_with_carry(b, &carry);
 
             carry = next;
             result.push(sum);
