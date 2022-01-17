@@ -21,11 +21,8 @@ pub mod less_than;
 pub mod sub;
 pub mod ternary;
 
-use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveInteger, PrimitiveUnsignedInteger};
-use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
-use snarkvm_fields::Field as F;
+use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveUnsignedInteger};
 
-use num_traits::{AsPrimitive, Bounded};
 use std::{
     fmt,
     marker::PhantomData,
@@ -96,7 +93,7 @@ impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> fmt::Debug 
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::Circuit;
     use rand::{
@@ -167,7 +164,7 @@ mod test {
 #[cfg(test)]
 pub mod test_utilities {
     use super::*;
-    use crate::{Circuit, Environment, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
+    use crate::{Environment, PrimitiveUnsignedInteger};
 
     /// Checks that a given candidate gadget matches the expected result. Optionally checks
     /// that the number of constants, public variables, private variables, and constraints

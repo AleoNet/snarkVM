@@ -30,11 +30,9 @@ pub mod ternary;
 
 use crate::{boolean::Boolean, traits::*, Environment, Mode, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
 
-use num_traits::real::Real;
 use std::{
     fmt,
     marker::PhantomData,
-    num::NonZeroUsize,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -124,7 +122,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::Circuit;
     use rand::{
@@ -197,7 +195,7 @@ mod test {
 #[cfg(test)]
 pub mod test_utilities {
     use super::*;
-    use crate::{Circuit, Environment, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
+    use crate::{Environment, PrimitiveSignedInteger, PrimitiveUnsignedInteger};
 
     /// Checks that a given candidate gadget matches the expected result. Optionally checks
     /// that the number of constants, public variables, private variables, and constraints

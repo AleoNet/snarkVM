@@ -69,10 +69,9 @@ impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> SubAssign<&
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{integers::unsigned::test_utilities::check_operation, Circuit};
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::unsigned::test_utilities::check_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,

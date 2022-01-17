@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{BaseField, One, RippleCarryAdder, Zero};
-use num_traits::WrappingAdd;
-use snarkvm_fields::PrimeField;
-use std::num::Wrapping;
+use crate::RippleCarryAdder;
 
 impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Add<Self> for Unsigned<E, U, SIZE> {
     type Output = Self;
@@ -105,7 +102,6 @@ mod tests {
         distributions::{Distribution, Standard},
         thread_rng,
     };
-    use std::num::Wrapping;
 
     const ITERATIONS: usize = 100;
 

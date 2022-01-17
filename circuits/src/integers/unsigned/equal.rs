@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use itertools::all;
 
 impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Equal<Self> for Unsigned<E, U, SIZE> {
     type Boolean = Boolean<E>;
@@ -53,10 +52,9 @@ impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> Equal<Self>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{integers::test_utilities::check_boolean_operation, Circuit};
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::test_utilities::check_boolean_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,

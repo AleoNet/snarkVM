@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{BaseField, One, RippleCarryAdder, Zero};
-use num_traits::WrappingAdd;
-use snarkvm_fields::PrimeField;
-use std::num::Wrapping;
+use crate::RippleCarryAdder;
 
 impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Add<Self>
     for Signed<E, I, U, SIZE>
@@ -106,15 +103,18 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{signed::test_utilities::check_operation, Circuit, FullAdder};
+    use crate::{
+        integers::test_utilities::check_boolean_operation,
+        signed::test_utilities::check_operation,
+        Circuit,
+        FullAdder,
+    };
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::test_utilities::check_boolean_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,
     };
-    use std::num::Wrapping;
 
     const ITERATIONS: usize = 10;
 

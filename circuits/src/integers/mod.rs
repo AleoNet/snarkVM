@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod bits;
+pub use bits::*;
+
 pub mod signed;
 pub use signed::*;
 
@@ -21,12 +24,9 @@ pub mod unsigned;
 pub use unsigned::*;
 
 use num_traits::{
-    AsPrimitive,
     Bounded,
     NumCast,
-    NumOps,
     One as NumOne,
-    Pow,
     PrimInt,
     Signed,
     Unsigned,
@@ -36,10 +36,7 @@ use num_traits::{
     WrappingSub,
     Zero as NumZero,
 };
-use snarkvm_utilities::{
-    cmp::Ordering,
-    ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub},
-};
+use snarkvm_utilities::ops::Div;
 use std::fmt::{Debug, Display};
 
 // TODO (@pranav) Gadget Trait

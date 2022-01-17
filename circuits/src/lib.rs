@@ -26,9 +26,6 @@ pub use address::*;
 pub mod boolean;
 pub use boolean::*;
 
-pub mod bits;
-pub use bits::*;
-
 pub mod fields;
 pub use fields::*;
 

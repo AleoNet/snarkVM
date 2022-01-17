@@ -41,10 +41,9 @@ impl<E: Environment, U: PrimitiveUnsignedInteger, const SIZE: usize> LessThan<Se
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{integers::test_utilities::check_boolean_operation, Circuit};
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::test_utilities::check_boolean_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,

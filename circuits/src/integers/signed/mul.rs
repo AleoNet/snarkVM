@@ -15,9 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::{RippleCarryAdder, SignExtend};
 
-use crate::{BaseField, One, RippleCarryAdder, SignExtend, Zero};
-use snarkvm_fields::PrimeField;
 use std::iter;
 
 impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, const SIZE: usize> Mul<Self>
@@ -145,11 +144,9 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
-    use num_traits::CheckedMul;
+    use crate::{integers::signed::test_utilities::check_operation, Circuit};
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::signed::test_utilities::check_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,

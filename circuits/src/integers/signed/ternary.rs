@@ -35,10 +35,9 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{integers::signed::test_utilities::check_operation, Circuit};
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::signed::test_utilities::check_operation;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,
