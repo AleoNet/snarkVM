@@ -321,7 +321,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut labeled_comms: Vec<LabeledCommitment<Self::Commitment>> = Vec::new();
         let mut randomness: Vec<Self::Randomness> = Vec::new();
 
+        #[cfg(feature = "parallel")]
         let mut commitment_tasks: Vec<Box<dyn FnOnce() -> Result<_, _> + Send>> = Vec::new();
+        #[cfg(not(feature = "parallel"))]
+        let mut commitment_tasks: Vec<Box<dyn FnOnce() -> Result<_, _>>> = Vec::new();
 
         let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
         for labeled_polynomial in polynomials {

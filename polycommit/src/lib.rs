@@ -292,7 +292,6 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             labels.1.insert(label);
         }
 
-
         let mut proofs: Vec<Box<dyn FnOnce() -> Result<_, _> + Send>> = Vec::with_capacity(query_to_labels_map.len());
         for (_point_name, (&query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
@@ -310,15 +309,17 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             }
 
             let proof_time = start_timer!(|| "Creating proof");
-            let proof = Box::new(move || {Self::open(
-                ck,
-                query_polys,
-                query_comms,
-                query,
-                opening_challenge,
-                query_rands,
-                None,
-            )} as _);
+            let proof = Box::new(move || {
+                Self::open(
+                    ck,
+                    query_polys,
+                    query_comms,
+                    query,
+                    opening_challenge,
+                    query_rands,
+                    None,
+                )
+            } as _);
 
             end_timer!(proof_time);
 
