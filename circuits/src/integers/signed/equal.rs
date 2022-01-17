@@ -34,7 +34,7 @@ impl<E: Environment, I: PrimitiveSignedInteger, U: PrimitiveUnsignedInteger, con
             .iter()
             .zip_eq(other.bits_le.iter())
             .map(|(this, that)| this.is_eq(that))
-            .fold(Boolean::new(Mode::Constant, true), Boolean::and)
+            .fold(Boolean::new(Mode::Constant, true), |a, b| Boolean::and(&a, &b))
     }
 
     ///
