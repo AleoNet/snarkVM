@@ -519,6 +519,7 @@ impl<F: FftField> EvaluationDomain<F> {
         *hi = neg;
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_butterfly<T: DomainCoeff<F>, G: Fn(((&mut T, &mut T), &F)) + Copy + Sync + Send>(
         g: G,
         xi: &mut [T],
@@ -712,8 +713,7 @@ pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
             // Compute the size that this chunks' output should be
             // (num_elem_per_thread, unless there are less than num_elem_per_thread elements remaining)
             let num_elements_to_compute = core::cmp::min(size - i * num_elem_per_thread, num_elem_per_thread);
-            let res = compute_powers_and_mul_by_const_serial(num_elements_to_compute, g, offset);
-            res
+            compute_powers_and_mul_by_const_serial(num_elements_to_compute, g, offset)
         })
         .collect();
     res
