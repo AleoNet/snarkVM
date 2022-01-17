@@ -313,10 +313,9 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         ck: &Self::CommitterKey,
         polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         terminator: &AtomicBool,
-        _rng: Option<&mut dyn RngCore>,
+        rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Error> {
-        #[cfg(not(feature = "parallel"))]
-        let rng = &mut crate::optional_rng::OptionalRng(_rng);
+        let rng = &mut crate::optional_rng::OptionalRng(rng);
         let commit_time = start_timer!(|| "Committing to polynomials");
         let mut labeled_comms: Vec<LabeledCommitment<Self::Commitment>> = Vec::new();
         let mut randomness: Vec<Self::Randomness> = Vec::new();
@@ -331,6 +330,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             if terminator.load(Ordering::Relaxed) {
                 return Err(Error::Terminated);
             }
+            let mut seed = [0u8; 32];
+            rng.fill_bytes(&mut seed);
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
@@ -343,9 +344,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let hiding_bound = labeled_polynomial.hiding_bound();
             let label = labeled_polynomial.label().clone();
             let func = move || {
-                #[cfg(feature = "parallel")]
-                let mut rng = rand::thread_rng();
-                let mut rng = rand::rngs::StdRng::from_rng(&mut rng).ok();
+                let mut rng = Some(rand::rngs::StdRng::from_seed(seed));
 
                 let commit_time = start_timer!(|| format!(
                     "Polynomial {} of degree {}, degree bound {:?}, and hiding bound {:?}",
