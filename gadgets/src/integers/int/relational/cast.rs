@@ -29,6 +29,7 @@ macro_rules! cast_int_impl {
                 _cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
+				dbg!(&bits);
 
 				let last_bit = bits[bits.len() - 1].clone();
 
@@ -38,6 +39,8 @@ macro_rules! cast_int_impl {
 					// if we add a min and max to the Integer target.
 					// However it may be bad to rely on such a convenience
 					// if in the future we wish to cast from fields to ints.
+					// Unless we have a min and max gadget that works for fields
+					// regardless of curve.
 					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false)) && (matches!(bits[Target::SIZE - 1], Boolean::Constant(true)) || dbg!(bits[Target::SIZE..].contains(&Boolean::Constant(true)))) {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
