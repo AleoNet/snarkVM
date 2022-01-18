@@ -47,7 +47,7 @@ macro_rules! cast_uint_impl {
 					// Since bits are le we check if the bits beyond target
 					// size are set. If so we should error out because
 					// the number is too big to fit into our target.
-					if bits[Target::SIZE..].iter().any(|bit| Boolean::and(cs.ns(|| format!("check true bits")), &bit, &Boolean::Constant(true)).unwrap() == Boolean::Constant(true)) {
+					if bits[Target::SIZE..].iter().any(|bit| dbg!(Boolean::and(cs.ns(|| format!("check if remaining bits are set")), &bit, &Boolean::Constant(true)).unwrap() == Boolean::Constant(true))) {
 						// Here it could a signed or unsigned overflow.
 						Err(UnsignedIntegerError::Overflow)
 					} else {
