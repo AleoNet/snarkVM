@@ -89,7 +89,6 @@ version = "0.8"
 default-features = false
 features = [ "std_rng" ]
 
-
 [dependencies.rayon]
 version = "1"
 optional = true
