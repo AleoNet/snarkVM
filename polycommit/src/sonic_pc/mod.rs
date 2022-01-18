@@ -269,7 +269,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let degree_bound = labeled_polynomial.degree_bound();
             let hiding_bound = labeled_polynomial.hiding_bound();
             let label = labeled_polynomial.label().clone();
-            task_pool.add_task(move || {
+            task_pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
 
                 let commit_time = start_timer!(|| format!(

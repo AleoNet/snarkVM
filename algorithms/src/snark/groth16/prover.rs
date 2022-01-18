@@ -197,7 +197,7 @@ where
     if r != E::Fr::zero() {
         let b_g1_acc_time = start_timer!(|| "Compute B in G1");
 
-        task_list.add_task(|| {
+        task_list.add_job(|| {
             let res = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
             ResultWrapper::from_g1(res)
         });
@@ -208,7 +208,7 @@ where
     let b_g2_acc_time = start_timer!(|| "Compute B in G2");
     let b_query = &params.b_g2_query;
     let s_g2 = params.vk.delta_g2.mul(s);
-    task_list.add_task(|| {
+    task_list.add_job(|| {
         let res = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
         ResultWrapper::from_g2(res)
     });
@@ -219,13 +219,13 @@ where
     let c_acc_time = start_timer!(|| "Compute C");
 
     let h_query = &params.h_query;
-    task_list.add_task(|| {
+    task_list.add_job(|| {
         let res = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
         ResultWrapper::from_g1(res)
     });
     let l_aux_source = &params.l_query;
 
-    task_list.add_task(|| {
+    task_list.add_job(|| {
         let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
         ResultWrapper::from_g1(res)
     });
