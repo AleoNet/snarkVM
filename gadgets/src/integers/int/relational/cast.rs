@@ -30,7 +30,7 @@ macro_rules! cast_int_impl {
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
-				dbg!(&bits);
+				dbg!(&bits, &bits[Target::SIZE..]);
 
 				let last_bit = bits[bits.len() - 1].clone();
 				if !Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
@@ -44,7 +44,7 @@ macro_rules! cast_int_impl {
 					// Since bits are le we check if the bits beyond target
 					// size are set. If so we should error out because
 					// the number is too big to fit into our target.
-					if bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
+					if bits[Target::SIZE..].contains(&Boolean::Constant(false)) {
 						// Here it could a signed or unsigned overflow.
 						Err(SignedIntegerError::Overflow)
 					} else {
