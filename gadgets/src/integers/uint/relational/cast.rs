@@ -26,12 +26,16 @@ macro_rules! cast_uint_impl {
 
             fn cast<CS: ConstraintSystem<F>>(
                 &self,
-                _cs: CS,
+                mut cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
 				let last_bit = bits[bits.len() - 1].clone();
-				if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
+				let mut last_bit_is_true = Boolean::Constant(true);
+
+				last_bit_is_true = Boolean::and(cs.ns(|| format!("last bit true")), &last_bit, &last_bit_is_true).unwrap();
+
+				if Target::SIGNED && matches!(last_bit_is_true, Boolean::Constant(true)) {
 					// Wonder if error type should just be an Integer Error
 					// Cause here it's technically a signed int overflow.
 					return Err(UnsignedIntegerError::Overflow);
@@ -42,7 +46,7 @@ macro_rules! cast_uint_impl {
 					// Since bits are le we check if the bits beyond target
 					// size are set. If so we should error out because
 					// the number is too big to fit into our target.
-					if bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
+					if bits[Target::SIZE..].iter().any(|bit| Boolean::and(cs.ns(|| format!("check true bits")), &bit, &Boolean::Constant(true)).unwrap() == Boolean::Constant(true)) {
 						// Here it could a signed or unsigned overflow.
 						Err(UnsignedIntegerError::Overflow)
 					} else {
