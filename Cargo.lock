@@ -1891,6 +1891,7 @@ dependencies = [
 name = "snarkvm-algorithms"
 version = "0.7.5"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "bincode",
  "blake2",

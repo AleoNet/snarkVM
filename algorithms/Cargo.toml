@@ -76,6 +76,9 @@ harness = false
 name = "groth16"
 path = "examples/snark/groth16.rs"
 
+[dependencies.aleo-std]
+version = "0.1.8"
+
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.7.5"
