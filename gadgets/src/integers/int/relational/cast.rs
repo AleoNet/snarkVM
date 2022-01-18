@@ -29,14 +29,7 @@ macro_rules! cast_int_impl {
                 _cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
-
 				let last_bit = bits[bits.len() - 1].clone();
-				if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
-					// Negative signed to unsigned.
-					// Wonder if error type should just be an Integer Error
-					// Cause here it's technically a unsigned int overflow.
-					return Err(SignedIntegerError::Overflow);
-				}
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
@@ -61,13 +54,20 @@ macro_rules! cast_int_impl {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 					}
 				} else {
-					let mut bits = bits;
+					if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
+						// Negative signed to unsigned.
+						// Wonder if error type should just be an Integer Error
+						// Cause here it's technically a unsigned int overflow.
+						Err(SignedIntegerError::Overflow)
+					} else {
+						let mut bits = bits;
 
-					for _ in Self::SIZE..Target::SIZE {
-						bits.push(last_bit.clone());
+						for _ in Self::SIZE..Target::SIZE {
+							bits.push(last_bit.clone());
+						}
+
+						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 					}
-
-					Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 				}
             }
         }
