@@ -16,7 +16,7 @@
 
 pub mod helpers;
 
-pub mod add;
+pub mod add_wrapping;
 // pub mod sub;
 
 use crate::{boolean::Boolean, traits::*, Environment, Mode};

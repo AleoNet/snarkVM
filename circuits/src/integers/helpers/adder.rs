@@ -74,7 +74,6 @@ mod tests {
             let case = format!("({} ADD {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
 
             let (candidate_sum, candidate_carry) = a.adder(&b, &c);
-
             assert_eq!(
                 expected_sum,
                 candidate_sum.eject_value(),
@@ -96,7 +95,7 @@ mod tests {
             assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
             assert_eq!(num_constraints, scope.num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{}(is_satisfied)", case);
+            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
     }
 
@@ -365,7 +364,7 @@ mod tests {
         check_false_add_false_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_false_add_false_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_false_add_true_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 2);  // <- Differs
+        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 2); // <- Differs
         check_true_add_false_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_true_add_false_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_true_add_true_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
