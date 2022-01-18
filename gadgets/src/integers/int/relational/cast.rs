@@ -30,7 +30,7 @@ macro_rules! cast_int_impl {
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
-				dbg!(&bits, &bits[Target::SIZE..]);
+				dbg!(&bits, &bits[..Target::SIZE]);
 
 				let last_bit = bits[bits.len() - 1].clone();
 				if !Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
@@ -39,13 +39,13 @@ macro_rules! cast_int_impl {
 					return Err(SignedIntegerError::Overflow);
 				}
 
-				// If the target type is smaller than the larger type
+				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
-					// Since bits are le we check if the bits beyond target
-					// size are set. If so we should error out because
-					// the number is too big to fit into our target.
-					if bits[Target::SIZE..].contains(&Boolean::Constant(false)) {
-						// Here it could a signed or unsigned overflow.
+					if matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[0..Target::SIZE-1].contains(&Boolean::Constant(false)) {
+						// Positive number bound checks last bit is false.
+						Err(SignedIntegerError::Overflow)
+					} else if matches!(last_bit, Boolean::Constant(true)) && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[0..Target::SIZE-1].contains(&Boolean::Constant(true)) {
+						// Negative number bound checks last bit is true.
 						Err(SignedIntegerError::Overflow)
 					} else {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))

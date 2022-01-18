@@ -37,7 +37,7 @@ macro_rules! cast_uint_impl {
 					return Err(UnsignedIntegerError::Overflow);
 				}
 
-				// If the target type is smaller than the larger type
+				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
 					// Since bits are le we check if the bits beyond target
 					// size are set. If so we should error out because
