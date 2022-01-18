@@ -13,33 +13,3 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-pub mod amount;
-pub use amount::*;
-
-pub mod builder;
-pub use builder::*;
-
-pub mod event;
-pub use event::*;
-
-pub mod execution;
-pub use execution::*;
-
-pub mod function_inputs;
-pub use function_inputs::*;
-
-pub mod function_type;
-pub use function_type::*;
-
-pub mod noop;
-pub use noop::*;
-
-pub mod operation;
-pub use operation::*;
-
-pub mod output;
-pub use output::*;
-
-pub mod virtual_machine;
-pub use virtual_machine::*;

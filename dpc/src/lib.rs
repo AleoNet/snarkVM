@@ -46,6 +46,9 @@ pub use network::*;
 pub mod posw;
 pub use posw::*;
 
+pub mod program;
+pub use program::*;
+
 pub mod record;
 pub use record::*;
 
@@ -67,6 +70,7 @@ pub mod prelude {
         block::*,
         errors::*,
         ledger::*,
+        program::*,
         record::*,
         traits::*,
         transaction::*,
