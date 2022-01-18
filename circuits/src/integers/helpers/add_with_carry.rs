@@ -41,10 +41,11 @@ impl<E: Environment> AddWithCarry for Boolean<E> {
 
     /// Returns the sum of `self` and `other` as a sum bit and carry bit.
     fn add_with_carry(&self, other: &Self, carry: &Self) -> Self::Output {
-        let sum = (self.xor(other)).xor(carry);
+        let c0 = self.xor(other);
+        let sum = c0.xor(carry);
 
         let c1 = self.and(other);
-        let c2 = carry.and(&self.xor(other));
+        let c2 = carry.and(&c0);
         let carry = c1.or(&c2);
 
         (sum, carry)

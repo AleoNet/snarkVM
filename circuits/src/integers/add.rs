@@ -245,9 +245,9 @@ mod tests {
             let b = IC::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 45, 90);
+            check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 37, 74);
             let name = format!("AddAssign: a += b {}", i);
-            check_add_assign::<I, IC>(&name, expected, &a, &b, 1, 0, 45, 90);
+            check_add_assign::<I, IC>(&name, expected, &a, &b, 1, 0, 37, 74);
         }
     }
 
