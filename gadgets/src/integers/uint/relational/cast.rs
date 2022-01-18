@@ -29,13 +29,8 @@ macro_rules! cast_uint_impl {
                 _cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
-				dbg!(&bits);
 
 				let last_bit = bits[bits.len() - 1].clone();
-				/* let last_bit_is_true = Boolean::and(cs.ns(|| format!("last bit true")), &last_bit, &Boolean::Constant(true)).unwrap();
-				dbg!(&last_bit);
-				dbg!(&last_bit_is_true); */
-
 				if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
 					// Wonder if error type should just be an Integer Error
 					// Cause here it's technically a signed int overflow.

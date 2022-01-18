@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SignedIntegerError, integers::int::*, traits::Cast, Boolean, Integer};
+use crate::{errors::SignedIntegerError, integers::int::*, traits::Cast, Integer};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -26,13 +26,11 @@ macro_rules! cast_int_impl {
 
             fn cast<CS: ConstraintSystem<F>>(
                 &self,
-                mut cs: CS,
+                _cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
-				dbg!(&bits);
 
 				let last_bit = bits[bits.len() - 1].clone();
-				let last_bit_is_true = Boolean::and(cs.ns(|| format!("last bit true")), &last_bit, &Boolean::Constant(true)).unwrap();
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
@@ -42,20 +40,20 @@ macro_rules! cast_int_impl {
 					// if in the future we wish to cast from fields to ints.
 					// Unless we have a min and max gadget that works for fields
 					// regardless of curve.
-					if Target::SIGNED && matches!(last_bit_is_true, Boolean::Constant(false)) && (matches!(bits[Target::SIZE - 1], Boolean::Constant(true)) || dbg!(bits[Target::SIZE..].contains(&Boolean::Constant(true)))) {
+					if Target::SIGNED && matches!(last_bit.get_value(), Some(false)) && (matches!(bits[Target::SIZE - 1].get_value(), Some(true)) || bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true)))) {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
 						Err(SignedIntegerError::Overflow)
-					} else if Target::SIGNED && matches!(last_bit_is_true, Boolean::Constant(true)) && (matches!(bits[Target::SIZE - 1], Boolean::Constant(false)) || dbg!(bits[Target::SIZE..].contains(&Boolean::Constant(false)))) {
+					} else if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) && (matches!(bits[Target::SIZE - 1].get_value(), Some(false)) || bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true)))) {
 						// Negative signed to signed bounds checks.
 						// Negative number bound checks last bit is true.
 						Err(SignedIntegerError::Overflow)
-					} else if !Target::SIGNED && matches!(last_bit_is_true, Boolean::Constant(true)) {
+					} else if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
 						// Negative signed to unsigned.
 						// Wonder if error type should just be an Integer Error
 						// Cause here it's technically a unsigned int overflow.
 						Err(SignedIntegerError::Overflow)
-					} else if !Target::SIGNED && bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
+					} else if !Target::SIGNED && bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true))) {
 						// Postive signed to unsigned.
 						Err(SignedIntegerError::Overflow)
 					} else {
