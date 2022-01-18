@@ -17,30 +17,30 @@
 use crate::{boxed::Box, vec::Vec};
 pub struct ExecutionPool<'a, T> {
     #[cfg(feature = "parallel")]
-    tasks: Vec<Box<dyn 'a + FnOnce() -> T + Send>>,
+    jobs: Vec<Box<dyn 'a + FnOnce() -> T + Send>>,
     #[cfg(not(feature = "parallel"))]
-    tasks: Vec<Box<dyn 'a + FnOnce() -> T>>,
+    jobs: Vec<Box<dyn 'a + FnOnce() -> T>>,
 }
 
 impl<'a, T> ExecutionPool<'a, T> {
     pub fn new() -> Self {
-        Self { tasks: Vec::new() }
+        Self { jobs: Vec::new() }
     }
 
     pub fn with_capacity(cap: usize) -> Self {
         Self {
-            tasks: Vec::with_capacity(cap),
+            jobs: Vec::with_capacity(cap),
         }
     }
 
     #[cfg(feature = "parallel")]
-    pub fn add_task<F: 'a + FnOnce() -> T + Send>(&mut self, f: F) {
-        self.tasks.push(Box::new(f));
+    pub fn add_job<F: 'a + FnOnce() -> T + Send>(&mut self, f: F) {
+        self.jobs.push(Box::new(f));
     }
 
     #[cfg(not(feature = "parallel"))]
-    pub fn add_task<F: 'a + FnOnce() -> T>(&mut self, f: F) {
-        self.tasks.push(Box::new(f));
+    pub fn add_job<F: 'a + FnOnce() -> T>(&mut self, f: F) {
+        self.jobs.push(Box::new(f));
     }
 
     pub fn execute_all(self) -> Vec<T>
@@ -49,72 +49,17 @@ impl<'a, T> ExecutionPool<'a, T> {
     {
         #[cfg(feature = "parallel")]
         {
-            use itertools::Itertools;
-            // At most 12 threads per task
-            const THREADS_PER_TASK: usize = 12;
-            let threads_per_task = if rayon::current_num_threads() > self.tasks.len() * THREADS_PER_TASK {
-                rayon::current_num_threads() / self.tasks.len()
-            } else {
-                THREADS_PER_TASK.min(rayon::current_num_threads())
-            };
-            let task_chunk_size = rayon::current_num_threads() / threads_per_task
-                + usize::from(rayon::current_num_threads() % threads_per_task != 0);
-
-            if (threads_per_task as f64 / rayon::current_num_threads() as f64) < 1.0 {
-                use std::sync::{Arc, RwLock};
-                let mut task_results = Vec::with_capacity(self.tasks.len());
-                for _ in 0..self.tasks.len() {
-                    task_results.push(RwLock::new(None));
-                }
-                let task_results = Arc::new(task_results);
-                self.tasks
-                    .into_iter()
-                    .chunks(task_chunk_size)
-                    .into_iter()
-                    .enumerate()
-                    .for_each(|(i, task_set): (usize, _)| {
-                        let task_set = task_set.collect::<Vec<_>>();
-                        rayon::scope(|s| {
-                            let mut remaining_threads = rayon::current_num_threads();
-                            for (j, task) in task_set.into_iter().enumerate() {
-                                let num_threads = remaining_threads
-                                    .checked_sub(threads_per_task)
-                                    .map_or(remaining_threads, |_| threads_per_task);
-                                let task_results_scoped = Arc::clone(&task_results);
-                                s.spawn(move |_| {
-                                    rayon::ThreadPoolBuilder::new()
-                                        .num_threads(num_threads)
-                                        .build()
-                                        .expect("could not build threadpool")
-                                        .install(|| {
-                                            let result = task();
-                                            *task_results_scoped[i * task_chunk_size + j]
-                                                .write()
-                                                .expect("could not get mutex") = Some(result);
-                                        })
-                                });
-                                remaining_threads = remaining_threads.checked_sub(num_threads).unwrap();
-                            }
-                        });
-                    });
-                match Arc::try_unwrap(task_results) {
-                    Ok(inner) => inner
-                        .into_iter()
-                        .map(|s| {
-                            s.into_inner()
-                                .expect("could not unwrap mutex")
-                                .expect("result does not exist")
-                        })
-                        .collect(),
-                    Err(_) => panic!("could not unwrap"),
-                }
-            } else {
-                self.tasks.into_iter().map(|f| f()).collect()
-            }
+            use rayon::prelude::*;
+            const THRESHOLD: usize = 12;
+            let num_threads = THRESHOLD.min(max_available_threads());
+            self.jobs
+                .into_par_iter()
+                .map(|task| execute_with_threads(task, num_threads))
+                .collect()
         }
         #[cfg(not(feature = "parallel"))]
         {
-            self.tasks.into_iter().map(|f| f()).collect()
+            self.jobs.into_iter().map(|f| f()).collect()
         }
     }
 }
@@ -133,18 +78,21 @@ pub fn max_available_threads() -> usize {
 pub fn execute_with_max_available_threads(f: impl FnOnce() + Send) {
     #[cfg(feature = "parallel")]
     {
-        let num_threads = max_available_threads();
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(num_threads)
-            .build()
-            .unwrap();
-
-        pool.install(f);
+        execute_with_threads(f, max_available_threads())
     }
     #[cfg(not(feature = "parallel"))]
     {
         f();
     }
+}
+#[cfg(feature = "parallel")]
+#[inline(always)]
+fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_threads: usize) -> T {
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .unwrap();
+    pool.install(f)
 }
 
 /// Creates parallel iterator over refs if `parallel` feature is enabled.

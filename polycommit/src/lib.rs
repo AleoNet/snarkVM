@@ -307,7 +307,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
                 query_comms.push(*comm);
             }
 
-            task_pool.add_task(move || {
+            task_pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
                 let proof = Self::open(
                     ck,
