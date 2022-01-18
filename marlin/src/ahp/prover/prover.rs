@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::convert::TryInto;
+
 use crate::{
     ahp::{
         indexer::{Circuit, CircuitInfo, Matrix},
@@ -248,29 +250,42 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect();
 
-        let w_poly = &EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, domain_h).interpolate()
-            + &(&v_H * F::rand(rng)).into();
-        let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(domain_x).unwrap();
-        assert!(remainder.is_zero());
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
+        let w_rand = F::rand(rng);
+        job_pool.add_job(|| {
+            let w_poly = &EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, domain_h).interpolate()
+                + &(&v_H * w_rand).into();
+            let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(domain_x).unwrap();
+            assert!(remainder.is_zero());
+            w_poly
+        });
+
         end_timer!(w_poly_time);
 
-        let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
-        let z_a = state.z_a.clone().unwrap();
-        let mut z_a_poly = EvaluationsOnDomain::from_vec_and_domain(z_a, domain_h).interpolate();
         let r_a = F::rand(rng);
-        if MM::ZK {
-            z_a_poly += &(&v_H * r_a);
-        }
-        end_timer!(z_a_poly_time);
+        let z_a = state.z_a.clone().unwrap();
+        job_pool.add_job(|| {
+            let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
+            let mut z_a_poly = EvaluationsOnDomain::from_vec_and_domain(z_a, domain_h).interpolate();
+            if MM::ZK {
+                z_a_poly += &(&v_H * r_a);
+            }
+            end_timer!(z_a_poly_time);
+            z_a_poly
+        });
 
-        let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
-        let z_b = state.z_b.clone().unwrap();
-        let mut z_b_poly = EvaluationsOnDomain::from_vec_and_domain(z_b, domain_h).interpolate();
         let r_b = F::rand(rng);
-        if MM::ZK {
-            z_b_poly += &(&v_H * r_b);
-        }
-        end_timer!(z_b_poly_time);
+        let z_b = state.z_b.clone().unwrap();
+        job_pool.add_job(|| {
+            let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
+            let mut z_b_poly = EvaluationsOnDomain::from_vec_and_domain(z_b, domain_h).interpolate();
+            if MM::ZK {
+                z_b_poly += &(&v_H * r_b);
+            }
+            end_timer!(z_b_poly_time);
+            z_b_poly
+        });
+        let [w_poly, z_a_poly, z_b_poly]: [Polynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
 
         let mask_poly = if MM::ZK {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
