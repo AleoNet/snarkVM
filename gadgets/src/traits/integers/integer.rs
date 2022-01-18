@@ -25,6 +25,7 @@ pub trait Integer: Debug + Clone {
     type UnsignedIntegerType;
 
     const SIZE: usize;
+    const SIGNED: bool;
 
     fn constant(value: Self::IntegerType) -> Self;
 

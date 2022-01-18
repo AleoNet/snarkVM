@@ -29,6 +29,14 @@ macro_rules! cast_uint_impl {
                 _cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
+				dbg!(&bits);
+
+				let last_bit = bits[bits.len() - 1].clone();
+				if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
+					// Wonder if error type should just be an Integer Error
+					// Cause here it's technically a signed int overflow.
+					return Err(UnsignedIntegerError::Overflow);
+				}
 
 				// If the target type is smaller than the larger type
 				if Target::SIZE <= Self::SIZE {
@@ -36,6 +44,7 @@ macro_rules! cast_uint_impl {
 					// size are set. If so we should error out because
 					// the number is too big to fit into our target.
 					if bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
+						// Here it could a signed or unsigned overflow.
 						Err(UnsignedIntegerError::Overflow)
 					} else {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))

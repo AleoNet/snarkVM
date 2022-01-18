@@ -36,6 +36,7 @@ macro_rules! int_impl {
             type UnsignedGadget = $uname_;
             type UnsignedIntegerType = $utype_;
 
+            const SIGNED: bool = true;
             const SIZE: usize = $size;
 
             fn constant(value: $type_) -> Self {
