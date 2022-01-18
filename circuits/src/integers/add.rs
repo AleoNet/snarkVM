@@ -169,31 +169,31 @@ mod tests {
             let b = IC::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add::<I, IC>(&name, expected, &a, &b, 16, 0, 0, 0);
+            check_add::<I, IC>(&name, expected, &a, &b, 8, 0, 0, 0);
             let name = format!("AddAssign: a += b {}", i);
-            check_add_assign::<I, IC>(&name, expected, &a, &b, 16, 0, 0, 0);
+            check_add_assign::<I, IC>(&name, expected, &a, &b, 8, 0, 0, 0);
         }
     }
 
-    #[test]
-    fn test_u8_constant_plus_public() {
-        type I = u8;
-        type IC = Integer<Circuit, I, { I::BITS as usize }>;
-
-        for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut thread_rng());
-            let second: I = UniformRand::rand(&mut thread_rng());
-            let expected = first.wrapping_add(second);
-
-            let a = IC::new(Mode::Constant, first);
-            let b = IC::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 1, 0);
-            let name = format!("AddAssign: a += b {}", i);
-            check_add_assign::<I, IC>(&name, expected, &a, &b, 16, 0, 16, 0);
-        }
-    }
+    // #[test]
+    // fn test_u8_constant_plus_public() {
+    //     type I = u8;
+    //     type IC = Integer<Circuit, I, { I::BITS as usize }>;
+    //
+    //     for i in 0..ITERATIONS {
+    //         let first: I = UniformRand::rand(&mut thread_rng());
+    //         let second: I = UniformRand::rand(&mut thread_rng());
+    //         let expected = first.wrapping_add(second);
+    //
+    //         let a = IC::new(Mode::Constant, first);
+    //         let b = IC::new(Mode::Public, second);
+    //
+    //         let name = format!("Add: a + b {}", i);
+    //         check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 1, 0);
+    //         let name = format!("AddAssign: a += b {}", i);
+    //         check_add_assign::<I, IC>(&name, expected, &a, &b, 8, 0, 16, 0);
+    //     }
+    // }
 
     // #[test]
     // fn test_u8_add_constant_private() {
@@ -205,6 +205,12 @@ mod tests {
     // fn test_u8_add_public_constant() {
     //     check_add::<Circuit, u8, 8>(Mode::Public, Mode::Constant, None);
     //     check_add_assign::<Circuit, u8, 8>(Mode::Public, Mode::Constant, None);
+    // }
+    //
+    // #[test]
+    // fn test_u8_add_private_constant() {
+    //     check_add::<Circuit, u8, 8>(Mode::Private, Mode::Constant, None);
+    //     check_add_assign::<Circuit, u8, 8>(Mode::Private, Mode::Constant, None);
     // }
     //
     // #[test]
@@ -220,23 +226,31 @@ mod tests {
     // }
     //
     // #[test]
-    // fn test_u8_add_private_constant() {
-    //     check_add::<Circuit, u8, 8>(Mode::Private, Mode::Constant, None);
-    //     check_add_assign::<Circuit, u8, 8>(Mode::Private, Mode::Constant, None);
-    // }
-    //
-    // #[test]
     // fn test_u8_add_private_public() {
     //     check_add::<Circuit, u8, 8>(Mode::Private, Mode::Public, 1, 8, 53, 106);
     //     check_add_assign::<Circuit, u8, 8>(Mode::Private, Mode::Public, 1, 8, 53, 106);
     // }
-    //
-    // #[test]
-    // fn test_u8_add_private_private() {
-    //     check_add::<Circuit, u8, 8>(Mode::Private, Mode::Private, 1, 0, 61, 106);
-    //     check_add_assign::<Circuit, u8, 8>(Mode::Private, Mode::Private, 1, 0, 61, 106);
-    // }
-    //
+
+    #[test]
+    fn test_u8_private_plus_private() {
+        type I = u8;
+        type IC = Integer<Circuit, I, { I::BITS as usize }>;
+
+        for i in 0..ITERATIONS {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
+            let expected = first.wrapping_add(second);
+
+            let a = IC::new(Mode::Private, first);
+            let b = IC::new(Mode::Private, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 45, 90);
+            let name = format!("AddAssign: a += b {}", i);
+            check_add_assign::<I, IC>(&name, expected, &a, &b, 1, 0, 45, 90);
+        }
+    }
+
     // // Tests for i16
     //
     // #[test]
