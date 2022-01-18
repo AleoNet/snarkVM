@@ -104,10 +104,10 @@ impl<F: Field> DensePolynomial<F> {
         }
         assert_eq!(powers_of_point.len(), self.coeffs.len());
         let zero = F::zero();
-        let mapping = cfg_into_iter!(powers_of_point)
+        let mapping = crate::cfg_into_iter!(powers_of_point)
             .zip(&self.coeffs)
             .map(|(power, coeff)| power * coeff);
-        cfg_reduce!(mapping, || zero, |a, b| a + b)
+        crate::cfg_reduce!(mapping, || zero, |a, b| a + b)
     }
 
     /// Outputs a polynomial of degree `d` where each coefficient is sampled uniformly at random
@@ -143,7 +143,9 @@ impl<F: PrimeField> DensePolynomial<F> {
     pub fn mul_by_vanishing_poly(&self, domain: EvaluationDomain<F>) -> DensePolynomial<F> {
         let mut shifted = vec![F::zero(); domain.size()];
         shifted.extend_from_slice(&self.coeffs);
-        cfg_iter_mut!(shifted).zip(&self.coeffs).for_each(|(s, c)| *s -= c);
+        crate::cfg_iter_mut!(shifted)
+            .zip(&self.coeffs)
+            .for_each(|(s, c)| *s -= c);
         DensePolynomial::from_coefficients_vec(shifted)
     }
 

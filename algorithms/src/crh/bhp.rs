@@ -122,7 +122,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     pub fn base_lookup(&self, bases: &[Vec<G>]) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
         self.base_lookup
             .get_or_try_init::<_, ()>(|| {
-                Ok(cfg_iter!(bases)
+                Ok(crate::cfg_iter!(bases)
                     .map(|x| {
                         x.iter()
                             .map(|g| {

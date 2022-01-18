@@ -219,7 +219,9 @@ impl<N: Network> Transition<N> {
             .iter()
             .filter_map(move |event| match event {
                 Event::RecordViewKey(i, record_view_key) => match ciphertexts.get(*i as usize) {
-                    Some(ciphertext) => Record::from_record_view_key(record_view_key, *ciphertext).ok(),
+                    Some(ciphertext) => {
+                        Record::decrypt(&DecryptionKey::from_record_view_key(record_view_key), *ciphertext).ok()
+                    }
                     None => None,
                 },
                 _ => None,

@@ -70,6 +70,9 @@ macro_rules! eprintln {
     ($($arg: tt)*) => {};
 }
 
+#[macro_use]
+extern crate snarkvm_utilities;
+
 /// Implements an Algebraic Holographic Proof (AHP) for the R1CS indexed relation.
 pub mod ahp;
 pub use ahp::*;

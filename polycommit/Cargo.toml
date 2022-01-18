@@ -77,9 +77,18 @@ version = "0.9"
 [dependencies.hashbrown]
 version = "0.11.2"
 
+[dependencies.itertools]
+version = "0.10.3"
+
 [dependencies.rand_core]
 version = "0.6"
 default-features = false
+
+[dependencies.rand]
+version = "0.8"
+default-features = false
+features = [ "std_rng" ]
+
 
 [dependencies.rayon]
 version = "1"
@@ -92,13 +101,9 @@ default-features = false
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"
 
-[dev-dependencies.rand]
-version = "0.8"
-default-features = false
-
 [features]
 default = [
-  "std",
+  "parallel",
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
@@ -107,4 +112,5 @@ default = [
   "snarkvm-utilities/default"
 ]
 std = [ ]
+parallel = [ "rayon", "std", "snarkvm-algorithms/parallel", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
