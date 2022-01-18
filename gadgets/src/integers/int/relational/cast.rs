@@ -30,22 +30,29 @@ macro_rules! cast_int_impl {
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
-				dbg!(&bits, &bits[..Target::SIZE]);
+				dbg!(&bits);
 
 				let last_bit = bits[bits.len() - 1].clone();
-				if !Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
-					// Wonder if error type should just be an Integer Error
-					// Cause here it's technically a unsigned int overflow.
-					return Err(SignedIntegerError::Overflow);
-				}
+				dbg!(&last_bit);
+				dbg!(bits[Target::SIZE]);
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
-					if matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[0..Target::SIZE-1].contains(&Boolean::Constant(false)) {
+					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[..Target::SIZE-1].contains(&Boolean::Constant(false)) {
+						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
 						Err(SignedIntegerError::Overflow)
-					} else if matches!(last_bit, Boolean::Constant(true)) && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[0..Target::SIZE-1].contains(&Boolean::Constant(true)) {
+					} else if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[..Target::SIZE-1].contains(&Boolean::Constant(true)) {
+						// Negative signed to signed bounds checks.
 						// Negative number bound checks last bit is true.
+						Err(SignedIntegerError::Overflow)
+					} else if !Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
+						// Negative signed to unsigned.
+						// Wonder if error type should just be an Integer Error
+						// Cause here it's technically a unsigned int overflow.
+						Err(SignedIntegerError::Overflow)
+					} else if !Target::SIGNED && bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
+						// Postive signed to unsigned.
 						Err(SignedIntegerError::Overflow)
 					} else {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
