@@ -175,25 +175,54 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_u8_constant_plus_public() {
-    //     type I = u8;
-    //     type IC = Integer<Circuit, I, { I::BITS as usize }>;
-    //
-    //     for i in 0..ITERATIONS {
-    //         let first: I = UniformRand::rand(&mut thread_rng());
-    //         let second: I = UniformRand::rand(&mut thread_rng());
-    //         let expected = first.wrapping_add(second);
-    //
-    //         let a = IC::new(Mode::Constant, first);
-    //         let b = IC::new(Mode::Public, second);
-    //
-    //         let name = format!("Add: a + b {}", i);
-    //         check_add::<I, IC>(&name, expected, &a, &b, 1, 0, 1, 0);
-    //         let name = format!("AddAssign: a += b {}", i);
-    //         check_add_assign::<I, IC>(&name, expected, &a, &b, 8, 0, 16, 0);
-    //     }
-    // }
+    #[test]
+    fn test_u8_constant_plus_public() {
+        type I = u8;
+        type IC = Integer<Circuit, I, { I::BITS as usize }>;
+
+        for i in 0..ITERATIONS {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
+            let expected = first.wrapping_add(second);
+
+            let a = IC::new(Mode::Constant, first);
+            let b = IC::new(Mode::Public, second);
+
+            let (num_constant, num_private, num_constraints) = {
+                // const MODULUS_BITS: usize = 251;
+                // let num_nonzero_bits = scalar.to_repr().to_biguint().bits() as usize;
+                // let num_leading_zero_bits = MODULUS_BITS - num_nonzero_bits;
+                //
+                // let num_constant = 2
+                //     + (3 /* DOUBLE constant */ + 2/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                //     + (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits; // Typically around 760.
+                // let num_private = 2
+                //     + (0 /* DOUBLE constant */ + 3/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                //     + (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits
+                //     - 10; // Typically around 2700.
+                // let num_constraints = 2
+                //     + (0 /* DOUBLE constant */ + 3/* public ADD constant */ + 0/* TERNARY */) * num_leading_zero_bits
+                //     + (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * num_nonzero_bits
+                //     - 10; // Typically around 2700.
+
+                println!("{} {}", first, first.leading_zeros());
+                println!("{} {}", first, first.trailing_zeros());
+                println!("{} {}", second, second.leading_zeros());
+                println!("{} {}", second, second.trailing_zeros());
+                // println!("{} {}", second, hamming::weight(&second.to_le_bytes()));
+                let num_constant = 1;
+                let num_private = 14;
+                let num_constraints = num_private * 2;
+
+                (num_constant, num_private, num_constraints)
+            };
+
+            let name = format!("Add: a + b {}", i);
+            check_add::<I, IC>(&name, expected, &a, &b, num_constant, 0, num_private, num_constraints);
+            let name = format!("AddAssign: a += b {}", i);
+            check_add_assign::<I, IC>(&name, expected, &a, &b, num_constant, 0, num_private, num_constraints);
+        }
+    }
 
     // #[test]
     // fn test_u8_add_constant_private() {

@@ -78,6 +78,28 @@ impl<E: Environment> Boolean<E> {
     }
 
     ///
+    /// Returns `true` if the boolean is a public.
+    ///
+    pub fn is_public(&self) -> bool {
+        // Perform a software-level safety check that the boolean is well-formed.
+        match self.0.is_boolean_type() {
+            true => self.0.is_public(),
+            false => E::halt("Boolean variable is not well-formed"),
+        }
+    }
+
+    ///
+    /// Returns `true` if the boolean is a private.
+    ///
+    pub fn is_private(&self) -> bool {
+        // Perform a software-level safety check that the boolean is well-formed.
+        match self.0.is_boolean_type() {
+            true => self.0.is_private(),
+            false => E::halt("Boolean variable is not well-formed"),
+        }
+    }
+
+    ///
     /// Ejects the boolean as a constant boolean value.
     ///
     pub fn eject_value(&self) -> bool {
