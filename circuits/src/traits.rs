@@ -127,7 +127,8 @@ pub trait BaseFieldTrait:
 }
 
 /// Representation of an integer.
-pub trait IntegerTrait<I: IntegerType>: Add<Output = Self> + AddAssign + Clone + Debug
+pub trait IntegerTrait<I: IntegerType>:
+    AddAssign + Add<Output = Self> + AddChecked<Output = Self> + AddWrapped<Output = Self> + Clone + Debug
 // + Div
 // + DivAssign
 // + Double
@@ -251,6 +252,27 @@ pub trait Ternary {
 
     /// Returns `first` if `condition` is `true`, otherwise returns `second`.
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output;
+}
+
+/// Binary operator for summing two values, enforcing an overflow never occurs.
+pub trait AddChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn add_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for summing two values, bounding the sum to `MAX` if an overflow occurs.
+pub trait AddSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn add_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for summing two values, wrapping the sum if an overflow occurs.
+pub trait AddWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Unary operator for retrieving the doubled value.
