@@ -30,8 +30,6 @@ macro_rules! cast_int_impl {
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
-				dbg!(&bits);
-
 				let last_bit = bits[bits.len() - 1].clone();
 				if matches!(last_bit, Boolean::Constant(true)) {
 					return Err(SignedIntegerError::Overflow);
