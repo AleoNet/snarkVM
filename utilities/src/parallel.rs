@@ -119,6 +119,7 @@ impl<'a, T> ExecutionPool<'a, T> {
     }
 }
 
+#[cfg(feature = "parallel")]
 pub fn max_available_threads() -> usize {
     use aleo_std::Cpu;
     let rayon_threads = rayon::current_num_threads();

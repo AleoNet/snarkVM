@@ -82,7 +82,7 @@ fn load_cuda_program() -> Result<Program, GPUError> {
 
 /// Run the CUDA MSM operation for a given request.
 fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, GPUError> {
-    let mapped_bases: Vec<_> = cfg_iter!(request.bases)
+    let mapped_bases: Vec<_> = crate::cfg_iter!(request.bases)
         .map(|affine| CudaAffine {
             x: affine.x,
             y: affine.y,
