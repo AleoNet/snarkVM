@@ -48,8 +48,6 @@ macro_rules! cast_int_impl {
 				} else {
 					let mut bits = bits;
 
-
-
 					for _ in Self::SIZE..Target::SIZE {
 						bits.push(last_bit.clone());
 					}
