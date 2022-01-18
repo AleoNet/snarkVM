@@ -87,19 +87,6 @@ impl<'a, T> ExecutionPool<'a, T> {
             } else {
                 self.tasks.into_iter().map(|f| f()).collect()
             }
-            // // At most 12 threads per task
-            // const THREADS_PER_TASK: usize = 10;
-            // let threads_per_task = if rayon::current_num_threads() > self.tasks.len() * THREADS_PER_TASK {
-            //     rayon::current_num_threads() / self.tasks.len()
-            // } else {
-            //     THREADS_PER_TASK.min(rayon::current_num_threads())
-            // };
-            // let task_chunk_size = rayon::current_num_threads() / threads_per_task
-            //     + usize::from(rayon::current_num_threads() % threads_per_task != 0);
-
-            // if (threads_per_task as f64 / rayon::current_num_threads() as f64) < 1.0 {
-            // } else {
-            // }
         }
         #[cfg(not(feature = "parallel"))]
         {
