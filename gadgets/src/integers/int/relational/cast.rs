@@ -40,11 +40,11 @@ macro_rules! cast_int_impl {
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
-					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false)) && (matches!(bits[Target::SIZE - 1], Boolean::Constant(true)) || bits[Target::SIZE..].contains(&Boolean::Constant(true))) {
+					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false)) && (matches!(bits[Target::SIZE - 1], Boolean::Constant(true)) || dbg!(bits[Target::SIZE..].contains(&Boolean::Constant(true)))) {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
 						Err(SignedIntegerError::Overflow)
-					} else if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) && matches!(bits[Target::SIZE - 1], Boolean::Constant(false)) {
+					} else if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) && (matches!(bits[Target::SIZE - 1], Boolean::Constant(false)) || dbg!(bits[Target::SIZE..].contains(&Boolean::Constant(false)))) {
 						// Negative signed to signed bounds checks.
 						// Negative number bound checks last bit is true.
 						Err(SignedIntegerError::Overflow)
