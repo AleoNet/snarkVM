@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::helpers::AddWithCarry;
+use crate::helpers::Adder;
 
 use itertools::Itertools;
 
@@ -71,7 +71,7 @@ impl<E: Environment, I: IntegerType, const BITS: usize> AddAssign<&Integer<E, I,
 
             // Perform a ripple-carry adder on the bits.
             for (a, b) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(BITS) {
-                let (sum, next) = a.add_with_carry(b, &carry);
+                let (sum, next) = a.adder(b, &carry);
                 carry = next;
                 bits_le.push(sum);
             }

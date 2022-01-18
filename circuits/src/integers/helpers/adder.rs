@@ -29,18 +29,20 @@ use crate::{And, Boolean, Environment, Or, Xor};
 /// carry = a AND b OR carry AND (a XOR b)
 /// return (sum, carry)
 ///
-pub trait AddWithCarry {
-    type Output;
+pub trait Adder {
+    type Sum;
+    type Carry;
 
     /// Returns the sum of `self` and `other` as a sum bit and carry bit.
-    fn add_with_carry(&self, other: &Self, carry: &Self) -> Self::Output;
+    fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry);
 }
 
-impl<E: Environment> AddWithCarry for Boolean<E> {
-    type Output = (Boolean<E>, Boolean<E>);
+impl<E: Environment> Adder for Boolean<E> {
+    type Sum = Boolean<E>;
+    type Carry = Boolean<E>;
 
     /// Returns the sum of `self` and `other` as a sum bit and carry bit.
-    fn add_with_carry(&self, other: &Self, carry: &Self) -> Self::Output {
+    fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry) {
         let c0 = self.xor(other);
         let sum = c0.xor(carry);
 
