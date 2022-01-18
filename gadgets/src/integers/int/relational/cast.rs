@@ -40,13 +40,7 @@ macro_rules! cast_int_impl {
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
-					if bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
-						// Since bits are le we check if the bits beyond target
-						// size are set. If so we should error out because
-						// the number is too big to fit into our target.
-						// Regardless of target type.
-						Err(SignedIntegerError::Overflow)
-					} else if Target::SIGNED && matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE - 1], Boolean::Constant(true)) {
+					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE - 1], Boolean::Constant(true)) {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
 						Err(SignedIntegerError::Overflow)
@@ -58,6 +52,9 @@ macro_rules! cast_int_impl {
 						// Negative signed to unsigned.
 						// Wonder if error type should just be an Integer Error
 						// Cause here it's technically a unsigned int overflow.
+						Err(SignedIntegerError::Overflow)
+					} else if !Target::SIGNED && bits[Target::SIZE..].contains(&Boolean::Constant(true)) {
+						// Postive signed to unsigned.
 						Err(SignedIntegerError::Overflow)
 					} else {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
