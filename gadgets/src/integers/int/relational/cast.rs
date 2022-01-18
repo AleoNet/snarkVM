@@ -30,6 +30,13 @@ macro_rules! cast_int_impl {
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
+				dbg!(&bits);
+
+				let last_bit = bits[bits.len() - 1].clone();
+				if matches!(last_bit, Boolean::Constant(true)) {
+					return Err(SignedIntegerError::Overflow);
+				}
+
 				// If the target type is smaller than the larger type
 				if Target::SIZE <= Self::SIZE {
 					// Since bits are le we check if the bits beyond target
@@ -43,7 +50,8 @@ macro_rules! cast_int_impl {
 				} else {
 					let mut bits = bits;
 
-					let last_bit = bits[bits.len() - 1].clone();
+
+
 					for _ in Self::SIZE..Target::SIZE {
 						bits.push(last_bit.clone());
 					}
