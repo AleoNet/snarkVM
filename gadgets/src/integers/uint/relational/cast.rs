@@ -29,11 +29,12 @@ macro_rules! cast_uint_impl {
                 mut cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
+				dbg!(&bits);
 
 				let last_bit = bits[bits.len() - 1].clone();
-				let mut last_bit_is_true = Boolean::Constant(true);
-
-				last_bit_is_true = Boolean::and(cs.ns(|| format!("last bit true")), &last_bit, &last_bit_is_true).unwrap();
+				let last_bit_is_true = Boolean::and(cs.ns(|| format!("last bit true")), &last_bit, &Boolean::Constant(true)).unwrap();
+				dbg!(&last_bit);
+				dbg!(&last_bit_is_true);
 
 				if Target::SIGNED && matches!(last_bit_is_true, Boolean::Constant(true)) {
 					// Wonder if error type should just be an Integer Error
