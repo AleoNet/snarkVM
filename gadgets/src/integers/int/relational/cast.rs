@@ -34,15 +34,17 @@ macro_rules! cast_int_impl {
 
 				let last_bit = bits[bits.len() - 1].clone();
 				dbg!(&last_bit);
-				dbg!(bits[Target::SIZE]);
+				dbg!(Target::SIGNED);
+				dbg!(Target::SIZE);
+				dbg!(bits[Target::SIZE - 1]);
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
-					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[..Target::SIZE-1].contains(&Boolean::Constant(false)) {
+					if Target::SIGNED && matches!(last_bit, Boolean::Constant(false))  && matches!(bits[Target::SIZE - 1], Boolean::Constant(false)) && bits[..Target::SIZE-1].contains(&Boolean::Constant(false)) {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
 						Err(SignedIntegerError::Overflow)
-					} else if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) && matches!(bits[Target::SIZE], Boolean::Constant(false)) && bits[..Target::SIZE-1].contains(&Boolean::Constant(true)) {
+					} else if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) && matches!(bits[Target::SIZE - 1], Boolean::Constant(false)) && bits[..Target::SIZE-1].contains(&Boolean::Constant(true)) {
 						// Negative signed to signed bounds checks.
 						// Negative number bound checks last bit is true.
 						Err(SignedIntegerError::Overflow)
