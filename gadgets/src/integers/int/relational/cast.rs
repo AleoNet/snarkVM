@@ -31,6 +31,12 @@ macro_rules! cast_int_impl {
                 let bits = self.to_bits_le();
 
 				let last_bit = bits[bits.len() - 1].clone();
+				if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
+					// Negative signed to unsigned.
+					// Wonder if error type should just be an Integer Error
+					// Cause here it's technically a unsigned int overflow.
+					return Err(SignedIntegerError::Overflow);
+				}
 
 				// If the target type is smaller than the current type
 				if Target::SIZE <= Self::SIZE {
@@ -47,11 +53,6 @@ macro_rules! cast_int_impl {
 					} else if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) && (matches!(bits[Target::SIZE - 1].get_value(), Some(false)) || bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true)))) {
 						// Negative signed to signed bounds checks.
 						// Negative number bound checks last bit is true.
-						Err(SignedIntegerError::Overflow)
-					} else if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
-						// Negative signed to unsigned.
-						// Wonder if error type should just be an Integer Error
-						// Cause here it's technically a unsigned int overflow.
 						Err(SignedIntegerError::Overflow)
 					} else if !Target::SIGNED && bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true))) {
 						// Postive signed to unsigned.
