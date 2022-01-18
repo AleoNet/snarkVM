@@ -26,8 +26,7 @@ extern crate snarkvm_profiler;
 #[macro_use]
 extern crate thiserror;
 
-#[macro_use]
-pub mod macros;
+pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce};
 
 #[cfg(feature = "commitment")]
 pub mod commitment;

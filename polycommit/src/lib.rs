@@ -33,7 +33,6 @@ use snarkvm_utilities::{
     error as error_fn,
     errors::SerializationError,
     serialize::*,
-    Box,
     FromBytes,
     ToBytes,
     ToMinimalBits,
@@ -65,8 +64,6 @@ use std::{
     sync::Arc,
     vec::Vec,
 };
-
-use snarkvm_algorithms::execute_in_parallel;
 
 /// Data structures used by a polynomial commitment scheme.
 pub mod data_structures;
@@ -294,7 +291,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             labels.1.insert(label);
         }
 
-        let mut proofs: Vec<Box<dyn FnOnce() -> Result<_, _> + Send>> = Vec::with_capacity(query_to_labels_map.len());
+        let mut task_pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::with_capacity(query_to_labels_map.len());
         for (_point_name, (&query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
             let mut query_rands = Vec::with_capacity(labels.len());
@@ -310,9 +307,9 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
                 query_comms.push(*comm);
             }
 
-            let proof_time = start_timer!(|| "Creating proof");
-            let proof = Box::new(move || {
-                Self::open(
+            task_pool.add_task(move || {
+                let proof_time = start_timer!(|| "Creating proof");
+                let proof = Self::open(
                     ck,
                     query_polys,
                     query_comms,
@@ -320,15 +317,13 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
                     opening_challenge,
                     query_rands,
                     None,
-                )
-            } as _);
-
-            end_timer!(proof_time);
-
-            proofs.push(proof);
+                );
+                end_timer!(proof_time);
+                proof
+            });
         }
         end_timer!(open_time);
-        let proofs: Vec<_> = execute_in_parallel!(proofs);
+        let proofs: Vec<_> = task_pool.execute_all();
         let proofs = proofs.into_iter().collect::<Result<Vec<_>, _>>()?;
 
         Ok(proofs.into())

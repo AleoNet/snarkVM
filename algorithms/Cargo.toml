@@ -76,8 +76,6 @@ harness = false
 name = "groth16"
 path = "examples/snark/groth16.rs"
 
-[dependencies.aleo-std]
-version = "0.1.8"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -248,6 +246,6 @@ msm = [ ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
-parallel = [ "rayon", "num_cpus" ]
+parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]

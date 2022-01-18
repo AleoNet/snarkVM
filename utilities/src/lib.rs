@@ -45,6 +45,9 @@ pub use std::{boxed::Box, vec::Vec};
 #[macro_use]
 extern crate thiserror;
 
+#[macro_use]
+pub mod parallel;
+pub use parallel::*;
 pub mod biginteger;
 pub use biginteger::*;
 

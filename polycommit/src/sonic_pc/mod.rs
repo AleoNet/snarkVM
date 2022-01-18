@@ -37,7 +37,7 @@ use crate::{
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::{rand::UniformRand, Box};
+use snarkvm_utilities::rand::UniformRand;
 
 use core::{
     convert::TryInto,
@@ -247,9 +247,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut randomness: Vec<Self::Randomness> = Vec::new();
 
         #[cfg(feature = "parallel")]
-        let mut commitment_tasks: Vec<Box<dyn FnOnce() -> Result<_, _> + Send>> = Vec::new();
-        #[cfg(not(feature = "parallel"))]
-        let mut commitment_tasks: Vec<Box<dyn FnOnce() -> Result<_, _>>> = Vec::new();
+        let mut task_pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
 
         let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
         for labeled_polynomial in polynomials {
@@ -272,7 +270,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let degree_bound = labeled_polynomial.degree_bound();
             let hiding_bound = labeled_polynomial.hiding_bound();
             let label = labeled_polynomial.label().clone();
-            let func = move || {
+            task_pool.add_task(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
 
                 let commit_time = start_timer!(|| format!(
@@ -298,10 +296,9 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 )?;
                 end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
-            };
-            commitment_tasks.push(Box::new(func) as _);
+            });
         }
-        let results: Vec<Result<_, _>> = crate::execute_in_parallel!(commitment_tasks);
+        let results: Vec<Result<_, _>> = task_pool.execute_all();
         for result in results {
             let (comm, rand) = result?;
             labeled_comms.push(comm);

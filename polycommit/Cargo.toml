@@ -112,5 +112,5 @@ default = [
   "snarkvm-utilities/default"
 ]
 std = [ ]
-parallel = [ "rayon", "std", "snarkvm-algorithms/parallel" ]
+parallel = [ "rayon", "std", "snarkvm-algorithms/parallel", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]

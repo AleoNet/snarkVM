@@ -189,10 +189,7 @@ where
 
     end_timer!(a_acc_time);
 
-    #[cfg(feature = "parallel")]
-    let mut commitment_tasks: Vec<Box<dyn FnOnce() -> ResultWrapper<E> + Send>> = Vec::with_capacity(4);
-    #[cfg(not(feature = "parallel"))]
-    let mut commitment_tasks: Vec<Box<dyn FnOnce() -> ResultWrapper<E>>> = Vec::with_capacity(4);
+    let mut task_list = snarkvm_utilities::ExecutionPool::<ResultWrapper<E>>::with_capacity(4);
     // Compute B in G1 if needed
 
     let s_g1 = params.delta_g1.mul(s).into();
@@ -200,12 +197,10 @@ where
     if r != E::Fr::zero() {
         let b_g1_acc_time = start_timer!(|| "Compute B in G1");
 
-        let g1_b = Box::new(|| {
+        task_list.add_task(|| {
             let res = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
             ResultWrapper::from_g1(res)
-        } as _);
-        commitment_tasks.push(g1_b);
-
+        });
         end_timer!(b_g1_acc_time);
     }
 
@@ -213,11 +208,10 @@ where
     let b_g2_acc_time = start_timer!(|| "Compute B in G2");
     let b_query = &params.b_g2_query;
     let s_g2 = params.vk.delta_g2.mul(s);
-    let g2_b = Box::new(|| {
+    task_list.add_task(|| {
         let res = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
         ResultWrapper::from_g2(res)
-    } as _);
-    commitment_tasks.push(g2_b);
+    });
 
     end_timer!(b_g2_acc_time);
 
@@ -225,19 +219,17 @@ where
     let c_acc_time = start_timer!(|| "Compute C");
 
     let h_query = &params.h_query;
-    let h_acc = Box::new(|| {
+    task_list.add_task(|| {
         let res = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
         ResultWrapper::from_g1(res)
-    } as _);
-    commitment_tasks.push(h_acc);
-
+    });
     let l_aux_source = &params.l_query;
-    let l_aux_acc = Box::new(|| {
+
+    task_list.add_task(|| {
         let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
         ResultWrapper::from_g1(res)
-    } as _);
-    commitment_tasks.push(l_aux_acc);
-    let mut results: Vec<_> = crate::execute_in_parallel!(commitment_tasks);
+    });
+    let mut results: Vec<_> = task_list.execute_all();
     let l_aux_acc = results.pop().unwrap().into_g1();
     let h_acc = results.pop().unwrap().into_g1();
     let g2_b = results.pop().unwrap().into_g2();
