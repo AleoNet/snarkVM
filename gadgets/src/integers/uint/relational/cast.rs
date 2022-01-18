@@ -29,7 +29,6 @@ macro_rules! cast_uint_impl {
                 _cs: CS,
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
-				dbg!(&bits);
 
 				let last_bit = bits[bits.len() - 1].clone();
 				if Target::SIGNED && matches!(last_bit, Boolean::Constant(true)) {
