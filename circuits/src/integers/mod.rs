@@ -124,82 +124,72 @@ mod tests {
     }
 
     fn check_min_max<I: IntegerType, IC: IntegerTrait<I>>(mode: Mode) {
-        assert_eq!(IC::new(mode, I::min_value()).eject_value(), I::min_value());
-        assert_eq!(IC::new(mode, I::max_value()).eject_value(), I::max_value());
+        assert_eq!(I::MIN, IC::new(mode, I::MIN).eject_value());
+        assert_eq!(I::MAX, IC::new(mode, I::MAX).eject_value());
     }
 
-    fn run_test<I: IntegerType, IC: IntegerTrait<I>>()
+    fn run_test<I: IntegerType>()
     where
         Standard: Distribution<I>,
     {
         for _ in 0..ITERATIONS {
-            check_new::<I, IC>(Mode::Constant);
-            check_new::<I, IC>(Mode::Public);
-            check_new::<I, IC>(Mode::Private);
+            check_new::<I, Integer<Circuit, I>>(Mode::Constant);
+            check_new::<I, Integer<Circuit, I>>(Mode::Public);
+            check_new::<I, Integer<Circuit, I>>(Mode::Private);
         }
 
-        check_min_max::<I, IC>(Mode::Constant);
-        check_min_max::<I, IC>(Mode::Public);
-        check_min_max::<I, IC>(Mode::Private);
+        check_min_max::<I, Integer<Circuit, I>>(Mode::Constant);
+        check_min_max::<I, Integer<Circuit, I>>(Mode::Public);
+        check_min_max::<I, Integer<Circuit, I>>(Mode::Private);
     }
 
     #[test]
     fn test_i8() {
-        type I = i8;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<i8>();
     }
 
     #[test]
     fn test_i16() {
-        type I = i16;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<i16>();
     }
 
     #[test]
     fn test_i32() {
-        type I = i32;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<i32>();
     }
 
     #[test]
     fn test_i64() {
-        type I = i64;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<i64>();
     }
 
     #[test]
     fn test_i128() {
-        type I = i128;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<i128>();
     }
 
     #[test]
     fn test_u8() {
-        type I = u8;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<u8>();
     }
 
     #[test]
     fn test_u16() {
-        type I = u16;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<u16>();
     }
 
     #[test]
     fn test_u32() {
-        type I = u32;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<u32>();
     }
 
     #[test]
     fn test_u64() {
-        type I = u64;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<u64>();
     }
 
     #[test]
     fn test_u128() {
-        type I = u128;
-        run_test::<I, Integer<Circuit, I>>();
+        run_test::<u128>();
     }
 }
