@@ -2020,6 +2020,7 @@ dependencies = [
  "anyhow",
  "derivative",
  "rand",
+ "rayon",
  "serde",
  "snarkvm-utilities",
  "thiserror",

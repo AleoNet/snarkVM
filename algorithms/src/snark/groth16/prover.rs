@@ -229,15 +229,15 @@ where
         let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
         ResultWrapper::from_g1(res)
     });
-    let mut results: Vec<_> = pool.execute_all();
-    let l_aux_acc = results.pop().unwrap().into_g1();
-    let h_acc = results.pop().unwrap().into_g1();
-    let g2_b = results.pop().unwrap().into_g2();
+    let results: Vec<_> = pool.execute_all();
     let g1_b = if r != E::Fr::zero() {
-        results.pop().unwrap().into_g1()
+        results[0].into_g1()
     } else {
         E::G1Projective::zero()
     };
+    let g2_b = results[1].into_g2();
+    let h_acc = results[2].into_g1();
+    let l_aux_acc = results[3].into_g1();
 
     let s_g_a = g_a.mul(s);
     let r_g1_b = g1_b.mul(r);
@@ -277,6 +277,8 @@ fn calculate_coeff<G: AffineCurve>(
     res
 }
 
+#[derive(derivative::Derivative)]
+#[derivative(Copy(bound = ""), Clone(bound = ""))]
 enum ResultWrapper<E: PairingEngine> {
     G1(E::G1Projective),
     G2(E::G2Projective),

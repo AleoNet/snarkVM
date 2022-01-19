@@ -141,7 +141,6 @@ impl<F: Field> DensePolynomial<F> {
 
 impl<F: PrimeField> DensePolynomial<F> {
     /// Multiply `self` by the vanishing polynomial for the domain `domain`.
-    /// Returns the quotient and remainder of the division.
     pub fn mul_by_vanishing_poly(&self, domain: EvaluationDomain<F>) -> DensePolynomial<F> {
         let mut shifted = vec![F::zero(); domain.size()];
         shifted.extend_from_slice(&self.coeffs);
@@ -331,6 +330,41 @@ impl<'a, 'b, F: Field> SubAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
                 self.coeffs.pop();
             }
         }
+    }
+}
+
+impl<'a, F: Field> AddAssign<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
+    #[inline]
+    fn add_assign(&mut self, other: &'a super::SparsePolynomial<F>) {
+        if self.degree() < other.degree() {
+            self.coeffs.resize(other.degree() + 1, F::zero());
+        }
+        for (i, b) in &other.coeffs {
+            self.coeffs[*i] += b;
+        }
+        // If the leading coefficient ends up being zero, pop it off.
+        while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
+            self.coeffs.pop();
+        }
+    }
+}
+
+impl<'a, F: Field> Sub<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
+    type Output = Self;
+
+    #[inline]
+    fn sub(mut self, other: &'a super::SparsePolynomial<F>) -> Self::Output {
+        if self.degree() < other.degree() {
+            self.coeffs.resize(other.degree() + 1, F::zero());
+        }
+        for (i, b) in &other.coeffs {
+            self.coeffs[*i] -= b;
+        }
+        // If the leading coefficient ends up being zero, pop it off.
+        while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
+            self.coeffs.pop();
+        }
+        self
     }
 }
 
