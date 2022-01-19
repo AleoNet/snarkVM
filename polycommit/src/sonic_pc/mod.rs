@@ -246,7 +246,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut labeled_comms: Vec<LabeledCommitment<Self::Commitment>> = Vec::new();
         let mut randomness: Vec<Self::Randomness> = Vec::new();
 
-        let mut task_pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
+        let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
 
         let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
         for labeled_polynomial in polynomials {
@@ -269,7 +269,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let degree_bound = labeled_polynomial.degree_bound();
             let hiding_bound = labeled_polynomial.hiding_bound();
             let label = labeled_polynomial.label().clone();
-            task_pool.add_job(move || {
+            pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
 
                 let commit_time = start_timer!(|| format!(
@@ -297,7 +297,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
         }
-        let results: Vec<Result<_, _>> = task_pool.execute_all();
+        let results: Vec<Result<_, _>> = pool.execute_all();
         for result in results {
             let (comm, rand) = result?;
             labeled_comms.push(comm);

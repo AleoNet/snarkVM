@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{boxed::Box, vec::Vec};
+
 pub struct ExecutionPool<'a, T> {
     #[cfg(feature = "parallel")]
     jobs: Vec<Box<dyn 'a + FnOnce() -> T + Send>>,
@@ -50,17 +51,21 @@ impl<'a, T> ExecutionPool<'a, T> {
         #[cfg(feature = "parallel")]
         {
             use rayon::prelude::*;
-            const THRESHOLD: usize = 12;
-            let num_threads = THRESHOLD.max(max_available_threads() / self.jobs.len().max(1));
             self.jobs
                 .into_par_iter()
-                .map(|job| execute_with_threads(job, num_threads))
+                .map(|job| execute_with_threads(job, max_available_threads()))
                 .collect()
         }
         #[cfg(not(feature = "parallel"))]
         {
             self.jobs.into_iter().map(|f| f()).collect()
         }
+    }
+}
+
+impl<'a, T> Default for ExecutionPool<'a, T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
