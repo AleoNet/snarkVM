@@ -23,14 +23,5 @@ pub(crate) use inner_private_variables::*;
 pub(crate) mod inner_public_variables;
 pub(crate) use inner_public_variables::*;
 
-pub mod outer_circuit;
-pub use outer_circuit::*;
-
-pub(crate) mod outer_private_variables;
-pub(crate) use outer_private_variables::*;
-
-pub(crate) mod outer_public_variables;
-pub(crate) use outer_public_variables::*;
-
 #[cfg(test)]
 mod tests;

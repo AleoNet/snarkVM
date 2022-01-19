@@ -14,15 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    Block,
-    Ciphertext,
-    InnerPublicVariables,
-    OuterPublicVariables,
-    PoSWScheme,
-    Program,
-    ProgramPublicVariables,
-};
+use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, Program, ProgramPublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
@@ -31,7 +23,6 @@ use snarkvm_gadgets::{
     FpGadget,
     GroupGadget,
     MaskedCRHGadget,
-    SNARKVerifierGadget,
 };
 use snarkvm_utilities::{
     fmt::{Debug, Display},
@@ -125,7 +116,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     const HEADER_PROOF_PREFIX: u32;
     const INNER_PROOF_PREFIX: u32;
-    const OUTER_PROOF_PREFIX: u32;
     const PROGRAM_PROOF_PREFIX: u32;
     const RECORD_CIPHERTEXT_PREFIX: u32;
     const RECORD_VIEW_KEY_PREFIX: u32;
@@ -135,7 +125,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const HEADER_SIZE_IN_BYTES: usize;
     const HEADER_PROOF_SIZE_IN_BYTES: usize;
     const INNER_PROOF_SIZE_IN_BYTES: usize;
-    const OUTER_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
     const RECORD_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -178,18 +167,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = InnerPublicVariables<Self>>;
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
     type InnerProof: Bech32Object<<Self::InnerSNARK as SNARK>::Proof>;
-
-    /// SNARK for proof-verification checks.
-    type OuterSNARK: SNARK<ScalarField = Self::OuterScalarField, BaseField = Self::OuterBaseField, VerifierInput = OuterPublicVariables<Self>>;
-    type OuterProof: Bech32Object<<Self::OuterSNARK as SNARK>::Proof>;
 
     /// SNARK for Aleo program functions.
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
-    type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
     type ProgramProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
-    type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + ToBytes + FromBytes + ToMinimalBits + Send + Sync;
+    type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + PartialEq + Eq + ToBytes + FromBytes + Serialize + DeserializeOwned + ToMinimalBits + Send + Sync;
     type ProgramProof: Bech32Object<<Self::ProgramSNARK as SNARK>::Proof>;
 
     /// SNARK for PoSW.
@@ -317,9 +300,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn noop_function_id() -> &'static Self::FunctionID;
     fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
     fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
-
-    fn outer_proving_key() -> &'static <Self::OuterSNARK as SNARK>::ProvingKey;
-    fn outer_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
 
     fn posw_proving_key() -> &'static <Self::PoSWSNARK as SNARK>::ProvingKey;
     fn posw_verifying_key() -> &'static <Self::PoSWSNARK as SNARK>::VerifyingKey;

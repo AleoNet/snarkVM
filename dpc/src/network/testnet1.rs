@@ -23,7 +23,6 @@ use crate::{
     Ciphertext,
     InnerPublicVariables,
     Network,
-    OuterPublicVariables,
     PoSWScheme,
     Program,
     ProgramPublicVariables,
@@ -54,9 +53,8 @@ use snarkvm_gadgets::{
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
-        snark::Groth16VerifierGadget,
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
 use snarkvm_marlin::{
     constraints::snark::MarlinSNARK,
@@ -105,7 +103,6 @@ impl Network for Testnet1 {
 
     const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
     const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
-    const OUTER_PROOF_PREFIX: u32 = hrp4!("ozkp");
     const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
     const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
@@ -115,7 +112,6 @@ impl Network for Testnet1 {
     const HEADER_SIZE_IN_BYTES: usize = 903;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
-    const OUTER_PROOF_SIZE_IN_BYTES: usize = 289;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 193;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
@@ -150,14 +146,9 @@ impl Network for Testnet1 {
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1>>;
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1>>;
-    type OuterProof = AleoObject<<Self::OuterSNARK as SNARK>::Proof, { Self::OUTER_PROOF_PREFIX }, { Self::OUTER_PROOF_SIZE_IN_BYTES }>;
-
     type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
-    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
@@ -256,9 +247,6 @@ impl Network for Testnet1 {
     dpc_snark_setup!{Testnet1, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner proving key"}
     dpc_snark_setup!{Testnet1, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner verifying key"}
 
-    dpc_snark_setup!{Testnet1, outer_proving_key, OuterSNARK, ProvingKey, OuterProvingKeyBytes, "outer proving key"}
-    dpc_snark_setup!{Testnet1, outer_verifying_key, OuterSNARK, VerifyingKey, OuterVerifyingKeyBytes, "outer verifying key"}
-
     dpc_snark_setup!{Testnet1, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
     dpc_snark_setup!{Testnet1, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
 
@@ -337,16 +325,6 @@ mod tests {
                 .expect("Failed to hash inner circuit ID")
                 .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
-        );
-    }
-
-    #[test]
-    fn test_outer_circuit_sanity_check() {
-        // Verify the outer circuit verifying key matches the one derived from the outer circuit proving key.
-        assert_eq!(
-            Testnet1::outer_verifying_key(),
-            &Testnet1::outer_proving_key().vk,
-            "The outer circuit verifying key does not correspond to the outer circuit proving key"
         );
     }
 

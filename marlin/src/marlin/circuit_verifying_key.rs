@@ -14,29 +14,38 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::marker::PhantomData;
-
+use super::MarlinMode;
 use crate::{
     ahp::indexer::*,
     marlin::{CircuitProvingKey, PreparedCircuitVerifyingKey},
+    Read,
     Vec,
+    Write,
 };
-use snarkvm_algorithms::Prepare;
+use snarkvm_algorithms::{fft::EvaluationDomain, Prepare};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
-
-use crate::{Read, Write};
-use derivative::Derivative;
-use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_r1cs::SynthesisError;
+use snarkvm_utilities::{
+    error,
+    errors::SerializationError,
+    serialize::*,
+    string::String,
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
+    ToMinimalBits,
+};
 
-use super::MarlinMode;
+use anyhow::Result;
+use core::{fmt, marker::PhantomData, str::FromStr};
+use derivative::Derivative;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Stores information about the size of the circuit, as well as its defined field.
     pub circuit_info: CircuitInfo<F>,
@@ -48,11 +57,51 @@ pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialComm
     pub mode: PhantomData<MM>,
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> ToBytes
-    for CircuitVerifyingKey<F, CF, PC, MM>
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode>
+    Prepare<PreparedCircuitVerifyingKey<F, CF, PC, MM>> for CircuitVerifyingKey<F, CF, PC, MM>
 {
-    fn write_le<W: Write>(&self, mut w: W) -> crate::io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
+    /// Prepare the circuit verifying key.
+    fn prepare(&self) -> PreparedCircuitVerifyingKey<F, CF, PC, MM> {
+        let mut prepared_index_comms = Vec::<PC::PreparedCommitment>::new();
+        for (_, comm) in self.circuit_commitments.iter().enumerate() {
+            prepared_index_comms.push(comm.prepare());
+        }
+
+        let prepared_verifier_key = self.verifier_key.prepare();
+
+        let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let domain_k = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+
+        let domain_h_size = domain_h.size();
+        let domain_k_size = domain_k.size();
+
+        PreparedCircuitVerifyingKey::<F, CF, PC, MM> {
+            domain_h_size: domain_h_size as u64,
+            domain_k_size: domain_k_size as u64,
+            prepared_index_comms,
+            prepared_verifier_key,
+            orig_vk: (*self).clone(),
+        }
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode>
+    From<CircuitProvingKey<F, CF, PC, MM>> for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    fn from(other: CircuitProvingKey<F, CF, PC, MM>) -> Self {
+        other.circuit_verifying_key
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode>
+    From<PreparedCircuitVerifyingKey<F, CF, PC, MM>> for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    fn from(other: PreparedCircuitVerifyingKey<F, CF, PC, MM>) -> Self {
+        other.orig_vk
     }
 }
 
@@ -98,6 +147,14 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
     }
 }
 
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> ToBytes
+    for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    fn write_le<W: Write>(&self, mut w: W) -> crate::io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
+    }
+}
+
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode>
     CircuitVerifyingKey<F, CF, PC, MM>
 {
@@ -107,64 +164,8 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode>
-    From<CircuitProvingKey<F, CF, PC, MM>> for CircuitVerifyingKey<F, CF, PC, MM>
-{
-    fn from(other: CircuitProvingKey<F, CF, PC, MM>) -> Self {
-        other.circuit_verifying_key
-    }
-}
-
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode>
-    From<PreparedCircuitVerifyingKey<F, CF, PC, MM>> for CircuitVerifyingKey<F, CF, PC, MM>
-{
-    fn from(other: PreparedCircuitVerifyingKey<F, CF, PC, MM>) -> Self {
-        other.orig_vk
-    }
-}
-
-impl<F, CF, PC, MM> Prepare<PreparedCircuitVerifyingKey<F, CF, PC, MM>> for CircuitVerifyingKey<F, CF, PC, MM>
-where
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, CF>,
-    MM: MarlinMode,
-{
-    /// Prepare the circuit verifying key.
-    fn prepare(&self) -> PreparedCircuitVerifyingKey<F, CF, PC, MM> {
-        let mut prepared_index_comms = Vec::<PC::PreparedCommitment>::new();
-        for (_, comm) in self.circuit_commitments.iter().enumerate() {
-            prepared_index_comms.push(comm.prepare());
-        }
-
-        let prepared_verifier_key = self.verifier_key.prepare();
-
-        let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let domain_k = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-
-        let domain_h_size = domain_h.size();
-        let domain_k_size = domain_k.size();
-
-        PreparedCircuitVerifyingKey::<F, CF, PC, MM> {
-            domain_h_size: domain_h_size as u64,
-            domain_k_size: domain_k_size as u64,
-            prepared_index_comms,
-            prepared_verifier_key,
-            orig_vk: (*self).clone(),
-        }
-    }
-}
-
-impl<F, CF, PC, MM> ToConstraintField<CF> for CircuitVerifyingKey<F, CF, PC, MM>
-where
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, CF>,
-    MM: MarlinMode,
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> ToConstraintField<CF>
+    for CircuitVerifyingKey<F, CF, PC, MM>
 {
     fn to_field_elements(&self) -> Result<Vec<CF>, ConstraintFieldError> {
         let domain_h = EvaluationDomain::<CF>::new(self.circuit_info.num_constraints)
@@ -184,5 +185,53 @@ where
         // Intentionally ignore the appending of the PC verifier key.
 
         Ok(res)
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> FromStr
+    for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    type Err = anyhow::Error;
+
+    #[inline]
+    fn from_str(vk_hex: &str) -> Result<Self, Self::Err> {
+        Self::from_bytes_le(&hex::decode(vk_hex)?)
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> fmt::Display
+    for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let vk_hex = hex::encode(self.to_bytes_le().expect("Failed to convert verifying key to bytes"));
+        write!(f, "{}", vk_hex)
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> Serialize
+    for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    #[inline]
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        }
+    }
+}
+
+impl<'de, F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> Deserialize<'de>
+    for CircuitVerifyingKey<F, CF, PC, MM>
+{
+    #[inline]
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let s: String = Deserialize::deserialize(deserializer)?;
+                FromStr::from_str(&s).map_err(de::Error::custom)
+            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "verifying key"),
+        }
     }
 }

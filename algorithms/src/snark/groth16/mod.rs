@@ -230,7 +230,7 @@ impl<E: PairingEngine> Default for Proof<E> {
 }
 
 /// A verification key in the Groth16 SNARK.
-#[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifyingKey<E: PairingEngine> {
     pub alpha_g1: E::G1Affine,
     pub beta_g2: E::G2Affine,
@@ -239,19 +239,58 @@ pub struct VerifyingKey<E: PairingEngine> {
     pub gamma_abc_g1: Vec<E::G1Affine>,
 }
 
-impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
-    /// Writes the verifying key into little-endian bytes,
-    /// for storage on disk or transmission over the network.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.alpha_g1.write_le(&mut writer)?;
-        self.beta_g2.write_le(&mut writer)?;
-        self.gamma_g2.write_le(&mut writer)?;
-        self.delta_g2.write_le(&mut writer)?;
-        (self.gamma_abc_g1.len() as u32).write_le(&mut writer)?;
-        for g in &self.gamma_abc_g1 {
-            g.write_le(&mut writer)?;
+impl<E: PairingEngine> Prepare<PreparedVerifyingKey<E>> for VerifyingKey<E> {
+    fn prepare(&self) -> PreparedVerifyingKey<E> {
+        prepare_verifying_key(self.clone())
+    }
+}
+
+impl<E: PairingEngine> VerifyingKey<E> {
+    /// Deserialize the verification key from bytes.
+    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let alpha_g1: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let beta_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let gamma_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let delta_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+
+        let gamma_abc_g1_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut gamma_abc_g1: Vec<E::G1Affine> = Vec::with_capacity(gamma_abc_g1_len as usize);
+        for _ in 0..gamma_abc_g1_len {
+            let gamma_abc_g1_element: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            gamma_abc_g1.push(gamma_abc_g1_element);
         }
-        Ok(())
+
+        Ok(Self {
+            alpha_g1,
+            beta_g2,
+            gamma_g2,
+            delta_g2,
+            gamma_abc_g1,
+        })
+    }
+}
+
+impl<E: PairingEngine> From<ProvingKey<E>> for VerifyingKey<E> {
+    fn from(other: ProvingKey<E>) -> Self {
+        other.vk
+    }
+}
+
+impl<E: PairingEngine> From<PreparedVerifyingKey<E>> for VerifyingKey<E> {
+    fn from(other: PreparedVerifyingKey<E>) -> Self {
+        other.vk
+    }
+}
+
+impl<E: PairingEngine> Default for VerifyingKey<E> {
+    fn default() -> Self {
+        Self {
+            alpha_g1: E::G1Affine::default(),
+            beta_g2: E::G2Affine::default(),
+            gamma_g2: E::G2Affine::default(),
+            delta_g2: E::G2Affine::default(),
+            gamma_abc_g1: Vec::new(),
+        }
     }
 }
 
@@ -296,58 +335,59 @@ impl<E: PairingEngine> FromBytes for VerifyingKey<E> {
     }
 }
 
-impl<E: PairingEngine> From<ProvingKey<E>> for VerifyingKey<E> {
-    fn from(other: ProvingKey<E>) -> Self {
-        other.vk
+impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
+    /// Writes the verifying key into little-endian bytes,
+    /// for storage on disk or transmission over the network.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.alpha_g1.write_le(&mut writer)?;
+        self.beta_g2.write_le(&mut writer)?;
+        self.gamma_g2.write_le(&mut writer)?;
+        self.delta_g2.write_le(&mut writer)?;
+        (self.gamma_abc_g1.len() as u32).write_le(&mut writer)?;
+        for g in &self.gamma_abc_g1 {
+            g.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 
-impl<E: PairingEngine> From<PreparedVerifyingKey<E>> for VerifyingKey<E> {
-    fn from(other: PreparedVerifyingKey<E>) -> Self {
-        other.vk
+impl<E: PairingEngine> FromStr for VerifyingKey<E> {
+    type Err = anyhow::Error;
+
+    #[inline]
+    fn from_str(vk_hex: &str) -> Result<Self, Self::Err> {
+        Self::from_bytes_le(&hex::decode(vk_hex)?)
     }
 }
 
-impl<E: PairingEngine> Default for VerifyingKey<E> {
-    fn default() -> Self {
-        Self {
-            alpha_g1: E::G1Affine::default(),
-            beta_g2: E::G2Affine::default(),
-            gamma_g2: E::G2Affine::default(),
-            delta_g2: E::G2Affine::default(),
-            gamma_abc_g1: Vec::new(),
+impl<E: PairingEngine> fmt::Display for VerifyingKey<E> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let vk_hex = hex::encode(self.to_bytes_le().expect("Failed to convert verifying key to bytes"));
+        write!(f, "{}", vk_hex)
+    }
+}
+
+impl<E: PairingEngine> Serialize for VerifyingKey<E> {
+    #[inline]
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<E: PairingEngine> VerifyingKey<E> {
-    /// Deserialize the verification key from bytes.
-    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let alpha_g1: E::G1Affine = FromBytes::read_le(&mut reader)?;
-        let beta_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
-        let gamma_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
-        let delta_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
-
-        let gamma_abc_g1_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut gamma_abc_g1: Vec<E::G1Affine> = Vec::with_capacity(gamma_abc_g1_len as usize);
-        for _ in 0..gamma_abc_g1_len {
-            let gamma_abc_g1_element: E::G1Affine = FromBytes::read_le(&mut reader)?;
-            gamma_abc_g1.push(gamma_abc_g1_element);
+impl<'de, E: PairingEngine> Deserialize<'de> for VerifyingKey<E> {
+    #[inline]
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let s: String = Deserialize::deserialize(deserializer)?;
+                FromStr::from_str(&s).map_err(de::Error::custom)
+            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "verifying key"),
         }
-
-        Ok(Self {
-            alpha_g1,
-            beta_g2,
-            gamma_g2,
-            delta_g2,
-            gamma_abc_g1,
-        })
-    }
-}
-
-impl<E: PairingEngine> Prepare<PreparedVerifyingKey<E>> for VerifyingKey<E> {
-    fn prepare(&self) -> PreparedVerifyingKey<E> {
-        prepare_verifying_key(self.clone())
     }
 }
 
