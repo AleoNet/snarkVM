@@ -347,7 +347,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         matrix_randomizers: &[F],
         input_domain: EvaluationDomain<F>,
         domain_h: EvaluationDomain<F>,
-        r_alpha_x_on_h: Vec<F>,
+        r_alpha_x_on_h: &Vec<F>,
     ) -> Polynomial<F> {
         let mut t_evals_on_h = vec![F::zero(); domain_h.size()];
         for (matrix, eta) in matrices.zip(matrix_randomizers) {
@@ -407,6 +407,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
         let (r_a, r_b) = state.mz_poly_randomizer.as_ref().unwrap();
+
         let z_c_poly = if MM::ZK {
             let v_H = domain_h.vanishing_polynomial();
             let r_a_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_a)]));
@@ -455,46 +456,54 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_a_poly.polynomial() * z_b_poly.polynomial()
         };
 
-        let mut summed_z_m_coeffs = z_c_poly.coeffs;
-        // Note: Can't combine these two loops, because z_c_poly has 2x the degree
-        // of z_a_poly and z_b_poly, so the second loop gets truncated due to
-        // the `zip`s.
-        cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= &eta_c);
-        cfg_iter_mut!(summed_z_m_coeffs)
-            .zip(&z_a_poly.polynomial().coeffs)
-            .zip(&z_b_poly.polynomial().coeffs)
-            .for_each(|((c, a), b)| *c += &(eta_a * a + (eta_b * b)));
-
-        let summed_z_m = Polynomial::from_coefficients_vec(summed_z_m_coeffs);
-        end_timer!(summed_z_m_poly_time);
-
         let r_alpha_x_evals_time = start_timer!(|| "Compute r_alpha_x evals");
         let r_alpha_x_evals = domain_h.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
         end_timer!(r_alpha_x_evals_time);
 
-        let r_alpha_poly_time = start_timer!(|| "Compute r_alpha_x poly");
-        let r_alpha_poly = Polynomial::from_coefficients_vec(domain_h.ifft(&r_alpha_x_evals));
-        end_timer!(r_alpha_poly_time);
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
+        job_pool.add_job(|| {
+            let mut summed_z_m_coeffs = z_c_poly.coeffs;
+            // Note: Can't combine these two loops, because z_c_poly has 2x the degree
+            // of z_a_poly and z_b_poly, so the second loop gets truncated due to
+            // the `zip`s.
+            cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= &eta_c);
+            cfg_iter_mut!(summed_z_m_coeffs)
+                .zip(&z_a_poly.polynomial().coeffs)
+                .zip(&z_b_poly.polynomial().coeffs)
+                .for_each(|((c, a), b)| *c += eta_a * a + eta_b * b);
 
-        let t_poly_time = start_timer!(|| "Compute t poly");
-        let t_poly = Self::calculate_t(
-            vec![&state.index.a, &state.index.b, &state.index.c].into_iter(),
-            &[eta_a, eta_b, eta_c],
-            state.domain_x,
-            state.domain_h,
-            r_alpha_x_evals,
-        );
-        end_timer!(t_poly_time);
+            let summed_z_m = Polynomial::from_coefficients_vec(summed_z_m_coeffs);
+            end_timer!(summed_z_m_poly_time);
+            summed_z_m
+        });
+
+        job_pool.add_job(|| {
+            let r_alpha_poly_time = start_timer!(|| "Compute r_alpha_x poly");
+            let r_alpha_poly = Polynomial::from_coefficients_vec(domain_h.ifft(&r_alpha_x_evals));
+            end_timer!(r_alpha_poly_time);
+            r_alpha_poly
+        });
+
+        job_pool.add_job(|| {
+            let t_poly_time = start_timer!(|| "Compute t poly");
+            let t_poly = Self::calculate_t(
+                vec![&state.index.a, &state.index.b, &state.index.c].into_iter(),
+                &[eta_a, eta_b, eta_c],
+                state.domain_x,
+                state.domain_h,
+                &r_alpha_x_evals,
+            );
+            end_timer!(t_poly_time);
+            t_poly
+        });
+        let [summed_z_m, r_alpha_poly, t_poly]: [Polynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
 
         let z_poly_time = start_timer!(|| "Compute z poly");
 
-        let domain_x = EvaluationDomain::new(state.padded_public_variables.len())
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let x_poly =
-            EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), domain_x).interpolate();
+        let x_poly = EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), state.domain_x)
+            .interpolate();
         let w_poly = state.w_poly.as_ref().unwrap();
-        let mut z_poly = w_poly.polynomial().mul_by_vanishing_poly(domain_x);
+        let mut z_poly = w_poly.polynomial().mul_by_vanishing_poly(state.domain_x);
         cfg_iter_mut!(z_poly.coeffs)
             .zip(&x_poly.coeffs)
             .for_each(|(z, x)| *z += x);
@@ -514,10 +523,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .unwrap();
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
-        let mut r_alpha_evals = r_alpha_poly.evaluate_over_domain_by_ref(mul_domain);
-        let summed_z_m_evals = summed_z_m.evaluate_over_domain_by_ref(mul_domain);
-        let z_poly_evals = z_poly.evaluate_over_domain_by_ref(mul_domain);
-        let t_poly_m_evals = t_poly.evaluate_over_domain_by_ref(mul_domain);
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(4);
+        job_pool.add_job(|| r_alpha_poly.evaluate_over_domain_by_ref(mul_domain));
+        job_pool.add_job(|| summed_z_m.evaluate_over_domain_by_ref(mul_domain));
+        job_pool.add_job(|| z_poly.evaluate_over_domain_by_ref(mul_domain));
+        job_pool.add_job(|| t_poly.evaluate_over_domain_by_ref(mul_domain));
+        let [mut r_alpha_evals, summed_z_m_evals, z_poly_evals, t_poly_m_evals]: [_; 4] =
+            job_pool.execute_all().try_into().unwrap();
 
         cfg_iter_mut!(r_alpha_evals.evaluations)
             .zip(&summed_z_m_evals.evaluations)
