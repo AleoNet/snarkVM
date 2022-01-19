@@ -51,7 +51,7 @@ impl<'a, T> ExecutionPool<'a, T> {
         {
             use rayon::prelude::*;
             const THRESHOLD: usize = 12;
-            let num_threads = THRESHOLD.min(max_available_threads());
+            let num_threads = THRESHOLD.max(max_available_threads() / self.jobs.len());
             self.jobs
                 .into_par_iter()
                 .map(|task| execute_with_threads(task, num_threads))
