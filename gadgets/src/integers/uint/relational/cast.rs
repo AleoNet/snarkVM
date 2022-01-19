@@ -30,32 +30,34 @@ macro_rules! cast_uint_impl {
             ) -> Result<Self::Output, Self::ErrorType> {
                 let bits = self.to_bits_le();
 
-				// If the target type is smaller than the current type
-				if Target::SIZE <= Self::SIZE {
+				let last_bit = bits[bits.len() - 1].clone();
+				if Target::SIZE == Self::SIZE {
+					if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
+						return Err(UnsignedIntegerError::Overflow);
+					} else {
+						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
+					}
+				} else if Target::SIZE < Self::SIZE {
+					// If the target type is smaller than the current type
+
 					// Since bits are le we check if the bits beyond target
 					// size are set. If so we should error out because
 					// the number is too big to fit into our target.
-					if bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true))) {
-						// Here it could a signed or unsigned overflow.
+					if !Target::SIGNED && bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true))) {
+						Err(UnsignedIntegerError::Overflow)
+					} else if Target::SIGNED && bits[Target::SIZE-1..].iter().any(|bit| matches!(bit.get_value(), Some(true))) {
 						Err(UnsignedIntegerError::Overflow)
 					} else {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 					}
 				} else {
-					let last_bit = bits[bits.len() - 1].clone();
-					if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
-						// Wonder if error type should just be an Integer Error
-						// Cause here it's technically a signed int overflow.
-						Err(UnsignedIntegerError::Overflow)
-					} else {
-						let mut bits = bits;
+					let mut bits = bits;
 
-						for _ in Self::SIZE..Target::SIZE {
-							bits.push(Boolean::Constant(false));
-						}
-
-						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
+					for _ in Self::SIZE..Target::SIZE {
+						bits.push(Boolean::Constant(false));
 					}
+
+					Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 				}
             }
         }

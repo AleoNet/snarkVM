@@ -31,14 +31,13 @@ macro_rules! cast_int_impl {
                 let bits = self.to_bits_le();
 				let last_bit = bits[bits.len() - 1].clone();
 
-				// If the target type is smaller than the current type
-				if Target::SIZE <= Self::SIZE {
-					// NOTE: we could clean up a lot of this logic
-					// if we add a min and max to the Integer target.
-					// However it may be bad to rely on such a convenience
-					// if in the future we wish to cast from fields to ints.
-					// Unless we have a min and max gadget that works for fields
-					// regardless of curve.
+				if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
+					// Negative to unsigned.
+					Err(SignedIntegerError::Overflow)
+				} else if Target::SIZE == Self::SIZE {
+					// Same size target.
+					Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
+				} else if Target::SIZE < Self::SIZE {
 					if Target::SIGNED && matches!(last_bit.get_value(), Some(false)) && (matches!(bits[Target::SIZE - 1].get_value(), Some(true)) || bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true)))) {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
@@ -54,20 +53,13 @@ macro_rules! cast_int_impl {
 						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 					}
 				} else {
-					if !Target::SIGNED && matches!(last_bit.get_value(), Some(true)) {
-						// Negative signed to unsigned.
-						// Wonder if error type should just be an Integer Error
-						// Cause here it's technically a unsigned int overflow.
-						Err(SignedIntegerError::Overflow)
-					} else {
-						let mut bits = bits;
+					let mut bits = bits;
 
-						for _ in Self::SIZE..Target::SIZE {
-							bits.push(last_bit.clone());
-						}
-
-						Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
+					for _ in Self::SIZE..Target::SIZE {
+						bits.push(last_bit.clone());
 					}
+
+					Ok(Target::from_bits_le(&bits[0..Target::SIZE]))
 				}
             }
         }
