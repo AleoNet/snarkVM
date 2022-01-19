@@ -1891,7 +1891,6 @@ dependencies = [
 name = "snarkvm-algorithms"
 version = "0.7.5"
 dependencies = [
- "aleo-std",
  "anyhow",
  "bincode",
  "blake2",
@@ -2136,6 +2135,7 @@ dependencies = [
  "derivative",
  "digest 0.9.0",
  "hashbrown",
+ "itertools",
  "rand",
  "rand_core",
  "rayon",
@@ -2175,11 +2175,15 @@ dependencies = [
 name = "snarkvm-utilities"
 version = "0.7.5"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "bincode",
+ "itertools",
  "num-bigint",
+ "num_cpus",
  "rand",
  "rand_xorshift",
+ "rayon",
  "serde",
  "snarkvm-derives",
  "thiserror",

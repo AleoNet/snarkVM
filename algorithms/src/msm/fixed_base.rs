@@ -87,7 +87,7 @@ impl FixedBaseMSM {
         let outerc = (scalar_size + window - 1) / window;
         assert!(outerc <= table.len());
 
-        cfg_iter!(v)
+        crate::cfg_iter!(v)
             .map(|e| Self::windowed_mul::<T>(outerc, window, table, e))
             .collect::<Vec<_>>()
     }
