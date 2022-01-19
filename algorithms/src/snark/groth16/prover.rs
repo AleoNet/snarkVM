@@ -189,26 +189,29 @@ where
 
     end_timer!(a_acc_time);
 
+    let mut pool = snarkvm_utilities::ExecutionPool::<ResultWrapper<E>>::with_capacity(4);
     // Compute B in G1 if needed
-    let g1_b = if r != E::Fr::zero() {
+
+    let s_g1 = params.delta_g1.mul(s).into();
+    let b_query = &params.b_g1_query;
+    if r != E::Fr::zero() {
         let b_g1_acc_time = start_timer!(|| "Compute B in G1");
-        let s_g1 = params.delta_g1.mul(s);
-        let b_query = &params.b_g1_query;
 
-        let g1_b = calculate_coeff(s_g1.into(), b_query, params.beta_g1, &assignment);
-
+        pool.add_job(|| {
+            let res = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
+            ResultWrapper::from_g1(res)
+        });
         end_timer!(b_g1_acc_time);
-
-        g1_b
-    } else {
-        E::G1Projective::zero()
-    };
+    }
 
     // Compute B in G2
     let b_g2_acc_time = start_timer!(|| "Compute B in G2");
     let b_query = &params.b_g2_query;
     let s_g2 = params.vk.delta_g2.mul(s);
-    let g2_b = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
+    pool.add_job(|| {
+        let res = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
+        ResultWrapper::from_g2(res)
+    });
 
     end_timer!(b_g2_acc_time);
 
@@ -216,10 +219,25 @@ where
     let c_acc_time = start_timer!(|| "Compute C");
 
     let h_query = &params.h_query;
-    let h_acc = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
-
+    pool.add_job(|| {
+        let res = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
+        ResultWrapper::from_g1(res)
+    });
     let l_aux_source = &params.l_query;
-    let l_aux_acc = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
+
+    pool.add_job(|| {
+        let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
+        ResultWrapper::from_g1(res)
+    });
+    let mut results: Vec<_> = pool.execute_all();
+    let l_aux_acc = results.pop().unwrap().into_g1();
+    let h_acc = results.pop().unwrap().into_g1();
+    let g2_b = results.pop().unwrap().into_g2();
+    let g1_b = if r != E::Fr::zero() {
+        results.pop().unwrap().into_g1()
+    } else {
+        E::G1Projective::zero()
+    };
 
     let s_g_a = g_a.mul(s);
     let r_g1_b = g1_b.mul(r);
@@ -257,4 +275,33 @@ fn calculate_coeff<G: AffineCurve>(
     res.add_assign_mixed(&vk_param);
 
     res
+}
+
+enum ResultWrapper<E: PairingEngine> {
+    G1(E::G1Projective),
+    G2(E::G2Projective),
+}
+
+impl<E: PairingEngine> ResultWrapper<E> {
+    fn from_g1(g: E::G1Projective) -> Self {
+        Self::G1(g)
+    }
+
+    fn from_g2(g: E::G2Projective) -> Self {
+        Self::G2(g)
+    }
+
+    fn into_g1(self) -> E::G1Projective {
+        match self {
+            Self::G1(g) => g,
+            _ => panic!("could not unwrap g2 into g1"),
+        }
+    }
+
+    fn into_g2(self) -> E::G2Projective {
+        match self {
+            Self::G2(g) => g,
+            _ => panic!("could not unwrap g1 into g2"),
+        }
+    }
 }
