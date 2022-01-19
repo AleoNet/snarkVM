@@ -167,10 +167,9 @@ where
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<TargetField, BaseField>>::new();
 
-        const ALL_POLYNOMIALS: [&str; 7] = [
+        const ALL_POLYNOMIALS: [&str; 6] = [
             "g_1",
             "g_2",
-            "t",
             "vanishing_poly_h_alpha",
             "vanishing_poly_h_beta",
             "vanishing_poly_k_gamma",
@@ -247,10 +246,9 @@ where
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<TargetField, BaseField>>::new();
 
-        const ALL_POLYNOMIALS: [&str; 7] = [
+        const ALL_POLYNOMIALS: [&str; 6] = [
             "g_1",
             "g_2",
-            "t",
             "vanishing_poly_h_alpha",
             "vanishing_poly_h_beta",
             "vanishing_poly_k_gamma",
@@ -329,10 +327,9 @@ where
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<TargetField, BaseField>>::new();
 
-        const ALL_POLYNOMIALS: [&str; 7] = [
+        const ALL_POLYNOMIALS: [&str; 6] = [
             "g_1",
             "g_2",
-            "t",
             "vanishing_poly_h_alpha",
             "vanishing_poly_h_beta",
             "vanishing_poly_k_gamma",

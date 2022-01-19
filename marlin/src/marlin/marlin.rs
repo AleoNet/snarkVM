@@ -489,7 +489,12 @@ impl<
 
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state, &mut fs_rng);
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(&public_input, &polynomials, &verifier_state)?;
+        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+            &public_input,
+            &polynomials,
+            &prover_third_message,
+            &verifier_state,
+        )?;
 
         if terminator.load(Ordering::Relaxed) {
             return Err(MarlinError::Terminated);
@@ -738,7 +743,12 @@ impl<
             evaluations.insert(q, *eval);
         }
 
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(&public_input, &evaluations, &verifier_state)?;
+        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+            &public_input,
+            &evaluations,
+            &proof.prover_messages[2],
+            &verifier_state,
+        )?;
 
         let evaluations_are_correct = if MM::RECURSION {
             let num_open_challenges: usize = 7;

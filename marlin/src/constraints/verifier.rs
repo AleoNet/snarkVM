@@ -227,6 +227,7 @@ where
             cs.ns(|| "verifier_decision"),
             &padded_public_input,
             &proof.evaluations,
+            &proof.prover_messages[2],
             verifier_state.clone(),
             &prepared_verifying_key.domain_k_size_gadget,
         )?;
@@ -468,10 +469,9 @@ mod test {
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<Fr, Fq>>::new();
 
-        const ALL_POLYNOMIALS: [&str; 7] = [
+        const ALL_POLYNOMIALS: [&str; 6] = [
             "g_1",
             "g_2",
-            "t",
             "vanishing_poly_h_alpha",
             "vanishing_poly_h_beta",
             "vanishing_poly_k_gamma",

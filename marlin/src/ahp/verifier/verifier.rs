@@ -142,10 +142,8 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         //  )
         //  LinearCombination::new("z_b", vec![(F::one(), z_b)])
         //  LinearCombination::new("g_1", vec![(F::one(), g_1)], rhs::new(g_1_at_beta))
-        //  LinearCombination::new("t", vec![(F::one(), t)])
         query_set.insert(("g_1".into(), ("beta".into(), beta)));
         query_set.insert(("z_b".into(), ("beta".into(), beta)));
-        query_set.insert(("t".into(), ("beta".into(), beta)));
         query_set.insert(("outer_sumcheck".into(), ("beta".into(), beta)));
 
         // For the second linear combination

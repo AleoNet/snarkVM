@@ -72,8 +72,6 @@ impl<F: Field> ProverFirstOracles<F> {
 
 /// The second set of prover oracles.
 pub struct ProverSecondOracles<F: Field> {
-    /// The polynomial `t` that is produced in the first round.
-    pub t: LabeledPolynomial<F>,
     /// The polynomial `g` resulting from the first sumcheck.
     pub g_1: LabeledPolynomial<F>,
     /// The polynomial `h` resulting from the first sumcheck.
@@ -83,7 +81,7 @@ pub struct ProverSecondOracles<F: Field> {
 impl<F: Field> ProverSecondOracles<F> {
     /// Iterate over the polynomials output by the prover in the second round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        vec![&self.t, &self.g_1, &self.h_1].into_iter()
+        vec![&self.g_1, &self.h_1].into_iter()
     }
 }
 
@@ -193,23 +191,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let domain_x = EvaluationDomain::new(num_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         end_timer!(init_time);
-
-        Ok(ProverState {
+        let mut state = ProverState::initialize(
             padded_public_variables,
             private_variables,
-            z_a: Some(z_a),
-            z_b: Some(z_b),
-            w_poly: None,
-            mz_polys: None,
-            mz_poly_randomizer: None,
             zk_bound,
             index,
-            verifier_first_message: None,
-            mask_poly: None,
+            domain_x,
             domain_h,
             domain_k,
-            domain_x,
-        })
+        );
+        state.z_a = Some(z_a);
+        state.z_b = Some(z_b);
+
+        Ok(state)
     }
 
     /// Output the first round message and the next state.
@@ -556,12 +550,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let hiding_bound = if MM::ZK { Some(1) } else { None };
         let oracles = ProverSecondOracles {
-            t: LabeledPolynomial::new("t".into(), t_poly, None, None),
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), hiding_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
 
         state.w_poly = None;
+        state.t_poly = Some(t_poly);
         state.verifier_first_message = Some(*verifier_message);
         end_timer!(round_time);
 
@@ -570,14 +564,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the number of oracles sent by the prover in the second round.
     pub fn prover_num_second_round_oracles() -> usize {
-        3
+        2
     }
 
     /// Output the degree bounds of oracles in the second round.
     pub fn prover_second_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         let h_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
 
-        vec![None, Some(h_domain_size - 2), None].into_iter()
+        vec![Some(h_domain_size - 2), None].into_iter()
     }
 
     /// Output the third round message and the next state.
@@ -593,6 +587,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             verifier_first_message,
             domain_h,
             domain_k,
+            t_poly,
             ..
         } = prover_state;
 
@@ -615,6 +610,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_c_times_v_H_alpha_v_H_beta = eta_c * v_H_alpha_v_H_beta;
 
         let joint_arith = &index.joint_arith;
+        let t_at_beta = t_poly.unwrap().evaluate(beta);
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
@@ -700,7 +696,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let g_2 = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
         drop(f);
 
-        let msg = ProverMessage::default();
+        let msg = ProverMessage {
+            field_elements: vec![t_at_beta],
+        };
 
         assert!(h_2.degree() <= domain_k.size() - 2);
         assert!(g_2.degree() <= domain_k.size() - 2);

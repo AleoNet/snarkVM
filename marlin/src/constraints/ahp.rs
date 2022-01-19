@@ -59,6 +59,8 @@ use crate::{
     Vec,
 };
 
+use super::proof::ProverMessageVar;
+
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]
 pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField, MM: MarlinMode> {
@@ -320,6 +322,7 @@ impl<
         mut cs: CS,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         evals: &HashMap<String, NonNativeFieldVar<TargetField, BaseField>>,
+        prover_third_message: &ProverMessageVar<TargetField, BaseField>,
         state: VerifierStateVar<TargetField, BaseField, MM>,
         domain_k_size_in_vk: &FpGadget<BaseField>,
     ) -> Result<Vec<LinearCombinationVar<TargetField, BaseField>>, AHPError> {
@@ -360,7 +363,10 @@ impl<
         let gamma: NonNativeFieldVar<TargetField, BaseField> =
             gamma.expect("VerifierState should include gamma when verifier_decision is called");
 
-        let t_at_beta = evals.get("t").ok_or_else(|| AHPError::MissingEval("t".to_string()))?;
+        let t_at_beta = prover_third_message
+            .field_elements
+            .get(0)
+            .ok_or_else(|| AHPError::MissingEval("t".to_string()))?;
 
         let v_k_at_gamma = evals
             .get("vanishing_poly_k_gamma")
@@ -413,11 +419,6 @@ impl<
         let g_1_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
             label: "g_1".to_string(),
             terms: vec![(LinearCombinationCoeffVar::One, "g_1".into())],
-        };
-
-        let t_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
-            label: "t".to_string(),
-            terms: vec![(LinearCombinationCoeffVar::One, "t".into())],
         };
 
         let eta_c_mul_z_b_at_beta = eta_c.mul(cs.ns(|| "eta_c_mul_z_b_at_beta"), z_b_at_beta)?;
@@ -475,7 +476,6 @@ impl<
 
         linear_combinations.push(g_1_lc_gadget);
         linear_combinations.push(z_b_lc_gadget);
-        linear_combinations.push(t_lc_gadget);
         linear_combinations.push(outer_sumcheck_lc_gadget);
 
         // Inner sumcheck
@@ -656,10 +656,6 @@ impl<
             name: "beta".to_string(),
             value: beta.clone(),
         }));
-        query_set_gadget.0.insert(("t".to_string(), LabeledPointVar {
-            name: "beta".to_string(),
-            value: beta.clone(),
-        }));
         query_set_gadget
             .0
             .insert(("outer_sumcheck".to_string(), LabeledPointVar {
@@ -712,13 +708,6 @@ impl<
                 value: beta.clone(),
             },
             (*proof.evaluations.get("z_b").unwrap()).clone(),
-        );
-        evaluations_gadget.0.insert(
-            LabeledPointVar {
-                name: "t".to_string(),
-                value: beta.clone(),
-            },
-            (*proof.evaluations.get("t").unwrap()).clone(),
         );
         evaluations_gadget.0.insert(
             LabeledPointVar {
@@ -807,8 +796,8 @@ impl<
             .sub_constant(cs.ns(|| "domain_h_minus_2"), &BaseField::from(2u128))?;
 
         // 3 comms for beta from the round 2
-        const PROOF_2_LABELS: [&str; 3] = ["t", "g_1", "h_1"];
-        let proof_2_bounds = [None, Some(h_minus_2), None];
+        const PROOF_2_LABELS: [&str; 2] = ["g_1", "h_1"];
+        let proof_2_bounds = [Some(h_minus_2), None];
         for (i, ((comm, label), bound)) in proof.commitments[1]
             .iter()
             .zip(PROOF_2_LABELS.iter())
@@ -1751,8 +1740,13 @@ mod test {
             evaluations.insert(q, *eval);
         }
 
-        let lc_s =
-            AHPForR1CSNative::construct_linear_combinations(&public_input, &evaluations, &verifier_state).unwrap();
+        let lc_s = AHPForR1CSNative::construct_linear_combinations(
+            &public_input,
+            &evaluations,
+            &proof.prover_messages[2],
+            &verifier_state,
+        )
+        .unwrap();
 
         // ---------
 
@@ -1784,6 +1778,7 @@ mod test {
             cs.ns(|| "verifier_decision"),
             &formatted_public_input,
             &proof_gadget.evaluations,
+            &proof_gadget.prover_messages[2],
             third_round_state_gadget,
             &vk_gadget.domain_k_size_gadget,
         )

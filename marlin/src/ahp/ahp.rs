@@ -17,6 +17,7 @@
 use crate::{
     ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
     marlin::MarlinMode,
+    prover::ProverMessage,
     String,
     ToString,
     Vec,
@@ -57,17 +58,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["inner_sumcheck", "outer_sumcheck"];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 8] = [
+    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 7] = [
         // First sumcheck
-        "w", "z_a", "z_b", "t", "g_1", "h_1",
+        "w", "z_a", "z_b", "g_1", "h_1",
         // Second sumcheck
         "g_2", "h_2",
     ];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 9] = [
+    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 8] = [
         // First sumcheck
-        "w", "z_a", "z_b", "mask_poly", "t", "g_1", "h_1",
+        "w", "z_a", "z_b", "mask_poly", "g_1", "h_1",
         // Second sumcheck
         "g_2", "h_2",
     ];
@@ -152,6 +153,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],
         evals: &E,
+        prover_third_message: &ProverMessage<F>,
         state: &verifier::VerifierState<F, MM>,
     ) -> Result<Vec<LinearCombination<F>>, AHPError> {
         let domain_h = state.domain_h;
@@ -178,7 +180,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // Outer sumchecK:
         let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
         let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
-        let t = LinearCombination::new("t", vec![(F::one(), "t")]);
 
         let r_alpha_at_beta = domain_h.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
         let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
@@ -186,7 +187,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_X_at_beta = x_domain.evaluate_vanishing_polynomial(beta);
 
         let z_b_at_beta = evals.get_lc_eval(&z_b, beta)?;
-        let t_at_beta = evals.get_lc_eval(&t, beta)?;
+        let t_at_beta = prover_third_message.field_elements[0];
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let x_at_beta = x_domain
@@ -214,7 +215,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         linear_combinations.push(z_b);
         linear_combinations.push(g_1);
-        linear_combinations.push(t);
         linear_combinations.push(outer_sumcheck);
 
         //  Inner sumcheck:
