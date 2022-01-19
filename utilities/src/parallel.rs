@@ -51,10 +51,10 @@ impl<'a, T> ExecutionPool<'a, T> {
         {
             use rayon::prelude::*;
             const THRESHOLD: usize = 12;
-            let num_threads = THRESHOLD.max(max_available_threads() / self.jobs.len());
+            let num_threads = THRESHOLD.max(max_available_threads() / self.jobs.len().max(1));
             self.jobs
                 .into_par_iter()
-                .map(|task| execute_with_threads(task, num_threads))
+                .map(|job| execute_with_threads(job, num_threads))
                 .collect()
         }
         #[cfg(not(feature = "parallel"))]
@@ -85,6 +85,7 @@ pub fn execute_with_max_available_threads(f: impl FnOnce() + Send) {
         f();
     }
 }
+
 #[cfg(feature = "parallel")]
 #[inline(always)]
 fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_threads: usize) -> T {
