@@ -616,23 +616,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let joint_arith = &index.joint_arith;
 
-        let a_poly_time = start_timer!(|| "Computing a poly");
-        let a_poly = {
-            let a = joint_arith.val_a.coeffs();
-            let b = joint_arith.val_b.coeffs();
-            let c = joint_arith.val_c.coeffs();
-            let coeffs: Vec<F> = cfg_iter!(a)
-                .zip(b)
-                .zip(c)
-                .map(|((a, b), c)| {
-                    eta_a_times_v_H_alpha_v_H_beta * a
-                        + eta_b_times_v_H_alpha_v_H_beta * b
-                        + eta_c_times_v_H_alpha_v_H_beta * c
-                })
-                .collect();
-            DensePolynomial::from_coefficients_vec(coeffs)
-        };
-        end_timer!(a_poly_time);
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
+        job_pool.add_job(|| {
+            let a_poly_time = start_timer!(|| "Computing a poly");
+            let a_poly = {
+                let a = joint_arith.val_a.coeffs();
+                let b = joint_arith.val_b.coeffs();
+                let c = joint_arith.val_c.coeffs();
+                let coeffs: Vec<F> = cfg_iter!(a)
+                    .zip(b)
+                    .zip(c)
+                    .map(|((a, b), c)| {
+                        eta_a_times_v_H_alpha_v_H_beta * a
+                            + eta_b_times_v_H_alpha_v_H_beta * b
+                            + eta_c_times_v_H_alpha_v_H_beta * c
+                    })
+                    .collect();
+                DensePolynomial::from_coefficients_vec(coeffs)
+            };
+            end_timer!(a_poly_time);
+            a_poly
+        });
 
         let (row_on_K, col_on_K, row_col_on_K) = (
             &joint_arith.evals_on_K.row,
@@ -640,17 +644,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             &joint_arith.evals_on_K.row_col,
         );
 
-        let b_poly_time = start_timer!(|| "Computing b poly");
-        let alpha_beta = alpha * beta;
-        let b_poly = {
-            let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
-                .zip(&col_on_K.evaluations)
-                .zip(&row_col_on_K.evaluations)
-                .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
-                .collect();
-            EvaluationsOnDomain::from_vec_and_domain(evals, domain_k).interpolate()
-        };
-        end_timer!(b_poly_time);
+        job_pool.add_job(|| {
+            let b_poly_time = start_timer!(|| "Computing b poly");
+            let alpha_beta = alpha * beta;
+            let b_poly = {
+                let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
+                    .zip(&col_on_K.evaluations)
+                    .zip(&row_col_on_K.evaluations)
+                    .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
+                    .collect();
+                EvaluationsOnDomain::from_vec_and_domain(evals, domain_k).interpolate()
+            };
+            end_timer!(b_poly_time);
+            b_poly
+        });
+        let [a_poly, b_poly]: [_; 2] = job_pool.execute_all().try_into().unwrap();
 
         let f_evals_time = start_timer!(|| "Computing f evals on K");
         let mut inverses: Vec<_> = cfg_into_iter!(0..domain_k.size())
@@ -663,14 +671,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             &joint_arith.evals_on_K.val_b,
             &joint_arith.evals_on_K.val_c,
         );
-        let f_evals_on_K: Vec<_> = cfg_into_iter!(0..(domain_k.size()))
-            .map(|i| {
-                inverses[i]
-                    * (eta_a_times_v_H_alpha_v_H_beta * val_a_on_K[i]
-                        + eta_b_times_v_H_alpha_v_H_beta * val_b_on_K[i]
-                        + eta_c_times_v_H_alpha_v_H_beta * val_c_on_K[i])
-            })
-            .collect();
+        cfg_iter_mut!(&mut inverses)
+            .zip(
+                cfg_iter!(&val_a_on_K.evaluations)
+                    .zip(&val_b_on_K.evaluations)
+                    .zip(&val_c_on_K.evaluations),
+            )
+            .for_each(|(inv, ((a, b), c))| {
+                *inv *= eta_a_times_v_H_alpha_v_H_beta * a
+                    + eta_b_times_v_H_alpha_v_H_beta * b
+                    + eta_c_times_v_H_alpha_v_H_beta * c;
+            });
+        let f_evals_on_K = inverses;
         end_timer!(f_evals_time);
 
         let f_poly_time = start_timer!(|| "Computing f poly");
