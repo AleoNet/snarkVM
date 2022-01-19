@@ -29,7 +29,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
             // Compute the sum and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_add(&other.eject_value()))
         } else {
-            let mut bits_le = Vec::with_capacity(I::num_bits());
+            let mut bits_le = Vec::with_capacity(I::BITS);
             let mut carry = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-carry adder on the bits.
@@ -37,10 +37,10 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
                 .bits_le
                 .iter()
                 .zip_eq(other.bits_le.iter())
-                .take(I::num_bits())
+                .take(I::BITS)
                 .enumerate()
             {
-                match index != (I::num_bits() - 1) {
+                match index != (I::BITS - 1) {
                     // For all bits up to the penultimate bit, perform a full-adder on `a` and `b`.
                     true => {
                         let (sum, next_carry) = a.adder(b, &carry);

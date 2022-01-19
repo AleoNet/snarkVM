@@ -59,41 +59,44 @@ wrapping_impl!(WrappingDiv, wrapping_div, i64);
 wrapping_impl!(WrappingDiv, wrapping_div, i128);
 
 macro_rules! integer_properties_impl {
-    ($t:ty, $is_signed:expr, $num_bits:expr) => {
+    ($t:ty, $is_signed:expr) => {
         impl IntegerProperties for $t {
+            const BITS: usize = <$t>::BITS as usize;
+            const MAX: $t = <$t>::MAX;
+            const MIN: $t = <$t>::MIN;
+
             #[inline]
             fn is_signed() -> bool {
                 $is_signed
-            }
-
-            #[inline]
-            fn num_bits() -> usize {
-                $num_bits
             }
         }
     };
 }
 
-integer_properties_impl!(u8, false, 8);
-integer_properties_impl!(u16, false, 16);
-integer_properties_impl!(u32, false, 32);
-integer_properties_impl!(u64, false, 64);
-integer_properties_impl!(u128, false, 128);
-integer_properties_impl!(i8, true, 8);
-integer_properties_impl!(i16, true, 16);
-integer_properties_impl!(i32, true, 32);
-integer_properties_impl!(i64, true, 64);
-integer_properties_impl!(i128, true, 1280);
+integer_properties_impl!(u8, false);
+integer_properties_impl!(u16, false);
+integer_properties_impl!(u32, false);
+integer_properties_impl!(u64, false);
+integer_properties_impl!(u128, false);
+integer_properties_impl!(i8, true);
+integer_properties_impl!(i16, true);
+integer_properties_impl!(i32, true);
+integer_properties_impl!(i64, true);
+integer_properties_impl!(i128, true);
 
 /// Properties common to all integer types.
 /// Note that `PrimInt` implements `Bounded` which implements
 /// `min_value` and `max_value`.
 pub trait IntegerProperties: PrimInt {
+    /// Returns the number of bits required to represent this integer.
+    const BITS: usize;
+    /// Returns the maximum value representable by this integer.
+    const MAX: Self;
+    /// Returns the minimum value representable by this integer.
+    const MIN: Self;
+
     /// Returns `true` if Self is a primitive signed integer and `false` otherwise.
     fn is_signed() -> bool;
-
-    /// Returns the number of bits required to represent this integer.
-    fn num_bits() -> usize;
 }
 
 /// Trait bound for integer values. Common to both signed and unsigned integers.

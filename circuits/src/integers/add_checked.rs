@@ -32,11 +32,11 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on addition of two constants"),
             }
         } else {
-            let mut bits_le = Vec::with_capacity(I::num_bits());
+            let mut bits_le = Vec::with_capacity(I::BITS);
             let mut carry = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-carry adder on the bits.
-            for (a, b) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(I::num_bits()) {
+            for (a, b) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(I::BITS) {
                 let (sum, next) = a.adder(b, &carry);
                 carry = next;
                 bits_le.push(sum);

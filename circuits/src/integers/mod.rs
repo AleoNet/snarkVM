@@ -50,9 +50,9 @@ pub struct Integer<E: Environment, I: IntegerType> {
 impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
     /// Initializes a new integer.
     fn new(mode: Mode, value: I) -> Self {
-        let mut bits_le = Vec::with_capacity(I::num_bits());
+        let mut bits_le = Vec::with_capacity(I::BITS);
         let mut value = value.to_le();
-        for _ in 0..I::num_bits() {
+        for _ in 0..I::BITS {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
             value = value >> 1;
         }
@@ -79,10 +79,10 @@ impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Initialize a new integer from a vector of `Boolean`.
     pub(crate) fn from_bits(bits_le: Vec<Boolean<E>>) -> Self {
-        if bits_le.len() != I::num_bits() {
+        if bits_le.len() != I::BITS {
             E::halt(format!(
                 "Invalid integer format. Expected {} bits, found {} bits.",
-                I::num_bits(),
+                I::BITS,
                 bits_le.len()
             ))
         } else {
