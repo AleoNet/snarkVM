@@ -22,6 +22,7 @@ use itertools::Itertools;
 impl<E: Environment, I: IntegerType, const BITS: usize> AddWrapped<Self> for Integer<E, I, BITS> {
     type Output = Self;
 
+    #[inline]
     fn add_wrapped(&self, other: &Integer<E, I, BITS>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {

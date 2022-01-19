@@ -22,6 +22,7 @@ use itertools::Itertools;
 impl<E: Environment, I: IntegerType, const BITS: usize> AddChecked<Self> for Integer<E, I, BITS> {
     type Output = Self;
 
+    #[inline]
     fn add_checked(&self, other: &Integer<E, I, BITS>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {

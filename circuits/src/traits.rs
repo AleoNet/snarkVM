@@ -74,10 +74,10 @@ pub trait IntegerType:
     'static
     + Debug
     + Display
-    + PrimInt
     + Bounded
     + NumZero
     + NumOne
+    + PrimInt
     + WrappingAdd
     + WrappingMul
     + WrappingNeg
