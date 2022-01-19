@@ -87,7 +87,7 @@ integer_properties_impl!(i128, true);
 /// Properties common to all integer types.
 /// Note that `PrimInt` implements `Bounded` which implements
 /// `min_value` and `max_value`.
-pub trait IntegerProperties: PrimInt {
+pub trait IntegerProperties: PrimInt + Debug + Display {
     /// Returns the number of bits required to represent this integer.
     const BITS: usize;
     /// Returns the maximum value representable by this integer.
