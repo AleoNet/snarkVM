@@ -16,27 +16,6 @@
 
 use crate::Vec;
 
-/// Takes as input a sequence of structs, and converts them to a series of little-endian bits.
-/// All traits that implement `ToBits` can be automatically converted to bits in this manner.
-#[macro_export]
-macro_rules! to_bits_le {
-    ($($x:expr),*) => ({
-        let mut buffer = $crate::vec![];
-        {$crate::push_bits_to_vec!(buffer, $($x),*)}.map(|_| buffer)
-    });
-}
-
-#[macro_export]
-macro_rules! push_bits_to_vec {
-    ($buffer:expr, $y:expr, $($x:expr),*) => ({
-        {ToBits::write_le(&$y, &mut $buffer)}.and({$crate::push_bits_to_vec!($buffer, $($x),*)})
-    });
-
-    ($buffer:expr, $x:expr) => ({
-        ToBits::write_le(&$x, &mut $buffer)
-    })
-}
-
 pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool>;
