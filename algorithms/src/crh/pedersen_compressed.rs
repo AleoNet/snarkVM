@@ -19,6 +19,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use bitvec::prelude::*;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
@@ -40,7 +41,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     /// Returns the affine x-coordinate as the collision-resistant hash output.
-    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+    fn hash_bits(&self, input: &BitSlice) -> Result<Self::Output, CRHError> {
         let affine = self.crh.hash_bits(input)?;
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())

@@ -19,6 +19,7 @@ use crate::{
     PhantomData,
     Vec,
 };
+use bitvec::prelude::*;
 use smallvec::SmallVec;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -86,18 +87,9 @@ where
 
     fn absorb_bytes(&mut self, elems: &[u8]) {
         let capacity = BaseField::size_in_bits() - 1;
-        let mut bits = Vec::<bool>::new();
+        let mut bits: BitVec<usize, Msb0> = BitVec::new();
         for elem in elems.iter() {
-            bits.append(&mut vec![
-                elem & 128 != 0,
-                elem & 64 != 0,
-                elem & 32 != 0,
-                elem & 16 != 0,
-                elem & 8 != 0,
-                elem & 4 != 0,
-                elem & 2 != 0,
-                elem & 1 != 0,
-            ]);
+            bits.extend([128, 64, 32, 16, 8, 4, 2, 1].iter().map(|n| elem & n != 0));
         }
         let elements = bits
             .chunks(capacity)
@@ -163,11 +155,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         let num_of_elements = (capacity + len - 1) / len;
         let elements = self.s.squeeze_field_elements(num_of_elements);
 
-        let mut bits = Vec::<bool>::new();
+        let mut bits: BitVec<usize, Lsb0> = BitVec::new();
         for elem in elements.iter() {
             let mut elem_bits = elem.to_repr().to_bits_be();
             elem_bits.reverse();
-            bits.extend_from_slice(&elem_bits[0..capacity]);
+            bits.extend_from_bitslice(&elem_bits[..capacity]);
         }
 
         bits.truncate(len);
@@ -266,18 +258,18 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
 
     /// obtain random bits from hashchain.
     /// not guaranteed to be uniformly distributed, should only be used in certain situations.
-    pub fn get_bits_from_sponge(sponge: &mut S, num_bits: usize) -> Vec<bool> {
+    pub fn get_bits_from_sponge(sponge: &mut S, num_bits: usize) -> BitVec {
         let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
         let src_elements = sponge.squeeze_field_elements(num_elements);
-        let mut dest_bits = Vec::<bool>::new();
+        let mut dest_bits = BitVec::new();
 
         let skip = (BaseField::Parameters::REPR_SHAVE_BITS + 1) as usize;
         for elem in src_elements.iter() {
             // discard the highest bit
             let elem_bits = elem.to_repr().to_bits_be();
-            dest_bits.extend_from_slice(&elem_bits[skip..]);
+            dest_bits.extend_from_bitslice(&elem_bits[skip..]);
         }
 
         dest_bits

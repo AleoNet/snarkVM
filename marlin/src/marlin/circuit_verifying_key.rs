@@ -27,6 +27,7 @@ use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use crate::{Read, Write};
+use bitvec::prelude::*;
 use derivative::Derivative;
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_r1cs::SynthesisError;
@@ -59,7 +60,7 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> ToMinimalBits
     for CircuitVerifyingKey<F, CF, PC, MM>
 {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> BitVec {
         let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
@@ -77,16 +78,21 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
             .to_le_bytes()
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
+            .collect::<BitVec>();
         let domain_k_size_bits = domain_k_size
             .to_le_bytes()
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
+            .collect::<BitVec>();
 
         let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 
-        [domain_h_size_bits, domain_k_size_bits, circuit_commitments_bits].concat()
+        let mut ret = BitVec::new();
+        ret.extend_from_bitslice(&domain_h_size_bits);
+        ret.extend_from_bitslice(&domain_k_size_bits);
+        ret.extend_from_bitslice(&circuit_commitments_bits);
+
+        ret
     }
 }
 

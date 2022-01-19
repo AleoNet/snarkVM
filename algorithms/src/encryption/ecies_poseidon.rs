@@ -43,6 +43,7 @@ use snarkvm_utilities::{
     Write,
 };
 
+use bitvec::prelude::*;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
@@ -235,7 +236,7 @@ where
         sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
 
         // Convert the message into bits.
-        let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
+        let mut plaintext_bits = BitVec::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
             let mut byte = *byte;
             for _ in 0..8 {
@@ -311,10 +312,10 @@ where
 
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
 
-        let mut bits = Vec::<bool>::with_capacity(plaintext_elements.len() * capacity);
+        let mut bits: BitVec<usize, Lsb0> = BitVec::with_capacity(plaintext_elements.len() * capacity);
         for elem in plaintext_elements.iter() {
             let elem_bits = elem.to_repr().to_bits_le();
-            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+            bits.extend_from_bitslice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
         }
 
         // Drop all the ending zeros and the last "1" bit.

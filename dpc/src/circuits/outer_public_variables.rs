@@ -92,7 +92,7 @@ impl<N: Network> ToConstraintField<N::OuterScalarField> for OuterPublicVariables
         // Alloc the original inputs as bits, then pack them into the new field, in little-endian format.
         for inner_snark_fe in &self.inner_public_variables.to_field_elements()? {
             v.extend_from_slice(&ToConstraintField::<N::OuterScalarField>::to_field_elements(
-                inner_snark_fe.to_bits_le().as_slice(),
+                inner_snark_fe.to_bits_le().as_bitslice(),
             )?);
         }
 

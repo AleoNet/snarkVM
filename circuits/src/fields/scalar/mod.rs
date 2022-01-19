@@ -33,6 +33,7 @@ use crate::{traits::*, Boolean, Environment, Mode};
 use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
+use bitvec::prelude::*;
 use std::fmt;
 
 #[derive(Clone)]
@@ -63,7 +64,7 @@ impl<E: Environment> ScalarField<E> {
     /// Ejects the scalar field as a constant scalar field value.
     ///
     pub fn eject_value(&self) -> E::ScalarField {
-        let bits = self.0.iter().map(Boolean::eject_value).collect::<Vec<_>>();
+        let bits = self.0.iter().map(Boolean::eject_value).collect::<BitVec>();
         let biginteger = <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]);
         let scalar = <E::ScalarField as PrimeField>::from_repr(biginteger);
         match scalar {

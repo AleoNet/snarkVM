@@ -33,6 +33,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
+use bitvec::prelude::*;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{
     Read,
@@ -256,21 +257,21 @@ impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
 }
 
 impl<E: PairingEngine> ToMinimalBits for VerifyingKey<E> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> BitVec {
         let alpha_g1_bits = self.alpha_g1.to_minimal_bits();
         let beta_g2_bits = self.beta_g2.to_minimal_bits();
         let gamma_g2_bits = self.gamma_g2.to_minimal_bits();
         let delta_g2_bits = self.delta_g2.to_minimal_bits();
         let gamma_abc_g1_bits = self.gamma_abc_g1.to_minimal_bits();
 
-        [
-            alpha_g1_bits,
-            beta_g2_bits,
-            gamma_g2_bits,
-            delta_g2_bits,
-            gamma_abc_g1_bits,
-        ]
-        .concat()
+        let mut ret = BitVec::new();
+        ret.extend_from_bitslice(&alpha_g1_bits);
+        ret.extend_from_bitslice(&beta_g2_bits);
+        ret.extend_from_bitslice(&gamma_g2_bits);
+        ret.extend_from_bitslice(&delta_g2_bits);
+        ret.extend_from_bitslice(&gamma_abc_g1_bits);
+
+        ret
     }
 }
 

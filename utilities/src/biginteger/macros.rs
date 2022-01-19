@@ -196,20 +196,20 @@ macro_rules! biginteger {
 
         impl ToBits for $name {
             /// Returns `self` as a boolean array in little-endian order, with trailing zeros.
-            fn to_bits_le(&self) -> Vec<bool> {
-                BitIteratorLE::new(self).collect::<Vec<_>>()
+            fn to_bits_le(&self) -> bitvec::prelude::BitVec<usize, bitvec::prelude::Lsb0> {
+                BitIteratorLE::new(self).collect()
             }
 
             /// Returns `self` as a boolean array in big-endian order, with leading zeros.
-            fn to_bits_be(&self) -> Vec<bool> {
-                BitIteratorBE::new(self).collect::<Vec<_>>()
+            fn to_bits_be(&self) -> bitvec::prelude::BitVec<usize, bitvec::prelude::Msb0> {
+                BitIteratorBE::new(self).collect()
             }
         }
 
         impl FromBits for $name {
             /// Returns a `BigInteger` by parsing a slice of bits in little-endian format
             /// and transforms it into a slice of little-endian u64 elements.
-            fn from_bits_le(bits: &[bool]) -> Self {
+            fn from_bits_le(bits: &bitvec::prelude::BitSlice<usize, bitvec::prelude::Lsb0>) -> Self {
                 let mut res = Self::default();
 
                 for (i, bits64) in bits.chunks(64).enumerate() {
@@ -225,11 +225,10 @@ macro_rules! biginteger {
 
             /// Returns a `BigInteger` by parsing a slice of bits in big-endian format
             /// and transforms it into a slice of little-endian u64 elements.
-            fn from_bits_be(bits: &[bool]) -> Self {
-                let mut bits_reversed = bits.to_vec();
-                bits_reversed.reverse();
+            fn from_bits_be(bits: &bitvec::prelude::BitSlice<usize, bitvec::prelude::Msb0>) -> Self {
+                let bits_reversed: bitvec::prelude::BitVec<usize, bitvec::prelude::Lsb0> = bits.iter().rev().collect();
 
-                Self::from_bits_le(&bits_reversed)
+                Self::from_bits_le(bits_reversed.as_bitslice())
             }
         }
 

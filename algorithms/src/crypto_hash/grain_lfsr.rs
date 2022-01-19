@@ -16,6 +16,7 @@
 
 #![allow(dead_code)]
 
+use bitvec::prelude::*;
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_utilities::{cmp::Ordering, vec::Vec, FromBits};
 
@@ -99,8 +100,8 @@ impl PoseidonGrainLFSR {
         res
     }
 
-    pub fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
-        let mut res = Vec::with_capacity(num_bits);
+    pub fn get_bits(&mut self, num_bits: usize) -> BitVec<usize, Msb0> {
+        let mut res = BitVec::with_capacity(num_bits);
 
         for _ in 0..num_bits {
             // Obtain the first bit
@@ -132,7 +133,7 @@ impl PoseidonGrainLFSR {
                 let bits = self.get_bits(self.prime_num_bits as usize);
 
                 // Construct the number
-                let bigint = F::BigInteger::from_bits_be(&bits);
+                let bigint = F::BigInteger::from_bits_be(bits.as_bitslice());
 
                 if bigint.cmp(&F::Parameters::MODULUS) == Ordering::Less {
                     res.push(F::from_repr(bigint).unwrap());

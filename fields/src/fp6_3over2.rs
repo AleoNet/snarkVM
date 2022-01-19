@@ -17,6 +17,7 @@
 use crate::{Field, Fp2, Fp2Parameters, One, Zero};
 use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
 
+use bitvec::prelude::*;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -464,19 +465,19 @@ impl<P: Fp6Parameters> From<u8> for Fp6<P> {
 }
 
 impl<P: Fp6Parameters> ToBits for Fp6<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_le());
-        res.extend_from_slice(&self.c1.to_bits_le());
-        res.extend_from_slice(&self.c2.to_bits_le());
+    fn to_bits_le(&self) -> BitVec<usize, Lsb0> {
+        let mut res = bitvec![];
+        res.extend_from_bitslice(&self.c0.to_bits_le());
+        res.extend_from_bitslice(&self.c1.to_bits_le());
+        res.extend_from_bitslice(&self.c2.to_bits_le());
         res
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_be());
-        res.extend_from_slice(&self.c1.to_bits_be());
-        res.extend_from_slice(&self.c2.to_bits_be());
+    fn to_bits_be(&self) -> BitVec<usize, Msb0> {
+        let mut res = BitVec::new();
+        res.extend_from_bitslice(&self.c0.to_bits_be());
+        res.extend_from_bitslice(&self.c1.to_bits_be());
+        res.extend_from_bitslice(&self.c2.to_bits_be());
         res
     }
 }

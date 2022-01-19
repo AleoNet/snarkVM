@@ -16,6 +16,7 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
+use bitvec::prelude::*;
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
 use snarkvm_utilities::{FromBits, ToBits};
@@ -96,11 +97,11 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         let obj = value_gen()?;
 
         // Step 1: obtain the bits of the F field elements
-        let mut src_bits = Vec::<bool>::new();
+        let mut src_bits = BitVec::new();
         for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
-            bits.extend_from_slice(&vec![false; F::size_in_bits() - bits.len()]);
+            bits.extend_from_bitslice(&bitvec![usize, Lsb0; 0; F::size_in_bits() - bits.len()]);
 
             src_bits.append(&mut bits);
         }
@@ -119,7 +120,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
             let mut coeff = CF::one();
 
             for (j, bit) in chunk.iter().enumerate() {
-                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(bit))?;
+                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(*bit))?;
 
                 lc = &lc + boolean.lc(CS::one(), CF::one()) * coeff;
                 coeff.double_in_place();
@@ -151,11 +152,11 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         let obj = value_gen()?;
 
         // Step 1: obtain the bits of the F field elements
-        let mut src_bits = Vec::<bool>::new();
+        let mut src_bits = BitVec::new();
         for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
-            bits.extend_from_slice(&vec![false; F::size_in_bits() - bits.len()]);
+            bits.extend_from_bitslice(&bitvec![usize, Lsb0; 0; F::size_in_bits() - bits.len()]);
 
             src_bits.append(&mut bits);
         }
@@ -174,7 +175,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
             let mut coeff = CF::one();
 
             for (j, bit) in chunk.iter().enumerate() {
-                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(bit))?;
+                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(*bit))?;
 
                 lc = &lc + boolean.lc(CS::one(), CF::one()) * coeff;
                 coeff.double_in_place();

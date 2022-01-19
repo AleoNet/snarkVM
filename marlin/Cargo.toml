@@ -72,6 +72,11 @@ default-features = false
 [dependencies.bincode]
 version = "1.3"
 
+[dependencies.bitvec]
+version = "1"
+default-features = false
+features = ["alloc"]
+
 [dependencies.blake2]
 version = "0.9"
 default-features = false

@@ -17,6 +17,7 @@
 use crate::errors::CRHError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use bitvec::prelude::*;
 use snarkvm_fields::PrimeField;
 use std::{
     fmt::{Debug, Display},
@@ -33,11 +34,11 @@ pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as
         let bits = input
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
-        self.hash_bits(&bits)
+            .collect::<BitVec>();
+        self.hash_bits(bits.as_bitslice())
     }
 
-    fn hash_bits(&self, input_bits: &[bool]) -> Result<Self::Output, CRHError>;
+    fn hash_bits(&self, input_bits: &BitSlice) -> Result<Self::Output, CRHError>;
 
     fn hash_field_elements<F: PrimeField>(&self, input: &[F]) -> Result<Self::Output, CRHError> {
         let mut input_bytes = vec![];

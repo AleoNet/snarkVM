@@ -15,31 +15,32 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Vec;
+use bitvec::prelude::*;
 
 pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
-    fn to_bits_le(&self) -> Vec<bool>;
+    fn to_bits_le(&self) -> BitVec<usize, Lsb0>;
 
     /// Returns `self` as a boolean array in big-endian order.
-    fn to_bits_be(&self) -> Vec<bool>;
+    fn to_bits_be(&self) -> BitVec<usize, Msb0>;
 }
 
 pub trait FromBits: Sized {
     /// Reads `Self` from a boolean array in little-endian order.
-    fn from_bits_le(bits: &[bool]) -> Self;
+    fn from_bits_le(bits: &BitSlice<usize, Lsb0>) -> Self;
 
     /// Reads `Self` from a boolean array in big-endian order.
-    fn from_bits_be(bits: &[bool]) -> Self;
+    fn from_bits_be(bits: &BitSlice<usize, Msb0>) -> Self;
 }
 
 pub trait ToMinimalBits: Sized {
     /// Returns `self` as a minimal boolean array.
-    fn to_minimal_bits(&self) -> Vec<bool>;
+    fn to_minimal_bits(&self) -> BitVec;
 }
 
 impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        let mut res_bits = vec![];
+    fn to_minimal_bits(&self) -> BitVec {
+        let mut res_bits = BitVec::new();
         for elem in self.iter() {
             res_bits.extend(elem.to_minimal_bits());
         }

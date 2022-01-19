@@ -344,7 +344,7 @@ where
         self.g_bases
             .iter()
             .zip_eq(&scalar.to_bits_le())
-            .filter_map(|(base, bit)| match bit {
+            .filter_map(|(base, bit)| match *bit {
                 true => Some(base),
                 false => None,
             })

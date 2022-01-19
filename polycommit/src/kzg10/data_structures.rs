@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{impl_bytes, BTreeMap, *};
+use bitvec::prelude::*;
 use core::ops::{Add, AddAssign};
 use snarkvm_curves::{
     traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
@@ -311,7 +312,7 @@ pub struct Commitment<E: PairingEngine>(
 impl_bytes!(Commitment);
 
 impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> BitVec {
         self.0.to_minimal_bits()
     }
 }

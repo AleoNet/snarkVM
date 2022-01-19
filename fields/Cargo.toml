@@ -25,6 +25,11 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.bitvec]
+version = "1"
+default-features = false
+features = ["alloc"]
+
 [dependencies.derivative]
 version = "2"
 

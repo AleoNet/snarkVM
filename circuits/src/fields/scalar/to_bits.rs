@@ -58,7 +58,7 @@ mod tests {
 
     fn check_to_bits_le(
         name: &str,
-        expected: &[bool],
+        expected: &BitSlice<usize, Lsb0>,
         candidate: &ScalarField<Circuit>,
         num_constants: usize,
         num_public: usize,
@@ -84,7 +84,7 @@ mod tests {
 
     fn check_to_bits_be(
         name: &str,
-        expected: &[bool],
+        expected: &BitSlice<usize, Msb0>,
         candidate: ScalarField<Circuit>,
         num_constants: usize,
         num_public: usize,

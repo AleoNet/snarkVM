@@ -67,6 +67,11 @@ path = "../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.bitvec]
+version = "1"
+default-features = false
+features = ["alloc"]
+
 [dependencies.derivative]
 version = "2"
 features = [ "use_core" ]

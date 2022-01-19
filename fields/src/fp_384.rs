@@ -35,6 +35,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use bitvec::prelude::*;
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -473,18 +474,15 @@ impl_add_sub_from_field_ref!(Fp384, Fp384Parameters);
 impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBits for Fp384<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le(&self) -> BitVec<usize, Lsb0> {
         let mut bits_vec = self.to_repr().to_bits_le();
         bits_vec.truncate(P::MODULUS_BITS as usize);
 
         bits_vec
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bits_le();
-        bits_vec.reverse();
-
-        bits_vec
+    fn to_bits_be(&self) -> BitVec<usize, Msb0> {
+        self.to_bits_le().into_iter().rev().collect()
     }
 }
 

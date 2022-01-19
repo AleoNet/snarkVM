@@ -30,6 +30,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
+use bitvec::prelude::*;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -218,7 +219,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 }
 
 impl<P: Parameters> ToMinimalBits for Affine<P> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> BitVec {
         self.x.to_bits_le()
     }
 }

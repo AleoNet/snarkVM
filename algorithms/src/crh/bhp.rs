@@ -19,9 +19,9 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
 
+use bitvec::prelude::*;
 use once_cell::sync::OnceCell;
 use std::{
-    borrow::Borrow,
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
     sync::Arc,
@@ -87,8 +87,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         }
     }
 
-    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        let affine = self.hash_bits_inner(input.iter(), input.len())?.into_affine();
+    fn hash_bits(&self, input: &BitSlice) -> Result<Self::Output, CRHError> {
+        let affine = self
+            .hash_bits_inner(input.iter().map(|bit| *bit), input.len())?
+            .into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }
@@ -150,11 +152,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     }
 
     /// Precondition: number of elements in `input` == `num_bits`.
-    pub(crate) fn hash_bits_inner<S: Borrow<bool>>(
-        &self,
-        input: impl Iterator<Item = S>,
-        num_bits: usize,
-    ) -> Result<G, CRHError> {
+    pub(crate) fn hash_bits_inner<I: Iterator<Item = bool>>(&self, input: I, num_bits: usize) -> Result<G, CRHError> {
         if num_bits > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(num_bits, WINDOW_SIZE, NUM_WINDOWS));
         }
@@ -163,10 +161,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
 
         // overzealous but stack allocation
         let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buf_slice[..num_bits]
-            .iter_mut()
-            .zip(input)
-            .for_each(|(b, i)| *b = *i.borrow());
+        buf_slice[..num_bits].iter_mut().zip(input).for_each(|(b, i)| *b = i);
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
