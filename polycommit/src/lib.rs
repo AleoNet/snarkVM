@@ -291,7 +291,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             labels.1.insert(label);
         }
 
-        let mut task_pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::with_capacity(query_to_labels_map.len());
+        let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::with_capacity(query_to_labels_map.len());
         for (_point_name, (&query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
             let mut query_rands = Vec::with_capacity(labels.len());
@@ -307,7 +307,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
                 query_comms.push(*comm);
             }
 
-            task_pool.add_job(move || {
+            pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
                 let proof = Self::open(
                     ck,
@@ -323,7 +323,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             });
         }
         end_timer!(open_time);
-        let proofs: Vec<_> = task_pool.execute_all();
+        let proofs: Vec<_> = pool.execute_all();
         let proofs = proofs.into_iter().collect::<Result<Vec<_>, _>>()?;
 
         Ok(proofs.into())

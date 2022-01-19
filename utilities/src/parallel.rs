@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{boxed::Box, vec::Vec};
+
 pub struct ExecutionPool<'a, T> {
     #[cfg(feature = "parallel")]
     jobs: Vec<Box<dyn 'a + FnOnce() -> T + Send>>,
