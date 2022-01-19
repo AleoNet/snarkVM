@@ -345,54 +345,10 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
     }
 }
 
-#[deprecated]
-#[inline]
-pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
-    bytes
-        .iter()
-        .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
-        .flatten()
-}
-
-#[deprecated]
-#[inline]
-pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
-    let desired_size = if bits.len() % 8 == 0 {
-        bits.len() / 8
-    } else {
-        bits.len() / 8 + 1
-    };
-
-    let mut bytes = Vec::with_capacity(desired_size);
-    for bits in bits.chunks(8) {
-        let mut result = 0u8;
-        for (i, bit) in bits.iter().enumerate() {
-            let bit_value = *bit as u8;
-            result += bit_value << i as u8;
-        }
-
-        // Pad the bits if their number doesn't correspond to full bytes
-        if bits.len() < 8 {
-            for i in bits.len()..8 {
-                let bit_value = false as u8;
-                result += bit_value << i as u8;
-            }
-        }
-        bytes.push(result);
-    }
-
-    bytes
-}
-
 #[cfg(test)]
 mod test {
-    use super::{from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, ToBytes};
+    use super::ToBytes;
     use crate::Vec;
-
-    use rand::{Rng, SeedableRng};
-    use rand_xorshift::XorShiftRng;
-
-    const ITERATIONS: usize = 1000;
 
     #[test]
     fn test_macro_empty() {
@@ -419,36 +375,5 @@ mod test {
         actual_bytes.extend_from_slice(&array2);
         actual_bytes.extend_from_slice(&array3);
         assert_eq!(bytes, actual_bytes);
-    }
-
-    #[test]
-    fn test_from_bytes_le_to_bits_le() {
-        assert_eq!(from_bytes_le_to_bits_le(&[204, 76]).collect::<Vec<bool>>(), [
-            false, false, true, true, false, false, true, true, // 204
-            false, false, true, true, false, false, true, false, // 76
-        ]);
-    }
-
-    #[test]
-    fn test_from_bits_le_to_bytes_le() {
-        let bits = [
-            false, false, true, true, false, false, true, true, // 204
-            false, false, true, true, false, false, true, false, // 76
-        ];
-        assert_eq!(from_bits_le_to_bytes_le(&bits), [204, 76]);
-    }
-
-    #[test]
-    fn test_from_bits_le_to_bytes_le_roundtrip() {
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-        for _ in 0..ITERATIONS {
-            let given_bytes: [u8; 32] = rng.gen();
-
-            let bits = from_bytes_le_to_bits_le(&given_bytes).collect::<Vec<_>>();
-            let recovered_bytes = from_bits_le_to_bytes_le(&bits);
-
-            assert_eq!(given_bytes.to_vec(), recovered_bytes);
-        }
     }
 }
