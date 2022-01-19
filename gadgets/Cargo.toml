@@ -78,7 +78,7 @@ optional = true
 version = "1.0"
 
 [dev-dependencies.blake2]
-version = "0.9"
+version = "0.10"
 
 [dev-dependencies.criterion]
 version = "0.3"
