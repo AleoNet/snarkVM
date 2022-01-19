@@ -63,6 +63,12 @@ impl<'a, T> ExecutionPool<'a, T> {
     }
 }
 
+impl<'a, T> Default for ExecutionPool<'a, T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(feature = "parallel")]
 pub fn max_available_threads() -> usize {
     use aleo_std::Cpu;
