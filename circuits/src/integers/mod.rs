@@ -29,30 +29,30 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
-pub type I8<E> = Integer<E, i8, { i8::BITS as usize }>;
-pub type I16<E> = Integer<E, i16, { i16::BITS as usize }>;
-pub type I32<E> = Integer<E, i32, { i32::BITS as usize }>;
-pub type I64<E> = Integer<E, i64, { i64::BITS as usize }>;
-pub type I128<E> = Integer<E, i128, { i128::BITS as usize }>;
+pub type I8<E> = Integer<E, i8>;
+pub type I16<E> = Integer<E, i16>;
+pub type I32<E> = Integer<E, i32>;
+pub type I64<E> = Integer<E, i64>;
+pub type I128<E> = Integer<E, i128>;
 
-pub type U8<E> = Integer<E, u8, { u8::BITS as usize }>;
-pub type U16<E> = Integer<E, u16, { u16::BITS as usize }>;
-pub type U32<E> = Integer<E, u32, { u32::BITS as usize }>;
-pub type U64<E> = Integer<E, u64, { u64::BITS as usize }>;
-pub type U128<E> = Integer<E, u128, { u128::BITS as usize }>;
+pub type U8<E> = Integer<E, u8>;
+pub type U16<E> = Integer<E, u16>;
+pub type U32<E> = Integer<E, u32>;
+pub type U64<E> = Integer<E, u64>;
+pub type U128<E> = Integer<E, u128>;
 
 #[derive(Clone)]
-pub struct Integer<E: Environment, I: IntegerType, const BITS: usize> {
+pub struct Integer<E: Environment, I: IntegerType> {
     bits_le: Vec<Boolean<E>>,
     phantom: PhantomData<I>,
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> IntegerTrait<I> for Integer<E, I, BITS> {
+impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
     /// Initializes a new integer.
     fn new(mode: Mode, value: I) -> Self {
-        let mut bits_le = Vec::with_capacity(BITS);
+        let mut bits_le = Vec::with_capacity(I::num_bits());
         let mut value = value.to_le();
-        for _ in 0..BITS {
+        for _ in 0..I::num_bits() {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
             value = value >> 1;
         }
@@ -76,13 +76,13 @@ impl<E: Environment, I: IntegerType, const BITS: usize> IntegerTrait<I> for Inte
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> Integer<E, I, BITS> {
+impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Initialize a new integer from a vector of `Boolean`.
     pub(crate) fn from_bits(bits_le: Vec<Boolean<E>>) -> Self {
-        if bits_le.len() != BITS {
+        if bits_le.len() != I::num_bits() {
             E::halt(format!(
                 "Invalid integer format. Expected {} bits, found {} bits.",
-                BITS,
+                I::num_bits(),
                 bits_le.len()
             ))
         } else {
@@ -94,7 +94,7 @@ impl<E: Environment, I: IntegerType, const BITS: usize> Integer<E, I, BITS> {
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> fmt::Debug for Integer<E, I, BITS> {
+impl<E: Environment, I: IntegerType> fmt::Debug for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
     }
@@ -146,60 +146,60 @@ mod tests {
     #[test]
     fn test_i8() {
         type I = i8;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_i16() {
         type I = i16;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_i32() {
         type I = i32;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_i64() {
         type I = i64;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_i128() {
         type I = i128;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_u8() {
         type I = u8;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_u16() {
         type I = u16;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_u32() {
         type I = u32;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_u64() {
         type I = u64;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 
     #[test]
     fn test_u128() {
         type I = u128;
-        run_test::<I, Integer<Circuit, I, { I::BITS as usize }>>();
+        run_test::<I, Integer<Circuit, I>>();
     }
 }

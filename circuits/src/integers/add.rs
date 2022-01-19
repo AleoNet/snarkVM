@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType, const BITS: usize> Add<Integer<E, I, BITS>> for Integer<E, I, BITS> {
+impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for Integer<E, I> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
@@ -24,15 +24,15 @@ impl<E: Environment, I: IntegerType, const BITS: usize> Add<Integer<E, I, BITS>>
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> Add<Integer<E, I, BITS>> for &Integer<E, I, BITS> {
-    type Output = Integer<E, I, BITS>;
+impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
 
-    fn add(self, other: Integer<E, I, BITS>) -> Self::Output {
+    fn add(self, other: Integer<E, I>) -> Self::Output {
         self + &other
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> Add<&Integer<E, I, BITS>> for Integer<E, I, BITS> {
+impl<E: Environment, I: IntegerType> Add<&Integer<E, I>> for Integer<E, I> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
@@ -40,24 +40,24 @@ impl<E: Environment, I: IntegerType, const BITS: usize> Add<&Integer<E, I, BITS>
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> Add<&Integer<E, I, BITS>> for &Integer<E, I, BITS> {
-    type Output = Integer<E, I, BITS>;
+impl<E: Environment, I: IntegerType> Add<&Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
 
-    fn add(self, other: &Integer<E, I, BITS>) -> Self::Output {
+    fn add(self, other: &Integer<E, I>) -> Self::Output {
         let mut output = self.clone();
         output += other;
         output
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> AddAssign<Integer<E, I, BITS>> for Integer<E, I, BITS> {
-    fn add_assign(&mut self, other: Integer<E, I, BITS>) {
+impl<E: Environment, I: IntegerType> AddAssign<Integer<E, I>> for Integer<E, I> {
+    fn add_assign(&mut self, other: Integer<E, I>) {
         *self += &other;
     }
 }
 
-impl<E: Environment, I: IntegerType, const BITS: usize> AddAssign<&Integer<E, I, BITS>> for Integer<E, I, BITS> {
-    fn add_assign(&mut self, other: &Integer<E, I, BITS>) {
+impl<E: Environment, I: IntegerType> AddAssign<&Integer<E, I>> for Integer<E, I> {
+    fn add_assign(&mut self, other: &Integer<E, I>) {
         // Stores the sum of `self` and `other` in `self`.
         *self = self.add_checked(other);
     }
