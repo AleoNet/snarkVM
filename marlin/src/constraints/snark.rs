@@ -352,7 +352,7 @@ pub mod test {
         );
 
         const INPUT_GADGET_CONSTRAINTS: usize = 259;
-        const PROOF_GADGET_CONSTRAINTS: usize = 48;
+        const PROOF_GADGET_CONSTRAINTS: usize = 44;
         const VK_GADGET_CONSTRAINTS: usize = 188;
         const VERIFIER_GADGET_CONSTRAINTS: usize = 130543;
 
