@@ -42,7 +42,7 @@ macro_rules! cast_int_impl {
 						// Positive signed to signed bounds checks.
 						// Positive number bound checks last bit is false.
 						Err(SignedIntegerError::Overflow)
-					} else if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) && (matches!(bits[Target::SIZE - 1].get_value(), Some(false)) || bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(true)))) {
+					} else if Target::SIGNED && matches!(last_bit.get_value(), Some(true)) && (matches!(bits[Target::SIZE - 1].get_value(), Some(false)) || bits[Target::SIZE..].iter().any(|bit| matches!(bit.get_value(), Some(false)))) {
 						// Negative signed to signed bounds checks.
 						// Negative number bound checks last bit is true.
 						Err(SignedIntegerError::Overflow)
