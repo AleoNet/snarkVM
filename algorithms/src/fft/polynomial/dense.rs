@@ -123,7 +123,7 @@ impl<F: Field> DensePolynomial<F> {
     }
 
     /// Perform a naive n^2 multiplication of `self` by `other`.
-	#[cfg(test)]
+    #[cfg(test)]
     fn naive_mul(&self, other: &Self) -> Self {
         if self.is_zero() || other.is_zero() {
             DensePolynomial::zero()
