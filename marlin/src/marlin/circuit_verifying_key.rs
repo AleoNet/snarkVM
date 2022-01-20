@@ -87,7 +87,8 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 
         let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 
-        let mut ret = BitVec::new();
+        let mut ret =
+            BitVec::with_capacity(domain_h_size_bits.len() + domain_k_size_bits.len() + circuit_commitments_bits.len());
         ret.extend_from_bitslice(&domain_h_size_bits);
         ret.extend_from_bitslice(&domain_k_size_bits);
         ret.extend_from_bitslice(&circuit_commitments_bits);

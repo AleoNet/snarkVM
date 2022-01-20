@@ -240,8 +240,7 @@ impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
         let comm_bits = self.comm.to_minimal_bits();
 
         if let Some(shifted_comm) = &self.shifted_comm {
-            let mut ret = BitVec::new();
-            ret.extend_from_bitslice(&comm_bits);
+            let mut ret = comm_bits;
             ret.extend_from_bitslice(&shifted_comm.to_minimal_bits());
 
             ret

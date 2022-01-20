@@ -88,9 +88,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash_bits(&self, input: &BitSlice) -> Result<Self::Output, CRHError> {
-        let affine = self
-            .hash_bits_inner(input.iter().map(|bit| *bit), input.len())?
-            .into_affine();
+        let affine = self.hash_bits_inner(input.iter().by_vals(), input.len())?.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }

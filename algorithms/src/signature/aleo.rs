@@ -344,10 +344,7 @@ where
         self.g_bases
             .iter()
             .zip_eq(&scalar.to_bits_le())
-            .filter_map(|(base, bit)| match *bit {
-                true => Some(base),
-                false => None,
-            })
+            .filter_map(|(base, bit)| bit.then(|| base))
             .sum::<TEProjective<TE>>()
             .into_affine()
     }
