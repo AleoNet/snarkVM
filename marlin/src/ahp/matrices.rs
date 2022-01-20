@@ -16,10 +16,8 @@
 
 #![allow(non_snake_case)]
 
-use crate::{
-    ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
-    BTreeMap,
-};
+use crate::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly};
+use hashbrown::HashMap;
 use snarkvm_algorithms::{
     cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
@@ -28,8 +26,6 @@ use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
-
-use derivative::Derivative;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -93,7 +89,7 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
     }
 }
 
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MatrixEvals<F: PrimeField> {
@@ -113,7 +109,7 @@ pub struct MatrixEvals<F: PrimeField> {
 
 /// Contains information about the arithmetization of the matrix M^*.
 /// Here `M^*(i, j) := M(j, i) * u_H(j, j)`. For more details, see [\[COS20\]](https://eprint.iacr.org/2019/1076).
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MatrixArithmetization<F: PrimeField> {
@@ -157,24 +153,24 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
         .enumerate()
         .map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
         .flatten()
-        .collect::<BTreeMap<(usize, usize), F>>();
+        .collect::<HashMap<(usize, usize), F>>();
 
     let b = b
         .iter()
         .enumerate()
         .map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
         .flatten()
-        .collect::<BTreeMap<(usize, usize), F>>();
+        .collect::<HashMap<(usize, usize), F>>();
 
     let c = c
         .iter()
         .enumerate()
         .map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
         .flatten()
-        .collect::<BTreeMap<(usize, usize), F>>();
+        .collect::<HashMap<(usize, usize), F>>();
 
     let eq_poly_vals_time = start_timer!(|| "Precomputing eq_poly_vals");
-    let eq_poly_vals: BTreeMap<F, F> = output_domain
+    let eq_poly_vals: HashMap<F, F> = output_domain
         .elements()
         .zip(output_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
         .collect();
@@ -276,7 +272,7 @@ mod tests {
     use crate::num_non_zero;
     use snarkvm_curves::bls12_377::Fr as F;
     use snarkvm_fields::{One, Zero};
-    use snarkvm_utilities::{collections::BTreeMap, UniformRand};
+    use snarkvm_utilities::UniformRand;
 
     fn entry(matrix: &Matrix<F>, row: usize, col: usize) -> F {
         matrix[row]
@@ -337,16 +333,16 @@ mod tests {
             .elements()
             .enumerate()
             .map(|(i, e)| (e, i))
-            .collect::<BTreeMap<_, _>>();
+            .collect::<HashMap<_, _>>();
         let elements = output_domain.elements().collect::<Vec<_>>();
         let reindexed_inverse_map = (0..output_domain.size())
             .map(|i| {
                 let reindexed_i = output_domain.reindex_by_subdomain(input_domain, i);
                 (elements[reindexed_i], i)
             })
-            .collect::<BTreeMap<_, _>>();
+            .collect::<HashMap<_, _>>();
 
-        let eq_poly_vals: BTreeMap<F, F> = output_domain
+        let eq_poly_vals: HashMap<F, F> = output_domain
             .elements()
             .zip(output_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
             .collect();

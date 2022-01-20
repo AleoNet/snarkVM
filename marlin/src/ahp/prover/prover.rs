@@ -62,11 +62,9 @@ pub struct ProverFirstOracles<F: Field> {
 impl<F: Field> ProverFirstOracles<F> {
     /// Iterate over the polynomials output by the prover in the first round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        if let Some(mask_poly) = &self.mask_poly {
-            vec![&self.w, &self.z_a, &self.z_b, mask_poly].into_iter()
-        } else {
-            vec![&self.w, &self.z_a, &self.z_b].into_iter()
-        }
+        [Some(&self.w), Some(&self.z_a), Some(&self.z_b), self.mask_poly.as_ref()]
+            .into_iter()
+            .filter_map(|p| p)
     }
 }
 
@@ -81,7 +79,7 @@ pub struct ProverSecondOracles<F: Field> {
 impl<F: Field> ProverSecondOracles<F> {
     /// Iterate over the polynomials output by the prover in the second round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        vec![&self.g_1, &self.h_1].into_iter()
+        [&self.g_1, &self.h_1].into_iter()
     }
 }
 
@@ -96,7 +94,7 @@ pub struct ProverThirdOracles<F: Field> {
 impl<F: Field> ProverThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        vec![&self.g_2, &self.h_2].into_iter()
+        [&self.g_2, &self.h_2].into_iter()
     }
 }
 
@@ -228,10 +226,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let ratio = domain_h.size() / domain_x.size();
 
         let mut w_extended = state.private_variables.clone();
-        w_extended.extend(vec![
-            F::zero();
-            domain_h.size() - domain_x.size() - state.private_variables.len()
-        ]);
+        w_extended.extend(
+            core::iter::repeat(F::zero()).take(domain_h.size() - domain_x.size() - state.private_variables.len()),
+        );
 
         let w_poly_time = start_timer!(|| "Computing w polynomial");
         let w_poly_evals = cfg_into_iter!(0..domain_h.size())
@@ -338,17 +335,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calculate_t<'a>(
         matrices: impl Iterator<Item = &'a Matrix<F>>,
-        matrix_randomizers: &[F],
+        matrix_randomizers: [F; 3],
         input_domain: EvaluationDomain<F>,
         domain_h: EvaluationDomain<F>,
-        r_alpha_x_on_h: &Vec<F>,
+        r_alpha_x_on_h: &[F],
     ) -> Polynomial<F> {
         let mut t_evals_on_h = vec![F::zero(); domain_h.size()];
         for (matrix, eta) in matrices.zip(matrix_randomizers) {
             for (r, row) in matrix.iter().enumerate() {
                 for (coeff, c) in row.iter() {
                     let index = domain_h.reindex_by_subdomain(input_domain, *c);
-                    t_evals_on_h[index] += &(*eta * coeff * r_alpha_x_on_h[r]);
+                    t_evals_on_h[index] += &(eta * coeff * r_alpha_x_on_h[r]);
                 }
             }
         }
@@ -363,9 +360,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the degree bounds of oracles in the first round.
     pub fn prover_first_round_degree_bounds(_info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         if MM::ZK {
-            vec![None; 4].into_iter()
+            core::iter::repeat(None).take(4)
         } else {
-            vec![None; 3].into_iter()
+            core::iter::repeat(None).take(3)
         }
     }
 
@@ -481,8 +478,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         job_pool.add_job(|| {
             let t_poly_time = start_timer!(|| "Compute t poly");
             let t_poly = Self::calculate_t(
-                vec![&state.index.a, &state.index.b, &state.index.c].into_iter(),
-                &[eta_a, eta_b, eta_c],
+                [&state.index.a, &state.index.b, &state.index.c].into_iter(),
+                [eta_a, eta_b, eta_c],
                 state.domain_x,
                 state.domain_h,
                 &r_alpha_x_evals,
@@ -571,7 +568,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn prover_second_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         let h_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
 
-        vec![Some(h_domain_size - 2), None].into_iter()
+        [Some(h_domain_size - 2), None].into_iter()
     }
 
     /// Output the third round message and the next state.
@@ -619,7 +616,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let a = joint_arith.val_a.coeffs();
                 let b = joint_arith.val_b.coeffs();
                 let c = joint_arith.val_c.coeffs();
-                let coeffs: Vec<F> = cfg_iter!(a)
+                let coeffs = cfg_iter!(a)
                     .zip(b)
                     .zip(c)
                     .map(|((a, b), c)| {
@@ -722,6 +719,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let num_non_zero = info.num_non_zero;
         let k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).unwrap();
 
-        vec![Some(k_size - 2), None].into_iter()
+        [Some(k_size - 2), None].into_iter()
     }
 }

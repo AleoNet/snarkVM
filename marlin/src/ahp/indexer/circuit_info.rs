@@ -19,12 +19,11 @@ use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
 use core::marker::PhantomData;
-use derivative::Derivative;
 
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Copy(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitInfo<F> {

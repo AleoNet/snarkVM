@@ -37,7 +37,7 @@ extern crate alloc;
 #[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 use alloc::{
-    collections::{BTreeSet, BTreeMap},
+    collections::BTreeSet,
     string::{String, ToString},
     vec::Vec,
 };
@@ -56,7 +56,7 @@ use snarkvm_utilities::io::{
 #[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
-    collections::{BTreeSet, BTreeMap},
+    collections::BTreeSet,
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
