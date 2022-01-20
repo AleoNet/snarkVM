@@ -20,5 +20,5 @@ pub use program::*;
 pub mod program_public_variables;
 pub use program_public_variables::*;
 
-pub mod registry;
-pub use registry::*;
+pub mod program_registry;
+pub use program_registry::*;
