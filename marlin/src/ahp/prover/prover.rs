@@ -382,7 +382,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let VerifierFirstMessage {
             alpha,
-            eta_a,
             eta_b,
             eta_c,
         } = *verifier_message;
@@ -461,7 +460,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             cfg_iter_mut!(summed_z_m_coeffs)
                 .zip(&z_a_poly.polynomial().coeffs)
                 .zip(&z_b_poly.polynomial().coeffs)
-                .for_each(|((c, a), b)| *c += eta_a * a + eta_b * b);
+                .for_each(|((c, a), b)| *c += eta_b * b + a);
 
             let summed_z_m = Polynomial::from_coefficients_vec(summed_z_m_coeffs);
             end_timer!(summed_z_m_poly_time);
@@ -479,7 +478,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let t_poly_time = start_timer!(|| "Compute t poly");
             let t_poly = Self::calculate_t(
                 [&state.index.a, &state.index.b, &state.index.c].into_iter(),
-                [eta_a, eta_b, eta_c],
+                [F::one(), eta_b, eta_c],
                 state.domain_x,
                 state.domain_h,
                 &r_alpha_x_evals,
@@ -589,10 +588,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         } = prover_state;
 
         let VerifierFirstMessage {
-            eta_a,
+            alpha,
             eta_b,
             eta_c,
-            alpha,
         } = verifier_first_message
             .expect("ProverState should include verifier_first_msg when prover_third_round is called");
 
@@ -602,7 +600,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
-        let eta_a_times_v_H_alpha_v_H_beta = eta_a * v_H_alpha_v_H_beta;
+        let eta_a_times_v_H_alpha_v_H_beta = v_H_alpha_v_H_beta;
         let eta_b_times_v_H_alpha_v_H_beta = eta_b * v_H_alpha_v_H_beta;
         let eta_c_times_v_H_alpha_v_H_beta = eta_c * v_H_alpha_v_H_beta;
 

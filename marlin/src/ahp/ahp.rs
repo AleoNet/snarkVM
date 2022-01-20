@@ -168,7 +168,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let first_round_msg = state.first_round_message.unwrap();
         let alpha = first_round_msg.alpha;
-        let eta_a = first_round_msg.eta_a;
+        let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
 

@@ -79,8 +79,6 @@ pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField, MM: 
 pub struct VerifierFirstMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
     /// Alpha
     pub alpha: NonNativeFieldVar<TargetField, BaseField>,
-    /// Eta a
-    pub eta_a: NonNativeFieldVar<TargetField, BaseField>,
     /// Eta b
     pub eta_b: NonNativeFieldVar<TargetField, BaseField>,
     /// Eta c
@@ -169,13 +167,11 @@ impl<
         // obtain four elements from the sponge
         let elems = fs_rng.squeeze_field_elements(cs.ns(|| "squeeze_field_elements"), 4)?;
         let alpha = elems[0].clone();
-        let eta_a = elems[1].clone();
-        let eta_b = elems[2].clone();
-        let eta_c = elems[3].clone();
+        let eta_b = elems[1].clone();
+        let eta_c = elems[2].clone();
 
         let msg = VerifierFirstMsgVar {
             alpha,
-            eta_a,
             eta_b,
             eta_c,
         };
@@ -340,13 +336,14 @@ impl<
             second_round_msg.expect("VerifierState should include second_round_msg when verifier_decision is called");
 
         let zero = NonNativeFieldVar::<TargetField, BaseField>::zero(cs.ns(|| "nonnative_zero"))?;
+        let one = NonNativeFieldVar::one(cs.ns(|| "nonnative_one"))?;
 
         let VerifierFirstMsgVar {
             alpha,
-            eta_a,
             eta_b,
             eta_c,
         } = first_round_msg;
+        let eta_a = one.clone();
         let beta: NonNativeFieldVar<TargetField, BaseField> = second_round_msg.beta;
 
         let v_h_at_alpha = evals
@@ -1082,15 +1079,11 @@ mod test {
         // Enforce that the native and gadget verifier first round message is equivalent.
 
         let expected_alpha = NonNativeFieldVar::alloc(cs.ns(|| "alpha"), || Ok(first_round_message.alpha)).unwrap();
-        let expected_eta_a = NonNativeFieldVar::alloc(cs.ns(|| "eta_a"), || Ok(first_round_message.eta_a)).unwrap();
         let expected_eta_b = NonNativeFieldVar::alloc(cs.ns(|| "eta_b"), || Ok(first_round_message.eta_b)).unwrap();
         let expected_eta_c = NonNativeFieldVar::alloc(cs.ns(|| "eta_c"), || Ok(first_round_message.eta_c)).unwrap();
 
         expected_alpha
             .enforce_equal(cs.ns(|| "enforce_equal_alpha"), &first_round_message_gadget.alpha)
-            .unwrap();
-        expected_eta_a
-            .enforce_equal(cs.ns(|| "enforce_equal_eta_a"), &first_round_message_gadget.eta_a)
             .unwrap();
         expected_eta_b
             .enforce_equal(cs.ns(|| "enforce_equal_eta_b"), &first_round_message_gadget.eta_b)

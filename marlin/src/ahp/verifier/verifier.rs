@@ -52,16 +52,14 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let domain_k =
             EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let elems = fs_rng.squeeze_nonnative_field_elements(4, OptimizationType::Weight)?;
+        let elems = fs_rng.squeeze_nonnative_field_elements(3, OptimizationType::Weight)?;
         let alpha = elems[0];
-        let eta_a = elems[1];
-        let eta_b = elems[2];
-        let eta_c = elems[3];
+        let eta_b = elems[1];
+        let eta_c = elems[2];
         assert!(!domain_h.evaluate_vanishing_polynomial(alpha).is_zero());
 
         let message = VerifierFirstMessage {
             alpha,
-            eta_a,
             eta_b,
             eta_c,
         };
@@ -130,7 +128,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         //      vec![
         //          (F::one(), "mask_poly".into()),
         //
-        //          (r_alpha_at_beta * (eta_a + eta_c * z_b_at_beta), "z_a".into()),
+        //          (r_alpha_at_beta * (1 + eta_c * z_b_at_beta), "z_a".into()),
         //          (r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One),
         //
         //          (-t_at_beta * v_X_at_beta, "w".into()),
