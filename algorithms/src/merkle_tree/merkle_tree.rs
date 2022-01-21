@@ -166,43 +166,37 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
                 .copy_from_slice(&subsection[..]);
         }
 
-        // Prepare a copy of the tree to allow each level to be hashed in parallel.
-        let mut tree_clone = tree.clone();
-
         // Compute the hash values for every node in the tree.
         let mut upper_bound = last_level_index;
         for start_index in level_indices.into_iter().rev() {
+            let (parents, children) = tree.split_at_mut(upper_bound);
+
             // Iterate over the current level.
-            crate::cfg_iter_mut!(tree[start_index..upper_bound])
+            crate::cfg_iter_mut!(parents[start_index..upper_bound])
                 .zip(start_index..upper_bound)
-                .try_for_each(|(tree_node, current_index)| {
+                .try_for_each(|(parent, current_index)| {
                     let left_index = left_child(current_index);
                     let right_index = right_child(current_index);
 
                     // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
                     if new_indices().contains(&current_index)
-                        || self.tree.get(left_index) != tree_clone.get(left_index)
-                        || self.tree.get(right_index) != tree_clone.get(right_index)
+                        || self.tree.get(left_index) != children.get(left_index - upper_bound)
+                        || self.tree.get(right_index) != children.get(right_index - upper_bound)
                         || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
                     {
                         // Compute Hash(left || right).
-                        *tree_node = self
-                            .parameters
-                            .hash_inner_node(&tree_clone[left_index], &tree_clone[right_index])?;
+                        *parent = self.parameters.hash_inner_node(
+                            &children[left_index - upper_bound],
+                            &children[right_index - upper_bound],
+                        )?;
                     } else {
-                        *tree_node = self.tree[current_index];
+                        *parent = self.tree[current_index];
                     }
 
                     Ok::<(), MerkleError>(())
                 })?;
             upper_bound = start_index;
-
-            // Update the clone of the tree.
-            tree_clone = tree.clone();
         }
-
-        // The clone of the tree is no longer needed; drop it to free the associated memory.
-        drop(tree_clone);
 
         // Finished computing actual tree.
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
