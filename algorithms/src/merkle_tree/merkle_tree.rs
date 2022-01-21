@@ -166,28 +166,43 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
                 .copy_from_slice(&subsection[..]);
         }
 
+        // Prepare a copy of the tree to allow each level to be hashed in parallel.
+        let mut tree_clone = tree.clone();
+
         // Compute the hash values for every node in the tree.
         let mut upper_bound = last_level_index;
         for start_index in level_indices.into_iter().rev() {
             // Iterate over the current level.
-            for current_index in start_index..upper_bound {
-                let left_index = left_child(current_index);
-                let right_index = right_child(current_index);
+            crate::cfg_iter_mut!(tree[start_index..upper_bound])
+                .zip(start_index..upper_bound)
+                .try_for_each(|(tree_node, current_index)| {
+                    let left_index = left_child(current_index);
+                    let right_index = right_child(current_index);
 
-                // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
-                if new_indices().contains(&current_index)
-                    || self.tree.get(left_index) != tree.get(left_index)
-                    || self.tree.get(right_index) != tree.get(right_index)
-                    || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
-                {
-                    // Compute Hash(left || right).
-                    tree[current_index] = self.parameters.hash_inner_node(&tree[left_index], &tree[right_index])?;
-                } else {
-                    tree[current_index] = self.tree[current_index];
-                }
-            }
+                    // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
+                    if new_indices().contains(&current_index)
+                        || self.tree.get(left_index) != tree_clone.get(left_index)
+                        || self.tree.get(right_index) != tree_clone.get(right_index)
+                        || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
+                    {
+                        // Compute Hash(left || right).
+                        *tree_node = self
+                            .parameters
+                            .hash_inner_node(&tree_clone[left_index], &tree_clone[right_index])?;
+                    } else {
+                        *tree_node = self.tree[current_index];
+                    }
+
+                    Ok::<(), MerkleError>(())
+                })?;
             upper_bound = start_index;
+
+            // Update the clone of the tree.
+            tree_clone = tree.clone();
         }
+
+        // The clone of the tree is no longer needed; drop it to free the associated memory.
+        drop(tree_clone);
 
         // Finished computing actual tree.
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
