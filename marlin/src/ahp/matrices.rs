@@ -155,22 +155,19 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     let a = a
         .iter()
         .enumerate()
-        .map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
-        .flatten()
+        .flat_map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
         .collect::<BTreeMap<(usize, usize), F>>();
 
     let b = b
         .iter()
         .enumerate()
-        .map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
-        .flatten()
+        .flat_map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
         .collect::<BTreeMap<(usize, usize), F>>();
 
     let c = c
         .iter()
         .enumerate()
-        .map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
-        .flatten()
+        .flat_map(|(r, row)| row.iter().map(move |(f, i)| ((r, *i), *f)))
         .collect::<BTreeMap<(usize, usize), F>>();
 
     let eq_poly_vals_time = start_timer!(|| "Precomputing eq_poly_vals");
