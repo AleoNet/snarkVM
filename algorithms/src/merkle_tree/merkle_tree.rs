@@ -168,8 +168,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Compute the hash values for every node in the tree.
         let mut upper_bound = last_level_index;
-        level_indices.reverse();
-        for &start_index in &level_indices {
+        for start_index in level_indices.into_iter().rev() {
             // Iterate over the current level.
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
