@@ -26,7 +26,7 @@ pub use crate::{
 };
 use crate::{serialize::traits::*, SerializationError};
 
-use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, convert::TryInto, rc::Rc, sync::Arc};
 
 impl CanonicalSerialize for bool {
     #[inline]
@@ -301,8 +301,11 @@ impl<T: CanonicalSerialize> CanonicalSerialize for Vec<T> {
 impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     #[inline]
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let len = u64::deserialize(reader)?;
-        let mut values = Vec::with_capacity(len as usize);
+        let len: usize = u64::deserialize(reader)?
+            .try_into()
+            .map_err(|_| SerializationError::InvalidData)?;
+        let mut values = Vec::new();
+        values.try_reserve(len).map_err(|_| SerializationError::InvalidData)?;
         for _ in 0..len {
             values.push(T::deserialize(reader)?);
         }
@@ -311,8 +314,11 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
 
     #[inline]
     fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let len = u64::deserialize(reader)?;
-        let mut values = Vec::with_capacity(len as usize);
+        let len: usize = u64::deserialize(reader)?
+            .try_into()
+            .map_err(|_| SerializationError::InvalidData)?;
+        let mut values = Vec::new();
+        values.try_reserve(len).map_err(|_| SerializationError::InvalidData)?;
         for _ in 0..len {
             values.push(T::deserialize_uncompressed(reader)?);
         }
