@@ -44,8 +44,7 @@ fn test_posw_terminate() {
         block.to_coinbase_transaction().unwrap().to_records().next().unwrap(),
     );
 
-    let terminator = Arc::new(AtomicBool::new(false));
-    let thread_terminator = terminator.clone();
+    let thread_terminator = Arc::new(AtomicBool::new(false));
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(1));
         thread_terminator.store(true, Ordering::SeqCst);

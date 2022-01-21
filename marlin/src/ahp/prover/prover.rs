@@ -347,7 +347,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         matrix_randomizers: &[F],
         input_domain: EvaluationDomain<F>,
         domain_h: EvaluationDomain<F>,
-        r_alpha_x_on_h: &Vec<F>,
+        r_alpha_x_on_h: &[F],
     ) -> Polynomial<F> {
         let mut t_evals_on_h = vec![F::zero(); domain_h.size()];
         for (matrix, eta) in matrices.zip(matrix_randomizers) {

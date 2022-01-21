@@ -336,7 +336,7 @@ fn verifier_on_groth16() {
         // MulCircuit
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
-        let c = a * &b;
+        let c = a * b;
 
         let circ = MulCircuit {
             a: Some(a),
@@ -361,7 +361,7 @@ fn verifier_on_groth16() {
         // MulSquareCircuit
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
-        let c = (a * &b)
+        let c = (a * b)
             .square()
             .square()
             .square()
@@ -404,7 +404,7 @@ fn verifier_on_groth16() {
     let circ2 = RecursiveCircuit {
         vk: Some(vk2.clone()),
         proof: Some(proof2.clone()),
-        input: Some(input2.clone()),
+        input: Some(input2),
     };
 
     println!("\n\nDiffing constraints now\n\n");
@@ -431,9 +431,9 @@ fn verifier_on_groth16() {
     assert!(Groth16::verify(&rec_vk1, &rec_input2, &rec_proof2).unwrap());
 
     let circ3 = RecursiveCircuit {
-        vk: Some(vk2.clone()),
-        proof: Some(proof2.clone()),
-        input: Some(input1.clone()),
+        vk: Some(vk2),
+        proof: Some(proof2),
+        input: Some(input1),
     };
     let rec_input3 = circ2.public_input();
     let rec_proof3 = Groth16::<_, Vec<Fq>>::prove(&rec_pk1, &circ3, rng).unwrap();
