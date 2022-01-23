@@ -41,7 +41,7 @@ pub fn msm_standard<G: AffineCurve>(
     // We divide up the bits 0..num_bits into windows of size `c`, and
     // in parallel process each such window.
     // window_starts.into_iter() //
-    let window_sums: Vec<_> = cfg_into_iter!(window_starts)
+    let window_sums: Vec<_> = crate::cfg_into_iter!(window_starts)
         .map(|w_start| {
             let mut res = zero;
             // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
