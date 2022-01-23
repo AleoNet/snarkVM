@@ -32,6 +32,8 @@ pub use fields::*;
 pub mod group;
 pub use group::*;
 
+pub mod helpers;
+
 pub mod integers;
 pub use integers::*;
 

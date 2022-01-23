@@ -24,7 +24,7 @@ pub mod sub;
 pub mod sub_checked;
 pub mod zero;
 
-use crate::{boolean::Boolean, traits::*, Environment, Mode};
+use crate::{boolean::Boolean, helpers::integers::*, traits::*, Environment, Mode};
 
 use std::{
     fmt,
