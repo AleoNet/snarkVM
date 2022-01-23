@@ -33,12 +33,10 @@ impl<E: Environment> Inv for &BaseField<E> {
             false => Mode::Private,
         };
 
-        let inverse = match self.eject_value().inverse() {
+        let inverse = BaseField::new(mode, match self.eject_value().inverse() {
             Some(inverse) => inverse,
             None => E::halt("Failed to compute the inverse for a base field element"),
-        };
-
-        let inverse = BaseField::new(mode, inverse);
+        });
 
         // Ensure self * self^(-1) == 1.
         E::enforce(|| (self, &inverse, E::one()));

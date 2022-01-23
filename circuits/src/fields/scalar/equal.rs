@@ -108,13 +108,13 @@ mod tests {
         let expected = true;
         let a = ScalarField::<Circuit>::new(Mode::Constant, first);
         let b = ScalarField::<Circuit>::new(Mode::Public, first);
-        check_is_eq("a == a", expected, a, b, 1, 0, 250, 500);
+        check_is_eq("a == a", expected, a, b, 1, 0, 250, 250);
 
         // a != b
         let expected = false;
         let a = ScalarField::<Circuit>::new(Mode::Constant, first);
         let b = ScalarField::<Circuit>::new(Mode::Public, second);
-        check_is_eq("a != b", expected, a, b, 1, 0, 250, 500);
+        check_is_eq("a != b", expected, a, b, 1, 0, 250, 250);
     }
 
     #[test]
@@ -126,13 +126,13 @@ mod tests {
         let expected = true;
         let a = ScalarField::<Circuit>::new(Mode::Public, first);
         let b = ScalarField::<Circuit>::new(Mode::Constant, first);
-        check_is_eq("a == a", expected, a, b, 1, 0, 250, 500);
+        check_is_eq("a == a", expected, a, b, 1, 0, 250, 250);
 
         // a != b
         let expected = false;
         let a = ScalarField::<Circuit>::new(Mode::Public, first);
         let b = ScalarField::<Circuit>::new(Mode::Constant, second);
-        check_is_eq("a != b", expected, a, b, 1, 0, 250, 500);
+        check_is_eq("a != b", expected, a, b, 1, 0, 250, 250);
     }
 
     #[test]
@@ -144,13 +144,13 @@ mod tests {
         let expected = true;
         let a = ScalarField::<Circuit>::new(Mode::Public, first);
         let b = ScalarField::<Circuit>::new(Mode::Public, first);
-        check_is_eq("a == a", expected, a, b, 1, 0, 501, 1002);
+        check_is_eq("a == a", expected, a, b, 1, 0, 501, 501);
 
         // a != b
         let expected = false;
         let a = ScalarField::<Circuit>::new(Mode::Public, first);
         let b = ScalarField::<Circuit>::new(Mode::Public, second);
-        check_is_eq("a != b", expected, a, b, 1, 0, 501, 1002);
+        check_is_eq("a != b", expected, a, b, 1, 0, 501, 501);
     }
 
     #[test]
@@ -162,13 +162,13 @@ mod tests {
         let expected = true;
         let a = ScalarField::<Circuit>::new(Mode::Public, first);
         let b = ScalarField::<Circuit>::new(Mode::Private, first);
-        check_is_eq("a == a", expected, a, b, 1, 0, 501, 1002);
+        check_is_eq("a == a", expected, a, b, 1, 0, 501, 501);
 
         // a != b
         let expected = false;
         let a = ScalarField::<Circuit>::new(Mode::Public, first);
         let b = ScalarField::<Circuit>::new(Mode::Private, second);
-        check_is_eq("a != b", expected, a, b, 1, 0, 501, 1002);
+        check_is_eq("a != b", expected, a, b, 1, 0, 501, 501);
     }
 
     #[test]
@@ -180,12 +180,12 @@ mod tests {
         let expected = true;
         let a = ScalarField::<Circuit>::new(Mode::Private, first);
         let b = ScalarField::<Circuit>::new(Mode::Private, first);
-        check_is_eq("a == a", expected, a, b, 1, 0, 501, 1002);
+        check_is_eq("a == a", expected, a, b, 1, 0, 501, 501);
 
         // a != b
         let expected = false;
         let a = ScalarField::<Circuit>::new(Mode::Private, first);
         let b = ScalarField::<Circuit>::new(Mode::Private, second);
-        check_is_eq("a != b", expected, a, b, 1, 0, 501, 1002);
+        check_is_eq("a != b", expected, a, b, 1, 0, 501, 501);
     }
 }

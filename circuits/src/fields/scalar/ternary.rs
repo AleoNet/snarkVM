@@ -175,7 +175,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(502, scope.num_constraints_in_scope());
+                assert_eq!(251, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
                 assert!(output.is_eq(&a).eject_value());
@@ -188,7 +188,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(502, scope.num_constraints_in_scope());
+                assert_eq!(251, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -207,7 +207,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(502, scope.num_constraints_in_scope());
+                assert_eq!(251, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
                 assert!(output.is_eq(&a).eject_value());
@@ -220,7 +220,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(502, scope.num_constraints_in_scope());
+                assert_eq!(251, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -239,7 +239,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(502, scope.num_constraints_in_scope());
+                assert_eq!(251, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
                 assert!(output.is_eq(&a).eject_value());
@@ -252,7 +252,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(502, scope.num_constraints_in_scope());
+                assert_eq!(251, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
 
                 assert!(!output.is_eq(&a).eject_value());
