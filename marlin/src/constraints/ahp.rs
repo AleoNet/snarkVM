@@ -646,7 +646,7 @@ impl<
 
         let gamma = gamma_ref;
 
-        let mut query_set_gadget = QuerySetVar::<TargetField, BaseField> { 0: HashSet::new() };
+        let mut query_set_gadget = QuerySetVar::<TargetField, BaseField>(HashSet::new());
 
         query_set_gadget.0.insert(("g_1".to_string(), LabeledPointVar {
             name: "beta".to_string(),
@@ -695,7 +695,7 @@ impl<
                 value: gamma.clone(),
             }));
 
-        let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField> { 0: HashMap::new() };
+        let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField>(HashMap::new());
 
         let zero = NonNativeFieldVar::<TargetField, BaseField>::zero(cs.ns(|| "nonnative_zero"))?;
 

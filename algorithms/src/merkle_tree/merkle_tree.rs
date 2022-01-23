@@ -305,7 +305,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         match leaves.len() {
             0 => Ok(vec![]),
             _ => Ok(vec![
-                cfg_iter!(leaves)
+                crate::cfg_iter!(leaves)
                     .map(|leaf| parameters.hash_leaf(&leaf).unwrap())
                     .collect::<Vec<_>>(),
             ]),

@@ -99,7 +99,7 @@ impl<N: Network> Ciphertext<N> {
         let record_view_key = match decryption_key {
             DecryptionKey::AccountViewKey(account_view_key) => {
                 // Compute the candidate record view key.
-                match N::account_encryption_scheme().generate_symmetric_key(&account_view_key, *self.randomizer) {
+                match N::account_encryption_scheme().generate_symmetric_key(account_view_key, *self.randomizer) {
                     Some(candidate_record_view_key) => candidate_record_view_key.into(),
                     None => {
                         return Err(anyhow!(

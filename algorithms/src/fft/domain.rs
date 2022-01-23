@@ -26,9 +26,17 @@
 //! This allows us to perform polynomial operations in O(n)
 //! by performing an O(n log n) FFT over such a domain.
 
-use crate::fft::{DomainCoeff, SparsePolynomial};
+use crate::{
+    cfg_chunks_mut,
+    cfg_into_iter,
+    cfg_iter,
+    cfg_iter_mut,
+    fft::{DomainCoeff, SparsePolynomial},
+};
 use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+#[cfg(feature = "parallel")]
+use snarkvm_utilities::max_available_threads;
+use snarkvm_utilities::{errors::SerializationError, execute_with_max_available_threads, serialize::*};
 
 use rand::Rng;
 use std::fmt;
@@ -159,7 +167,7 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an FFT, modifying the vector in place.
     pub fn fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
-        execute_in_threadpool(|| {
+        execute_with_max_available_threads(|| {
             coeffs.resize(self.size(), T::zero());
             self.in_order_fft_in_place(&mut *coeffs);
         });
@@ -175,7 +183,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an IFFT, modifying the vector in place.
     #[inline]
     pub fn ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        execute_in_threadpool(|| {
+        execute_with_max_available_threads(|| {
             evals.resize(self.size(), T::zero());
             self.in_order_ifft_in_place(&mut *evals);
         });
@@ -191,7 +199,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an FFT over a coset of the domain, modifying the input vector
     /// in place.
     pub fn coset_fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
-        execute_in_threadpool(|| {
+        execute_with_max_available_threads(|| {
             Self::distribute_powers(coeffs, F::multiplicative_generator());
             self.fft_in_place(coeffs);
         });
@@ -206,7 +214,7 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an IFFT over a coset of the domain, modifying the input vector in place.
     pub fn coset_ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        execute_in_threadpool(|| {
+        execute_with_max_available_threads(|| {
             evals.resize(self.size(), T::zero());
             self.in_order_coset_ifft_in_place(&mut *evals);
         });
@@ -232,7 +240,7 @@ impl<F: FftField> EvaluationDomain<F> {
     #[cfg(feature = "parallel")]
     fn distribute_powers_and_mul_by_const<T: DomainCoeff<F>>(coeffs: &mut [T], g: F, c: F) {
         let min_parallel_chunk_size = 1024;
-        let num_cpus_available = rayon::current_num_threads();
+        let num_cpus_available = max_available_threads();
         let num_elem_per_thread = core::cmp::max(coeffs.len() / num_cpus_available, min_parallel_chunk_size);
 
         cfg_chunks_mut!(coeffs, num_elem_per_thread)
@@ -355,24 +363,6 @@ impl<F: FftField> EvaluationDomain<F> {
         cfg_iter_mut!(result).zip(other_evals).for_each(|(a, b)| *a *= b);
 
         result
-    }
-}
-
-#[inline(always)]
-fn execute_in_threadpool(f: impl FnOnce() + Send) {
-    #[cfg(feature = "parallel")]
-    {
-        let rayon_threads = rayon::current_num_threads();
-        let num_threads = num_cpus::get_physical().min(rayon_threads);
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(num_threads)
-            .build()
-            .unwrap();
-        pool.install(|| f());
-    }
-    #[cfg(not(feature = "parallel"))]
-    {
-        f();
     }
 }
 
@@ -511,6 +501,7 @@ impl<F: FftField> EvaluationDomain<F> {
         *hi = neg;
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_butterfly<T: DomainCoeff<F>, G: Fn(((&mut T, &mut T), &F)) + Copy + Sync + Send>(
         g: G,
         xi: &mut [T],
@@ -692,7 +683,7 @@ pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
         return compute_powers_serial(size, g);
     }
     // compute the number of threads we will be using.
-    let num_cpus_available = rayon::current_num_threads();
+    let num_cpus_available = max_available_threads();
     let num_elem_per_thread = core::cmp::max(size / num_cpus_available, MIN_PARALLEL_CHUNK_SIZE);
     let num_cpus_used = size / num_elem_per_thread;
 
@@ -704,8 +695,7 @@ pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
             // Compute the size that this chunks' output should be
             // (num_elem_per_thread, unless there are less than num_elem_per_thread elements remaining)
             let num_elements_to_compute = core::cmp::min(size - i * num_elem_per_thread, num_elem_per_thread);
-            let res = compute_powers_and_mul_by_const_serial(num_elements_to_compute, g, offset);
-            res
+            compute_powers_and_mul_by_const_serial(num_elements_to_compute, g, offset)
         })
         .collect();
     res

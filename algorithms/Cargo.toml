@@ -151,6 +151,7 @@ default-features = false
 
 [dependencies.rayon]
 version = "1"
+optional = true
 
 [dependencies.rust-gpu-tools]
 version = "0.5.0"
@@ -244,6 +245,6 @@ msm = [ ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
-parallel = [ "num_cpus" ]
+parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]

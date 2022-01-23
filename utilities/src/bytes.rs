@@ -348,10 +348,7 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
 #[deprecated]
 #[inline]
 pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
-    bytes
-        .iter()
-        .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
-        .flatten()
+    bytes.iter().flat_map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
 }
 
 #[deprecated]

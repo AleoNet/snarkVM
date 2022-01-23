@@ -341,7 +341,7 @@ impl<
         elems: &[NonNativeFieldVar<TargetField, BaseField>],
         ty: OptimizationType,
     ) -> Result<(), SynthesisError> {
-        Self::push_gadgets_to_sponge(cs, &mut self.s, &elems.to_vec(), ty)
+        Self::push_gadgets_to_sponge(cs, &mut self.s, elems, ty)
     }
 
     fn absorb_native_field_elements<CS: ConstraintSystem<BaseField>>(
