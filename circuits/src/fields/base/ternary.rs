@@ -85,7 +85,7 @@ impl<E: Environment> Ternary for BaseField<E> {
             //       a - b = 0
             // => if a != b, as LHS != RHS, the witness is incorrect.
             //
-            E::enforce(|| (condition, (first.clone() - second), (witness.0.clone() - &second.0)));
+            E::enforce(|| (condition, (first - second), (&witness.0 - &second.0)));
 
             witness
         }
