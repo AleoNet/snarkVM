@@ -161,7 +161,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
 
 #[cfg(test)]
 mod tests {
-    use crate::{BaseField, Circuit, Environment, Mode, One};
+    use crate::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One as O;
     use snarkvm_r1cs::ConstraintSynthesizer;

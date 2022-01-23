@@ -59,18 +59,22 @@ impl<E: Environment> BaseField<E> {
     pub fn from(boolean: &Boolean<E>) -> Self {
         Self((**boolean).clone())
     }
+}
+
+impl<E: Environment> Eject for BaseField<E> {
+    type Primitive = E::BaseField;
 
     ///
-    /// Returns `true` if the base field is a constant.
+    /// Ejects the mode of the base field element.
     ///
-    pub fn is_constant(&self) -> bool {
-        self.0.is_constant()
+    fn eject_mode(&self) -> Mode {
+        self.0.to_mode()
     }
 
     ///
     /// Ejects the base field as a constant base field value.
     ///
-    pub fn eject_value(&self) -> E::BaseField {
+    fn eject_value(&self) -> Self::Primitive {
         self.0.to_value()
     }
 }

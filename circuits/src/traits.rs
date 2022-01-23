@@ -37,6 +37,7 @@ pub trait BaseFieldTrait:
     + Div
     + DivAssign
     + Double
+    + Eject
     + Equal
     + FromBits
     + Inv
@@ -71,22 +72,12 @@ pub trait IntegerTrait<I: IntegerType>:
     + SubChecked<Output = Self>
     + SubWrapped<Output = Self>
     + ToBits
-    + Zero
-// + Div
+    + Zero // + Div
 // + DivAssign
-// + Double
-// + Equal
-// + Inv
 // + Mul
 // + MulAssign
-// + Neg
-// + One
 // + Square
-// + Sub
-// + SubAssign
 // + Ternary
-// + ToBits
-// + Zero
 {
     ///
     /// Initializes a new integer.
