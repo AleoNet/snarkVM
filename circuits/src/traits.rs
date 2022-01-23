@@ -62,11 +62,11 @@ pub trait IntegerTrait<I: IntegerType>:
     + Clone
     + Debug
     + Equal
-    +Neg<Output = Self>
+    + Neg<Output = Self>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
-    // + SubWrapped<Output = Self>
+    + SubWrapped<Output = Self>
     + One
     + Zero
 // + Div

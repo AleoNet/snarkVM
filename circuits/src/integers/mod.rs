@@ -22,6 +22,7 @@ pub mod neg;
 pub mod one;
 pub mod sub;
 pub mod sub_checked;
+pub mod sub_wrapped;
 pub mod zero;
 
 use crate::{boolean::Boolean, helpers::integers::*, traits::*, Environment, Mode};
