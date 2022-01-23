@@ -172,7 +172,7 @@ mod tests {
             };
 
             let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let b = Integer::new(mode_b, second);
 
             let name = format!("Add: a + b {}", i);
             check_add_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
