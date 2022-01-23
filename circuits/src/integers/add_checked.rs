@@ -64,7 +64,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             // Ensure `carry` is 0.
             E::assert_eq(carry, E::zero());
 
-            // Stores the sum of `self` and `other` in `self`.
+            // Return the sum of `self` and `other`.
             Integer::from_bits(bits_le)
         }
     }
@@ -81,7 +81,7 @@ mod tests {
         thread_rng,
     };
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
     fn check_add_checked<I: IntegerType, IC: IntegerTrait<I>>(

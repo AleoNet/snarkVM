@@ -15,6 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::helpers::Subtractor;
+
+use itertools::Itertools;
 
 impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
     type Output = Self;
@@ -29,18 +32,40 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer underflow on subtraction of two constants"),
             }
         } else {
-            match I::is_signed() {
-                true => {
-                    // Return `self` + -(`other`).
-                    self.add_checked(&-other)
-                }
-                false => {
-                    // Negate each bit in the representation of the `other` integer.
-                    let neg_other = Integer::from_bits(other.bits_le.iter().map(|b| !b).collect());
-                    // Return `self` + -(`other`).
-                    self.add_checked(&neg_other.add_wrapped(&Integer::one()))
-                }
+            let mut bits_le = Vec::with_capacity(I::BITS);
+            let mut borrow = Boolean::new(Mode::Constant, false);
+
+            // Perform a ripple-borrow subtractor on the bits.
+            for (index, (a, b)) in self
+                .bits_le
+                .iter()
+                .zip_eq(other.bits_le.iter())
+                .take(I::BITS)
+                .enumerate()
+            {
+                // Perform a full-subtractor on `a` and `b`.
+                let (sum, next_borrow) = a.subtractor(&b, &borrow);
+                bits_le.push(sum);
+
+                // Determine if this iteration is the final round, and if the integer is signed.
+                // This boolean is used to differentiate logic for the signed and unsigned cases.
+                let is_msb_and_is_signed = index == (I::BITS - 1) && I::is_signed();
+
+                if is_msb_and_is_signed {
+                    // Signed case.
+                    // Set the borrow as the XOR of the borrow bits from the MSB and (MSB - 1).
+                    borrow = borrow.xor(&next_borrow);
+                } else {
+                    // Unsigned case.
+                    borrow = next_borrow;
+                };
             }
+
+            // Ensure `borrow` is 0.
+            E::assert_eq(borrow, E::zero());
+
+            // Return the difference of `self` and `other`.
+            Integer::from_bits(bits_le)
         }
     }
 }
@@ -56,7 +81,7 @@ mod tests {
         thread_rng,
     };
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
     fn check_sub_checked<I: IntegerType, IC: IntegerTrait<I>>(

@@ -16,3 +16,6 @@
 
 pub mod adder;
 pub use adder::*;
+
+pub mod subtractor;
+pub use subtractor::*;

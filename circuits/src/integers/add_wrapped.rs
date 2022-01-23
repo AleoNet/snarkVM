@@ -55,7 +55,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
                 };
             }
 
-            // Stores the sum of `self` and `other` in `self`.
+            // Return the sum of `self` and `other`.
             Integer::from_bits(bits_le)
         }
     }
@@ -74,7 +74,7 @@ mod tests {
         thread_rng,
     };
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 128;
 
     fn check_add_wrapped<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,

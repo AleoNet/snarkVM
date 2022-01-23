@@ -60,7 +60,7 @@ mod tests {
         num_constants: usize,
         num_public: usize,
         num_private: usize,
-        num_constraints: usize
+        num_constraints: usize,
     ) {
         let one = <Circuit as Environment>::BaseField::one();
 

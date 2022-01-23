@@ -40,13 +40,13 @@ impl<E: Environment> Adder for Boolean<E> {
     /// Returns the sum of `self` and `other` as a sum bit and carry bit.
     fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry) {
         // Compute the sum bit.
-        let c0 = self.xor(other); // <- Only pay for non-constants.
-        let sum = c0.xor(carry); // <- Always pay after first non-constant `carry`.
+        let c0 = self.xor(other);
+        let sum = c0.xor(carry);
 
         // Compute the carry bit.
-        let c1 = self.and(other); // <- Only pay for non-constants.
-        let c2 = carry.and(&c0); // <- Always pay after first non-constant `carry`.
-        let carry = c1.or(&c2); // <- Always pay after first non-constant `carry`.
+        let c1 = self.and(other);
+        let c2 = carry.and(&c0);
+        let carry = c1.or(&c2);
 
         (sum, carry)
     }
