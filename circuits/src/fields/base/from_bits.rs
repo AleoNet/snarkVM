@@ -26,11 +26,13 @@ impl<E: Environment> FromBits for BaseField<E> {
         // TODO (howardwu): Genericize this size check.
         // TODO (howardwu): Contemplate how to handle the CAPACITY vs. BITS case.
         // Ensure the list of booleans is within the allowed capacity.
-        if bits_le.len() > 253 {
-            E::halt(format!(
+        let mut bits_le = bits_le.to_vec();
+        match bits_le.len() <= 253 {
+            true => bits_le.resize(253, Boolean::new(Mode::Constant, false)),
+            false => E::halt(format!(
                 "Attempted to instantiate a base field element of {} bits, when the maximum number of bits allowed is 253",
                 bits_le.len()
-            ))
+            )),
         }
 
         // Construct the field value from the given bits.
@@ -49,7 +51,7 @@ impl<E: Environment> FromBits for BaseField<E> {
         // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = BaseField::zero();
         let mut coefficient = BaseField::one();
-        for bit in bits_le {
+        for bit in &bits_le {
             accumulator += BaseField::from(bit) * &coefficient;
             coefficient = coefficient.double();
         }
@@ -135,31 +137,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 1, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 2, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 1, 0, 1);
+        check_from_bits_le(Mode::Public, 1, 1, 0, 1);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 1, 1);
+        check_from_bits_le(Mode::Private, 1, 0, 1, 1);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 1, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 2, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 1, 0, 1);
+        check_from_bits_be(Mode::Public, 1, 1, 0, 1);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 1, 1);
+        check_from_bits_be(Mode::Private, 1, 0, 1, 1);
     }
 }

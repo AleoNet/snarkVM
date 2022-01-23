@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::fields::BaseField;
 
 use itertools::Itertools;
 
@@ -24,14 +25,13 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    /// TODO (@pranav) Number of constraints; Is extra logical and for Boolean::new(Mode::Constant, true) free?
-    ///
     fn is_eq(&self, other: &Self) -> Self::Boolean {
-        self.bits_le
-            .iter()
-            .zip_eq(other.bits_le.iter())
-            .map(|(this, that)| this.is_eq(that))
-            .fold(Boolean::new(Mode::Constant, true), |a, b| Boolean::and(&a, &b))
+        // Instead of comparing the bits of `self` and `other` directly, the integers are
+        // converted into a field elements, and checked if they are equivalent as field elements.
+        // Note: This is safe as the field is larger than the maximum integer type supported.
+        let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
+        let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
+        this.is_eq(&that)
     }
 
     ///
