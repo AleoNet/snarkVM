@@ -41,10 +41,13 @@ impl<E: Environment> And<Self> for Boolean<E> {
             // Declare a new variable with the expected output as witness.
             // Note: The constraint below will ensure `output` is either 0 or 1,
             // assuming `self` and `other` are well-formed (they are either 0 or 1).
-            let output = Boolean(E::new_variable(Mode::Private, match self.eject_value() & other.eject_value() {
-                true => E::BaseField::one(),
-                false => E::BaseField::zero(),
-            }).into());
+            let output = Boolean(
+                E::new_variable(Mode::Private, match self.eject_value() & other.eject_value() {
+                    true => E::BaseField::one(),
+                    false => E::BaseField::zero(),
+                })
+                .into(),
+            );
 
             // Ensure `self` * `other` = `output`
             // `output` is `1` iff `self` AND `other` are both `1`.

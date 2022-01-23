@@ -231,7 +231,7 @@ mod tests {
     fn test_u8_public_plus_public() {
         type I = u8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 37, 75);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 37, 38);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -239,7 +239,7 @@ mod tests {
     fn test_u8_public_plus_private() {
         type I = u8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 37, 75);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 37, 38);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -247,7 +247,7 @@ mod tests {
     fn test_u8_private_plus_public() {
         type I = u8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 37, 75);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 37, 38);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -255,7 +255,7 @@ mod tests {
     fn test_u8_private_plus_private() {
         type I = u8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 37, 75);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 37, 38);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -301,7 +301,7 @@ mod tests {
     fn test_i8_public_plus_public() {
         type I = i8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 38, 77);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 38, 39);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -309,7 +309,7 @@ mod tests {
     fn test_i8_public_plus_private() {
         type I = i8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 38, 77);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 38, 39);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -317,7 +317,7 @@ mod tests {
     fn test_i8_private_plus_public() {
         type I = i8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 38, 77);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 38, 39);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -325,7 +325,7 @@ mod tests {
     fn test_i8_private_plus_private() {
         type I = i8;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 38, 77);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 38, 39);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -371,7 +371,7 @@ mod tests {
     fn test_u16_public_plus_public() {
         type I = u16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 77, 155);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 77, 78);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -379,7 +379,7 @@ mod tests {
     fn test_u16_public_plus_private() {
         type I = u16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 77, 155);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 77, 78);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -387,7 +387,7 @@ mod tests {
     fn test_u16_private_plus_public() {
         type I = u16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 77, 155);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 77, 78);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -395,7 +395,7 @@ mod tests {
     fn test_u16_private_plus_private() {
         type I = u16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 77, 155);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 77, 78);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -441,7 +441,7 @@ mod tests {
     fn test_i16_public_plus_public() {
         type I = i16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 78, 157);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 78, 79);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -449,7 +449,7 @@ mod tests {
     fn test_i16_public_plus_private() {
         type I = i16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 78, 157);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 78, 79);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -457,7 +457,7 @@ mod tests {
     fn test_i16_private_plus_public() {
         type I = i16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 78, 157);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 78, 79);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -465,7 +465,7 @@ mod tests {
     fn test_i16_private_plus_private() {
         type I = i16;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 78, 157);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 78, 79);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -511,7 +511,7 @@ mod tests {
     fn test_u32_public_plus_public() {
         type I = u32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 157, 315);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 157, 158);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -519,7 +519,7 @@ mod tests {
     fn test_u32_public_plus_private() {
         type I = u32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 157, 315);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 157, 158);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -527,7 +527,7 @@ mod tests {
     fn test_u32_private_plus_public() {
         type I = u32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 157, 315);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 157, 158);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -535,7 +535,7 @@ mod tests {
     fn test_u32_private_plus_private() {
         type I = u32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 157, 315);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 157, 158);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -581,7 +581,7 @@ mod tests {
     fn test_i32_public_plus_public() {
         type I = i32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 158, 317);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 158, 159);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -589,7 +589,7 @@ mod tests {
     fn test_i32_public_plus_private() {
         type I = i32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 158, 317);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 158, 159);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -597,7 +597,7 @@ mod tests {
     fn test_i32_private_plus_public() {
         type I = i32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 158, 317);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 158, 159);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -605,7 +605,7 @@ mod tests {
     fn test_i32_private_plus_private() {
         type I = i32;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 158, 317);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 158, 159);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -651,7 +651,7 @@ mod tests {
     fn test_u64_public_plus_public() {
         type I = u64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 317, 635);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 317, 318);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -659,7 +659,7 @@ mod tests {
     fn test_u64_public_plus_private() {
         type I = u64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 317, 635);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 317, 318);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -667,7 +667,7 @@ mod tests {
     fn test_u64_private_plus_public() {
         type I = u64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 317, 635);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 317, 318);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -675,7 +675,7 @@ mod tests {
     fn test_u64_private_plus_private() {
         type I = u64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 317, 635);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 317, 318);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -721,7 +721,7 @@ mod tests {
     fn test_i64_public_plus_public() {
         type I = i64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 318, 637);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 318, 319);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -729,7 +729,7 @@ mod tests {
     fn test_i64_public_plus_private() {
         type I = i64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 318, 637);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 318, 319);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -737,7 +737,7 @@ mod tests {
     fn test_i64_private_plus_public() {
         type I = i64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 318, 637);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 318, 319);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -745,7 +745,7 @@ mod tests {
     fn test_i64_private_plus_private() {
         type I = i64;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 318, 637);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 318, 319);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -791,7 +791,7 @@ mod tests {
     fn test_u128_public_plus_public() {
         type I = u128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 637, 1275);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 637, 638);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -799,7 +799,7 @@ mod tests {
     fn test_u128_public_plus_private() {
         type I = u128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 637, 1275);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 637, 638);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -807,7 +807,7 @@ mod tests {
     fn test_u128_private_plus_public() {
         type I = u128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 637, 1275);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 637, 638);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -815,7 +815,7 @@ mod tests {
     fn test_u128_private_plus_private() {
         type I = u128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 637, 1275);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 637, 638);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 
@@ -861,7 +861,7 @@ mod tests {
     fn test_i128_public_plus_public() {
         type I = i128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 638, 1277);
+        run_test::<I, IC>(Mode::Public, Mode::Public, 1, 0, 638, 639);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Public);
     }
 
@@ -869,7 +869,7 @@ mod tests {
     fn test_i128_public_plus_private() {
         type I = i128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 638, 1277);
+        run_test::<I, IC>(Mode::Public, Mode::Private, 1, 0, 638, 639);
         check_overflow_fails::<I, IC>(Mode::Public, Mode::Private);
     }
 
@@ -877,7 +877,7 @@ mod tests {
     fn test_i128_private_plus_public() {
         type I = i128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 638, 1277);
+        run_test::<I, IC>(Mode::Private, Mode::Public, 1, 0, 638, 639);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Public);
     }
 
@@ -885,7 +885,7 @@ mod tests {
     fn test_i128_private_plus_private() {
         type I = i128;
         type IC = Integer<Circuit, I>;
-        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 638, 1277);
+        run_test::<I, IC>(Mode::Private, Mode::Private, 1, 0, 638, 639);
         check_overflow_fails::<I, IC>(Mode::Private, Mode::Private);
     }
 }
