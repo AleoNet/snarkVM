@@ -45,23 +45,32 @@ impl<E: Environment> Ternary for Boolean<E> {
         }
         // Variables
         else {
-            let witness = Boolean::new(Mode::Private, match condition.eject_value() {
+            // Compute the witness value, based on the condition.
+            let witness = match condition.eject_value() {
                 true => first.eject_value(),
                 false => second.eject_value(),
-            });
+            };
+
+            // Declare a new variable with the expected output as witness.
+            // Note: The constraint below will ensure `output` is either 0 or 1,
+            // assuming `self` and `other` are well-formed (they are either 0 or 1).
+            let output = Self(E::new_variable(Mode::Private, match witness {
+                true => E::BaseField::one(),
+                false => E::BaseField::zero(),
+            }).into());
 
             //
             // Ternary Enforcement
             // -------------------------------------------------------
-            //    witness = condition * a + (1 - condition) * b
-            // => witness = b + condition * (a - b)
-            // => condition * (a - b) = witness - b
+            //    output = condition * a + (1 - condition) * b
+            // => output = b + condition * (a - b)
+            // => condition * (a - b) = output - b
             //
             // See `Field::ternary()` for the proof of correctness.
             //
-            E::enforce(|| (condition, (&first.0 - &second.0), (witness.0.clone() - &second.0)));
+            E::enforce(|| (condition, (&first.0 - &second.0), (&output.0 - &second.0)));
 
-            witness
+            output
         }
     }
 }
@@ -204,14 +213,14 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Public : Constant
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Constant : Constant
         let expected = true;
@@ -225,14 +234,14 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Public : Constant
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -249,14 +258,14 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Public : Constant
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Constant : Constant
         let expected = true;
@@ -270,14 +279,14 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Boolean::<Circuit>::new(Mode::Constant, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Public : Constant
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -287,56 +296,56 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Public : Private
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Private : Public
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Private : Private
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Public : Public
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Public : Private
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Private : Public
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Private : Private
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -346,55 +355,55 @@ mod tests {
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Public : Private
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Private : Public
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // false ? Private : Private
         let expected = false;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Public : Public
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Public : Private
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Private : Public
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
 
         // true ? Private : Private
         let expected = true;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 1, 2);
+        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
     }
 }
