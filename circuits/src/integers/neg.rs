@@ -26,7 +26,7 @@ impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
                 let negated = Integer::from_bits(self.bits_le.iter().map(|b| !b).collect());
                 // Add `1` to the negated value.
                 // Note: This addition must be checked as `-I::MIN` is an invalid operation.
-                negated.add_checked(&Integer::one())
+                Integer::one().add_checked(&negated)
             }
             false => E::halt("Attempted to negate an unsigned integer"),
         }
@@ -52,7 +52,7 @@ mod tests {
         thread_rng,
     };
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
     fn check_neg<I: IntegerType, IC: IntegerTrait<I>>(
@@ -132,8 +132,6 @@ mod tests {
         check_unsigned_halts::<I>(Mode::Private);
     }
 
-    // TODO (howardwu): The public case is flaky for an unknown reason. The number of constants fluctuates.
-    #[ignore]
     #[test]
     fn test_i8_neg() {
         type I = i8;

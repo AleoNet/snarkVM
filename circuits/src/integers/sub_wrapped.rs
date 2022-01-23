@@ -67,7 +67,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use num_traits::{One, Zero};
+    use num_traits::One;
     use rand::{
         distributions::{Distribution, Standard},
         thread_rng,
