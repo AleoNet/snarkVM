@@ -139,7 +139,10 @@ impl IntegerType for u64 {}
 impl IntegerType for u128 {}
 
 /// Representation of a boolean.
-pub trait BooleanTrait: And + Clone + Debug + Equal + Nand + Nor + Not + Or + Ternary + Xor {}
+pub trait BooleanTrait:
+    Adder + And + Clone + Debug + Equal + Nand + Nor + Not + Or + Subtractor + Ternary + Xor
+{
+}
 
 /// Representation of a base field.
 pub trait BaseFieldTrait:
@@ -376,4 +379,38 @@ pub trait FromBits {
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
 
     fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
+}
+
+///
+/// A single-bit binary adder with a carry bit.
+///
+/// https://en.wikipedia.org/wiki/Adder_(electronics)#Full_adder
+///
+/// sum = (a XOR b) XOR carry
+/// carry = a AND b OR carry AND (a XOR b)
+/// return (sum, carry)
+///
+pub trait Adder {
+    type Carry;
+    type Sum;
+
+    /// Returns the sum of `self` and `other` as a sum bit and carry bit.
+    fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry);
+}
+
+///
+/// A single-bit binary subtractor with a borrow bit.
+///
+/// https://en.wikipedia.org/wiki/Subtractor#Full_subtractor
+///
+/// difference = (a XOR b) XOR borrow
+/// borrow = ((NOT a) AND b) OR (borrow AND (NOT (a XOR b)))
+/// return (difference, borrow)
+///
+pub trait Subtractor {
+    type Borrow;
+    type Difference;
+
+    /// Returns the difference of `self` and `other` as a difference bit and borrow bit.
+    fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow);
 }

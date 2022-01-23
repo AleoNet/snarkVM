@@ -14,24 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{And, Boolean, Environment, Or, Xor};
-
-///
-/// A single-bit binary subtractor with a borrow bit.
-///
-/// https://en.wikipedia.org/wiki/Subtractor#Full_subtractor
-///
-/// difference = (a XOR b) XOR borrow
-/// borrow = ((NOT a) AND b) OR (borrow AND (NOT (a XOR b)))
-/// return (difference, borrow)
-///
-pub trait Subtractor {
-    type Borrow;
-    type Difference;
-
-    /// Returns the difference of `self` and `other` as a difference bit and borrow bit.
-    fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow);
-}
+use super::*;
 
 impl<E: Environment> Subtractor for Boolean<E> {
     type Borrow = Boolean<E>;
@@ -61,7 +44,7 @@ mod tests {
     fn check_subtractor(
         name: &str,
         expected_difference: bool,
-        expected_carry: bool,
+        expected_borrow: bool,
         a: Boolean<Circuit>,
         b: Boolean<Circuit>,
         c: Boolean<Circuit>,
@@ -73,21 +56,21 @@ mod tests {
         Circuit::scoped(name, |scope| {
             let case = format!("({} SUB {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
 
-            let (candidate_sum, candidate_carry) = a.subtractor(&b, &c);
+            let (candidate_difference, candidate_borrow) = a.subtractor(&b, &c);
             assert_eq!(
                 expected_difference,
-                candidate_sum.eject_value(),
+                candidate_difference.eject_value(),
                 "DIFF {} != {} := {}",
                 expected_difference,
-                candidate_sum.eject_value(),
+                candidate_difference.eject_value(),
                 case
             );
             assert_eq!(
-                expected_carry,
-                candidate_carry.eject_value(),
+                expected_borrow,
+                candidate_borrow.eject_value(),
                 "BORROW {} != {} := {}",
-                expected_carry,
-                candidate_carry.eject_value(),
+                expected_borrow,
+                candidate_borrow.eject_value(),
                 case
             );
 

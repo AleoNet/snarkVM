@@ -14,24 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{And, Boolean, Environment, Or, Xor};
-
-///
-/// A single-bit binary adder with a carry bit.
-///
-/// https://en.wikipedia.org/wiki/Adder_(electronics)#Full_adder
-///
-/// sum = (a XOR b) XOR carry
-/// carry = a AND b OR carry AND (a XOR b)
-/// return (sum, carry)
-///
-pub trait Adder {
-    type Carry;
-    type Sum;
-
-    /// Returns the sum of `self` and `other` as a sum bit and carry bit.
-    fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry);
-}
+use super::*;
 
 impl<E: Environment> Adder for Boolean<E> {
     type Carry = Boolean<E>;

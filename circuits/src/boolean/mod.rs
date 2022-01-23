@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod adder;
+pub use adder::*;
+
 pub mod and;
 pub use and::*;
 
@@ -31,6 +34,9 @@ pub use not::*;
 
 pub mod or;
 pub use or::*;
+
+pub mod subtractor;
+pub use subtractor::*;
 
 pub mod ternary;
 pub use ternary::*;

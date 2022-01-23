@@ -77,10 +77,8 @@ impl<E: Environment> FromBits for BaseField<E> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_fields::PrimeField;
     use snarkvm_utilities::UniformRand;
 
-    use itertools::Itertools;
     use rand::thread_rng;
 
     const ITERATIONS: usize = 100;
