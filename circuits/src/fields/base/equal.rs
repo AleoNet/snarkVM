@@ -18,14 +18,13 @@ use super::*;
 
 impl<E: Environment> Equal<Self> for BaseField<E> {
     type Boolean = Boolean<E>;
-    type Output = Boolean<E>;
 
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
     /// This method costs 3 constraints.
     ///
-    fn is_eq(&self, other: &Self) -> Self::Output {
+    fn is_eq(&self, other: &Self) -> Self::Boolean {
         !self.is_neq(other)
     }
 
@@ -37,7 +36,7 @@ impl<E: Environment> Equal<Self> for BaseField<E> {
     ///
     /// This method costs 3 constraints.
     ///
-    fn is_neq(&self, other: &Self) -> Self::Output {
+    fn is_neq(&self, other: &Self) -> Self::Boolean {
         match (self.is_constant(), other.is_constant()) {
             (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
             _ => {

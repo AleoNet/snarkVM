@@ -18,7 +18,6 @@ use super::*;
 
 impl<E: Environment> Zero for Affine<E> {
     type Boolean = Boolean<E>;
-    type Output = Self::Boolean;
 
     fn zero() -> Self {
         Affine {
@@ -27,7 +26,7 @@ impl<E: Environment> Zero for Affine<E> {
         }
     }
 
-    fn is_zero(&self) -> Self::Output {
+    fn is_zero(&self) -> Self::Boolean {
         let is_x_zero = self.x.is_eq(&BaseField::zero());
         let is_y_one = self.y.is_eq(&BaseField::one());
         is_x_zero.and(&is_y_one)
@@ -76,7 +75,6 @@ mod tests {
         let candidate = Affine::<Circuit>::zero();
 
         // Should equal 0.
-        let candidate_boolean = candidate.is_zero();
-        assert!(candidate_boolean.eject_value());
+        assert!(candidate.is_zero().eject_value());
     }
 }

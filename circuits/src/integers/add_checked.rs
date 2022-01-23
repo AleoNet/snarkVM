@@ -61,8 +61,8 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 };
             }
 
-            // Ensure `carry` * 1 = 0.
-            E::enforce(|| (carry, E::one(), E::zero()));
+            // Ensure `carry` is 0.
+            E::assert_eq(carry, E::zero());
 
             // Stores the sum of `self` and `other` in `self`.
             Integer::from_bits(bits_le)

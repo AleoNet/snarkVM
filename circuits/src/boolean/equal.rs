@@ -18,15 +18,14 @@ use super::*;
 
 impl<E: Environment> Equal<Self> for Boolean<E> {
     type Boolean = Boolean<E>;
-    type Output = Boolean<E>;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_eq(&self, other: &Self) -> Self::Output {
+    fn is_eq(&self, other: &Self) -> Self::Boolean {
         !self.is_neq(other)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_neq(&self, other: &Self) -> Self::Output {
+    fn is_neq(&self, other: &Self) -> Self::Boolean {
         self.xor(other)
     }
 }

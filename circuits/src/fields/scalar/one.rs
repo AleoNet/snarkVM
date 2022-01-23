@@ -18,13 +18,12 @@ use super::*;
 
 impl<E: Environment> One for ScalarField<E> {
     type Boolean = Boolean<E>;
-    type Output = Self::Boolean;
 
     fn one() -> Self {
         Self::new(Mode::Constant, <E as Environment>::ScalarField::one())
     }
 
-    fn is_one(&self) -> Self::Output {
+    fn is_one(&self) -> Self::Boolean {
         self.is_eq(&Self::one())
     }
 }
@@ -69,11 +68,9 @@ mod tests {
         let candidate = ScalarField::<Circuit>::one();
 
         // Should equal 1.
-        let candidate_boolean = candidate.is_one();
-        assert!(candidate_boolean.eject_value());
+        assert!(candidate.is_one().eject_value());
 
         // Should not equal 0.
-        let candidate_boolean = candidate.is_zero();
-        assert!(!candidate_boolean.eject_value());
+        assert!(!candidate.is_zero().eject_value());
     }
 }

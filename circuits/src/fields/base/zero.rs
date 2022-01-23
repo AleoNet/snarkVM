@@ -18,13 +18,12 @@ use super::*;
 
 impl<E: Environment> Zero for BaseField<E> {
     type Boolean = Boolean<E>;
-    type Output = Self::Boolean;
 
     fn zero() -> Self {
         BaseField(E::zero())
     }
 
-    fn is_zero(&self) -> Self::Output {
+    fn is_zero(&self) -> Self::Boolean {
         self.is_eq(&BaseField::zero())
     }
 }
@@ -69,11 +68,9 @@ mod tests {
         let candidate = BaseField::<Circuit>::zero();
 
         // Should equal 0.
-        let candidate_boolean = candidate.is_zero();
-        assert!(candidate_boolean.eject_value());
+        assert!(candidate.is_zero().eject_value());
 
         // Should not equal 1.
-        let candidate_boolean = candidate.is_one();
-        assert!(!candidate_boolean.eject_value());
+        assert!(!candidate.is_one().eject_value());
     }
 }

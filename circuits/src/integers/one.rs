@@ -16,15 +16,15 @@
 
 use super::*;
 
-impl<E: Environment> One for BaseField<E> {
+impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     fn one() -> Self {
-        BaseField(E::one())
+        Integer::new(Mode::Constant, I::one())
     }
 
     fn is_one(&self) -> Self::Boolean {
-        self.is_eq(&BaseField::one())
+        self.is_eq(&Integer::one())
     }
 }
 
@@ -33,44 +33,77 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    #[test]
-    fn test_one() {
-        let one = <Circuit as Environment>::BaseField::one();
-
+    fn check_one<I: IntegerType>() {
         Circuit::scoped("One", |scope| {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
             assert_eq!(0, scope.num_constants_in_scope());
             assert_eq!(0, scope.num_public_in_scope());
             assert_eq!(0, scope.num_private_in_scope());
             assert_eq!(0, scope.num_constraints_in_scope());
 
-            let candidate = BaseField::<Circuit>::one();
-            assert_eq!(one, candidate.eject_value());
+            assert_eq!(I::one(), Integer::<Circuit, I>::one().eject_value());
 
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
+            assert_eq!(I::BITS, scope.num_constants_in_scope(), "(num_constants)");
+            assert_eq!(0, scope.num_public_in_scope(), "(num_public)");
+            assert_eq!(0, scope.num_private_in_scope(), "(num_private)");
+            assert_eq!(0, scope.num_constraints_in_scope(), "(num_constraints)");
 
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+            assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });
+
+        let candidate = Integer::<Circuit, I>::one();
+        // Should equal 1.
+        assert!(candidate.is_one().eject_value());
+        // Should not equal 0.
+        assert!(!candidate.is_zero().eject_value());
     }
 
     #[test]
-    fn test_is_one() {
-        let candidate = BaseField::<Circuit>::one();
+    fn test_u8_one() {
+        check_one::<u8>();
+    }
 
-        // Should equal 1.
-        assert!(candidate.is_one().eject_value());
+    #[test]
+    fn test_i8_one() {
+        check_one::<i8>();
+    }
 
-        // Should not equal 0.
-        assert!(!candidate.is_zero().eject_value());
+    #[test]
+    fn test_u16_one() {
+        check_one::<u16>();
+    }
+
+    #[test]
+    fn test_i16_one() {
+        check_one::<i16>();
+    }
+
+    #[test]
+    fn test_u32_one() {
+        check_one::<u32>();
+    }
+
+    #[test]
+    fn test_i32_one() {
+        check_one::<i32>();
+    }
+
+    #[test]
+    fn test_u64_one() {
+        check_one::<u64>();
+    }
+
+    #[test]
+    fn test_i64_one() {
+        check_one::<i64>();
+    }
+
+    #[test]
+    fn test_u128_one() {
+        check_one::<u128>();
+    }
+
+    #[test]
+    fn test_i128_one() {
+        check_one::<i128>();
     }
 }

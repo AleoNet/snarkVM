@@ -16,7 +16,17 @@
 
 use crate::Mode;
 
-use num_traits::{Inv, One as NumOne, PrimInt, WrappingAdd, WrappingMul, WrappingNeg, WrappingSub, Zero as NumZero};
+use num_traits::{
+    CheckedNeg,
+    Inv,
+    One as NumOne,
+    PrimInt,
+    WrappingAdd,
+    WrappingMul,
+    WrappingNeg,
+    WrappingSub,
+    Zero as NumZero,
+};
 use std::{
     fmt::{Debug, Display},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
@@ -102,6 +112,7 @@ pub trait IntegerProperties: PrimInt + Debug + Display {
 /// Trait bound for integer values. Common to both signed and unsigned integers.
 pub trait IntegerType:
     'static
+    + CheckedNeg
     + Debug
     + Display
     + NumZero
@@ -156,7 +167,20 @@ pub trait BaseFieldTrait:
 
 /// Representation of an integer.
 pub trait IntegerTrait<I: IntegerType>:
-    AddAssign + Add<Output = Self> + AddChecked<Output = Self> + AddWrapped<Output = Self> + Clone + Debug
+    AddAssign
+    + Add<Output = Self>
+    + AddChecked<Output = Self>
+    + AddWrapped<Output = Self>
++ Clone
++ Debug
++ Equal
++Neg<Output = Self>
+    + SubAssign
+    + Sub<Output = Self>
+    + SubChecked<Output = Self>
+    // + SubWrapped<Output = Self>
++ One
++ Zero
 // + Div
 // + DivAssign
 // + Double
@@ -187,37 +211,34 @@ pub trait IntegerTrait<I: IntegerType>:
 /// Representation of the zero value.
 pub trait Zero {
     type Boolean: BooleanTrait;
-    type Output;
 
     /// Returns a new zero constant.
     fn zero() -> Self;
 
     /// Returns `true` if `self` is zero.
-    fn is_zero(&self) -> Self::Output;
+    fn is_zero(&self) -> Self::Boolean;
 }
 
 /// Representation of the one value.
 pub trait One {
     type Boolean: BooleanTrait;
-    type Output;
 
     /// Returns a new one constant.
     fn one() -> Self;
 
     /// Returns `true` if `self` is one.
-    fn is_one(&self) -> Self::Output;
+    fn is_one(&self) -> Self::Boolean;
 }
 
 /// Trait for equality comparisons.
 pub trait Equal<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
-    type Output;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_eq(&self, other: &Rhs) -> Self::Output;
+    fn is_eq(&self, other: &Rhs) -> Self::Boolean;
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_neq(&self, other: &Rhs) -> Self::Output;
+    fn is_neq(&self, other: &Rhs) -> Self::Boolean;
 }
 
 pub trait LessThan<Rhs: ?Sized = Self> {
@@ -282,25 +303,46 @@ pub trait Ternary {
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output;
 }
 
-/// Binary operator for summing two values, enforcing an overflow never occurs.
+/// Binary operator for adding two values, enforcing an overflow never occurs.
 pub trait AddChecked<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for summing two values, bounding the sum to `MAX` if an overflow occurs.
+/// Binary operator for adding two values, bounding the sum to `MAX` if an overflow occurs.
 pub trait AddSaturating<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_saturating(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for summing two values, wrapping the sum if an overflow occurs.
+/// Binary operator for adding two values, wrapping the sum if an overflow occurs.
 pub trait AddWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for subtracting two values, enforcing an underflow never occurs.
+pub trait SubChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn sub_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for subtracting two values, bounding the difference to `MIN` if an underflow occurs.
+pub trait SubSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn sub_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for subtracting two values, wrapping the difference if an underflow occurs.
+pub trait SubWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn sub_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Unary operator for retrieving the doubled value.

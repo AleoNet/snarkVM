@@ -18,14 +18,13 @@ use super::*;
 
 impl<E: Environment> Equal<Self> for Affine<E> {
     type Boolean = Boolean<E>;
-    type Output = Boolean<E>;
 
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_eq(&self, other: &Self) -> Self::Output {
+    fn is_eq(&self, other: &Self) -> Self::Boolean {
         let is_x_eq = self.x.is_eq(&other.x);
         let is_y_eq = self.y.is_eq(&other.y);
         is_x_eq.and(&is_y_eq)
@@ -39,7 +38,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_neq(&self, other: &Self) -> Self::Output {
+    fn is_neq(&self, other: &Self) -> Self::Boolean {
         !self.is_eq(other)
     }
 }

@@ -18,13 +18,12 @@ use super::*;
 
 impl<E: Environment> Zero for ScalarField<E> {
     type Boolean = Boolean<E>;
-    type Output = Self::Boolean;
 
     fn zero() -> Self {
         Self::new(Mode::Constant, <E as Environment>::ScalarField::zero())
     }
 
-    fn is_zero(&self) -> Self::Output {
+    fn is_zero(&self) -> Self::Boolean {
         self.is_eq(&Self::zero())
     }
 }

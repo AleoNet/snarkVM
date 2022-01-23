@@ -19,14 +19,19 @@ pub mod helpers;
 pub mod add;
 pub mod add_checked;
 pub mod add_wrapped;
-// pub mod sub;
+pub mod equal;
+pub mod neg;
+pub mod one;
+pub mod sub;
+pub mod sub_checked;
+pub mod zero;
 
 use crate::{boolean::Boolean, traits::*, Environment, Mode};
 
 use std::{
     fmt,
     marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 pub type I8<E> = Integer<E, i8>;

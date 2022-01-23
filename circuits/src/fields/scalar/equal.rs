@@ -20,12 +20,11 @@ use itertools::Itertools;
 
 impl<E: Environment> Equal<Self> for ScalarField<E> {
     type Boolean = Boolean<E>;
-    type Output = Boolean<E>;
 
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    fn is_eq(&self, other: &Self) -> Self::Output {
+    fn is_eq(&self, other: &Self) -> Self::Boolean {
         let mut output = Boolean::new(Mode::Constant, true);
 
         for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
@@ -38,7 +37,7 @@ impl<E: Environment> Equal<Self> for ScalarField<E> {
     ///
     /// Returns `true` if `self` and `other` are *not* equal.
     ///
-    fn is_neq(&self, other: &Self) -> Self::Output {
+    fn is_neq(&self, other: &Self) -> Self::Boolean {
         !self.is_eq(other)
     }
 }
