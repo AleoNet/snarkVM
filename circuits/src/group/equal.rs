@@ -102,7 +102,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
 
@@ -113,7 +113,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
@@ -134,7 +134,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
 
@@ -145,7 +145,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
@@ -166,7 +166,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
 
@@ -177,7 +177,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }
@@ -198,7 +198,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
 
@@ -209,7 +209,7 @@ mod tests {
                 assert_eq!(0, scope.num_constants_in_scope());
                 assert_eq!(0, scope.num_public_in_scope());
                 assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
+                assert_eq!(7, scope.num_constraints_in_scope());
                 assert!(scope.is_satisfied());
             });
         }

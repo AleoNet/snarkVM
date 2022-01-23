@@ -294,33 +294,33 @@ mod tests {
         check_false_add_true_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
         check_false_add_true_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
         check_true_add_false_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_true_add_false_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 1, 2); // <- Differs
+        check_true_add_false_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 1, 1); // <- Differs
         check_true_add_true_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_true_add_true_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 1, 2); // <- Differs
+        check_true_add_true_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 1, 1); // <- Differs
     }
 
     #[test]
     fn test_constant_add_public_with_public() {
-        check_false_add_false_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 4);
-        check_false_add_true_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 4);
-        check_false_add_true_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 4);
-        check_true_add_false_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
+        check_false_add_true_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
+        check_false_add_true_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
+        check_true_add_false_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
     fn test_constant_add_public_with_private() {
-        check_false_add_false_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 4);
-        check_false_add_true_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 4);
-        check_false_add_true_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 4);
-        check_true_add_false_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
+        check_false_add_true_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
+        check_false_add_true_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
+        check_true_add_false_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
@@ -330,33 +330,33 @@ mod tests {
         check_false_add_true_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
         check_false_add_true_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
         check_true_add_false_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_true_add_false_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 1, 2); // <- Differs
+        check_true_add_false_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 1, 1); // <- Differs
         check_true_add_true_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_true_add_true_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 1, 2); // <- Differs
+        check_true_add_true_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 1, 1); // <- Differs
     }
 
     #[test]
     fn test_constant_add_private_with_public() {
-        check_false_add_false_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 4);
-        check_false_add_true_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 4);
-        check_false_add_true_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 4);
-        check_true_add_false_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
+        check_false_add_true_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
+        check_false_add_true_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
+        check_true_add_false_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
     fn test_constant_add_private_with_private() {
-        check_false_add_false_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 4);
-        check_false_add_true_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 4);
-        check_false_add_true_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 4);
-        check_true_add_false_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
+        check_false_add_true_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
+        check_false_add_true_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
+        check_true_add_false_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
@@ -364,106 +364,106 @@ mod tests {
         check_false_add_false_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_false_add_false_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_false_add_true_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 2); // <- Differs
+        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 1); // <- Differs
         check_true_add_false_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_true_add_false_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
         check_true_add_true_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_add_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 2); // <- Differs
+        check_true_add_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 1); // <- Differs
     }
 
     #[test]
     fn test_public_add_constant_with_public() {
-        check_false_add_false_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 4);
-        check_false_add_true_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 4);
-        check_true_add_false_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 4);
-        check_true_add_true_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
+        check_false_add_true_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
+        check_true_add_false_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
+        check_true_add_true_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
     fn test_public_add_constant_with_private() {
-        check_false_add_false_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 4);
-        check_false_add_true_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 4);
-        check_true_add_false_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 4);
-        check_true_add_true_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
+        check_false_add_true_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_false_add_true_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
+        check_true_add_false_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
+        check_true_add_true_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
     fn test_public_add_public_with_constant() {
-        check_false_add_false_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 6); // <- Differs
-        check_false_add_true_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 4);
-        check_false_add_true_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 4);
-        check_true_add_false_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 4);
-        check_true_add_true_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
+        check_false_add_true_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
+        check_false_add_true_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
+        check_true_add_false_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
+        check_true_add_true_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
     fn test_public_add_public_with_public() {
-        check_false_add_false_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_false_add_false_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_false_add_true_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_false_add_true_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_true_add_false_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_true_add_false_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_true_add_true_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
-        check_true_add_true_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 10);
+        check_false_add_false_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_false_add_false_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_false_add_true_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_false_add_true_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_true_add_false_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_true_add_false_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_true_add_true_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+        check_true_add_true_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
     }
 
     #[test]
     fn test_public_add_public_with_private() {
-        check_false_add_false_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_false_add_false_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_false_add_true_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_false_add_true_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_true_add_false_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_true_add_false_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_true_add_true_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
-        check_true_add_true_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 10);
+        check_false_add_false_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_false_add_false_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_false_add_true_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_false_add_true_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_true_add_false_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_true_add_false_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_true_add_true_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+        check_true_add_true_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
     }
 
     #[test]
     fn test_public_add_private_with_constant() {
-        check_false_add_false_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 4);
-        check_false_add_false_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 6); // <- Differs
-        check_false_add_true_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 4);
-        check_false_add_true_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 6); // <- Differs
-        check_true_add_false_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 4);
-        check_true_add_false_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 6); // <- Differs
-        check_true_add_true_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 4);
-        check_true_add_true_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 6); // <- Differs
+        check_false_add_false_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
+        check_false_add_false_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
+        check_false_add_true_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
+        check_false_add_true_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
+        check_true_add_false_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
+        check_true_add_false_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
+        check_true_add_true_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
+        check_true_add_true_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
     }
 
     #[test]
     fn test_public_add_private_with_public() {
-        check_false_add_false_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_false_add_false_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_false_add_true_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_false_add_true_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_true_add_false_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_true_add_false_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_true_add_true_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
-        check_true_add_true_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 10);
+        check_false_add_false_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_false_add_false_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_false_add_true_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_false_add_true_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_true_add_false_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_true_add_false_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_true_add_true_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+        check_true_add_true_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
     }
 
     #[test]
     fn test_public_add_private_with_private() {
-        check_false_add_false_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_false_add_false_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_false_add_true_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_false_add_true_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_true_add_false_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_true_add_false_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_true_add_true_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
-        check_true_add_true_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 10);
+        check_false_add_false_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_false_add_false_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_false_add_true_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_false_add_true_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_true_add_false_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_true_add_false_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_true_add_true_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+        check_true_add_true_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
     }
 }

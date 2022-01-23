@@ -38,13 +38,20 @@ impl<E: Environment> Xor<Self> for Boolean<E> {
         }
         // Variable != Variable
         else {
-            let output = Boolean::<E>::new(Mode::Private, self.eject_value() ^ other.eject_value());
-
-            // Ensure `self` * `other` = `output`
-            // `output` is `1` iff `self` != `other`.
+            // Declare a new variable with the expected output as witness.
+            // Note: The constraint below will ensure `output` is either 0 or 1,
+            // assuming `self` and `other` are well-formed (they are either 0 or 1).
+            let output = Boolean(
+                E::new_variable(Mode::Private, match self.eject_value() ^ other.eject_value() {
+                    true => E::BaseField::one(),
+                    false => E::BaseField::zero(),
+                })
+                .into(),
+            );
 
             //
             // Ensure (`self` + `self`) * (`other`) = (`self` + `other` - `output`)
+            // `output` is `1` iff `self` != `other`.
             //
             // As `self` and `other` are enforced to be `Boolean` types,
             // if they are equal, then the `output` is 0,
@@ -64,7 +71,7 @@ impl<E: Environment> Xor<Self> for Boolean<E> {
             //
             E::enforce(|| ((&self.0 + &self.0), other, (&self.0 + &other.0 - &output.0)));
 
-            Self(output.into())
+            output
         }
     }
 }
@@ -191,25 +198,25 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_xor("false != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != false", expected, a, b, 0, 0, 1, 1);
 
         // false != true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_xor("false != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != true", expected, a, b, 0, 0, 1, 1);
 
         // true != false
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_xor("true != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != false", expected, a, b, 0, 0, 1, 1);
 
         // true != true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_xor("true != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != true", expected, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -218,25 +225,25 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("false != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != false", expected, a, b, 0, 0, 1, 1);
 
         // false != true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("false != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != true", expected, a, b, 0, 0, 1, 1);
 
         // true != false
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("true != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != false", expected, a, b, 0, 0, 1, 1);
 
         // true != true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("true != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != true", expected, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -245,24 +252,24 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("false != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != false", expected, a, b, 0, 0, 1, 1);
 
         // false != true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("false != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != true", expected, a, b, 0, 0, 1, 1);
 
         // true != false
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("true != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != false", expected, a, b, 0, 0, 1, 1);
 
         // true != true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("true != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != true", expected, a, b, 0, 0, 1, 1);
     }
 }
