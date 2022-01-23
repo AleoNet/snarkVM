@@ -65,7 +65,7 @@ impl<E: Environment> Eject for BaseField<E> {
     type Primitive = E::BaseField;
 
     ///
-    /// Ejects the mode of the base field element.
+    /// Ejects the mode of the base field.
     ///
     fn eject_mode(&self) -> Mode {
         self.0.to_mode()
