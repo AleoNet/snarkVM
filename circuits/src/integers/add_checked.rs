@@ -79,10 +79,7 @@ mod tests {
     use snarkvm_utilities::UniformRand;
 
     use num_traits::One;
-    use rand::{
-        distributions::{Distribution, Standard},
-        thread_rng,
-    };
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
@@ -163,9 +160,7 @@ mod tests {
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
-    )
-        where Standard: Distribution<I>,
-    {
+    ) {
         for i in 0..ITERATIONS {
             let name = format!("Add: {:?} + {:?} {}", mode_a, mode_b, i);
             let first: I = UniformRand::rand(&mut thread_rng());

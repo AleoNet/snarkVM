@@ -141,17 +141,11 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::{
-        distributions::{Distribution, Standard},
-        thread_rng,
-    };
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 1000;
 
-    fn check_new<I: IntegerType, IC: IntegerTrait<I>>(mode: Mode)
-    where
-        Standard: Distribution<I>,
-    {
+    fn check_new<I: IntegerType, IC: IntegerTrait<I>>(mode: Mode) {
         let expected: I = UniformRand::rand(&mut thread_rng());
         let candidate = IC::new(mode, expected);
         assert_eq!(mode.is_constant(), candidate.is_constant());
@@ -163,10 +157,7 @@ mod tests {
         assert_eq!(I::MAX, IC::new(mode, I::MAX).eject_value());
     }
 
-    fn run_test<I: IntegerType>()
-    where
-        Standard: Distribution<I>,
-    {
+    fn run_test<I: IntegerType>() {
         for _ in 0..ITERATIONS {
             check_new::<I, Integer<Circuit, I>>(Mode::Constant);
             check_new::<I, Integer<Circuit, I>>(Mode::Public);

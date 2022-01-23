@@ -51,10 +51,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::{
-        distributions::{Distribution, Standard},
-        thread_rng,
-    };
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 100;
 
@@ -97,9 +94,7 @@ mod tests {
     //     num_public: usize,
     //     num_private: usize,
     //     num_constraints: usize,
-    // ) where
-    //     Standard: Distribution<I>,
-    // {
+    // ) {
     //     for i in 0..ITERATIONS {
     //         let first: I = UniformRand::rand(&mut thread_rng());
     //         let second: I = UniformRand::rand(&mut thread_rng());

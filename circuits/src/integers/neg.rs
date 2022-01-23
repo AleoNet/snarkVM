@@ -50,10 +50,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use rand::{
-        distributions::{Distribution, Standard},
-        thread_rng,
-    };
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
@@ -89,7 +86,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) where Standard: Distribution<I> {
+    fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
         let value: I = UniformRand::rand(&mut thread_rng());
         let candidate = Integer::<Circuit, I>::new(mode, value);
         let result = std::panic::catch_unwind(|| candidate.neg());
@@ -103,9 +100,7 @@ mod tests {
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
-    ) where
-        Standard: Distribution<I>,
-    {
+    ) {
         for i in 0..ITERATIONS {
             let name = format!("Neg: {:?} {}", mode, i);
             let value: I = UniformRand::rand(&mut thread_rng());
