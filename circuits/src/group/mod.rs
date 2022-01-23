@@ -93,18 +93,30 @@ impl<E: Environment> Affine<E> {
 
         Self { x, y }
     }
+}
+
+impl<E: Environment> Eject for Affine<E> {
+    type Primitive = E::Affine;
 
     ///
-    /// Returns `true` if the group is a constant.
+    /// Ejects the mode of the group element.
     ///
-    pub fn is_constant(&self) -> bool {
-        self.x.is_constant() && self.y.is_constant()
+    fn eject_mode(&self) -> Mode {
+        match (self.x.eject_mode(), self.y.eject_mode()) {
+            (Mode::Constant, mode) | (mode, Mode::Constant) => mode,
+            (Mode::Public, Mode::Public) => Mode::Public,
+            (Mode::Private, Mode::Private) => Mode::Private,
+            // Note: It could be that the other cases are well-formed.
+            // However, until concrete usage motivates it, they will be excluded
+            // so it can be thoroughly studied for safety prior to inclusion.
+            _ => E::halt("Detected a group element with a malformed mode"),
+        }
     }
 
     ///
     /// Ejects the group as a constant group element.
     ///
-    pub fn eject_value(&self) -> E::Affine {
+    fn eject_value(&self) -> E::Affine {
         let value = E::affine_from_x_coordinate(self.x.eject_value());
         assert_eq!(value.to_y_coordinate(), self.y.eject_value());
         value
