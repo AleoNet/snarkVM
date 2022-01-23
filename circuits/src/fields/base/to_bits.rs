@@ -48,7 +48,7 @@ impl<E: Environment> ToBits for &BaseField<E> {
             .map(|bit| Boolean::new(mode, *bit))
             .collect::<Vec<_>>();
 
-        // // Reconstruct the bits as a linear combination representing the original field value.
+        // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = BaseField::zero();
         let mut coefficient = BaseField::one();
         for bit in &bits {
