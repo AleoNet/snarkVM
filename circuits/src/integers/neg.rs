@@ -23,7 +23,10 @@ impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
         match I::is_signed() {
             true => {
                 // Negate each bit in the representation of the `other` integer.
-                let negated = Integer::from_bits(self.bits_le.iter().map(|b| !b).collect());
+                let negated = Integer {
+                    bits_le: self.bits_le.iter().map(|b| !b).collect(),
+                    phantom: Default::default(),
+                };
                 // Add `1` to the negated value.
                 // Note: This addition must be checked as `-I::MIN` is an invalid operation.
                 Integer::one().add_checked(&negated)

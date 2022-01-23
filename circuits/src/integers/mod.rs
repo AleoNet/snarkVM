@@ -18,14 +18,24 @@ pub mod add;
 pub mod add_checked;
 pub mod add_wrapped;
 pub mod equal;
+pub mod from_bits;
 pub mod neg;
 pub mod one;
 pub mod sub;
 pub mod sub_checked;
 pub mod sub_wrapped;
+pub mod to_bits;
 pub mod zero;
 
-use crate::{boolean::Boolean, helpers::integers::*, traits::*, Environment, Mode};
+use crate::{
+    boolean::Boolean,
+    fields::BaseField,
+    helpers::integers::*,
+    traits::*,
+    Environment,
+    LinearCombination,
+    Mode,
+};
 
 use std::{
     fmt,
@@ -60,47 +70,68 @@ impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
             value = value >> 1;
         }
-        Self::from_bits(bits_le)
-    }
-
-    /// Returns `true` if the integer is a constant.
-    fn is_constant(&self) -> bool {
-        self.bits_le.iter().all(|bit| bit.is_constant() == true)
-    }
-
-    /// Ejects the integer as a constant integer value.
-    fn eject_value(&self) -> I {
-        self.bits_le.iter().rev().fold(I::zero(), |value, bit| {
-            // TODO (@pranav) This explicit cast could be eliminated by using a trait bound
-            //  `bool: AsPrimitive<I>`. This however requires the trait bound to be expressed
-            //  for every implementation of Signed that uses `eject_value` which feels unclean.
-            let bit_value = if bit.eject_value() { I::one() } else { I::zero() };
-            (value << 1) ^ bit_value
-        })
+        Self::from_bits_le(mode, &bits_le)
     }
 }
 
-impl<E: Environment, I: IntegerType> Integer<E, I> {
-    /// Initialize a new integer from a vector of `Boolean`.
-    pub(crate) fn from_bits(bits_le: Vec<Boolean<E>>) -> Self {
-        if bits_le.len() != I::BITS {
-            E::halt(format!(
-                "Invalid integer format. Expected {} bits, found {} bits.",
-                I::BITS,
-                bits_le.len()
-            ))
-        } else {
-            Self {
-                bits_le,
-                phantom: Default::default(),
+impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
+    type Primitive = I;
+
+    ///
+    /// Ejects the mode of the integer.
+    ///
+    fn eject_mode(&self) -> Mode {
+        let mut integer_mode = Mode::Constant;
+        for bit_mode in self.bits_le.iter().map(Eject::eject_mode) {
+            // Check if the mode in the current iteration matches the integer mode.
+            if integer_mode != bit_mode {
+                // If they do not match, the integer mode must be a constant.
+                // Otherwise, this is a malformed integer, and the program should halt.
+                match integer_mode == Mode::Constant {
+                    true => integer_mode = bit_mode,
+                    false => E::halt("Detected an integer with a malformed mode"),
+                }
             }
         }
+        integer_mode
+    }
+
+    ///
+    /// Ejects the integer as a constant integer value.
+    ///
+    fn eject_value(&self) -> Self::Primitive {
+        self.bits_le
+            .iter()
+            .rev()
+            .fold(I::zero(), |value, bit| match bit.eject_value() {
+                true => (value << 1) ^ I::one(),
+                false => (value << 1) ^ I::zero(),
+            })
     }
 }
 
 impl<E: Environment, I: IntegerType> fmt::Debug for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
+    }
+}
+
+impl<E: Environment, I: IntegerType> From<Integer<E, I>> for LinearCombination<E::BaseField> {
+    fn from(integer: Integer<E, I>) -> Self {
+        From::from(&integer)
+    }
+}
+
+impl<E: Environment, I: IntegerType> From<&Integer<E, I>> for LinearCombination<E::BaseField> {
+    fn from(integer: &Integer<E, I>) -> Self {
+        // Reconstruct the bits as a linear combination representing the original field value.
+        let mut accumulator: LinearCombination<_> = BaseField::<E>::zero().into();
+        let mut coefficient = BaseField::one();
+        for bit in &integer.bits_le {
+            accumulator += LinearCombination::from(BaseField::from(bit) * &coefficient);
+            coefficient = coefficient.double();
+        }
+        accumulator
     }
 }
 

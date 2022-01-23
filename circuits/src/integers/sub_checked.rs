@@ -64,7 +64,10 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
             E::assert_eq(borrow, E::zero());
 
             // Return the difference of `self` and `other`.
-            Integer::from_bits(bits_le)
+            Integer {
+                bits_le,
+                phantom: Default::default(),
+            }
         }
     }
 }

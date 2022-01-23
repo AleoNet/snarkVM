@@ -97,14 +97,12 @@ version = "0.9"
 [dev-dependencies.criterion]
 version = "0.3"
 
-[dev-dependencies.hamming]
-version = "0.1"
-
 [dev-dependencies.paste]
 version = "1.0"
 
 [dev-dependencies.rand]
 version = "0.8"
+default-features = false
 
 [dev-dependencies.rand_xorshift]
 version = "0.3"

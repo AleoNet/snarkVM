@@ -71,36 +71,18 @@ impl<E: Environment> Boolean<E> {
 
         Self(variable.into())
     }
+}
+
+impl<E: Environment> Eject for Boolean<E> {
+    type Primitive = bool;
 
     ///
-    /// Returns `true` if the boolean is a constant.    
+    /// Ejects the mode of the boolean.
     ///
-    pub fn is_constant(&self) -> bool {
+    fn eject_mode(&self) -> Mode {
         // Perform a software-level safety check that the boolean is well-formed.
         match self.0.is_boolean_type() {
-            true => self.0.is_constant(),
-            false => E::halt("Boolean variable is not well-formed"),
-        }
-    }
-
-    ///
-    /// Returns `true` if the boolean is a public.
-    ///
-    pub fn is_public(&self) -> bool {
-        // Perform a software-level safety check that the boolean is well-formed.
-        match self.0.is_boolean_type() {
-            true => self.0.is_public(),
-            false => E::halt("Boolean variable is not well-formed"),
-        }
-    }
-
-    ///
-    /// Returns `true` if the boolean is a private.
-    ///
-    pub fn is_private(&self) -> bool {
-        // Perform a software-level safety check that the boolean is well-formed.
-        match self.0.is_boolean_type() {
-            true => self.0.is_private(),
+            true => self.0.to_mode(),
             false => E::halt("Boolean variable is not well-formed"),
         }
     }
@@ -108,7 +90,7 @@ impl<E: Environment> Boolean<E> {
     ///
     /// Ejects the boolean as a constant boolean value.
     ///
-    pub fn eject_value(&self) -> bool {
+    fn eject_value(&self) -> Self::Primitive {
         let value = self.0.to_value();
         debug_assert!(value.is_zero() || value.is_one());
         value.is_one()

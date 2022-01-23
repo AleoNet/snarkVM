@@ -18,7 +18,7 @@ use crate::{boolean::Boolean, models::*};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
     Constant,
     Public,
@@ -26,8 +26,25 @@ pub enum Mode {
 }
 
 impl Mode {
+    ///
+    /// Returns `true` if the mode is a constant.
+    ///
     pub fn is_constant(&self) -> bool {
         matches!(self, Self::Constant)
+    }
+
+    ///
+    /// Returns `true` if the mode is public.
+    ///
+    pub fn is_public(&self) -> bool {
+        matches!(self, Self::Public)
+    }
+
+    ///
+    /// Returns `true` if the mode is private.
+    ///
+    pub fn is_private(&self) -> bool {
+        matches!(self, Self::Private)
     }
 }
 

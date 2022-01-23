@@ -16,15 +16,15 @@
 
 use crate::{helpers::integers::IntegerType, Mode};
 
-use num_traits::Inv;
-use std::{
-    fmt::Debug,
+use core::{
+    fmt::{Debug, Display},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
 };
+use num_traits::Inv;
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
-    Adder + And + Clone + Debug + Equal + Nand + Nor + Not + Or + Subtractor + Ternary + Xor
+    Adder + And + Clone + Debug + Eject<Primitive = bool> + Equal + Nand + Nor + Not + Or + Subtractor + Ternary + Xor
 {
 }
 
@@ -61,13 +61,16 @@ pub trait IntegerTrait<I: IntegerType>:
     + AddWrapped<Output = Self>
     + Clone
     + Debug
+    + Eject<Primitive = I>
     + Equal
+    + FromBits
     + Neg<Output = Self>
+    + One
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
     + SubWrapped<Output = Self>
-    + One
+    + ToBits
     + Zero
 // + Div
 // + DivAssign
@@ -85,14 +88,46 @@ pub trait IntegerTrait<I: IntegerType>:
 // + ToBits
 // + Zero
 {
+    ///
     /// Initializes a new integer.
+    ///
     fn new(mode: Mode, value: I) -> Self;
+}
 
-    /// Returns `true` if the integer is a constant.
-    fn is_constant(&self) -> bool;
+/// Operations to eject from a circuit environment into primitive form.
+pub trait Eject {
+    type Primitive: Debug + Display;
 
-    /// Ejects the unsigned integer as a constant unsigned integer value.
-    fn eject_value(&self) -> I;
+    ///
+    /// Ejects the mode of the circuit type.
+    ///
+    fn eject_mode(&self) -> Mode;
+
+    ///
+    /// Ejects the circuit type as a primitive type value.
+    ///
+    fn eject_value(&self) -> Self::Primitive;
+
+    ///
+    /// Returns `true` if the circuit is a constant.
+    ///
+    fn is_constant(&self) -> bool {
+        self.eject_mode().is_constant()
+    }
+
+    ///
+    /// Returns `true` if the circuit is a public.
+    ///
+    fn is_public(&self) -> bool {
+        self.eject_mode().is_public()
+    }
+
+    ///
+    /// Returns `true` if the circuit is a private.
+    ///
+    fn is_private(&self) -> bool {
+        self.eject_mode().is_private()
+    }
 }
 
 // TODO why not use num_traits::Zero?

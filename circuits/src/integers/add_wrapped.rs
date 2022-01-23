@@ -55,7 +55,10 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
             }
 
             // Return the sum of `self` and `other`.
-            Integer::from_bits(bits_le)
+            Integer {
+                bits_le,
+                phantom: Default::default(),
+            }
         }
     }
 }

@@ -75,17 +75,17 @@ impl<E: Environment> BaseField<E> {
     }
 }
 
+impl<E: Environment> BaseFieldTrait for BaseField<E> {}
+
 impl<E: Environment> fmt::Debug for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
     }
 }
 
-impl<E: Environment> BaseFieldTrait for BaseField<E> {}
-
 impl<E: Environment> From<BaseField<E>> for LinearCombination<E::BaseField> {
     fn from(field: BaseField<E>) -> Self {
-        field.0
+        From::from(&field)
     }
 }
 

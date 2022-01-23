@@ -64,7 +64,10 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             E::assert_eq(carry, E::zero());
 
             // Return the sum of `self` and `other`.
-            Integer::from_bits(bits_le)
+            Integer {
+                bits_le,
+                phantom: Default::default(),
+            }
         }
     }
 }

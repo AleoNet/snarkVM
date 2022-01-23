@@ -55,7 +55,10 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
             }
 
             // Return the difference of `self` and `other`.
-            Integer::from_bits(bits_le)
+            Integer {
+                bits_le,
+                phantom: Default::default(),
+            }
         }
     }
 }

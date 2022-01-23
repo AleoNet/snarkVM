@@ -16,56 +16,45 @@
 
 use super::*;
 
-use snarkvm_utilities::{from_bits_le_to_bytes_le, FromBytes};
-
-impl<E: Environment> FromBits for BaseField<E> {
+impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
+    /// Initializes a new integer from a list of little-endian bits *with* trailing zeros.
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
-        // TODO (howardwu): Genericize this size check.
-        // TODO (howardwu): Contemplate how to handle the CAPACITY vs. BITS case.
-        // Ensure the list of booleans is within the allowed capacity.
-        let mut bits_le = bits_le.to_vec();
-        match bits_le.len() <= 253 {
-            true => bits_le.resize(253, Boolean::new(Mode::Constant, false)),
-            false => E::halt(format!(
-                "Attempted to instantiate a 253-bit base field element with {} bits",
+        // Ensure the number of booleans is the correct capacity.
+        if bits_le.len() != I::BITS {
+            E::halt(format!(
+                "Attempted to instantiate a {}-bit integer with {} bits",
+                I::BITS,
                 bits_le.len()
-            )),
+            ))
         }
 
-        // Construct the field value from the given bits.
-        let witness = match E::BaseField::from_bytes_le(&from_bits_le_to_bytes_le(
-            &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
-        )) {
-            Ok(value) => value,
-            Err(error) => E::halt(format!(
-                "Failed to convert a list of booleans into a base field element. {}",
-                error
-            )),
+        // Construct a candidate integer.
+        let candidate = Integer {
+            bits_le: bits_le.to_vec(),
+            phantom: Default::default(),
         };
 
-        let output = BaseField::new(mode, witness);
-
-        // Reconstruct the bits as a linear combination representing the original field value.
-        let mut accumulator = BaseField::zero();
-        let mut coefficient = BaseField::one();
-        for bit in &bits_le {
-            accumulator += BaseField::from(bit) * &coefficient;
-            coefficient = coefficient.double();
+        // Ensure the mode in the given bits are consistent, with the desired mode.
+        // If they do not match, proceed to construct a new integer, and check that it is well-formed.
+        match candidate.eject_mode() == mode {
+            true => candidate,
+            false => {
+                // Construct a new integer as a witness.
+                let output = Integer::new(mode, candidate.eject_value());
+                // Ensure `output` == `candidate`.
+                E::assert_eq(&output, &candidate);
+                // Return the new integer.
+                output
+            }
         }
-
-        // Ensure `output` * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::enforce(|| (&output, E::one(), accumulator));
-
-        output
     }
 
-    /// Initializes a new base field element from a list of big-endian bits *without* leading zeros.
+    /// Initializes a new integer from a list of big-endian bits *with* leading zeros.
     fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self {
         // Reverse the given bits from big-endian into little-endian.
-        // Note: This is safe as the bit representation is consistent (there are no leading zeros).
+        // Note: This is safe as the bit representation is consistent (there are leading zeros).
         let mut bits_le = bits_be.to_vec();
         bits_le.reverse();
 
@@ -81,9 +70,9 @@ mod tests {
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 128;
 
-    fn check_from_bits_le(
+    fn check_from_bits_le<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -92,11 +81,11 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(mode, expected).to_bits_le();
+            let expected: I = UniformRand::rand(&mut thread_rng());
+            let candidate = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
 
             Circuit::scoped(&format!("{:?} {}", mode, i), |scope| {
-                let candidate = BaseField::<Circuit>::from_bits_le(mode, &candidate);
+                let candidate = Integer::<Circuit, I>::from_bits_le(mode, &candidate);
                 assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
@@ -108,7 +97,7 @@ mod tests {
         }
     }
 
-    fn check_from_bits_be(
+    fn check_from_bits_be<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -117,11 +106,11 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(mode, expected).to_bits_be();
+            let expected: I = UniformRand::rand(&mut thread_rng());
+            let candidate = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
 
             Circuit::scoped(&format!("{:?} {}", mode, i), |scope| {
-                let candidate = BaseField::<Circuit>::from_bits_be(mode, &candidate);
+                let candidate = Integer::<Circuit, I>::from_bits_be(mode, &candidate);
                 assert_eq!(expected, candidate.eject_value());
 
                 assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
@@ -135,31 +124,37 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 2, 0, 0, 0);
+        type I = i64;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 1, 1, 0, 1);
+        type I = i64;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 1, 0, 1, 1);
+        type I = i64;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 2, 0, 0, 0);
+        type I = i64;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 1, 1, 0, 1);
+        type I = i64;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 1, 0, 1, 1);
+        type I = i64;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
     }
 }

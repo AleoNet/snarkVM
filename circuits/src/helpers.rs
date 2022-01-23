@@ -15,6 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub(crate) mod integers {
+    pub use snarkvm_utilities::UniformRand;
+
+    use core::{
+        fmt::{Debug, Display},
+        ops::Div,
+    };
     use num_traits::{
         CheckedNeg,
         One as NumOne,
@@ -25,10 +31,6 @@ pub(crate) mod integers {
         WrappingSub,
         Zero as NumZero,
     };
-    use std::{
-        fmt::{Debug, Display},
-        ops::Div,
-    };
 
     /// Trait bound for integer values. Common to both signed and unsigned integers.
     pub trait IntegerType:
@@ -38,6 +40,7 @@ pub(crate) mod integers {
         + Display
         + NumZero
         + NumOne
+        + UniformRand
         + WrappingAdd
         + WrappingMul
         + WrappingNeg
