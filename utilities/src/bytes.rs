@@ -351,7 +351,6 @@ pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + Do
     bytes.iter().flat_map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
 }
 
-#[deprecated]
 #[inline]
 pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
     let desired_size = if bits.len() % 8 == 0 {

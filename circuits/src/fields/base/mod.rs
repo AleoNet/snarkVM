@@ -18,6 +18,7 @@ pub mod add;
 pub mod div;
 pub mod double;
 pub mod equal;
+pub mod from_bits;
 pub mod inv;
 pub mod mul;
 pub mod neg;

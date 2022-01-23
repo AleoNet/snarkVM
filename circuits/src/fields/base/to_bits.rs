@@ -82,7 +82,13 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_to_bits_le(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+    fn check_to_bits_le(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {
@@ -106,7 +112,13 @@ mod tests {
         }
     }
 
-    fn check_to_bits_be(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+    fn check_to_bits_be(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {
@@ -131,22 +143,32 @@ mod tests {
     }
 
     #[test]
-    fn test_to_bits_le() {
-        // Constant
+    fn test_to_bits_le_constant() {
         check_to_bits_le(Mode::Constant, 253, 0, 0, 0);
-        // Public
+    }
+
+    #[test]
+    fn test_to_bits_le_public() {
         check_to_bits_le(Mode::Public, 0, 0, 253, 254);
-        // Private
+    }
+
+    #[test]
+    fn test_to_bits_le_private() {
         check_to_bits_le(Mode::Private, 0, 0, 253, 254);
     }
 
     #[test]
-    fn test_to_bits_be() {
-        // Constant
+    fn test_to_bits_be_constant() {
         check_to_bits_be(Mode::Constant, 253, 0, 0, 0);
-        // Public
+    }
+
+    #[test]
+    fn test_to_bits_be_public() {
         check_to_bits_be(Mode::Public, 0, 0, 253, 254);
-        // Private
+    }
+
+    #[test]
+    fn test_to_bits_be_private() {
         check_to_bits_be(Mode::Private, 0, 0, 253, 254);
     }
 

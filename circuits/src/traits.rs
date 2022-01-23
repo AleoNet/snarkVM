@@ -151,6 +151,7 @@ pub trait BaseFieldTrait:
     + DivAssign
     + Double
     + Equal
+    + FromBits
     + Inv
     + Mul
     + MulAssign
@@ -366,4 +367,13 @@ pub trait ToBits {
     fn to_bits_le(&self) -> Vec<Self::Boolean>;
 
     fn to_bits_be(&self) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for instantiating from bits.
+pub trait FromBits {
+    type Boolean: BooleanTrait;
+
+    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
+
+    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
 }

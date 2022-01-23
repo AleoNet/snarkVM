@@ -33,7 +33,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
                 true => {
                     // Return `self` + -(`other`).
                     self.add_checked(&-other)
-                },
+                }
                 false => {
                     // Negate each bit in the representation of the `other` integer.
                     let neg_other = Integer::from_bits(other.bits_le.iter().map(|b| !b).collect());
