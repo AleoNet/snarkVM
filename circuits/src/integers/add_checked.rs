@@ -152,29 +152,28 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType>(
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
-    ) where
-        Standard: Distribution<I>,
+    )
+        where Standard: Distribution<I>,
     {
         for i in 0..ITERATIONS {
+            let name = format!("Add: {:?} + {:?} {}", mode_a, mode_b, i);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
-            let expected = match first.checked_add(&second) {
-                Some(value) => value,
-                None => continue,
-            };
 
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::new(mode_b, second);
 
-            let name = format!("Add: a + b {}", i);
-            check_add_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+            match first.checked_add(&second) {
+                Some(expected) => check_add_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
+                None => continue,
+            }
         }
     }
 

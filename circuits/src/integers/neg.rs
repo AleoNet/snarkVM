@@ -104,7 +104,7 @@ mod tests {
         Standard: Distribution<I>,
     {
         for i in 0..ITERATIONS {
-            let name = format!("Neg: {}", i);
+            let name = format!("Neg: {:?} {}", mode, i);
             let value: I = UniformRand::rand(&mut thread_rng());
             let expected = match value.checked_neg() {
                 Some(negated) => negated,
@@ -116,12 +116,14 @@ mod tests {
         }
 
         // Check the 0 case.
+        let name = format!("Neg: {:?} zero", mode);
         let candidate = Integer::<Circuit, I>::new(mode, I::zero());
-        check_neg::<I, Integer<Circuit, I>>("Neg: zero", I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
+        check_neg::<I, Integer<Circuit, I>>(&name, I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
 
         // Check the 1 case.
+        let name = format!("Neg: {:?} one", mode);
         let candidate = Integer::<Circuit, I>::new(mode, I::one());
-        check_neg::<I, Integer<Circuit, I>>("Neg: one", -I::one(), candidate, num_constants, num_public, num_private, num_constraints);
+        check_neg::<I, Integer<Circuit, I>>(&name, -I::one(), candidate, num_constants, num_public, num_private, num_constraints);
     }
 
     #[test]
@@ -136,8 +138,8 @@ mod tests {
     fn test_i8_neg() {
         type I = i8;
         run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 25, 0, 15, 16);
-        run_test::<I>(Mode::Private, 34, 0, 30, 32);
+        run_test::<I>(Mode::Public, 9, 0, 15, 16);
+        run_test::<I>(Mode::Private, 9, 0, 15, 16);
     }
 
     #[test]
@@ -152,8 +154,8 @@ mod tests {
     fn test_i16_neg() {
         type I = i16;
         run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 49, 0, 31, 32);
-        run_test::<I>(Mode::Private, 66, 0, 62, 64);
+        run_test::<I>(Mode::Public, 17, 0, 31, 32);
+        run_test::<I>(Mode::Private, 17, 0, 31, 32);
     }
 
     #[test]
@@ -168,8 +170,8 @@ mod tests {
     fn test_i32_neg() {
         type I = i32;
         run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 97, 0, 63, 64);
-        run_test::<I>(Mode::Private, 130, 0, 126, 128);
+        run_test::<I>(Mode::Public, 33, 0, 63, 64);
+        run_test::<I>(Mode::Private, 33, 0, 63, 64);
     }
 
     #[test]
@@ -184,8 +186,8 @@ mod tests {
     fn test_i64_neg() {
         type I = i64;
         run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 193, 0, 127, 128);
-        run_test::<I>(Mode::Private, 258, 0, 254, 256);
+        run_test::<I>(Mode::Public, 65, 0, 127, 128);
+        run_test::<I>(Mode::Private, 65, 0, 127, 128);
     }
 
     #[test]
@@ -200,7 +202,7 @@ mod tests {
     fn test_i128_neg() {
         type I = i128;
         run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 385, 0, 255, 256);
-        run_test::<I>(Mode::Private, 514, 0, 510, 512);
+        run_test::<I>(Mode::Public, 129, 0, 255, 256);
+        run_test::<I>(Mode::Private, 129, 0, 255, 256);
     }
 }
