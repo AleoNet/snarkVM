@@ -74,11 +74,11 @@ mod tests {
                 assert_eq!(*expected_bit, candidate_bit.eject_value());
             }
 
-            assert_eq!(num_constants, scope.num_constants_in_scope());
-            assert_eq!(num_public, scope.num_public_in_scope());
-            assert_eq!(num_private, scope.num_private_in_scope());
-            assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+            assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
+            assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
+            assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
+            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+            assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });
     }
 
@@ -100,11 +100,11 @@ mod tests {
                 assert_eq!(*expected_bit, candidate_bit.eject_value());
             }
 
-            assert_eq!(num_constants, scope.num_constants_in_scope());
-            assert_eq!(num_public, scope.num_public_in_scope());
-            assert_eq!(num_private, scope.num_private_in_scope());
-            assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+            assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
+            assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
+            assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
+            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+            assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });
     }
 
@@ -134,8 +134,6 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let one = <Circuit as Environment>::ScalarField::one();
-
         /// Checks that the field element, when converted to little-endian bits, is well-formed.
         fn check_bits_le(candidate: ScalarField<Circuit>) {
             for (i, bit) in candidate.to_bits_le().iter().enumerate() {
@@ -155,6 +153,8 @@ mod tests {
                 }
             }
         }
+
+        let one = <Circuit as Environment>::ScalarField::one();
 
         // Constant
         check_bits_le(ScalarField::<Circuit>::new(Mode::Constant, one));
