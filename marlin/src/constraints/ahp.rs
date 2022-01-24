@@ -170,11 +170,7 @@ impl<
         let eta_b = elems[1].clone();
         let eta_c = elems[2].clone();
 
-        let msg = VerifierFirstMsgVar {
-            alpha,
-            eta_b,
-            eta_c,
-        };
+        let msg = VerifierFirstMsgVar { alpha, eta_b, eta_c };
 
         let new_state = VerifierStateVar {
             domain_h_size,
@@ -338,11 +334,7 @@ impl<
         let zero = NonNativeFieldVar::<TargetField, BaseField>::zero(cs.ns(|| "nonnative_zero"))?;
         let one = NonNativeFieldVar::one(cs.ns(|| "nonnative_one"))?;
 
-        let VerifierFirstMsgVar {
-            alpha,
-            eta_b,
-            eta_c,
-        } = first_round_msg;
+        let VerifierFirstMsgVar { alpha, eta_b, eta_c } = first_round_msg;
         let eta_a = one.clone();
         let beta: NonNativeFieldVar<TargetField, BaseField> = second_round_msg.beta;
 

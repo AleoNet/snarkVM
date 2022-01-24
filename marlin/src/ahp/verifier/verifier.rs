@@ -58,11 +58,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let eta_c = elems[2];
         assert!(!domain_h.evaluate_vanishing_polynomial(alpha).is_zero());
 
-        let message = VerifierFirstMessage {
-            alpha,
-            eta_b,
-            eta_c,
-        };
+        let message = VerifierFirstMessage { alpha, eta_b, eta_c };
 
         let new_state = VerifierState {
             domain_h,

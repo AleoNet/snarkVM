@@ -380,11 +380,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mask_poly = state.mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
 
-        let VerifierFirstMessage {
-            alpha,
-            eta_b,
-            eta_c,
-        } = *verifier_message;
+        let VerifierFirstMessage { alpha, eta_b, eta_c } = *verifier_message;
 
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
@@ -587,11 +583,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             ..
         } = prover_state;
 
-        let VerifierFirstMessage {
-            alpha,
-            eta_b,
-            eta_c,
-        } = verifier_first_message
+        let VerifierFirstMessage { alpha, eta_b, eta_c } = verifier_first_message
             .expect("ProverState should include verifier_first_msg when prover_third_round is called");
 
         let beta = verifier_message.beta;
