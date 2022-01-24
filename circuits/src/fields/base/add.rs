@@ -55,7 +55,7 @@ impl<E: Environment> AddAssign<BaseField<E>> for BaseField<E> {
 }
 
 impl<E: Environment> AddAssign<&BaseField<E>> for BaseField<E> {
-    #[scope]
+    #[scope(method = "add")]
     fn add_assign(&mut self, other: &BaseField<E>) {
         self.0 += &other.0
     }

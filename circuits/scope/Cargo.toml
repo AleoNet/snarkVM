@@ -24,12 +24,3 @@ features = ["full"]
 [features]
 default = []
 scope = []
-
-#[dependencies]
-#proc-macro2 = { version = "1" }
-#quote = { version = "1" }
-#syn = { version = "1", features = ["full", "extra-traits"] }
-#
-#[features]
-#default = ["scope"]
-#scope = []
