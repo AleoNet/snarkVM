@@ -96,7 +96,7 @@ mod tests {
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
             let candidate = BaseField::<Circuit>::new(mode, expected);
 
-            Circuit::scoped(&format!("{:?} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
@@ -126,7 +126,7 @@ mod tests {
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
             let candidate = BaseField::<Circuit>::new(mode, expected);
 
-            Circuit::scoped(&format!("{:?} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {

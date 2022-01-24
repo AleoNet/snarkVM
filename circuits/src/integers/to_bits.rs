@@ -69,7 +69,7 @@ mod tests {
             let expected: I = UniformRand::rand(&mut thread_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
-            Circuit::scoped(&format!("{:?} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(I::BITS, candidate.len());
 
@@ -101,7 +101,7 @@ mod tests {
             let expected: I = UniformRand::rand(&mut thread_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
-            Circuit::scoped(&format!("{:?} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(I::BITS, candidate.len());
 

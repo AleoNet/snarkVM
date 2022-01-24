@@ -162,7 +162,7 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            let name = format!("Add: {:?} + {:?} {}", mode_a, mode_b, i);
+            let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 

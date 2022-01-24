@@ -49,7 +49,9 @@ impl Circuit {
     }
 
     pub fn print_circuit() {
-        println!("{:?}", Self::cs().cs.borrow());
+        for (scope, (a, b, c)) in Self::cs().cs.borrow().to_constraints() {
+            eprintln!("Constraint {}:\n\t({} * {}) =?= {}", scope, a, b, c);
+        }
     }
 
     pub fn reset_circuit() {
@@ -234,7 +236,6 @@ impl Environment for Circuit {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use snarkvm_circuits::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
     use snarkvm_fields::One as O;
 

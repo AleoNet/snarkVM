@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Mode;
+
 use snarkvm_fields::traits::*;
 
 pub type Index = u64;
@@ -52,6 +54,28 @@ impl<F: PrimeField> Variable<F> {
     ///
     pub fn one() -> Self {
         Self::Constant(F::one())
+    }
+
+    ///
+    /// Returns the mode of the variable.
+    ///
+    pub fn mode(&self) -> Mode {
+        match self {
+            Self::Constant(..) => Mode::Constant,
+            Self::Public(..) => Mode::Public,
+            Self::Private(..) => Mode::Private,
+        }
+    }
+
+    ///
+    /// Returns the relative index of the variable.
+    ///
+    pub fn index(&self) -> Index {
+        match self {
+            Self::Constant(..) => 0,
+            Self::Public(index, ..) => *index,
+            Self::Private(index, ..) => *index,
+        }
     }
 
     ///

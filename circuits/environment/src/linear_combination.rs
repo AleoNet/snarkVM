@@ -17,11 +17,14 @@
 use crate::*;
 use snarkvm_fields::PrimeField;
 
-use core::ops::{Add, AddAssign, Mul, Neg, Sub};
+use core::{
+    fmt,
+    ops::{Add, AddAssign, Mul, Neg, Sub}
+};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,
     terms: HashMap<Variable<F>, F>,
@@ -373,6 +376,25 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
             .iter_mut()
             .for_each(|(_, current_coefficient)| *current_coefficient *= coefficient);
         output
+    }
+}
+
+impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let mut output = format!("Constant {}", self.constant);
+        for (variable, coefficient) in &self.terms {
+            output += &match variable.mode() {
+                Mode::Constant => format!(" + ({} * {} {})", coefficient, variable.mode(), variable.value()),
+                _ => format!(" + ({} * {}({}) {})", coefficient, variable.mode(), variable.index(), variable.value())
+            };
+        }
+        write!(f, "{}", output)
+    }
+}
+
+impl<F: PrimeField> fmt::Display for LinearCombination<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.to_value())
     }
 }
 

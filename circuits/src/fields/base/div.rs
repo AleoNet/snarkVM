@@ -71,7 +71,7 @@ mod tests {
                 let a = BaseField::<Circuit>::new(mode_a, dividend);
                 let b = BaseField::new(mode_b, divisor);
 
-                Circuit::scoped(&format!("{:?} / {:?} - ({}, {})", mode_a, mode_b, i, j), |scope| {
+                Circuit::scoped(&format!("{} / {} - ({}, {})", mode_a, mode_b, i, j), |scope| {
                     let expected_quotient = dividend / divisor;
                     let candidate_quotient = a / b;
                     assert_eq!(expected_quotient, candidate_quotient.eject_value());
