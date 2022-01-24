@@ -50,7 +50,14 @@ impl Circuit {
 
     pub fn print_circuit() {
         for (scope, (a, b, c)) in Self::cs().cs.borrow().to_constraints() {
-            eprintln!("Constraint {}:\n\t({} * {}) =?= {}", scope, a, b, c);
+            let a = a.to_value();
+            let b = b.to_value();
+            let c = c.to_value();
+
+            match (a * b) == c {
+                true => eprintln!("Constraint {}:\n\t{} * {} == {}", scope, a, b, c),
+                false => eprintln!("Constraint {}:\n\t{} * {} != {} (Unsatisfied)", scope, a, b, c),
+            }
         }
     }
 
