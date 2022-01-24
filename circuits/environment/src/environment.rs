@@ -18,6 +18,8 @@ use crate::*;
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
+use core::fmt;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
     Constant,
@@ -45,6 +47,16 @@ impl Mode {
     ///
     pub fn is_private(&self) -> bool {
         matches!(self, Self::Private)
+    }
+}
+
+impl fmt::Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            Mode::Constant => write!(f, "Constant"),
+            Mode::Public => write!(f, "Public"),
+            Mode::Private => write!(f, "Private"),
+        }
     }
 }
 

@@ -102,7 +102,7 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            let name = format!("Neg: {:?} {}", mode, i);
+            let name = format!("Neg: {} {}", mode, i);
             let value: I = UniformRand::rand(&mut thread_rng());
             let expected = match value.checked_neg() {
                 Some(negated) => negated,
@@ -114,12 +114,12 @@ mod tests {
         }
 
         // Check the 0 case.
-        let name = format!("Neg: {:?} zero", mode);
+        let name = format!("Neg: {} zero", mode);
         let candidate = Integer::<Circuit, I>::new(mode, I::zero());
         check_neg::<I, Integer<Circuit, I>>(&name, I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
 
         // Check the 1 case.
-        let name = format!("Neg: {:?} one", mode);
+        let name = format!("Neg: {} one", mode);
         let candidate = Integer::<Circuit, I>::new(mode, I::one());
         check_neg::<I, Integer<Circuit, I>>(&name, -I::one(), candidate, num_constants, num_public, num_private, num_constraints);
     }
