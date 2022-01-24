@@ -25,25 +25,21 @@ use once_cell::unsync::OnceCell;
 use std::rc::Rc;
 
 thread_local! {
-    static CIRCUIT: OnceCell<RefCell<Circuit>> = OnceCell::new();
+    static CIRCUIT: OnceCell<Circuit> = OnceCell::new();
 }
 
 #[derive(Clone)]
-pub struct Circuit(CircuitScope<Fq>);
+pub struct Circuit(Rc<RefCell<CircuitScope<Fq>>>);
 
 impl Circuit {
     pub(super) fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
         CIRCUIT.with(|circuit| {
             circuit
                 .get_or_init(|| {
-                    let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
-                        Rc::new(RefCell::new(ConstraintSystem::new())),
-                        "".to_string(),
-                    );
-                    RefCell::new(Circuit(scope))
+                    Circuit(Rc::new(RefCell::new(CircuitScope::<<Self as Environment>::BaseField>::new())))
                 })
-                .borrow()
                 .0
+                .borrow()
                 .clone()
         })
     }
@@ -63,10 +59,7 @@ impl Circuit {
 
     pub fn reset_circuit() {
         CIRCUIT.with(|circuit| {
-            (*circuit.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
-                Rc::new(RefCell::new(ConstraintSystem::new())),
-                "".to_string(),
-            );
+            *(*circuit.get().unwrap()).0.borrow_mut() = CircuitScope::<<Self as Environment>::BaseField>::new();
         });
 
         assert_eq!(0, Self::cs().num_constants());
@@ -106,33 +99,29 @@ impl Environment for Circuit {
         }
     }
 
-    /// Appends the given scope to the current environment.
-    fn push_scope(name: &str) -> CircuitScope<Self::BaseField> {
-        CIRCUIT.with(|circuit| {
-            // Set the entire environment to the new scope.
-            match Self::cs().push_scope(name) {
-                Ok(scope) => {
-                    (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
-                    scope
-                }
-                Err(error) => Self::halt(error),
-            }
-        })
-    }
-
-    /// Removes the given scope from the current environment.
-    fn pop_scope(name: &str) -> CircuitScope<Self::BaseField> {
-        CIRCUIT.with(|circuit| {
-            // Return the entire environment to the previous scope.
-            match Self::cs().pop_scope(name) {
-                Ok(scope) => {
-                    (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
-                    scope
-                }
-                Err(error) => Self::halt(error),
-            }
-        })
-    }
+    // /// Appends the given scope to the current environment.
+    // fn push_scope(name: &str) {
+    //     CIRCUIT.with(|circuit| {
+    //         // Set the entire environment to the new scope.
+    //         match Self::cs().push_scope(name) {
+    //             Ok(()) => (),
+    //             Err(error) => Self::halt(error),
+    //         }
+    //     })
+    // }
+    //
+    // /// Removes the given scope from the current environment.
+    // fn pop_scope(name: &str) {
+    //     CIRCUIT.with(|circuit| {
+    //         // Return the entire environment to the previous scope.
+    //         match Self::cs().pop_scope(name) {
+    //             Ok(scope) => {
+    //                 scope
+    //             }
+    //             Err(error) => Self::halt(error),
+    //         }
+    //     })
+    // }
 
     fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
     where
@@ -142,7 +131,7 @@ impl Environment for Circuit {
             // Set the entire environment to the new scope, and run the logic.
             let output = match Self::cs().push_scope(name) {
                 Ok(scope) => {
-                    (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
+                    *(*circuit.get().unwrap()).0.borrow_mut() = scope.clone();
                     logic(scope)
                 }
                 Err(error) => Self::halt(error),
@@ -150,7 +139,7 @@ impl Environment for Circuit {
 
             // Return the entire environment to the previous scope.
             match Self::cs().pop_scope(name) {
-                Ok(scope) => (*circuit.get().unwrap().borrow_mut()).0 = scope,
+                Ok(scope) => *(*circuit.get().unwrap()).0.borrow_mut() = scope,
                 Err(error) => Self::halt(error),
             }
 
@@ -192,26 +181,6 @@ impl Environment for Circuit {
     /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> usize {
         Self::cs().num_constraints()
-    }
-
-    /// Returns the number of constants for the given scope.
-    fn num_constants_in_scope(scope: &Scope) -> usize {
-        Self::cs().cs.borrow().num_constants_in_scope(scope)
-    }
-
-    /// Returns the number of public variables for the given scope.
-    fn num_public_in_scope(scope: &Scope) -> usize {
-        Self::cs().cs.borrow().num_public_in_scope(scope)
-    }
-
-    /// Returns the number of private variables for the given scope.
-    fn num_private_in_scope(scope: &Scope) -> usize {
-        Self::cs().cs.borrow().num_private_in_scope(scope)
-    }
-
-    /// Returns the number of constraints for the given scope.
-    fn num_constraints_in_scope(scope: &Scope) -> usize {
-        Self::cs().cs.borrow().num_constraints_in_scope(scope)
     }
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {

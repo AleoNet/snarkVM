@@ -26,7 +26,6 @@ pub struct ConstraintSystem<F: PrimeField> {
         Scope,
         (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
     )>,
-    counter: CircuitCounter,
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
@@ -37,7 +36,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
             public: vec![Variable::Public(0u64, F::one())],
             private: Default::default(),
             constraints: Default::default(),
-            counter: Default::default(),
         }
     }
 
@@ -45,7 +43,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
     pub(super) fn new_constant(&mut self, value: F, scope: Scope) -> Variable<F> {
         let variable = Variable::Constant(value);
         self.constants.push(variable);
-        self.counter.increment_constant(&scope);
         variable
     }
 
@@ -53,7 +50,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
     pub(super) fn new_public(&mut self, value: F, scope: Scope) -> Variable<F> {
         let variable = Variable::Public(self.public.len() as u64, value);
         self.public.push(variable);
-        self.counter.increment_public(&scope);
         variable
     }
 
@@ -61,24 +57,14 @@ impl<F: PrimeField> ConstraintSystem<F> {
     pub(super) fn new_private(&mut self, value: F, scope: Scope) -> Variable<F> {
         let variable = Variable::Private(self.private.len() as u64, value);
         self.private.push(variable);
-        self.counter.increment_private(&scope);
         variable
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
-    pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn, scope: Scope)
-    where
-        Fn: FnOnce() -> (A, B, C),
-        A: Into<LinearCombination<F>>,
-        B: Into<LinearCombination<F>>,
-        C: Into<LinearCombination<F>>,
-    {
-        let (a, b, c) = constraint();
-        let (a, b, c) = (a.into(), b.into(), c.into());
-
+    pub(super) fn enforce(&mut self, a: LinearCombination<F>, b: LinearCombination<F>, c: LinearCombination<F>, scope: Scope) {
+        // Ensure the constraint is not comprised of constants.
         if !(a.is_constant() && b.is_constant() && c.is_constant()) {
             self.constraints.push((scope.clone(), (a, b, c)));
-            self.counter.increment_constraints(&scope);
         }
     }
 
@@ -117,26 +103,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
         self.constraints.len()
     }
 
-    /// Returns the number of constants for the given scope.
-    pub(super) fn num_constants_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_constants_in_scope(scope)
-    }
-
-    /// Returns the number of public variables for the given scope.
-    pub(super) fn num_public_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_public_in_scope(scope)
-    }
-
-    /// Returns the number of private variables for the given scope.
-    pub(super) fn num_private_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_private_in_scope(scope)
-    }
-
-    /// Returns the number of constraints for the given scope.
-    pub(super) fn num_constraints_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_constraints_in_scope(scope)
-    }
-
     /// Returns the public variables in the constraint system.
     pub(super) fn to_public_variables(&self) -> &Vec<Variable<F>> {
         &self.public
@@ -166,7 +132,6 @@ impl<F: PrimeField> Clone for ConstraintSystem<F> {
             public: self.public.clone(),
             private: self.private.clone(),
             constraints: self.constraints.clone(),
-            counter: self.counter.clone(),
         }
     }
 }

@@ -75,11 +75,11 @@ pub trait Environment: Clone {
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
-    /// Appends the given scope to the current environment.
-    fn push_scope(name: &str) -> CircuitScope<Self::BaseField>;
-
-    /// Removes the given scope from the current environment.
-    fn pop_scope(name: &str) -> CircuitScope<Self::BaseField>;
+    // /// Appends the given scope to the current environment.
+    // fn push_scope(name: &str);
+    //
+    // /// Removes the given scope from the current environment.
+    // fn pop_scope(name: &str);
 
     fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
     where
@@ -121,18 +121,6 @@ pub trait Environment: Clone {
 
     /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> usize;
-
-    /// Returns the number of constants for the given scope.
-    fn num_constants_in_scope(scope: &Scope) -> usize;
-
-    /// Returns the number of public variables for the given scope.
-    fn num_public_in_scope(scope: &Scope) -> usize;
-
-    /// Returns the number of private variables for the given scope.
-    fn num_private_in_scope(scope: &Scope) -> usize;
-
-    /// Returns the number of constraints for the given scope.
-    fn num_constraints_in_scope(scope: &Scope) -> usize;
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
 
