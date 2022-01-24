@@ -162,7 +162,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
 
 #[cfg(test)]
 mod tests {
-    use crate::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
+    use snarkvm_circuits::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One as O;
     use snarkvm_r1cs::ConstraintSynthesizer;
@@ -196,7 +196,7 @@ mod tests {
         let _candidate_output = create_example_circuit::<Circuit>();
 
         let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
-        Circuit::cs().cs.borrow().generate_constraints(&mut cs).unwrap();
+        Circuit::constraint_system_raw().generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_r1cs::ConstraintSystem;
             assert_eq!(Circuit::num_public() + 1, cs.num_public_variables());
@@ -224,9 +224,10 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let parameters = generate_random_parameters::<Bls12_377, _, _>(&*Circuit::cs().cs.borrow(), rng).unwrap();
+            let parameters =
+                generate_random_parameters::<Bls12_377, _, _>(&Circuit::constraint_system_raw(), rng).unwrap();
 
-            let proof = create_random_proof(&*Circuit::cs().cs.borrow(), &parameters, rng).unwrap();
+            let proof = create_random_proof(&Circuit::constraint_system_raw(), &parameters, rng).unwrap();
             let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
 
             assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
@@ -264,10 +265,11 @@ mod tests {
                 snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().cs.borrow()).unwrap();
+            let (index_pk, index_vk) =
+                MarlinInst::circuit_setup(&universal_srs, &Circuit::constraint_system_raw()).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &*Circuit::cs().cs.borrow(), rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &Circuit::constraint_system_raw(), rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&index_vk, &[one, one], &proof).unwrap());

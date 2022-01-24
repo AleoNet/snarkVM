@@ -20,7 +20,7 @@ use snarkvm_fields::traits::*;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
-pub(super) struct ConstraintSystem<F: PrimeField> {
+pub struct ConstraintSystem<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
@@ -155,5 +155,20 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// Returns the constraints in the constraint system.
     pub(super) fn to_constraints(&self) -> &Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)> {
         &self.constraints
+    }
+}
+
+#[cfg(feature = "testing")]
+impl<F: PrimeField> Clone for ConstraintSystem<F> {
+    fn clone(&self) -> Self {
+        Self {
+            constants: self.constants.clone(),
+            public: self.public.clone(),
+            private: self.private.clone(),
+            constraints: self.constraints.clone(),
+            transcript: self.transcript.clone(),
+            scopes: self.scopes.clone(),
+            counter: self.counter.clone(),
+        }
     }
 }

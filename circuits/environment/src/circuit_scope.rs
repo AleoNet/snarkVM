@@ -17,7 +17,8 @@
 use crate::*;
 use snarkvm_fields::PrimeField;
 
-use std::{cell::RefCell, rc::Rc};
+use core::cell::RefCell;
+use std::rc::Rc;
 
 pub type Scope = String;
 

@@ -20,8 +20,9 @@ use snarkvm_curves::{
     AffineCurve,
 };
 
+use core::cell::RefCell;
 use once_cell::unsync::OnceCell;
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 thread_local! {
     static CIRCUIT: OnceCell<RefCell<Circuit>> = OnceCell::new();
@@ -47,6 +48,10 @@ impl Circuit {
         })
     }
 
+    pub fn print_circuit() {
+        println!("{:?}", Self::cs().cs.borrow());
+    }
+
     pub fn reset_circuit() {
         CIRCUIT.with(|circuit| {
             (*circuit.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
@@ -61,8 +66,9 @@ impl Circuit {
         assert_eq!(0, Self::cs().num_constraints());
     }
 
-    pub fn print_circuit() {
-        println!("{:?}", Self::cs().cs.borrow());
+    #[cfg(feature = "testing")]
+    pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
+        Self::cs().cs.borrow().clone()
     }
 }
 

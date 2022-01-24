@@ -31,5 +31,25 @@ version = "1.8.0"
 [dependencies.rayon]
 version = "1"
 
+[dev-dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "0.7.5"
+default-features = false
+
+[dev-dependencies.snarkvm-circuits]
+path = "../../circuits"
+version = "0.7.5"
+features = ["testing"]
+
+[dev-dependencies.snarkvm-polycommit]
+path = "../../polycommit"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"
+default-features = false
+
 [features]
 default = ["snarkvm-curves/default", "snarkvm-r1cs/default"]
+testing = []
