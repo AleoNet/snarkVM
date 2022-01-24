@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{boolean::Boolean, models::*};
+use crate::*;
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
@@ -63,7 +63,11 @@ pub trait Environment: Clone {
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
-    fn scope(name: &str) -> CircuitScope<Self::BaseField>;
+    /// Appends the given scope to the current environment.
+    fn push_scope(name: &str) -> CircuitScope<Self::BaseField>;
+
+    /// Removes the given scope from the current environment.
+    fn pop_scope(name: &str) -> CircuitScope<Self::BaseField>;
 
     fn scoped<Fn>(name: &str, logic: Fn)
     where
@@ -78,7 +82,7 @@ pub trait Environment: Clone {
         C: Into<LinearCombination<Self::BaseField>>;
 
     /// Adds one constraint enforcing that the given boolean is `true`.
-    fn assert(boolean: &Boolean<Self>) {
+    fn assert<Boolean: Into<LinearCombination<Self::BaseField>>>(boolean: Boolean) {
         Self::enforce(|| (boolean, Self::one(), Self::one()))
     }
 

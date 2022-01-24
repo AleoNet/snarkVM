@@ -16,8 +16,6 @@
 
 use snarkvm_fields::traits::*;
 
-// use std::ops::{Add, AddAssign, Neg, Sub};
-
 pub type Index = u64;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

@@ -1,0 +1,35 @@
+[package]
+name = "snarkvm-circuits-environment"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Circuit environment for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies.snarkvm-curves]
+path = "../../curves"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-fields]
+path = "../../fields"
+version = "0.7.5"
+default-features = false
+
+[dev-dependencies.snarkvm-marlin]
+path = "../../marlin"
+version = "0.7.5"
+
+[dependencies.snarkvm-r1cs]
+path = "../../r1cs"
+version = "0.7.5"
+default-features = false
+
+[dependencies.once_cell]
+version = "1.8.0"
+
+[dependencies.rayon]
+version = "1"
+
+[features]
+default = ["snarkvm-curves/default", "snarkvm-r1cs/default"]

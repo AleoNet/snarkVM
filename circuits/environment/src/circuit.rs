@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::models::*;
+use crate::*;
 use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq, Fr},
     AffineCurve,
@@ -24,7 +24,7 @@ use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
 
 thread_local! {
-    static CB: OnceCell<RefCell<Circuit>> = OnceCell::new();
+    static CIRCUIT: OnceCell<RefCell<Circuit>> = OnceCell::new();
 }
 
 #[derive(Clone)]
@@ -32,28 +32,26 @@ pub struct Circuit(CircuitScope<Fq>);
 
 impl Circuit {
     pub(super) fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
-        CB.with(|cb| {
-            cb.get_or_init(|| {
-                let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
-                    Rc::new(RefCell::new(ConstraintSystem::new())),
-                    "Circuit::new".to_string(),
-                    None,
-                );
-                RefCell::new(Circuit(scope))
-            })
-            .borrow()
-            .0
-            .clone()
+        CIRCUIT.with(|circuit| {
+            circuit
+                .get_or_init(|| {
+                    let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
+                        Rc::new(RefCell::new(ConstraintSystem::new())),
+                        "Circuit::new()".to_string(),
+                    );
+                    RefCell::new(Circuit(scope))
+                })
+                .borrow()
+                .0
+                .clone()
         })
     }
 
-    #[cfg(test)]
     pub fn reset_circuit() {
-        CB.with(|cb| {
-            (*cb.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
+        CIRCUIT.with(|circuit| {
+            (*circuit.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
                 Rc::new(RefCell::new(ConstraintSystem::new())),
-                "Circuit::new".to_string(),
-                None,
+                "Circuit::new()".to_string(),
             );
         });
 
@@ -93,11 +91,31 @@ impl Environment for Circuit {
         }
     }
 
-    fn scope(name: &str) -> CircuitScope<Self::BaseField> {
-        CB.with(|cb| {
-            let scope = Self::cs().new_scope(name);
-            (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
-            scope
+    /// Appends the given scope to the current environment.
+    fn push_scope(name: &str) -> CircuitScope<Self::BaseField> {
+        CIRCUIT.with(|circuit| {
+            // Set the entire environment to the new scope.
+            match Self::cs().push_scope(name) {
+                Ok(scope) => {
+                    (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
+                    scope
+                }
+                Err(error) => Self::halt(error),
+            }
+        })
+    }
+
+    /// Removes the given scope from the current environment.
+    fn pop_scope(name: &str) -> CircuitScope<Self::BaseField> {
+        CIRCUIT.with(|circuit| {
+            // Return the entire environment to the previous scope.
+            match Self::cs().pop_scope(name) {
+                Ok(scope) => {
+                    (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
+                    scope
+                }
+                Err(error) => Self::halt(error),
+            }
         })
     }
 
@@ -105,17 +123,21 @@ impl Environment for Circuit {
     where
         Fn: FnOnce(CircuitScope<Self::BaseField>),
     {
-        CB.with(|cb| {
-            // Fetch a copy of the current environment.
-            let current = Self::cs();
-
+        CIRCUIT.with(|circuit| {
             // Set the entire environment to the new scope, and run the logic.
-            let scope = current.clone().new_scope(name);
-            (*cb.get().unwrap().borrow_mut()).0 = scope.clone();
-            logic(scope);
+            match Self::cs().push_scope(name) {
+                Ok(scope) => {
+                    (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
+                    logic(scope);
+                }
+                Err(error) => Self::halt(error),
+            }
 
             // Return the entire environment to the previous scope.
-            (*cb.get().unwrap().borrow_mut()).0 = current;
+            match Self::cs().pop_scope(name) {
+                Ok(scope) => (*circuit.get().unwrap().borrow_mut()).0 = scope,
+                Err(error) => Self::halt(error),
+            }
         });
     }
 

@@ -27,6 +27,14 @@ path = "../algorithms"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-circuits-environment]
+path = "./environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-scope]
+path = "./scope"
+version = "0.7.5"
+
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.7.5"
@@ -34,11 +42,6 @@ default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-r1cs]
-path = "../r1cs"
 version = "0.7.5"
 default-features = false
 
@@ -77,15 +80,8 @@ optional = true
 [dependencies.once_cell]
 version = "1.8.0"
 
-[dependencies.rayon]
-version = "1"
-
 [dependencies.thiserror]
 version = "1.0"
-
-[dev-dependencies.snarkvm-marlin]
-path = "../marlin"
-version = "0.7.5"
 
 [dev-dependencies.snarkvm-polycommit]
 path = "../polycommit"
@@ -118,10 +114,10 @@ default = [
     "snarkvm-algorithms/default",
     "snarkvm-curves/default",
     "snarkvm-fields/default",
-    "snarkvm-r1cs/default",
     "snarkvm-utilities/default",
 ]
-full = [ "algorithms", "curves", "nonnative" ]
+full = [ "algorithms", "curves", "nonnative", "scope" ]
 algorithms = [ ]
 curves = [ ]
 nonnative = [ "num-bigint", "num-integer", "num-traits" ]
+scope = [ "snarkvm-circuits-scope/scope" ]

@@ -20,6 +20,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
+#[cfg(feature = "scope")]
+#[macro_use]
+extern crate snarkvm_circuits_scope;
+
+pub use snarkvm_circuits_environment::*;
+
 pub mod address;
 pub use address::*;
 
@@ -36,11 +42,6 @@ pub mod helpers;
 
 pub mod integers;
 pub use integers::*;
-
-// TODO (howardwu): This is temporary until the models interface is stabilized.
-#[allow(unused)]
-pub mod models;
-pub use models::*;
 
 // TODO (howardwu): This is temporary until the programs interface is stabilized.
 #[allow(unused)]

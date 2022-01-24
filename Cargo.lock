@@ -1950,15 +1950,36 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rand_xorshift",
- "rayon",
  "snarkvm-algorithms",
+ "snarkvm-circuits-environment",
+ "snarkvm-circuits-scope",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-polycommit",
+ "snarkvm-utilities",
+ "thiserror",
+]
+
+[[package]]
+name = "snarkvm-circuits-environment"
+version = "0.7.5"
+dependencies = [
+ "once_cell",
+ "rayon",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-marlin",
- "snarkvm-polycommit",
  "snarkvm-r1cs",
- "snarkvm-utilities",
- "thiserror",
+]
+
+[[package]]
+name = "snarkvm-circuits-scope"
+version = "0.7.5"
+dependencies = [
+ "proc-macro2 0.4.30",
+ "quote 0.6.13",
+ "snarkvm-circuits-environment",
+ "syn 0.15.44",
 ]
 
 [[package]]

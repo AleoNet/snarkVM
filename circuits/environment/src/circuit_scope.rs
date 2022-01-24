@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::models::*;
+use crate::*;
 use snarkvm_fields::PrimeField;
 
 use std::{cell::RefCell, rc::Rc};
@@ -25,23 +25,39 @@ pub type Scope = String;
 pub struct CircuitScope<F: PrimeField> {
     pub(super) cs: Rc<RefCell<ConstraintSystem<F>>>,
     scope: Scope,
-    previous: Option<Scope>,
 }
 
 impl<F: PrimeField> CircuitScope<F> {
-    pub(super) fn new(circuit: Rc<RefCell<ConstraintSystem<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
-        Self {
-            cs: circuit,
-            scope,
-            previous,
+    pub(super) fn new(circuit: Rc<RefCell<ConstraintSystem<F>>>, scope: Scope) -> Self {
+        Self { cs: circuit, scope }
+    }
+
+    /// Appends the given scope to the current environment.
+    pub(super) fn push_scope(self, name: &str) -> Result<Self, String> {
+        match name.contains(".") {
+            true => Err("Scope names cannot contain periods (\".\")".to_string()),
+            false => Ok(Self {
+                cs: self.cs.clone(),
+                scope: format!("{}.{}", self.scope, name),
+            }),
         }
     }
 
-    pub(super) fn new_scope(self, name: &str) -> Self {
-        Self {
-            cs: self.cs.clone(),
-            scope: format!("{}/{}", self.scope, name),
-            previous: Some(self.scope),
+    /// Removes the given scope from the current environment.
+    pub(super) fn pop_scope(self, name: &str) -> Result<Self, String> {
+        // Pop the current scope from the entire scope.
+        let (previous_scope, current_scope) = match self.scope.rsplit_once('.') {
+            Some((previous_scope, current_scope)) => (previous_scope, current_scope),
+            None => return Err("Attempted to pop a non-existent scope, no more scopes found".to_string()),
+        };
+
+        // Ensure the current scope is the last pushed scope.
+        match current_scope == name {
+            true => Ok(Self {
+                cs: self.cs.clone(),
+                scope: previous_scope.to_string(),
+            }),
+            false => Err("Mismatching scope. Scopes must return in the reverse order they are created".to_string()),
         }
     }
 
@@ -72,7 +88,7 @@ impl<F: PrimeField> CircuitScope<F> {
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
-    pub(crate) fn is_satisfied(&self) -> bool {
+    pub fn is_satisfied(&self) -> bool {
         self.cs.borrow().is_satisfied()
     }
 
@@ -116,22 +132,3 @@ impl<F: PrimeField> CircuitScope<F> {
         self.cs.borrow().num_constraints_in_scope(&self.scope)
     }
 }
-
-// impl<F: PrimeField> Drop for CircuitScope<F> {
-//     #[inline]
-//     fn drop(&mut self) {
-//         println!("I AM IN DROP {:?} {:?}", self.scope, self.previous);
-//         // if let Some(scope) = &self.previous {
-//         //     println!("I AM DROPPING {:?} {:?}", self.scope, self.previous);
-//         //
-//         //     let prev = (*self).circuit.borrow_mut().pop_scope();
-//         //     (*self).scope = (prev).clone();
-//         //     (*self).previous = None;
-//         //
-//         //     // CB.with(|cb| {
-//         //     //     (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
-//         //     //     // (*cb.get().unwrap().borrow_mut()).0.scope = (*scope).clone();
-//         //     // });
-//         // }
-//     }
-// }
