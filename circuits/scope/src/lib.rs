@@ -26,7 +26,7 @@ enum Type {
     Custom,
     Method,
     Circuit,
-    Standard
+    Standard,
 }
 
 fn extract_literal(token_tree: &proc_macro::TokenTree) -> String {
@@ -110,8 +110,9 @@ pub fn scope(metadata: proc_macro::TokenStream, input: proc_macro::TokenStream) 
                     // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
                     #block
                 }
-            )).into()
-        },
+            ))
+            .into()
+        }
         _ => {
             (quote!(
                 #visibility fn #ident #generics (#inputs) #output #where_clause {
@@ -119,7 +120,8 @@ pub fn scope(metadata: proc_macro::TokenStream, input: proc_macro::TokenStream) 
                     // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
                     #block
                 }
-            )).into()
+            ))
+            .into()
         }
     }
 }

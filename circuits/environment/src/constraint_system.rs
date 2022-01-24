@@ -61,7 +61,13 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
-    pub(super) fn enforce(&mut self, a: LinearCombination<F>, b: LinearCombination<F>, c: LinearCombination<F>, scope: Scope) {
+    pub(super) fn enforce(
+        &mut self,
+        a: LinearCombination<F>,
+        b: LinearCombination<F>,
+        c: LinearCombination<F>,
+        scope: Scope,
+    ) {
         // Ensure the constraint is not comprised of constants.
         if !(a.is_constant() && b.is_constant() && c.is_constant()) {
             self.constraints.push((scope.clone(), (a, b, c)));

@@ -55,7 +55,7 @@ impl<F: PrimeField> CircuitScope<F> {
                     scope,
                     counter: self.counter.clone(),
                 })
-            },
+            }
         }
     }
 

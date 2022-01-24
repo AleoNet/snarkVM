@@ -36,7 +36,9 @@ impl Circuit {
         CIRCUIT.with(|circuit| {
             circuit
                 .get_or_init(|| {
-                    Circuit(Rc::new(RefCell::new(CircuitScope::<<Self as Environment>::BaseField>::new())))
+                    Circuit(Rc::new(RefCell::new(
+                        CircuitScope::<<Self as Environment>::BaseField>::new(),
+                    )))
                 })
                 .0
                 .borrow()

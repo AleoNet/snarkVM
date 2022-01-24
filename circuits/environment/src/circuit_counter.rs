@@ -23,12 +23,18 @@ pub(super) struct CircuitCounter {
     public: usize,
     private: usize,
     constraints: usize,
-    parents: Vec<(Scope, usize, usize, usize, usize)>
+    parents: Vec<(Scope, usize, usize, usize, usize)>,
 }
 
 impl CircuitCounter {
     pub(super) fn push(&mut self, scope: &Scope) {
-        self.parents.push((self.scope.clone(), self.constants, self.public, self.private, self.constraints));
+        self.parents.push((
+            self.scope.clone(),
+            self.constants,
+            self.public,
+            self.private,
+            self.constraints,
+        ));
 
         self.scope = scope.clone();
         self.constants = 0;
@@ -97,7 +103,7 @@ impl Clone for CircuitCounter {
             public: self.public.clone(),
             private: self.private.clone(),
             constraints: self.constraints.clone(),
-            parents: self.parents.clone()
+            parents: self.parents.clone(),
         }
     }
 }
