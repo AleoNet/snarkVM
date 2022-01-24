@@ -98,7 +98,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
         }
 
         // Enforce all of the constraints.
-        for (i, (a, b, c)) in self.to_constraints().iter().enumerate() {
+        for (i, (_, (a, b, c))) in self.to_constraints().iter().enumerate() {
             // Converts terms from one linear combination in the first system to the second system.
             let convert_linear_combination = |lc: &LinearCombination<F>| -> snarkvm_r1cs::LinearCombination<F> {
                 // Initialize a linear combination for the second system.

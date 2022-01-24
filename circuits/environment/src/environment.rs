@@ -69,9 +69,9 @@ pub trait Environment: Clone {
     /// Removes the given scope from the current environment.
     fn pop_scope(name: &str) -> CircuitScope<Self::BaseField>;
 
-    fn scoped<Fn>(name: &str, logic: Fn)
+    fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
     where
-        Fn: FnOnce(CircuitScope<Self::BaseField>);
+        Fn: FnOnce(CircuitScope<Self::BaseField>) -> Output;
 
     /// Adds one constraint enforcing that `(A * B) == C`.
     fn enforce<Fn, A, B, C>(constraint: Fn)

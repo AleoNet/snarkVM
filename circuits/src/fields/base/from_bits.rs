@@ -22,6 +22,7 @@ impl<E: Environment> FromBits for BaseField<E> {
     type Boolean = Boolean<E>;
 
     /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
+    #[scope(circuit = "BaseField")]
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
         // TODO (howardwu): Genericize this size check.
         // TODO (howardwu): Contemplate how to handle the CAPACITY vs. BITS case.
@@ -63,6 +64,7 @@ impl<E: Environment> FromBits for BaseField<E> {
     }
 
     /// Initializes a new base field element from a list of big-endian bits *without* leading zeros.
+    #[scope(circuit = "BaseField")]
     fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self {
         // Reverse the given bits from big-endian into little-endian.
         // Note: This is safe as the bit representation is consistent (there are no leading zeros).

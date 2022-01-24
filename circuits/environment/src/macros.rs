@@ -30,15 +30,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_export]
-macro_rules! push_scope {
-    ($scope_name:expr) => {
-        E::push_scope($scope_name)
-    };
-}
-
-#[macro_export]
-macro_rules! pop_scope {
-    ($scope_name:expr) => {
-        E::pop_scope($scope_name)
+macro_rules! scoped {
+    ($scope_name:expr, $block:block) => {
+        E::scoped($scope_name, |scope| $block)
     };
 }

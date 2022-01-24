@@ -38,7 +38,7 @@ impl Circuit {
                 .get_or_init(|| {
                     let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
                         Rc::new(RefCell::new(ConstraintSystem::new())),
-                        "Circuit::new()".to_string(),
+                        "".to_string(),
                     );
                     RefCell::new(Circuit(scope))
                 })
@@ -56,7 +56,7 @@ impl Circuit {
         CIRCUIT.with(|circuit| {
             (*circuit.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
                 Rc::new(RefCell::new(ConstraintSystem::new())),
-                "Circuit::new()".to_string(),
+                "".to_string(),
             );
         });
 
@@ -125,26 +125,28 @@ impl Environment for Circuit {
         })
     }
 
-    fn scoped<Fn>(name: &str, logic: Fn)
+    fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
     where
-        Fn: FnOnce(CircuitScope<Self::BaseField>),
+        Fn: FnOnce(CircuitScope<Self::BaseField>) -> Output,
     {
         CIRCUIT.with(|circuit| {
             // Set the entire environment to the new scope, and run the logic.
-            match Self::cs().push_scope(name) {
+            let output = match Self::cs().push_scope(name) {
                 Ok(scope) => {
                     (*circuit.get().unwrap().borrow_mut()).0 = scope.clone();
-                    logic(scope);
+                    logic(scope)
                 }
                 Err(error) => Self::halt(error),
-            }
+            };
 
             // Return the entire environment to the previous scope.
             match Self::cs().pop_scope(name) {
                 Ok(scope) => (*circuit.get().unwrap().borrow_mut()).0 = scope,
                 Err(error) => Self::halt(error),
             }
-        });
+
+            output
+        })
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
@@ -217,7 +219,7 @@ impl Environment for Circuit {
         }
 
         Self::halt(format!(
-            "Failed to recover an affine element from an x-coordinate of {:?}",
+            "Failed to recover an affine group from an x-coordinate of {}",
             x
         ))
     }
@@ -227,5 +229,42 @@ impl Environment for Circuit {
         let error = message.into();
         eprintln!("{}", &error);
         panic!("{}", &error)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_circuits::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
+    use snarkvm_fields::One as O;
+
+    /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
+    fn create_example_circuit<E: Environment>() -> BaseField<E> {
+        let one = <E as Environment>::BaseField::one();
+        let two = one + one;
+
+        const EXPONENT: usize = 64;
+
+        // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
+        let mut candidate = BaseField::<E>::new(Mode::Public, one);
+        let mut accumulator = BaseField::new(Mode::Private, two);
+        for _ in 0..EXPONENT {
+            candidate += &accumulator;
+            accumulator *= BaseField::new(Mode::Private, two);
+        }
+
+        assert_eq!((accumulator - BaseField::one()).eject_value(), candidate.eject_value());
+        assert_eq!(2, E::num_public());
+        assert_eq!(2 * EXPONENT + 1, E::num_private());
+        assert_eq!(EXPONENT, E::num_constraints());
+        assert!(E::is_satisfied());
+
+        candidate
+    }
+
+    #[test]
+    fn test_print_circuit() {
+        let _candidate_output = create_example_circuit::<Circuit>();
+        Circuit::print_circuit()
     }
 }

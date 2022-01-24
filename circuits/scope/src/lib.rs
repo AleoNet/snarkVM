@@ -88,9 +88,7 @@ pub fn scope(metadata: proc_macro::TokenStream, input: proc_macro::TokenStream) 
     (quote!(
         #visibility fn #ident #generics (#inputs) #output #where_clause {
             // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
-            ::snarkvm_circuits_environment::push_scope!(#scope_name);
-            #block
-            ::snarkvm_circuits_environment::pop_scope!(#scope_name);
+            ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
         }
     ))
     .into()

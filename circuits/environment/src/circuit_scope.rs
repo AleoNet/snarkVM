@@ -34,7 +34,7 @@ impl<F: PrimeField> CircuitScope<F> {
     }
 
     /// Appends the given scope to the current environment.
-    pub(super) fn push_scope(self, name: &str) -> Result<Self, String> {
+    pub(super) fn push_scope(&self, name: &str) -> Result<Self, String> {
         match name.contains(".") {
             true => Err("Scope names cannot contain periods (\".\")".to_string()),
             false => Ok(Self {
@@ -45,7 +45,7 @@ impl<F: PrimeField> CircuitScope<F> {
     }
 
     /// Removes the given scope from the current environment.
-    pub(super) fn pop_scope(self, name: &str) -> Result<Self, String> {
+    pub(super) fn pop_scope(&self, name: &str) -> Result<Self, String> {
         // Pop the current scope from the entire scope.
         let (previous_scope, current_scope) = match self.scope.rsplit_once('.') {
             Some((previous_scope, current_scope)) => (previous_scope, current_scope),
@@ -63,22 +63,22 @@ impl<F: PrimeField> CircuitScope<F> {
     }
 
     /// Returns a new constant in the current scope with the given value.
-    pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {
+    pub(super) fn new_constant(&mut self, value: F) -> Variable<F> {
         self.cs.borrow_mut().new_constant(value, self.scope.clone())
     }
 
     /// Returns a new public variable in the current scope with the given value.
-    pub(crate) fn new_public(&mut self, value: F) -> Variable<F> {
+    pub(super) fn new_public(&mut self, value: F) -> Variable<F> {
         self.cs.borrow_mut().new_public(value, self.scope.clone())
     }
 
     /// Returns a new private variable in the current scope with the given value.
-    pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
+    pub(super) fn new_private(&mut self, value: F) -> Variable<F> {
         self.cs.borrow_mut().new_private(value, self.scope.clone())
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
-    pub(crate) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
+    pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
         A: Into<LinearCombination<F>>,

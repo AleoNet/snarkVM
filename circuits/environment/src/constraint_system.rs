@@ -17,16 +17,15 @@
 use crate::*;
 use snarkvm_fields::traits::*;
 
-use std::collections::{HashMap, HashSet};
-
 #[derive(Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
-    constraints: Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)>,
-    transcript: HashMap<Variable<F>, Scope>,
-    scopes: HashSet<Scope>,
+    constraints: Vec<(
+        Scope,
+        (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
+    )>,
     counter: CircuitCounter,
 }
 
@@ -38,8 +37,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
             public: vec![Variable::Public(0u64, F::one())],
             private: Default::default(),
             constraints: Default::default(),
-            transcript: Default::default(),
-            scopes: Default::default(),
             counter: Default::default(),
         }
     }
@@ -49,7 +46,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let variable = Variable::Constant(value);
         self.constants.push(variable);
         self.counter.increment_constant(&scope);
-        self.transcript.insert(variable, scope);
         variable
     }
 
@@ -58,7 +54,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let variable = Variable::Public(self.public.len() as u64, value);
         self.public.push(variable);
         self.counter.increment_public(&scope);
-        self.transcript.insert(variable, scope);
         variable
     }
 
@@ -67,7 +62,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let variable = Variable::Private(self.private.len() as u64, value);
         self.private.push(variable);
         self.counter.increment_private(&scope);
-        self.transcript.insert(variable, scope);
         variable
     }
 
@@ -83,19 +77,20 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let (a, b, c) = (a.into(), b.into(), c.into());
 
         if !(a.is_constant() && b.is_constant() && c.is_constant()) {
-            self.constraints.push((a, b, c));
+            self.constraints.push((scope.clone(), (a, b, c)));
             self.counter.increment_constraints(&scope);
         }
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
     pub(super) fn is_satisfied(&self) -> bool {
-        for (a, b, c) in &self.constraints {
+        for (scope, (a, b, c)) in &self.constraints {
             let a = a.to_value();
             let b = b.to_value();
             let c = c.to_value();
 
             if a * b != c {
+                eprintln!("Failed constraint at {}:\n\t({} * {}) != {}", scope, a, b, c);
                 return false;
             }
         }
@@ -153,7 +148,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     /// Returns the constraints in the constraint system.
-    pub(super) fn to_constraints(&self) -> &Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)> {
+    pub(super) fn to_constraints(
+        &self,
+    ) -> &Vec<(
+        Scope,
+        (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
+    )> {
         &self.constraints
     }
 }
@@ -166,8 +166,6 @@ impl<F: PrimeField> Clone for ConstraintSystem<F> {
             public: self.public.clone(),
             private: self.private.clone(),
             constraints: self.constraints.clone(),
-            transcript: self.transcript.clone(),
-            scopes: self.scopes.clone(),
             counter: self.counter.clone(),
         }
     }
