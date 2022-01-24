@@ -19,7 +19,7 @@ use snarkvm_fields::PrimeField;
 
 use core::{
     fmt,
-    ops::{Add, AddAssign, Mul, Neg, Sub}
+    ops::{Add, AddAssign, Mul, Neg, Sub},
 };
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -385,7 +385,13 @@ impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
         for (variable, coefficient) in &self.terms {
             output += &match variable.mode() {
                 Mode::Constant => format!(" + ({} * {} {})", coefficient, variable.mode(), variable.value()),
-                _ => format!(" + ({} * {}({}) {})", coefficient, variable.mode(), variable.index(), variable.value())
+                _ => format!(
+                    " + ({} * {}({}) {})",
+                    coefficient,
+                    variable.mode(),
+                    variable.index(),
+                    variable.value()
+                ),
             };
         }
         write!(f, "{}", output)

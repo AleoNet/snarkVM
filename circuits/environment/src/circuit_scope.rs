@@ -39,7 +39,10 @@ impl<F: PrimeField> CircuitScope<F> {
             true => Err("Scope names cannot contain periods (\".\")".to_string()),
             false => Ok(Self {
                 cs: self.cs.clone(),
-                scope: format!("{}.{}", self.scope, name),
+                scope: match self.scope.is_empty() {
+                    true => format!("{}", name),
+                    false => format!("{}.{}", self.scope, name),
+                },
             }),
         }
     }
@@ -49,7 +52,7 @@ impl<F: PrimeField> CircuitScope<F> {
         // Pop the current scope from the entire scope.
         let (previous_scope, current_scope) = match self.scope.rsplit_once('.') {
             Some((previous_scope, current_scope)) => (previous_scope, current_scope),
-            None => return Err("Attempted to pop a non-existent scope, no more scopes found".to_string()),
+            None => ("", self.scope.as_str()),
         };
 
         // Ensure the current scope is the last pushed scope.
