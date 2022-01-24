@@ -14,41 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::identity_op)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::type_complexity)]
+use crate::{Address, BaseField, Boolean, Environment, I64};
 
-pub mod address;
-pub use address::*;
+#[derive(Clone, Debug)]
+pub struct Record<E: Environment> {
+    owner: Address<E>,
+    value: I64<E>,
+    payload: Vec<Boolean<E>>,
+    program_id: Vec<Boolean<E>>,
+    randomizer: BaseField<E>,
+    record_view_key: BaseField<E>,
+}
 
-pub mod boolean;
-pub use boolean::*;
-
-pub mod fields;
-pub use fields::*;
-
-pub mod group;
-pub use group::*;
-
-pub mod helpers;
-
-pub mod integers;
-pub use integers::*;
-
-// TODO (howardwu): This is temporary until the models interface is stabilized.
-#[allow(unused)]
-pub mod models;
-pub use models::*;
-
-// TODO (howardwu): This is temporary until the programs interface is stabilized.
-#[allow(unused)]
-pub mod programs;
-pub use programs::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod traits;
-pub use traits::*;
+// impl<E: Environment> Record<E> {
+//     ///
+//     /// Initializes a new instance of a record.
+//     ///
+//     pub fn new(value: Affine<E>) -> Self {
+//         Self(value)
+//     }
+// }
