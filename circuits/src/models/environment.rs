@@ -54,13 +54,14 @@ pub trait Environment: Clone {
     type BaseField: PrimeField + Copy;
     type ScalarField: PrimeField + Copy;
 
-    fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
-
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField>;
 
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField>;
+
+    /// Returns a new variable of the given mode and value.
+    fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
     fn scope(name: &str) -> CircuitScope<Self::BaseField>;
 
@@ -90,20 +91,36 @@ pub trait Environment: Clone {
         Self::enforce(|| (a, Self::one(), b))
     }
 
+    /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool;
 
+    /// Returns the number of constants in the entire environment.
     fn num_constants() -> usize;
+
+    /// Returns the number of public variables in the entire environment.
     fn num_public() -> usize;
+
+    /// Returns the number of private variables in the entire environment.
     fn num_private() -> usize;
+
+    /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> usize;
 
+    /// Returns the number of constants for the given scope.
     fn num_constants_in_scope(scope: &Scope) -> usize;
+
+    /// Returns the number of public variables for the given scope.
     fn num_public_in_scope(scope: &Scope) -> usize;
+
+    /// Returns the number of private variables for the given scope.
     fn num_private_in_scope(scope: &Scope) -> usize;
+
+    /// Returns the number of constraints for the given scope.
     fn num_constraints_in_scope(scope: &Scope) -> usize;
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
 
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         panic!("{}", message.into())
     }

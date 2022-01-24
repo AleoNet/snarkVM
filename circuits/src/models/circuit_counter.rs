@@ -27,6 +27,7 @@ pub(super) struct CircuitCounter {
 }
 
 impl CircuitCounter {
+    /// Increments the number of constants by 1 for the given scope.
     pub(super) fn increment_constant(&mut self, scope: &Scope) {
         match self.constants.get_mut(scope) {
             Some(counter) => *counter += 1,
@@ -34,6 +35,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Increments the number of public variables by 1 for the given scope.
     pub(super) fn increment_public(&mut self, scope: &Scope) {
         match self.public.get_mut(scope) {
             Some(counter) => *counter += 1,
@@ -41,6 +43,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Increments the number of private variables by 1 for the given scope.
     pub(super) fn increment_private(&mut self, scope: &Scope) {
         match self.private.get_mut(scope) {
             Some(counter) => *counter += 1,
@@ -48,6 +51,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Increments the number of constraints by 1 for the given scope.
     pub(super) fn increment_constraints(&mut self, scope: &Scope) {
         match self.constraints.get_mut(scope) {
             Some(counter) => *counter += 1,
@@ -55,6 +59,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Returns the number of constants for the given scope.
     pub(super) fn num_constants_in_scope(&self, scope: &Scope) -> usize {
         match self.constants.get(scope) {
             Some(counter) => *counter,
@@ -62,6 +67,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Returns the number of public variables for the given scope.
     pub(super) fn num_public_in_scope(&self, scope: &Scope) -> usize {
         match self.public.get(scope) {
             Some(counter) => *counter,
@@ -69,6 +75,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Returns the number of private variables for the given scope.
     pub(super) fn num_private_in_scope(&self, scope: &Scope) -> usize {
         match self.private.get(scope) {
             Some(counter) => *counter,
@@ -76,6 +83,7 @@ impl CircuitCounter {
         }
     }
 
+    /// Returns the number of constraints for the given scope.
     pub(super) fn num_constraints_in_scope(&self, scope: &Scope) -> usize {
         match self.constraints.get(scope) {
             Some(counter) => *counter,

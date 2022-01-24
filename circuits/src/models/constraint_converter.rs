@@ -26,6 +26,7 @@ struct Converter {
 }
 
 impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<F> {
+    /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
     fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
         &self,
         cs: &mut CS,

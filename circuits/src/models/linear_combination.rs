@@ -125,6 +125,7 @@ impl<F: PrimeField> LinearCombination<F> {
         }
     }
 
+    /// Returns the computed value of the linear combination.
     pub fn to_value(&self) -> F {
         // Note that 200_000 is derived empirically.
         // The setup cost of Rayon is only worth it after sufficient size.
@@ -144,10 +145,12 @@ impl<F: PrimeField> LinearCombination<F> {
         self.constant + sum
     }
 
+    /// Returns only the constant value (excluding the terms) in the linear combination.
     pub(super) fn to_constant(&self) -> F {
         self.constant
     }
 
+    /// Returns the terms (excluding the constant value) in the linear combination.
     pub(super) fn to_terms(&self) -> &HashMap<Variable<F>, F> {
         &self.terms
     }

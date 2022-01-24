@@ -28,23 +28,37 @@ pub enum Variable<F: PrimeField> {
 }
 
 impl<F: PrimeField> Variable<F> {
+    ///
+    /// Returns `true` if the variable is a constant.
+    ///
     pub fn is_constant(&self) -> bool {
         matches!(self, Self::Constant(..))
     }
 
+    ///
+    /// Returns `true` if the variable is public.
+    ///
     pub fn is_public(&self) -> bool {
         matches!(self, Self::Public(..))
     }
 
+    ///
+    /// Returns `true` if the variable is private.
+    ///
     pub fn is_private(&self) -> bool {
         matches!(self, Self::Private(..))
     }
 
+    ///
     /// Returns the `one` constant.
+    ///
     pub fn one() -> Self {
         Self::Constant(F::one())
     }
 
+    ///
+    /// Returns the value of the variable.
+    ///
     pub fn value(&self) -> F {
         match self {
             Self::Constant(value) => *value,

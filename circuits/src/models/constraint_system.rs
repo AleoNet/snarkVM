@@ -31,6 +31,7 @@ pub(super) struct ConstraintSystem<F: PrimeField> {
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
+    /// Returns a new instance of a constraint system.
     pub(super) fn new() -> Self {
         Self {
             constants: Default::default(),
@@ -43,6 +44,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
+    /// Returns a new constant with the given value and scope.
     pub(super) fn new_constant(&mut self, value: F, scope: Scope) -> Variable<F> {
         let variable = Variable::Constant(value);
         self.constants.push(variable);
@@ -51,6 +53,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         variable
     }
 
+    /// Returns a new public variable with the given value and scope.
     pub(super) fn new_public(&mut self, value: F, scope: Scope) -> Variable<F> {
         let variable = Variable::Public(self.public.len() as u64, value);
         self.public.push(variable);
@@ -59,6 +62,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         variable
     }
 
+    /// Returns a new private variable with the given value and scope.
     pub(super) fn new_private(&mut self, value: F, scope: Scope) -> Variable<F> {
         let variable = Variable::Private(self.private.len() as u64, value);
         self.private.push(variable);
@@ -67,6 +71,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         variable
     }
 
+    /// Adds one constraint enforcing that `(A * B) == C`.
     pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn, scope: Scope)
     where
         Fn: FnOnce() -> (A, B, C),
@@ -83,6 +88,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
+    /// Returns `true` if all constraints in the environment are satisfied.
     pub(super) fn is_satisfied(&self) -> bool {
         for (a, b, c) in &self.constraints {
             let a = a.to_value();
@@ -96,46 +102,57 @@ impl<F: PrimeField> ConstraintSystem<F> {
         true
     }
 
+    /// Returns the number of constants in the constraint system.
     pub(super) fn num_constants(&self) -> usize {
         self.constants.len()
     }
 
+    /// Returns the number of public variables in the constraint system.
     pub(super) fn num_public(&self) -> usize {
         self.public.len()
     }
 
+    /// Returns the number of private variables in the constraint system.
     pub(super) fn num_private(&self) -> usize {
         self.private.len()
     }
 
+    /// Returns the number of constraints in the constraint system.
     pub(super) fn num_constraints(&self) -> usize {
         self.constraints.len()
     }
 
+    /// Returns the number of constants for the given scope.
     pub(super) fn num_constants_in_scope(&self, scope: &Scope) -> usize {
         self.counter.num_constants_in_scope(scope)
     }
 
+    /// Returns the number of public variables for the given scope.
     pub(super) fn num_public_in_scope(&self, scope: &Scope) -> usize {
         self.counter.num_public_in_scope(scope)
     }
 
+    /// Returns the number of private variables for the given scope.
     pub(super) fn num_private_in_scope(&self, scope: &Scope) -> usize {
         self.counter.num_private_in_scope(scope)
     }
 
+    /// Returns the number of constraints for the given scope.
     pub(super) fn num_constraints_in_scope(&self, scope: &Scope) -> usize {
         self.counter.num_constraints_in_scope(scope)
     }
 
+    /// Returns the public variables in the constraint system.
     pub(super) fn to_public_variables(&self) -> &Vec<Variable<F>> {
         &self.public
     }
 
+    /// Returns the private variables in the constraint system.
     pub(super) fn to_private_variables(&self) -> &Vec<Variable<F>> {
         &self.private
     }
 
+    /// Returns the constraints in the constraint system.
     pub(super) fn to_constraints(&self) -> &Vec<(LinearCombination<F>, LinearCombination<F>, LinearCombination<F>)> {
         &self.constraints
     }

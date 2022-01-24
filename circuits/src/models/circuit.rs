@@ -84,6 +84,7 @@ impl Environment for Circuit {
         LinearCombination::one()
     }
 
+    /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
         match mode {
             Mode::Constant => Self::cs().new_constant(value),
@@ -118,6 +119,7 @@ impl Environment for Circuit {
         });
     }
 
+    /// Adds one constraint enforcing that `(A * B) == C`.
     fn enforce<Fn, A, B, C>(constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
@@ -128,38 +130,47 @@ impl Environment for Circuit {
         Self::cs().enforce(constraint)
     }
 
+    /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool {
         Self::cs().is_satisfied()
     }
 
+    /// Returns the number of constants in the entire circuit.
     fn num_constants() -> usize {
         Self::cs().num_constants()
     }
 
+    /// Returns the number of public variables in the entire circuit.
     fn num_public() -> usize {
         Self::cs().num_public()
     }
 
+    /// Returns the number of private variables in the entire circuit.
     fn num_private() -> usize {
         Self::cs().num_private()
     }
 
+    /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> usize {
         Self::cs().num_constraints()
     }
 
+    /// Returns the number of constants for the given scope.
     fn num_constants_in_scope(scope: &Scope) -> usize {
         Self::cs().cs.borrow().num_constants_in_scope(scope)
     }
 
+    /// Returns the number of public variables for the given scope.
     fn num_public_in_scope(scope: &Scope) -> usize {
         Self::cs().cs.borrow().num_public_in_scope(scope)
     }
 
+    /// Returns the number of private variables for the given scope.
     fn num_private_in_scope(scope: &Scope) -> usize {
         Self::cs().cs.borrow().num_private_in_scope(scope)
     }
 
+    /// Returns the number of constraints for the given scope.
     fn num_constraints_in_scope(scope: &Scope) -> usize {
         Self::cs().cs.borrow().num_constraints_in_scope(scope)
     }
@@ -183,6 +194,7 @@ impl Environment for Circuit {
         ))
     }
 
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         let error = message.into();
         eprintln!("{}", &error);
