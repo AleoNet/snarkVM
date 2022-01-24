@@ -106,6 +106,21 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-circuits-cache
 
+  circuits-environment:
+    docker:
+      - image: cimg/rust:1.56.1
+    resource_class: 2xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-circuits-environment-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd circuits/environment && RUST_MIN_STACK=67108864 cargo test --features testing
+      - clear_environment:
+          cache_key: snarkvm-circuits-environment-cache
+
   curves:
     docker:
       - image: cimg/rust:1.56.1
@@ -294,6 +309,7 @@ workflows:
       - integration-testnet2
       - algorithms
       - circuits
+      - circuits-environment
       - curves
       - derives
       - dpc

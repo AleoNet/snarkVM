@@ -27,9 +27,7 @@ fn extract_literal(token_tree: &proc_macro::TokenTree) -> String {
         // String literals seem to come through including their double quotes. Trim them off.
         proc_macro::TokenTree::Literal(literal) => literal.to_string().trim().trim_matches('"').trim().to_string(),
         proc_macro::TokenTree::Ident(ident) => ident.to_string().trim().trim_matches('"').trim().to_string(),
-        _ => panic!(
-            "Invalid argument. Specify at most one argument - `custom = XX`, `method = XX`, or `circuit = XX`"
-        ),
+        _ => panic!("Invalid argument. Specify at most one argument - `custom = XX`, `method = XX`, or `circuit = XX`"),
     }
 }
 
@@ -61,7 +59,7 @@ fn get_scope_name(metadata: proc_macro::TokenStream, function_name: &str) -> Str
             "custom" => name.to_string(),
             "method" => format!("{}()", name),
             "circuit" => format!("{}::{}()", name, function_name),
-            _ => panic!("Invalid argument. Specify `custom = XX`, `method = XX`, or `circuit = XX`")
+            _ => panic!("Invalid argument. Specify `custom = XX`, `method = XX`, or `circuit = XX`"),
         }
     } else {
         panic!("Specify at most one argument, to customize the scope name");

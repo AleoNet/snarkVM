@@ -1936,28 +1936,17 @@ dependencies = [
 name = "snarkvm-circuits"
 version = "0.7.5"
 dependencies = [
- "anyhow",
- "blake2",
  "criterion",
- "derivative",
- "digest 0.9.0",
  "itertools",
- "num-bigint",
- "num-integer",
  "num-traits",
  "once_cell",
- "paste",
  "rand",
- "rand_chacha",
- "rand_xorshift",
- "snarkvm-algorithms",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-scope",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-polycommit",
  "snarkvm-utilities",
- "thiserror",
 ]
 
 [[package]]
@@ -1966,10 +1955,14 @@ version = "0.7.5"
 dependencies = [
  "once_cell",
  "rayon",
+ "snarkvm-algorithms",
+ "snarkvm-circuits",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-marlin",
+ "snarkvm-polycommit",
  "snarkvm-r1cs",
+ "snarkvm-utilities",
 ]
 
 [[package]]

@@ -17,11 +17,9 @@
 use crate::*;
 use snarkvm_fields::PrimeField;
 
+use core::ops::{Add, AddAssign, Mul, Neg, Sub};
 use rayon::prelude::*;
-use std::{
-    collections::HashMap,
-    ops::{Add, AddAssign, Mul, Neg, Sub},
-};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct LinearCombination<F: PrimeField> {
