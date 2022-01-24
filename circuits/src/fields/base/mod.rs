@@ -45,6 +45,8 @@ use std::{
 #[derive(Clone)]
 pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
 
+impl<E: Environment> BaseFieldTrait for BaseField<E> {}
+
 impl<E: Environment> BaseField<E> {
     ///
     /// Initializes a new instance of a base field from a constant base field value.
@@ -78,8 +80,6 @@ impl<E: Environment> Eject for BaseField<E> {
         self.0.to_value()
     }
 }
-
-impl<E: Environment> BaseFieldTrait for BaseField<E> {}
 
 impl<E: Environment> fmt::Debug for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

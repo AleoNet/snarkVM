@@ -105,11 +105,7 @@ impl<E: Environment> Eject for Affine<E> {
         match (self.x.eject_mode(), self.y.eject_mode()) {
             (Mode::Constant, mode) | (mode, Mode::Constant) => mode,
             (Mode::Public, Mode::Public) => Mode::Public,
-            (Mode::Private, Mode::Private) => Mode::Private,
-            // Note: It could be that the other cases are well-formed.
-            // However, until concrete usage motivates it, they will be excluded
-            // so it can be thoroughly studied for safety prior to inclusion.
-            _ => E::halt("Detected a group element with a malformed mode"),
+            (Mode::Private, mode) | (mode, Mode::Private) => mode,
         }
     }
 

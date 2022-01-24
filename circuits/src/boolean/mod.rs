@@ -55,6 +55,8 @@ use std::{
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
+impl<E: Environment> BooleanTrait for Boolean<E> {}
+
 impl<E: Environment> Boolean<E> {
     ///
     /// Initializes a new instance of a boolean from a constant boolean value.
@@ -102,8 +104,6 @@ impl<E: Environment> fmt::Debug for Boolean<E> {
         write!(f, "{}", self.eject_value())
     }
 }
-
-impl<E: Environment> BooleanTrait for Boolean<E> {}
 
 impl<E: Environment> Deref for Boolean<E> {
     type Target = LinearCombination<E::BaseField>;
