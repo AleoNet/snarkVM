@@ -27,11 +27,11 @@ use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) padded_public_variables: Vec<F>,
     pub(super) private_variables: Vec<F>,
-    /// query bound b
+    /// Query bound b
     pub(super) zk_bound: usize,
-    /// Az
+    /// Az.
     pub(super) z_a: Option<Vec<F>>,
-    /// Bz
+    /// Bz.
     pub(super) z_b: Option<Vec<F>>,
 
     pub(super) w_poly: Option<LabeledPolynomial<F>>,
@@ -40,23 +40,27 @@ pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
 
     pub(super) index: &'a Circuit<F, MM>,
 
-    /// the random values sent by the verifier in the first round
+    /// The challenges sent by the verifier in the first round
     pub(super) verifier_first_message: Option<VerifierFirstMessage<F>>,
 
     /// the blinding polynomial for the first round
     pub(super) mask_poly: Option<LabeledPolynomial<F>>,
 
-    /// the blinding polynomial for the first round
+    /// The polynomial `t` whose value is checked via the hologrphic sumcheck.
     pub(super) t_poly: Option<Polynomial<F>>,
 
-    /// domain X, sized for the public input
-    pub(super) domain_x: EvaluationDomain<F>,
+    /// A domain that is sized for the public input.
+    pub(super) input_domain: EvaluationDomain<F>,
 
-    /// domain H, sized for constraints
-    pub(super) domain_h: EvaluationDomain<F>,
+    /// A domain that is sized for the number of constraints.
+    pub(super) constraint_domain: EvaluationDomain<F>,
 
-    /// domain K, sized for matrix nonzero elements
-    pub(super) domain_k: EvaluationDomain<F>,
+    /// A domain that is sized for the number of non-zero elements in A.
+    pub(super) non_zero_a_domain: EvaluationDomain<F>,
+    /// A domain that is sized for the number of non-zero elements in B.
+    pub(super) non_zero_b_domain: EvaluationDomain<F>,
+    /// A domain that is sized for the number of non-zero elements in C.
+    pub(super) non_zero_c_domain: EvaluationDomain<F>,
 }
 
 impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
@@ -65,18 +69,22 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
         private_variables: Vec<F>,
         zk_bound: usize,
         index: &'a Circuit<F, MM>,
-        domain_x: EvaluationDomain<F>,
-        domain_h: EvaluationDomain<F>,
-        domain_k: EvaluationDomain<F>,
+        input_domain: EvaluationDomain<F>,
+        constraint_domain: EvaluationDomain<F>,
+        non_zero_a_domain: EvaluationDomain<F>,
+        non_zero_b_domain: EvaluationDomain<F>,
+        non_zero_c_domain: EvaluationDomain<F>,
     ) -> Self {
         Self {
             padded_public_variables: padded_public_input,
             private_variables,
             zk_bound,
             index,
-            domain_x,
-            domain_h,
-            domain_k,
+            input_domain,
+            constraint_domain,
+            non_zero_a_domain,
+            non_zero_b_domain,
+            non_zero_c_domain,
             mask_poly: None,
             t_poly: None,
             verifier_first_message: None,

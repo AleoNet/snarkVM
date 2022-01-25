@@ -45,13 +45,13 @@ pub struct PreparedCircuitVerifyingKeyVar<
     MM: MarlinMode,
 > {
     /// The size of domain h
-    pub domain_h_size: u64,
+    pub constraint_domain_size: u64,
     /// The size of domain k
-    pub domain_k_size: u64,
+    pub non_zero_domain_size: u64,
     /// The size of domain h in constraint form
-    pub domain_h_size_gadget: FpGadget<BaseField>,
+    pub constraint_domain_size_gadget: FpGadget<BaseField>,
     /// The size of domain k in constraint form
-    pub domain_k_size_gadget: FpGadget<BaseField>,
+    pub non_zero_domain_size_gadget: FpGadget<BaseField>,
     /// The prepared circuit commitments in constraint form
     pub prepared_index_comms: Vec<PCG::PreparedCommitmentVar>,
     /// The prepared verifying key in constraint form
@@ -74,10 +74,10 @@ impl<
 {
     fn clone(&self) -> Self {
         PreparedCircuitVerifyingKeyVar {
-            domain_h_size: self.domain_h_size,
-            domain_k_size: self.domain_k_size,
-            domain_h_size_gadget: self.domain_h_size_gadget.clone(),
-            domain_k_size_gadget: self.domain_k_size_gadget.clone(),
+            constraint_domain_size: self.constraint_domain_size,
+            non_zero_domain_size: self.non_zero_domain_size,
+            constraint_domain_size_gadget: self.constraint_domain_size_gadget.clone(),
+            non_zero_domain_size_gadget: self.non_zero_domain_size_gadget.clone(),
             prepared_index_comms: self.prepared_index_comms.clone(),
             prepared_verifier_key: self.prepared_verifier_key.clone(),
             fs_rng: self.fs_rng.clone(),
@@ -145,18 +145,18 @@ where
             fs_rng
         };
 
-        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_h_size_gadget"), || {
-            Ok(BaseField::from(obj.domain_h_size as u128))
+        let constraint_domain_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "constraint_domain_size_gadget"), || {
+            Ok(BaseField::from(obj.constraint_domain_size as u128))
         })?;
-        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_k_size_gadget"), || {
-            Ok(BaseField::from(obj.domain_k_size as u128))
+        let non_zero_domain_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "non_zero_domain_size_gadget"), || {
+            Ok(BaseField::from(obj.non_zero_domain_size as u128))
         })?;
 
         Ok(Self {
-            domain_h_size: obj.domain_h_size,
-            domain_k_size: obj.domain_k_size,
-            domain_h_size_gadget,
-            domain_k_size_gadget,
+            constraint_domain_size: obj.constraint_domain_size,
+            non_zero_domain_size: obj.non_zero_domain_size,
+            constraint_domain_size_gadget,
+            non_zero_domain_size_gadget,
             prepared_index_comms,
             prepared_verifier_key,
             fs_rng,
@@ -315,12 +315,12 @@ mod test {
         // Enforce that the native vk and vk gadget elements are equivalent.
 
         assert_eq!(
-            prepared_circuit_vk.domain_h_size,
-            prepared_circuit_vk_gadget.domain_h_size
+            prepared_circuit_vk.constraint_domain_size,
+            prepared_circuit_vk_gadget.constraint_domain_size
         );
         assert_eq!(
-            prepared_circuit_vk.domain_k_size,
-            prepared_circuit_vk_gadget.domain_k_size
+            prepared_circuit_vk.non_zero_domain_size,
+            prepared_circuit_vk_gadget.non_zero_domain_size
         );
 
         for (i, (prepared_commitment, prepared_commitment_gadget)) in prepared_circuit_vk

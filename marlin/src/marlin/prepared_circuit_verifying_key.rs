@@ -24,9 +24,9 @@ use super::MarlinMode;
 /// Verification key, prepared (preprocessed) for use in pairings.
 pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Size of the variable domain.
-    pub domain_h_size: u64,
+    pub constraint_domain_size: u64,
     /// Size of the matrix domain.
-    pub domain_k_size: u64,
+    pub non_zero_domain_size: u64,
     /// Commitments to the index polynomials, prepared.
     pub prepared_index_comms: Vec<PC::PreparedCommitment>,
     /// Prepared version of the poly-commit scheme's verification key.
@@ -42,8 +42,8 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 {
     fn clone(&self) -> Self {
         PreparedCircuitVerifyingKey {
-            domain_h_size: self.domain_h_size,
-            domain_k_size: self.domain_k_size,
+            constraint_domain_size: self.constraint_domain_size,
+            non_zero_domain_size: self.non_zero_domain_size,
             prepared_index_comms: self.prepared_index_comms.clone(),
             prepared_verifier_key: self.prepared_verifier_key.clone(),
             orig_vk: self.orig_vk.clone(),

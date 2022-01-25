@@ -21,9 +21,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
-use derivative::Derivative;
-
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(CanonicalSerialize, CanonicalDeserialize, Debug)]
 /// The indexed version of the constraint system.
@@ -45,7 +43,9 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub c: Matrix<F>,
 
     /// Joint arithmetization of the A*, B*, and C* matrices.
-    pub joint_arith: MatrixArithmetization<F>,
+    pub a_arith: MatrixArithmetization<F>,
+    pub b_arith: MatrixArithmetization<F>,
+    pub c_arith: MatrixArithmetization<F>,
 
     pub(crate) mode: PhantomData<MM>,
 }
@@ -59,12 +59,20 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         vec![
-            &self.joint_arith.row,
-            &self.joint_arith.col,
-            &self.joint_arith.val_a,
-            &self.joint_arith.val_b,
-            &self.joint_arith.val_c,
-            &self.joint_arith.row_col,
+            &self.a_arith.row,
+            &self.a_arith.col,
+            &self.a_arith.val,
+            &self.a_arith.row_col,
+
+            &self.b_arith.row,
+            &self.b_arith.col,
+            &self.b_arith.val,
+            &self.b_arith.row_col,
+
+            &self.c_arith.row,
+            &self.c_arith.col,
+            &self.c_arith.val,
+            &self.c_arith.row_col,
         ]
         .into_iter()
     }

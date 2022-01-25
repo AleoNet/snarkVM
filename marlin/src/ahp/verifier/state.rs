@@ -26,8 +26,8 @@ use snarkvm_fields::PrimeField;
 /// State of the AHP verifier.
 #[derive(Debug)]
 pub struct VerifierState<F: PrimeField, MM: MarlinMode> {
-    pub(crate) domain_h: EvaluationDomain<F>,
-    pub(crate) domain_k: EvaluationDomain<F>,
+    pub(crate) constraint_domain: EvaluationDomain<F>,
+    pub(crate) non_zero_domain: EvaluationDomain<F>,
 
     pub(crate) first_round_message: Option<VerifierFirstMessage<F>>,
     pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,

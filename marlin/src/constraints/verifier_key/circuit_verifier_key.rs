@@ -56,13 +56,13 @@ pub struct CircuitVerifyingKeyVar<
     /// The original key
     pub origin_verifier_key: CircuitVerifyingKey<TargetField, BaseField, PC, MM>,
     /// The size of domain h
-    pub domain_h_size: u64,
+    pub constraint_domain_size: u64,
     /// The size of domain k
-    pub domain_k_size: u64,
+    pub non_zero_domain_size: u64,
     /// The size of domain h in constraint form
-    pub domain_h_size_gadget: FpGadget<BaseField>,
+    pub constraint_domain_size_gadget: FpGadget<BaseField>,
     /// The size of domain k in constraint form
-    pub domain_k_size_gadget: FpGadget<BaseField>,
+    pub non_zero_domain_size_gadget: FpGadget<BaseField>,
     /// The circuit commitments in constraint form
     pub index_comms: Vec<PCG::CommitmentVar>,
     /// The verifying key in constraint form
@@ -80,10 +80,10 @@ impl<
     fn clone(&self) -> Self {
         Self {
             origin_verifier_key: self.origin_verifier_key.clone(),
-            domain_h_size: self.domain_h_size,
-            domain_k_size: self.domain_k_size,
-            domain_h_size_gadget: self.domain_h_size_gadget.clone(),
-            domain_k_size_gadget: self.domain_k_size_gadget.clone(),
+            constraint_domain_size: self.constraint_domain_size,
+            non_zero_domain_size: self.non_zero_domain_size,
+            constraint_domain_size_gadget: self.constraint_domain_size_gadget.clone(),
+            non_zero_domain_size_gadget: self.non_zero_domain_size_gadget.clone(),
             index_comms: self.index_comms.clone(),
             verifier_key: self.verifier_key.clone(),
         }
@@ -133,24 +133,24 @@ impl<
         // `alloc_constant` regardless of the mode.
         let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
-        let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
+        let constraint_domain = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
+        let non_zero_domain = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_h_size_gadget"), || {
-            Ok(BaseField::from(domain_h.size() as u128))
+        let constraint_domain_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "constraint_domain_size_gadget"), || {
+            Ok(BaseField::from(constraint_domain.size() as u128))
         })?;
-        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_k_size_gadget"), || {
-            Ok(BaseField::from(domain_k.size() as u128))
+        let non_zero_domain_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "non_zero_domain_size_gadget"), || {
+            Ok(BaseField::from(non_zero_domain.size() as u128))
         })?;
 
         Ok(CircuitVerifyingKeyVar {
             origin_verifier_key: (*ivk).clone(),
-            domain_h_size: domain_h.size() as u64,
-            domain_k_size: domain_k.size() as u64,
-            domain_h_size_gadget,
-            domain_k_size_gadget,
+            constraint_domain_size: constraint_domain.size() as u64,
+            non_zero_domain_size: non_zero_domain.size() as u64,
+            constraint_domain_size_gadget,
+            non_zero_domain_size_gadget,
             index_comms,
             verifier_key,
         })
@@ -177,24 +177,24 @@ impl<
         // (I think it cannot).
         let verifier_key = PCG::VerifierKeyVar::alloc(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
-        let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
+        let constraint_domain = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
+        let non_zero_domain = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_h_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "domain_h_size_gadget"), || {
-            Ok(BaseField::from(domain_h.size() as u128))
+        let constraint_domain_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "constraint_domain_size_gadget"), || {
+            Ok(BaseField::from(constraint_domain.size() as u128))
         })?;
-        let domain_k_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "domain_k_size_gadget"), || {
-            Ok(BaseField::from(domain_k.size() as u128))
+        let non_zero_domain_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "non_zero_domain_size_gadget"), || {
+            Ok(BaseField::from(non_zero_domain.size() as u128))
         })?;
 
         Ok(CircuitVerifyingKeyVar {
             origin_verifier_key: (*ivk).clone(),
-            domain_h_size: domain_h.size() as u64,
-            domain_k_size: domain_k.size() as u64,
-            domain_h_size_gadget,
-            domain_k_size_gadget,
+            constraint_domain_size: constraint_domain.size() as u64,
+            non_zero_domain_size: non_zero_domain.size() as u64,
+            constraint_domain_size_gadget,
+            non_zero_domain_size_gadget,
             index_comms,
             verifier_key,
         })
@@ -223,24 +223,24 @@ impl<
         // (I think it cannot).
         let verifier_key = PCG::VerifierKeyVar::alloc_input(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
-        let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
+        let constraint_domain = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
+        let non_zero_domain = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "domain_h_size_gadget"), || {
-            Ok(BaseField::from(domain_h.size() as u128))
+        let constraint_domain_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "constraint_domain_size_gadget"), || {
+            Ok(BaseField::from(constraint_domain.size() as u128))
         })?;
-        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "domain_k_size_gadget"), || {
-            Ok(BaseField::from(domain_k.size() as u128))
+        let non_zero_domain_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "non_zero_domain_size_gadget"), || {
+            Ok(BaseField::from(non_zero_domain.size() as u128))
         })?;
 
         Ok(CircuitVerifyingKeyVar {
             origin_verifier_key: (*ivk).clone(),
-            domain_h_size: domain_h.size() as u64,
-            domain_k_size: domain_k.size() as u64,
-            domain_h_size_gadget,
-            domain_k_size_gadget,
+            constraint_domain_size: constraint_domain.size() as u64,
+            non_zero_domain_size: non_zero_domain.size() as u64,
+            constraint_domain_size_gadget,
+            non_zero_domain_size_gadget,
             index_comms,
             verifier_key,
         })
@@ -262,13 +262,13 @@ impl<
         let mut res = Vec::new();
         res.append(
             &mut self
-                .domain_h_size_gadget
-                .to_constraint_field(cs.ns(|| "domain_h_size_gadget"))?,
+                .constraint_domain_size_gadget
+                .to_constraint_field(cs.ns(|| "constraint_domain_size_gadget"))?,
         );
         res.append(
             &mut self
-                .domain_k_size_gadget
-                .to_constraint_field(cs.ns(|| "domain_k_size_gadget"))?,
+                .non_zero_domain_size_gadget
+                .to_constraint_field(cs.ns(|| "non_zero_domain_size_gadget"))?,
         );
         for (i, comm) in self.index_comms.iter().enumerate() {
             res.append(&mut comm.to_constraint_field(cs.ns(|| format!("index_comm_{}", i)))?);
@@ -289,26 +289,26 @@ impl<
 > ToMinimalBitsGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, MM>
 {
     fn to_minimal_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut domain_h_size_booleans = self.domain_h_size_gadget.to_bits_le(cs.ns(|| "domain_h_size"))?;
-        domain_h_size_booleans.truncate(64);
+        let mut constraint_domain_size_booleans = self.constraint_domain_size_gadget.to_bits_le(cs.ns(|| "constraint_domain_size"))?;
+        constraint_domain_size_booleans.truncate(64);
 
-        let mut domain_k_size_booleans = self.domain_k_size_gadget.to_bits_le(cs.ns(|| "domain_k_size"))?;
-        domain_k_size_booleans.truncate(64);
+        let mut non_zero_domain_size_booleans = self.non_zero_domain_size_gadget.to_bits_le(cs.ns(|| "non_zero_domain_size"))?;
+        non_zero_domain_size_booleans.truncate(64);
 
-        // A sanity check that the sizes of domain_h and domain_k are smaller than u64.
+        // A sanity check that the sizes of constraint_domain and non_zero_domain are smaller than u64.
         {
-            let domain_h_size_reconstructed =
-                Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct domain_h_size"), &domain_h_size_booleans)?;
-            let domain_k_size_reconstructed =
-                Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct domain_k_size"), &domain_k_size_booleans)?;
+            let constraint_domain_size_reconstructed =
+                Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct constraint_domain_size"), &constraint_domain_size_booleans)?;
+            let non_zero_domain_size_reconstructed =
+                Boolean::le_bits_to_fp_var(cs.ns(|| "reconstruct non_zero_domain_size"), &non_zero_domain_size_booleans)?;
 
-            domain_h_size_reconstructed.enforce_equal(cs.ns(|| "check domain_h_size"), &self.domain_h_size_gadget)?;
-            domain_k_size_reconstructed.enforce_equal(cs.ns(|| "check domain_k_size"), &self.domain_k_size_gadget)?;
+            constraint_domain_size_reconstructed.enforce_equal(cs.ns(|| "check constraint_domain_size"), &self.constraint_domain_size_gadget)?;
+            non_zero_domain_size_reconstructed.enforce_equal(cs.ns(|| "check non_zero_domain_size"), &self.non_zero_domain_size_gadget)?;
         }
 
         let index_comms_booleans = self.index_comms.to_minimal_bits(cs.ns(|| "index_comms"))?;
 
-        Ok([domain_h_size_booleans, domain_k_size_booleans, index_comms_booleans].concat())
+        Ok([constraint_domain_size_booleans, non_zero_domain_size_booleans, index_comms_booleans].concat())
     }
 }
 
@@ -354,10 +354,10 @@ where
         let prepared_verifier_key = self.verifier_key.prepare(cs.ns(|| "Prepare PC"))?;
 
         Ok(PreparedCircuitVerifyingKeyVar {
-            domain_h_size: self.domain_h_size,
-            domain_k_size: self.domain_k_size,
-            domain_h_size_gadget: self.domain_h_size_gadget.clone(),
-            domain_k_size_gadget: self.domain_k_size_gadget.clone(),
+            constraint_domain_size: self.constraint_domain_size,
+            non_zero_domain_size: self.non_zero_domain_size,
+            constraint_domain_size_gadget: self.constraint_domain_size_gadget.clone(),
+            non_zero_domain_size_gadget: self.non_zero_domain_size_gadget.clone(),
             prepared_index_comms,
             prepared_verifier_key,
             fs_rng,
@@ -377,8 +377,8 @@ impl<
     fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();
 
-        res.append(&mut self.domain_h_size_gadget.to_bytes(cs.ns(|| "domain_h_size_gadget"))?);
-        res.append(&mut self.domain_k_size_gadget.to_bytes(cs.ns(|| "domain_k_size_gadget"))?);
+        res.append(&mut self.constraint_domain_size_gadget.to_bytes(cs.ns(|| "constraint_domain_size_gadget"))?);
+        res.append(&mut self.non_zero_domain_size_gadget.to_bytes(cs.ns(|| "non_zero_domain_size_gadget"))?);
         res.append(&mut self.verifier_key.to_bytes(cs.ns(|| "verifier_key"))?);
 
         for (i, comm) in self.index_comms.iter().enumerate() {
@@ -390,8 +390,8 @@ impl<
 
     fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();
-        res.append(&mut self.domain_h_size_gadget.to_bytes(cs.ns(|| "domain_h_size_gadget"))?);
-        res.append(&mut self.domain_k_size_gadget.to_bytes(cs.ns(|| "domain_k_size_gadget"))?);
+        res.append(&mut self.constraint_domain_size_gadget.to_bytes(cs.ns(|| "constraint_domain_size_gadget"))?);
+        res.append(&mut self.non_zero_domain_size_gadget.to_bytes(cs.ns(|| "non_zero_domain_size_gadget"))?);
         res.append(&mut self.verifier_key.to_bytes(cs.ns(|| "verifier_key"))?);
 
         for (i, comm) in self.index_comms.iter().enumerate() {

@@ -116,21 +116,21 @@ impl<
 
         let mut vanishing_polys = vec![];
         if MM::RECURSION {
-            let domain_h = EvaluationDomain::new(circuit.index_info.num_constraints)
+            let constraint_domain = EvaluationDomain::new(circuit.index_info.num_constraints)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-            let domain_k = EvaluationDomain::new(circuit.index_info.num_non_zero)
+            let non_zero_domain = EvaluationDomain::new(circuit.index_info.num_non_zero)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
             vanishing_polys = vec![
                 LabeledPolynomial::new(
                     "vanishing_poly_h".to_string(),
-                    domain_h.vanishing_polynomial().into(),
+                    constraint_domain.vanishing_polynomial().into(),
                     None,
                     None,
                 ),
                 LabeledPolynomial::new(
                     "vanishing_poly_k".to_string(),
-                    domain_k.vanishing_polynomial().into(),
+                    non_zero_domain.vanishing_polynomial().into(),
                     None,
                     None,
                 ),
@@ -202,21 +202,21 @@ impl<
 
         let mut vanishing_polynomials = vec![];
         if MM::RECURSION {
-            let domain_h = EvaluationDomain::new(index.index_info.num_constraints)
+            let constraint_domain = EvaluationDomain::new(index.index_info.num_constraints)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-            let domain_k =
+            let non_zero_domain =
                 EvaluationDomain::new(index.index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
             vanishing_polynomials = vec![
                 LabeledPolynomial::new(
                     "vanishing_poly_h".to_string(),
-                    domain_h.vanishing_polynomial().into(),
+                    constraint_domain.vanishing_polynomial().into(),
                     None,
                     None,
                 ),
                 LabeledPolynomial::new(
                     "vanishing_poly_k".to_string(),
-                    domain_k.vanishing_polynomial().into(),
+                    non_zero_domain.vanishing_polynomial().into(),
                     None,
                     None,
                 ),
@@ -408,21 +408,21 @@ impl<
         }
 
         let vanishing_polys = if MM::RECURSION {
-            let domain_h = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_constraints)
+            let constraint_domain = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_constraints)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-            let domain_k = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_non_zero)
+            let non_zero_domain = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_non_zero)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
             vec![
                 LabeledPolynomial::new(
                     "vanishing_poly_h".to_string(),
-                    domain_h.vanishing_polynomial().into(),
+                    constraint_domain.vanishing_polynomial().into(),
                     None,
                     None,
                 ),
                 LabeledPolynomial::new(
                     "vanishing_poly_k".to_string(),
-                    domain_k.vanishing_polynomial().into(),
+                    non_zero_domain.vanishing_polynomial().into(),
                     None,
                     None,
                 ),
@@ -611,16 +611,16 @@ impl<
         }
 
         let padded_public_input = {
-            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
 
             if cfg!(debug_assertions) {
                 println!("Number of given public inputs: {}", public_input.len());
-                println!("Size of evaluation domain x: {}", domain_x.size());
+                println!("Size of evaluation domain x: {}", input_domain.size());
             }
 
             let mut new_input = vec![TargetField::one()];
             new_input.extend_from_slice(public_input);
-            new_input.resize(core::cmp::max(public_input.len(), domain_x.size()), TargetField::zero());
+            new_input.resize(core::cmp::max(public_input.len(), input_domain.size()), TargetField::zero());
             assert!(new_input.first().unwrap().is_one());
             new_input
         };

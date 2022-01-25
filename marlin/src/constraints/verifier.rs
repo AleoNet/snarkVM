@@ -183,9 +183,9 @@ where
         let padded_public_input = {
             let mut new_input = vec![NonNativeFieldVar::<TargetField, BaseField>::one(&mut cs.ns(|| "one"))?];
             new_input.extend_from_slice(public_input);
-            let domain_x = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();
+            let input_domain = EvaluationDomain::<TargetField>::new(new_input.len()).unwrap();
             new_input.resize(
-                core::cmp::max(new_input.len(), domain_x.size()),
+                core::cmp::max(new_input.len(), input_domain.size()),
                 NonNativeFieldVar::<TargetField, BaseField>::Constant(TargetField::zero()),
             );
             new_input
@@ -200,8 +200,8 @@ where
 
         let (_, verifier_state) = AHPForR1CS::<TargetField, BaseField, PC, PCG, MM>::verifier_first_round(
             cs.ns(|| "verifier_first_round"),
-            prepared_verifying_key.domain_h_size,
-            prepared_verifying_key.domain_k_size,
+            prepared_verifying_key.constraint_domain_size,
+            prepared_verifying_key.non_zero_domain_size,
             &mut fs_rng,
             &proof.commitments[0],
             &proof.prover_messages[0].field_elements,
@@ -229,7 +229,7 @@ where
             &proof.evaluations,
             &proof.prover_messages[2],
             verifier_state.clone(),
-            &prepared_verifying_key.domain_k_size_gadget,
+            &prepared_verifying_key.non_zero_domain_size_gadget,
         )?;
 
         let (num_opening_challenges, num_batching_rands, comm, query_set, evaluations) =

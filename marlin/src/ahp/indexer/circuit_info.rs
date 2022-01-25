@@ -31,8 +31,12 @@ pub struct CircuitInfo<F> {
     pub num_variables: usize,
     /// The number of constraints.
     pub num_constraints: usize,
-    /// The total number of non-zero entries in the sum of all constraint matrices.
-    pub num_non_zero: usize,
+    /// The number of non-zero entries in the A matrix.
+    pub num_non_zero_a: usize,
+    /// The number of non-zero entries in the B matrix.
+    pub num_non_zero_b: usize,
+    /// The number of non-zero entries in the C matrix.
+    pub num_non_zero_c: usize,
 
     #[doc(hidden)]
     pub f: PhantomData<F>,
@@ -58,7 +62,8 @@ pub(crate) fn sum_matrices<F: PrimeField>(a: &Matrix<F>, b: &Matrix<F>, c: &Matr
 impl<F: PrimeField> CircuitInfo<F> {
     /// The maximum degree of polynomial required to represent this index in the AHP.
     pub fn max_degree<MM: MarlinMode>(&self) -> usize {
-        AHPForR1CS::<F, MM>::max_degree(self.num_constraints, self.num_variables, self.num_non_zero).unwrap()
+        let max_non_zero = self.num_non_zero_a.max(self.num_non_zero_b).max(self.num_non_zero_c);
+        AHPForR1CS::<F, MM>::max_degree(self.num_constraints, self.num_variables, max_non_zero).unwrap()
     }
 }
 
@@ -66,6 +71,8 @@ impl<F: PrimeField> ToBytes for CircuitInfo<F> {
     fn write_le<W: Write>(&self, mut w: W) -> Result<(), crate::io::Error> {
         (self.num_variables as u64).write_le(&mut w)?;
         (self.num_constraints as u64).write_le(&mut w)?;
-        (self.num_non_zero as u64).write_le(&mut w)
+        (self.num_non_zero_a as u64).write_le(&mut w)?;
+        (self.num_non_zero_b as u64).write_le(&mut w)?;
+        (self.num_non_zero_c as u64).write_le(&mut w)
     }
 }

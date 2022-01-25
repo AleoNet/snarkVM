@@ -64,8 +64,8 @@ use super::proof::ProverMessageVar;
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]
 pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField, MM: MarlinMode> {
-    domain_h_size: u64,
-    domain_k_size: u64,
+    constraint_domain_size: u64,
+    non_zero_domain_size: u64,
 
     first_round_msg: Option<VerifierFirstMsgVar<TargetField, BaseField>>,
     second_round_msg: Option<VerifierSecondMsgVar<TargetField, BaseField>>,
@@ -131,8 +131,8 @@ impl<
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
         mut cs: CS,
-        domain_h_size: u64,
-        domain_k_size: u64,
+        constraint_domain_size: u64,
+        non_zero_domain_size: u64,
         fs_rng: &mut R,
         comms: &[CommitmentVar],
         message: &[NonNativeFieldVar<TargetField, BaseField>],
@@ -173,8 +173,8 @@ impl<
         let msg = VerifierFirstMsgVar { alpha, eta_b, eta_c };
 
         let new_state = VerifierStateVar {
-            domain_h_size,
-            domain_k_size,
+            constraint_domain_size,
+            non_zero_domain_size,
             first_round_msg: Some(msg.clone()),
             second_round_msg: None,
             gamma: None,
@@ -205,8 +205,8 @@ impl<
         AHPError,
     > {
         let VerifierStateVar {
-            domain_h_size,
-            domain_k_size,
+            constraint_domain_size,
+            non_zero_domain_size,
             first_round_msg,
             mode,
             ..
@@ -240,8 +240,8 @@ impl<
         let msg = VerifierSecondMsgVar { beta };
 
         let new_state = VerifierStateVar {
-            domain_h_size,
-            domain_k_size,
+            constraint_domain_size,
+            non_zero_domain_size,
             first_round_msg,
             second_round_msg: Some(msg.clone()),
             gamma: None,
@@ -265,8 +265,8 @@ impl<
         message: &[NonNativeFieldVar<TargetField, BaseField>],
     ) -> Result<VerifierStateVar<TargetField, BaseField, MM>, AHPError> {
         let VerifierStateVar {
-            domain_h_size,
-            domain_k_size,
+            constraint_domain_size,
+            non_zero_domain_size,
             first_round_msg,
             second_round_msg,
             mode,
@@ -298,8 +298,8 @@ impl<
         let gamma = elems[0].clone();
 
         let new_state = VerifierStateVar {
-            domain_h_size,
-            domain_k_size,
+            constraint_domain_size,
+            non_zero_domain_size,
             first_round_msg,
             second_round_msg,
             gamma: Some(gamma),
@@ -316,10 +316,10 @@ impl<
         evals: &HashMap<String, NonNativeFieldVar<TargetField, BaseField>>,
         prover_third_message: &ProverMessageVar<TargetField, BaseField>,
         state: VerifierStateVar<TargetField, BaseField, MM>,
-        domain_k_size_in_vk: &FpGadget<BaseField>,
+        non_zero_domain_size_in_vk: &FpGadget<BaseField>,
     ) -> Result<Vec<LinearCombinationVar<TargetField, BaseField>>, AHPError> {
         let VerifierStateVar {
-            domain_k_size,
+            non_zero_domain_size,
             first_round_msg,
             second_round_msg,
             gamma,
@@ -479,40 +479,40 @@ impl<
 
         let v_h_at_alpha_beta = v_h_at_alpha.mul(cs.ns(|| "v_h_alpha_mul_v_h_beta"), v_h_at_beta)?;
 
-        let domain_k_size_gadget =
-            NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "domain_k_size"), || {
-                Ok(TargetField::from(domain_k_size as u128))
+        let non_zero_domain_size_gadget =
+            NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "non_zero_domain_size"), || {
+                Ok(TargetField::from(non_zero_domain_size as u128))
             })?;
-        let inv_domain_k_size_gadget = domain_k_size_gadget.inverse(cs.ns(|| "domain_k_inverse"))?;
+        let inv_non_zero_domain_size_gadget = non_zero_domain_size_gadget.inverse(cs.ns(|| "non_zero_domain_inverse"))?;
 
-        let domain_k_size_bit_decomposition =
-            domain_k_size_gadget.to_bits_le(cs.ns(|| "domain_k_gadget_to_bits_le"))?;
+        let non_zero_domain_size_bit_decomposition =
+            non_zero_domain_size_gadget.to_bits_le(cs.ns(|| "non_zero_domain_gadget_to_bits_le"))?;
 
-        let domain_k_size_in_vk_bit_decomposition =
-            domain_k_size_in_vk.to_bits_le(cs.ns(|| "domain_k_size_in_vk_to_bits_le"))?;
+        let non_zero_domain_size_in_vk_bit_decomposition =
+            non_zero_domain_size_in_vk.to_bits_le(cs.ns(|| "non_zero_domain_size_in_vk_to_bits_le"))?;
 
-        // This is not the most efficient implementation; an alternative is to check if the last limb of domain_k_size_gadget
-        // can be bit composed by the bits in domain_k_size_in_vk, which would save a lot of constraints.
+        // This is not the most efficient implementation; an alternative is to check if the last limb of non_zero_domain_size_gadget
+        // can be bit composed by the bits in non_zero_domain_size_in_vk, which would save a lot of constraints.
         // Nevertheless, doing so is using the nonnative field gadget in a non-black-box manner and is somehow not encouraged.
-        for (i, (left, right)) in domain_k_size_bit_decomposition
+        for (i, (left, right)) in non_zero_domain_size_bit_decomposition
             .iter()
             .take(32)
-            .zip(domain_k_size_in_vk_bit_decomposition.iter())
+            .zip(non_zero_domain_size_in_vk_bit_decomposition.iter())
             .enumerate()
         {
-            left.enforce_equal(cs.ns(|| format!("domain_k_enforce_equal_{}", i)), right)?;
+            left.enforce_equal(cs.ns(|| format!("non_zero_domain_enforce_equal_{}", i)), right)?;
         }
 
-        for (i, bit) in domain_k_size_bit_decomposition.iter().skip(32).enumerate() {
+        for (i, bit) in non_zero_domain_size_bit_decomposition.iter().skip(32).enumerate() {
             bit.enforce_equal(
-                cs.ns(|| format!("domain_k_enforce_false_{}", i)),
+                cs.ns(|| format!("non_zero_domain_enforce_false_{}", i)),
                 &Boolean::constant(false),
             )?;
         }
 
         let gamma_mul_g_2 = gamma.mul(cs.ns(|| "gamma_mul_g_2"), g_2_at_gamma)?;
-        let t_div_domain_k = t_at_beta.mul(cs.ns(|| "t_div_domain_k"), &inv_domain_k_size_gadget)?;
-        let b_expr_at_gamma_last_term = gamma_mul_g_2.add(cs.ns(|| "b_expr_at_gamma_last_term"), &t_div_domain_k)?;
+        let t_div_non_zero_domain = t_at_beta.mul(cs.ns(|| "t_div_non_zero_domain"), &inv_non_zero_domain_size_gadget)?;
+        let b_expr_at_gamma_last_term = gamma_mul_g_2.add(cs.ns(|| "b_expr_at_gamma_last_term"), &t_div_non_zero_domain)?;
 
         let inner_sumcheck_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
             label: "inner_sumcheck".to_string(),
@@ -780,9 +780,9 @@ impl<
         }
 
         let h_minus_2 = index_pvk
-            .domain_h_size_gadget
+            .constraint_domain_size_gadget
             .clone()
-            .sub_constant(cs.ns(|| "domain_h_minus_2"), &BaseField::from(2u128))?;
+            .sub_constant(cs.ns(|| "constraint_domain_minus_2"), &BaseField::from(2u128))?;
 
         // 3 comms for beta from the round 2
         const PROOF_2_LABELS: [&str; 2] = ["g_1", "h_1"];
@@ -802,8 +802,8 @@ impl<
         }
 
         let k_minus_2 = index_pvk
-            .domain_k_size_gadget
-            .sub_constant(cs.ns(|| "domain_k_minus_2"), &BaseField::from(2u128))?;
+            .non_zero_domain_size_gadget
+            .sub_constant(cs.ns(|| "non_zero_domain_minus_2"), &BaseField::from(2u128))?;
 
         // 2 comms for gamma from the round 3
         const PROOF_3_LABELS: [&str; 2] = ["g_2", "h_2"];
@@ -994,10 +994,10 @@ mod test {
         // Attempt verification.
 
         let public_input = {
-            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
 
             let mut unpadded_input = public_input.to_vec();
-            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+            unpadded_input.resize(core::cmp::max(public_input.len(), input_domain.size() - 1), Fr::zero());
 
             unpadded_input
         };
@@ -1060,8 +1060,8 @@ mod test {
         let (first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                prepared_circuit_vk.domain_h_size,
-                prepared_circuit_vk.domain_k_size,
+                prepared_circuit_vk.constraint_domain_size,
+                prepared_circuit_vk.non_zero_domain_size,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,
@@ -1086,8 +1086,8 @@ mod test {
 
         // Enforce that the native and gadget verifier first round state is equivalent.
 
-        assert_eq!(first_round_state.domain_h.size, first_round_state_gadget.domain_h_size);
-        assert_eq!(first_round_state.domain_k.size, first_round_state_gadget.domain_k_size);
+        assert_eq!(first_round_state.constraint_domain.size, first_round_state_gadget.constraint_domain_size);
+        assert_eq!(first_round_state.non_zero_domain.size, first_round_state_gadget.non_zero_domain_size);
         assert_eq!(
             first_round_state.first_round_message.is_some(),
             first_round_state_gadget.first_round_msg.is_some()
@@ -1123,10 +1123,10 @@ mod test {
         // Attempt verification.
 
         let public_input = {
-            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
 
             let mut unpadded_input = public_input.to_vec();
-            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+            unpadded_input.resize(core::cmp::max(public_input.len(), input_domain.size() - 1), Fr::zero());
 
             unpadded_input
         };
@@ -1187,8 +1187,8 @@ mod test {
         let (_first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                prepared_circuit_vk.domain_h_size,
-                prepared_circuit_vk.domain_k_size,
+                prepared_circuit_vk.constraint_domain_size,
+                prepared_circuit_vk.non_zero_domain_size,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,
@@ -1291,10 +1291,10 @@ mod test {
         // Attempt verification.
 
         let public_input = {
-            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
 
             let mut unpadded_input = public_input.to_vec();
-            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+            unpadded_input.resize(core::cmp::max(public_input.len(), input_domain.size() - 1), Fr::zero());
 
             unpadded_input
         };
@@ -1355,8 +1355,8 @@ mod test {
         let (_first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                prepared_circuit_vk.domain_h_size,
-                prepared_circuit_vk.domain_k_size,
+                prepared_circuit_vk.constraint_domain_size,
+                prepared_circuit_vk.non_zero_domain_size,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,
@@ -1510,11 +1510,11 @@ mod test {
         // Attempt verification.
 
         let padded_public_input = {
-            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
 
             let mut unpadded_input = vec![Fr::one()];
             unpadded_input.extend_from_slice(&public_input);
-            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size()), Fr::zero());
+            unpadded_input.resize(core::cmp::max(public_input.len(), input_domain.size()), Fr::zero());
 
             unpadded_input
         };
@@ -1573,23 +1573,23 @@ mod test {
             AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
                 .unwrap();
 
-        let (domain_h_size, domain_k_size) = {
-            let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
+        let (constraint_domain_size, non_zero_domain_size) = {
+            let constraint_domain = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)
                 .unwrap();
-            let domain_k = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_non_zero)
+            let non_zero_domain = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_non_zero)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)
                 .unwrap();
 
-            (domain_h.size(), domain_k.size())
+            (constraint_domain.size(), non_zero_domain.size())
         };
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                domain_h_size as u64,
-                domain_k_size as u64,
+                constraint_domain_size as u64,
+                non_zero_domain_size as u64,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,
@@ -1765,7 +1765,7 @@ mod test {
             &proof_gadget.evaluations,
             &proof_gadget.prover_messages[2],
             third_round_state_gadget,
-            &vk_gadget.domain_k_size_gadget,
+            &vk_gadget.non_zero_domain_size_gadget,
         )
         .unwrap();
 
@@ -1827,10 +1827,10 @@ mod test {
         // Attempt verification.
 
         let public_input = {
-            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
 
             let mut unpadded_input = public_input.to_vec();
-            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+            unpadded_input.resize(core::cmp::max(public_input.len(), input_domain.size() - 1), Fr::zero());
 
             unpadded_input
         };
@@ -1887,23 +1887,23 @@ mod test {
             AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
                 .unwrap();
 
-        let (domain_h_size, domain_k_size) = {
-            let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
+        let (constraint_domain_size, non_zero_domain_size) = {
+            let constraint_domain = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)
                 .unwrap();
-            let domain_k = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_non_zero)
+            let non_zero_domain = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_non_zero)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)
                 .unwrap();
 
-            (domain_h.size(), domain_k.size())
+            (constraint_domain.size(), non_zero_domain.size())
         };
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar, MarlinRecursiveMode>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                domain_h_size as u64,
-                domain_k_size as u64,
+                constraint_domain_size as u64,
+                non_zero_domain_size as u64,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,

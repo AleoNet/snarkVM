@@ -46,23 +46,23 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             return Err(AHPError::NonSquareMatrix);
         }
 
-        let domain_h =
+        let constraint_domain =
             EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_k =
+        let non_zero_domain =
             EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let elems = fs_rng.squeeze_nonnative_field_elements(3, OptimizationType::Weight)?;
         let alpha = elems[0];
         let eta_b = elems[1];
         let eta_c = elems[2];
-        assert!(!domain_h.evaluate_vanishing_polynomial(alpha).is_zero());
+        assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
 
         let message = VerifierFirstMessage { alpha, eta_b, eta_c };
 
         let new_state = VerifierState {
-            domain_h,
-            domain_k,
+            constraint_domain,
+            non_zero_domain,
             first_round_message: Some(message),
             second_round_message: None,
             gamma: None,
@@ -79,7 +79,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let beta = elems[0];
-        assert!(!state.domain_h.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = VerifierSecondMessage { beta };
         state.second_round_message = Some(message);
@@ -169,9 +169,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         //      ],
         //  )
         //
-        // let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
-        // let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
-        // let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
+        // let v_H_at_alpha = constraint_domain.evaluate_vanishing_polynomial(alpha);
+        // let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
+        // let v_K_at_gamma = non_zero_domain.evaluate_vanishing_polynomial(gamma);
         //
         // let a_poly_lc *= v_H_at_alpha * v_H_at_beta;
         // let b_lc = denom
