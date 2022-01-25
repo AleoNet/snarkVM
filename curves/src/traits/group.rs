@@ -20,6 +20,7 @@ use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
+    iter::Sum,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -47,6 +48,7 @@ pub trait Group:
     + AddAssign<Self>
     + SubAssign<Self>
     + MulAssign<Self::ScalarField>
+    + Sum
     + for<'a> Add<&'a Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
     + for<'a> AddAssign<&'a Self>

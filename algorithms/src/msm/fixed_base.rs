@@ -16,7 +16,7 @@
 
 use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::ToBits;
+use snarkvm_utilities::{cfg_into_iter, ToBits};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -63,19 +63,20 @@ impl FixedBaseMSM {
         let mut scalar_val = scalar.to_repr().to_bits_be();
         scalar_val.reverse();
 
-        let mut res = multiples_of_g[0][0];
-        for outer in 0..outerc {
-            let mut inner = 0usize;
-            for i in 0..window {
-                if outer * window + i < (<T::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize)
-                    && scalar_val[outer * window + i]
-                {
-                    inner |= 1 << i;
+        cfg_into_iter!(0..outerc)
+            .map(|outer| {
+                let mut inner = 0usize;
+                for i in 0..window {
+                    if outer * window + i < (<T::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize)
+                        && scalar_val[outer * window + i]
+                    {
+                        inner |= 1 << i;
+                    }
                 }
-            }
-            res += multiples_of_g[outer][inner];
-        }
-        res
+                multiples_of_g[outer][inner]
+            })
+            .sum::<T>()
+            + multiples_of_g[0][0]
     }
 
     pub fn multi_scalar_mul<T: ProjectiveCurve>(
