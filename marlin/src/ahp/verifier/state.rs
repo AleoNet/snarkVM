@@ -17,7 +17,7 @@
 use core::marker::PhantomData;
 
 use crate::{
-    ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage},
+    ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierThirdMessage},
     marlin::MarlinMode,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -27,10 +27,13 @@ use snarkvm_fields::PrimeField;
 #[derive(Debug)]
 pub struct VerifierState<F: PrimeField, MM: MarlinMode> {
     pub(crate) constraint_domain: EvaluationDomain<F>,
-    pub(crate) non_zero_domain: EvaluationDomain<F>,
+    pub(crate) non_zero_a_domain: EvaluationDomain<F>,
+    pub(crate) non_zero_b_domain: EvaluationDomain<F>,
+    pub(crate) non_zero_c_domain: EvaluationDomain<F>,
 
     pub(crate) first_round_message: Option<VerifierFirstMessage<F>>,
     pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,
+    pub(crate) third_round_message: Option<VerifierThirdMessage<F>>,
 
     pub(crate) gamma: Option<F>,
     pub(crate) mode: PhantomData<MM>,

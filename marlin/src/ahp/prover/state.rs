@@ -61,6 +61,11 @@ pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) non_zero_b_domain: EvaluationDomain<F>,
     /// A domain that is sized for the number of non-zero elements in C.
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
+
+    /// Polynomials involved in the holographic sumcheck.
+    pub(super) lhs_polynomials: Option<[Polynomial<F>; 3]>,
+    /// Polynomials involved in the holographic sumcheck.
+    pub(super) sums: Option<[F; 3]>,
 }
 
 impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
@@ -93,6 +98,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
             mz_polys: None,
             z_a: None,
             z_b: None,
+            lhs_polynomials: None,
+            sums: None,
         }
     }
 

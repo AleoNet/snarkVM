@@ -29,10 +29,9 @@ use crate::{
     matrices::MatrixArithmetization,
     prover::{state::ProverState, ProverMessage},
     ToString,
-    Vec,
+    Vec, SelectorPolynomial, verifier::VerifierThirdMessage,
 };
 use snarkvm_algorithms::fft::{
-    DenseOrSparsePolynomial,
     EvaluationDomain,
     Evaluations as EvaluationsOnDomain,
     SparsePolynomial,
@@ -41,7 +40,7 @@ use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
-use snarkvm_polycommit::{LabeledCommitment, LabeledPolynomial, Polynomial};
+use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand_core::RngCore;
@@ -136,7 +135,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         pcs.make_matrices_square();
         end_timer!(padding_time);
 
-        let num_non_zero = index.index_info.num_non_zero;
+        let num_non_zero_a = index.index_info.num_non_zero_a;
+        let num_non_zero_b = index.index_info.num_non_zero_b;
+        let num_non_zero_c = index.index_info.num_non_zero_c;
 
         let ProverConstraintSystem {
             public_variables: padded_public_variables,
@@ -158,7 +159,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             );
             println!("Number of private variables: {}", num_private_variables);
             println!("Number of constraints: {}", num_constraints);
-            println!("Number of num_non_zero: {}", num_non_zero);
+            println!("Number of non-zero entries in A: {}", num_non_zero_a);
+            println!("Number of non-zero entries in B: {}", num_non_zero_b);
+            println!("Number of non-zero entries in C: {}", num_non_zero_c);
         }
 
         if index.index_info.num_constraints != num_constraints
@@ -205,7 +208,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain =
             EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let non_zero_domain = EvaluationDomain::new(num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_a = EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_b = EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_c = EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let input_domain =
             EvaluationDomain::new(num_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -218,7 +223,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             index,
             input_domain,
             constraint_domain,
-            non_zero_domain,
+            non_zero_domain_a,
+            non_zero_domain_b,
+            non_zero_domain_c,
         );
         state.z_a = Some(z_a);
         state.z_b = Some(z_b);
@@ -591,37 +598,26 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the second round.
     pub fn prover_second_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
-        let h_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
+        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
 
-        [Some(h_domain_size - 2), None].into_iter()
+        [Some(constraint_domain_size - 2), None].into_iter()
     }
 
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &VerifierSecondMessage<F>,
-        prover_state: ProverState<'a, F, MM>,
+        mut state: ProverState<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>), AHPError> {
+    ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>, ProverState<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
-        let ProverState {
-            index,
-            verifier_first_message,
-            constraint_domain,
-            non_zero_a_domain,
-            non_zero_b_domain,
-            non_zero_c_domain,
-            t_poly,
-            ..
-        } = prover_state;
-
-        let VerifierFirstMessage { alpha, eta_b, eta_c } = verifier_first_message
+        let VerifierFirstMessage { alpha, eta_b, eta_c } = state.verifier_first_message
             .expect("ProverState should include verifier_first_msg when prover_third_round is called");
 
         let beta = verifier_message.beta;
 
-        let v_H_at_alpha = constraint_domain.evaluate_vanishing_polynomial(alpha);
-        let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
+        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(alpha);
+        let v_H_at_beta = state.constraint_domain.evaluate_vanishing_polynomial(beta);
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
@@ -629,59 +625,64 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_b_times_v_H_alpha_v_H_beta = eta_b * v_H_alpha_v_H_beta;
         let eta_c_times_v_H_alpha_v_H_beta = eta_c * v_H_alpha_v_H_beta;
 
-        let t_at_beta = t_poly.unwrap().evaluate(beta);
+        let t_at_beta = state.t_poly.as_ref().unwrap().evaluate(beta);
 
-        let (h_a, g_a) = Self::third_round_helper(
+        let (sum_a, lhs_a, g_a) = Self::third_round_helper(
             "a",
-            non_zero_a_domain,
-            index.a_arith,
+            state.non_zero_a_domain,
+            &state.index.a_arith,
             alpha,
             beta,
             eta_a_times_v_H_alpha_v_H_beta,
         );
-        let (h_b, g_b) = Self::third_round_helper(
+        let (sum_b, lhs_b, g_b) = Self::third_round_helper(
             "b",
-            non_zero_b_domain,
-            index.b_arith,
+            state.non_zero_b_domain,
+            &state.index.b_arith,
             alpha,
             beta,
             eta_b_times_v_H_alpha_v_H_beta,
         );
-        let (h_c, g_c) = Self::third_round_helper(
+        let (sum_c, lhs_c, g_c) = Self::third_round_helper(
             "c",
-            non_zero_c_domain,
-            index.c_arith,
+            state.non_zero_c_domain,
+            &state.index.c_arith,
             alpha,
             beta,
             eta_c_times_v_H_alpha_v_H_beta,
         );
 
-        let largest_non_zero_domain = [non_zero_a_domain, non_zero_b_domain, non_zero_c_domain]
+        let domains = [state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain];
+        let largest_non_zero_domain = domains
             .into_iter()
             .max_by(|a, b| a.size().cmp(&b.size()))
             .unwrap();
         let largest_vanishing_poly = largest_non_zero_domain.vanishing_polynomial();
-        [h_a, h_b, h_c]
-            .iter()
-            .zip([non_zero_a_domain, non_zero_b_domain, non_zero_c_domain])
-            .map(|(h, domain)| h * largest_non_zero_domain.selector_polynomial(domain))
-            .collect::<Vec<_>>();
+        let lhs_polynomials = [lhs_a, lhs_b, lhs_c]
+            .into_iter()
+            .zip(domains)
+            .map(|(lhs, domain)| largest_non_zero_domain.selector_polynomial(domain).mul_dense(&lhs))
+            .collect::<Vec<_>>().try_into().unwrap();
 
-        let msg = ProverMessage::default();
+        let msg = ProverMessage {
+            field_elements: vec![sum_a, sum_b, sum_c]
+        };
         let oracles = ProverThirdOracles { g_a, g_b, g_c };
+        state.lhs_polynomials = Some(lhs_polynomials);
+        state.sums = Some([sum_a, sum_b, sum_c]);
         end_timer!(round_time);
 
-        Ok((msg, oracles))
+        Ok((msg, oracles, state))
     }
 
     fn third_round_helper(
         label: &str,
         non_zero_domain: EvaluationDomain<F>,
-        arithmetization: MatrixArithmetization<F>,
+        arithmetization: &MatrixArithmetization<F>,
         alpha: F,
         beta: F,
         eta_times_v_H_alpha_v_H_beta: F,
-    ) -> (DensePolynomial<F>, LabeledPolynomial<F>) {
+    ) -> (F, DensePolynomial<F>, LabeledPolynomial<F>) {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| "Computing a poly");
@@ -718,8 +719,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let [a_poly, b_poly]: [_; 2] = job_pool.execute_all().try_into().unwrap();
 
         let f_evals_time = start_timer!(|| "Computing f evals on K");
-        let mut inverses: Vec<_> = cfg_iter!(row_on_K)
-            .zip(col_on_K)
+        let mut inverses: Vec<_> = cfg_iter!(row_on_K.evaluations)
+            .zip(col_on_K.evaluations)
             .map(|(r, c)| (beta - r) * (alpha - c))
             .collect();
         batch_inversion(&mut inverses);
@@ -734,20 +735,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain).interpolate();
         end_timer!(f_poly_time);
         let g = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
-        let h = (&a_poly - &(&b_poly * &f))
-            .divide_by_vanishing_poly(non_zero_domain)
-            .unwrap()
-            .0;
+        let h = &a_poly - &(&b_poly * &f);
         let g = LabeledPolynomial::new("g".to_string() + label, g, Some(non_zero_domain.size() - 2), None);
 
         assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
-        (h, g)
+        (f.coeffs[0], h, g)
     }
 
     /// Output the number of oracles sent by the prover in the third round.
     pub fn prover_num_third_round_oracles() -> usize {
-        4
+        3
     }
 
     /// Output the degree bounds of oracles in the third round.
@@ -760,8 +758,34 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             Some(non_zero_a_size - 2),
             Some(non_zero_b_size - 2),
             Some(non_zero_c_size - 2),
-            None,
         ]
         .into_iter()
+    }
+
+    /// Output the fourth round message and the next state.
+    pub fn prover_fourth_round<'a, R: RngCore>(
+        verifier_message: &VerifierThirdMessage<F>,
+        mut state: ProverState<'a, F, MM>,
+        _r: &mut R,
+    ) -> Result<(ProverMessage<F>, ProverFourthOracles<F>), AHPError> {
+        let [mut lhs_a, lhs_b, lhs_c] = state.lhs_polynomials.unwrap();
+        lhs_a += &(&(lhs_b * verifier_message.r_b) + &(lhs_c * verifier_message.r_c)); 
+        let h = lhs_a;
+        let largest_non_zero_domain = Self::max_non_zero_domain(&state.index.index_info);
+        h = h.divide_by_vanishing_poly(largest_non_zero_domain).unwrap().0;
+        let msg = ProverMessage::default();
+        let h = LabeledPolynomial::new("h_2".into(), h, None, None);
+        let oracles = ProverFourthOracles { h_2: h };
+        Ok((msg, oracles))
+    }
+
+    /// Output the number of oracles sent by the prover in the third round.
+    pub fn prover_num_fourth_round_oracles() -> usize {
+        1
+    }
+
+    /// Output the degree bounds of oracles in the third round.
+    pub fn prover_fourth_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
+        [None].into_iter()
     }
 }

@@ -14,18 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(non_snake_case)]
-
-mod first_message;
-pub(crate) use first_message::*;
-
-mod second_message;
-pub(crate) use second_message::*;
-
-mod third_message;
-pub(crate) use third_message::*;
-
-mod state;
-pub(crate) use state::*;
-
-mod verifier;
+/// Third message of the verifier.
+#[derive(Copy, Clone, Debug)]
+pub struct VerifierThirdMessage<F> {
+    /// Randomizer for the h-polynomial for `B`.
+    pub r_b: F,
+    /// Randomizer for the h-polynomial for `C`.
+    pub r_c: F,
+}

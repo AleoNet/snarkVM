@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use crate::{
     ahp::{
         indexer::CircuitInfo,
-        verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
+        verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState, VerifierThirdMessage},
         AHPError,
         AHPForR1CS,
     },
@@ -49,8 +49,13 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let constraint_domain =
             EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let non_zero_domain =
-            EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_a_domain =
+            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let non_zero_b_domain =
+            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_c_domain =
+            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let elems = fs_rng.squeeze_nonnative_field_elements(3, OptimizationType::Weight)?;
         let alpha = elems[0];
@@ -62,9 +67,12 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         let new_state = VerifierState {
             constraint_domain,
-            non_zero_domain,
+            non_zero_a_domain,
+            non_zero_b_domain,
+            non_zero_c_domain,
             first_round_message: Some(message),
             second_round_message: None,
+            third_round_message: None,
             gamma: None,
             mode: PhantomData,
         };
@@ -89,6 +97,21 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: VerifierState<TargetField, MM>,
+        fs_rng: &mut R,
+    ) -> Result<(VerifierThirdMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(2, OptimizationType::Weight)?;
+        let r_b = elems[0];
+        let r_c = elems[1];
+        let message = VerifierThirdMessage { r_b, r_c };
+
+        state.third_round_message = Some(message);
+        Ok((message, state))
+
+    }
+
+    /// Output the third message and next round state.
+    pub fn verifier_fourth_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         mut state: VerifierState<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<VerifierState<TargetField, MM>, AHPError> {
@@ -180,7 +203,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         // // This LC is the only one that is evaluated:
         // let inner_sumcheck = a_poly_lc - (b_lc * (gamma * g_2_at_gamma + (t_at_beta / &k_size))) - h_lc
         // main_lc.set_label("inner_sumcheck");
-        query_set.insert(("g_2".into(), ("gamma".into(), gamma)));
+        query_set.insert(("g_a".into(), ("gamma".into(), gamma)));
+        query_set.insert(("g_b".into(), ("gamma".into(), gamma)));
+        query_set.insert(("g_c".into(), ("gamma".into(), gamma)));
         query_set.insert(("inner_sumcheck".into(), ("gamma".into(), gamma)));
 
         if with_vanishing {

@@ -153,6 +153,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         ]
     }
 
+    pub fn max_non_zero_domain(info: &CircuitInfo<F>) -> EvaluationDomain<F> {
+        let non_zero_a_domain = EvaluationDomain::new(info.num_non_zero_a).unwrap();
+        let non_zero_b_domain = EvaluationDomain::new(info.num_non_zero_b).unwrap();
+        let non_zero_c_domain = EvaluationDomain::new(info.num_non_zero_c).unwrap();
+        Self::max_non_zero_domain_helper(non_zero_a_domain , non_zero_b_domain , non_zero_c_domain)
+    }
+    fn max_non_zero_domain_helper(domain_a: EvaluationDomain<F>, domain_b: EvaluationDomain<F>, domain_c: EvaluationDomain<F>) -> EvaluationDomain<F> {
+        let domains = [domain_a, domain_b, domain_c];
+        domains
+            .into_iter()
+            .max_by(|a, b| a.size().cmp(&b.size()))
+            .unwrap()
+    }
+
     /// Construct the linear combinations that are checked by the AHP.
     /// Public input should be unformatted.
     #[allow(non_snake_case)]
@@ -163,8 +177,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: &verifier::VerifierState<F, MM>,
     ) -> Result<Vec<LinearCombination<F>>, AHPError> {
         let constraint_domain = state.constraint_domain;
-        let non_zero_domain = state.non_zero_domain;
-        let k_size = non_zero_domain.size_as_field_element;
+        let non_zero_a_domain = state.non_zero_a_domain;
+        let non_zero_b_domain = state.non_zero_b_domain;
+        let non_zero_c_domain = state.non_zero_c_domain;
+        let largest_non_zero_domain = Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
         let public_input = ProverConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
@@ -177,6 +193,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
+
+        let a_at_beta = prover_third_message.field_elements[0];
+        let b_at_beta = prover_third_message.field_elements[1];
+        let c_at_beta = prover_third_message.field_elements[2];
+        let t_at_beta = a_at_beta + b_at_beta + c_at_beta;
 
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
@@ -193,7 +214,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
         let z_b_at_beta = evals.get_lc_eval(&z_b, beta)?;
-        let t_at_beta = prover_third_message.field_elements[0];
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let x_at_beta = input_domain
@@ -224,31 +244,37 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         linear_combinations.push(outer_sumcheck);
 
         //  Inner sumcheck:
+        let mut inner_sumcheck = LinearCombination::empty("inner_sumcheck");
+
         let beta_alpha = beta * alpha;
-        let g_2 = LinearCombination::new("g_2", vec![(F::one(), "g_2")]);
 
-        let g_2_at_gamma = evals.get_lc_eval(&g_2, gamma)?;
+        let g_a = LinearCombination::new("g_a", vec![(F::one(), "g_a")]);
+        let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
+        let v_K_a_at_gamma = non_zero_a_domain.evaluate_vanishing_polynomial(gamma);
+        let selector_a = largest_non_zero_domain.selector_polynomial(non_zero_a_domain).evaluate(gamma);
+        let lhs_a = Self::construct_lhs("a", eta_a, alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, a_at_beta, non_zero_a_domain.size_as_field_element, selector_a);
+        inner_sumcheck += &lhs_a;
 
-        let v_K_at_gamma = non_zero_domain.evaluate_vanishing_polynomial(gamma);
+        let g_b = LinearCombination::new("g_b", vec![(F::one(), "g_b")]);
+        let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
+        let v_K_b_at_gamma = non_zero_b_domain.evaluate_vanishing_polynomial(gamma);
+        let selector_b = largest_non_zero_domain.selector_polynomial(non_zero_b_domain).evaluate(gamma);
+        let lhs_b = Self::construct_lhs("b", eta_b, alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, b_at_beta, non_zero_b_domain.size_as_field_element, selector_b);
+        inner_sumcheck += &lhs_b;
 
-        let mut a = LinearCombination::new("a_poly", vec![(eta_a, "a_val"), (eta_b, "b_val"), (eta_c, "c_val")]);
-        a *= v_H_at_alpha * v_H_at_beta;
+        let g_c = LinearCombination::new("g_c", vec![(F::one(), "g_c")]);
+        let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
+        let v_K_c_at_gamma = non_zero_c_domain.evaluate_vanishing_polynomial(gamma);
+        let selector_c = largest_non_zero_domain.selector_polynomial(non_zero_c_domain).evaluate(gamma);
+        let lhs_c = Self::construct_lhs("c", eta_c, alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, c_at_beta, non_zero_c_domain.size_as_field_element, selector_c);
+        inner_sumcheck += &lhs_c;
 
-        let mut b = LinearCombination::new("denom", vec![
-            (beta_alpha, LCTerm::One),
-            (-alpha, "row".into()),
-            (-beta, "col".into()),
-            (F::one(), "row_col".into()),
-        ]);
-        b *= gamma * g_2_at_gamma + (t_at_beta / k_size);
-
-        let mut inner_sumcheck = a;
-        inner_sumcheck -= &b;
-        inner_sumcheck -= &LinearCombination::new("h_2", vec![(v_K_at_gamma, "h_2")]);
-        inner_sumcheck.label = "inner_sumcheck".into();
+        inner_sumcheck -= &LinearCombination::new("h_2", vec![(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
         debug_assert!(evals.get_lc_eval(&inner_sumcheck, gamma)?.is_zero());
 
-        linear_combinations.push(g_2);
+        linear_combinations.push(g_a);
+        linear_combinations.push(g_b);
+        linear_combinations.push(g_c);
         linear_combinations.push(inner_sumcheck);
 
         if MM::RECURSION {
@@ -266,6 +292,36 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         linear_combinations.sort_by(|a, b| a.label.cmp(&b.label));
         Ok(linear_combinations)
+    }
+
+    fn construct_lhs(
+        label: &str, 
+        eta: F,
+        alpha: F,
+        beta: F,
+        gamma: F, 
+        v_h_at_alpha_beta: F, 
+        g_at_gamma: F, 
+        sum: F, 
+        k_size: F, 
+        selector_at_gamma: F
+    ) -> LinearCombination<F> {
+        let a = LinearCombination::new("a_poly".to_owned() + label, vec![(eta * v_h_at_alpha_beta, "val".to_owned() + label)]);
+        let alpha_beta = alpha * beta;
+
+        let b = LinearCombination::new("denom".to_owned() + label, vec![
+            (alpha_beta, LCTerm::One),
+            (-alpha, ("row".to_owned() + label).into()),
+            (-beta, ("col".to_owned() + label).into()),
+            (F::one(), ("row_col".to_owned() + label).into()),
+        ]);
+        b *= gamma * g_at_gamma + (sum / k_size);
+
+        let mut lhs = a;
+        lhs -= &b;
+        lhs *= selector_at_gamma;
+        lhs
+
     }
 }
 

@@ -40,11 +40,10 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use core::{fmt, marker::PhantomData, str::FromStr};
-use derivative::Derivative;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(derivative::Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Stores information about the size of the circuit, as well as its defined field.
@@ -112,22 +111,42 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
         let constraint_domain = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
-        let non_zero_domain = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
+        let non_zero_domain_a = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero_a)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let non_zero_domain_b = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero_b)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let non_zero_domain_c = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero_c)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
 
         assert!(constraint_domain.size() < u64::MAX as usize);
-        assert!(non_zero_domain.size() < u64::MAX as usize);
+        assert!(non_zero_domain_a.size() < u64::MAX as usize);
+        assert!(non_zero_domain_b.size() < u64::MAX as usize);
+        assert!(non_zero_domain_c.size() < u64::MAX as usize);
 
         let constraint_domain_size = constraint_domain.size() as u64;
-        let non_zero_domain_size = non_zero_domain.size() as u64;
+        let non_zero_domain_a_size = non_zero_domain_a.size() as u64;
+        let non_zero_domain_b_size = non_zero_domain_b.size() as u64;
+        let non_zero_domain_c_size = non_zero_domain_c.size() as u64;
 
         let constraint_domain_size_bits = constraint_domain_size
             .to_le_bytes()
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
             .collect::<Vec<bool>>();
-        let non_zero_domain_size_bits = non_zero_domain_size
+        let non_zero_domain_size_a_bits = non_zero_domain_a_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        let non_zero_domain_size_b_bits = non_zero_domain_b_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        let non_zero_domain_size_c_bits = non_zero_domain_c_size
             .to_le_bytes()
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
@@ -137,7 +156,9 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 
         [
             constraint_domain_size_bits,
-            non_zero_domain_size_bits,
+            non_zero_domain_size_a_bits,
+            non_zero_domain_size_b_bits,
+            non_zero_domain_size_c_bits,
             circuit_commitments_bits,
         ]
         .concat()
