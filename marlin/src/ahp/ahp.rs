@@ -359,7 +359,6 @@ impl<F: PrimeField> SelectorPolynomial<F> for EvaluationDomain<F> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -426,13 +425,10 @@ mod tests {
                 let selector = domain_i.selector_polynomial(domain_j);
                 let j_elements = domain_j.elements().collect::<Vec<_>>();
                 let slow_selector = {
-                    let evals = domain_i.elements().map(|e| {
-                        if j_elements.contains(&e) {
-                            Fr::one()
-                        } else {
-                            Fr::zero()
-                        }
-                    }).collect();
+                    let evals = domain_i
+                        .elements()
+                        .map(|e| if j_elements.contains(&e) { Fr::one() } else { Fr::zero() })
+                        .collect();
                     Evaluations::from_vec_and_domain(evals, domain_i).interpolate()
                 };
                 assert_eq!(DensePolynomial::from(selector.clone()), slow_selector);

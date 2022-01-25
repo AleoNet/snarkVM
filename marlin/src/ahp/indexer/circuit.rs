@@ -63,12 +63,10 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
             &self.a_arith.col,
             &self.a_arith.val,
             &self.a_arith.row_col,
-
             &self.b_arith.row,
             &self.b_arith.col,
             &self.b_arith.val,
             &self.b_arith.row_col,
-
             &self.c_arith.row,
             &self.c_arith.col,
             &self.c_arith.val,

@@ -145,12 +145,14 @@ where
             fs_rng
         };
 
-        let constraint_domain_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "constraint_domain_size_gadget"), || {
-            Ok(BaseField::from(obj.constraint_domain_size as u128))
-        })?;
-        let non_zero_domain_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "non_zero_domain_size_gadget"), || {
-            Ok(BaseField::from(obj.non_zero_domain_size as u128))
-        })?;
+        let constraint_domain_size_gadget =
+            FpGadget::<BaseField>::alloc_constant(cs.ns(|| "constraint_domain_size_gadget"), || {
+                Ok(BaseField::from(obj.constraint_domain_size as u128))
+            })?;
+        let non_zero_domain_size_gadget =
+            FpGadget::<BaseField>::alloc_constant(cs.ns(|| "non_zero_domain_size_gadget"), || {
+                Ok(BaseField::from(obj.non_zero_domain_size as u128))
+            })?;
 
         Ok(Self {
             constraint_domain_size: obj.constraint_domain_size,

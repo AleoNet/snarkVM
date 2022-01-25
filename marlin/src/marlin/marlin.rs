@@ -620,7 +620,10 @@ impl<
 
             let mut new_input = vec![TargetField::one()];
             new_input.extend_from_slice(public_input);
-            new_input.resize(core::cmp::max(public_input.len(), input_domain.size()), TargetField::zero());
+            new_input.resize(
+                core::cmp::max(public_input.len(), input_domain.size()),
+                TargetField::zero(),
+            );
             assert!(new_input.first().unwrap().is_one());
             new_input
         };

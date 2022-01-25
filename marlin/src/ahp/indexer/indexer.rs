@@ -96,13 +96,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             f: PhantomData,
         };
 
-        let constraint_domain = EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let constraint_domain =
+            EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let input_domain =
             EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let non_zero_a_domain = EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_b_domain = EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_c_domain = EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_a_domain =
+            EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_b_domain =
+            EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_c_domain =
+            EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
         let a_arith = arithmetize_matrix(&a, "a", non_zero_a_domain, constraint_domain, input_domain);

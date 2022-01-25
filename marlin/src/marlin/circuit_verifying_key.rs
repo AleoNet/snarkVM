@@ -135,7 +135,12 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 
         let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 
-        [constraint_domain_size_bits, non_zero_domain_size_bits, circuit_commitments_bits].concat()
+        [
+            constraint_domain_size_bits,
+            non_zero_domain_size_bits,
+            circuit_commitments_bits,
+        ]
+        .concat()
     }
 }
 

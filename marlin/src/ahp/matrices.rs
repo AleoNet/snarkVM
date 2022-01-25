@@ -172,9 +172,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     batch_inversion::<F>(&mut inverses);
     drop(eq_poly_vals);
 
-    cfg_iter_mut!(val_vec)
-        .zip(inverses)
-        .for_each(|(v, inv)| *v *= inv);
+    cfg_iter_mut!(val_vec).zip(inverses).for_each(|(v, inv)| *v *= inv);
     end_timer!(lde_evals_time);
 
     for _ in count..non_zero_domain.size() {

@@ -483,7 +483,8 @@ impl<
             NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "non_zero_domain_size"), || {
                 Ok(TargetField::from(non_zero_domain_size as u128))
             })?;
-        let inv_non_zero_domain_size_gadget = non_zero_domain_size_gadget.inverse(cs.ns(|| "non_zero_domain_inverse"))?;
+        let inv_non_zero_domain_size_gadget =
+            non_zero_domain_size_gadget.inverse(cs.ns(|| "non_zero_domain_inverse"))?;
 
         let non_zero_domain_size_bit_decomposition =
             non_zero_domain_size_gadget.to_bits_le(cs.ns(|| "non_zero_domain_gadget_to_bits_le"))?;
@@ -511,8 +512,10 @@ impl<
         }
 
         let gamma_mul_g_2 = gamma.mul(cs.ns(|| "gamma_mul_g_2"), g_2_at_gamma)?;
-        let t_div_non_zero_domain = t_at_beta.mul(cs.ns(|| "t_div_non_zero_domain"), &inv_non_zero_domain_size_gadget)?;
-        let b_expr_at_gamma_last_term = gamma_mul_g_2.add(cs.ns(|| "b_expr_at_gamma_last_term"), &t_div_non_zero_domain)?;
+        let t_div_non_zero_domain =
+            t_at_beta.mul(cs.ns(|| "t_div_non_zero_domain"), &inv_non_zero_domain_size_gadget)?;
+        let b_expr_at_gamma_last_term =
+            gamma_mul_g_2.add(cs.ns(|| "b_expr_at_gamma_last_term"), &t_div_non_zero_domain)?;
 
         let inner_sumcheck_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
             label: "inner_sumcheck".to_string(),
@@ -1086,8 +1089,14 @@ mod test {
 
         // Enforce that the native and gadget verifier first round state is equivalent.
 
-        assert_eq!(first_round_state.constraint_domain.size, first_round_state_gadget.constraint_domain_size);
-        assert_eq!(first_round_state.non_zero_domain.size, first_round_state_gadget.non_zero_domain_size);
+        assert_eq!(
+            first_round_state.constraint_domain.size,
+            first_round_state_gadget.constraint_domain_size
+        );
+        assert_eq!(
+            first_round_state.non_zero_domain.size,
+            first_round_state_gadget.non_zero_domain_size
+        );
         assert_eq!(
             first_round_state.first_round_message.is_some(),
             first_round_state_gadget.first_round_msg.is_some()
