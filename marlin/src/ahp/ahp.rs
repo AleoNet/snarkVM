@@ -163,7 +163,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let domains = [domain_a, domain_b, domain_c];
         domains
             .into_iter()
-            .max_by(|a, b| a.size().cmp(&b.size()))
+            .max_by_key(|domain| domain.size())
             .unwrap()
     }
 
