@@ -22,7 +22,7 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::fft::{EvaluationDomain, SparsePolynomial};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 
@@ -62,19 +62,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["inner_sumcheck", "outer_sumcheck"];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 7] = [
+    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 9] = [
         // First sumcheck
         "w", "z_a", "z_b", "g_1", "h_1",
         // Second sumcheck
-        "g_2", "h_2",
+        "g_a", "g_b", "g_c", "h_2",
     ];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 8] = [
+    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 10] = [
         // First sumcheck
         "w", "z_a", "z_b", "mask_poly", "g_1", "h_1",
         // Second sumcheck
-        "g_2", "h_2",
+        "g_a", "g_b", "g_c", "h_2",
     ];
 
     pub(crate) fn indexer_polynomials() -> impl Iterator<Item = &'static str> {
@@ -345,10 +345,25 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     }
 }
 
+/// Given two domains H and K such that H \subseteq K,
+/// construct polynomial that outputs 0 on all elements in K \ H, but 1 on all elements of H.
+pub trait SelectorPolynomial<F: PrimeField> {
+    fn selector_polynomial(&self, other: EvaluationDomain<F>) -> SparsePolynomial<F>;
+}
+
+impl<F: PrimeField> SelectorPolynomial<F> for EvaluationDomain<F> {
+    fn selector_polynomial(&self, other: EvaluationDomain<F>) -> SparsePolynomial<F> {
+        assert!(self.size() >= other.size());
+        let coeff = self.size_as_field_element / other.size_as_field_element;
+        SparsePolynomial::from_coefficients_vec(vec![(0, coeff), (self.size(), coeff)])
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::fft::{DenseOrSparsePolynomial, DensePolynomial};
+    use snarkvm_algorithms::fft::{DensePolynomial, Evaluations};
     use snarkvm_curves::bls12_377::fr::Fr;
     use snarkvm_fields::{One, Zero};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
@@ -404,61 +419,32 @@ mod tests {
 
     #[test]
     fn test_alternator_polynomial() {
-        use snarkvm_algorithms::fft::Evaluations;
-        let non_zero_domain = EvaluationDomain::<Fr>::new(1 << 4).unwrap();
-        let constraint_domain = EvaluationDomain::<Fr>::new(1 << 3).unwrap();
-        let constraint_domain_elems = constraint_domain.elements().collect::<std::collections::HashSet<_>>();
-        let alternator_poly_evals = non_zero_domain
-            .elements()
-            .map(|e| {
-                if constraint_domain_elems.contains(&e) {
-                    Fr::one()
-                } else {
-                    Fr::zero()
+        for i in 1..10 {
+            for j in 1..i {
+                let domain_i = EvaluationDomain::<Fr>::new(1 << i).unwrap();
+                let domain_j = EvaluationDomain::<Fr>::new(1 << j).unwrap();
+                let selector = domain_i.selector_polynomial(domain_j);
+                let j_elements = domain_j.elements().collect::<Vec<_>>();
+                let slow_selector = {
+                    let evals = domain_i.elements().map(|e| {
+                        if j_elements.contains(&e) {
+                            Fr::one()
+                        } else {
+                            Fr::zero()
+                        }
+                    }).collect();
+                    Evaluations::from_vec_and_domain(evals, domain_i).interpolate()
+                };
+                assert_eq!(DensePolynomial::from(selector.clone()), slow_selector);
+
+                for element in domain_i.elements() {
+                    if j_elements.contains(&element) {
+                        assert_eq!(selector.evaluate(element), Fr::one(), "failed for {} vs {}", i, j);
+                    } else {
+                        assert_eq!(selector.evaluate(element), Fr::zero());
+                    }
                 }
-            })
-            .collect();
-        let v_k: DenseOrSparsePolynomial<_> = non_zero_domain.vanishing_polynomial().into();
-        let v_h: DenseOrSparsePolynomial<_> = constraint_domain.vanishing_polynomial().into();
-        let (divisor, remainder) = v_k.divide_with_q_and_r(&v_h).unwrap();
-        assert!(remainder.is_zero());
-        println!("Divisor: {:?}", divisor);
-        println!(
-            "{:#?}",
-            divisor
-                .coeffs
-                .iter()
-                .filter_map(|f| if !f.is_zero() { Some(f.to_repr()) } else { None })
-                .collect::<Vec<_>>()
-        );
-
-        for e in constraint_domain.elements() {
-            println!("{:?}", divisor.evaluate(e));
+            }
         }
-        // Let p = v_K / v_H;
-        // The alternator polynomial is p * t, where t is defined as
-        // the LDE of p(h)^{-1} for all h in H.
-        //
-        // Because for each h in H, p(h) equals a constant c, we have that t
-        // is the constant polynomial c^{-1}.
-        //
-        // Q: what is the constant c? Why is p(h) constant? What is the easiest
-        // way to calculate c?
-        let alternator_poly = Evaluations::from_vec_and_domain(alternator_poly_evals, non_zero_domain).interpolate();
-        let (quotient, remainder) = DenseOrSparsePolynomial::from(alternator_poly.clone())
-            .divide_with_q_and_r(&DenseOrSparsePolynomial::from(divisor))
-            .unwrap();
-        assert!(remainder.is_zero());
-        println!("quotient: {:?}", quotient);
-        println!(
-            "{:#?}",
-            quotient
-                .coeffs
-                .iter()
-                .filter_map(|f| if !f.is_zero() { Some(f.to_repr()) } else { None })
-                .collect::<Vec<_>>()
-        );
-
-        println!("{:?}", alternator_poly);
     }
 }

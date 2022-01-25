@@ -256,6 +256,17 @@ impl<F: PrimeField> DensePolynomial<F> {
     }
 }
 
+impl<F: Field> From<super::SparsePolynomial<F>> for DensePolynomial<F> {
+    fn from(other: super::SparsePolynomial<F>) -> Self {
+        let mut result = vec![F::zero(); other.degree() + 1];
+        for (i, coeff) in other.coeffs {
+            result[i] = coeff;
+        }
+        DensePolynomial::from_coefficients_vec(result)
+   
+    }
+}
+
 impl<F: Field> Neg for DensePolynomial<F> {
     type Output = DensePolynomial<F>;
 
