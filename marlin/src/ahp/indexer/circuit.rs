@@ -58,7 +58,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        vec![
+        [
             &self.a_arith.row,
             &self.a_arith.col,
             &self.a_arith.val,
