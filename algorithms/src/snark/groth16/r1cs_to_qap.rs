@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
-use crate::{cfg_iter, cfg_iter_mut, fft::EvaluationDomain};
+use crate::{cfg_into_iter, cfg_iter_mut, fft::EvaluationDomain};
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Zero;
 use snarkvm_r1cs::{
@@ -102,7 +102,6 @@ impl R1CStoQAP {
 
     #[inline]
     pub(crate) fn witness_map<E: PairingEngine>(prover: &ProvingAssignment<E>) -> SynthesisResult<Vec<E::Fr>> {
-        let zero = E::Fr::zero();
         let num_inputs = prover.public_variables.len();
         let num_constraints = prover.num_constraints();
 
@@ -110,41 +109,25 @@ impl R1CStoQAP {
 
         let domain = EvaluationDomain::<E::Fr>::new(num_constraints + num_inputs)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_size = domain.size();
 
-        let mut a = vec![zero; domain_size];
-        let mut b = vec![zero; domain_size];
+        let mut evaluated = cfg_into_iter!([&prover.at, &prover.bt, &prover.ct])
+            .map(|cstr| evaluate_constraints::<E>(cstr, &full_input_assignment, &domain, num_constraints, num_inputs))
+            .collect::<Vec<_>>();
 
-        cfg_iter_mut!(a[..num_constraints])
-            .zip(cfg_iter_mut!(b[..num_constraints]))
-            .zip(cfg_iter!(&prover.at))
-            .zip(cfg_iter!(&prover.bt))
-            .for_each(|(((a, b), at_i), bt_i)| {
-                *a = evaluate_constraint::<E>(at_i, &full_input_assignment, num_inputs);
-                *b = evaluate_constraint::<E>(bt_i, &full_input_assignment, num_inputs);
-            });
+        let mut c = evaluated.pop().unwrap();
+        let mut b = evaluated.pop().unwrap();
+        let mut a = evaluated.pop().unwrap();
 
         a[num_constraints..(num_inputs + num_constraints)].clone_from_slice(&full_input_assignment[..num_inputs]);
 
-        domain.ifft_in_place(&mut a);
-        domain.ifft_in_place(&mut b);
-
-        domain.coset_fft_in_place(&mut a);
-        domain.coset_fft_in_place(&mut b);
+        cfg_into_iter!([&mut a, &mut b, &mut c]).for_each(|cstr| {
+            domain.ifft_in_place(cstr);
+            domain.coset_fft_in_place(cstr);
+        });
 
         let mut ab = domain.mul_polynomials_in_evaluation_domain(&a, &b);
         drop(a);
         drop(b);
-
-        let mut c = vec![zero; domain_size];
-        cfg_iter_mut!(c[..prover.num_constraints()])
-            .enumerate()
-            .for_each(|(i, c)| {
-                *c = evaluate_constraint::<E>(&prover.ct[i], &full_input_assignment, num_inputs);
-            });
-
-        domain.ifft_in_place(&mut c);
-        domain.coset_fft_in_place(&mut c);
 
         cfg_iter_mut!(ab).zip(c).for_each(|(ab_i, c_i)| *ab_i -= &c_i);
 
@@ -153,4 +136,23 @@ impl R1CStoQAP {
 
         Ok(ab)
     }
+}
+
+#[inline]
+fn evaluate_constraints<E: PairingEngine>(
+    constraints: &[Vec<(E::Fr, Index)>],
+    full_input_assignment: &[<E as PairingEngine>::Fr],
+    domain: &EvaluationDomain<E::Fr>,
+    num_constraints: usize,
+    num_inputs: usize,
+) -> Vec<<E as PairingEngine>::Fr> {
+    let mut x = vec![E::Fr::zero(); domain.size()];
+
+    cfg_iter_mut!(x[..num_constraints])
+        .zip(constraints)
+        .for_each(|(x, xt_i)| {
+            *x = evaluate_constraint::<E>(xt_i, full_input_assignment, num_inputs);
+        });
+
+    x
 }
