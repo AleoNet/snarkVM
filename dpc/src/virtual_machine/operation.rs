@@ -15,12 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Address, AleoAmount, FunctionInputs, FunctionType, Network};
+use snarkvm_algorithms::traits::*;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
+    collections::HashMap,
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
@@ -45,6 +47,14 @@ pub enum Operation<N: Network> {
     Transfer(Caller<N>, Recipient<N>, AleoAmount),
     /// Invokes the given records on the function and inputs.
     Evaluate(N::FunctionID, FunctionType, FunctionInputs<N>),
+    /// Deploys a program to the on-chain program registry.
+    Deploy(
+        Caller<N>,
+        Recipient<N>,
+        AleoAmount,
+        N::ProgramID,
+        HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>,
+    ),
 }
 
 impl<N: Network> Operation<N> {
@@ -55,12 +65,13 @@ impl<N: Network> Operation<N> {
             Self::Coinbase(..) => 1,
             Self::Transfer(..) => 2,
             Self::Evaluate(..) => 3,
+            Self::Deploy(..) => 4,
         }
     }
 
     pub fn function_id(&self) -> N::FunctionID {
         match self {
-            Self::Noop | Self::Coinbase(..) | Self::Transfer(..) => *N::noop_function_id(),
+            Self::Noop | Self::Coinbase(..) | Self::Transfer(..) | Self::Deploy(..) => *N::noop_function_id(),
             Self::Evaluate(function_id, _, _) => *function_id,
         }
     }
@@ -71,6 +82,7 @@ impl<N: Network> Operation<N> {
             Self::Coinbase(..) => FunctionType::Insert,
             Self::Transfer(..) => FunctionType::Full,
             Self::Evaluate(_, function_type, _) => *function_type,
+            Self::Deploy(..) => FunctionType::Full,
         }
     }
 
@@ -95,6 +107,10 @@ impl<N: Network> Operation<N> {
 
     pub fn is_evaluate(&self) -> bool {
         matches!(self, Self::Evaluate(..))
+    }
+
+    pub fn is_deploy(&self) -> bool {
+        matches!(self, Self::Deploy(..))
     }
 }
 
@@ -121,6 +137,23 @@ impl<N: Network> FromBytes for Operation<N> {
                 let function_inputs = FromBytes::read_le(&mut reader)?;
                 Ok(Self::Evaluate(function_id, function_type, function_inputs))
             }
+            4 => {
+                let caller = FromBytes::read_le(&mut reader)?;
+                let recipient = FromBytes::read_le(&mut reader)?;
+                let amount = FromBytes::read_le(&mut reader)?;
+                let program_id = FromBytes::read_le(&mut reader)?;
+
+                let mut functions = HashMap::new();
+                let num_functions: u32 = FromBytes::read_le(&mut reader)?;
+
+                for _ in 0..num_functions {
+                    let function_id = FromBytes::read_le(&mut reader)?;
+                    let vk = FromBytes::read_le(&mut reader)?;
+                    functions.insert(function_id, vk);
+                }
+
+                Ok(Self::Deploy(caller, recipient, amount, program_id, functions))
+            }
             _ => unreachable!("Invalid operation during deserialization"),
         }
     }
@@ -145,6 +178,19 @@ impl<N: Network> ToBytes for Operation<N> {
                 function_id.write_le(&mut writer)?;
                 function_type.write_le(&mut writer)?;
                 function_inputs.write_le(&mut writer)
+            }
+            Self::Deploy(caller, recipient, amount, program_id, functions) => {
+                caller.write_le(&mut writer)?;
+                recipient.write_le(&mut writer)?;
+                amount.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)?;
+                (functions.len() as u32).write_le(&mut writer)?;
+                for (function_id, vk) in functions.iter() {
+                    function_id.write_le(&mut writer)?;
+                    vk.write_le(&mut writer)?;
+                }
+
+                Ok(())
             }
         }
     }
@@ -175,6 +221,14 @@ impl<N: Network> FromStr for Operation<N> {
                 let function_type = serde_json::from_value(operation["function_type"].clone())?;
                 let function_inputs = serde_json::from_value(operation["function_inputs"].clone())?;
                 Ok(Self::Evaluate(function_id, function_type, function_inputs))
+            }
+            4 => {
+                let caller = serde_json::from_value(operation["caller"].clone())?;
+                let recipient = serde_json::from_value(operation["recipient"].clone())?;
+                let amount = serde_json::from_value(operation["amount"].clone())?;
+                let program_id = serde_json::from_value(operation["program_id"].clone())?;
+                let functions = serde_json::from_value(operation["functions"].clone())?;
+                Ok(Self::Deploy(caller, recipient, amount, program_id, functions))
             }
             _ => unreachable!(format!("Invalid operation id {}", operation_id)),
         }
@@ -210,6 +264,16 @@ impl<N: Network> fmt::Display for Operation<N> {
                     "function_id": function_id,
                     "function_type": function_type.id(),
                     "function_inputs": function_inputs
+                })
+            }
+            Self::Deploy(caller, recipient, amount, program_id, functions) => {
+                serde_json::json!({
+                    "id": self.operation_id(),
+                    "caller": caller,
+                    "recipient": recipient,
+                    "amount": amount,
+                    "program_id": program_id,
+                    "functions": functions
                 })
             }
         };

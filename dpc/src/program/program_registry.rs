@@ -26,9 +26,9 @@ use std::{collections::HashMap, sync::Arc};
 #[derivative(Debug(bound = "N: Network"))]
 pub struct ProgramRegistry<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<N::ProgramIDParameters>, // TODO (raychu86): Possibly introduce a new parameter here.
+    tree: MerkleTree<N::ProgramIDParameters>, //TODO (raychu86): Possibly introduce a new parameter here.
     #[derivative(Debug = "ignore")]
-    programs: HashMap<N::ProgramID, HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>>,
+    programs: HashMap<N::ProgramID, HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>>, //TODO (raychu86): Replace vk with circuit IR.
     num_programs: u32,
 }
 

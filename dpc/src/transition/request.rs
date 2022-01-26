@@ -246,6 +246,8 @@ impl<N: Network> Request<N> {
         }
     }
 
+    // TODO (raychu86): This may think transfer requests are also noops. This should check that the
+    //   balance of the records are all 0.
     /// Returns `true` if the request calls the noop program and function.
     pub fn is_noop(&self) -> bool {
         self.to_program_id().unwrap() == *N::noop_program_id() && self.function_id() == *N::noop_function_id()

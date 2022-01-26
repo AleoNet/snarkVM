@@ -74,6 +74,7 @@ impl<N: Network> VirtualMachine<N> {
                 vec![], // custom_events
                 rng,
             )?,
+            Operation::Deploy(..) => unimplemented!(),
         };
 
         let program_id = request.to_program_id()?;
