@@ -28,7 +28,7 @@ pub struct ProgramRegistry<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: MerkleTree<N::ProgramIDParameters>, //TODO (raychu86): Possibly introduce a new parameter here.
     #[derivative(Debug = "ignore")]
-    programs: HashMap<N::ProgramID, HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>>, //TODO (raychu86): Replace vk with circuit IR.
+    programs: HashMap<N::ProgramID, ProgramFunctions<N>>, //TODO (raychu86): Replace vk with circuit IR.
     num_programs: u32,
 }
 
@@ -60,7 +60,7 @@ impl<N: Network> ProgramRegistry<N> {
         // Add the noop program.
         registry.add((
             *N::noop_program_id(),
-            [(*N::noop_function_id(), N::noop_circuit_verifying_key().clone())].into(),
+            ProgramFunctions([(*N::noop_function_id(), N::noop_circuit_verifying_key().clone())].into()),
         ))?;
 
         Ok(registry)
@@ -72,15 +72,9 @@ impl<N: Network> ProgramRegistry<N> {
     }
 
     /// Add a program vks to the tree
-    fn add(
-        &mut self,
-        program: (
-            N::ProgramID,
-            HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>,
-        ),
-    ) -> Result<()> {
+    fn add(&mut self, program: (N::ProgramID, ProgramFunctions<N>)) -> Result<()> {
         // Ensure the list of given function vks is non-empty.
-        if program.1.is_empty() {
+        if program.1.0.is_empty() {
             return Err(anyhow!("The list of given function vks must be non-empty"));
         }
 
@@ -89,6 +83,7 @@ impl<N: Network> ProgramRegistry<N> {
         // Construct a list of function IDs.
         let function_ids: Vec<N::FunctionID> = program
             .1
+            .0
             .iter()
             .map(|(id, vk)| {
                 let function_id = N::function_id_crh().hash_bits(&vk.to_minimal_bits()).unwrap().into();

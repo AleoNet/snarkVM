@@ -38,6 +38,15 @@ type Recipient<N> = Address<N>;
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
+pub struct ProgramFunctions<N: Network>(pub HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>);
+
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
+)]
 pub enum Operation<N: Network> {
     /// Noop.
     Noop,
@@ -48,13 +57,7 @@ pub enum Operation<N: Network> {
     /// Invokes the given records on the function and inputs.
     Evaluate(N::FunctionID, FunctionType, FunctionInputs<N>),
     /// Deploys a program to the on-chain program registry.
-    Deploy(
-        Caller<N>,
-        Recipient<N>,
-        AleoAmount,
-        N::ProgramID,
-        HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey>,
-    ),
+    Deploy(Caller<N>, AleoAmount, N::ProgramID, ProgramFunctions<N>),
 }
 
 impl<N: Network> Operation<N> {
@@ -139,20 +142,10 @@ impl<N: Network> FromBytes for Operation<N> {
             }
             4 => {
                 let caller = FromBytes::read_le(&mut reader)?;
-                let recipient = FromBytes::read_le(&mut reader)?;
                 let amount = FromBytes::read_le(&mut reader)?;
                 let program_id = FromBytes::read_le(&mut reader)?;
-
-                let mut functions = HashMap::new();
-                let num_functions: u32 = FromBytes::read_le(&mut reader)?;
-
-                for _ in 0..num_functions {
-                    let function_id = FromBytes::read_le(&mut reader)?;
-                    let vk = FromBytes::read_le(&mut reader)?;
-                    functions.insert(function_id, vk);
-                }
-
-                Ok(Self::Deploy(caller, recipient, amount, program_id, functions))
+                let functions = FromBytes::read_le(&mut reader)?;
+                Ok(Self::Deploy(caller, amount, program_id, functions))
             }
             _ => unreachable!("Invalid operation during deserialization"),
         }
@@ -179,18 +172,11 @@ impl<N: Network> ToBytes for Operation<N> {
                 function_type.write_le(&mut writer)?;
                 function_inputs.write_le(&mut writer)
             }
-            Self::Deploy(caller, recipient, amount, program_id, functions) => {
+            Self::Deploy(caller, amount, program_id, functions) => {
                 caller.write_le(&mut writer)?;
-                recipient.write_le(&mut writer)?;
                 amount.write_le(&mut writer)?;
                 program_id.write_le(&mut writer)?;
-                (functions.len() as u32).write_le(&mut writer)?;
-                for (function_id, vk) in functions.iter() {
-                    function_id.write_le(&mut writer)?;
-                    vk.write_le(&mut writer)?;
-                }
-
-                Ok(())
+                functions.write_le(&mut writer)
             }
         }
     }
@@ -224,11 +210,10 @@ impl<N: Network> FromStr for Operation<N> {
             }
             4 => {
                 let caller = serde_json::from_value(operation["caller"].clone())?;
-                let recipient = serde_json::from_value(operation["recipient"].clone())?;
                 let amount = serde_json::from_value(operation["amount"].clone())?;
                 let program_id = serde_json::from_value(operation["program_id"].clone())?;
-                let functions = serde_json::from_value(operation["functions"].clone())?;
-                Ok(Self::Deploy(caller, recipient, amount, program_id, functions))
+                let program_functions = serde_json::from_value(operation["functions"].clone())?;
+                Ok(Self::Deploy(caller, amount, program_id, program_functions))
             }
             _ => unreachable!(format!("Invalid operation id {}", operation_id)),
         }
@@ -266,11 +251,10 @@ impl<N: Network> fmt::Display for Operation<N> {
                     "function_inputs": function_inputs
                 })
             }
-            Self::Deploy(caller, recipient, amount, program_id, functions) => {
+            Self::Deploy(caller, amount, program_id, functions) => {
                 serde_json::json!({
                     "id": self.operation_id(),
                     "caller": caller,
-                    "recipient": recipient,
                     "amount": amount,
                     "program_id": program_id,
                     "functions": functions
@@ -304,5 +288,68 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for Operation<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let v = ToConstraintField::<N::InnerScalarField>::to_field_elements(&[0u8][..])?;
         Ok(v)
+    }
+}
+
+impl<N: Network> FromBytes for ProgramFunctions<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut result = HashMap::new();
+        let num_functions: u32 = FromBytes::read_le(&mut reader)?;
+
+        for _ in 0..num_functions {
+            let function_id = FromBytes::read_le(&mut reader)?;
+            let vk = FromBytes::read_le(&mut reader)?;
+            result.insert(function_id, vk);
+        }
+
+        Ok(ProgramFunctions::<N>(result))
+    }
+}
+
+impl<N: Network> ToBytes for ProgramFunctions<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.0.len() as u32).write_le(&mut writer)?;
+        for (function_id, vk) in self.0.iter() {
+            function_id.write_le(&mut writer)?;
+            vk.write_le(&mut writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<N: Network> Serialize for ProgramFunctions<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for ProgramFunctions<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "program_functions"),
+        }
+    }
+}
+
+impl<N: Network> FromStr for ProgramFunctions<N> {
+    type Err = anyhow::Error;
+
+    fn from_str(program_functions: &str) -> Result<Self, Self::Err> {
+        let functions: HashMap<N::FunctionID, <N::ProgramSNARK as SNARK>::VerifyingKey> =
+            serde_json::from_value(serde_json::Value::from_str(program_functions)?)?;
+
+        Ok(Self(functions))
+    }
+}
+
+impl<N: Network> fmt::Display for ProgramFunctions<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::json!(self.0))
     }
 }

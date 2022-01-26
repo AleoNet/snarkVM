@@ -126,6 +126,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
             )
             .unwrap(),
         inner_proof.into(),
+        None,
     )
     .unwrap();
     assert_eq!(

@@ -197,6 +197,12 @@ impl<N: Network> ResponseBuilder<N> {
         // Compute the transition ID.
         let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments)?;
 
+        // Fetch the program deployment attributes
+        let program = match request.operation() {
+            Operation::Deploy(_, _, program_id, functions) => Some((*program_id, functions.clone())),
+            _ => None,
+        };
+
         // Construct the response.
         Response::new(
             transition_id,
@@ -204,6 +210,7 @@ impl<N: Network> ResponseBuilder<N> {
             encryption_randomness,
             value_balance,
             events,
+            program,
         )
     }
 }

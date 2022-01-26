@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, InnerPublicVariables, Network, ProgramPublicVariables};
+use crate::{AleoAmount, InnerPublicVariables, Network, ProgramFunctions, ProgramPublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -37,6 +37,7 @@ pub struct Execution<N: Network> {
     pub verifying_key: N::ProgramVerifyingKey,
     pub program_proof: N::ProgramProof,
     pub inner_proof: N::InnerProof,
+    pub deployed_program: Option<(N::ProgramID, ProgramFunctions<N>)>,
 }
 
 impl<N: Network> Execution<N> {
@@ -46,6 +47,7 @@ impl<N: Network> Execution<N> {
         verifying_key: N::ProgramVerifyingKey,
         program_proof: N::ProgramProof,
         inner_proof: N::InnerProof,
+        deployed_program: Option<(N::ProgramID, ProgramFunctions<N>)>,
     ) -> Result<Self> {
         Ok(Self {
             program_id,
@@ -53,6 +55,7 @@ impl<N: Network> Execution<N> {
             verifying_key,
             program_proof,
             inner_proof,
+            deployed_program,
         })
     }
 
@@ -120,8 +123,26 @@ impl<N: Network> FromBytes for Execution<N> {
         let program_proof = FromBytes::read_le(&mut reader)?;
         let inner_proof = FromBytes::read_le(&mut reader)?;
 
-        Self::from(program_id, program_path, verifying_key, program_proof, inner_proof)
-            .map_err(|error| Error::new(ErrorKind::Other, format!("{}", error)))
+        let is_deployment: bool = FromBytes::read_le(&mut reader)?;
+        let deployed_program = match is_deployment {
+            true => {
+                let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
+                let functions: ProgramFunctions<N> = FromBytes::read_le(&mut reader)?;
+
+                Some((program_id, functions))
+            }
+            false => None,
+        };
+
+        Self::from(
+            program_id,
+            program_path,
+            verifying_key,
+            program_proof,
+            inner_proof,
+            deployed_program,
+        )
+        .map_err(|error| Error::new(ErrorKind::Other, format!("{}", error)))
     }
 }
 
@@ -132,7 +153,16 @@ impl<N: Network> ToBytes for Execution<N> {
         self.program_path.write_le(&mut writer)?;
         self.verifying_key.write_le(&mut writer)?;
         self.program_proof.write_le(&mut writer)?;
-        self.inner_proof.write_le(&mut writer)
+        self.inner_proof.write_le(&mut writer)?;
+
+        match &self.deployed_program {
+            Some((program_id, functions)) => {
+                true.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)?;
+                functions.write_le(&mut writer)
+            }
+            None => false.write_le(&mut writer),
+        }
     }
 }
 
@@ -140,12 +170,13 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 5)?;
+                let mut execution = serializer.serialize_struct("Execution", 6)?;
                 execution.serialize_field("program_id", &self.program_id)?;
                 execution.serialize_field("program_path", &self.program_path)?;
                 execution.serialize_field("verifying_key", &self.verifying_key)?;
                 execution.serialize_field("program_proof", &self.program_proof)?;
                 execution.serialize_field("inner_proof", &self.inner_proof)?;
+                execution.serialize_field("deployed_program", &self.deployed_program)?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -165,6 +196,7 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                     serde_json::from_value(execution["verifying_key"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(execution["program_proof"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(execution["inner_proof"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(execution["deployed_program"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)
             }
