@@ -48,7 +48,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.52"
+version = "1.0.53"
 
 [dependencies.derivative]
 version = "2"
