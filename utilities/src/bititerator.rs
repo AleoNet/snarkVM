@@ -19,13 +19,21 @@
 pub struct BitIteratorBE<Slice> {
     s: Slice,
     n: usize,
+    slice_idx: usize,
+    digit_idx: usize,
 }
 
 #[allow(clippy::len_without_is_empty)]
 impl<Slice: AsRef<[u64]>> BitIteratorBE<Slice> {
     pub fn new(s: Slice) -> Self {
         let n = s.as_ref().len() * 64;
-        BitIteratorBE { s, n }
+        let slice_idx = s.as_ref().len();
+        BitIteratorBE {
+            s,
+            n,
+            slice_idx,
+            digit_idx: 0,
+        }
     }
 
     /// Construct an iterator that automatically skips any leading zeros.
@@ -47,10 +55,14 @@ impl<Slice: AsRef<[u64]>> Iterator for BitIteratorBE<Slice> {
             None
         } else {
             self.n -= 1;
-            let part = self.n / 64;
-            let bit = self.n - (64 * part);
+            if self.digit_idx == 0 {
+                self.digit_idx = 64;
+                self.slice_idx -= 1;
+            }
 
-            Some(self.s.as_ref()[part] & (1 << bit) > 0)
+            self.digit_idx -= 1;
+
+            Some(((self.s.as_ref()[self.slice_idx] >> self.digit_idx) & 1) != 0)
         }
     }
 }
@@ -61,13 +73,21 @@ pub struct BitIteratorLE<Slice: AsRef<[u64]>> {
     s: Slice,
     n: usize,
     max_len: usize,
+    slice_idx: usize,
+    digit_idx: usize,
 }
 
 impl<Slice: AsRef<[u64]>> BitIteratorLE<Slice> {
     pub fn new(s: Slice) -> Self {
         let n = 0;
         let max_len = s.as_ref().len() * 64;
-        BitIteratorLE { s, n, max_len }
+        BitIteratorLE {
+            s,
+            n,
+            max_len,
+            slice_idx: 0,
+            digit_idx: 0,
+        }
     }
 
     /// Construct an iterator that automatically skips any trailing zeros.
@@ -93,11 +113,18 @@ impl<Slice: AsRef<[u64]>> Iterator for BitIteratorLE<Slice> {
         if self.n == self.max_len {
             None
         } else {
-            let part = self.n / 64;
-            let bit = self.n - (64 * part);
             self.n += 1;
 
-            Some(self.s.as_ref()[part] & (1 << bit) > 0)
+            let ret = Some(((self.s.as_ref()[self.slice_idx] >> self.digit_idx) & 1) != 0);
+
+            if self.digit_idx == 63 {
+                self.digit_idx = 0;
+                self.slice_idx += 1;
+            } else {
+                self.digit_idx += 1;
+            }
+
+            ret
         }
     }
 }
