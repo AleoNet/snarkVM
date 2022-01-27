@@ -175,7 +175,7 @@ mod tests {
     use snarkvm_curves::bls12_377::{Fq, Fr};
     use snarkvm_utilities::rand::UniformRand;
 
-    use blake2::Blake2s;
+    use blake2::Blake2s256;
     use rand_chacha::ChaChaRng;
 
     const NUM_ABSORBED_RAND_FIELD_ELEMS: usize = 10;
@@ -199,7 +199,7 @@ mod tests {
             absorbed_rand_byte_elems.push((0..SIZE_ABSORBED_BYTE_ELEM).map(|_| u8::rand(&mut rng)).collect());
         }
 
-        let mut fs_rng = FiatShamirChaChaRng::<Fr, Fq, Blake2s>::new();
+        let mut fs_rng = FiatShamirChaChaRng::<Fr, Fq, Blake2s256>::new();
         fs_rng.absorb_nonnative_field_elements(&absorbed_rand_field_elems, OptimizationType::Weight);
         for absorbed_rand_byte_elem in absorbed_rand_byte_elems {
             fs_rng.absorb_bytes(&absorbed_rand_byte_elem);
