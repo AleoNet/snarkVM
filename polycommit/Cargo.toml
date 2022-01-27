@@ -72,7 +72,7 @@ version = "2"
 features = [ "use_core" ]
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
 
 [dependencies.hashbrown]
 version = "0.11.2"
