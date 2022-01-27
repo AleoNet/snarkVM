@@ -317,7 +317,6 @@ impl<
         )?;
         end_timer!(first_round_comm_time);
 
-
         Self::verifier_absorb_labeled(&first_commitments, &prover_first_message, &mut fs_rng);
         Self::terminate(terminator)?;
 
@@ -371,7 +370,8 @@ impl<
 
         Self::verifier_absorb_labeled(&third_commitments, &prover_third_message, &mut fs_rng);
 
-        let (verifier_third_msg, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut fs_rng)?;
+        let (verifier_third_msg, verifier_state) =
+            AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -430,8 +430,8 @@ impl<
             .chain(vanishing_polys.iter()) // 0 or 2 items
             .chain(prover_first_oracles.iter()) // 3 or 4 items
             .chain(prover_second_oracles.iter())// 3 items
-            .chain(prover_third_oracles.iter())// 2 items
-            .chain(prover_fourth_oracles.iter())// 2 items
+            .chain(prover_third_oracles.iter())// 4 items
+            .chain(prover_fourth_oracles.iter())// 1 items
             .collect();
 
         Self::terminate(terminator)?;
@@ -572,18 +572,11 @@ impl<
         Self::verifier_absorb(&commitments, message, fs_rng)
     }
 
-    fn verifier_absorb(
-        commitments: &[PC::Commitment],
-        message: &ProverMessage<TargetField>,
-        fs_rng: &mut FS,
-    ) {
+    fn verifier_absorb(commitments: &[PC::Commitment], message: &ProverMessage<TargetField>, fs_rng: &mut FS) {
         if MM::RECURSION {
             fs_rng.absorb_native_field_elements(commitments);
             if !message.field_elements.is_empty() {
-                fs_rng.absorb_nonnative_field_elements(
-                    &message.field_elements,
-                    OptimizationType::Weight,
-                );
+                fs_rng.absorb_nonnative_field_elements(&message.field_elements, OptimizationType::Weight);
             };
         } else {
             fs_rng.absorb_bytes(&to_bytes_le![commitments, message].unwrap());

@@ -22,6 +22,8 @@ use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use std::fmt;
 
+use super::DensePolynomial;
+
 /// Stores a sparse polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SparsePolynomial<F: Field> {
@@ -110,6 +112,21 @@ impl<F: Field> SparsePolynomial<F> {
             let mut result = result.into_iter().collect::<Vec<_>>();
             result.sort_by(|a, b| a.0.cmp(&b.0));
             SparsePolynomial::from_coefficients_vec(result)
+        }
+    }
+
+    /// Perform a naive n^2 multiplicatoin of `self` by `other`.
+    pub fn mul_dense(&self, other: &DensePolynomial<F>) -> DensePolynomial<F> {
+        if self.is_zero() || other.is_zero() {
+            DensePolynomial::zero()
+        } else {
+            let mut result = vec![F::zero(); self.degree() + other.degree() + 1];
+            for (i, self_coeff) in self.coeffs.iter() {
+                for (j, other_coeff) in other.coeffs.iter().enumerate() {
+                    result[i + j] += *self_coeff * other_coeff;
+                }
+            }
+            DensePolynomial::from_coefficients_vec(result)
         }
     }
 }

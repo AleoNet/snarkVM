@@ -77,8 +77,8 @@ extern crate snarkvm_utilities;
 pub mod ahp;
 pub use ahp::*;
 
-/// Implements the Marlin verification gadget.
-pub mod constraints;
+// /// Implements the Marlin verification gadget.
+// pub mod constraints;
 
 /// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;

@@ -28,14 +28,12 @@ use crate::{
     marlin::MarlinMode,
     matrices::MatrixArithmetization,
     prover::{state::ProverState, ProverMessage},
+    verifier::VerifierThirdMessage,
+    SelectorPolynomial,
     ToString,
-    Vec, SelectorPolynomial, verifier::VerifierThirdMessage,
+    Vec,
 };
-use snarkvm_algorithms::fft::{
-    EvaluationDomain,
-    Evaluations as EvaluationsOnDomain,
-    SparsePolynomial,
-};
+use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
@@ -208,9 +206,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain =
             EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let non_zero_domain_a = EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_domain_b = EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_domain_c = EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_a =
+            EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_b =
+            EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_c =
+            EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let input_domain =
             EvaluationDomain::new(num_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -611,7 +612,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>, ProverState<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
-        let VerifierFirstMessage { alpha, eta_b, eta_c } = state.verifier_first_message
+        let VerifierFirstMessage { alpha, eta_b, eta_c } = state
+            .verifier_first_message
             .expect("ProverState should include verifier_first_msg when prover_third_round is called");
 
         let beta = verifier_message.beta;
@@ -652,20 +654,23 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             eta_c_times_v_H_alpha_v_H_beta,
         );
 
-        let domains = [state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain];
-        let largest_non_zero_domain = domains
-            .into_iter()
-            .max_by(|a, b| a.size().cmp(&b.size()))
-            .unwrap();
+        let domains = [
+            state.non_zero_a_domain,
+            state.non_zero_b_domain,
+            state.non_zero_c_domain,
+        ];
+        let largest_non_zero_domain = domains.into_iter().max_by(|a, b| a.size().cmp(&b.size())).unwrap();
         let largest_vanishing_poly = largest_non_zero_domain.vanishing_polynomial();
         let lhs_polynomials = [lhs_a, lhs_b, lhs_c]
             .into_iter()
             .zip(domains)
             .map(|(lhs, domain)| largest_non_zero_domain.selector_polynomial(domain).mul_dense(&lhs))
-            .collect::<Vec<_>>().try_into().unwrap();
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         let msg = ProverMessage {
-            field_elements: vec![sum_a, sum_b, sum_c]
+            field_elements: vec![sum_a, sum_b, sum_c],
         };
         let oracles = ProverThirdOracles { g_a, g_b, g_c };
         state.lhs_polynomials = Some(lhs_polynomials);
@@ -769,7 +774,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverFourthOracles<F>), AHPError> {
         let [mut lhs_a, lhs_b, lhs_c] = state.lhs_polynomials.unwrap();
-        lhs_a += &(&(lhs_b * verifier_message.r_b) + &(lhs_c * verifier_message.r_c)); 
+        lhs_a += &(&(lhs_b * verifier_message.r_b) + &(lhs_c * verifier_message.r_c));
         let h = lhs_a;
         let largest_non_zero_domain = Self::max_non_zero_domain(&state.index.index_info);
         h = h.divide_by_vanishing_poly(largest_non_zero_domain).unwrap().0;

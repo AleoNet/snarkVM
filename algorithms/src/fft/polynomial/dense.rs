@@ -410,6 +410,18 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
     }
 }
 
+/// Multiplies `self` by `other: F`.
+impl<F: Field> Mul<F> for DensePolynomial<F> {
+    type Output = Self;
+
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn mul(mut self, other: F) -> Self {
+        self.iter_mut().for_each(|c| *c *= other);
+        self
+    }
+}
+
 impl<F: Field> Deref for DensePolynomial<F> {
     type Target = [F];
 

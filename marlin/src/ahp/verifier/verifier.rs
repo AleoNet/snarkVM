@@ -107,7 +107,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         state.third_round_message = Some(message);
         Ok((message, state))
-
     }
 
     /// Output the third message and next round state.
