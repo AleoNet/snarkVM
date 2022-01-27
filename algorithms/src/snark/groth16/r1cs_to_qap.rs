@@ -27,14 +27,19 @@ use snarkvm_r1cs::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+#[inline]
+fn get_var_index(index: Index, num_public_variables: usize) -> usize {
+    match index {
+        Index::Public(i) => i,
+        Index::Private(i) => num_public_variables + i,
+    }
+}
+
 fn evaluate_constraint<E: PairingEngine>(terms: &[(E::Fr, Index)], assignment: &[E::Fr], num_input: usize) -> E::Fr {
     cfg_iter!(terms)
         .map(|&(coeff, index)| {
-            let val = match index {
-                Index::Public(i) => assignment[i],
-                Index::Private(i) => assignment[num_input + i],
-            };
-            val * coeff
+            let index = get_var_index(index, num_input);
+            assignment[index] * coeff
         })
         .sum()
 }
@@ -72,27 +77,15 @@ impl R1CStoQAP {
 
         for (i, x) in u.iter().enumerate().take(assembly.num_constraints()) {
             for &(ref coeff, index) in assembly.at[i].iter() {
-                let index = match index {
-                    Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
-                };
-
+                let index = get_var_index(index, assembly.num_public_variables);
                 a[index] += *x * coeff;
             }
             for &(ref coeff, index) in assembly.bt[i].iter() {
-                let index = match index {
-                    Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
-                };
-
+                let index = get_var_index(index, assembly.num_public_variables);
                 b[index] += u[i] * coeff;
             }
             for &(ref coeff, index) in assembly.ct[i].iter() {
-                let index = match index {
-                    Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
-                };
-
+                let index = get_var_index(index, assembly.num_public_variables);
                 c[index] += u[i] * coeff;
             }
         }
