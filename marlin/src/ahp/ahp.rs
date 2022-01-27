@@ -165,8 +165,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         domain_b: EvaluationDomain<F>,
         domain_c: EvaluationDomain<F>,
     ) -> EvaluationDomain<F> {
-        let domains = [domain_a, domain_b, domain_c];
-        domains.into_iter().max_by(|a, b| a.size().cmp(&b.size())).unwrap()
+        [domain_a, domain_b, domain_c]
+            .into_iter()
+            .max_by_key(|d| d.size())
+            .unwrap()
     }
 
     /// Construct the linear combinations that are checked by the AHP.
