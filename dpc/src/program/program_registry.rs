@@ -23,12 +23,12 @@ use std::{collections::HashMap, sync::Arc};
 
 /// The on chain program registry to stores all verification keys.
 #[derive(Derivative)]
-#[derivative(Debug(bound = "N: Network"))]
+#[derivative(Debug(bound = "N: Network"), Clone(bound = "N: Network"))]
 pub struct ProgramRegistry<N: Network> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<N::ProgramIDParameters>, //TODO (raychu86): Possibly introduce a new parameter here.
+    tree: Arc<MerkleTree<N::ProgramIDParameters>>, // TODO (raychu86): Possibly introduce a new parameter here.
     #[derivative(Debug = "ignore")]
-    programs: HashMap<N::ProgramID, ProgramFunctions<N>>, //TODO (raychu86): Replace vk with circuit IR.
+    programs: HashMap<N::ProgramID, ProgramFunctions<N>>, // TODO (raychu86): Replace vk with circuit IR.
     num_programs: u32,
 }
 
@@ -49,10 +49,10 @@ impl<N: Network> ProgramRegistry<N> {
     pub fn new() -> Result<Self> {
         // Initialize a new functions tree, and add all functions to the tree.
         let mut registry = Self {
-            tree: MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
+            tree: Arc::new(MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
                 Arc::new(N::program_id_parameters().clone()),
                 &[],
-            )?,
+            )?),
             programs: Default::default(),
             num_programs: 0,
         };
@@ -72,7 +72,7 @@ impl<N: Network> ProgramRegistry<N> {
     }
 
     /// Add a program vks to the tree
-    fn add(&mut self, program: (N::ProgramID, ProgramFunctions<N>)) -> Result<()> {
+    pub(crate) fn add(&mut self, program: (N::ProgramID, ProgramFunctions<N>)) -> Result<()> {
         // Ensure the list of given function vks is non-empty.
         if program.1.0.is_empty() {
             return Err(anyhow!("The list of given function vks must be non-empty"));
@@ -104,9 +104,24 @@ impl<N: Network> ProgramRegistry<N> {
             return Err(anyhow!("The program already exists in the registry"));
         }
 
-        self.tree = self.tree.rebuild(self.num_programs as usize, &[program.0])?;
+        self.tree = Arc::new(self.tree.rebuild(self.num_programs as usize, &[program.0])?);
         self.programs.insert(program.0, program.1);
         self.num_programs += 1;
+
+        Ok(())
+    }
+
+    /// Adds all given programs to the tree.
+    pub(crate) fn add_all(&mut self, programs: Vec<(N::ProgramID, ProgramFunctions<N>)>) -> Result<()> {
+        // Ensure the list of given programs is non-empty.
+        if programs.is_empty() {
+            return Err(anyhow!("The list of given programs must be non-empty"));
+        }
+
+        // TODO (raychu86): Optimize this operation.
+        for program in programs {
+            self.add(program)?;
+        }
 
         Ok(())
     }

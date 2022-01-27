@@ -75,7 +75,7 @@ impl<N: Network> VirtualMachine<N> {
                 rng,
             )?,
             Operation::Deploy(caller, amount, program_id, functions) => {
-                Self::deploy(request, caller, amount, program_id, functions.clone(), vec![], rng)?
+                Self::deploy(request, caller, amount, program_id, functions, vec![], rng)?
             }
         };
 
