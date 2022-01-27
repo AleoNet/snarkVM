@@ -59,7 +59,9 @@ pub trait IntegerTrait<I: IntegerType>:
     AddAssign
     + Add<Output = Self>
     + AddChecked<Output = Self>
+    + AddCheckedField<Output = Self>  // TODO (@pranav) Temporary while experimenting with field-based integer operations.
     + AddWrapped<Output = Self>
+    + AddWrappedField<Output = Self>  // TODO (@pranav) Temporary while experimenting with field-based integer operations.
     + Clone
     + Debug
     + Eject<Primitive = I>
