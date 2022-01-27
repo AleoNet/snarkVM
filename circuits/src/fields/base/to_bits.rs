@@ -81,7 +81,8 @@ impl<E: Environment> BaseField<E> {
     pub fn extract_lower_k_bits_le(&self, k: usize) -> Vec<Boolean<E>> {
         if k > 253 {
             E::halt(format!(
-                "Attempted to extract {} bits from a 253-bit base field element.", k
+                "Attempted to extract {} bits from a 253-bit base field element.",
+                k
             ))
         }
 

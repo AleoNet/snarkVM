@@ -16,7 +16,9 @@
 
 pub mod add;
 pub mod add_checked;
+pub mod add_checked_field; // TODO (@pranav) Temporary while experimenting with field-based integer operations.
 pub mod add_wrapped;
+pub mod add_wrapped_field; // TODO (@pranav) Temporary while experimenting with field-based integer operations.
 pub mod equal;
 pub mod from_bits;
 pub mod neg;
