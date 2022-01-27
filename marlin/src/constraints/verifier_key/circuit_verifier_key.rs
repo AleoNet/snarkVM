@@ -451,7 +451,7 @@ where
 mod test {
     use core::ops::MulAssign;
 
-    use blake2::Blake2s;
+    use blake2::Blake2s256;
 
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
@@ -470,7 +470,7 @@ mod test {
     use super::*;
 
     type MultiPC = SonicKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
+    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinTestnet1Mode>;
 
     type MultiPCVar = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
