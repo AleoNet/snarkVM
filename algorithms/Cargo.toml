@@ -107,10 +107,6 @@ version = "0.1.8"
 [dependencies.anyhow]
 version = "1.0"
 
-[dependencies.blake2]
-version = "0.10"
-optional = true
-
 [dependencies.blake2s_simd]
 version = "1.0"
 
@@ -119,9 +115,6 @@ version = "0.5"
 
 [dependencies.derivative]
 version = "2"
-
-[dependencies.digest]
-version = "0.10"
 
 [dependencies.hex]
 version = "0.4.3"
@@ -242,7 +235,7 @@ wasm = [
 ]
 commitment = [ "crh" ]
 crh = [ ]
-crypto_hash = [ "blake2" ]
+crypto_hash = [ ]
 encryption = [ "signature" ]
 fft = [ ]
 hash_to_curve = [ ]
