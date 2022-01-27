@@ -79,6 +79,12 @@ impl<E: Environment> BaseField<E> {
     /// Requires that the upper n - k bits are zero.
     ///
     pub fn extract_lower_k_bits_le(&self, k: usize) -> Vec<Boolean<E>> {
+        if k > 253 {
+            E::halt(format!(
+                "Attempted to extract {} bits from a 253-bit base field element.", k
+            ))
+        }
+
         let mode = match self.is_constant() {
             true => Mode::Constant,
             false => Mode::Private,
