@@ -224,6 +224,15 @@ pub trait AddChecked<Rhs: ?Sized = Self> {
     fn add_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
+// TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
+//  of checked integer addition.
+/// Binary operator for adding two values, enforcing an overflow never occurs.
+pub trait AddCheckedField<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn add_checked_field(&self, rhs: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for adding two values, bounding the sum to `MAX` if an overflow occurs.
 pub trait AddSaturating<Rhs: ?Sized = Self> {
     type Output;
@@ -236,9 +245,14 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
 
-    // TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
-    //  of wrapped integer addition.
+// TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
+//  of wrapped integer addition.
+/// Binary operator for adding two values, wrapping the sum if an overflow occurs.
+pub trait AddWrappedField<Rhs: ?Sized = Self> {
+    type Output;
+
     fn add_wrapped_field(&self, rhs: &Rhs) -> Self::Output;
 }
 
