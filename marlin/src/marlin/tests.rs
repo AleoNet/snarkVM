@@ -80,7 +80,8 @@ mod marlin {
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinTestnet1Mode, Vec<Fr>>;
+    type MarlinInst =
+        MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinTestnet1Mode, Vec<Fr>>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
     type MarlinSonicInst =
