@@ -71,9 +71,8 @@ impl R1CStoQAP {
         let mut b = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut c = vec![E::Fr::zero(); qap_num_variables + 1];
 
-        for i in 0..assembly.num_public_variables {
-            a[i] = u[assembly.num_constraints() + i];
-        }
+        a[..assembly.num_public_variables]
+            .copy_from_slice(&u[assembly.num_constraints()..][..assembly.num_public_variables]);
 
         for (i, x) in u.iter().enumerate().take(assembly.num_constraints()) {
             for &(ref coeff, index) in assembly.at[i].iter() {
