@@ -109,6 +109,7 @@ version = "1.0"
 
 [dependencies.blake2s_simd]
 version = "1.0"
+optional = true
 
 [dependencies.crossbeam-channel]
 version = "0.5"
@@ -235,7 +236,7 @@ wasm = [
 ]
 commitment = [ "crh" ]
 crh = [ ]
-crypto_hash = [ ]
+crypto_hash = [ "blake2s_simd" ]
 encryption = [ "signature" ]
 fft = [ ]
 hash_to_curve = [ "crypto_hash" ]
