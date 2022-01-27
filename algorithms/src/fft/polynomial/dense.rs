@@ -263,7 +263,6 @@ impl<F: Field> From<super::SparsePolynomial<F>> for DensePolynomial<F> {
             result[i] = coeff;
         }
         DensePolynomial::from_coefficients_vec(result)
-   
     }
 }
 

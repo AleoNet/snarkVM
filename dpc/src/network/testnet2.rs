@@ -58,8 +58,7 @@ use snarkvm_gadgets::{
     curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
 use snarkvm_marlin::{
-    constraints::snark::MarlinSNARK,
-    marlin::{MarlinPoswMode, MarlinTestnet2Mode},
+    marlin::{MarlinPoswMode, MarlinSNARK, MarlinTestnet2Mode},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirChaChaRng,
     PoseidonSponge,

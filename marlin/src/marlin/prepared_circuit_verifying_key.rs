@@ -22,11 +22,18 @@ use snarkvm_polycommit::PolynomialCommitment;
 use super::MarlinMode;
 
 /// Verification key, prepared (preprocessed) for use in pairings.
+
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = "F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode"))]
 pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Size of the variable domain.
     pub constraint_domain_size: u64,
-    /// Size of the matrix domain.
-    pub non_zero_domain_size: u64,
+    /// Size of the domain that represents A.
+    pub non_zero_a_domain_size: u64,
+    /// Size of the domain that represents B.
+    pub non_zero_b_domain_size: u64,
+    /// Size of the domain that represents C.
+    pub non_zero_c_domain_size: u64,
     /// Commitments to the index polynomials, prepared.
     pub prepared_index_comms: Vec<PC::PreparedCommitment>,
     /// Prepared version of the poly-commit scheme's verification key.
@@ -35,18 +42,4 @@ pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: Polyno
     /// is actually standard verify), as well as in absorbing the original vk into
     /// the Fiat-Shamir sponge.
     pub orig_vk: CircuitVerifyingKey<F, CF, PC, MM>,
-}
-
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> Clone
-    for PreparedCircuitVerifyingKey<F, CF, PC, MM>
-{
-    fn clone(&self) -> Self {
-        PreparedCircuitVerifyingKey {
-            constraint_domain_size: self.constraint_domain_size,
-            non_zero_domain_size: self.non_zero_domain_size,
-            prepared_index_comms: self.prepared_index_comms.clone(),
-            prepared_verifier_key: self.prepared_verifier_key.clone(),
-            orig_vk: self.orig_vk.clone(),
-        }
-    }
 }

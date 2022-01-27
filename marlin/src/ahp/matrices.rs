@@ -206,10 +206,10 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     };
 
     MatrixArithmetization {
-        row: LabeledPolynomial::new("row_".to_owned() + &label, row, None, None),
-        col: LabeledPolynomial::new("col_".to_owned() + &label, col, None, None),
-        val: LabeledPolynomial::new("val_".to_owned() + &label, val, None, None),
-        row_col: LabeledPolynomial::new("row_col_".to_owned() + &label, row_col, None, None),
+        row: LabeledPolynomial::new("row_".to_owned() + label, row, None, None),
+        col: LabeledPolynomial::new("col_".to_owned() + label, col, None, None),
+        val: LabeledPolynomial::new("val_".to_owned() + label, val, None, None),
+        row_col: LabeledPolynomial::new("row_col_".to_owned() + label, row_col, None, None),
         evals_on_K,
     }
 }
@@ -220,7 +220,6 @@ mod tests {
     use crate::num_non_zero;
     use snarkvm_curves::bls12_377::Fr as F;
     use snarkvm_fields::{One, Zero};
-    use snarkvm_utilities::UniformRand;
 
     fn entry(matrix: &Matrix<F>, row: usize, col: usize) -> F {
         matrix[row]
@@ -263,20 +262,9 @@ mod tests {
             vec![],
             vec![],
         ];
-        let joint_matrix = crate::ahp::indexer::sum_matrices(&a, &b, &c);
-        let num_non_zero = num_non_zero(&joint_matrix);
-        let interpolation_domain = EvaluationDomain::new(num_non_zero).unwrap();
+
         let constraint_domain = EvaluationDomain::new(2 + 6).unwrap();
         let input_domain = EvaluationDomain::new(2).unwrap();
-        let joint_arith = arithmetize_matrix(
-            &joint_matrix,
-            &a,
-            &b,
-            &c,
-            interpolation_domain,
-            constraint_domain,
-            input_domain,
-        );
         let inverse_map = constraint_domain
             .elements()
             .enumerate()
@@ -289,39 +277,33 @@ mod tests {
                 (elements[reindexed_i], i)
             })
             .collect::<HashMap<_, _>>();
-
         let eq_poly_vals: HashMap<F, F> = constraint_domain
             .elements()
             .zip(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
             .collect();
 
-        let mut rng = snarkvm_utilities::test_rng();
-        let eta_a = F::rand(&mut rng);
-        let eta_b = F::rand(&mut rng);
-        let eta_c = F::rand(&mut rng);
-        for (k_index, k) in interpolation_domain.elements().enumerate() {
-            let row_val = joint_arith.row.evaluate(k);
-            let col_val = joint_arith.col.evaluate(k);
+        for (matrix, label) in [(a, "a"), (b, "b"), (c, "c")] {
+            let num_non_zero = num_non_zero(&matrix);
+            let interpolation_domain = EvaluationDomain::new(num_non_zero).unwrap();
+            let arith = arithmetize_matrix(&matrix, label, interpolation_domain, constraint_domain, input_domain);
 
-            let inverse = (eq_poly_vals[&row_val]).inverse().unwrap();
-            // we're in transpose land.
+            for (k_index, k) in interpolation_domain.elements().enumerate() {
+                let row_val = arith.row.evaluate(k);
+                let col_val = arith.col.evaluate(k);
 
-            let val_a = joint_arith.val_a.evaluate(k);
-            let val_b = joint_arith.val_b.evaluate(k);
-            let val_c = joint_arith.val_c.evaluate(k);
-            assert_eq!(joint_arith.evals_on_K.row[k_index], row_val);
-            assert_eq!(joint_arith.evals_on_K.col[k_index], col_val);
-            assert_eq!(joint_arith.evals_on_K.val_a[k_index], val_a);
-            assert_eq!(joint_arith.evals_on_K.val_b[k_index], val_b);
-            assert_eq!(joint_arith.evals_on_K.val_c[k_index], val_c);
-            if k_index < num_non_zero {
-                let col = *dbg!(reindexed_inverse_map.get(&row_val).unwrap());
-                let row = *dbg!(inverse_map.get(&col_val).unwrap());
-                assert!(joint_matrix[row].binary_search(&col).is_ok());
-                assert_eq!(
-                    eta_a * val_a + eta_b * val_b + eta_c * val_c,
-                    inverse * (eta_a * entry(&a, row, col) + eta_b * entry(&b, row, col) + eta_c * entry(&c, row, col)),
-                );
+                let inverse = (eq_poly_vals[&row_val]).inverse().unwrap();
+                // we're in transpose land.
+
+                let val = arith.val.evaluate(k);
+                assert_eq!(arith.evals_on_K.row[k_index], row_val);
+                assert_eq!(arith.evals_on_K.col[k_index], col_val);
+                assert_eq!(arith.evals_on_K.val[k_index], val);
+                if k_index < num_non_zero {
+                    let col = *dbg!(reindexed_inverse_map.get(&row_val).unwrap());
+                    let row = *dbg!(inverse_map.get(&col_val).unwrap());
+                    assert!(matrix[row].iter().any(|(_, c)| *c == col));
+                    assert_eq!(val, inverse * entry(&matrix, row, col),);
+                }
             }
         }
     }

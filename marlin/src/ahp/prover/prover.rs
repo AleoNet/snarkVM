@@ -67,7 +67,7 @@ impl<F: Field> ProverFirstOracles<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [Some(&self.w), Some(&self.z_a), Some(&self.z_b), self.mask_poly.as_ref()]
             .into_iter()
-            .filter_map(|p| p)
+            .flatten()
     }
 }
 
@@ -585,7 +585,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
 
         state.w_poly = None;
-        state.t_poly = Some(t_poly);
         state.verifier_first_message = Some(*verifier_message);
         end_timer!(round_time);
 
@@ -627,8 +626,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_b_times_v_H_alpha_v_H_beta = eta_b * v_H_alpha_v_H_beta;
         let eta_c_times_v_H_alpha_v_H_beta = eta_c * v_H_alpha_v_H_beta;
 
-        let t_at_beta = state.t_poly.as_ref().unwrap().evaluate(beta);
-
         let (sum_a, lhs_a, g_a) = Self::third_round_helper(
             "a",
             state.non_zero_a_domain,
@@ -660,7 +657,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             state.non_zero_c_domain,
         ];
         let largest_non_zero_domain = domains.into_iter().max_by(|a, b| a.size().cmp(&b.size())).unwrap();
-        let largest_vanishing_poly = largest_non_zero_domain.vanishing_polynomial();
         let lhs_polynomials = [lhs_a, lhs_b, lhs_c]
             .into_iter()
             .zip(domains)
@@ -725,7 +721,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let f_evals_time = start_timer!(|| "Computing f evals on K");
         let mut inverses: Vec<_> = cfg_iter!(row_on_K.evaluations)
-            .zip(col_on_K.evaluations)
+            .zip(&col_on_K.evaluations)
             .map(|(r, c)| (beta - r) * (alpha - c))
             .collect();
         batch_inversion(&mut inverses);
@@ -770,12 +766,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the fourth round message and the next state.
     pub fn prover_fourth_round<'a, R: RngCore>(
         verifier_message: &VerifierThirdMessage<F>,
-        mut state: ProverState<'a, F, MM>,
+        state: ProverState<'a, F, MM>,
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverFourthOracles<F>), AHPError> {
         let [mut lhs_a, lhs_b, lhs_c] = state.lhs_polynomials.unwrap();
         lhs_a += &(&(lhs_b * verifier_message.r_b) + &(lhs_c * verifier_message.r_c));
-        let h = lhs_a;
+        let mut h = lhs_a;
         let largest_non_zero_domain = Self::max_non_zero_domain(&state.index.index_info);
         h = h.divide_by_vanishing_poly(largest_non_zero_domain).unwrap().0;
         let msg = ProverMessage::default();
@@ -790,7 +786,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the degree bounds of oracles in the third round.
-    pub fn prover_fourth_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_fourth_round_degree_bounds(_: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         [None].into_iter()
     }
 }

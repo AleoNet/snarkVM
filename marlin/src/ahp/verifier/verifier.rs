@@ -126,8 +126,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         state: VerifierState<TargetField, MM>,
         _: &'a mut R,
     ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField, MM>) {
-        let with_vanishing = MM::RECURSION;
-        let alpha = state.first_round_message.unwrap().alpha;
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
@@ -206,12 +204,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         query_set.insert(("g_b".into(), ("gamma".into(), gamma)));
         query_set.insert(("g_c".into(), ("gamma".into(), gamma)));
         query_set.insert(("inner_sumcheck".into(), ("gamma".into(), gamma)));
-
-        if with_vanishing {
-            query_set.insert(("vanishing_poly_h_alpha".into(), ("alpha".into(), alpha)));
-            query_set.insert(("vanishing_poly_h_beta".into(), ("beta".into(), beta)));
-            query_set.insert(("vanishing_poly_k_gamma".into(), ("gamma".into(), gamma)));
-        }
 
         (query_set, state)
     }

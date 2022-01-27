@@ -46,9 +46,6 @@ pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     /// the blinding polynomial for the first round
     pub(super) mask_poly: Option<LabeledPolynomial<F>>,
 
-    /// The polynomial `t` whose value is checked via the hologrphic sumcheck.
-    pub(super) t_poly: Option<Polynomial<F>>,
-
     /// A domain that is sized for the public input.
     pub(super) input_domain: EvaluationDomain<F>,
 
@@ -91,7 +88,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
             non_zero_b_domain,
             non_zero_c_domain,
             mask_poly: None,
-            t_poly: None,
             verifier_first_message: None,
             w_poly: None,
             mz_poly_randomizer: None,

@@ -56,12 +56,7 @@ use snarkvm_gadgets::{
     },
     curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
-use snarkvm_marlin::{
-    constraints::snark::MarlinSNARK,
-    marlin::MarlinPoswMode,
-    FiatShamirAlgebraicSpongeRng,
-    PoseidonSponge,
-};
+use snarkvm_marlin::{marlin::MarlinPoswMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
 use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};

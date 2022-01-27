@@ -47,16 +47,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         "row_b", "col_b", "val_b", "row_col_b",
         "row_c", "col_c", "val_c", "row_col_c",
     ];
-    /// The labels for the polynomials output and vanishing polynomials by the AHP indexer.
-    #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS_WITH_VANISHING: [&'static str; 14] = [
-        // Polynomials for M
-        "row_a", "col_a", "val_a", "row_col_a",
-        "row_b", "col_b", "val_b", "row_col_b",
-        "row_c", "col_c", "val_c", "row_col_c",
-        // Vanishing polynomials
-        "vanishing_poly_h", "vanishing_poly_k"
-    ];
     /// The linear combinations that are statically known to evaluate to zero.
     #[rustfmt::skip]
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["inner_sumcheck", "outer_sumcheck"];
@@ -78,11 +68,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ];
 
     pub(crate) fn indexer_polynomials() -> impl Iterator<Item = &'static str> {
-        if MM::RECURSION {
-            Self::INDEXER_POLYNOMIALS_WITH_VANISHING.as_ref().iter().copied()
-        } else {
-            Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
-        }
+        Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
     }
 
     pub(crate) fn prover_polynomials() -> impl Iterator<Item = &'static str> {
@@ -140,7 +126,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Get all the strict degree bounds enforced in the AHP.
     pub fn get_degree_bounds(info: &CircuitInfo<F>) -> [usize; 4] {
-        let mut degree_bounds = [0usize; 2];
         let num_constraints = info.num_constraints;
         let num_non_zero_a = info.num_non_zero_a;
         let num_non_zero_b = info.num_non_zero_b;
@@ -254,11 +239,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         //  Inner sumcheck:
         let mut inner_sumcheck = LinearCombination::empty("inner_sumcheck");
 
-        let beta_alpha = beta * alpha;
-
         let g_a = LinearCombination::new("g_a", vec![(F::one(), "g_a")]);
         let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
-        let v_K_a_at_gamma = non_zero_a_domain.evaluate_vanishing_polynomial(gamma);
         let selector_a = largest_non_zero_domain
             .selector_polynomial(non_zero_a_domain)
             .evaluate(gamma);
@@ -278,7 +260,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g_b = LinearCombination::new("g_b", vec![(F::one(), "g_b")]);
         let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
-        let v_K_b_at_gamma = non_zero_b_domain.evaluate_vanishing_polynomial(gamma);
         let selector_b = largest_non_zero_domain
             .selector_polynomial(non_zero_b_domain)
             .evaluate(gamma);
@@ -298,7 +279,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g_c = LinearCombination::new("g_c", vec![(F::one(), "g_c")]);
         let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
-        let v_K_c_at_gamma = non_zero_c_domain.evaluate_vanishing_polynomial(gamma);
         let selector_c = largest_non_zero_domain
             .selector_polynomial(non_zero_c_domain)
             .evaluate(gamma);
@@ -327,19 +307,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         linear_combinations.push(g_c);
         linear_combinations.push(inner_sumcheck);
 
-        if MM::RECURSION {
-            let vanishing_poly_h_alpha =
-                LinearCombination::new("vanishing_poly_h_alpha", vec![(F::one(), "vanishing_poly_h")]);
-            let vanishing_poly_h_beta =
-                LinearCombination::new("vanishing_poly_h_beta", vec![(F::one(), "vanishing_poly_h")]);
-            let vanishing_poly_k_gamma =
-                LinearCombination::new("vanishing_poly_k_gamma", vec![(F::one(), "vanishing_poly_k")]);
-
-            linear_combinations.push(vanishing_poly_h_alpha);
-            linear_combinations.push(vanishing_poly_h_beta);
-            linear_combinations.push(vanishing_poly_k_gamma);
-        }
-
         linear_combinations.sort_by(|a, b| a.label.cmp(&b.label));
         Ok(linear_combinations)
     }
@@ -362,7 +329,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         )]);
         let alpha_beta = alpha * beta;
 
-        let b = LinearCombination::new("denom".to_owned() + label, vec![
+        let mut b = LinearCombination::new("denom".to_owned() + label, vec![
             (alpha_beta, LCTerm::One),
             (-alpha, ("row".to_owned() + label).into()),
             (-beta, ("col".to_owned() + label).into()),

@@ -56,13 +56,12 @@ use snarkvm_utilities::io::{
 #[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
-    collections::{BTreeSet, BTreeMap},
+    collections::BTreeMap,
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
     io::{Read, Write, Result as IoResult, {self}},
 };
-use snarkvm_polycommit::PolynomialCommitment;
 
 #[cfg(not(feature = "std"))]
 macro_rules! eprintln {
@@ -82,6 +81,7 @@ pub use ahp::*;
 
 /// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;
+pub use marlin::MarlinSNARK;
 
 /// RNGs for the Marlin SNARK.
 pub mod fiat_shamir;

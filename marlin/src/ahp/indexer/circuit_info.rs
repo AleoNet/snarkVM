@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::AHPForR1CS, marlin::MarlinMode, BTreeSet, Matrix, Vec};
+use crate::{ahp::AHPForR1CS, marlin::MarlinMode};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
@@ -40,23 +40,6 @@ pub struct CircuitInfo<F> {
 
     #[doc(hidden)]
     pub f: PhantomData<F>,
-}
-
-pub(crate) fn sum_matrices<F: PrimeField>(a: &Matrix<F>, b: &Matrix<F>, c: &Matrix<F>) -> Vec<Vec<usize>> {
-    a.iter()
-        .zip(b)
-        .zip(c)
-        .map(|((row_a, row_b), row_c)| {
-            row_a
-                .iter()
-                .map(|(_, i)| *i)
-                .chain(row_b.iter().map(|(_, i)| *i))
-                .chain(row_c.iter().map(|(_, i)| *i))
-                .collect::<BTreeSet<_>>()
-                .into_iter()
-                .collect()
-        })
-        .collect()
 }
 
 impl<F: PrimeField> CircuitInfo<F> {

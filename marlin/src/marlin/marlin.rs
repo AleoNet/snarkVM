@@ -24,18 +24,17 @@ use crate::{
     Vec,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{
     Evaluations,
     LabeledCommitment,
-    LabeledPolynomial,
     PCProof,
     PCRandomness,
     PCUniversalParams,
     PolynomialCommitment,
 };
-use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
+use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 #[cfg(not(feature = "std"))]
@@ -49,20 +48,16 @@ use core::{
 use rand_core::RngCore;
 
 /// The Marlin proof system.
-#[derive(Clone, Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Debug(bound = ""))]
 pub struct MarlinSNARK<
     TargetField: PrimeField,
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
->(
-    #[doc(hidden)] PhantomData<TargetField>,
-    #[doc(hidden)] PhantomData<BaseField>,
-    #[doc(hidden)] PhantomData<PC>,
-    #[doc(hidden)] PhantomData<FS>,
-    #[doc(hidden)] PhantomData<MM>,
-);
+    Input: ToConstraintField<TargetField>,
+>(#[doc(hidden)] PhantomData<(TargetField, BaseField, PC, FS, MM, Input)>);
 
 impl<
     TargetField: PrimeField,
@@ -70,7 +65,8 @@ impl<
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-> MarlinSNARK<TargetField, BaseField, PC, FS, MM>
+    Input: ToConstraintField<TargetField>,
+> MarlinSNARK<TargetField, BaseField, PC, FS, MM, Input>
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
@@ -114,32 +110,9 @@ impl<
         let (committer_key, verifier_key) =
             PC::trim(&srs, circuit.max_degree(), supported_hiding_bound, Some(&coeff_support))?;
 
-        let mut vanishing_polys = vec![];
-        if MM::RECURSION {
-            let constraint_domain = EvaluationDomain::new(circuit.index_info.num_constraints)
-                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-            let non_zero_domain = EvaluationDomain::new(circuit.index_info.num_non_zero)
-                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-            vanishing_polys = vec![
-                LabeledPolynomial::new(
-                    "vanishing_poly_h".to_string(),
-                    constraint_domain.vanishing_polynomial().into(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "vanishing_poly_k".to_string(),
-                    non_zero_domain.vanishing_polynomial().into(),
-                    None,
-                    None,
-                ),
-            ];
-        }
-
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, circuit.iter().chain(vanishing_polys.iter()), None)?;
+            PC::commit(&committer_key, circuit.iter(), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
@@ -200,32 +173,9 @@ impl<
             Some(&coefficient_support),
         )?;
 
-        let mut vanishing_polynomials = vec![];
-        if MM::RECURSION {
-            let constraint_domain = EvaluationDomain::new(index.index_info.num_constraints)
-                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-            let non_zero_domain =
-                EvaluationDomain::new(index.index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-            vanishing_polynomials = vec![
-                LabeledPolynomial::new(
-                    "vanishing_poly_h".to_string(),
-                    constraint_domain.vanishing_polynomial().into(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "vanishing_poly_k".to_string(),
-                    non_zero_domain.vanishing_polynomial().into(),
-                    None,
-                    None,
-                ),
-            ];
-        }
-
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter().chain(vanishing_polynomials.iter()), None)?;
+            PC::commit(&committer_key, index.iter(), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
@@ -285,21 +235,9 @@ impl<
         let padded_public_input = prover_init_state.padded_public_input();
 
         let mut fs_rng = FS::new();
-
-        if MM::RECURSION {
-            fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-            fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
-            fs_rng.absorb_nonnative_field_elements(padded_public_input, OptimizationType::Weight);
-        } else {
-            fs_rng.absorb_bytes(
-                &to_bytes_le![
-                    &Self::PROTOCOL_NAME,
-                    &circuit_proving_key.circuit_verifying_key,
-                    padded_public_input
-                ]
-                .unwrap(),
-            );
-        }
+        fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
+        fs_rng.absorb_nonnative_field_elements(padded_public_input, OptimizationType::Weight);
 
         // --------------------------------------------------------------------
         // First round
@@ -399,35 +337,10 @@ impl<
 
         Self::terminate(terminator)?;
 
-        let vanishing_polys = if MM::RECURSION {
-            let constraint_domain = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_constraints)
-                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-            let non_zero_domain = EvaluationDomain::new(circuit_proving_key.circuit.index_info.num_non_zero)
-                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-            vec![
-                LabeledPolynomial::new(
-                    "vanishing_poly_h".to_string(),
-                    constraint_domain.vanishing_polynomial().into(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "vanishing_poly_k".to_string(),
-                    non_zero_domain.vanishing_polynomial().into(),
-                    None,
-                    None,
-                ),
-            ]
-        } else {
-            vec![]
-        };
-
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(vanishing_polys.iter()) // 0 or 2 items
             .chain(prover_first_oracles.iter()) // 3 or 4 items
             .chain(prover_second_oracles.iter())// 3 items
             .chain(prover_third_oracles.iter())// 4 items
@@ -512,43 +425,24 @@ impl<
 
         Self::terminate(terminator)?;
 
-        if MM::RECURSION {
-            fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
-        } else {
-            fs_rng.absorb_bytes(&to_bytes_le![&evaluations].unwrap());
-        }
+        fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
 
-        let pc_proof = if MM::RECURSION {
-            let num_open_challenges: usize = 5;
+        let num_open_challenges: usize = 5;
 
-            let mut opening_challenges = Vec::new();
-            opening_challenges.append(&mut fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?);
+        let mut opening_challenges = Vec::new();
+        opening_challenges.append(&mut fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?);
 
-            let opening_challenges_f = |i| opening_challenges[i as usize];
+        let opening_challenges_f = |i| opening_challenges[i as usize];
 
-            PC::open_combinations_individual_opening_challenges(
-                &circuit_proving_key.committer_key,
-                &lc_s,
-                polynomials,
-                &labeled_commitments,
-                &query_set,
-                &opening_challenges_f,
-                &commitment_randomnesses,
-            )?
-        } else {
-            let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
-
-            PC::open_combinations(
-                &circuit_proving_key.committer_key,
-                &lc_s,
-                polynomials,
-                &labeled_commitments,
-                &query_set,
-                opening_challenge,
-                &commitment_randomnesses,
-                Some(zk_rng),
-            )?
-        };
+        let pc_proof = PC::open_combinations_individual_opening_challenges(
+            &circuit_proving_key.committer_key,
+            &lc_s,
+            polynomials,
+            &labeled_commitments,
+            &query_set,
+            &opening_challenges_f,
+            &commitment_randomnesses,
+        )?;
 
         Self::terminate(terminator)?;
 
@@ -568,19 +462,15 @@ impl<
         message: &ProverMessage<TargetField>,
         fs_rng: &mut FS,
     ) {
-        let commitments: Vec<_> = commitments.into_iter().map(|c| c.commitment()).cloned().collect();
+        let commitments: Vec<_> = commitments.iter().map(|c| c.commitment()).cloned().collect();
         Self::verifier_absorb(&commitments, message, fs_rng)
     }
 
     fn verifier_absorb(commitments: &[PC::Commitment], message: &ProverMessage<TargetField>, fs_rng: &mut FS) {
-        if MM::RECURSION {
-            fs_rng.absorb_native_field_elements(commitments);
-            if !message.field_elements.is_empty() {
-                fs_rng.absorb_nonnative_field_elements(&message.field_elements, OptimizationType::Weight);
-            };
-        } else {
-            fs_rng.absorb_bytes(&to_bytes_le![commitments, message].unwrap());
-        }
+        fs_rng.absorb_native_field_elements(commitments);
+        if !message.field_elements.is_empty() {
+            fs_rng.absorb_nonnative_field_elements(&message.field_elements, OptimizationType::Weight);
+        };
     }
 
     /// Verify that a proof for the constraint system defined by `C` asserts that
@@ -634,7 +524,6 @@ impl<
                 core::cmp::max(public_input.len(), input_domain.size()),
                 TargetField::zero(),
             );
-            assert!(new_input.first().unwrap().is_one());
             new_input
         };
         let public_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
@@ -645,15 +534,9 @@ impl<
 
         let mut fs_rng = FS::with_parameters(fs_parameters);
 
-        if MM::RECURSION {
-            fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-            fs_rng.absorb_native_field_elements(&circuit_verifying_key.circuit_commitments);
-            fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
-        } else {
-            fs_rng.absorb_bytes(
-                &to_bytes_le![&Self::PROTOCOL_NAME, &circuit_verifying_key, padded_public_input].unwrap(),
-            );
-        }
+        fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        fs_rng.absorb_native_field_elements(&circuit_verifying_key.circuit_commitments);
+        fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
 
         // --------------------------------------------------------------------
         // First round
@@ -671,7 +554,7 @@ impl<
         // --------------------------------------------------------------------
         // Third round
         Self::verifier_absorb(third_commitments, &proof.prover_messages[2], &mut fs_rng);
-        let (third_msg, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut fs_rng)?;
+        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -708,11 +591,7 @@ impl<
 
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state, &mut fs_rng);
 
-        if MM::RECURSION {
-            fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
-        } else {
-            fs_rng.absorb_bytes(&to_bytes_le![&proof.evaluations].unwrap());
-        }
+        fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
 
         let mut evaluations = Evaluations::new();
 
@@ -737,7 +616,7 @@ impl<
             &verifier_state,
         )?;
 
-        let evaluations_are_correct = if MM::RECURSION {
+        let evaluations_are_correct = {
             let num_open_challenges: usize = 7;
 
             let opening_challenges = fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?;
@@ -752,19 +631,6 @@ impl<
                 &evaluations,
                 &proof.pc_proof,
                 &opening_challenges_f,
-                &mut fs_rng,
-            )?
-        } else {
-            let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
-
-            PC::check_combinations(
-                &circuit_verifying_key.verifier_key,
-                &lc_s,
-                &commitments,
-                &query_set,
-                &evaluations,
-                &proof.pc_proof,
-                opening_challenge,
                 &mut fs_rng,
             )?
         };
