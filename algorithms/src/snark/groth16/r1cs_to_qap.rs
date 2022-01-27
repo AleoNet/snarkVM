@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
-use crate::{cfg_into_iter, cfg_iter_mut, fft::EvaluationDomain};
+use crate::{cfg_into_iter, cfg_iter, cfg_iter_mut, fft::EvaluationDomain};
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Zero;
 use snarkvm_r1cs::{
@@ -28,15 +28,15 @@ use snarkvm_r1cs::{
 use rayon::prelude::*;
 
 fn evaluate_constraint<E: PairingEngine>(terms: &[(E::Fr, Index)], assignment: &[E::Fr], num_input: usize) -> E::Fr {
-    let mut acc = E::Fr::zero();
-    for &(coeff, index) in terms {
-        let val = match index {
-            Index::Public(i) => assignment[i],
-            Index::Private(i) => assignment[num_input + i],
-        };
-        acc += val * coeff;
-    }
-    acc
+    cfg_iter!(terms)
+        .map(|&(coeff, index)| {
+            let val = match index {
+                Index::Public(i) => assignment[i],
+                Index::Private(i) => assignment[num_input + i],
+            };
+            val * coeff
+        })
+        .sum()
 }
 
 pub(crate) struct R1CStoQAP;
