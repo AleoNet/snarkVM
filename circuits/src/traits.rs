@@ -72,7 +72,9 @@ pub trait IntegerTrait<I: IntegerType>:
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
+    + SubCheckedField<Output = Self>
     + SubWrapped<Output = Self>
+    + SubWrappedField<Output = Self>
     + ToBits
     + Zero // + Div
 // + DivAssign
@@ -226,7 +228,7 @@ pub trait AddChecked<Rhs: ?Sized = Self> {
     fn add_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-// TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
+// TODO (@pranav) Temporarily placed here while experimenting with a field-based implementation
 //  of checked integer addition.
 /// Binary operator for adding two values, enforcing an overflow never occurs.
 pub trait AddCheckedField<Rhs: ?Sized = Self> {
@@ -249,7 +251,7 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
-// TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
+// TODO (@pranav) Temporarily placed here while experimenting with a field-based implementation
 //  of wrapped integer addition.
 /// Binary operator for adding two values, wrapping the sum if an overflow occurs.
 pub trait AddWrappedField<Rhs: ?Sized = Self> {
@@ -265,6 +267,15 @@ pub trait SubChecked<Rhs: ?Sized = Self> {
     fn sub_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
+// TODO (@pranav) Temporarily placed here while experimenting with a field-based implementation
+//  of checked integer subtraction.
+/// Binary operator for adding two values, wrapping the sum if an overflow occurs.
+pub trait SubCheckedField<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn sub_checked_field(&self, rhs: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for subtracting two values, bounding the difference to `MIN` if an underflow occurs.
 pub trait SubSaturating<Rhs: ?Sized = Self> {
     type Output;
@@ -277,6 +288,15 @@ pub trait SubWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn sub_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+// TODO (@pranav) Temporarily placed here while experimenting with a field-based implementation
+//  of wrapped integer subtraction.
+/// Binary operator for adding two values, wrapping the sum if an overflow occurs.
+pub trait SubWrappedField<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn sub_wrapped_field(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Unary operator for retrieving the doubled value.
