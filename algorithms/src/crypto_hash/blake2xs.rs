@@ -20,8 +20,6 @@
 ///! This implementation is based on the BLAKE2Xs specification in Section 2 of:
 ///! https://www.blake2.net/blake2x.pdf
 ///!
-use blake2::Blake2sVar;
-use digest::VariableOutput;
 
 #[rustfmt::skip]
 #[macro_export]
@@ -97,13 +95,7 @@ impl Blake2Xs {
 #[cfg(test)]
 mod tests {
     use crate::crypto_hash::Blake2Xs;
-
-    use blake2::{Blake2s, Blake2sVar};
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
     use serde::Deserialize;
-
-    const ITERATIONS: usize = 10_000;
 
     #[derive(Deserialize)]
     struct Case {
@@ -134,17 +126,6 @@ mod tests {
             let input = hex::decode(case.input.as_bytes()).unwrap();
             let xof_digest_length = case.output.len() as u16 / 2;
             let output = hex::encode(Blake2Xs::evaluate(&input, xof_digest_length, "".as_bytes()));
-            assert_eq!(output, case.output);
-        }
-    }
-
-    #[test]
-    fn test_blake2s() {
-        // Run test vector cases.
-        let vectors: Vec<Case> = serde_json::from_str(include_str!("./resources/blake2-kat.json")).unwrap();
-        for case in vectors.iter().filter(|v| &v.hash == "blake2s" && v.key.is_empty()) {
-            let input = hex::decode(case.input.as_bytes()).unwrap();
-            let output = hex::encode(Blake2Xs::evaluate_blake2s(&input, 0u64));
             assert_eq!(output, case.output);
         }
     }
