@@ -70,14 +70,55 @@ impl<E: Environment> ToBits for &BaseField<E> {
     }
 }
 
+impl<E: Environment> BaseField<E> {
+    // TODO (@pranav). Temporarily placed here while experimenting with an encoding for integers using field elements.
+    //  Move to a more appropriate place.
+    //  Can we parameterize the expected value of the upper n - k bits? Currently, we assume that they are zero.
+    ///
+    /// Extracts the lower k bits of a field element that uses n bits.
+    /// Requires that the upper n - k bits are zero.
+    ///
+    pub fn extract_lower_k_bits_le(&self, k: usize) -> Vec<Boolean<E>> {
+        let mode = match self.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        };
+
+        // Construct a vector of `Boolean`s comprising the bits of the field value.
+        let bits = self
+            .eject_value()
+            .to_bits_le()
+            .iter()
+            .take(k)
+            .map(|bit| Boolean::new(mode, *bit))
+            .collect::<Vec<_>>();
+
+        // Reconstruct the bits as a linear combination representing the original field value.
+        let mut accumulator = BaseField::zero();
+        let mut coefficient = BaseField::one();
+        for bit in &bits {
+            accumulator += BaseField::from(bit) * &coefficient;
+            coefficient = coefficient.double();
+        }
+
+        // Ensure value * 1 == (2^k * b_k + ... + 2^0 * b_0)
+        // Enforces that b_n, ..., b_n-k all equal to zero.
+        E::enforce(|| (self, E::one(), accumulator));
+
+        bits
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{Circuit, Integer};
     use snarkvm_fields::PrimeField;
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::{from_bytes_le_to_bits_le, FromBytes, ToBytes, UniformRand};
 
+    use crate::helpers::integers::IntegerType;
     use itertools::Itertools;
+    use num_traits::Unsigned;
     use rand::thread_rng;
 
     const ITERATIONS: usize = 100;
@@ -103,6 +144,42 @@ mod tests {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
+                assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
+                assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
+                assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
+                assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+                assert!(Circuit::is_satisfied(), "(is_satisfied)");
+            });
+        }
+    }
+
+    // TODO (@pranav) Parameterize this test of primitive unsigned integers to test if they can be encoded and recovered correctly.
+    fn check_extract_lower_k_bits_le<I: IntegerType + Unsigned + ToBytes>(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for i in 0..ITERATIONS {
+            // Sample a random unsigned integer.
+            let value: I = UniformRand::rand(&mut thread_rng());
+            let mut field_bytes = value.to_bytes_le().unwrap();
+            field_bytes.resize(253, 0u8);
+            let candidate = BaseField::<Circuit>::new(
+                mode,
+                <Circuit as Environment>::BaseField::from_bytes_le(&field_bytes).unwrap(),
+            );
+
+            let expected_bytes = value.to_bytes_le().unwrap();
+            let expected = from_bytes_le_to_bits_le(&expected_bytes);
+
+            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
+                let candidate = candidate.extract_lower_k_bits_le(I::BITS);
+                assert_eq!(I::BITS, candidate.len());
+                for (expected_bit, candidate_bit) in expected.zip_eq(candidate.iter()) {
+                    assert_eq!(expected_bit, candidate_bit.eject_value());
+                }
                 assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
                 assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
                 assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
@@ -155,6 +232,81 @@ mod tests {
     #[test]
     fn test_to_bits_le_private() {
         check_to_bits_le(Mode::Private, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_extract_lower_8_bits_constant() {
+        check_extract_lower_k_bits_le::<u8>(Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_extract_lower_16_bits_constant() {
+        check_extract_lower_k_bits_le::<u16>(Mode::Constant, 16, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_extract_lower_32_bits_constant() {
+        check_extract_lower_k_bits_le::<u32>(Mode::Constant, 32, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_extract_lower_64_bits_constant() {
+        check_extract_lower_k_bits_le::<u64>(Mode::Constant, 64, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_extract_lower_128_bits_constant() {
+        check_extract_lower_k_bits_le::<u128>(Mode::Constant, 128, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_extract_lower_8_bits_le_public() {
+        check_extract_lower_k_bits_le::<u8>(Mode::Public, 0, 0, 8, 9);
+    }
+
+    #[test]
+    fn test_extract_lower_16_bits_le_public() {
+        check_extract_lower_k_bits_le::<u16>(Mode::Public, 0, 0, 16, 17);
+    }
+
+    #[test]
+    fn test_extract_lower_32_bits_le_public() {
+        check_extract_lower_k_bits_le::<u32>(Mode::Public, 0, 0, 32, 33);
+    }
+
+    #[test]
+    fn test_extract_lower_64_bits_le_public() {
+        check_extract_lower_k_bits_le::<u64>(Mode::Public, 0, 0, 64, 65);
+    }
+
+    #[test]
+    fn test_extract_lower_128_bits_le_public() {
+        check_extract_lower_k_bits_le::<u128>(Mode::Public, 0, 0, 128, 129);
+    }
+
+    #[test]
+    fn test_extract_lower_8_bits_le_private() {
+        check_extract_lower_k_bits_le::<u8>(Mode::Private, 0, 0, 8, 9);
+    }
+
+    #[test]
+    fn test_extract_lower_16_bits_le_private() {
+        check_extract_lower_k_bits_le::<u16>(Mode::Private, 0, 0, 16, 17);
+    }
+
+    #[test]
+    fn test_extract_lower_32_bits_le_private() {
+        check_extract_lower_k_bits_le::<u32>(Mode::Private, 0, 0, 32, 33);
+    }
+
+    #[test]
+    fn test_extract_lower_64_bits_le_private() {
+        check_extract_lower_k_bits_le::<u64>(Mode::Private, 0, 0, 64, 65);
+    }
+
+    #[test]
+    fn test_extract_lower_128_bits_le_private() {
+        check_extract_lower_k_bits_le::<u128>(Mode::Private, 0, 0, 128, 129);
     }
 
     #[test]
