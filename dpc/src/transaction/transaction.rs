@@ -182,6 +182,9 @@ impl<N: Network> Transaction<N> {
             }
         };
 
+        // Initialize the list of deployed programs.
+        let mut deployed_programs = Vec::new();
+
         // Returns `false` if any transition is invalid.
         for transition in &self.transitions {
             // Returns `false` if the transition is invalid.
@@ -194,6 +197,25 @@ impl<N: Network> Transaction<N> {
             if let Err(error) = transitions.add(transition) {
                 eprintln!("Transaction failed to update local transitions tree: {}", error);
                 return false;
+            }
+
+            // Add the deployed program to the list of programs.
+            if let Some(program) = &transition.execution().deployed_program {
+                // TODO (raychu86) Check that all deployed programs are well formed
+
+                // Check that the deployed program is not the noop program.
+                if program.0 == *N::noop_program_id() {
+                    eprintln!("Transaction contains an invalid program deployment");
+                    return false;
+                }
+
+                // Returns `false` if there are duplicate program deployments in the transition.
+                if deployed_programs.contains(&program) {
+                    eprintln!("Transaction contains duplicate program deployment");
+                    return false;
+                }
+
+                deployed_programs.push(&program);
             }
         }
 
