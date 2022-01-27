@@ -94,10 +94,6 @@ features = [ "std_rng" ]
 version = "1"
 optional = true
 
-[dev-dependencies.blake2]
-version = "0.9"
-default-features = false
-
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"
 
