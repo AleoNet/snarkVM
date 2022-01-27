@@ -36,7 +36,7 @@ use crate::{
 use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
 #[cfg(feature = "parallel")]
 use snarkvm_utilities::max_available_threads;
-use snarkvm_utilities::{errors::SerializationError, execute_with_max_available_threads, serialize::*};
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use std::fmt;
@@ -167,10 +167,8 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an FFT, modifying the vector in place.
     pub fn fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
-        execute_with_max_available_threads(|| {
-            coeffs.resize(self.size(), T::zero());
-            self.in_order_fft_in_place(&mut *coeffs);
-        });
+        coeffs.resize(self.size(), T::zero());
+        self.in_order_fft_in_place(&mut *coeffs);
     }
 
     /// Compute an IFFT.
@@ -183,10 +181,8 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an IFFT, modifying the vector in place.
     #[inline]
     pub fn ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        execute_with_max_available_threads(|| {
-            evals.resize(self.size(), T::zero());
-            self.in_order_ifft_in_place(&mut *evals);
-        });
+        evals.resize(self.size(), T::zero());
+        self.in_order_ifft_in_place(&mut *evals);
     }
 
     /// Compute an FFT over a coset of the domain.
@@ -199,10 +195,8 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Compute an FFT over a coset of the domain, modifying the input vector
     /// in place.
     pub fn coset_fft_in_place<T: DomainCoeff<F>>(&self, coeffs: &mut Vec<T>) {
-        execute_with_max_available_threads(|| {
-            Self::distribute_powers(coeffs, F::multiplicative_generator());
-            self.fft_in_place(coeffs);
-        });
+        Self::distribute_powers(coeffs, F::multiplicative_generator());
+        self.fft_in_place(coeffs);
     }
 
     /// Compute an IFFT over a coset of the domain.
@@ -214,10 +208,8 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Compute an IFFT over a coset of the domain, modifying the input vector in place.
     pub fn coset_ifft_in_place<T: DomainCoeff<F>>(&self, evals: &mut Vec<T>) {
-        execute_with_max_available_threads(|| {
-            evals.resize(self.size(), T::zero());
-            self.in_order_coset_ifft_in_place(&mut *evals);
-        });
+        evals.resize(self.size(), T::zero());
+        self.in_order_coset_ifft_in_place(&mut *evals);
     }
 
     /// Multiply the `i`-th element of `coeffs` with `g^i`.
