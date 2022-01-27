@@ -236,6 +236,10 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
+
+    // TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
+    //  of wrapped integer addition.
+    fn add_wrapped_field(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for subtracting two values, enforcing an underflow never occurs.

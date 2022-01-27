@@ -61,6 +61,40 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
             }
         }
     }
+
+    #[inline]
+    // TODO (@pranav) Temporarily placed here while experimenting with a field-based impelementation
+    //  of wrapped integer addition.
+    fn add_wrapped_field(&self, other: &Integer<E, I>) -> Self::Output {
+        // Determine the variable mode.
+        if self.is_constant() && other.is_constant() {
+            // Compute the sum and return the new constant.
+            Integer::new(Mode::Constant, self.eject_value().wrapping_add(&other.eject_value()))
+        } else {
+            if I::is_signed() {
+                todo!()
+            } else {
+                // Instead of comparing the bits of `self` and `other` directly, the integers are
+                // converted into a field elements, and checked if they are equivalent as field elements.
+                // Note: This is safe as the field is larger than the maximum integer type supported.
+                let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
+                let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
+
+                let sum = this.add(that);
+
+                let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
+
+                // Drop the carry bit since we are doing wrapped addition.
+                bits_le.pop();
+
+                // Return the sum of `self` and `other`.
+                Integer {
+                    bits_le,
+                    phantom: Default::default(),
+                }
+            }
+        }
+    }
 }
 
 #[rustfmt::skip]
@@ -106,6 +140,43 @@ mod tests {
         });
     }
 
+    // TODO (@pranav) Refactor this and the above function into one function.
+    fn check_add_wrapped_field<I: IntegerType, IC: IntegerTrait<I>>(
+        name: &str,
+        expected: I,
+        a: &IC,
+        b: &IC,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, |scope| {
+            let case = format!("({} + {})", a.eject_value(), b.eject_value());
+
+            let candidate = a.add_wrapped_field(b);
+            assert_eq!(
+                expected,
+                candidate.eject_value(),
+                "{} != {} := {}",
+                expected,
+                candidate.eject_value(),
+                case
+            );
+
+            print!("Constants: {:?}, ", scope.num_constants_in_scope());
+            print!("Public: {:?}, ", scope.num_public_in_scope());
+            print!("Private: {:?}, ", scope.num_private_in_scope());
+            print!("Constraints: {:?}\n", scope.num_constraints_in_scope());
+
+            assert_eq!(num_constants, scope.num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
+        });
+    }
+
     fn check_overflow<I: IntegerType>(
         first: I,
         second: I,
@@ -122,6 +193,25 @@ mod tests {
 
         let name = format!("Add: {} + {} ({})", first, second, expected);
         check_add_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+    }
+
+    // TODO (@pranav) Refactor this and the above function into one function.
+    fn check_overflow_field<I: IntegerType>(
+        first: I,
+        second: I,
+        expected: I,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::new(mode_b, second);
+
+        let name = format!("Add: {} + {} ({})", first, second, expected);
+        check_add_wrapped_field::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
     }
 
     fn run_test<I: IntegerType>(
@@ -152,6 +242,39 @@ mod tests {
             false => {
                 check_overflow::<I>(I::MAX, I::one(), I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
                 check_overflow::<I>(I::one(), I::MAX, I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            }
+        }
+    }
+
+    // TODO (@pranav) Refactor this and the above function into one function.
+    fn run_test_field<I: IntegerType>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for i in 0..ITERATIONS {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
+            let expected = first.wrapping_add(&second);
+
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::new(mode_b, second);
+
+            let name = format!("Add: a + b {}", i);
+            check_add_wrapped_field::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+        }
+
+        match I::is_signed() {
+            true => {
+                check_overflow_field::<I>(I::MAX, I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_overflow_field::<I>(I::one(), I::MAX, I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            },
+            false => {
+                check_overflow_field::<I>(I::MAX, I::one(), I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_overflow_field::<I>(I::one(), I::MAX, I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }
         }
     }
@@ -752,5 +875,605 @@ mod tests {
     fn test_i128_private_plus_private() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Private, 1, 0, 634, 634);
+    }
+
+    // TODO (@pranav) All functions below this point are temporarily placed here while testing the field-based implementation.
+    //  Refactor these tests if the implementation is approved.
+    #[test]
+    fn test_u8_constant_plus_field_constant() {
+        type I = u8;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_constant_plus_field_public() {
+        type I = u8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 2, 0, 11, 12);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 2, 0, 11, 12);
+    }
+
+    #[test]
+    fn test_u8_constant_plus_field_private() {
+        type I = u8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 19, 19);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 13, 13);
+    }
+
+    #[test]
+    fn test_u8_public_plus_field_constant() {
+        type I = u8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 2, 0, 11, 12);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 2, 0, 11, 12);
+    }
+
+    #[test]
+    fn test_u8_private_plus_field_constant() {
+        type I = u8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 2, 0, 11, 12);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 2, 0, 11, 12);
+    }
+
+    #[test]
+    fn test_u8_public_plus_field_public() {
+        type I = u8;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 34, 34);
+    }
+
+    #[test]
+    fn test_u8_public_plus_field_private() {
+        type I = u8;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 34, 34);
+    }
+
+    #[test]
+    fn test_u8_private_plus_field_public() {
+        type I = u8;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 34, 34);
+    }
+
+    #[test]
+    fn test_u8_private_plus_field_private() {
+        type I = u8;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 34, 34);
+    }
+
+    // Tests for i8
+
+    #[test]
+    fn test_i8_constant_plus_field_constant() {
+        type I = i8;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_constant_plus_field_public() {
+        type I = i8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 19, 19);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 13, 13);
+    }
+
+    #[test]
+    fn test_i8_constant_plus_field_private() {
+        type I = i8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 19, 19);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 13, 13);
+    }
+
+    #[test]
+    fn test_i8_public_plus_field_constant() {
+        type I = i8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 13, 13);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 19, 19);
+    }
+
+    #[test]
+    fn test_i8_private_plus_field_constant() {
+        type I = i8;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 13, 13);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 19, 19);
+    }
+
+    #[test]
+    fn test_i8_public_plus_field_public() {
+        type I = i8;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 34, 34);
+    }
+
+    #[test]
+    fn test_i8_public_plus_field_private() {
+        type I = i8;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 34, 34);
+    }
+
+    #[test]
+    fn test_i8_private_plus_field_public() {
+        type I = i8;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 34, 34);
+    }
+
+    #[test]
+    fn test_i8_private_plus_field_private() {
+        type I = i8;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 34, 34);
+    }
+
+    // Tests for u16
+
+    #[test]
+    fn test_u16_constant_plus_field_constant() {
+        type I = u16;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_constant_plus_field_public() {
+        type I = u16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 43, 43);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 29, 29);
+    }
+
+    #[test]
+    fn test_u16_constant_plus_field_private() {
+        type I = u16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 43, 43);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 29, 29);
+    }
+
+    #[test]
+    fn test_u16_public_plus_field_constant() {
+        type I = u16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 29, 29);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 43, 43);
+    }
+
+    #[test]
+    fn test_u16_private_plus_field_constant() {
+        type I = u16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 29, 29);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 43, 43);
+    }
+
+    #[test]
+    fn test_u16_public_plus_field_public() {
+        type I = u16;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 74, 74);
+    }
+
+    #[test]
+    fn test_u16_public_plus_field_private() {
+        type I = u16;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 74, 74);
+    }
+
+    #[test]
+    fn test_u16_private_plus_field_public() {
+        type I = u16;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 74, 74);
+    }
+
+    #[test]
+    fn test_u16_private_plus_field_private() {
+        type I = u16;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 74, 74);
+    }
+
+    // Tests for i16
+
+    #[test]
+    fn test_i16_constant_plus_field_constant() {
+        type I = i16;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_constant_plus_field_public() {
+        type I = i16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 43, 43);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 29, 29);
+    }
+
+    #[test]
+    fn test_i16_constant_plus_field_private() {
+        type I = i16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 43, 43);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 29, 29);
+    }
+
+    #[test]
+    fn test_i16_public_plus_field_constant() {
+        type I = i16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 29, 29);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 43, 43);
+    }
+
+    #[test]
+    fn test_i16_private_plus_field_constant() {
+        type I = i16;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 29, 29);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 43, 43);
+    }
+
+    #[test]
+    fn test_i16_public_plus_field_public() {
+        type I = i16;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 74, 74);
+    }
+
+    #[test]
+    fn test_i16_public_plus_field_private() {
+        type I = i16;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 74, 74);
+    }
+
+    #[test]
+    fn test_i16_private_plus_field_public() {
+        type I = i16;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 74, 74);
+    }
+
+    #[test]
+    fn test_i16_private_plus_field_private() {
+        type I = i16;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 74, 74);
+    }
+
+    // Tests for u32
+
+    #[test]
+    fn test_u32_constant_plus_field_constant() {
+        type I = u32;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_constant_plus_field_public() {
+        type I = u32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 91, 91);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 61, 61);
+    }
+
+    #[test]
+    fn test_u32_constant_plus_field_private() {
+        type I = u32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 91, 91);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 61, 61);
+    }
+
+    #[test]
+    fn test_u32_public_plus_field_constant() {
+        type I = u32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 61, 61);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 91, 91);
+    }
+
+    #[test]
+    fn test_u32_private_plus_field_constant() {
+        type I = u32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 61, 61);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 91, 91);
+    }
+
+    #[test]
+    fn test_u32_public_plus_field_public() {
+        type I = u32;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 154, 154);
+    }
+
+    #[test]
+    fn test_u32_public_plus_field_private() {
+        type I = u32;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 154, 154);
+    }
+
+    #[test]
+    fn test_u32_private_plus_field_public() {
+        type I = u32;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 154, 154);
+    }
+
+    #[test]
+    fn test_u32_private_plus_field_private() {
+        type I = u32;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 154, 154);
+    }
+
+    // Tests for i32
+
+    #[test]
+    fn test_i32_constant_plus_field_constant() {
+        type I = i32;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_constant_plus_field_public() {
+        type I = i32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 91, 91);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 61, 61);
+    }
+
+    #[test]
+    fn test_i32_constant_plus_field_private() {
+        type I = i32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 91, 91);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 61, 61);
+    }
+
+    #[test]
+    fn test_i32_public_plus_field_constant() {
+        type I = i32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 61, 61);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 91, 91);
+    }
+
+    #[test]
+    fn test_i32_private_plus_field_constant() {
+        type I = i32;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 61, 61);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 91, 91);
+    }
+
+    #[test]
+    fn test_i32_public_plus_field_public() {
+        type I = i32;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 154, 154);
+    }
+
+    #[test]
+    fn test_i32_public_plus_field_private() {
+        type I = i32;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 154, 154);
+    }
+
+    #[test]
+    fn test_i32_private_plus_field_public() {
+        type I = i32;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 154, 154);
+    }
+
+    #[test]
+    fn test_i32_private_plus_field_private() {
+        type I = i32;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 154, 154);
+    }
+
+    // Tests for u64
+
+    #[test]
+    fn test_u64_constant_plus_field_constant() {
+        type I = u64;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_constant_plus_field_public() {
+        type I = u64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 187, 187);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 125, 125);
+    }
+
+    #[test]
+    fn test_u64_constant_plus_field_private() {
+        type I = u64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 187, 187);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 125, 125);
+    }
+
+    #[test]
+    fn test_u64_public_plus_field_constant() {
+        type I = u64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 125, 125);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 187, 187);
+    }
+
+    #[test]
+    fn test_u64_private_plus_field_constant() {
+        type I = u64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 125, 125);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 187, 187);
+    }
+
+    #[test]
+    fn test_u64_public_plus_field_public() {
+        type I = u64;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 314, 314);
+    }
+
+    #[test]
+    fn test_u64_public_plus_field_private() {
+        type I = u64;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 314, 314);
+    }
+
+    #[test]
+    fn test_u64_private_plus_field_public() {
+        type I = u64;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 314, 314);
+    }
+
+    #[test]
+    fn test_u64_private_plus_field_private() {
+        type I = u64;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 314, 314);
+    }
+
+    // Tests for i64
+
+    #[test]
+    fn test_i64_constant_plus_field_constant() {
+        type I = i64;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i64_constant_plus_field_public() {
+        type I = i64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 187, 187);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 125, 125);
+    }
+
+    #[test]
+    fn test_i64_constant_plus_field_private() {
+        type I = i64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 187, 187);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 125, 125);
+    }
+
+    #[test]
+    fn test_i64_public_plus_field_constant() {
+        type I = i64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 125, 125);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 187, 187);
+    }
+
+    #[test]
+    fn test_i64_private_plus_field_constant() {
+        type I = i64;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 125, 125);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 187, 187);
+    }
+
+    #[test]
+    fn test_i64_public_plus_field_public() {
+        type I = i64;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 314, 314);
+    }
+
+    #[test]
+    fn test_i64_public_plus_field_private() {
+        type I = i64;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 314, 314);
+    }
+
+    #[test]
+    fn test_i64_private_plus_field_public() {
+        type I = i64;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 314, 314);
+    }
+
+    #[test]
+    fn test_i64_private_plus_field_private() {
+        type I = i64;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 314, 314);
+    }
+
+    // Tests for u128
+
+    #[test]
+    fn test_u128_constant_plus_field_constant() {
+        type I = u128;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_constant_plus_field_public() {
+        type I = u128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 379, 379);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 253, 253);
+    }
+
+    #[test]
+    fn test_u128_constant_plus_field_private() {
+        type I = u128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 379, 379);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 253, 253);
+    }
+
+    #[test]
+    fn test_u128_public_plus_field_constant() {
+        type I = u128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 253, 253);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 379, 379);
+    }
+
+    #[test]
+    fn test_u128_private_plus_field_constant() {
+        type I = u128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 253, 253);
+        check_overflow_field::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 379, 379);
+    }
+
+    #[test]
+    fn test_u128_public_plus_field_public() {
+        type I = u128;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 634, 634);
+    }
+
+    #[test]
+    fn test_u128_public_plus_field_private() {
+        type I = u128;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 634, 634);
+    }
+
+    #[test]
+    fn test_u128_private_plus_field_public() {
+        type I = u128;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 634, 634);
+    }
+
+    #[test]
+    fn test_u128_private_plus_field_private() {
+        type I = u128;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 634, 634);
+    }
+
+    // Tests for i128
+
+    #[test]
+    fn test_i128_constant_plus_field_constant() {
+        type I = i128;
+        run_test_field::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_constant_plus_field_public() {
+        type I = i128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 379, 379);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 253, 253);
+    }
+
+    #[test]
+    fn test_i128_constant_plus_field_private() {
+        type I = i128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 379, 379);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 253, 253);
+    }
+
+    #[test]
+    fn test_i128_public_plus_field_constant() {
+        type I = i128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 253, 253);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 379, 379);
+    }
+
+    #[test]
+    fn test_i128_private_plus_field_constant() {
+        type I = i128;
+        check_overflow_field::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 253, 253);
+        check_overflow_field::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 379, 379);
+    }
+
+    #[test]
+    fn test_i128_public_plus_field_public() {
+        type I = i128;
+        run_test_field::<I>(Mode::Public, Mode::Public, 1, 0, 634, 634);
+    }
+
+    #[test]
+    fn test_i128_public_plus_field_private() {
+        type I = i128;
+        run_test_field::<I>(Mode::Public, Mode::Private, 1, 0, 634, 634);
+    }
+
+    #[test]
+    fn test_i128_private_plus_field_public() {
+        type I = i128;
+        run_test_field::<I>(Mode::Private, Mode::Public, 1, 0, 634, 634);
+    }
+
+    #[test]
+    fn test_i128_private_plus_field_private() {
+        type I = i128;
+        run_test_field::<I>(Mode::Private, Mode::Private, 1, 0, 634, 634);
     }
 }
