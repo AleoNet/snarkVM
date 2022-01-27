@@ -48,7 +48,7 @@ impl<Slice: AsRef<[u64]>> Iterator for BitIteratorBE<Slice> {
         } else {
             self.n -= 1;
             let part = self.n / 64;
-            let bit = self.n - (64 * part);
+            let bit = self.n & 63;
 
             Some(self.s.as_ref()[part] & (1 << bit) > 0)
         }
@@ -94,7 +94,7 @@ impl<Slice: AsRef<[u64]>> Iterator for BitIteratorLE<Slice> {
             None
         } else {
             let part = self.n / 64;
-            let bit = self.n - (64 * part);
+            let bit = self.n & 63;
             self.n += 1;
 
             Some(self.s.as_ref()[part] & (1 << bit) > 0)
