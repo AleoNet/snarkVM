@@ -215,7 +215,7 @@ impl<N: Network> Transaction<N> {
                     return false;
                 }
 
-                deployed_programs.push(&program);
+                deployed_programs.push(program);
             }
         }
 
