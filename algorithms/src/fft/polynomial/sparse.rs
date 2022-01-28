@@ -114,21 +114,6 @@ impl<F: Field> SparsePolynomial<F> {
             SparsePolynomial::from_coefficients_vec(result)
         }
     }
-
-    /// Perform a naive n^2 multiplicatoin of `self` by `other`.
-    pub fn mul_dense(&self, other: &DensePolynomial<F>) -> DensePolynomial<F> {
-        if self.is_zero() || other.is_zero() {
-            DensePolynomial::zero()
-        } else {
-            let mut result = vec![F::zero(); self.degree() + other.degree() + 1];
-            for (i, self_coeff) in self.coeffs.iter() {
-                for (j, other_coeff) in other.coeffs.iter().enumerate() {
-                    result[i + j] += *self_coeff * other_coeff;
-                }
-            }
-            DensePolynomial::from_coefficients_vec(result)
-        }
-    }
 }
 
 impl<F: PrimeField> SparsePolynomial<F> {
