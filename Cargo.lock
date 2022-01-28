@@ -1858,8 +1858,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
 dependencies = [
  "proc-macro2 1.0.36",
- "quote 1.0.10",
- "syn 1.0.81",
+ "quote 1.0.15",
+ "syn 1.0.86",
 ]
 
 [[package]]

@@ -16,10 +16,10 @@
 
 use crate::{
     crh::{PedersenCRH, PedersenCompressedCRH},
-    merkle_tree::{MerkleTree, MerkleTreeParameters},
+    merkle_tree::{MerklePath, MerkleTree, MerkleTreeParameters},
     traits::{MerkleParameters, CRH},
 };
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::{thread_rng, Rng};
 
@@ -152,6 +152,62 @@ fn padded_merkle_tree_test<P: MerkleParameters>() {
     assert_eq!(merkle_tree_root, &expected_root);
 }
 
+fn merkle_path_serialization_test<P: MerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(
+    leaves: &[L],
+    parameters: &P,
+) {
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves).unwrap();
+    for (i, leaf) in leaves.iter().enumerate() {
+        let proof = tree.generate_proof(i, &leaf).unwrap();
+
+        // Serialize
+        let serialized = proof.to_bytes_le().unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&serialized[..], &bincode::serialize(&proof).unwrap()[8..]);
+
+        // Deserialize
+        let deserialized = MerklePath::<P>::read_le(&serialized[..]).unwrap();
+        assert_eq!(deserialized, proof);
+    }
+}
+
+fn merkle_path_bincode_test<P: MerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(leaves: &[L], parameters: &P) {
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves).unwrap();
+    for (i, leaf) in leaves.iter().enumerate() {
+        let proof = tree.generate_proof(i, &leaf).unwrap();
+
+        // Serialize
+        let expected_bytes = proof.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&proof).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(proof, MerklePath::<P>::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(proof, bincode::deserialize(&candidate_bytes[..]).unwrap());
+    }
+}
+
+fn run_merkle_path_serialization_test<P: MerkleParameters>() {
+    let parameters = &P::setup("merkle_tree_test");
+
+    let leaves = generate_random_leaves!(4, 8);
+    merkle_path_serialization_test::<P, _>(&leaves, parameters);
+
+    let leaves = generate_random_leaves!(15, 8);
+    merkle_path_serialization_test::<P, _>(&leaves, parameters);
+}
+
+fn run_merkle_path_bincode_test<P: MerkleParameters>() {
+    let parameters = &P::setup("merkle_tree_test");
+
+    let leaves = generate_random_leaves!(4, 8);
+    merkle_path_bincode_test::<P, _>(&leaves, parameters);
+
+    let leaves = generate_random_leaves!(15, 8);
+    merkle_path_bincode_test::<P, _>(&leaves, parameters);
+}
+
 mod pedersen_crh_on_projective {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
@@ -188,6 +244,18 @@ mod pedersen_crh_on_projective {
     fn depth3_padded_merkle_tree_matches_hashing_test() {
         type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3>;
         padded_merkle_tree_test::<MTParameters>();
+    }
+
+    #[test]
+    fn merkle_path_serialization_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        run_merkle_path_serialization_test::<MTParameters>();
+    }
+
+    #[test]
+    fn merkle_path_bincode_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        run_merkle_path_bincode_test::<MTParameters>();
     }
 }
 
@@ -249,5 +317,17 @@ mod pedersen_compressed_crh_on_projective {
 
         assert_eq!(tree.root(), new_tree_1.root());
         assert_eq!(tree.root(), new_tree_2.root());
+    }
+
+    #[test]
+    fn merkle_path_serialization_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        run_merkle_path_serialization_test::<MTParameters>();
+    }
+
+    #[test]
+    fn merkle_path_bincode_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        run_merkle_path_bincode_test::<MTParameters>();
     }
 }
