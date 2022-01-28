@@ -147,13 +147,13 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
 
     // Delete all the temporary .cu and .h files.
     {
-        std::fs::remove_file(asm_cuda_path)?;
-        std::fs::remove_file(asm_cuda_h_path)?;
-        std::fs::remove_file(blst_377_ops_path)?;
-        std::fs::remove_file(blst_377_ops_h_path)?;
-        std::fs::remove_file(msm_path)?;
-        std::fs::remove_file(types_path)?;
-        std::fs::remove_file(tests_path)?;
+        let _ = std::fs::remove_file(asm_cuda_path);
+        let _ = std::fs::remove_file(asm_cuda_h_path);
+        let _ = std::fs::remove_file(blst_377_ops_path);
+        let _ = std::fs::remove_file(blst_377_ops_h_path);
+        let _ = std::fs::remove_file(msm_path);
+        let _ = std::fs::remove_file(types_path);
+        let _ = std::fs::remove_file(tests_path);
     }
 
     // Execute the command.
@@ -162,9 +162,6 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
             "Could not generate a new msm kernel".to_string(),
         ));
     }
-
-    // Sleep 5 seconds the allow the filesystem to store the binary properly.
-    std::thread::sleep(std::time::Duration::from_secs(5));
 
     Ok(())
 }
@@ -186,7 +183,6 @@ fn load_cuda_program() -> Result<Program, GPUError> {
         generate_cuda_binary(&file_path, false)?;
     }
 
-    let cuda_kernel = std::fs::read(file_path.clone())?;
     let cuda_device = match device.cuda_device() {
         Some(device) => device,
         None => return Err(GPUError::DeviceNotFound),
@@ -197,6 +193,8 @@ fn load_cuda_program() -> Result<Program, GPUError> {
         device.name(),
         device.memory()
     );
+
+    let cuda_kernel = std::fs::read(file_path.clone())?;
 
     // Load the cuda program from the kernel bytes.
     let cuda_program = match cuda::Program::from_bytes(cuda_device, &cuda_kernel) {
@@ -330,9 +328,10 @@ fn initialize_cuda_request_handler(input: crossbeam_channel::Receiver<CudaReques
             }
         }
         Err(err) => {
+            eprintln!("Error loading cuda program: {:?}", err);
             // If the cuda program fails to load, notify the cuda request dispatcher.
-            if let Ok(request) = input.recv() {
-                request.response.send(Err(err)).ok();
+            while let Ok(request) = input.recv() {
+                request.response.send(Err(GPUError::DeviceNotFound)).ok();
             }
         }
     }
