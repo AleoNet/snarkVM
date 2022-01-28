@@ -66,7 +66,7 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
     resource_path.push("resources/cuda/");
     std::fs::create_dir_all(resource_path)?;
 
-    // TODO (raychu86): Fix this approach to generating files.
+    // TODO (raychu86): Fix this approach to generating files. Should just read all files in the `blst_377_cuda` directory.
     // Store the `.cu` and `.h` files temporarily for fatbin generation
     let mut asm_cuda_path = aleo_std::aleo_dir();
     let mut asm_cuda_h_path = aleo_std::aleo_dir();
@@ -162,6 +162,8 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
             "Could not generate a new msm kernel".to_string(),
         ));
     }
+
+    std::thread::sleep(std::time::Duration::from_secs(2));
 
     Ok(())
 }
