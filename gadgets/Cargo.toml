@@ -53,9 +53,6 @@ version = "1.0.52"
 [dependencies.derivative]
 version = "2"
 
-[dependencies.digest]
-version = "0.10"
-
 [dependencies.itertools]
 version = "0.10.3"
 
@@ -82,6 +79,9 @@ version = "0.10"
 
 [dev-dependencies.criterion]
 version = "0.3"
+
+[dev-dependencies.digest]
+version = "0.10"
 
 [dev-dependencies.paste]
 version = "1.0"
