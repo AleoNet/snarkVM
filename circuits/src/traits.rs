@@ -73,9 +73,9 @@ pub trait IntegerTrait<I: IntegerType>:
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
-    + SubCheckedField<Output = Self>
+    + SubCheckedField<Output = Self> // TODO (@pranav) Temporary while experimenting with field-based integer operations.
     + SubWrapped<Output = Self>
-    + SubWrappedField<Output = Self>
+    + SubWrappedField<Output = Self> // TODO (@pranav) Temporary while experimenting with field-based integer operations.
     + ToBits
     + Zero // + Div
 // + DivAssign
