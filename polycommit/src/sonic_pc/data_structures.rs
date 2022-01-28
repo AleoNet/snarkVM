@@ -45,7 +45,7 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
             cur.double_in_place();
         }
 
-        PreparedCommitment::<E> { 0: prepared_comm }
+        kzg10::PreparedCommitment::<E>(prepared_comm)
     }
 }
 

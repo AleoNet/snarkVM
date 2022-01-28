@@ -36,6 +36,7 @@ pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
 
     pub(super) w_poly: Option<LabeledPolynomial<F>>,
     pub(super) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
+    pub(super) mz_poly_randomizer: Option<(F, F)>,
 
     pub(super) index: &'a Circuit<F, MM>,
 

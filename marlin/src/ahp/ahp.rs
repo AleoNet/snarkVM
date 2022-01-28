@@ -21,16 +21,13 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
-use snarkvm_fields::{batch_inversion, Field, PrimeField};
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
 use core::{borrow::Borrow, marker::PhantomData};
-
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
@@ -331,9 +328,7 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F> {
         let vanish_x = self.evaluate_vanishing_polynomial(x);
         let mut inverses: Vec<F> = self.elements().map(|y| x - y).collect();
-        batch_inversion(&mut inverses);
-
-        cfg_iter_mut!(inverses).for_each(|denominator| *denominator *= &vanish_x);
+        snarkvm_fields::batch_inversion_and_mul(&mut inverses, &vanish_x);
         inverses
     }
 
