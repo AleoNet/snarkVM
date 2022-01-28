@@ -31,29 +31,46 @@ impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on addition of two constants"),
             }
         } else {
+            // Instead of adding the bits of `self` and `other` directly, the integers are
+            // converted into a field elements and subtracted, before being converted back to integers.
+            // Note: This is safe as the field is larger than the maximum integer type supported.
+            let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
+            let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
+
+            let sum = this.add(that);
+            let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
+
+            // This is safe since we extract at least one bit from the field element.
+            let carry = bits_le.pop().unwrap();
+
+            // Over/underflow checks are different for signed and unsigned addition.
             if I::is_signed() {
-                todo!()
+                // TODO (@pranav) Do we need an explicit check for this?
+                // This is safe since I::BITS is always greater than 0.
+                let self_msb = self.bits_le.last().unwrap();
+                let other_msb = other.bits_le.last().unwrap();
+                let sum_msb = bits_le.last().unwrap();
+
+                let same_signs = (&self_msb).is_eq(&other_msb);
+                let positive_this_and_that_overflows = (&same_signs).and(&!self_msb).and(&sum_msb);
+                let negative_this_and_that_overflows = (&same_signs).and(&self_msb).and(&!sum_msb);
+
+                // For signed addition, overflow conditions are:
+                //   - a > 0 && b > 0 && a + b < 0 (Overflow)
+                //   - a < 0 && b < 0 && a + b > 0 (Underflow)
+                //   - Note that if sign(a) != sign(b) then over/underflow is impossible.
+                //   - Note that the result of an overflow and underflow must be negative and positive, respectively
+                E::assert_eq(positive_this_and_that_overflows, E::zero());
+                E::assert_eq(negative_this_and_that_overflows, E::zero());
             } else {
-                // Instead of adding the bits of `self` and `other` directly, the integers are
-                // converted into a field elements, and summed, before being converted back to integers.
-                // Note: This is safe as the field is larger than the maximum integer type supported.
-                let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
-                let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-
-                let sum = this.add(that);
-
-                let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
-
-                // Check that the carry bit is zero.
-                // This is safe since we extract at least one bit from the field element.
-                let carry = bits_le.pop().unwrap();
+                // For unsigned addition, we only need to check that the carry bit is zero.
                 E::assert_eq(carry, E::zero());
+            }
 
-                // Return the sum of `self` and `other`.
-                Integer {
-                    bits_le,
-                    phantom: Default::default(),
-                }
+            // Return the sum of `self` and `other`.
+            Integer {
+                bits_le,
+                phantom: Default::default(),
             }
         }
     }
