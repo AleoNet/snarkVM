@@ -28,27 +28,23 @@ impl<E: Environment, I: IntegerType> AddWrappedField<Self> for Integer<E, I> {
             // Compute the sum and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_add(&other.eject_value()))
         } else {
-            if I::is_signed() {
-                todo!()
-            } else {
-                // Instead of adding the bits of `self` and `other` directly, the integers are
-                // converted into a field elements, and summed, before being converted back to integers.
-                // Note: This is safe as the field is larger than the maximum integer type supported.
-                let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
-                let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
+            // Instead of adding the bits of `self` and `other` directly, the integers are
+            // converted into a field elements, and summed, before being converted back to integers.
+            // Note: This is safe as the field is larger than the maximum integer type supported.
+            let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
+            let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
 
-                let sum = this.add(that);
+            let sum = this.add(that);
 
-                let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
+            let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
 
-                // Remove carry bit since we are doing wrapped addition.
-                bits_le.pop();
+            // Remove carry bit since we are doing wrapped addition.
+            bits_le.pop();
 
-                // Return the sum of `self` and `other`.
-                Integer {
-                    bits_le,
-                    phantom: Default::default(),
-                }
+            // Return the sum of `self` and `other`.
+            Integer {
+                bits_le,
+                phantom: Default::default(),
             }
         }
     }
@@ -94,10 +90,10 @@ mod tests {
             print!("Private: {:?}, ", scope.num_private_in_scope());
             print!("Constraints: {:?}\n", scope.num_constraints_in_scope());
 
-            // assert_eq!(num_constants, scope.num_constants_in_scope(), "{} (num_constants)", case);
-            // assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
-            // assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
-            // assert_eq!(num_constraints, scope.num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert_eq!(num_constants, scope.num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
     }
