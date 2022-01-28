@@ -34,12 +34,11 @@ impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
                 None => E::halt("Integer underflow on subtraction of two constants"),
             }
         } else {
-            // Instead of adding the bits of `self` and `other` directly, the integers are
+            // Instead of subtracting the bits of `self` and `other` directly, the integers are
             // converted into a field elements, and subtracted, before being converted back to integers.
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
-
             let difference = this.add(&that).add(BaseField::one());
 
             let mut bits_le = difference.extract_lower_k_bits_le(I::BITS + 1);

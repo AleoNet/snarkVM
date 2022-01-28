@@ -71,9 +71,6 @@ impl<E: Environment> ToBits for &BaseField<E> {
 }
 
 impl<E: Environment> BaseField<E> {
-    // TODO (@pranav). Temporarily placed here while experimenting with an encoding for integers using field elements.
-    //  Move to a more appropriate place.
-    //  Can we parameterize the expected value of the upper n - k bits? Currently, we assume that they are zero.
     ///
     /// Extracts the lower k bits of a field element that uses n bits.
     /// Requires that the upper n - k bits are zero.
