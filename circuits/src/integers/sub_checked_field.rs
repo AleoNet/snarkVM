@@ -49,6 +49,8 @@ impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
 
             // Over/underflow conditions are different for signed and unsigned integers.
             if I::is_signed() {
+                // TODO (@pranav) Do we need an explicit check for this?
+                // This is safe since I::BITS is always greater than 0.
                 let minuend_msb = self.bits_le.last().unwrap();
                 let subtrahend_msb = other.bits_le.last().unwrap();
                 let result_msb = bits_le.last().unwrap();
