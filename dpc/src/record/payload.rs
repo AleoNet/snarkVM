@@ -106,7 +106,7 @@ impl<'de, N: Network> Deserialize<'de> for Payload<N> {
 
 impl<N: Network> Default for Payload<N> {
     fn default() -> Self {
-        Self::from(vec![])
+        Self::from(vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES])
     }
 }
 
