@@ -37,6 +37,7 @@ pub struct Execution<N: Network> {
     pub verifying_key: N::ProgramVerifyingKey,
     pub program_proof: N::ProgramProof,
     pub inner_proof: N::InnerProof,
+    // TODO (raychu86): Move this out of execution and create a dedicated struct.
     pub deployed_program: Option<(N::ProgramID, ProgramFunctions<N>)>,
 }
 
