@@ -56,6 +56,7 @@ mod bls12_377 {
         prepare_verifying_key,
         verify_proof,
         Proof,
+        VerifyingKey,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{str::FromStr, FromBytes, ToBytes, UniformRand};
@@ -147,6 +148,53 @@ mod bls12_377 {
         assert_eq!(expected_proof, bincode::deserialize(&expected_bytes[..]).unwrap());
         assert_eq!(expected_proof, Proof::read_le(&expected_bytes[..]).unwrap());
     }
+
+    #[test]
+    fn test_verifying_key_serde_json() {
+        let rng = &mut thread_rng();
+        let verifying_key = generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng)
+            .unwrap()
+            .vk;
+
+        // Serialize
+        let expected_string = &verifying_key.to_string();
+        let candidate_string = serde_json::to_string(&verifying_key).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(verifying_key, serde_json::from_str(&candidate_string).unwrap());
+        assert_eq!(
+            verifying_key,
+            VerifyingKey::<Bls12_377>::from_str(expected_string).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_verifying_key_bincode() {
+        let rng = &mut thread_rng();
+        let verifying_key = generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng)
+            .unwrap()
+            .vk;
+
+        // Serialize
+        let expected_bytes = verifying_key.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&verifying_key).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(verifying_key, bincode::deserialize(&candidate_bytes[..]).unwrap());
+        assert_eq!(
+            verifying_key,
+            VerifyingKey::<Bls12_377>::read_le(&expected_bytes[..]).unwrap()
+        );
+    }
 }
 
 mod bw6_761 {
@@ -157,6 +205,7 @@ mod bw6_761 {
         prepare_verifying_key,
         verify_proof,
         Proof,
+        VerifyingKey,
     };
     use snarkvm_curves::bw6_761::{Fr, BW6_761};
     use snarkvm_utilities::{rand::UniformRand, str::FromStr, FromBytes, ToBytes};
@@ -245,6 +294,53 @@ mod bw6_761 {
         // Deserialize
         assert_eq!(expected_proof, bincode::deserialize(&expected_bytes[..]).unwrap());
         assert_eq!(expected_proof, Proof::read_le(&expected_bytes[..]).unwrap());
+    }
+
+    #[test]
+    fn test_verifying_key_serde_json() {
+        let rng = &mut thread_rng();
+        let verifying_key = generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng)
+            .unwrap()
+            .vk;
+
+        // Serialize
+        let expected_string = &verifying_key.to_string();
+        let candidate_string = serde_json::to_string(&verifying_key).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(verifying_key, serde_json::from_str(&candidate_string).unwrap());
+        assert_eq!(
+            verifying_key,
+            VerifyingKey::<BW6_761>::from_str(expected_string).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_verifying_key_bincode() {
+        let rng = &mut thread_rng();
+        let verifying_key = generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng)
+            .unwrap()
+            .vk;
+
+        // Serialize
+        let expected_bytes = verifying_key.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&verifying_key).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(verifying_key, bincode::deserialize(&candidate_bytes[..]).unwrap());
+        assert_eq!(
+            verifying_key,
+            VerifyingKey::<BW6_761>::read_le(&expected_bytes[..]).unwrap()
+        );
     }
 }
 
