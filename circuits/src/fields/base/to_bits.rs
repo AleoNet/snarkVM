@@ -106,7 +106,7 @@ impl<E: Environment> BaseField<E> {
         }
 
         // Ensure value * 1 == (2^k * b_k + ... + 2^0 * b_0)
-        // Enforces that b_n, ..., b_n-k all equal to zero.
+        // and ensures that b_n, ..., b_{n-k} are all equal to zero.
         E::assert_eq(self, accumulator);
 
         bits
