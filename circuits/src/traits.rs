@@ -67,7 +67,6 @@ pub trait IntegerTrait<I: IntegerType>:
     + Eject<Primitive = I>
     + Equal
     + FromBits
-    + LessThan
     + Neg<Output = Self>
     + One
     + SubAssign
