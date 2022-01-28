@@ -379,7 +379,7 @@ impl<E: PairingEngine> PreparedCommitment<E> {
             cur.double_in_place();
         }
 
-        Self { 0: prepared_comm }
+        Self(prepared_comm)
     }
 }
 
