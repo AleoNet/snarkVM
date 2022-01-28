@@ -19,6 +19,7 @@ use super::*;
 use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::FromBytes;
+use std::ops::Not;
 
 impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
     type Output = Self;
@@ -40,36 +41,17 @@ impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
                 // converted into a field elements, and subtracted, before being converted back to integers.
                 // Note: This is safe as the field is larger than the maximum integer type supported.
                 let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
-                let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
+                let that =
+                    BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
 
-                // TODO (@pranav) Reduce number of constants by initializing values directly in the base field.
-                // Initialize some constants.
-                let max_integer = Integer::new(Mode::Constant, I::max_value());
-                let max_field = BaseField::from_bits_le(Mode::Constant, &max_integer.bits_le);
-                let one_field = BaseField::from_bits_le(Mode::Constant, &Self::one().bits_le);
+                let difference = this.add(&that).add(BaseField::one());
 
-                let difference = (&this).sub(&that);
+                let mut bits_le = difference.extract_lower_k_bits_le(I::BITS + 1);
 
-                // In order to check for underflow, we check that
-                // I::MAX + (a - b) does not overflow and does not equal I::MAX.
-                // The check is done this way since it is cheaper to check for
-                // overflow in the bits of the field.
-                let max_plus_difference = max_field.add(&difference);
-                let mut bits_le = max_plus_difference.extract_lower_k_bits_le(I::BITS + 1);
-
-                // This is safe because we extract at least one bit.
+                // This is safe since we extract at least one bit from the field.
                 let carry = bits_le.pop().unwrap();
-                let value = Integer {
-                    bits_le,
-                    phantom: Default::default(),
-                };
-                let underflow = (!carry).and(&value.is_neq(&max_integer));
 
-                // If `underflow` then return I::max + (a - b) + 1, else return a - b.
-                let result = BaseField::ternary(&underflow, &max_plus_difference.add(&one_field), &difference);
-                let bits_le = result.extract_lower_k_bits_le(I::BITS);
-
-                E::assert_eq(underflow, E::zero());
+                E::assert_eq(carry, E::one());
 
                 // Return the difference of `self` and `other`.
                 Integer {
