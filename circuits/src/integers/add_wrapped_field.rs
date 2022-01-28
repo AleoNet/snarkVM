@@ -85,11 +85,6 @@ mod tests {
                 case
             );
 
-            print!("Constants: {:?}, ", scope.num_constants_in_scope());
-            print!("Public: {:?}, ", scope.num_public_in_scope());
-            print!("Private: {:?}, ", scope.num_private_in_scope());
-            print!("Constraints: {:?}\n", scope.num_constraints_in_scope());
-
             assert_eq!(num_constants, scope.num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
@@ -157,53 +152,53 @@ mod tests {
     #[test]
     fn test_u8_constant_plus_public() {
         type I = u8;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 19, 19);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 13, 13);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_constant_plus_private() {
         type I = u8;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 19, 19);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 13, 13);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_public_plus_constant() {
         type I = u8;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 13, 13);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 19, 19);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_private_plus_constant() {
         type I = u8;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 13, 13);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 19, 19);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_public_plus_public() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 34, 34);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_public_plus_private() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 34, 34);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_private_plus_public() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 34, 34);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_private_plus_private() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 34, 34);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
 
     // Tests for i8
@@ -217,53 +212,53 @@ mod tests {
     #[test]
     fn test_i8_constant_plus_public() {
         type I = i8;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 19, 19);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 13, 13);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_constant_plus_private() {
         type I = i8;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 19, 19);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 13, 13);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_public_plus_constant() {
         type I = i8;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 13, 13);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 19, 19);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_private_plus_constant() {
         type I = i8;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 13, 13);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 19, 19);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 2, 0, 11, 12);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_public_plus_public() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 34, 34);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_public_plus_private() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 34, 34);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_private_plus_public() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 34, 34);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_private_plus_private() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 34, 34);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
 
     // Tests for u16
@@ -277,53 +272,53 @@ mod tests {
     #[test]
     fn test_u16_constant_plus_public() {
         type I = u16;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 43, 43);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 29, 29);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_constant_plus_private() {
         type I = u16;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 43, 43);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 29, 29);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_public_plus_constant() {
         type I = u16;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 29, 29);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 43, 43);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_private_plus_constant() {
         type I = u16;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 29, 29);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 43, 43);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_public_plus_public() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 74, 74);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_public_plus_private() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 74, 74);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_private_plus_public() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 74, 74);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_private_plus_private() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 74, 74);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 19, 20);
     }
 
     // Tests for i16
@@ -337,53 +332,53 @@ mod tests {
     #[test]
     fn test_i16_constant_plus_public() {
         type I = i16;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 43, 43);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 29, 29);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_constant_plus_private() {
         type I = i16;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 43, 43);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 29, 29);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_public_plus_constant() {
         type I = i16;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 29, 29);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 43, 43);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_private_plus_constant() {
         type I = i16;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 29, 29);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 43, 43);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 2, 0, 19, 20);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_public_plus_public() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 74, 74);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_public_plus_private() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 74, 74);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_private_plus_public() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 74, 74);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_private_plus_private() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 74, 74);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 19, 20);
     }
 
     // Tests for u32
@@ -397,53 +392,53 @@ mod tests {
     #[test]
     fn test_u32_constant_plus_public() {
         type I = u32;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 91, 91);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 61, 61);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_constant_plus_private() {
         type I = u32;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 91, 91);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 61, 61);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_public_plus_constant() {
         type I = u32;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 61, 61);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 91, 91);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_private_plus_constant() {
         type I = u32;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 61, 61);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 91, 91);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_public_plus_public() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 154, 154);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_public_plus_private() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 154, 154);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_private_plus_public() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 154, 154);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_private_plus_private() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 154, 154);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 35, 36);
     }
 
     // Tests for i32
@@ -457,53 +452,53 @@ mod tests {
     #[test]
     fn test_i32_constant_plus_public() {
         type I = i32;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 91, 91);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 61, 61);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_constant_plus_private() {
         type I = i32;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 91, 91);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 61, 61);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_public_plus_constant() {
         type I = i32;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 61, 61);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 91, 91);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_private_plus_constant() {
         type I = i32;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 61, 61);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 91, 91);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 2, 0, 35, 36);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_public_plus_public() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 154, 154);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_public_plus_private() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 154, 154);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_private_plus_public() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 154, 154);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_private_plus_private() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 154, 154);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 35, 36);
     }
 
     // Tests for u64
@@ -517,53 +512,53 @@ mod tests {
     #[test]
     fn test_u64_constant_plus_public() {
         type I = u64;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 187, 187);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 125, 125);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_constant_plus_private() {
         type I = u64;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 187, 187);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 125, 125);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_public_plus_constant() {
         type I = u64;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 125, 125);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 187, 187);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_private_plus_constant() {
         type I = u64;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 125, 125);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 187, 187);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_public_plus_public() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 314, 314);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_public_plus_private() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 314, 314);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_private_plus_public() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 314, 314);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_private_plus_private() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 314, 314);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 67, 68);
     }
 
     // Tests for i64
@@ -577,53 +572,53 @@ mod tests {
     #[test]
     fn test_i64_constant_plus_public() {
         type I = i64;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 187, 187);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 125, 125);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_constant_plus_private() {
         type I = i64;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 187, 187);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 125, 125);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_public_plus_constant() {
         type I = i64;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 125, 125);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 187, 187);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_private_plus_constant() {
         type I = i64;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 125, 125);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 187, 187);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 2, 0, 67, 68);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_public_plus_public() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 314, 314);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_public_plus_private() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 314, 314);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_private_plus_public() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 314, 314);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_private_plus_private() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 314, 314);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 67, 68);
     }
 
     // Tests for u128
@@ -637,53 +632,53 @@ mod tests {
     #[test]
     fn test_u128_constant_plus_public() {
         type I = u128;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 1, 0, 379, 379);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 1, 0, 253, 253);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Public, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_constant_plus_private() {
         type I = u128;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 1, 0, 379, 379);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 1, 0, 253, 253);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Constant, Mode::Private, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Constant, Mode::Private, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_public_plus_constant() {
         type I = u128;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 1, 0, 253, 253);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 1, 0, 379, 379);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Public, Mode::Constant, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Public, Mode::Constant, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_private_plus_constant() {
         type I = u128;
-        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 1, 0, 253, 253);
-        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 1, 0, 379, 379);
+        check_overflow::<I>(I::MAX, I::one(), I::zero(), Mode::Private, Mode::Constant, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::zero(), Mode::Private, Mode::Constant, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_public_plus_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 634, 634);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_public_plus_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 634, 634);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_private_plus_public() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 634, 634);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_private_plus_private() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 634, 634);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 131, 132);
     }
 
     // Tests for i128
@@ -697,52 +692,52 @@ mod tests {
     #[test]
     fn test_i128_constant_plus_public() {
         type I = i128;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 1, 0, 379, 379);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 1, 0, 253, 253);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_constant_plus_private() {
         type I = i128;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 1, 0, 379, 379);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 1, 0, 253, 253);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Private, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Constant, Mode::Private, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_public_plus_constant() {
         type I = i128;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 1, 0, 253, 253);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 1, 0, 379, 379);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Public, Mode::Constant, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Public, Mode::Constant, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_private_plus_constant() {
         type I = i128;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 1, 0, 253, 253);
-        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 1, 0, 379, 379);
+        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Private, Mode::Constant, 2, 0, 131, 132);
+        check_overflow::<I>(I::one(), I::MAX, I::MIN, Mode::Private, Mode::Constant, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_public_plus_public() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 1, 0, 634, 634);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_public_plus_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 1, 0, 634, 634);
+        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_private_plus_public() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 1, 0, 634, 634);
+        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_private_plus_private() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 1, 0, 634, 634);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 131, 132);
     }
 }
