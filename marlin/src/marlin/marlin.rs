@@ -342,9 +342,9 @@ impl<
             .circuit
             .iter() // 12 items
             .chain(prover_first_oracles.iter()) // 3 or 4 items
-            .chain(prover_second_oracles.iter())// 3 items
-            .chain(prover_third_oracles.iter())// 4 items
-            .chain(prover_fourth_oracles.iter())// 1 items
+            .chain(prover_second_oracles.iter())// 2 items
+            .chain(prover_third_oracles.iter())// 3 items
+            .chain(prover_fourth_oracles.iter())// 1 item
             .collect();
 
         Self::terminate(terminator)?;
@@ -427,7 +427,7 @@ impl<
 
         fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
 
-        let num_open_challenges: usize = 5;
+        let num_open_challenges: usize = 7;
 
         let mut opening_challenges = Vec::new();
         opening_challenges.append(&mut fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?);
@@ -447,7 +447,12 @@ impl<
         Self::terminate(terminator)?;
 
         // Gather prover messages together.
-        let prover_messages = vec![prover_first_message, prover_second_message, prover_third_message];
+        let prover_messages = vec![
+            prover_first_message,
+            prover_second_message,
+            prover_third_message,
+            prover_fourth_message,
+        ];
 
         let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);

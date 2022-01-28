@@ -22,7 +22,7 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::{EvaluationDomain, SparsePolynomial};
+use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 
@@ -190,14 +190,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let a_at_beta = prover_third_message.field_elements[0];
         let b_at_beta = prover_third_message.field_elements[1];
         let c_at_beta = prover_third_message.field_elements[2];
-        let t_at_beta = a_at_beta + b_at_beta + c_at_beta;
+        #[rustfmt::skip]
+        let t_at_beta =
+            eta_a * state.non_zero_a_domain.size_as_field_element * a_at_beta +
+            eta_b * state.non_zero_b_domain.size_as_field_element * b_at_beta +
+            eta_c * state.non_zero_c_domain.size_as_field_element * c_at_beta;
+        let r_b = state.third_round_message.as_ref().unwrap().r_b;
+        let r_c = state.third_round_message.as_ref().unwrap().r_c;
 
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = Vec::with_capacity(9);
 
-        // Outer sumchecK:
+        // Outer sumcheck:
         let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
         let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
 
@@ -230,7 +236,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             lc_terms.push((-beta * g_1_at_beta, LCTerm::One));
             LinearCombination::new("outer_sumcheck", lc_terms)
         };
-        debug_assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
+        assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
 
         linear_combinations.push(z_b);
         linear_combinations.push(g_1);
@@ -241,60 +247,48 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g_a = LinearCombination::new("g_a", vec![(F::one(), "g_a")]);
         let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
-        let selector_a = largest_non_zero_domain
-            .selector_polynomial(non_zero_a_domain)
-            .evaluate(gamma);
+        let selector_a = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_a_domain, gamma);
         let lhs_a = Self::construct_lhs(
             "a",
-            eta_a,
             alpha,
             beta,
             gamma,
             v_H_at_alpha * v_H_at_beta,
             g_a_at_gamma,
             a_at_beta,
-            non_zero_a_domain.size_as_field_element,
             selector_a,
         );
         inner_sumcheck += &lhs_a;
 
         let g_b = LinearCombination::new("g_b", vec![(F::one(), "g_b")]);
         let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
-        let selector_b = largest_non_zero_domain
-            .selector_polynomial(non_zero_b_domain)
-            .evaluate(gamma);
+        let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_b_domain, gamma);
         let lhs_b = Self::construct_lhs(
             "b",
-            eta_b,
             alpha,
             beta,
             gamma,
             v_H_at_alpha * v_H_at_beta,
             g_b_at_gamma,
             b_at_beta,
-            non_zero_b_domain.size_as_field_element,
             selector_b,
         );
-        inner_sumcheck += &lhs_b;
+        inner_sumcheck += (r_b, &lhs_b);
 
         let g_c = LinearCombination::new("g_c", vec![(F::one(), "g_c")]);
         let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
-        let selector_c = largest_non_zero_domain
-            .selector_polynomial(non_zero_c_domain)
-            .evaluate(gamma);
+        let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_c_domain, gamma);
         let lhs_c = Self::construct_lhs(
             "c",
-            eta_c,
             alpha,
             beta,
             gamma,
             v_H_at_alpha * v_H_at_beta,
             g_c_at_gamma,
             c_at_beta,
-            non_zero_c_domain.size_as_field_element,
             selector_c,
         );
-        inner_sumcheck += &lhs_c;
+        inner_sumcheck += (r_c, &lhs_c);
 
         inner_sumcheck -= &LinearCombination::new("h_2", vec![(
             largest_non_zero_domain.evaluate_vanishing_polynomial(gamma),
@@ -307,35 +301,34 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         linear_combinations.push(g_c);
         linear_combinations.push(inner_sumcheck);
 
-        linear_combinations.sort_by(|a, b| a.label.cmp(&b.label));
+        linear_combinations.sort_by_key(|a| a.label.clone());
         Ok(linear_combinations)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn construct_lhs(
         label: &str,
-        eta: F,
         alpha: F,
         beta: F,
         gamma: F,
         v_h_at_alpha_beta: F,
         g_at_gamma: F,
         sum: F,
-        k_size: F,
         selector_at_gamma: F,
     ) -> LinearCombination<F> {
-        let a = LinearCombination::new("a_poly".to_owned() + label, vec![(
-            eta * v_h_at_alpha_beta,
-            "val".to_owned() + label,
+        let a = LinearCombination::new("a_poly_".to_owned() + label, vec![(
+            v_h_at_alpha_beta,
+            "val_".to_owned() + label,
         )]);
         let alpha_beta = alpha * beta;
 
-        let mut b = LinearCombination::new("denom".to_owned() + label, vec![
+        let mut b = LinearCombination::new("denom_".to_owned() + label, vec![
             (alpha_beta, LCTerm::One),
-            (-alpha, ("row".to_owned() + label).into()),
-            (-beta, ("col".to_owned() + label).into()),
-            (F::one(), ("row_col".to_owned() + label).into()),
+            (-alpha, ("row_".to_owned() + label).into()),
+            (-beta, ("col_".to_owned() + label).into()),
+            (F::one(), ("row_col_".to_owned() + label).into()),
         ]);
-        b *= gamma * g_at_gamma + (sum / k_size);
+        b *= gamma * g_at_gamma + sum;
 
         let mut lhs = a;
         lhs -= &b;
@@ -423,14 +416,14 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
 /// Given two domains H and K such that H \subseteq K,
 /// construct polynomial that outputs 0 on all elements in K \ H, but 1 on all elements of H.
 pub trait SelectorPolynomial<F: PrimeField> {
-    fn selector_polynomial(&self, other: EvaluationDomain<F>) -> SparsePolynomial<F>;
+    fn evaluate_selector_polynomial(&self, other: EvaluationDomain<F>, point: F) -> F;
 }
 
 impl<F: PrimeField> SelectorPolynomial<F> for EvaluationDomain<F> {
-    fn selector_polynomial(&self, other: EvaluationDomain<F>) -> SparsePolynomial<F> {
-        assert!(self.size() >= other.size());
-        let coeff = self.size_as_field_element / other.size_as_field_element;
-        SparsePolynomial::from_coefficients_vec(vec![(0, coeff), (self.size(), coeff)])
+    fn evaluate_selector_polynomial(&self, other: EvaluationDomain<F>, point: F) -> F {
+        let numerator = self.evaluate_vanishing_polynomial(point) * other.size_as_field_element;
+        let denominator = other.evaluate_vanishing_polynomial(point) * self.size_as_field_element;
+        numerator / denominator
     }
 }
 
@@ -497,7 +490,7 @@ mod tests {
             for j in 1..i {
                 let domain_i = EvaluationDomain::<Fr>::new(1 << i).unwrap();
                 let domain_j = EvaluationDomain::<Fr>::new(1 << j).unwrap();
-                let selector = domain_i.selector_polynomial(domain_j);
+                let point = domain_j.sample_element_outside_domain(&mut snarkvm_utilities::test_rng());
                 let j_elements = domain_j.elements().collect::<Vec<_>>();
                 let slow_selector = {
                     let evals = domain_i
@@ -506,13 +499,16 @@ mod tests {
                         .collect();
                     Evaluations::from_vec_and_domain(evals, domain_i).interpolate()
                 };
-                assert_eq!(DensePolynomial::from(selector.clone()), slow_selector);
+                assert_eq!(
+                    slow_selector.evaluate(point),
+                    domain_i.evaluate_selector_polynomial(domain_j, point)
+                );
 
                 for element in domain_i.elements() {
                     if j_elements.contains(&element) {
-                        assert_eq!(selector.evaluate(element), Fr::one(), "failed for {} vs {}", i, j);
+                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {} vs {}", i, j);
                     } else {
-                        assert_eq!(selector.evaluate(element), Fr::zero());
+                        assert_eq!(slow_selector.evaluate(element), Fr::zero());
                     }
                 }
             }

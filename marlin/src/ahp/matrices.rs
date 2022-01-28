@@ -41,7 +41,7 @@ pub(crate) fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_inpu
                     VarIndex::Public(i) => *i,
                     VarIndex::Private(i) => num_input_variables + i,
                 };
-                *row_map.entry(column).or_insert(F::zero()) += *fe;
+                *row_map.entry(column).or_insert_with(F::zero) += *fe;
             });
             row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect()
         })
@@ -154,7 +154,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     // Recall that we are computing the arithmetization of M^*,
     // where `M^*(i, j) := M(j, i) * u_H(j, j)`.
-    for (r, row) in matrix.into_iter().enumerate() {
+    for (r, row) in matrix.iter().enumerate() {
         for (val, i) in row {
             let row_val = elems[r];
             let col_val = elems[constraint_domain.reindex_by_subdomain(input_domain, *i)];
