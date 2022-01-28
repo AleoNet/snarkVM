@@ -57,7 +57,7 @@ impl<E: Environment> ToBits for &BaseField<E> {
         }
 
         // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::enforce(|| (*self, E::one(), accumulator));
+        E::assert_eq(*self, accumulator);
 
         bits
     }
@@ -110,7 +110,7 @@ impl<E: Environment> BaseField<E> {
 
         // Ensure value * 1 == (2^k * b_k + ... + 2^0 * b_0)
         // Enforces that b_n, ..., b_n-k all equal to zero.
-        E::enforce(|| (self, E::one(), accumulator));
+        E::assert_eq(self, accumulator);
 
         bits
     }

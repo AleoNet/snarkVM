@@ -36,11 +36,10 @@ impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-
             let sum = this.add(that);
-            let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
 
             // This is safe since we extract at least one bit from the field element.
+            let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
             let carry = bits_le.pop().unwrap();
 
             // Over/underflow checks are different for signed and unsigned addition.
