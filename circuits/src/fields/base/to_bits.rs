@@ -160,7 +160,6 @@ mod tests {
         }
     }
 
-    // TODO (@pranav) Parameterize this test of primitive unsigned integers to test if they can be encoded and recovered correctly.
     fn check_extract_lower_k_bits_le<I: IntegerType + Unsigned + ToBytes>(
         mode: Mode,
         num_constants: usize,
@@ -172,7 +171,7 @@ mod tests {
             // Sample a random unsigned integer.
             let value: I = UniformRand::rand(&mut thread_rng());
             let mut field_bytes = value.to_bytes_le().unwrap();
-            field_bytes.resize(253, 0u8);
+            field_bytes.resize(<Circuit as Environment>::BaseField::size_in_bits(), 0u8); // Note: Pads more than necessary.
             let candidate = BaseField::<Circuit>::new(
                 mode,
                 <Circuit as Environment>::BaseField::from_bytes_le(&field_bytes).unwrap(),

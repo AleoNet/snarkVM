@@ -21,11 +21,14 @@ pub mod add_wrapped;
 pub mod add_wrapped_field; // TODO (@pranav) Temporary while experimenting with field-based integer operations.
 pub mod equal;
 pub mod from_bits;
+pub mod less_than;
 pub mod neg;
 pub mod one;
 pub mod sub;
 pub mod sub_checked;
+pub mod sub_checked_field;
 pub mod sub_wrapped;
+pub mod sub_wrapped_field;
 pub mod to_bits;
 pub mod zero;
 
