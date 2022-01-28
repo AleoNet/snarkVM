@@ -163,7 +163,8 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
         ));
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    // Sleep 5 seconds the allow the filesystem to store the binary properly.
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     Ok(())
 }
