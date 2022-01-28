@@ -202,6 +202,9 @@ features = ["derive"]
 [dev-dependencies.serde_json]
 version = "1"
 
+[dev-dependencies.serial_test]
+version = "*"
+
 [features]
 default = [
   "full",

@@ -55,29 +55,37 @@ struct CudaAffine {
 }
 
 /// Generates the cuda msm binary.
-fn generate_cuda_binary<P: AsRef<Path>>(file_path: P) -> Result<(), GPUError> {
+fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(), GPUError> {
     // Find the latest compute code values.
     let nvcc_help = Command::new("nvcc").arg("-h").output()?.stdout;
     let nvcc_output =
         std::str::from_utf8(&nvcc_help).map_err(|_| GPUError::Generic("Missing nvcc command".to_string()))?;
 
+    // Generate the parent directory.
+    let mut resource_path = aleo_std::aleo_dir();
+    resource_path.push("resources/cuda/");
+    std::fs::create_dir_all(resource_path)?;
+
     // TODO (raychu86): Fix this approach to generating files.
     // Store the `.cu` and `.h` files temporarily for fatbin generation
     let mut asm_cuda_path = aleo_std::aleo_dir();
     let mut asm_cuda_h_path = aleo_std::aleo_dir();
-    asm_cuda_path.push("resources/asm_cuda.cu");
-    asm_cuda_h_path.push("resources/asm_cuda.h");
+    asm_cuda_path.push("resources/cuda/asm_cuda.cu");
+    asm_cuda_h_path.push("resources/cuda/asm_cuda.h");
 
     let mut blst_377_ops_path = aleo_std::aleo_dir();
     let mut blst_377_ops_h_path = aleo_std::aleo_dir();
-    blst_377_ops_path.push("resources/blst_377_ops.cu");
-    blst_377_ops_h_path.push("resources/blst_377_ops.h");
+    blst_377_ops_path.push("resources/cuda/blst_377_ops.cu");
+    blst_377_ops_h_path.push("resources/cuda/blst_377_ops.h");
 
     let mut msm_path = aleo_std::aleo_dir();
-    msm_path.push("resources/msm.cu");
+    msm_path.push("resources/cuda/msm.cu");
 
     let mut types_path = aleo_std::aleo_dir();
-    types_path.push("resources/types.h");
+    types_path.push("resources/cuda/types.h");
+
+    let mut tests_path = aleo_std::aleo_dir();
+    tests_path.push("resources/cuda/tests.cu");
 
     // Write all the files to the relative path.
     {
@@ -103,7 +111,18 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P) -> Result<(), GPUError> {
     command
         .arg(asm_cuda_path.as_os_str())
         .arg(blst_377_ops_path.as_os_str())
-        .arg(msm_path.as_os_str())
+        .arg(msm_path.as_os_str());
+
+    // Add the debug feature for tests.
+    if debug {
+        let tests = include_bytes!("./blst_377_cuda/tests.cu");
+        std::fs::write(&tests_path, tests)?;
+
+        command.arg(tests_path.as_os_str()).arg("--device-debug");
+    }
+
+    // Add supported gencodes
+    command
         .arg("--generate-code=arch=compute_60,code=sm_60")
         .arg("--generate-code=arch=compute_70,code=sm_70")
         .arg("--generate-code=arch=compute_75,code=sm_75");
@@ -126,7 +145,7 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P) -> Result<(), GPUError> {
 
     let status = command.status()?;
 
-    // Delete all the temporary .cu files.
+    // Delete all the temporary .cu and .h files.
     {
         std::fs::remove_file(asm_cuda_path)?;
         std::fs::remove_file(asm_cuda_h_path)?;
@@ -134,6 +153,7 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P) -> Result<(), GPUError> {
         std::fs::remove_file(blst_377_ops_h_path)?;
         std::fs::remove_file(msm_path)?;
         std::fs::remove_file(types_path)?;
+        std::fs::remove_file(tests_path)?;
     }
 
     // Execute the command.
@@ -156,11 +176,11 @@ fn load_cuda_program() -> Result<Program, GPUError> {
 
     // Find the path to the msm fatbin kernel
     let mut file_path = aleo_std::aleo_dir();
-    file_path.push("resources/msm.fatbin");
+    file_path.push("resources/cuda/msm.fatbin");
 
     // If the file does not exist, regenerate the fatbin.
     if !file_path.exists() {
-        generate_cuda_binary(&file_path)?;
+        generate_cuda_binary(&file_path, false)?;
     }
 
     let cuda_kernel = std::fs::read(file_path.clone())?;
@@ -368,6 +388,7 @@ mod tests {
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
+    use serial_test::serial;
 
     #[repr(C)]
     struct ProjectiveAffine {
@@ -404,12 +425,28 @@ mod tests {
             Ok(out)
         });
 
-        // The executable was compiled with (from build.sh):
-        // nvcc ./asm_cuda.cu ./blst_377_ops.cu ./tests.cu ./msm.cu -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_75,code=compute_75 --device-debug -dlink -fatbin -o ./test.fatbin
-        let cuda_kernel = include_bytes!("./blst_377_cuda/test.fatbin");
+        // Find the path to the msm test fatbin kernel
+        let mut file_path = aleo_std::aleo_dir();
+        file_path.push("resources/cuda/msm_test.fatbin");
+
+        // If the file does not exist, regenerate the fatbin.
+        if !file_path.exists() {
+            generate_cuda_binary(&file_path, true).unwrap();
+        }
+
+        let cuda_kernel = std::fs::read(file_path.clone()).unwrap();
         let cuda_device = Device::all().first().unwrap().cuda_device().unwrap();
 
-        let program = Program::Cuda(cuda::Program::from_bytes(cuda_device, cuda_kernel).unwrap());
+        let cuda_program = match cuda::Program::from_bytes(cuda_device, &cuda_kernel) {
+            Ok(program) => program,
+            Err(_err) => {
+                // Delete the failing cuda kernel.
+                std::fs::remove_file(file_path).unwrap();
+                panic!("Failed to load cuda program");
+            }
+        };
+
+        let program = Program::Cuda(cuda_program);
 
         program.run(closures, ()).unwrap()
     }
@@ -455,6 +492,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_mul() {
         let inputs = make_tests(1000, 2);
 
@@ -477,6 +515,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_square() {
         let inputs = make_tests(1000, 1);
 
@@ -495,6 +534,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_add() {
         let inputs = make_tests(1000, 2);
 
@@ -518,6 +558,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_add() {
         let inputs = make_projective_tests(1000, 2);
 
@@ -531,6 +572,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_double() {
         let inputs = make_projective_tests(1000, 1);
 
@@ -544,6 +586,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_affine_round_trip() {
         let inputs = make_affine_tests(1000, 1);
 
@@ -557,6 +600,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_affine_add() {
         let inputs = make_affine_tests(1000, 2);
 
@@ -571,6 +615,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_affine_add() {
         let affine_inputs = make_affine_tests(1000, 1);
         let projective_inputs = make_projective_tests(1000, 1);
@@ -597,6 +642,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_sub() {
         let inputs = make_tests(1000, 2);
 
@@ -619,6 +665,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_affine_add_infinity() {
         let infinite = G1Affine::new(Fq::zero(), Fq::one(), true);
         let cuda_infinite = CudaAffine {
@@ -634,6 +681,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_affine_add_infinity() {
         let mut projective = G1Projective::zero();
 
