@@ -31,7 +31,6 @@ impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
                 // Note: This addition must be checked as `-I::MIN` is an invalid operation.
                 Integer::one().add_checked(&negated)
             }
-            // TODO (@howard): If this is a bitwise negation operator, should it be allowed on unsigned integers?
             false => E::halt("Attempted to negate an unsigned integer"),
         }
     }
