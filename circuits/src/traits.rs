@@ -67,6 +67,7 @@ pub trait IntegerTrait<I: IntegerType>:
     + Eject<Primitive = I>
     + Equal
     + FromBits
+    + LessThan
     + Neg<Output = Self>
     + One
     + SubAssign
@@ -161,10 +162,9 @@ pub trait Equal<Rhs: ?Sized = Self> {
 
 pub trait LessThan<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
-    type Output;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_lt(&self, other: &Rhs) -> Self::Output;
+    fn is_lt(&self, other: &Rhs) -> Self::Boolean;
 }
 
 /// Binary operator for performing `a AND b`.
