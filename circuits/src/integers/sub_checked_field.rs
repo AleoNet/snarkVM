@@ -16,11 +16,6 @@
 
 use super::*;
 
-use itertools::Itertools;
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::FromBytes;
-use std::ops::Not;
-
 impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
     type Output = Self;
 
@@ -57,15 +52,15 @@ impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
                     let subtrahend_msb = other.bits_le.last().unwrap();
                     let result_msb = bits_le.last().unwrap();
 
-                    let is_minuend_subtrahend_different_signs = minuend_msb.is_neq(&subtrahend_msb);
-                    let is_overflow = is_minuend_subtrahend_different_signs.and(&result_msb.is_eq(&subtrahend_msb));
+                    let is_different_signs = minuend_msb.is_neq(subtrahend_msb);
+                    let is_underflow = is_different_signs.and(&result_msb.is_eq(subtrahend_msb));
 
                     // For signed addition, overflow and underflow conditions are:
                     //   - a > 0 && b > 0 && a + b < 0 (Overflow)
                     //   - a < 0 && b < 0 && a + b > 0 (Underflow)
                     //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
                     //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
-                    E::assert_eq(is_overflow, E::zero());
+                    E::assert_eq(is_underflow, E::zero());
                 }
                 false => {
                     // For unsigned subtraction, ensure the carry bit is one.

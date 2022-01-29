@@ -16,8 +16,6 @@
 
 use super::*;
 
-use itertools::Itertools;
-
 impl<E: Environment, I: IntegerType> AddWrappedField<Self> for Integer<E, I> {
     type Output = Self;
 
@@ -37,7 +35,7 @@ impl<E: Environment, I: IntegerType> AddWrappedField<Self> for Integer<E, I> {
 
             // Extract the integer bits from the field element, with a carry bit.
             let mut bits_le = sum.to_lower_bits_le(I::BITS + 1);
-            // Drop carry bit as the operation is wrapped addition.
+            // Drop the carry bit as the operation is wrapped addition.
             bits_le.pop();
 
             // Return the sum of `self` and `other`.

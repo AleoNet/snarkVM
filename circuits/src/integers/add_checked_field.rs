@@ -16,8 +16,6 @@
 
 use super::*;
 
-use itertools::Itertools;
-
 impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
     type Output = Self;
 
@@ -54,7 +52,7 @@ impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
                     let other_msb = other.bits_le.last().unwrap();
                     let sum_msb = bits_le.last().unwrap();
 
-                    let is_same_sign = (&self_msb).is_eq(&other_msb);
+                    let is_same_sign = self_msb.is_eq(other_msb);
                     let is_overflow = is_same_sign.and(&sum_msb.is_neq(self_msb));
 
                     // For signed addition, overflow and underflow conditions are:
