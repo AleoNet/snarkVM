@@ -32,12 +32,6 @@
 pub mod circuit;
 pub use circuit::*;
 
-mod circuit_counter;
-use circuit_counter::*;
-
-mod constraint_system;
-use constraint_system::*;
-
 mod converter;
 
 pub mod environment;
@@ -46,18 +40,25 @@ pub use environment::*;
 pub mod linear_combination;
 pub use linear_combination::*;
 
-pub mod macros;
-pub use macros::*;
+mod r1cs;
+use r1cs::*;
+
+mod transcript;
+use transcript::*;
 
 pub mod variable;
 pub use variable::*;
 
 #[macro_export]
-macro_rules! field {
-    ($name:ident, $c0:expr) => {
-        $name {
-            0: $c0,
-            1: std::marker::PhantomData,
-        }
+macro_rules! scoped {
+    ($scope_name:expr, $block:block) => {
+        E::scoped($scope_name, || $block)
+    };
+}
+
+#[macro_export]
+macro_rules! push_scope {
+    ($scope_name:expr) => {
+        E::push_scope($scope_name)
     };
 }

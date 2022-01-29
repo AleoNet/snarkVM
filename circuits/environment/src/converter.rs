@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Circuit, ConstraintSystem, LinearCombination, Variable};
+use crate::{Circuit, LinearCombination, Variable, R1CS};
 use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
@@ -36,7 +36,7 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fq> for Circuit {
     }
 }
 
-impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<F> {
+impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
     /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
     fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
         &self,

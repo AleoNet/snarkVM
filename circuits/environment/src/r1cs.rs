@@ -22,7 +22,7 @@ use core::fmt;
 pub type Scope = String;
 
 #[derive(Debug)]
-pub(super) struct ConstraintSystem<F: PrimeField> {
+pub(super) struct R1CS<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
@@ -30,10 +30,10 @@ pub(super) struct ConstraintSystem<F: PrimeField> {
         Scope,
         (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
     )>,
-    counter: CircuitCounter,
+    counter: Transcript,
 }
 
-impl<F: PrimeField> ConstraintSystem<F> {
+impl<F: PrimeField> R1CS<F> {
     /// Returns a new instance of a constraint system.
     pub(super) fn new() -> Self {
         Self {
@@ -173,7 +173,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField> fmt::Display for ConstraintSystem<F> {
+impl<F: PrimeField> fmt::Display for R1CS<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::default();
 

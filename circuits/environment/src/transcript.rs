@@ -17,7 +17,7 @@
 use crate::*;
 
 #[derive(Debug, Default)]
-pub(super) struct CircuitCounter {
+pub(super) struct Transcript {
     scope: Scope,
     constants: usize,
     public: usize,
@@ -26,7 +26,7 @@ pub(super) struct CircuitCounter {
     parents: Vec<(Scope, usize, usize, usize, usize)>,
 }
 
-impl CircuitCounter {
+impl Transcript {
     pub(super) fn push(&mut self, name: &str) -> Result<(), String> {
         match name.contains(".") {
             true => Err("Scope names cannot contain periods (\".\")".to_string()),

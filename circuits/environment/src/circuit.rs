@@ -24,7 +24,7 @@ use core::{cell::RefCell, fmt};
 use once_cell::unsync::Lazy;
 
 thread_local! {
-    pub(super) static CIRCUIT: Lazy<RefCell<ConstraintSystem<Fq>>> = Lazy::new(|| RefCell::new(ConstraintSystem::<Fq>::new()));
+    pub(super) static CIRCUIT: Lazy<RefCell<R1CS<Fq>>> = Lazy::new(|| RefCell::new(R1CS::<Fq>::new()));
 }
 
 #[derive(Clone)]
@@ -84,18 +84,17 @@ impl Environment for Circuit {
         Fn: FnOnce() -> Output,
     {
         CIRCUIT.with(|circuit| {
-            // Set the entire environment to the new scope, and run the logic.
-            match (**circuit).borrow_mut().push_scope(name) {
-                Ok(()) => (),
-                Err(error) => Self::halt(error),
-            };
+            // Set the entire environment to the new scope.
+            if let Err(error) = (**circuit).borrow_mut().push_scope(name) {
+                Self::halt(error)
+            }
 
+            // Run the logic.
             let output = logic();
 
             // Return the entire environment to the previous scope.
-            match (**circuit).borrow_mut().pop_scope(name) {
-                Ok(()) => (),
-                Err(error) => Self::halt(error),
+            if let Err(error) = (**circuit).borrow_mut().pop_scope(name) {
+                Self::halt(error)
             }
 
             output
@@ -187,7 +186,7 @@ impl Environment for Circuit {
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         CIRCUIT.with(|circuit| {
-            *(**circuit).borrow_mut() = ConstraintSystem::<<Self as Environment>::BaseField>::new();
+            *(**circuit).borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, (**circuit).borrow().num_constants());
             assert_eq!(1, (**circuit).borrow().num_public());
             assert_eq!(0, (**circuit).borrow().num_private());
