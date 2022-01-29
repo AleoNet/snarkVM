@@ -129,6 +129,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
+    #[rustfmt::skip]
     fn check_add(
         name: &str,
         expected: &<Circuit as Environment>::Affine,
@@ -159,6 +160,7 @@ mod tests {
         });
     }
 
+    #[rustfmt::skip]
     fn check_add_assign(
         name: &str,
         expected: &<Circuit as Environment>::Affine,

@@ -81,6 +81,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
+    #[rustfmt::skip]
     fn check_xor(
         name: &str,
         expected: bool,

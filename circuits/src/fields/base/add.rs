@@ -71,6 +71,7 @@ mod tests {
 
     const ITERATIONS: usize = 100_000;
 
+    #[rustfmt::skip]
     fn check_add(
         name: &str,
         expected: &<Circuit as Environment>::BaseField,
@@ -101,6 +102,7 @@ mod tests {
         });
     }
 
+    #[rustfmt::skip]
     fn check_add_assign(
         name: &str,
         expected: &<Circuit as Environment>::BaseField,

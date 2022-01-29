@@ -83,6 +83,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
+    #[rustfmt::skip]
     fn check_ternary(
         name: &str,
         expected: bool,

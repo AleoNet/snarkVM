@@ -54,6 +54,7 @@ mod tests {
 
     const ITERATIONS: usize = 25;
 
+    #[rustfmt::skip]
     fn check_div(
         mode_a: Mode,
         mode_b: Mode,

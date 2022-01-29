@@ -35,6 +35,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
+    #[rustfmt::skip]
     fn check_is_eq(
         name: &str,
         expected: bool,
