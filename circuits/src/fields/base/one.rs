@@ -38,24 +38,24 @@ mod tests {
     fn test_one() {
         let one = <Circuit as Environment>::BaseField::one();
 
-        Circuit::scoped("One", |scope| {
+        Circuit::scoped("One", || {
             assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());
             assert_eq!(0, Circuit::num_constraints());
 
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
+            assert_eq!(0, Circuit::num_constants_in_scope());
+            assert_eq!(0, Circuit::num_public_in_scope());
+            assert_eq!(0, Circuit::num_private_in_scope());
+            assert_eq!(0, Circuit::num_constraints_in_scope());
 
             let candidate = BaseField::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
 
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
+            assert_eq!(0, Circuit::num_constants_in_scope());
+            assert_eq!(0, Circuit::num_public_in_scope());
+            assert_eq!(0, Circuit::num_private_in_scope());
+            assert_eq!(0, Circuit::num_constraints_in_scope());
 
             assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());

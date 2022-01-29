@@ -205,7 +205,7 @@ mod tests {
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
             assert_eq!(0, Circuit::num_constraints());
 
-            Circuit::reset_circuit();
+            Circuit::reset();
         }
         {
             let candidate = Circuit::new_variable(Mode::Public, two);
@@ -215,7 +215,7 @@ mod tests {
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
-            Circuit::reset_circuit();
+            Circuit::reset();
         }
         {
             let candidate = Circuit::new_variable(Mode::Private, two);
@@ -225,7 +225,7 @@ mod tests {
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
-            Circuit::reset_circuit();
+            Circuit::reset();
         }
     }
 

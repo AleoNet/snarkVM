@@ -72,6 +72,7 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
+    #[rustfmt::skip]
     fn check_from_bits_le<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
@@ -84,19 +85,20 @@ mod tests {
             let expected: I = UniformRand::rand(&mut thread_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
 
-            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), || {
                 let candidate = Integer::<Circuit, I>::from_bits_le(mode, &candidate);
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
                 assert!(Circuit::is_satisfied(), "(is_satisfied)");
             });
         }
     }
 
+    #[rustfmt::skip]
     fn check_from_bits_be<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
@@ -109,14 +111,14 @@ mod tests {
             let expected: I = UniformRand::rand(&mut thread_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
 
-            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), || {
                 let candidate = Integer::<Circuit, I>::from_bits_be(mode, &candidate);
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
                 assert!(Circuit::is_satisfied(), "(is_satisfied)");
             });
         }

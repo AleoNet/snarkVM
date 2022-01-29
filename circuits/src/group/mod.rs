@@ -156,14 +156,14 @@ mod tests {
                 assert_eq!(y_coordinate, recovered.to_y_coordinate());
             }
 
-            Circuit::scoped(&format!("Constant {}", i), |scope| {
+            Circuit::scoped(&format!("Constant {}", i), || {
                 let affine = Affine::<Circuit>::new(Mode::Constant, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(4, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(4, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
             });
         }
 
@@ -173,15 +173,15 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let x_coordinate = point.to_x_coordinate();
 
-            Circuit::scoped(&format!("Public {}", i), |scope| {
+            Circuit::scoped(&format!("Public {}", i), || {
                 let affine = Affine::<Circuit>::new(Mode::Public, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(2, scope.num_public_in_scope());
-                assert_eq!(2, scope.num_private_in_scope());
-                assert_eq!(3, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(2, Circuit::num_constants_in_scope());
+                assert_eq!(2, Circuit::num_public_in_scope());
+                assert_eq!(2, Circuit::num_private_in_scope());
+                assert_eq!(3, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
             });
         }
 
@@ -191,15 +191,15 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let x_coordinate = point.to_x_coordinate();
 
-            Circuit::scoped(&format!("Private {}", i), |scope| {
+            Circuit::scoped(&format!("Private {}", i), || {
                 let affine = Affine::<Circuit>::new(Mode::Private, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(4, scope.num_private_in_scope());
-                assert_eq!(3, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(2, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(4, Circuit::num_private_in_scope());
+                assert_eq!(3, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
             });
         }
     }

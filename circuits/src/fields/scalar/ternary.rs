@@ -50,24 +50,24 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Constant, true);
-            Circuit::scoped("Constant(true) ? Constant : Constant", |scope| {
+            Circuit::scoped("Constant(true) ? Constant : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
-            Circuit::scoped("Constant(false) ? Constant : Constant", |scope| {
+            Circuit::scoped("Constant(false) ? Constant : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -80,24 +80,24 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Constant, true);
-            Circuit::scoped("Constant(true) ? Public : Private", |scope| {
+            Circuit::scoped("Constant(true) ? Public : Private", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
-            Circuit::scoped("Constant(false) ? Public : Private", |scope| {
+            Circuit::scoped("Constant(false) ? Public : Private", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -110,24 +110,24 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Public, true);
-            Circuit::scoped("Public(true) ? Constant : Constant", |scope| {
+            Circuit::scoped("Public(true) ? Constant : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Public, false);
-            Circuit::scoped("Public(false) ? Constant : Constant", |scope| {
+            Circuit::scoped("Public(false) ? Constant : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -140,24 +140,24 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
-            Circuit::scoped("Private(true) ? Constant : Constant", |scope| {
+            Circuit::scoped("Private(true) ? Constant : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
-            Circuit::scoped("Private(false) ? Constant : Constant", |scope| {
+            Circuit::scoped("Private(false) ? Constant : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -170,26 +170,26 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
-            Circuit::scoped("Private(true) ? Public : Constant", |scope| {
+            Circuit::scoped("Private(true) ? Public : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(251, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(251, Circuit::num_private_in_scope());
+                assert_eq!(251, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
-            Circuit::scoped("Private(false) ? Public : Constant", |scope| {
+            Circuit::scoped("Private(false) ? Public : Constant", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(251, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(251, Circuit::num_private_in_scope());
+                assert_eq!(251, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -202,26 +202,26 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
-            Circuit::scoped("Private(true) ? Constant : Public", |scope| {
+            Circuit::scoped("Private(true) ? Constant : Public", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(251, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(251, Circuit::num_private_in_scope());
+                assert_eq!(251, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
-            Circuit::scoped("Private(false) ? Constant : Public", |scope| {
+            Circuit::scoped("Private(false) ? Constant : Public", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(251, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(251, Circuit::num_private_in_scope());
+                assert_eq!(251, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -234,26 +234,26 @@ mod tests {
             let b = ScalarField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
-            Circuit::scoped("Private(true) ? Private : Public", |scope| {
+            Circuit::scoped("Private(true) ? Private : Public", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(251, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(251, Circuit::num_private_in_scope());
+                assert_eq!(251, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
-            Circuit::scoped("Private(false) ? Private : Public", |scope| {
+            Circuit::scoped("Private(false) ? Private : Public", || {
                 let output = ScalarField::ternary(&condition, &a, &b);
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(251, scope.num_private_in_scope());
-                assert_eq!(251, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(251, Circuit::num_private_in_scope());
+                assert_eq!(251, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());

@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ConstraintSystem, LinearCombination, Variable};
+use crate::{Circuit, LinearCombination, Variable, R1CS};
+use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
 use std::collections::HashMap;
@@ -25,7 +26,17 @@ struct Converter {
     private: HashMap<u64, snarkvm_r1cs::Variable>,
 }
 
-impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<F> {
+impl snarkvm_r1cs::ConstraintSynthesizer<Fq> for Circuit {
+    /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
+    fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<Fq>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<(), snarkvm_r1cs::SynthesisError> {
+        crate::circuit::CIRCUIT.with(|circuit| (*(**circuit).borrow()).generate_constraints(cs))
+    }
+}
+
+impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
     /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
     fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
         &self,
@@ -196,7 +207,7 @@ mod tests {
         let _candidate_output = create_example_circuit::<Circuit>();
 
         let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
-        Circuit::constraint_system_raw().generate_constraints(&mut cs).unwrap();
+        Circuit.generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_r1cs::ConstraintSystem;
             assert_eq!(Circuit::num_public() + 1, cs.num_public_variables());
@@ -224,10 +235,9 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let parameters =
-                generate_random_parameters::<Bls12_377, _, _>(&Circuit::constraint_system_raw(), rng).unwrap();
+            let parameters = generate_random_parameters::<Bls12_377, _, _>(&Circuit, rng).unwrap();
 
-            let proof = create_random_proof(&Circuit::constraint_system_raw(), &parameters, rng).unwrap();
+            let proof = create_random_proof(&Circuit, &parameters, rng).unwrap();
             let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
 
             assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
@@ -265,11 +275,10 @@ mod tests {
                 snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-            let (index_pk, index_vk) =
-                MarlinInst::circuit_setup(&universal_srs, &Circuit::constraint_system_raw()).unwrap();
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &Circuit::constraint_system_raw(), rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&index_vk, &[one, one], &proof).unwrap());

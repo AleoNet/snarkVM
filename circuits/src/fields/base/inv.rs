@@ -57,7 +57,7 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
-        Circuit::scoped("Constant", |scope| {
+        Circuit::scoped("Constant", || {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
@@ -65,17 +65,17 @@ mod tests {
                 let candidate = BaseField::<Circuit>::new(Mode::Constant, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!((i + 1) * 2, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 accumulator += one;
             }
         });
 
         // Public variables
-        Circuit::scoped("Public", |scope| {
+        Circuit::scoped("Public", || {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
@@ -83,18 +83,18 @@ mod tests {
                 let candidate = BaseField::<Circuit>::new(Mode::Public, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
-                assert_eq!(i + 1, scope.num_private_in_scope());
-                assert_eq!(i + 1, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(i + 1, Circuit::num_public_in_scope());
+                assert_eq!(i + 1, Circuit::num_private_in_scope());
+                assert_eq!(i + 1, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 accumulator += one;
             }
         });
 
         // Private variables
-        Circuit::scoped("Private", |scope| {
+        Circuit::scoped("Private", || {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
@@ -102,11 +102,11 @@ mod tests {
                 let candidate = BaseField::<Circuit>::new(Mode::Private, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!((i + 1) * 2, scope.num_private_in_scope());
-                assert_eq!(i + 1, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!((i + 1) * 2, Circuit::num_private_in_scope());
+                assert_eq!(i + 1, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 accumulator += one;
             }
