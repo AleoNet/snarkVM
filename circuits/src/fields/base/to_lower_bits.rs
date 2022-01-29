@@ -88,6 +88,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
+    #[rustfmt::skip]
     fn check_to_lower_k_bits_le<I: IntegerType + Unsigned + ToBytes>(
         mode: Mode,
         num_constants: usize,
@@ -120,11 +121,7 @@ mod tests {
                 assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
                 assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
                 assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(
-                    num_constraints,
-                    Circuit::num_constraints_in_scope(),
-                    "(num_constraints)"
-                );
+                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
                 assert!(Circuit::is_satisfied(), "(is_satisfied)");
             });
         }
