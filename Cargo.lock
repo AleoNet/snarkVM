@@ -2126,6 +2126,7 @@ dependencies = [
  "rand_core",
  "rayon",
  "serde",
+ "serde_json",
  "smallvec",
  "snarkvm-algorithms",
  "snarkvm-curves",

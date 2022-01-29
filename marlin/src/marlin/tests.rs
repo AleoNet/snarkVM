@@ -127,6 +127,75 @@ mod marlin {
                         assert!(!$marlin_inst::verify(&index_vk, &[a, a], &proof).unwrap());
                     }
                 }
+
+                pub(crate) fn test_serde_json(num_constraints: usize, num_variables: usize) {
+                    use std::str::FromStr;
+
+                    let rng = &mut test_rng();
+
+                    let max_degree = crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
+
+                    let circ = Circuit {
+                        a: Some(Fr::rand(rng)),
+                        b: Some(Fr::rand(rng)),
+                        num_constraints,
+                        num_variables,
+                    };
+
+                    let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
+                    println!("Called circuit setup");
+
+                    // Serialize
+                    let expected_string = index_vk.to_string();
+                    let candidate_string = serde_json::to_string(&index_vk).unwrap();
+                    assert_eq!(
+                        expected_string,
+                        serde_json::Value::from_str(&candidate_string)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                    );
+
+                    // Deserialize
+                    assert_eq!(
+                        index_vk,
+                        crate::marlin::CircuitVerifyingKey::from_str(&expected_string).unwrap()
+                    );
+                    assert_eq!(index_vk, serde_json::from_str(&candidate_string).unwrap());
+                }
+
+                pub(crate) fn test_bincode(num_constraints: usize, num_variables: usize) {
+                    use crate::snarkvm_utilities::{FromBytes, ToBytes};
+
+                    let rng = &mut test_rng();
+
+                    let max_degree = crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
+
+                    let circ = Circuit {
+                        a: Some(Fr::rand(rng)),
+                        b: Some(Fr::rand(rng)),
+                        num_constraints,
+                        num_variables,
+                    };
+
+                    let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
+                    println!("Called circuit setup");
+
+                    // Serialize
+                    let expected_bytes = index_vk.to_bytes_le().unwrap();
+                    let candidate_bytes = bincode::serialize(&index_vk).unwrap();
+                    // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+                    assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+                    // Deserialize
+                    assert_eq!(
+                        index_vk,
+                        crate::marlin::CircuitVerifyingKey::read_le(&expected_bytes[..]).unwrap()
+                    );
+                    assert_eq!(index_vk, bincode::deserialize(&candidate_bytes[..]).unwrap());
+                }
             }
         };
     }
@@ -143,6 +212,14 @@ mod marlin {
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+
+        MarlinPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
+
+        MarlinPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -153,6 +230,14 @@ mod marlin {
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+
+        MarlinPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
+
+        MarlinPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -163,6 +248,14 @@ mod marlin {
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+
+        MarlinPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
+
+        MarlinPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -173,6 +266,14 @@ mod marlin {
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+
+        MarlinPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
+
+        MarlinPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -183,6 +284,14 @@ mod marlin {
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+
+        MarlinPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCTest::test_serde_json(num_constraints, num_variables);
+        SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
+
+        MarlinPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCTest::test_bincode(num_constraints, num_variables);
+        SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
 }
 
@@ -190,13 +299,18 @@ mod marlin_recursion {
     use super::*;
     use crate::{
         fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
-        marlin::{MarlinRecursiveMode, MarlinSNARK},
+        marlin::{CircuitVerifyingKey, MarlinRecursiveMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::sonic_pc::SonicKZG10;
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::{
+        rand::{test_rng, UniformRand},
+        FromBytes,
+        ToBytes,
+    };
 
     use core::ops::MulAssign;
+    use std::str::FromStr;
 
     type MultiPC = SonicKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<
@@ -241,12 +355,76 @@ mod marlin_recursion {
         }
     }
 
+    fn test_serde_json(num_constraints: usize, num_variables: usize) {
+        let rng = &mut test_rng();
+
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+
+        let circuit = Circuit {
+            a: Some(Fr::rand(rng)),
+            b: Some(Fr::rand(rng)),
+            num_constraints,
+            num_variables,
+        };
+
+        let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        println!("Called circuit setup");
+
+        // Serialize
+        let expected_string = index_vk.to_string();
+        let candidate_string = serde_json::to_string(&index_vk).unwrap();
+        assert_eq!(
+            expected_string,
+            serde_json::Value::from_str(&candidate_string)
+                .unwrap()
+                .as_str()
+                .unwrap()
+        );
+
+        // Deserialize
+        assert_eq!(index_vk, CircuitVerifyingKey::from_str(&expected_string).unwrap());
+        assert_eq!(index_vk, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    fn test_bincode(num_constraints: usize, num_variables: usize) {
+        let rng = &mut test_rng();
+
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+
+        let circuit = Circuit {
+            a: Some(Fr::rand(rng)),
+            b: Some(Fr::rand(rng)),
+            num_constraints,
+            num_variables,
+        };
+
+        let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        println!("Called circuit setup");
+
+        // Serialize
+        let expected_bytes = index_vk.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&index_vk).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(
+            index_vk,
+            crate::marlin::CircuitVerifyingKey::read_le(&expected_bytes[..]).unwrap()
+        );
+        assert_eq!(index_vk, bincode::deserialize(&candidate_bytes[..]).unwrap());
+    }
+
     #[test]
     fn prove_and_verify_with_tall_matrix_big() {
         let num_constraints = 100;
         let num_variables = 25;
 
         test_circuit(num_constraints, num_variables);
+        test_serde_json(num_constraints, num_variables);
+        test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -255,6 +433,8 @@ mod marlin_recursion {
         let num_variables = 25;
 
         test_circuit(num_constraints, num_variables);
+        test_serde_json(num_constraints, num_variables);
+        test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -263,6 +443,8 @@ mod marlin_recursion {
         let num_variables = 100;
 
         test_circuit(num_constraints, num_variables);
+        test_serde_json(num_constraints, num_variables);
+        test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -271,6 +453,8 @@ mod marlin_recursion {
         let num_variables = 26;
 
         test_circuit(num_constraints, num_variables);
+        test_serde_json(num_constraints, num_variables);
+        test_bincode(num_constraints, num_variables);
     }
 
     #[test]
@@ -279,6 +463,8 @@ mod marlin_recursion {
         let num_variables = 25;
 
         test_circuit(num_constraints, num_variables);
+        test_serde_json(num_constraints, num_variables);
+        test_bincode(num_constraints, num_variables);
     }
 
     // #[test]
