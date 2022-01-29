@@ -77,11 +77,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
     /// Adds one constraint enforcing that `(A * B) == C`.
     pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
-        where
-            Fn: FnOnce() -> (A, B, C),
-            A: Into<LinearCombination<F>>,
-            B: Into<LinearCombination<F>>,
-            C: Into<LinearCombination<F>>,
+    where
+        Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<F>>,
+        B: Into<LinearCombination<F>>,
+        C: Into<LinearCombination<F>>,
     {
         let (a, b, c) = constraint();
         let (a, b, c) = (a.into(), b.into(), c.into());

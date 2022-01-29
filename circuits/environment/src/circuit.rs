@@ -20,10 +20,13 @@ use snarkvm_curves::{
     AffineCurve,
 };
 
-use core::{cell::{RefCell, RefMut}, fmt};
-use std::rc::Rc;
-use core::borrow::{Borrow};
+use core::{
+    borrow::Borrow,
+    cell::{RefCell, RefMut},
+    fmt,
+};
 use once_cell::unsync::Lazy;
+use std::rc::Rc;
 
 thread_local! {
     static CIRCUIT: Lazy<RefCell<CircuitScope<Fq>>> = Lazy::new(|| RefCell::new(CircuitScope::<Fq>::new()));
@@ -47,8 +50,8 @@ impl Circuit {
     pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
         CIRCUIT.with(|circuit| {
             let cs: Rc<RefCell<ConstraintSystem<<Self as Environment>::BaseField>>> = (**circuit).borrow().cs.clone();
-            let x = (*cs).borrow().clone().borrow().clone(); x
-
+            let x = (*cs).borrow().clone().borrow().clone();
+            x
         })
     }
 }
@@ -71,12 +74,10 @@ impl Environment for Circuit {
 
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
-        CIRCUIT.with(|circuit| {
-            match mode {
-                Mode::Constant => (**circuit).borrow_mut().new_constant(value),
-                Mode::Public => (**circuit).borrow_mut().new_public(value),
-                Mode::Private => (**circuit).borrow_mut().new_private(value),
-            }
+        CIRCUIT.with(|circuit| match mode {
+            Mode::Constant => (**circuit).borrow_mut().new_constant(value),
+            Mode::Public => (**circuit).borrow_mut().new_public(value),
+            Mode::Private => (**circuit).borrow_mut().new_private(value),
         })
     }
 

@@ -67,14 +67,18 @@ impl CircuitCounter {
 
         // Ensure the current scope is the last pushed scope.
         match current_scope == name {
-            true => if let Some((scope, constants, public, private, constraints)) = self.parents.pop() {
-                self.scope = scope;
-                self.constants = constants;
-                self.public = public;
-                self.private = private;
-                self.constraints = constraints;
-            },
-            false => return Err("Mismatching scope. Scopes must return in the reverse order they are created".to_string()),
+            true => {
+                if let Some((scope, constants, public, private, constraints)) = self.parents.pop() {
+                    self.scope = scope;
+                    self.constants = constants;
+                    self.public = public;
+                    self.private = private;
+                    self.constraints = constraints;
+                }
+            }
+            false => {
+                return Err("Mismatching scope. Scopes must return in the reverse order they are created".to_string());
+            }
         }
 
         Ok(())
