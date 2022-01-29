@@ -129,17 +129,3 @@ impl CircuitCounter {
         self.constraints
     }
 }
-
-#[cfg(feature = "testing")]
-impl Clone for CircuitCounter {
-    fn clone(&self) -> Self {
-        Self {
-            scope: self.scope.clone(),
-            constants: self.constants.clone(),
-            public: self.public.clone(),
-            private: self.private.clone(),
-            constraints: self.constraints.clone(),
-            parents: self.parents.clone(),
-        }
-    }
-}

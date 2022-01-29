@@ -24,7 +24,7 @@ use core::{borrow::Borrow, cell::RefCell, fmt};
 use once_cell::unsync::Lazy;
 
 thread_local! {
-    static CIRCUIT: Lazy<RefCell<ConstraintSystem<Fq>>> = Lazy::new(|| RefCell::new(ConstraintSystem::<Fq>::new()));
+    pub(super) static CIRCUIT: Lazy<RefCell<ConstraintSystem<Fq>>> = Lazy::new(|| RefCell::new(ConstraintSystem::<Fq>::new()));
 }
 
 #[derive(Clone)]
@@ -199,13 +199,6 @@ impl Environment for Circuit {
 impl fmt::Display for Circuit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         CIRCUIT.with(|circuit| write!(f, "{}", (**circuit).borrow()))
-    }
-}
-
-impl Circuit {
-    #[cfg(feature = "testing")]
-    pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
-        CIRCUIT.with(|circuit| (*(**circuit).borrow()).borrow().clone().borrow().clone())
     }
 }
 

@@ -22,7 +22,7 @@ use core::fmt;
 pub type Scope = String;
 
 #[derive(Debug)]
-pub struct ConstraintSystem<F: PrimeField> {
+pub(super) struct ConstraintSystem<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
@@ -191,18 +191,5 @@ impl<F: PrimeField> fmt::Display for ConstraintSystem<F> {
         output += "\n";
 
         write!(f, "{}", output)
-    }
-}
-
-#[cfg(feature = "testing")]
-impl<F: PrimeField> Clone for ConstraintSystem<F> {
-    fn clone(&self) -> Self {
-        Self {
-            constants: self.constants.clone(),
-            public: self.public.clone(),
-            private: self.private.clone(),
-            constraints: self.constraints.clone(),
-            counter: self.counter.clone(),
-        }
     }
 }

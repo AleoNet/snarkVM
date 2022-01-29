@@ -35,10 +35,10 @@ pub use circuit::*;
 mod circuit_counter;
 use circuit_counter::*;
 
-mod constraint_converter;
-
 mod constraint_system;
 use constraint_system::*;
+
+mod converter;
 
 pub mod environment;
 pub use environment::*;
