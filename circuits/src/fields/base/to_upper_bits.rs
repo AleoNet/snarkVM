@@ -134,7 +134,7 @@ mod tests {
                 BaseField::<Circuit>::new(mode, FromBytes::from_bytes_le(&field_bytes).unwrap())
             };
 
-            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), || {
                 let num_bits_with_capacity = I::BITS + 1;
                 let candidate = candidate.to_upper_bits_be(num_bits_with_capacity);
                 assert_eq!(num_bits_with_capacity, candidate.len());
@@ -142,10 +142,14 @@ mod tests {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
                 }
 
-                assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+                assert_eq!(
+                    num_constraints,
+                    Circuit::num_constraints_in_scope(),
+                    "(num_constraints)"
+                );
                 assert!(Circuit::is_satisfied(), "(is_satisfied)");
             });
         }
