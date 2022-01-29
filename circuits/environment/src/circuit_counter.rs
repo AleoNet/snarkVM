@@ -27,30 +27,62 @@ pub(super) struct CircuitCounter {
 }
 
 impl CircuitCounter {
-    pub(super) fn push(&mut self, scope: &Scope) {
-        self.parents.push((
-            self.scope.clone(),
-            self.constants,
-            self.public,
-            self.private,
-            self.constraints,
-        ));
+    pub(super) fn push(&mut self, name: &str) -> Result<(), String> {
+        match name.contains(".") {
+            true => Err("Scope names cannot contain periods (\".\")".to_string()),
+            false => {
+                // Construct the scope name.
+                let scope = match self.scope.is_empty() {
+                    true => format!("{}", name),
+                    false => format!("{}.{}", self.scope, name),
+                };
 
-        self.scope = scope.clone();
-        self.constants = 0;
-        self.public = 0;
-        self.private = 0;
-        self.constraints = 0;
+                // Save the current scope members.
+                self.parents.push((
+                    self.scope.clone(),
+                    self.constants,
+                    self.public,
+                    self.private,
+                    self.constraints,
+                ));
+
+                // Initialize the new scope members.
+                self.scope = scope.clone();
+                self.constants = 0;
+                self.public = 0;
+                self.private = 0;
+                self.constraints = 0;
+
+                Ok(())
+            }
+        }
     }
 
-    pub(super) fn pop(&mut self) {
-        if let Some((scope, constants, public, private, constraints)) = self.parents.pop() {
-            self.scope = scope;
-            self.constants = constants;
-            self.public = public;
-            self.private = private;
-            self.constraints = constraints;
+    pub(super) fn pop(&mut self, name: &str) -> Result<(), String> {
+        // Pop the current scope from the full scope.
+        let (previous_scope, current_scope) = match self.scope.rsplit_once('.') {
+            Some((previous_scope, current_scope)) => (previous_scope, current_scope),
+            None => ("", self.scope.as_str()),
+        };
+
+        // Ensure the current scope is the last pushed scope.
+        match current_scope == name {
+            true => if let Some((scope, constants, public, private, constraints)) = self.parents.pop() {
+                self.scope = scope;
+                self.constants = constants;
+                self.public = public;
+                self.private = private;
+                self.constraints = constraints;
+            },
+            false => return Err("Mismatching scope. Scopes must return in the reverse order they are created".to_string()),
         }
+
+        Ok(())
+    }
+
+    /// Returns the current scope.
+    pub(super) fn scope(&self) -> Scope {
+        self.scope.clone()
     }
 
     /// Increments the number of constants by 1.

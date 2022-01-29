@@ -92,38 +92,37 @@ pub fn scope(metadata: proc_macro::TokenStream, input: proc_macro::TokenStream) 
 
     let (argument_type, scope_name) = get_scope_name(metadata, &ident.to_string());
 
-    // (quote!(
-    //     #visibility fn #ident #generics (#inputs) #output #where_clause {
-    //         // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
-    //         // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
-    //         #block
-    //
-    //     }
-    // )).into()
+    (quote!(
+        #visibility fn #ident #generics (#inputs) #output #where_clause {
+            // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
+            // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
+            #block
+        }
+    )).into()
 
-    match argument_type {
-        Type::Circuit => {
-            (quote!(
-                #visibility fn #ident #generics (#inputs) #output #where_clause {
-                    // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
-                    // ::snarkvm_circuits_environment::push_scope!(#scope_name);
-                    // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
-                    #block
-                }
-            ))
-            .into()
-        }
-        _ => {
-            (quote!(
-                #visibility fn #ident #generics (#inputs) #output #where_clause {
-                    // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
-                    // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
-                    #block
-                }
-            ))
-            .into()
-        }
-    }
+    // match argument_type {
+    //     Type::Circuit => {
+    //         (quote!(
+    //             #visibility fn #ident #generics (#inputs) #output #where_clause {
+    //                 // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
+    //                 // ::snarkvm_circuits_environment::push_scope!(#scope_name);
+    //                 // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
+    //                 #block
+    //             }
+    //         ))
+    //         .into()
+    //     }
+    //     _ => {
+    //         (quote!(
+    //             #visibility fn #ident #generics (#inputs) #output #where_clause {
+    //                 // let _tmr = ::aleo_std::prelude::timer!(#scope_name);
+    //                 // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
+    //                 #block
+    //             }
+    //         ))
+    //         .into()
+    //     }
+    // }
 }
 
 #[cfg(not(feature = "scope"))]

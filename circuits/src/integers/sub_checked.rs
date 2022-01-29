@@ -94,7 +94,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let case = format!("({} - {})", a.eject_value(), b.eject_value());
 
             let candidate = a.sub_checked(b);
@@ -107,10 +107,10 @@ mod tests {
                 case
             );
 
-            assert_eq!(num_constants, scope.num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
     }
@@ -128,7 +128,7 @@ mod tests {
         let name = format!("Sub: {} - {} underflows", value_a, value_b);
         let a = Integer::<Circuit, I>::new(mode_a, value_a);
         let b = Integer::new(mode_b, value_b);
-        Circuit::scoped(&name, |_| {
+        Circuit::scoped(&name, || {
             let case = format!("({} - {})", a.eject_value(), b.eject_value());
             let _candidate = a.sub_checked(&b);
             assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
@@ -160,7 +160,7 @@ mod tests {
                 },
             }
 
-            Circuit::reset_circuit()
+            Circuit::reset()
         }
     }
 

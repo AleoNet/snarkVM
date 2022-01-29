@@ -170,7 +170,7 @@ mod tests {
         }
 
         // Constant == Constant
-        Circuit::scoped("Constant == Constant", |scope| {
+        Circuit::scoped("Constant == Constant", || {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -180,17 +180,17 @@ mod tests {
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
 
-                assert_eq!((i + 1) * 3, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!((i + 1) * 3, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
 
                 accumulator += one;
             }
         });
 
         // Public == Public
-        Circuit::scoped("Public == Public", |scope| {
+        Circuit::scoped("Public == Public", || {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -199,18 +199,18 @@ mod tests {
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!((i + 1) * 2, scope.num_public_in_scope());
-                assert_eq!((i + 1) * 2, scope.num_private_in_scope());
-                assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!((i + 1) * 2, Circuit::num_public_in_scope());
+                assert_eq!((i + 1) * 2, Circuit::num_private_in_scope());
+                assert_eq!((i + 1) * 3, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 accumulator += one;
             }
         });
 
         // Public == Private
-        Circuit::scoped("Public == Private", |scope| {
+        Circuit::scoped("Public == Private", || {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -219,18 +219,18 @@ mod tests {
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
-                assert_eq!((i + 1) * 3, scope.num_private_in_scope());
-                assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(i + 1, Circuit::num_public_in_scope());
+                assert_eq!((i + 1) * 3, Circuit::num_private_in_scope());
+                assert_eq!((i + 1) * 3, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
 
                 accumulator += one;
             }
         });
 
         // Private == Private
-        Circuit::scoped("Private == Private", |scope| {
+        Circuit::scoped("Private == Private", || {
             let mut accumulator = zero;
 
             for i in 0..ITERATIONS {
@@ -238,12 +238,12 @@ mod tests {
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
-                assert!(scope.is_satisfied());
+                assert!(Circuit::is_satisfied());
 
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!((i + 1) * 4, scope.num_private_in_scope());
-                assert_eq!((i + 1) * 3, scope.num_constraints_in_scope());
+                assert_eq!(0, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!((i + 1) * 4, Circuit::num_private_in_scope());
+                assert_eq!((i + 1) * 3, Circuit::num_constraints_in_scope());
 
                 accumulator += one;
             }
@@ -289,7 +289,7 @@ mod tests {
         assert!(Circuit::is_satisfied());
         enforce(a, b, multiplier, is_neq);
         assert!(Circuit::is_satisfied());
-        Circuit::reset_circuit();
+        Circuit::reset();
 
         //
         // Case 2: a == b AND is_neq == 1 (dishonest)
@@ -303,7 +303,7 @@ mod tests {
         assert!(Circuit::is_satisfied());
         enforce(a, b, multiplier, is_neq);
         assert!(!Circuit::is_satisfied());
-        Circuit::reset_circuit();
+        Circuit::reset();
 
         // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
         // ----------------------------------------------------------------
@@ -316,7 +316,7 @@ mod tests {
         assert!(Circuit::is_satisfied());
         enforce(a, b, multiplier, is_neq);
         assert!(!Circuit::is_satisfied());
-        Circuit::reset_circuit();
+        Circuit::reset();
 
         //
         // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
@@ -330,7 +330,7 @@ mod tests {
         assert!(Circuit::is_satisfied());
         enforce(a, b, multiplier, is_neq);
         assert!(!Circuit::is_satisfied());
-        Circuit::reset_circuit();
+        Circuit::reset();
 
         //
         // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
@@ -344,7 +344,7 @@ mod tests {
         assert!(Circuit::is_satisfied());
         enforce(a, b, multiplier, is_neq);
         assert!(!Circuit::is_satisfied());
-        Circuit::reset_circuit();
+        Circuit::reset();
 
         //
         // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
@@ -361,6 +361,6 @@ mod tests {
         assert!(Circuit::is_satisfied());
         enforce(a, b, multiplier, is_neq);
         assert!(Circuit::is_satisfied());
-        Circuit::reset_circuit();
+        Circuit::reset();
     }
 }

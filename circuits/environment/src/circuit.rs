@@ -20,59 +20,36 @@ use snarkvm_curves::{
     AffineCurve,
 };
 
-use core::cell::RefCell;
-use once_cell::unsync::OnceCell;
+use core::{cell::{RefCell, RefMut}, fmt};
 use std::rc::Rc;
+use core::borrow::{Borrow};
+use once_cell::unsync::Lazy;
 
 thread_local! {
-    static CIRCUIT: OnceCell<Circuit> = OnceCell::new();
+    static CIRCUIT: Lazy<RefCell<CircuitScope<Fq>>> = Lazy::new(|| RefCell::new(CircuitScope::<Fq>::new()));
 }
 
 #[derive(Clone)]
-pub struct Circuit(Rc<RefCell<CircuitScope<Fq>>>);
+pub struct Circuit;
 
 impl Circuit {
-    pub(super) fn cs() -> CircuitScope<<Self as Environment>::BaseField> {
+    pub fn reset() {
         CIRCUIT.with(|circuit| {
-            circuit
-                .get_or_init(|| {
-                    Circuit(Rc::new(RefCell::new(
-                        CircuitScope::<<Self as Environment>::BaseField>::new(),
-                    )))
-                })
-                .0
-                .borrow()
-                .clone()
-        })
-    }
-
-    pub fn print_circuit() {
-        for (scope, (a, b, c)) in Self::cs().cs.borrow().to_constraints() {
-            let a = a.to_value();
-            let b = b.to_value();
-            let c = c.to_value();
-
-            match (a * b) == c {
-                true => eprintln!("Constraint {}:\n\t{} * {} == {}", scope, a, b, c),
-                false => eprintln!("Constraint {}:\n\t{} * {} != {} (Unsatisfied)", scope, a, b, c),
-            }
-        }
-    }
-
-    pub fn reset_circuit() {
-        CIRCUIT.with(|circuit| {
-            *(*circuit.get().unwrap()).0.borrow_mut() = CircuitScope::<<Self as Environment>::BaseField>::new();
+            *(**circuit).borrow_mut() = CircuitScope::<<Self as Environment>::BaseField>::new();
+            assert_eq!(0, (**circuit).borrow().num_constants());
+            assert_eq!(1, (**circuit).borrow().num_public());
+            assert_eq!(0, (**circuit).borrow().num_private());
+            assert_eq!(0, (**circuit).borrow().num_constraints());
         });
-
-        assert_eq!(0, Self::cs().num_constants());
-        assert_eq!(1, Self::cs().num_public());
-        assert_eq!(0, Self::cs().num_private());
-        assert_eq!(0, Self::cs().num_constraints());
     }
 
     #[cfg(feature = "testing")]
     pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
-        Self::cs().cs.borrow().clone()
+        CIRCUIT.with(|circuit| {
+            let cs: Rc<RefCell<ConstraintSystem<<Self as Environment>::BaseField>>> = (**circuit).borrow().cs.clone();
+            let x = (*cs).borrow().clone().borrow().clone(); x
+
+        })
     }
 }
 
@@ -94,11 +71,13 @@ impl Environment for Circuit {
 
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
-        match mode {
-            Mode::Constant => Self::cs().new_constant(value),
-            Mode::Public => Self::cs().new_public(value),
-            Mode::Private => Self::cs().new_private(value),
-        }
+        CIRCUIT.with(|circuit| {
+            match mode {
+                Mode::Constant => (**circuit).borrow_mut().new_constant(value),
+                Mode::Public => (**circuit).borrow_mut().new_public(value),
+                Mode::Private => (**circuit).borrow_mut().new_private(value),
+            }
+        })
     }
 
     // /// Appends the given scope to the current environment.
@@ -127,21 +106,20 @@ impl Environment for Circuit {
 
     fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
     where
-        Fn: FnOnce(CircuitScope<Self::BaseField>) -> Output,
+        Fn: FnOnce() -> Output,
     {
         CIRCUIT.with(|circuit| {
             // Set the entire environment to the new scope, and run the logic.
-            let output = match Self::cs().push_scope(name) {
-                Ok(scope) => {
-                    *(*circuit.get().unwrap()).0.borrow_mut() = scope.clone();
-                    logic(scope)
-                }
+            match (**circuit).borrow_mut().push_scope(name) {
+                Ok(()) => (),
                 Err(error) => Self::halt(error),
             };
 
+            let output = logic();
+
             // Return the entire environment to the previous scope.
-            match Self::cs().pop_scope(name) {
-                Ok(scope) => *(*circuit.get().unwrap()).0.borrow_mut() = scope,
+            match (**circuit).borrow_mut().pop_scope(name) {
+                Ok(()) => (),
                 Err(error) => Self::halt(error),
             }
 
@@ -157,32 +135,52 @@ impl Environment for Circuit {
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>,
     {
-        Self::cs().enforce(constraint)
+        CIRCUIT.with(|circuit| (**circuit).borrow_mut().enforce(constraint));
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool {
-        Self::cs().is_satisfied()
+        CIRCUIT.with(|circuit| (**circuit).borrow().is_satisfied())
     }
 
     /// Returns the number of constants in the entire circuit.
     fn num_constants() -> usize {
-        Self::cs().num_constants()
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_constants())
     }
 
     /// Returns the number of public variables in the entire circuit.
     fn num_public() -> usize {
-        Self::cs().num_public()
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_public())
     }
 
     /// Returns the number of private variables in the entire circuit.
     fn num_private() -> usize {
-        Self::cs().num_private()
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_private())
     }
 
     /// Returns the number of constraints in the entire circuit.
     fn num_constraints() -> usize {
-        Self::cs().num_constraints()
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints())
+    }
+
+    /// Returns the number of constants for the current scope.
+    fn num_constants_in_scope() -> usize {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_constants_in_scope())
+    }
+
+    /// Returns the number of public variables for the current scope.
+    fn num_public_in_scope() -> usize {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_public_in_scope())
+    }
+
+    /// Returns the number of private variables for the current scope.
+    fn num_private_in_scope() -> usize {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_private_in_scope())
+    }
+
+    /// Returns the number of constraints for the current scope.
+    fn num_constraints_in_scope() -> usize {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints_in_scope())
     }
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
@@ -209,6 +207,29 @@ impl Environment for Circuit {
         let error = message.into();
         eprintln!("{}", &error);
         panic!("{}", &error)
+    }
+}
+
+impl fmt::Display for Circuit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        CIRCUIT.with(|circuit| {
+            let mut output = String::default();
+
+            for (scope, (a, b, c)) in (*(**circuit).borrow().cs).borrow().to_constraints() {
+                let a = a.to_value();
+                let b = b.to_value();
+                let c = c.to_value();
+
+                match (a * b) == c {
+                    true => output += &format!("Constraint {}:\n\t{} * {} == {}\n", scope, a, b, c),
+                    false => output += &format!("Constraint {}:\n\t{} * {} != {} (Unsatisfied)\n", scope, a, b, c),
+                }
+            }
+
+            output += "\n";
+
+            write!(f, "{}", output)
+        })
     }
 }
 
@@ -244,6 +265,6 @@ mod tests {
     #[test]
     fn test_print_circuit() {
         let _candidate_output = create_example_circuit::<Circuit>();
-        Circuit::print_circuit()
+        println!("{}", Circuit);
     }
 }

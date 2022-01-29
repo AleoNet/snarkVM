@@ -61,14 +61,14 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let candidate_output = !candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
 
-            assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-            assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-            assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
             assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });
     }

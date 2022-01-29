@@ -19,6 +19,7 @@ use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use core::fmt;
+use core::cell::RefMut;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -83,7 +84,7 @@ pub trait Environment: Clone {
 
     fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
     where
-        Fn: FnOnce(CircuitScope<Self::BaseField>) -> Output;
+        Fn: FnOnce() -> Output;
 
     /// Adds one constraint enforcing that `(A * B) == C`.
     fn enforce<Fn, A, B, C>(constraint: Fn)
@@ -121,6 +122,18 @@ pub trait Environment: Clone {
 
     /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> usize;
+
+    /// Returns the number of constants for the current scope.
+    fn num_constants_in_scope() -> usize;
+
+    /// Returns the number of public variables for the current scope.
+    fn num_public_in_scope() -> usize;
+
+    /// Returns the number of private variables for the current scope.
+    fn num_private_in_scope() -> usize;
+
+    /// Returns the number of constraints for the current scope.
+    fn num_constraints_in_scope() -> usize;
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
 

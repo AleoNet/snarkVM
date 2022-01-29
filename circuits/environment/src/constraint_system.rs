@@ -26,6 +26,7 @@ pub struct ConstraintSystem<F: PrimeField> {
         Scope,
         (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
     )>,
+    counter: CircuitCounter,
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
@@ -36,41 +37,59 @@ impl<F: PrimeField> ConstraintSystem<F> {
             public: vec![Variable::Public(0u64, F::one())],
             private: Default::default(),
             constraints: Default::default(),
+            counter: Default::default(),
         }
     }
 
+    /// Appends the given scope to the current environment.
+    pub(super) fn push_scope(&mut self, name: &str) -> Result<(), String> {
+        self.counter.push(name)
+    }
+
+    /// Removes the given scope from the current environment.
+    pub(super) fn pop_scope(&mut self, name: &str) -> Result<(), String> {
+        self.counter.pop(name)
+    }
+
     /// Returns a new constant with the given value and scope.
-    pub(super) fn new_constant(&mut self, value: F, scope: Scope) -> Variable<F> {
+    pub(super) fn new_constant(&mut self, value: F) -> Variable<F> {
         let variable = Variable::Constant(value);
         self.constants.push(variable);
+        self.counter.increment_constant();
         variable
     }
 
     /// Returns a new public variable with the given value and scope.
-    pub(super) fn new_public(&mut self, value: F, scope: Scope) -> Variable<F> {
+    pub(super) fn new_public(&mut self, value: F) -> Variable<F> {
         let variable = Variable::Public(self.public.len() as u64, value);
         self.public.push(variable);
+        self.counter.increment_public();
         variable
     }
 
     /// Returns a new private variable with the given value and scope.
-    pub(super) fn new_private(&mut self, value: F, scope: Scope) -> Variable<F> {
+    pub(super) fn new_private(&mut self, value: F) -> Variable<F> {
         let variable = Variable::Private(self.private.len() as u64, value);
         self.private.push(variable);
+        self.counter.increment_private();
         variable
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
-    pub(super) fn enforce(
-        &mut self,
-        a: LinearCombination<F>,
-        b: LinearCombination<F>,
-        c: LinearCombination<F>,
-        scope: Scope,
-    ) {
+    pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
+        where
+            Fn: FnOnce() -> (A, B, C),
+            A: Into<LinearCombination<F>>,
+            B: Into<LinearCombination<F>>,
+            C: Into<LinearCombination<F>>,
+    {
+        let (a, b, c) = constraint();
+        let (a, b, c) = (a.into(), b.into(), c.into());
+
         // Ensure the constraint is not comprised of constants.
         if !(a.is_constant() && b.is_constant() && c.is_constant()) {
-            self.constraints.push((scope.clone(), (a, b, c)));
+            self.constraints.push((self.counter.scope(), (a, b, c)));
+            self.counter.increment_constraints();
         }
     }
 
@@ -109,6 +128,26 @@ impl<F: PrimeField> ConstraintSystem<F> {
         self.constraints.len()
     }
 
+    /// Returns the number of constants for the current scope.
+    pub(super) fn num_constants_in_scope(&self) -> usize {
+        self.counter.num_constants_in_scope()
+    }
+
+    /// Returns the number of public variables for the current scope.
+    pub(super) fn num_public_in_scope(&self) -> usize {
+        self.counter.num_public_in_scope()
+    }
+
+    /// Returns the number of private variables for the current scope.
+    pub(super) fn num_private_in_scope(&self) -> usize {
+        self.counter.num_private_in_scope()
+    }
+
+    /// Returns the number of constraints for the current scope.
+    pub(super) fn num_constraints_in_scope(&self) -> usize {
+        self.counter.num_constraints_in_scope()
+    }
+
     /// Returns the public variables in the constraint system.
     pub(super) fn to_public_variables(&self) -> &Vec<Variable<F>> {
         &self.public
@@ -138,6 +177,7 @@ impl<F: PrimeField> Clone for ConstraintSystem<F> {
             public: self.public.clone(),
             private: self.private.clone(),
             constraints: self.constraints.clone(),
+            counter: self.counter.clone(),
         }
     }
 }

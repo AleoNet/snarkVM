@@ -39,6 +39,6 @@ macro_rules! push_scope {
 #[macro_export]
 macro_rules! scoped {
     ($scope_name:expr, $block:block) => {
-        E::scoped($scope_name, |scope| $block)
+        E::scoped($scope_name, || $block)
     };
 }
