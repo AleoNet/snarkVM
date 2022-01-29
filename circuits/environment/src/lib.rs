@@ -35,9 +35,6 @@ pub use circuit::*;
 mod circuit_counter;
 use circuit_counter::*;
 
-pub mod circuit_scope;
-pub use circuit_scope::*;
-
 mod constraint_converter;
 
 mod constraint_system;

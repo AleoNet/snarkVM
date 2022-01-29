@@ -18,7 +18,7 @@ use crate::*;
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
-use core::{cell::RefMut, fmt};
+use core::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {

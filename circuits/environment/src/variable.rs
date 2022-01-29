@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Mode;
-
 use snarkvm_fields::traits::*;
 
 pub type Index = u64;

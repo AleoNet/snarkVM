@@ -20,16 +20,11 @@ use snarkvm_curves::{
     AffineCurve,
 };
 
-use core::{
-    borrow::Borrow,
-    cell::{RefCell, RefMut},
-    fmt,
-};
+use core::{borrow::Borrow, cell::RefCell, fmt};
 use once_cell::unsync::Lazy;
-use std::rc::Rc;
 
 thread_local! {
-    static CIRCUIT: Lazy<RefCell<CircuitScope<Fq>>> = Lazy::new(|| RefCell::new(CircuitScope::<Fq>::new()));
+    static CIRCUIT: Lazy<RefCell<ConstraintSystem<Fq>>> = Lazy::new(|| RefCell::new(ConstraintSystem::<Fq>::new()));
 }
 
 #[derive(Clone)]
@@ -38,7 +33,7 @@ pub struct Circuit;
 impl Circuit {
     pub fn reset() {
         CIRCUIT.with(|circuit| {
-            *(**circuit).borrow_mut() = CircuitScope::<<Self as Environment>::BaseField>::new();
+            *(**circuit).borrow_mut() = ConstraintSystem::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, (**circuit).borrow().num_constants());
             assert_eq!(1, (**circuit).borrow().num_public());
             assert_eq!(0, (**circuit).borrow().num_private());
@@ -49,8 +44,7 @@ impl Circuit {
     #[cfg(feature = "testing")]
     pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
         CIRCUIT.with(|circuit| {
-            let cs: Rc<RefCell<ConstraintSystem<<Self as Environment>::BaseField>>> = (**circuit).borrow().cs.clone();
-            let x = (*cs).borrow().clone().borrow().clone();
+            let x = (*(**circuit).borrow()).borrow().clone().borrow().clone();
             x
         })
     }
@@ -216,7 +210,7 @@ impl fmt::Display for Circuit {
         CIRCUIT.with(|circuit| {
             let mut output = String::default();
 
-            for (scope, (a, b, c)) in (*(**circuit).borrow().cs).borrow().to_constraints() {
+            for (scope, (a, b, c)) in (*(**circuit).borrow()).borrow().to_constraints() {
                 let a = a.to_value();
                 let b = b.to_value();
                 let c = c.to_value();

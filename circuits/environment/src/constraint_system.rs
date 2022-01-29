@@ -17,6 +17,8 @@
 use crate::*;
 use snarkvm_fields::traits::*;
 
+pub type Scope = String;
+
 #[derive(Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
     constants: Vec<Variable<F>>,
