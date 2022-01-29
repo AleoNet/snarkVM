@@ -27,6 +27,8 @@ pub mod square;
 pub mod sub;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_lower_bits;
+pub mod to_upper_bits;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};

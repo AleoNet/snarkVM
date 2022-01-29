@@ -312,6 +312,15 @@ pub trait Square {
     fn square(&self) -> Self::Output;
 }
 
+/// Unary operator for instantiating from bits.
+pub trait FromBits {
+    type Boolean: BooleanTrait;
+
+    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
+
+    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
+}
+
 /// Unary operator for converting to bits.
 pub trait ToBits {
     type Boolean: BooleanTrait;
@@ -321,13 +330,38 @@ pub trait ToBits {
     fn to_bits_be(&self) -> Vec<Self::Boolean>;
 }
 
-/// Unary operator for instantiating from bits.
-pub trait FromBits {
+/// Unary operator for converting to `k` number of bits.
+pub trait ToLowerBits {
     type Boolean: BooleanTrait;
 
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
 
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to `k` number of bits.
+pub trait ToUpperBits {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
 }
 
 ///

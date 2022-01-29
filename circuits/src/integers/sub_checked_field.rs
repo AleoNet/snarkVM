@@ -41,7 +41,7 @@ impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
             let difference = this.add(&that).add(BaseField::one());
 
-            let mut bits_le = difference.extract_lower_k_bits_le(I::BITS + 1);
+            let mut bits_le = difference.to_lower_bits_le(I::BITS + 1);
 
             // This is safe since we extract at least one bit from the field.
             let carry = bits_le.pop().unwrap();

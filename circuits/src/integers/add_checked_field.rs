@@ -38,7 +38,7 @@ impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
             let sum = this.add(that);
 
-            let mut bits_le = sum.extract_lower_k_bits_le(I::BITS + 1);
+            let mut bits_le = sum.to_lower_bits_le(I::BITS + 1);
 
             // This is safe since we extract at least one bit from the field element.
             let carry = bits_le.pop().unwrap();
