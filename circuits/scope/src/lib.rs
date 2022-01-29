@@ -98,7 +98,8 @@ pub fn scope(metadata: proc_macro::TokenStream, input: proc_macro::TokenStream) 
             // ::snarkvm_circuits_environment::scoped!(#scope_name, #block)
             #block
         }
-    )).into()
+    ))
+    .into()
 
     // match argument_type {
     //     Type::Circuit => {

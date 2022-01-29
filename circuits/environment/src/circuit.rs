@@ -30,26 +30,6 @@ thread_local! {
 #[derive(Clone)]
 pub struct Circuit;
 
-impl Circuit {
-    pub fn reset() {
-        CIRCUIT.with(|circuit| {
-            *(**circuit).borrow_mut() = ConstraintSystem::<<Self as Environment>::BaseField>::new();
-            assert_eq!(0, (**circuit).borrow().num_constants());
-            assert_eq!(1, (**circuit).borrow().num_public());
-            assert_eq!(0, (**circuit).borrow().num_private());
-            assert_eq!(0, (**circuit).borrow().num_constraints());
-        });
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
-        CIRCUIT.with(|circuit| {
-            let x = (*(**circuit).borrow()).borrow().clone().borrow().clone();
-            x
-        })
-    }
-}
-
 impl Environment for Circuit {
     type Affine = EdwardsAffine;
     type AffineParameters = EdwardsParameters;
@@ -203,28 +183,29 @@ impl Environment for Circuit {
         eprintln!("{}", &error);
         panic!("{}", &error)
     }
+
+    /// Clears the circuit and initializes an empty environment.
+    fn reset() {
+        CIRCUIT.with(|circuit| {
+            *(**circuit).borrow_mut() = ConstraintSystem::<<Self as Environment>::BaseField>::new();
+            assert_eq!(0, (**circuit).borrow().num_constants());
+            assert_eq!(1, (**circuit).borrow().num_public());
+            assert_eq!(0, (**circuit).borrow().num_private());
+            assert_eq!(0, (**circuit).borrow().num_constraints());
+        });
+    }
 }
 
 impl fmt::Display for Circuit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        CIRCUIT.with(|circuit| {
-            let mut output = String::default();
+        CIRCUIT.with(|circuit| write!(f, "{}", (**circuit).borrow()))
+    }
+}
 
-            for (scope, (a, b, c)) in (*(**circuit).borrow()).borrow().to_constraints() {
-                let a = a.to_value();
-                let b = b.to_value();
-                let c = c.to_value();
-
-                match (a * b) == c {
-                    true => output += &format!("Constraint {}:\n\t{} * {} == {}\n", scope, a, b, c),
-                    false => output += &format!("Constraint {}:\n\t{} * {} != {} (Unsatisfied)\n", scope, a, b, c),
-                }
-            }
-
-            output += "\n";
-
-            write!(f, "{}", output)
-        })
+impl Circuit {
+    #[cfg(feature = "testing")]
+    pub fn constraint_system_raw() -> ConstraintSystem<<Self as Environment>::BaseField> {
+        CIRCUIT.with(|circuit| (*(**circuit).borrow()).borrow().clone().borrow().clone())
     }
 }
 
@@ -259,7 +240,8 @@ mod tests {
 
     #[test]
     fn test_print_circuit() {
-        let _candidate_output = create_example_circuit::<Circuit>();
-        println!("{}", Circuit);
+        let _candidate = create_example_circuit::<Circuit>();
+        let output = format!("{}", Circuit);
+        println!("{}", output);
     }
 }

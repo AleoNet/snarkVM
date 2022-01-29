@@ -14,12 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Mode;
+use crate::{LinearCombination, Mode};
 use snarkvm_fields::traits::*;
+
+use core::{
+    fmt,
+    ops::{Add, Sub},
+};
 
 pub type Index = u64;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
     Constant(F),
     Public(Index, F),
@@ -89,24 +94,88 @@ impl<F: PrimeField> Variable<F> {
     }
 }
 
-// impl<F: PrimeField> Add<Self> for Variable<F> {
-//     type Output = LinearCombination<F>;
-//
-//     fn add(self, other: Self) -> Self::Output {
-//         match (self, other) {
-//             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b).into(),
-//             (first, second) => LinearCombination::from([first, second]),
-//         }
-//     }
-// }
-//
-// impl<F: PrimeField> Sub<Self> for Variable<F> {
-//     type Output = LinearCombination<F>;
-//
-//     fn sub(self, other: Self) -> Self::Output {
-//         match (self, other) {
-//             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b).into(),
-//             (first, second) => LinearCombination::from(first) - second,
-//         }
-//     }
-// }
+impl<F: PrimeField> Add<Variable<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: Variable<F>) -> Self::Output {
+        self + &other
+    }
+}
+
+impl<F: PrimeField> Add<Variable<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: Variable<F>) -> Self::Output {
+        self + &other
+    }
+}
+
+impl<F: PrimeField> Add<&Variable<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: &Variable<F>) -> Self::Output {
+        &self + other
+    }
+}
+
+impl<F: PrimeField> Add<&Variable<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: &Variable<F>) -> Self::Output {
+        match (self, other) {
+            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(*a + b).into(),
+            (first, second) => LinearCombination::from([*first, *second]),
+        }
+    }
+}
+
+impl<F: PrimeField> Sub<Variable<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: Variable<F>) -> Self::Output {
+        self - &other
+    }
+}
+
+impl<F: PrimeField> Sub<Variable<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: Variable<F>) -> Self::Output {
+        self - &other
+    }
+}
+
+impl<F: PrimeField> Sub<&Variable<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: &Variable<F>) -> Self::Output {
+        &self - other
+    }
+}
+
+impl<F: PrimeField> Sub<&Variable<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: &Variable<F>) -> Self::Output {
+        match (self, other) {
+            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(*a - b).into(),
+            (first, second) => LinearCombination::from(first) - second,
+        }
+    }
+}
+
+impl<F: PrimeField> fmt::Debug for Variable<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            Self::Constant(value) => format!("Constant {}", value),
+            Self::Public(index, value) => format!("Public({}) {}", index, value),
+            Self::Private(index, value) => format!("Private({}) {}", index, value),
+        })
+    }
+}
+
+impl<F: PrimeField> fmt::Display for Variable<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value())
+    }
+}

@@ -60,7 +60,7 @@ impl fmt::Display for Mode {
     }
 }
 
-pub trait Environment: Clone {
+pub trait Environment: Clone + fmt::Display {
     type Affine: AffineCurve<BaseField = Self::BaseField>;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;
@@ -140,4 +140,7 @@ pub trait Environment: Clone {
     fn halt<S: Into<String>, T>(message: S) -> T {
         panic!("{}", message.into())
     }
+
+    /// Clears and initializes an empty environment.
+    fn reset();
 }

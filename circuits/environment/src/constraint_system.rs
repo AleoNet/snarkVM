@@ -17,6 +17,8 @@
 use crate::*;
 use snarkvm_fields::traits::*;
 
+use core::fmt;
+
 pub type Scope = String;
 
 #[derive(Debug)]
@@ -168,6 +170,27 @@ impl<F: PrimeField> ConstraintSystem<F> {
         (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
     )> {
         &self.constraints
+    }
+}
+
+impl<F: PrimeField> fmt::Display for ConstraintSystem<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::default();
+
+        for (scope, (a, b, c)) in self.to_constraints() {
+            let a = a.to_value();
+            let b = b.to_value();
+            let c = c.to_value();
+
+            match (a * b) == c {
+                true => output += &format!("Constraint {}:\n\t{} * {} == {}\n", scope, a, b, c),
+                false => output += &format!("Constraint {}:\n\t{} * {} != {} (Unsatisfied)\n", scope, a, b, c),
+            }
+        }
+
+        output += "\n";
+
+        write!(f, "{}", output)
     }
 }
 
