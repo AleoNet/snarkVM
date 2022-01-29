@@ -20,7 +20,7 @@ use snarkvm_curves::{
     AffineCurve,
 };
 
-use core::{borrow::Borrow, cell::RefCell, fmt};
+use core::{cell::RefCell, fmt};
 use once_cell::unsync::Lazy;
 
 thread_local! {
