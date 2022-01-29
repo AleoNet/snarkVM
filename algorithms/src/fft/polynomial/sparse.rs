@@ -22,8 +22,6 @@ use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use std::fmt;
 
-use super::DensePolynomial;
-
 /// Stores a sparse polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SparsePolynomial<F: Field> {

@@ -316,17 +316,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         sum: F,
         selector_at_gamma: F,
     ) -> LinearCombination<F> {
-        let a = LinearCombination::new("a_poly_".to_owned() + label, vec![(
+        let a = LinearCombination::new("a_poly_".to_string() + label, vec![(
             v_h_at_alpha_beta,
-            "val_".to_owned() + label,
+            "val_".to_string() + label,
         )]);
         let alpha_beta = alpha * beta;
 
-        let mut b = LinearCombination::new("denom_".to_owned() + label, vec![
+        let mut b = LinearCombination::new("denom_".to_string() + label, vec![
             (alpha_beta, LCTerm::One),
-            (-alpha, ("row_".to_owned() + label).into()),
-            (-beta, ("col_".to_owned() + label).into()),
-            (F::one(), ("row_col_".to_owned() + label).into()),
+            (-alpha, ("row_".to_string() + label).into()),
+            (-beta, ("col_".to_string() + label).into()),
+            (F::one(), ("row_col_".to_string() + label).into()),
         ]);
         b *= gamma * g_at_gamma + sum;
 

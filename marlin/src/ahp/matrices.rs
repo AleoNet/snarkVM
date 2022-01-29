@@ -16,7 +16,10 @@
 
 #![allow(non_snake_case)]
 
-use crate::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly};
+use crate::{
+    ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
+    ToString,
+};
 use hashbrown::HashMap;
 use snarkvm_algorithms::{
     cfg_iter_mut,
@@ -206,10 +209,10 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     };
 
     MatrixArithmetization {
-        row: LabeledPolynomial::new("row_".to_owned() + label, row, None, None),
-        col: LabeledPolynomial::new("col_".to_owned() + label, col, None, None),
-        val: LabeledPolynomial::new("val_".to_owned() + label, val, None, None),
-        row_col: LabeledPolynomial::new("row_col_".to_owned() + label, row_col, None, None),
+        row: LabeledPolynomial::new("row_".to_string() + label, row, None, None),
+        col: LabeledPolynomial::new("col_".to_string() + label, col, None, None),
+        val: LabeledPolynomial::new("val_".to_string() + label, val, None, None),
+        row_col: LabeledPolynomial::new("row_col_".to_string() + label, row_col, None, None),
         evals_on_K,
     }
 }
