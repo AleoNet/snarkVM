@@ -33,11 +33,11 @@ impl<E: Environment, I: IntegerType> AddWrappedField<Self> for Integer<E, I> {
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-            let sum = this.add(that);
+            let sum = this + that;
 
+            // Extract the integer bits from the field element, with a carry bit.
             let mut bits_le = sum.to_lower_bits_le(I::BITS + 1);
-
-            // Remove carry bit since we are doing wrapped addition.
+            // Drop carry bit as the operation is wrapped addition.
             bits_le.pop();
 
             // Return the sum of `self` and `other`.

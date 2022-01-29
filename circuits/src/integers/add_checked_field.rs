@@ -36,14 +36,16 @@ impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-            let sum = this.add(that);
+            let sum = this + that;
 
-            let mut bits_le = sum.to_lower_bits_le(I::BITS + 1);
+            // Extract the integer bits from the field element, with a carry bit.
+            let integer_bits = sum.to_lower_bits_le(I::BITS + 1);
+            let (carry, bits_le) = match integer_bits.split_last() {
+                Some((carry, bits_le)) => (carry, bits_le),
+                None => E::halt("Malformed sum detected during integer addition"),
+            };
 
-            // This is safe since we extract at least one bit from the field element.
-            let carry = bits_le.pop().unwrap();
-
-            // Over/underflow checks are different for signed and unsigned addition.
+            // Overflow checks are different for signed and unsigned addition.
             match I::is_signed() {
                 true => {
                     // TODO (@pranav) Do we need an explicit check for this?
@@ -52,25 +54,25 @@ impl<E: Environment, I: IntegerType> AddCheckedField<Self> for Integer<E, I> {
                     let other_msb = other.bits_le.last().unwrap();
                     let sum_msb = bits_le.last().unwrap();
 
-                    let same_signs = (&self_msb).is_eq(&other_msb);
-                    let overflow = same_signs.and(&sum_msb.is_neq(self_msb));
+                    let is_same_sign = (&self_msb).is_eq(&other_msb);
+                    let is_overflow = is_same_sign.and(&sum_msb.is_neq(self_msb));
 
-                    // For signed addition, overflow conditions are:
+                    // For signed addition, overflow and underflow conditions are:
                     //   - a > 0 && b > 0 && a + b < 0 (Overflow)
                     //   - a < 0 && b < 0 && a + b > 0 (Underflow)
-                    //   - Note that if sign(a) != sign(b) then over/underflow is impossible.
-                    //   - Note that the result of an overflow and underflow must be negative and positive, respectively
-                    E::assert_eq(overflow, E::zero());
+                    //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
+                    //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
+                    E::assert_eq(is_overflow, E::zero());
                 }
                 false => {
-                    // For unsigned addition, we only need to check that the carry bit is zero.
+                    // For unsigned addition, ensure the carry bit is zero.
                     E::assert_eq(carry, E::zero());
                 }
             }
 
             // Return the sum of `self` and `other`.
             Integer {
-                bits_le,
+                bits_le: bits_le.to_vec(),
                 phantom: Default::default(),
             }
         }

@@ -39,32 +39,43 @@ impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
-            let difference = this.add(&that).add(BaseField::one());
+            let difference = this + &that + BaseField::one();
 
-            let mut bits_le = difference.to_lower_bits_le(I::BITS + 1);
+            // Extract the integer bits from the field element, with a carry bit.
+            let integer_bits = difference.to_lower_bits_le(I::BITS + 1);
+            let (carry, bits_le) = match integer_bits.split_last() {
+                Some((carry, bits_le)) => (carry, bits_le),
+                None => E::halt("Malformed difference detected during integer subtraction"),
+            };
 
-            // This is safe since we extract at least one bit from the field.
-            let carry = bits_le.pop().unwrap();
+            // Underflow conditions are different for signed and unsigned integers.
+            match I::is_signed() {
+                true => {
+                    // TODO (@pranav) Do we need an explicit check for this?
+                    // This is safe since I::BITS is always greater than 0.
+                    let minuend_msb = self.bits_le.last().unwrap();
+                    let subtrahend_msb = other.bits_le.last().unwrap();
+                    let result_msb = bits_le.last().unwrap();
 
-            // Over/underflow conditions are different for signed and unsigned integers.
-            if I::is_signed() {
-                // TODO (@pranav) Do we need an explicit check for this?
-                // This is safe since I::BITS is always greater than 0.
-                let minuend_msb = self.bits_le.last().unwrap();
-                let subtrahend_msb = other.bits_le.last().unwrap();
-                let result_msb = bits_le.last().unwrap();
+                    let is_minuend_subtrahend_different_signs = minuend_msb.is_neq(&subtrahend_msb);
+                    let is_overflow = is_minuend_subtrahend_different_signs.and(&result_msb.is_eq(&subtrahend_msb));
 
-                let minuend_subtrahend_different_signs = minuend_msb.is_neq(&subtrahend_msb);
-                let overflow = minuend_subtrahend_different_signs.and(&result_msb.is_eq(&subtrahend_msb));
-
-                E::assert_eq(overflow, E::zero());
-            } else {
-                E::assert_eq(carry, E::one());
+                    // For signed addition, overflow and underflow conditions are:
+                    //   - a > 0 && b > 0 && a + b < 0 (Overflow)
+                    //   - a < 0 && b < 0 && a + b > 0 (Underflow)
+                    //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
+                    //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
+                    E::assert_eq(is_overflow, E::zero());
+                }
+                false => {
+                    // For unsigned subtraction, ensure the carry bit is one.
+                    E::assert_eq(carry, E::one());
+                }
             }
 
             // Return the difference of `self` and `other`.
             Integer {
-                bits_le,
+                bits_le: bits_le.to_vec(),
                 phantom: Default::default(),
             }
         }

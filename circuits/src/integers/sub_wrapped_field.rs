@@ -33,11 +33,11 @@ impl<E: Environment, I: IntegerType> SubWrappedField<Self> for Integer<E, I> {
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let that = BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
-            let difference = this.add(&that).add(BaseField::one());
+            let difference = this + &that + BaseField::one();
 
+            // Extract the integer bits from the field element, with a carry bit.
             let mut bits_le = difference.to_lower_bits_le(I::BITS + 1);
-
-            // Drop the carry bit
+            // Drop carry bit as the operation is wrapped subtraction.
             bits_le.pop();
 
             // Return the difference of `self` and `other`.
