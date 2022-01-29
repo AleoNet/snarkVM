@@ -85,7 +85,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let case = format!("({} - {})", a.eject_value(), b.eject_value());
 
             let candidate = a.sub_wrapped(b);
@@ -98,10 +98,10 @@ mod tests {
                 case
             );
 
-            assert_eq!(num_constants, scope.num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, scope.num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, scope.num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
     }

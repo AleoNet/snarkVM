@@ -55,11 +55,6 @@ default-features = false
 [dependencies.once_cell]
 version = "1.8.0"
 
-[dev-dependencies.snarkvm-circuits-environment]
-path = "./environment"
-version = "0.7.5"
-features = ["testing"]
-
 [dev-dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.7.5"
@@ -80,4 +75,3 @@ default = [
 ]
 full = ["scope"]
 scope = ["snarkvm-circuits-scope/scope"]
-testing = []

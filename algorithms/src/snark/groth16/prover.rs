@@ -192,12 +192,12 @@ where
     let mut pool = snarkvm_utilities::ExecutionPool::<ResultWrapper<E>>::with_capacity(4);
     // Compute B in G1 if needed
 
-    let s_g1 = params.delta_g1.mul(s).into();
-    let b_query = &params.b_g1_query;
     if r != E::Fr::zero() {
         let b_g1_acc_time = start_timer!(|| "Compute B in G1");
 
         pool.add_job(|| {
+            let s_g1 = params.delta_g1.mul(s).into();
+            let b_query = &params.b_g1_query;
             let res = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
             ResultWrapper::from_g1(res)
         });
@@ -206,9 +206,9 @@ where
 
     // Compute B in G2
     let b_g2_acc_time = start_timer!(|| "Compute B in G2");
-    let b_query = &params.b_g2_query;
-    let s_g2 = params.vk.delta_g2.mul(s);
     pool.add_job(|| {
+        let b_query = &params.b_g2_query;
+        let s_g2 = params.vk.delta_g2.mul(s);
         let res = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
         ResultWrapper::from_g2(res)
     });
@@ -218,18 +218,19 @@ where
     // Compute C
     let c_acc_time = start_timer!(|| "Compute C");
 
-    let h_query = &params.h_query;
     pool.add_job(|| {
+        let h_query = &params.h_query;
         let res = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
         ResultWrapper::from_g1(res)
     });
-    let l_aux_source = &params.l_query;
 
     pool.add_job(|| {
+        let l_aux_source = &params.l_query;
         let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
         ResultWrapper::from_g1(res)
     });
     let results: Vec<_> = pool.execute_all();
+
     let g1_b = if r != E::Fr::zero() {
         results[0].into_g1()
     } else {

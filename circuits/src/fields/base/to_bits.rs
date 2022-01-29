@@ -82,6 +82,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
+    #[rustfmt::skip]
     fn check_to_bits_le(
         mode: Mode,
         num_constants: usize,
@@ -96,22 +97,23 @@ mod tests {
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
             let candidate = BaseField::<Circuit>::new(mode, expected);
 
-            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
-                assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
                 assert!(Circuit::is_satisfied(), "(is_satisfied)");
             });
         }
     }
 
+    #[rustfmt::skip]
     fn check_to_bits_be(
         mode: Mode,
         num_constants: usize,
@@ -126,17 +128,17 @@ mod tests {
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
             let candidate = BaseField::<Circuit>::new(mode, expected);
 
-            Circuit::scoped(&format!("{} {}", mode, i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
 
-                assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
                 assert!(Circuit::is_satisfied(), "(is_satisfied)");
             });
         }

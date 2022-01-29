@@ -34,18 +34,18 @@ mod tests {
     use crate::Circuit;
 
     fn check_zero<I: IntegerType>() {
-        Circuit::scoped("Zero", |scope| {
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
+        Circuit::scoped("Zero", || {
+            assert_eq!(0, Circuit::num_constants_in_scope());
+            assert_eq!(0, Circuit::num_public_in_scope());
+            assert_eq!(0, Circuit::num_private_in_scope());
+            assert_eq!(0, Circuit::num_constraints_in_scope());
 
             assert_eq!(I::zero(), Integer::<Circuit, I>::zero().eject_value());
 
-            assert_eq!(I::BITS, scope.num_constants_in_scope(), "(num_constants)");
-            assert_eq!(0, scope.num_public_in_scope(), "(num_public)");
-            assert_eq!(0, scope.num_private_in_scope(), "(num_private)");
-            assert_eq!(0, scope.num_constraints_in_scope(), "(num_constraints)");
+            assert_eq!(I::BITS, Circuit::num_constants_in_scope(), "(num_constants)");
+            assert_eq!(0, Circuit::num_public_in_scope(), "(num_public)");
+            assert_eq!(0, Circuit::num_private_in_scope(), "(num_private)");
+            assert_eq!(0, Circuit::num_constraints_in_scope(), "(num_constraints)");
 
             assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });

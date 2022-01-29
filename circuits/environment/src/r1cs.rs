@@ -17,8 +17,12 @@
 use crate::*;
 use snarkvm_fields::traits::*;
 
+use core::fmt;
+
+pub type Scope = String;
+
 #[derive(Debug)]
-pub struct ConstraintSystem<F: PrimeField> {
+pub(super) struct R1CS<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
@@ -26,10 +30,10 @@ pub struct ConstraintSystem<F: PrimeField> {
         Scope,
         (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
     )>,
-    counter: CircuitCounter,
+    counter: Transcript,
 }
 
-impl<F: PrimeField> ConstraintSystem<F> {
+impl<F: PrimeField> R1CS<F> {
     /// Returns a new instance of a constraint system.
     pub(super) fn new() -> Self {
         Self {
@@ -41,32 +45,42 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
+    /// Appends the given scope to the current environment.
+    pub(super) fn push_scope(&mut self, name: &str) -> Result<(), String> {
+        self.counter.push(name)
+    }
+
+    /// Removes the given scope from the current environment.
+    pub(super) fn pop_scope(&mut self, name: &str) -> Result<(), String> {
+        self.counter.pop(name)
+    }
+
     /// Returns a new constant with the given value and scope.
-    pub(super) fn new_constant(&mut self, value: F, scope: Scope) -> Variable<F> {
+    pub(super) fn new_constant(&mut self, value: F) -> Variable<F> {
         let variable = Variable::Constant(value);
         self.constants.push(variable);
-        self.counter.increment_constant(&scope);
+        self.counter.increment_constant();
         variable
     }
 
     /// Returns a new public variable with the given value and scope.
-    pub(super) fn new_public(&mut self, value: F, scope: Scope) -> Variable<F> {
+    pub(super) fn new_public(&mut self, value: F) -> Variable<F> {
         let variable = Variable::Public(self.public.len() as u64, value);
         self.public.push(variable);
-        self.counter.increment_public(&scope);
+        self.counter.increment_public();
         variable
     }
 
     /// Returns a new private variable with the given value and scope.
-    pub(super) fn new_private(&mut self, value: F, scope: Scope) -> Variable<F> {
+    pub(super) fn new_private(&mut self, value: F) -> Variable<F> {
         let variable = Variable::Private(self.private.len() as u64, value);
         self.private.push(variable);
-        self.counter.increment_private(&scope);
+        self.counter.increment_private();
         variable
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
-    pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn, scope: Scope)
+    pub(super) fn enforce<Fn, A, B, C>(&mut self, constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
         A: Into<LinearCombination<F>>,
@@ -76,9 +90,10 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let (a, b, c) = constraint();
         let (a, b, c) = (a.into(), b.into(), c.into());
 
+        // Ensure the constraint is not comprised of constants.
         if !(a.is_constant() && b.is_constant() && c.is_constant()) {
-            self.constraints.push((scope.clone(), (a, b, c)));
-            self.counter.increment_constraints(&scope);
+            self.constraints.push((self.counter.scope(), (a, b, c)));
+            self.counter.increment_constraints();
         }
     }
 
@@ -117,24 +132,24 @@ impl<F: PrimeField> ConstraintSystem<F> {
         self.constraints.len()
     }
 
-    /// Returns the number of constants for the given scope.
-    pub(super) fn num_constants_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_constants_in_scope(scope)
+    /// Returns the number of constants for the current scope.
+    pub(super) fn num_constants_in_scope(&self) -> usize {
+        self.counter.num_constants_in_scope()
     }
 
-    /// Returns the number of public variables for the given scope.
-    pub(super) fn num_public_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_public_in_scope(scope)
+    /// Returns the number of public variables for the current scope.
+    pub(super) fn num_public_in_scope(&self) -> usize {
+        self.counter.num_public_in_scope()
     }
 
-    /// Returns the number of private variables for the given scope.
-    pub(super) fn num_private_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_private_in_scope(scope)
+    /// Returns the number of private variables for the current scope.
+    pub(super) fn num_private_in_scope(&self) -> usize {
+        self.counter.num_private_in_scope()
     }
 
-    /// Returns the number of constraints for the given scope.
-    pub(super) fn num_constraints_in_scope(&self, scope: &Scope) -> usize {
-        self.counter.num_constraints_in_scope(scope)
+    /// Returns the number of constraints for the current scope.
+    pub(super) fn num_constraints_in_scope(&self) -> usize {
+        self.counter.num_constraints_in_scope()
     }
 
     /// Returns the public variables in the constraint system.
@@ -158,15 +173,23 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-#[cfg(feature = "testing")]
-impl<F: PrimeField> Clone for ConstraintSystem<F> {
-    fn clone(&self) -> Self {
-        Self {
-            constants: self.constants.clone(),
-            public: self.public.clone(),
-            private: self.private.clone(),
-            constraints: self.constraints.clone(),
-            counter: self.counter.clone(),
+impl<F: PrimeField> fmt::Display for R1CS<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::default();
+
+        for (scope, (a, b, c)) in self.to_constraints() {
+            let a = a.to_value();
+            let b = b.to_value();
+            let c = c.to_value();
+
+            match (a * b) == c {
+                true => output += &format!("Constraint {}:\n\t{} * {} == {}\n", scope, a, b, c),
+                false => output += &format!("Constraint {}:\n\t{} * {} != {} (Unsatisfied)\n", scope, a, b, c),
+            }
         }
+
+        output += "\n";
+
+        write!(f, "{}", output)
     }
 }

@@ -168,25 +168,33 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // Compute the hash values for every node in the tree.
         let mut upper_bound = last_level_index;
-        level_indices.reverse();
-        for &start_index in &level_indices {
-            // Iterate over the current level.
-            for current_index in start_index..upper_bound {
-                let left_index = left_child(current_index);
-                let right_index = right_child(current_index);
+        for start_index in level_indices.into_iter().rev() {
+            let (parents, children) = tree.split_at_mut(upper_bound);
 
-                // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
-                if new_indices().contains(&current_index)
-                    || self.tree.get(left_index) != tree.get(left_index)
-                    || self.tree.get(right_index) != tree.get(right_index)
-                    || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
-                {
-                    // Compute Hash(left || right).
-                    tree[current_index] = self.parameters.hash_inner_node(&tree[left_index], &tree[right_index])?;
-                } else {
-                    tree[current_index] = self.tree[current_index];
-                }
-            }
+            // Iterate over the current level.
+            crate::cfg_iter_mut!(parents[start_index..upper_bound])
+                .zip(start_index..upper_bound)
+                .try_for_each(|(parent, current_index)| {
+                    let left_index = left_child(current_index);
+                    let right_index = right_child(current_index);
+
+                    // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
+                    if new_indices().contains(&current_index)
+                        || self.tree.get(left_index) != children.get(left_index - upper_bound)
+                        || self.tree.get(right_index) != children.get(right_index - upper_bound)
+                        || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
+                    {
+                        // Compute Hash(left || right).
+                        *parent = self.parameters.hash_inner_node(
+                            &children[left_index - upper_bound],
+                            &children[right_index - upper_bound],
+                        )?;
+                    } else {
+                        *parent = self.tree[current_index];
+                    }
+
+                    Ok::<(), MerkleError>(())
+                })?;
             upper_bound = start_index;
         }
 

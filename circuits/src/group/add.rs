@@ -129,6 +129,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
+    #[rustfmt::skip]
     fn check_add(
         name: &str,
         expected: &<Circuit as Environment>::Affine,
@@ -139,7 +140,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let candidate = a + b;
             assert_eq!(
                 *expected,
@@ -151,14 +152,15 @@ mod tests {
                 b.eject_value()
             );
 
-            assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-            assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-            assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
             assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });
     }
 
+    #[rustfmt::skip]
     fn check_add_assign(
         name: &str,
         expected: &<Circuit as Environment>::Affine,
@@ -169,7 +171,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let mut candidate = a.clone();
             candidate += b;
             assert_eq!(
@@ -182,10 +184,10 @@ mod tests {
                 b.eject_value()
             );
 
-            assert_eq!(num_constants, scope.num_constants_in_scope(), "(num_constants)");
-            assert_eq!(num_public, scope.num_public_in_scope(), "(num_public)");
-            assert_eq!(num_private, scope.num_private_in_scope(), "(num_private)");
-            assert_eq!(num_constraints, scope.num_constraints_in_scope(), "(num_constraints)");
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
             assert!(Circuit::is_satisfied(), "(is_satisfied)");
         });
     }
