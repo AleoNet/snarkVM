@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType> AddWrappedField<Self> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
     type Output = Self;
 
     #[inline]

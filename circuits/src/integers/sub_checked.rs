@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType> SubCheckedField<Self> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
     type Output = Self;
 
     #[inline]

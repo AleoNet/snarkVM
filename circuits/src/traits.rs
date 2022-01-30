@@ -239,6 +239,27 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
+/// Binary operator for multiplying two values, enforcing an overflow never occurs.
+pub trait MulChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn mul_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for multiplying two values, bounding the product to `MAX` if an overflow occurs.
+pub trait MulSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn mul_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for multiplying two values, wrapping the product if an overflow occurs.
+pub trait MulWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn mul_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for subtracting two values, enforcing an underflow never occurs.
 pub trait SubChecked<Rhs: ?Sized = Self> {
     type Output;
