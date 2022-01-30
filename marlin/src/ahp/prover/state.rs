@@ -22,6 +22,7 @@ use crate::{
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
+use snarkvm_r1cs::SynthesisError;
 
 /// State for the AHP prover.
 pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
@@ -71,13 +72,21 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
         private_variables: Vec<F>,
         zk_bound: usize,
         index: &'a Circuit<F, MM>,
-        input_domain: EvaluationDomain<F>,
-        constraint_domain: EvaluationDomain<F>,
-        non_zero_a_domain: EvaluationDomain<F>,
-        non_zero_b_domain: EvaluationDomain<F>,
-        non_zero_c_domain: EvaluationDomain<F>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, crate::AHPError> {
+        let index_info = &index.index_info;
+        let constraint_domain =
+            EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let non_zero_a_domain =
+            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_b_domain =
+            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_c_domain =
+            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let input_domain =
+            EvaluationDomain::new(padded_public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        Ok(Self {
             padded_public_variables: padded_public_input,
             private_variables,
             zk_bound,
@@ -96,7 +105,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
             z_b: None,
             lhs_polynomials: None,
             sums: None,
-        }
+        })
     }
 
     /// Get the public input.

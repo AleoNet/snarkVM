@@ -90,7 +90,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             comms.push(comm);
         }
         let comms = E::G1Projective::batch_normalization_into_affine(comms);
-        comms.into_iter().map(|c| Commitment { 0: c })
+        comms.into_iter().map(|c| kzg10::Commitment(c))
     }
 }
 

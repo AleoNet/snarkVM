@@ -29,13 +29,11 @@ use crate::{
     matrices::MatrixArithmetization,
     prover::{state::ProverState, ProverMessage},
     verifier::VerifierThirdMessage,
-    SelectorPolynomial,
     ToString,
     Vec,
 };
 use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
@@ -51,6 +49,7 @@ use rayon::prelude::*;
 use snarkvm_algorithms::fft::DensePolynomial;
 
 /// The first set of prover oracles.
+#[derive(Debug)]
 pub struct ProverFirstOracles<F: Field> {
     /// The LDE of `w`.
     pub w: LabeledPolynomial<F>,
@@ -72,6 +71,7 @@ impl<F: Field> ProverFirstOracles<F> {
 }
 
 /// The second set of prover oracles.
+#[derive(Debug)]
 pub struct ProverSecondOracles<F: Field> {
     /// The polynomial `g` resulting from the first sumcheck.
     pub g_1: LabeledPolynomial<F>,
@@ -87,6 +87,7 @@ impl<F: Field> ProverSecondOracles<F> {
 }
 
 /// The third set of prover oracles.
+#[derive(Debug)]
 pub struct ProverThirdOracles<F: Field> {
     /// The polynomial `g_a` resulting from the second sumcheck.
     pub g_a: LabeledPolynomial<F>,
@@ -103,6 +104,7 @@ impl<F: Field> ProverThirdOracles<F> {
     }
 }
 
+#[derive(Debug)]
 pub struct ProverFourthOracles<F: Field> {
     /// The polynomial `h_2` resulting from the second sumcheck.
     pub h_2: LabeledPolynomial<F>,
@@ -203,31 +205,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let zk_bound = 1; // One query is sufficient for our desired soundness
 
-        let constraint_domain =
-            EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-        let non_zero_domain_a =
-            EvaluationDomain::new(num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_domain_b =
-            EvaluationDomain::new(num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_domain_c =
-            EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-        let input_domain =
-            EvaluationDomain::new(num_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
         end_timer!(init_time);
-        let mut state = ProverState::initialize(
-            padded_public_variables,
-            private_variables,
-            zk_bound,
-            index,
-            input_domain,
-            constraint_domain,
-            non_zero_domain_a,
-            non_zero_domain_b,
-            non_zero_domain_c,
-        );
+        let mut state = ProverState::initialize(padded_public_variables, private_variables, zk_bound, index)?;
         state.z_a = Some(z_a);
         state.z_b = Some(z_b);
 
@@ -611,7 +590,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>, ProverState<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
-        let VerifierFirstMessage { alpha, eta_b, eta_c } = state
+        let VerifierFirstMessage { alpha, .. } = state
             .verifier_first_message
             .expect("ProverState should include verifier_first_msg when prover_third_round is called");
 
@@ -622,17 +601,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
-        let eta_a_times_v_H_alpha_v_H_beta = v_H_alpha_v_H_beta;
-        let eta_b_times_v_H_alpha_v_H_beta = eta_b * v_H_alpha_v_H_beta;
-        let eta_c_times_v_H_alpha_v_H_beta = eta_c * v_H_alpha_v_H_beta;
-
+        let largest_non_zero_domain_size = Self::max_non_zero_domain(&state.index.index_info).size_as_field_element;
         let (sum_a, lhs_a, g_a) = Self::third_round_helper(
             "a",
             state.non_zero_a_domain,
             &state.index.a_arith,
             alpha,
             beta,
-            eta_a_times_v_H_alpha_v_H_beta,
+            v_H_alpha_v_H_beta,
+            largest_non_zero_domain_size,
         );
         let (sum_b, lhs_b, g_b) = Self::third_round_helper(
             "b",
@@ -640,7 +617,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             &state.index.b_arith,
             alpha,
             beta,
-            eta_b_times_v_H_alpha_v_H_beta,
+            v_H_alpha_v_H_beta,
+            largest_non_zero_domain_size,
         );
         let (sum_c, lhs_c, g_c) = Self::third_round_helper(
             "c",
@@ -648,29 +626,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             &state.index.c_arith,
             alpha,
             beta,
-            eta_c_times_v_H_alpha_v_H_beta,
+            v_H_alpha_v_H_beta,
+            largest_non_zero_domain_size,
         );
-
-        let domains = [
-            state.non_zero_a_domain,
-            state.non_zero_b_domain,
-            state.non_zero_c_domain,
-        ];
-        let largest_non_zero_domain = domains.into_iter().max_by(|a, b| a.size().cmp(&b.size())).unwrap();
-        let lhs_polynomials = [lhs_a, lhs_b, lhs_c]
-            .into_iter()
-            .zip(domains)
-            .map(|(lhs, domain)| largest_non_zero_domain.selector_polynomial(domain).mul_dense(&lhs))
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
 
         let msg = ProverMessage {
             field_elements: vec![sum_a, sum_b, sum_c],
         };
         let oracles = ProverThirdOracles { g_a, g_b, g_c };
-        state.lhs_polynomials = Some(lhs_polynomials);
+        state.lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
         state.sums = Some([sum_a, sum_b, sum_c]);
+
         end_timer!(round_time);
 
         Ok((msg, oracles, state))
@@ -682,14 +648,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         arithmetization: &MatrixArithmetization<F>,
         alpha: F,
         beta: F,
-        eta_times_v_H_alpha_v_H_beta: F,
+        v_H_alpha_v_H_beta: F,
+        largest_non_zero_domain_size: F,
     ) -> (F, DensePolynomial<F>, LabeledPolynomial<F>) {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| "Computing a poly");
             let a_poly = {
                 let coeffs = cfg_iter!(arithmetization.val.coeffs())
-                    .map(|a| eta_times_v_H_alpha_v_H_beta * a)
+                    .map(|a| v_H_alpha_v_H_beta * a)
                     .collect();
                 DensePolynomial::from_coefficients_vec(coeffs)
             };
@@ -728,7 +695,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         cfg_iter_mut!(&mut inverses)
             .zip(&arithmetization.evals_on_K.val.evaluations)
-            .for_each(|(inv, a)| *inv *= eta_times_v_H_alpha_v_H_beta * a);
+            .for_each(|(inv, a)| *inv *= v_H_alpha_v_H_beta * a);
         let f_evals_on_K = inverses;
         end_timer!(f_evals_time);
 
@@ -736,8 +703,24 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain).interpolate();
         end_timer!(f_poly_time);
         let g = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
-        let h = &a_poly - &(&b_poly * &f);
-        let g = LabeledPolynomial::new("g".to_string() + label, g, Some(non_zero_domain.size() - 2), None);
+        let mut h = &a_poly - &(&b_poly * &f);
+        // Let K_max = largest_non_zero_domain;
+        // Let K = non_zero_domain;
+        // Let s := K_max.selector_polynomial(K);
+        // Let v_K_max := K_max.vanishing_polynomial();
+        // Let v_K := K.vanishing_polynomial();
+
+        // Later on, we multiply `h` by s, and divide by v_K_max.
+        // However, s := (v_K_max / v_K) * (v_K.size() / v_K_max.size());
+        // Therefore, h * s / v_K_max = h / v_K * (v_K.size() / v_K_max.size());
+        // That's what we're computing here.
+        let result = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
+        assert!(result.1.is_zero());
+        h = result.0;
+        let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
+        cfg_iter_mut!(h.coeffs).for_each(|c| *c *= multiplier);
+
+        let g = LabeledPolynomial::new("g_".to_string() + label, g, Some(non_zero_domain.size() - 2), None);
 
         assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
@@ -769,14 +752,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: ProverState<'a, F, MM>,
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverFourthOracles<F>), AHPError> {
+        let VerifierThirdMessage { r_b, r_c, .. } = verifier_message;
         let [mut lhs_a, lhs_b, lhs_c] = state.lhs_polynomials.unwrap();
-        lhs_a += &(&(lhs_b * verifier_message.r_b) + &(lhs_c * verifier_message.r_c));
-        let mut h = lhs_a;
-        let largest_non_zero_domain = Self::max_non_zero_domain(&state.index.index_info);
-        h = h.divide_by_vanishing_poly(largest_non_zero_domain).unwrap().0;
+        lhs_a += &(&(lhs_b * *r_b) + &(lhs_c * *r_c));
         let msg = ProverMessage::default();
-        let h = LabeledPolynomial::new("h_2".into(), h, None, None);
-        let oracles = ProverFourthOracles { h_2: h };
+        let h_2 = LabeledPolynomial::new("h_2".into(), lhs_a, None, None);
+        let oracles = ProverFourthOracles { h_2 };
         Ok((msg, oracles))
     }
 

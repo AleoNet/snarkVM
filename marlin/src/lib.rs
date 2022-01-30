@@ -31,27 +31,21 @@
 extern crate snarkvm_profiler;
 
 #[cfg(not(feature = "std"))]
-#[macro_use]
 extern crate alloc;
 
 #[rustfmt::skip]
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::{BTreeSet, BTreeMap},
+pub use alloc::{
+    collections::BTreeMap,
     string::{String, ToString},
     vec::Vec,
 };
 
 #[cfg(not(feature = "std"))]
-use core::marker::PhantomData;
+pub use core::marker::PhantomData;
 
 #[cfg(not(feature = "std"))]
-use snarkvm_utilities::io::{
-    Read,
-    Result as IoResult,
-    Write,
-    {self},
-};
+pub use snarkvm_utilities::io::{self, Read, Result as IoResult, Write};
 
 #[rustfmt::skip]
 #[cfg(feature = "std")]
@@ -60,7 +54,7 @@ use std::{
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
-    io::{Read, Write, Result as IoResult, {self}},
+    io::{Read, Write, Result as IoResult, self},
 };
 
 #[cfg(not(feature = "std"))]

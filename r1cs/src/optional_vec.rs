@@ -47,7 +47,7 @@ impl<T> OptionalVec<T> {
     /// of values, i.e. pushing it to its end.
     #[inline]
     pub fn insert(&mut self, elem: T) -> usize {
-        let idx = self.holes.pop().unwrap_or_else(|| self.values.len());
+        let idx = self.holes.pop().unwrap_or(self.values.len());
         if idx < self.values.len() {
             self.values[idx] = Some(elem);
         } else {
@@ -59,7 +59,7 @@ impl<T> OptionalVec<T> {
     /// Returns the index of the next value inserted into the `OptionalVec`.
     #[inline]
     pub fn next_idx(&self) -> usize {
-        self.holes.last().copied().unwrap_or_else(|| self.values.len())
+        self.holes.last().copied().unwrap_or(self.values.len())
     }
 
     /// Removes a value at the specified index; assumes that the index points to

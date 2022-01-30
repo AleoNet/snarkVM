@@ -16,7 +16,10 @@
 
 #![allow(non_snake_case)]
 
-use crate::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly};
+use crate::{
+    ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
+    ToString,
+};
 use hashbrown::HashMap;
 use snarkvm_algorithms::{
     cfg_iter_mut,
@@ -41,7 +44,7 @@ pub(crate) fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_inpu
                     VarIndex::Public(i) => *i,
                     VarIndex::Private(i) => num_input_variables + i,
                 };
-                *row_map.entry(column).or_insert(F::zero()) += *fe;
+                *row_map.entry(column).or_insert_with(F::zero) += *fe;
             });
             row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect()
         })
@@ -154,7 +157,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     // Recall that we are computing the arithmetization of M^*,
     // where `M^*(i, j) := M(j, i) * u_H(j, j)`.
-    for (r, row) in matrix.into_iter().enumerate() {
+    for (r, row) in matrix.iter().enumerate() {
         for (val, i) in row {
             let row_val = elems[r];
             let col_val = elems[constraint_domain.reindex_by_subdomain(input_domain, *i)];
@@ -206,10 +209,10 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     };
 
     MatrixArithmetization {
-        row: LabeledPolynomial::new("row_".to_owned() + label, row, None, None),
-        col: LabeledPolynomial::new("col_".to_owned() + label, col, None, None),
-        val: LabeledPolynomial::new("val_".to_owned() + label, val, None, None),
-        row_col: LabeledPolynomial::new("row_col_".to_owned() + label, row_col, None, None),
+        row: LabeledPolynomial::new("row_".to_string() + label, row, None, None),
+        col: LabeledPolynomial::new("col_".to_string() + label, col, None, None),
+        val: LabeledPolynomial::new("val_".to_string() + label, val, None, None),
+        row_col: LabeledPolynomial::new("row_col_".to_string() + label, row_col, None, None),
         evals_on_K,
     }
 }
