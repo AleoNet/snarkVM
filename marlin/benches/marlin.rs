@@ -35,7 +35,6 @@ type MarlinInst = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
 
 type PC = SonicKZG10<Bls12_377>;
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-// type TestSNARKGadget = MarlinVerificationGadget<Fr, Fq, PC, PCGadget, MarlinRecursiveMode>;
 
 #[derive(Copy, Clone)]
 pub struct Benchmark<F: Field> {
@@ -193,84 +192,10 @@ fn snark_verify(c: &mut Criterion) {
     });
 }
 
-// fn snark_verify_gadget(c: &mut Criterion) {
-//     let num_constraints = 2000;
-//     let num_variables = 25;
-//     let rng = &mut thread_rng();
-
-//     let x = Fr::rand(rng);
-//     let y = Fr::rand(rng);
-//     let mut z = x;
-//     z.mul_assign(&y);
-
-//     let max_degree =
-//         snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(1000000, 100000, 1000000).unwrap();
-//     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
-
-//     let circuit = Benchmark::<Fr> {
-//         a: Some(x),
-//         b: Some(y),
-//         num_constraints,
-//         num_variables,
-//     };
-
-//     let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-
-//     let proof = MarlinInst::prove(
-//         &params.0,
-//         &Benchmark {
-//             a: Some(x),
-//             b: Some(y),
-//             num_constraints,
-//             num_variables,
-//         },
-//         rng,
-//     )
-//     .unwrap();
-
-//     let mut cs = TestConstraintSystem::<Fq>::new();
-
-//     let input_gadget = <TestSNARKGadget as SNARKVerifierGadget<TestSNARK>>::InputGadget::alloc_input(
-//         cs.ns(|| "alloc_input_gadget"),
-//         || Ok(vec![z]),
-//     )
-//     .unwrap();
-
-//     let proof_gadget =
-//         <TestSNARKGadget as SNARKVerifierGadget<TestSNARK>>::ProofGadget::alloc(cs.ns(|| "alloc_proof"), || Ok(proof))
-//             .unwrap();
-
-//     let vk_gadget =
-//         <TestSNARKGadget as SNARKVerifierGadget<TestSNARK>>::VerificationKeyGadget::alloc(cs.ns(|| "alloc_vk"), || {
-//             Ok(params.1.clone())
-//         })
-//         .unwrap();
-
-//     c.bench_function("snark_verify_gadget", move |b| {
-//         b.iter(|| {
-//             println!("cs: {}", cs.num_constraints());
-
-//             <TestSNARKGadget as SNARKVerifierGadget<TestSNARK>>::check_verify(
-//                 cs.ns(|| "marlin_verify"),
-//                 &vk_gadget,
-//                 &input_gadget,
-//                 &proof_gadget,
-//             )
-//             .unwrap();
-
-//             assert!(
-//                 cs.is_satisfied(),
-//                 "Constraints not satisfied: {}",
-//                 cs.which_is_unsatisfied().unwrap()
-//             );
-//         })
-//     });
-// }
-
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, //snark_verify_gadget
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify,
 }
 
 criterion_main!(marlin_snark);
