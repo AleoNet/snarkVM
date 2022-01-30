@@ -23,11 +23,11 @@ use snarkvm_circuits::{
     Mode,
 };
 
-use core::num::ParseIntError;
+use core::iter::FromIterator;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
-    combinator::verify,
+    combinator::{map_res, verify},
     multi::{many0, many1},
     sequence::terminated,
 };
@@ -35,19 +35,15 @@ use nom::{
 pub struct Integer<E: Environment, I: IntegerType>(IntegerCircuit<E, I>);
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
+    pub fn new(input: &str) -> ParserResult<Self> {
         // Parse the digits from the input.
-        let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
+        let (input, value) = map_res(many1(terminated(one_of("0123456789"), many0(char('_')))), |v| {
+            String::from_iter(v).parse::<I>()
+        })(input)?;
         // Parse the integer type from the input, and ensure it matches the declared `IntegerType`.
         let (input, _) = verify(tag(I::type_name()), |t: &str| t == I::type_name())(input)?;
-        // Initialize the integer.
-        let integer = value
-            .into_iter()
-            .collect::<String>()
-            .parse::<I>()
-            .and_then(|v| Ok(Self(IntegerCircuit::new(Mode::Constant, v))));
         // Output the remaining input and the initialized integer.
-        Ok((input, integer))
+        Ok((input, Self(IntegerCircuit::new(Mode::Constant, value))))
     }
 
     pub fn to_value(&self) -> I {
@@ -64,9 +60,9 @@ mod tests {
     fn test_u8() {
         type E = Circuit;
         type I = u8;
-        assert_eq!(5u8, Integer::<E, I>::new("5u8").unwrap().1.unwrap().to_value());
-        assert_eq!(5u8, Integer::<E, I>::new("5_u8").unwrap().1.unwrap().to_value());
-        assert_eq!(15u8, Integer::<E, I>::new("1_5_u8").unwrap().1.unwrap().to_value());
+        assert_eq!(5u8, Integer::<E, I>::new("5u8").unwrap().1.to_value());
+        assert_eq!(5u8, Integer::<E, I>::new("5_u8").unwrap().1.to_value());
+        assert_eq!(15u8, Integer::<E, I>::new("1_5_u8").unwrap().1.to_value());
     }
 
     #[test]

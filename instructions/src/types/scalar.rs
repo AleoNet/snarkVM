@@ -16,12 +16,12 @@
 
 use crate::ParserResult;
 use snarkvm_circuits::{Eject, Environment, Mode, ScalarField};
-use snarkvm_fields::FieldError;
 
+use core::iter::FromIterator;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
-    combinator::verify,
+    combinator::{map_res, verify},
     multi::{many0, many1},
     sequence::terminated,
 };
@@ -29,19 +29,15 @@ use nom::{
 pub struct Scalar<E: Environment>(ScalarField<E>);
 
 impl<E: Environment> Scalar<E> {
-    pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
+    pub fn new(input: &str) -> ParserResult<Self> {
         // Parse the digits from the input.
-        let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
+        let (input, value) = map_res(many1(terminated(one_of("0123456789"), many0(char('_')))), |v| {
+            String::from_iter(v).parse::<E::ScalarField>()
+        })(input)?;
         // Parse the scalar field type from the input, and ensure it matches the field type.
         let (input, _) = verify(tag("scalar"), |t: &str| t == "scalar")(input)?;
-        // Initialize the scalar field constant.
-        let scalar = value
-            .into_iter()
-            .collect::<String>()
-            .parse::<E::ScalarField>()
-            .and_then(|v| Ok(Self(ScalarField::new(Mode::Constant, v))));
         // Output the remaining input and the initialized scalar field constant.
-        Ok((input, scalar))
+        Ok((input, Self(ScalarField::new(Mode::Constant, value))))
     }
 
     pub fn to_value(&self) -> E::ScalarField {
@@ -61,15 +57,15 @@ mod tests {
         type E = Circuit;
         assert_eq!(
             <E as Environment>::ScalarField::from_str("5").unwrap(),
-            Scalar::<E>::new("5scalar").unwrap().1.unwrap().to_value()
+            Scalar::<E>::new("5scalar").unwrap().1.to_value()
         );
         assert_eq!(
             <E as Environment>::ScalarField::from_str("5").unwrap(),
-            Scalar::<E>::new("5_scalar").unwrap().1.unwrap().to_value()
+            Scalar::<E>::new("5_scalar").unwrap().1.to_value()
         );
         assert_eq!(
             <E as Environment>::ScalarField::from_str("15").unwrap(),
-            Scalar::<E>::new("1_5_scalar").unwrap().1.unwrap().to_value()
+            Scalar::<E>::new("1_5_scalar").unwrap().1.to_value()
         );
     }
 
