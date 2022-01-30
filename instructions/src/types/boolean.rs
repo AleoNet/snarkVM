@@ -15,39 +15,41 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{keyword, ParserResult};
+use snarkvm_circuits::{Environment,Mode, Boolean as BooleanCircuit, Eject};
 
 use nom::{branch::alt, combinator::value};
 
-pub struct Boolean(bool);
+pub struct Boolean<E: Environment>(BooleanCircuit<E>);
 
-impl Boolean {
+impl<E: Environment> Boolean<E> {
     pub fn new(input: &str) -> ParserResult<Self> {
         // Parse the boolean from the input.
         let (input, boolean) = alt((value(true, keyword("true")), value(false, keyword("false"))))(input)?;
         // Output the remaining input and the initialized boolean.
-        Ok((input, Self(boolean)))
+        Ok((input, Self(BooleanCircuit::new(Mode::Constant, boolean))))
     }
 
     pub fn to_value(&self) -> bool {
-        self.0
+        self.0.eject_value()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_circuits::Circuit;
 
     #[test]
     fn test_boolean_new() {
-        assert_eq!(true, Boolean::new("true").unwrap().1.to_value());
-        assert_eq!(false, Boolean::new("false").unwrap().1.to_value());
+        assert_eq!(true, Boolean::<Circuit>::new("true").unwrap().1.to_value());
+        assert_eq!(false, Boolean::<Circuit>::new("false").unwrap().1.to_value());
     }
 
     #[test]
     fn test_malformed_boolean() {
-        assert!(Boolean::new("maybe").is_err());
-        assert!(Boolean::new("truee").is_err());
-        assert!(Boolean::new("truefalse").is_err());
-        assert!(Boolean::new("falsetrue").is_err());
+        assert!(Boolean::<Circuit>::new("maybe").is_err());
+        assert!(Boolean::<Circuit>::new("truee").is_err());
+        assert!(Boolean::<Circuit>::new("truefalse").is_err());
+        assert!(Boolean::<Circuit>::new("falsetrue").is_err());
     }
 }
