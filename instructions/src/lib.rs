@@ -17,5 +17,8 @@
 pub mod integer;
 pub use integer::*;
 
+pub mod register;
+pub use register::*;
+
 pub mod utilities;
 pub use utilities::*;
