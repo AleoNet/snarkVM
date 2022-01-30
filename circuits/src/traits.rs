@@ -67,6 +67,10 @@ pub trait IntegerTrait<I: IntegerType>:
     + Eject<Primitive = I>
     + Equal
     + FromBits
+    + MulAssign
+    + Mul<Output = Self>
+    + MulChecked<Output = Self>
+    + MulWrapped<Output = Self>
     + Neg<Output = Self>
     + One
     + SubAssign
@@ -78,8 +82,6 @@ pub trait IntegerTrait<I: IntegerType>:
     + ToBits
     + Zero // + Div
 // + DivAssign
-// + Mul
-// + MulAssign
 // + Square
 // + Ternary
 {
