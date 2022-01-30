@@ -1,0 +1,26 @@
+[package]
+name = "snarkvm-instructions-fuzz"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Instructions fuzzer for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies.snarkvm-instructions]
+path = ".."
+
+[dependencies.libfuzzer-sys]
+version = "0.4.0"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_integer"
+path = "src/fuzz_integer.rs"
+test = false
+doc = false
