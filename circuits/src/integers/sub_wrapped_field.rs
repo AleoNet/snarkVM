@@ -128,8 +128,19 @@ mod tests {
             check_sub_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
         }
 
-        // Check that underflow wraps successfully.
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        match I::is_signed() {
+            true => {
+                // Overflow
+                check_underflow::<I>(I::MAX, I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+
+                // Underflow
+                check_underflow::<I>(I::MIN, I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            },
+            false => {
+                // Overflow
+                check_underflow::<I>(I::MIN, I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            }
+        }
     }
 
     #[test]
@@ -141,25 +152,25 @@ mod tests {
     #[test]
     fn test_u8_constant_minus_public() {
         type I = u8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 11, 12);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_constant_minus_private() {
         type I = u8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 11, 12);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_public_minus_constant() {
         type I = u8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 11, 12);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_u8_private_minus_constant() {
         type I = u8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 11, 12);
+        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
@@ -197,25 +208,25 @@ mod tests {
     #[test]
     fn test_i8_constant_minus_public() {
         type I = i8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 11, 12);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_constant_minus_private() {
         type I = i8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 11, 12);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_public_minus_constant() {
         type I = i8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 11, 12);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     fn test_i8_private_minus_constant() {
         type I = i8;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 11, 12);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
@@ -253,25 +264,25 @@ mod tests {
     #[test]
     fn test_u16_constant_minus_public() {
         type I = u16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_constant_minus_private() {
         type I = u16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_public_minus_constant() {
         type I = u16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_u16_private_minus_constant() {
         type I = u16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
@@ -309,25 +320,25 @@ mod tests {
     #[test]
     fn test_i16_constant_minus_public() {
         type I = i16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_constant_minus_private() {
         type I = i16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_public_minus_constant() {
         type I = i16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
     fn test_i16_private_minus_constant() {
         type I = i16;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 19, 20);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 19, 20);
     }
 
     #[test]
@@ -365,25 +376,25 @@ mod tests {
     #[test]
     fn test_u32_constant_minus_public() {
         type I = u32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_constant_minus_private() {
         type I = u32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_public_minus_constant() {
         type I = u32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_u32_private_minus_constant() {
         type I = u32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
@@ -421,25 +432,25 @@ mod tests {
     #[test]
     fn test_i32_constant_minus_public() {
         type I = i32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_constant_minus_private() {
         type I = i32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_public_minus_constant() {
         type I = i32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
     fn test_i32_private_minus_constant() {
         type I = i32;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 35, 36);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 35, 36);
     }
 
     #[test]
@@ -477,25 +488,25 @@ mod tests {
     #[test]
     fn test_u64_constant_minus_public() {
         type I = u64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_constant_minus_private() {
         type I = u64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_public_minus_constant() {
         type I = u64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_u64_private_minus_constant() {
         type I = u64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
@@ -533,25 +544,25 @@ mod tests {
     #[test]
     fn test_i64_constant_minus_public() {
         type I = i64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_constant_minus_private() {
         type I = i64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_public_minus_constant() {
         type I = i64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
     fn test_i64_private_minus_constant() {
         type I = i64;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 67, 68);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 67, 68);
     }
 
     #[test]
@@ -589,25 +600,25 @@ mod tests {
     #[test]
     fn test_u128_constant_minus_public() {
         type I = u128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_constant_minus_private() {
         type I = u128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_public_minus_constant() {
         type I = u128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_u128_private_minus_constant() {
         type I = u128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
@@ -645,25 +656,25 @@ mod tests {
     #[test]
     fn test_i128_constant_minus_public() {
         type I = i128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_constant_minus_private() {
         type I = i128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Constant, Mode::Private, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_public_minus_constant() {
         type I = i128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Public, Mode::Constant, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
     fn test_i128_private_minus_constant() {
         type I = i128;
-        check_underflow::<I>(I::MIN, I::one(), I::MAX, Mode::Private, Mode::Constant, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
     }
 
     #[test]
