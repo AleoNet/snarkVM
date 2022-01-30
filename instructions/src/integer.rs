@@ -30,8 +30,10 @@ impl Integer {
     pub fn new(input: &'static str) -> Result<Self> {
         let (remainder, (value, type_)) = Self::parse(input)?;
 
+        let sanitized_value = value.replace("_", "");
+
         match type_ == "u8" && remainder.is_empty() {
-            true => Ok(Self(value.parse::<u8>()?)),
+            true => Ok(Self(sanitized_value.parse::<u8>()?)),
             false => Err(anyhow!("Failed to parse the u8 value {}", input)),
         }
     }
@@ -56,5 +58,10 @@ mod tests {
     fn test_u8() {
         assert_eq!(5u8, Integer::new("5u8").unwrap().to_value());
         assert_eq!(5u8, Integer::new("5_u8").unwrap().to_value());
+    }
+
+    #[test]
+    fn test_malformed_integer() {
+        assert!(Integer::new("5u_8").is_err());
     }
 }
