@@ -129,10 +129,10 @@ impl Network for Testnet2 {
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 903;
+    const HEADER_SIZE_IN_BYTES: usize = 1095;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
-    const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 916;
+    const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const RECORD_SIZE_IN_BYTES: usize = 280;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;

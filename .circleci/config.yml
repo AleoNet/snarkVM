@@ -258,22 +258,16 @@ jobs:
 
   fmt:
     docker:
-      - image: cimg/rust:1.58
+      - image: howardwu/aleo-ci:2022-01-27
     resource_class: 2xlarge
     steps:
       - checkout
       - setup_environment:
           cache_key: snarkvm-fmt-cache
       - run:
-          name: Nightly Build
-          command: |
-            rustup run nightly rustc --version --verbose
-            rustup run nightly cargo --version --verbose
-            rustup run nightly cargo build
-      - run:
           name: Check style
           no_output_timeout: 35m
-          command: rustup run nightly cargo fmt --all -- --check
+          command: cargo fmt --all -- --check
       - clear_environment:
           cache_key: snarkvm-fmt-cache
 
