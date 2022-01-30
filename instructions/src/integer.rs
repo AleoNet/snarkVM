@@ -29,8 +29,11 @@ pub struct Integer(u8);
 impl Integer {
     pub fn new(input: &'static str) -> Result<Self> {
         let (remainder, (value, type_)) = Self::parse(input)?;
+
+        let value: String = value.into_iter().collect();
+
         match type_ == "u8" && remainder.is_empty() {
-            true => Ok(Self(value.replace("_", "").parse::<u8>()?)),
+            true => Ok(Self(value.parse::<u8>()?)),
             false => Err(anyhow!("Failed to parse the u8 value {}", input)),
         }
     }
@@ -39,10 +42,10 @@ impl Integer {
         self.0
     }
 
-    fn parse(input: &str) -> IResult<&str, (&str, &str)> {
-        let (type_, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
+    fn parse(input: &str) -> IResult<&str, (Vec<char>, &str)> {
+        let (type_, digits) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         let (remainder, type_) = tag("u8")(type_)?;
-        Ok((remainder, (value, type_)))
+        Ok((remainder, (digits, type_)))
     }
 }
 
