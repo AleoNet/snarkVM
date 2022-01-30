@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{keyword, ParserResult};
-use snarkvm_circuits::{Environment,Mode, Boolean as BooleanCircuit, Eject};
+use snarkvm_circuits::{Boolean as BooleanCircuit, Eject, Environment, Mode};
 
 use nom::{branch::alt, combinator::value};
 
@@ -41,15 +41,17 @@ mod tests {
 
     #[test]
     fn test_boolean_new() {
-        assert_eq!(true, Boolean::<Circuit>::new("true").unwrap().1.to_value());
-        assert_eq!(false, Boolean::<Circuit>::new("false").unwrap().1.to_value());
+        type E = Circuit;
+        assert_eq!(true, Boolean::<E>::new("true").unwrap().1.to_value());
+        assert_eq!(false, Boolean::<E>::new("false").unwrap().1.to_value());
     }
 
     #[test]
     fn test_malformed_boolean() {
-        assert!(Boolean::<Circuit>::new("maybe").is_err());
-        assert!(Boolean::<Circuit>::new("truee").is_err());
-        assert!(Boolean::<Circuit>::new("truefalse").is_err());
-        assert!(Boolean::<Circuit>::new("falsetrue").is_err());
+        type E = Circuit;
+        assert!(Boolean::<E>::new("maybe").is_err());
+        assert!(Boolean::<E>::new("truee").is_err());
+        assert!(Boolean::<E>::new("truefalse").is_err());
+        assert!(Boolean::<E>::new("falsetrue").is_err());
     }
 }

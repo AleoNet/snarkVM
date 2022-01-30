@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_circuits::{Mode, Environment, fields::BaseField, Eject};
+use snarkvm_circuits::{fields::BaseField, Eject, Environment, Mode};
 use snarkvm_fields::FieldError;
 
 use nom::{
@@ -58,22 +58,24 @@ mod tests {
 
     #[test]
     fn test_base_new() {
+        type E = Circuit;
         assert_eq!(
-            <Circuit as Environment>::BaseField::from_str("5").unwrap(),
-            Base::<Circuit>::new("5base").unwrap().1.unwrap().to_value()
+            <E as Environment>::BaseField::from_str("5").unwrap(),
+            Base::<E>::new("5base").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            <Circuit as Environment>::BaseField::from_str("5").unwrap(),
-            Base::<Circuit>::new("5_base").unwrap().1.unwrap().to_value()
+            <E as Environment>::BaseField::from_str("5").unwrap(),
+            Base::<E>::new("5_base").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            <Circuit as Environment>::BaseField::from_str("15").unwrap(),
-            Base::<Circuit>::new("1_5_base").unwrap().1.unwrap().to_value()
+            <E as Environment>::BaseField::from_str("15").unwrap(),
+            Base::<E>::new("1_5_base").unwrap().1.unwrap().to_value()
         );
     }
 
     #[test]
     fn test_malformed_base() {
-        assert!( Base::<Circuit>::new("5ba_se").is_err());
+        type E = Circuit;
+        assert!(Base::<E>::new("5ba_se").is_err());
     }
 }

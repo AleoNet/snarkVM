@@ -15,7 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_circuits::helpers::integers::IntegerType;
+use snarkvm_circuits::{
+    helpers::integers::IntegerType,
+    traits::{Eject, IntegerTrait},
+    Environment,
+    Integer as IntegerCircuit,
+    Mode,
+};
 
 use core::num::ParseIntError;
 use nom::{
@@ -26,9 +32,9 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Integer<I: IntegerType>(I);
+pub struct Integer<E: Environment, I: IntegerType>(IntegerCircuit<E, I>);
 
-impl<I: IntegerType> Integer<I> {
+impl<E: Environment, I: IntegerType> Integer<E, I> {
     pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
@@ -39,30 +45,32 @@ impl<I: IntegerType> Integer<I> {
             .into_iter()
             .collect::<String>()
             .parse::<I>()
-            .and_then(|v| Ok(Self(v)));
+            .and_then(|v| Ok(Self(IntegerCircuit::new(Mode::Constant, v))));
         // Output the remaining input and the initialized integer.
         Ok((input, integer))
     }
 
     pub fn to_value(&self) -> I {
-        self.0
+        self.0.eject_value()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_circuits::Circuit;
 
     #[test]
     fn test_u8() {
+        type E = Circuit;
         type I = u8;
-        assert_eq!(5u8, Integer::<I>::new("5u8").unwrap().1.unwrap().to_value());
-        assert_eq!(5u8, Integer::<I>::new("5_u8").unwrap().1.unwrap().to_value());
-        assert_eq!(15u8, Integer::<I>::new("1_5_u8").unwrap().1.unwrap().to_value());
+        assert_eq!(5u8, Integer::<E, I>::new("5u8").unwrap().1.unwrap().to_value());
+        assert_eq!(5u8, Integer::<E, I>::new("5_u8").unwrap().1.unwrap().to_value());
+        assert_eq!(15u8, Integer::<E, I>::new("1_5_u8").unwrap().1.unwrap().to_value());
     }
 
     #[test]
     fn test_malformed_integer() {
-        assert!(Integer::<u8>::new("5u_8").is_err());
+        assert!(Integer::<Circuit, u8>::new("5u_8").is_err());
     }
 }
