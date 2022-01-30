@@ -26,15 +26,15 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Base(Fq);
+pub struct Group(Fq);
 
-impl Base {
+impl Group {
     pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
-        // Parse the base field type from the input, and ensure it matches the field type.
-        let (input, _) = verify(tag("base"), |t: &str| t == "base")(input)?;
-        // Output the remaining input and the initialized base field.
+        // Parse the group type from the input, and ensure it matches the group type.
+        let (input, _) = verify(tag("group"), |t: &str| t == "group")(input)?;
+        // Output the remaining input and the initialized group element.
         Ok((
             input,
             value
@@ -56,23 +56,23 @@ mod tests {
     use core::str::FromStr;
 
     #[test]
-    fn test_base_field_new() {
+    fn test_group_new() {
         assert_eq!(
             Fq::from_str("5").unwrap(),
-            Base::new("5base").unwrap().1.unwrap().to_value()
+            Group::new("5group").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
             Fq::from_str("5").unwrap(),
-            Base::new("5_base").unwrap().1.unwrap().to_value()
+            Group::new("5_group").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
             Fq::from_str("15").unwrap(),
-            Base::new("1_5_base").unwrap().1.unwrap().to_value()
+            Group::new("1_5_group").unwrap().1.unwrap().to_value()
         );
     }
 
     #[test]
-    fn test_malformed_base_field() {
-        assert!(Base::new("5ba_se").is_err());
+    fn test_malformed_group() {
+        assert!(Group::new("5grou_p").is_err());
     }
 }
