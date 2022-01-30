@@ -16,10 +16,7 @@
 
 use crate::{keyword, ParserResult};
 
-use nom::{
-    branch::alt,
-    combinator::value,
-};
+use nom::{branch::alt, combinator::value};
 
 pub struct Boolean(bool);
 

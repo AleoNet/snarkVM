@@ -34,15 +34,14 @@ impl Base {
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         // Parse the base field type from the input, and ensure it matches the field type.
         let (input, _) = verify(tag("base"), |t: &str| t == "base")(input)?;
+        // Initialize the base field.
+        let base = value
+            .into_iter()
+            .collect::<String>()
+            .parse::<Fq>()
+            .and_then(|v| Ok(Self(v)));
         // Output the remaining input and the initialized base field.
-        Ok((
-            input,
-            value
-                .into_iter()
-                .collect::<String>()
-                .parse::<Fq>()
-                .and_then(|v| Ok(Self(v))),
-        ))
+        Ok((input, base))
     }
 
     pub fn to_value(&self) -> Fq {

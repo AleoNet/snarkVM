@@ -34,14 +34,16 @@ impl Group {
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         // Parse the group type from the input, and ensure it matches the group type.
         let (input, _) = verify(tag("group"), |t: &str| t == "group")(input)?;
+        // Initialize the group element.
+        let group = value
+            .into_iter()
+            .collect::<String>()
+            .parse::<Fq>()
+            .and_then(|v| Ok(Self(v)));
         // Output the remaining input and the initialized group element.
         Ok((
             input,
-            value
-                .into_iter()
-                .collect::<String>()
-                .parse::<Fq>()
-                .and_then(|v| Ok(Self(v))),
+            group,
         ))
     }
 

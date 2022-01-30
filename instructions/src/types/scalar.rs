@@ -34,15 +34,14 @@ impl Scalar {
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         // Parse the scalar field type from the input, and ensure it matches the field type.
         let (input, _) = verify(tag("scalar"), |t: &str| t == "scalar")(input)?;
+        // Initialize the scalar field element.
+        let scalar = value
+            .into_iter()
+            .collect::<String>()
+            .parse::<Fr>()
+            .and_then(|v| Ok(Self(v)));
         // Output the remaining input and the initialized scalar field.
-        Ok((
-            input,
-            value
-                .into_iter()
-                .collect::<String>()
-                .parse::<Fr>()
-                .and_then(|v| Ok(Self(v))),
-        ))
+        Ok((input, scalar))
     }
 
     pub fn to_value(&self) -> Fr {

@@ -34,15 +34,14 @@ impl<I: IntegerType> Integer<I> {
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         // Parse the integer type from the input, and ensure it matches the declared `IntegerType`.
         let (input, _) = verify(tag(I::type_name()), |t: &str| t == I::type_name())(input)?;
+        // Initialize the integer.
+        let integer = value
+            .into_iter()
+            .collect::<String>()
+            .parse::<I>()
+            .and_then(|v| Ok(Self(v)));
         // Output the remaining input and the initialized integer.
-        Ok((
-            input,
-            value
-                .into_iter()
-                .collect::<String>()
-                .parse::<I>()
-                .and_then(|v| Ok(Self(v))),
-        ))
+        Ok((input, integer))
     }
 
     pub fn to_value(&self) -> I {
