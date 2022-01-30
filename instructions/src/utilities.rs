@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::{anyhow, Result};
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until, take_while1},
-    character::complete::{anychar, char, line_ending, multispace0, multispace1},
-    combinator::{cut, map, recognize, value},
-    error::{ErrorKind, ParseError, VerboseError, VerboseErrorKind},
+    bytes::complete::{tag, take_until},
+    character::complete::{anychar, char, line_ending, multispace1},
+    combinator::{cut, map, not, peek, recognize, value, verify},
+    error::{ErrorKind, VerboseError, VerboseErrorKind},
     multi::fold_many0,
     sequence::{preceded, terminated},
     IResult,
@@ -52,6 +51,14 @@ pub fn comment(input: &str) -> ParserResult<&str> {
 /// Removes multiple leading comments from the given input.
 pub fn comments(input: &str) -> ParserResult<&str> {
     recognize(many0_(terminated(comment, whitespaces)))(input)
+}
+
+/// Enforces the input is a keyword, meaning the character after the keyword does not imply a continuation (is_alphanumeric or '_').
+pub fn keyword<'a>(input: &'a str) -> impl FnMut(&'a str) -> ParserResult<&'a str> {
+    terminated(
+        tag(input),
+        not(verify(peek(anychar), |&c| c.is_alphanumeric() || c == '_')),
+    )
 }
 
 /// End-of-input parser.

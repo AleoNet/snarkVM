@@ -24,5 +24,13 @@ nom = "7.1"
 path = "../circuits"
 version = "0.7.5"
 
+[dependencies.snarkvm-curves]
+path = "../curves"
+version = "0.7.5"
+
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.7.5"
+
 [dependencies.anyhow]
 version = "1.0.52"

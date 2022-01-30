@@ -23,7 +23,6 @@ use nom::{
     combinator::recognize,
     multi::{many0, many1},
     sequence::terminated,
-    IResult,
 };
 
 pub struct Register(u64);

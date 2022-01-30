@@ -2123,6 +2123,8 @@ dependencies = [
  "anyhow",
  "nom",
  "snarkvm-circuits",
+ "snarkvm-curves",
+ "snarkvm-fields",
 ]
 
 [[package]]

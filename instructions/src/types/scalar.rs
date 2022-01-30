@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_circuits::helpers::integers::IntegerType;
+use snarkvm_curves::edwards_bls12::Fr;
+use snarkvm_fields::FieldError;
 
-use core::num::ParseIntError;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
@@ -26,26 +26,26 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Integer<I: IntegerType>(I);
+pub struct Scalar(Fr);
 
-impl<I: IntegerType> Integer<I> {
-    pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
+impl Scalar {
+    pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
-        // Parse the integer type from the input, and ensure it matches the declared `IntegerType`.
-        let (input, _) = verify(tag(I::type_name()), |t: &str| t == I::type_name())(input)?;
-        // Output the remaining input and the initialized integer.
+        // Parse the scalar field type from the input, and ensure it matches the field type.
+        let (input, _) = verify(tag("scalar"), |t: &str| t == "scalar")(input)?;
+        // Output the remaining input and the initialized scalar field.
         Ok((
             input,
             value
                 .into_iter()
                 .collect::<String>()
-                .parse::<I>()
+                .parse::<Fr>()
                 .and_then(|v| Ok(Self(v))),
         ))
     }
 
-    pub fn to_value(&self) -> I {
+    pub fn to_value(&self) -> Fr {
         self.0
     }
 }
@@ -53,17 +53,26 @@ impl<I: IntegerType> Integer<I> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::str::FromStr;
 
     #[test]
-    fn test_u8() {
-        type I = u8;
-        assert_eq!(5u8, Integer::<I>::new("5u8").unwrap().1.unwrap().to_value());
-        assert_eq!(5u8, Integer::<I>::new("5_u8").unwrap().1.unwrap().to_value());
-        assert_eq!(15u8, Integer::<I>::new("1_5_u8").unwrap().1.unwrap().to_value());
+    fn test_scalar_new() {
+        assert_eq!(
+            Fr::from_str("5").unwrap(),
+            Scalar::new("5scalar").unwrap().1.unwrap().to_value()
+        );
+        assert_eq!(
+            Fr::from_str("5").unwrap(),
+            Scalar::new("5_scalar").unwrap().1.unwrap().to_value()
+        );
+        assert_eq!(
+            Fr::from_str("15").unwrap(),
+            Scalar::new("1_5_scalar").unwrap().1.unwrap().to_value()
+        );
     }
 
     #[test]
-    fn test_malformed_integer() {
-        assert!(Integer::<u8>::new("5u_8").is_err());
+    fn test_malformed_scalar() {
+        assert!(Scalar::new("5scala_r").is_err());
     }
 }

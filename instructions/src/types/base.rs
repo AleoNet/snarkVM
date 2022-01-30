@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_circuits::helpers::integers::IntegerType;
+use snarkvm_curves::edwards_bls12::Fq;
+use snarkvm_fields::FieldError;
 
-use core::num::ParseIntError;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
@@ -26,26 +26,26 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Integer<I: IntegerType>(I);
+pub struct BaseField(Fq);
 
-impl<I: IntegerType> Integer<I> {
-    pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
+impl BaseField {
+    pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
-        // Parse the integer type from the input, and ensure it matches the declared `IntegerType`.
-        let (input, _) = verify(tag(I::type_name()), |t: &str| t == I::type_name())(input)?;
-        // Output the remaining input and the initialized integer.
+        // Parse the base field type from the input, and ensure it matches the field type.
+        let (input, _) = verify(tag("base"), |t: &str| t == "base")(input)?;
+        // Output the remaining input and the initialized base field.
         Ok((
             input,
             value
                 .into_iter()
                 .collect::<String>()
-                .parse::<I>()
+                .parse::<Fq>()
                 .and_then(|v| Ok(Self(v))),
         ))
     }
 
-    pub fn to_value(&self) -> I {
+    pub fn to_value(&self) -> Fq {
         self.0
     }
 }
@@ -53,17 +53,26 @@ impl<I: IntegerType> Integer<I> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::str::FromStr;
 
     #[test]
-    fn test_u8() {
-        type I = u8;
-        assert_eq!(5u8, Integer::<I>::new("5u8").unwrap().1.unwrap().to_value());
-        assert_eq!(5u8, Integer::<I>::new("5_u8").unwrap().1.unwrap().to_value());
-        assert_eq!(15u8, Integer::<I>::new("1_5_u8").unwrap().1.unwrap().to_value());
+    fn test_base_field_new() {
+        assert_eq!(
+            Fq::from_str("5").unwrap(),
+            BaseField::new("5base").unwrap().1.unwrap().to_value()
+        );
+        assert_eq!(
+            Fq::from_str("5").unwrap(),
+            BaseField::new("5_base").unwrap().1.unwrap().to_value()
+        );
+        assert_eq!(
+            Fq::from_str("15").unwrap(),
+            BaseField::new("1_5_base").unwrap().1.unwrap().to_value()
+        );
     }
 
     #[test]
-    fn test_malformed_integer() {
-        assert!(Integer::<u8>::new("5u_8").is_err());
+    fn test_malformed_base_field() {
+        assert!(BaseField::new("5ba_se").is_err());
     }
 }
