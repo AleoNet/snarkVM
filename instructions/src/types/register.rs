@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::{anyhow, Result};
+use crate::ParserResult;
+
+use core::num::ParseIntError;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
@@ -27,19 +29,14 @@ use nom::{
 pub struct Register(u64);
 
 impl Register {
-    pub fn new(input: &'static str) -> Result<Self> {
-        let (input, value) = Self::parse(input)?;
-        Ok(Self(value.replace("_", "").parse::<u64>()?))
+    pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
+        let (input, _) = tag("r")(input)?;
+        let (input, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
+        Ok((input, value.replace("_", "").parse::<u64>().and_then(|v| Ok(Self(v)))))
     }
 
     pub fn to_id(&self) -> u64 {
         self.0
-    }
-
-    fn parse(input: &str) -> IResult<&str, &str> {
-        let (input, _) = tag("r")(input)?;
-        let (input, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
-        Ok((input, value))
     }
 }
 
@@ -49,14 +46,14 @@ mod tests {
 
     #[test]
     fn test_register_new() {
-        assert_eq!(1, Register::new("r1").unwrap().to_id());
-        assert_eq!(12, Register::new("r12").unwrap().to_id());
-        assert_eq!(123, Register::new("r123").unwrap().to_id());
-        assert_eq!(1234, Register::new("r1_234").unwrap().to_id());
-        assert_eq!(12345, Register::new("r12_345").unwrap().to_id());
-        assert_eq!(123456, Register::new("r123_456").unwrap().to_id());
-        assert_eq!(1234567, Register::new("r1_2_3_4_5_6_7").unwrap().to_id());
-        assert_eq!(1234567, Register::new("r1_2_3_4_5_67_").unwrap().to_id());
+        assert_eq!(1, Register::new("r1").unwrap().1.unwrap().to_id());
+        assert_eq!(12, Register::new("r12").unwrap().1.unwrap().to_id());
+        assert_eq!(123, Register::new("r123").unwrap().1.unwrap().to_id());
+        assert_eq!(1234, Register::new("r1_234").unwrap().1.unwrap().to_id());
+        assert_eq!(12345, Register::new("r12_345").unwrap().1.unwrap().to_id());
+        assert_eq!(123456, Register::new("r123_456").unwrap().1.unwrap().to_id());
+        assert_eq!(1234567, Register::new("r1_2_3_4_5_6_7").unwrap().1.unwrap().to_id());
+        assert_eq!(1234567, Register::new("r1_2_3_4_5_67_").unwrap().1.unwrap().to_id());
     }
 
     #[test]
