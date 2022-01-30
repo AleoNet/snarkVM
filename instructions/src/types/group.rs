@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_curves::edwards_bls12::Fq;
+use snarkvm_circuits::{Affine, Eject, Environment, Mode};
 use snarkvm_fields::FieldError;
 
 use nom::{
@@ -26,9 +26,9 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Group(Fq);
+pub struct Group<E: Environment>(Affine<E>);
 
-impl Group {
+impl<E: Environment> Group<E> {
     pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
@@ -38,43 +38,40 @@ impl Group {
         let group = value
             .into_iter()
             .collect::<String>()
-            .parse::<Fq>()
-            .and_then(|v| Ok(Self(v)));
+            .parse::<E::BaseField>()
+            .and_then(|v| Ok(Self(Affine::new(Mode::Constant, v, None))));
         // Output the remaining input and the initialized group element.
-        Ok((
-            input,
-            group,
-        ))
+        Ok((input, group))
     }
 
-    pub fn to_value(&self) -> Fq {
-        self.0
+    pub fn to_value(&self) -> E::Affine {
+        self.0.eject_value()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_circuits::Circuit;
+
     use core::str::FromStr;
 
     #[test]
     fn test_group_new() {
+        type E = Circuit;
         assert_eq!(
-            Fq::from_str("5").unwrap(),
-            Group::new("5group").unwrap().1.unwrap().to_value()
+            E::affine_from_x_coordinate(<E as Environment>::BaseField::from_str("0").unwrap()),
+            Group::<E>::new("0group").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            Fq::from_str("5").unwrap(),
-            Group::new("5_group").unwrap().1.unwrap().to_value()
-        );
-        assert_eq!(
-            Fq::from_str("15").unwrap(),
-            Group::new("1_5_group").unwrap().1.unwrap().to_value()
+            E::affine_from_x_coordinate(<E as Environment>::BaseField::from_str("0").unwrap()),
+            Group::<E>::new("0_group").unwrap().1.unwrap().to_value()
         );
     }
 
     #[test]
     fn test_malformed_group() {
-        assert!(Group::new("5grou_p").is_err());
+        type E = Circuit;
+        assert!(Group::<E>::new("0grou_p").is_err());
     }
 }

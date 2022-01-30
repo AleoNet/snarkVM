@@ -20,6 +20,9 @@ pub use base::*;
 pub mod boolean;
 pub use boolean::*;
 
+pub mod group;
+pub use group::*;
+
 pub mod integer;
 pub use integer::*;
 
