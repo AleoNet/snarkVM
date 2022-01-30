@@ -14,12 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate pest_derive;
-
-pub mod instructions;
-pub use instructions::*;
-
-#[derive(Parser)]
-#[grammar = "./instructions.pest"] // relative to src
-pub(crate) struct InstructionsParser;
+pub mod integer;
+pub use integer::*;

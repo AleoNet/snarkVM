@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_instructions::Instructions;
-
 fn main() {
     println!("Hello, world!");
-
-    Instructions::new("add r5 5i8 4i8\nadd r6 3i16 2i16\n").unwrap_or_else(|e| panic!("{}", e));
-
-    // for instruction in instructions {
-    //     println!("{:?}", instruction);
-    // }
 }
