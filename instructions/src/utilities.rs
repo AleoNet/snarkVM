@@ -62,7 +62,7 @@ fn eoi(input: &str) -> ParserResult<()> {
         true => Ok((input, ())),
         false => Err(nom::Err::Error(VerboseError {
             errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Eof))],
-        }))
+        })),
     }
 }
 
@@ -132,9 +132,18 @@ mod tests {
         assert_eq!(("hello world", ""), sanitize(" \nhello world").unwrap());
         assert_eq!(("hello world ", ""), sanitize("hello world ").unwrap());
 
-        assert_eq!(("hello world", "// hello\n"), sanitize("// hello\nhello world").unwrap());
-        assert_eq!(("hello world", "/* hello */\n"), sanitize("/* hello */\nhello world").unwrap());
-        assert_eq!(("hello world", "/** hello */\n"), sanitize("/** hello */\nhello world").unwrap());
+        assert_eq!(
+            ("hello world", "// hello\n"),
+            sanitize("// hello\nhello world").unwrap()
+        );
+        assert_eq!(
+            ("hello world", "/* hello */\n"),
+            sanitize("/* hello */\nhello world").unwrap()
+        );
+        assert_eq!(
+            ("hello world", "/** hello */\n"),
+            sanitize("/** hello */\nhello world").unwrap()
+        );
         assert_eq!(("/\nhello world", ""), sanitize("/\nhello world").unwrap());
     }
 
@@ -150,9 +159,18 @@ mod tests {
 
     #[test]
     fn test_comments() {
-        assert_eq!(("hello world", "// hello\n"), comments("// hello\nhello world").unwrap());
-        assert_eq!(("hello world", "/* hello */\n"), comments("/* hello */\nhello world").unwrap());
-        assert_eq!(("hello world", "/** hello */\n"), comments("/** hello */\nhello world").unwrap());
+        assert_eq!(
+            ("hello world", "// hello\n"),
+            comments("// hello\nhello world").unwrap()
+        );
+        assert_eq!(
+            ("hello world", "/* hello */\n"),
+            comments("/* hello */\nhello world").unwrap()
+        );
+        assert_eq!(
+            ("hello world", "/** hello */\n"),
+            comments("/** hello */\nhello world").unwrap()
+        );
         assert_eq!(("/\nhello world", ""), comments("/\nhello world").unwrap());
     }
 }

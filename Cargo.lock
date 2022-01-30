@@ -2122,6 +2122,7 @@ version = "0.7.5"
 dependencies = [
  "anyhow",
  "nom",
+ "snarkvm-circuits",
 ]
 
 [[package]]

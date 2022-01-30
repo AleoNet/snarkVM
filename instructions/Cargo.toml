@@ -20,5 +20,9 @@ edition = "2018"
 [dependencies]
 nom = "7.1"
 
+[dependencies.snarkvm-circuits]
+path = "../circuits"
+version = "0.7.5"
+
 [dependencies.anyhow]
 version = "1.0.52"

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_circuits::helpers::integers::IntegerType;
+
 use anyhow::{anyhow, Result};
 use nom::{
     bytes::complete::tag,
@@ -24,21 +26,21 @@ use nom::{
     IResult,
 };
 
-pub struct Integer(u8);
+pub struct Integer<I: IntegerType>(I);
 
-impl Integer {
+impl<I: IntegerType> Integer<I> {
     pub fn new(input: &'static str) -> Result<Self> {
         let (remainder, (value, type_)) = Self::parse(input)?;
 
         let value: String = value.into_iter().collect();
 
         match type_ == "u8" && remainder.is_empty() {
-            true => Ok(Self(value.parse::<u8>()?)),
+            true => Ok(Self(value.parse::<I>()?)),
             false => Err(anyhow!("Failed to parse the u8 value {}", input)),
         }
     }
 
-    pub fn to_value(&self) -> u8 {
+    pub fn to_value(&self) -> I {
         self.0
     }
 
@@ -55,13 +57,14 @@ mod tests {
 
     #[test]
     fn test_u8() {
-        assert_eq!(5u8, Integer::new("5u8").unwrap().to_value());
-        assert_eq!(5u8, Integer::new("5_u8").unwrap().to_value());
-        assert_eq!(15u8, Integer::new("1_5_u8").unwrap().to_value());
+        type I = u8;
+        assert_eq!(5u8, Integer::<I>::new("5u8").unwrap().to_value());
+        assert_eq!(5u8, Integer::<I>::new("5_u8").unwrap().to_value());
+        assert_eq!(15u8, Integer::<I>::new("1_5_u8").unwrap().to_value());
     }
 
     #[test]
     fn test_malformed_integer() {
-        assert!(Integer::new("5u_8").is_err());
+        assert!(Integer::<u8>::new("5u_8").is_err());
     }
 }
