@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_curves::edwards_bls12::Fr;
+use snarkvm_circuits::{Eject, Environment, Mode, ScalarField};
 use snarkvm_fields::FieldError;
 
 use nom::{
@@ -26,52 +26,56 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Scalar(Fr);
+pub struct Scalar<E: Environment>(ScalarField<E>);
 
-impl Scalar {
+impl<E: Environment> Scalar<E> {
     pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         // Parse the scalar field type from the input, and ensure it matches the field type.
         let (input, _) = verify(tag("scalar"), |t: &str| t == "scalar")(input)?;
-        // Initialize the scalar field element.
+        // Initialize the scalar field constant.
         let scalar = value
             .into_iter()
             .collect::<String>()
-            .parse::<Fr>()
-            .and_then(|v| Ok(Self(v)));
-        // Output the remaining input and the initialized scalar field.
+            .parse::<E::ScalarField>()
+            .and_then(|v| Ok(Self(ScalarField::new(Mode::Constant, v))));
+        // Output the remaining input and the initialized scalar field constant.
         Ok((input, scalar))
     }
 
-    pub fn to_value(&self) -> Fr {
-        self.0
+    pub fn to_value(&self) -> E::ScalarField {
+        self.0.eject_value()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_circuits::Circuit;
+
     use core::str::FromStr;
 
     #[test]
     fn test_scalar_new() {
+        type E = Circuit;
         assert_eq!(
-            Fr::from_str("5").unwrap(),
-            Scalar::new("5scalar").unwrap().1.unwrap().to_value()
+            <E as Environment>::ScalarField::from_str("5").unwrap(),
+            Scalar::<E>::new("5scalar").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            Fr::from_str("5").unwrap(),
-            Scalar::new("5_scalar").unwrap().1.unwrap().to_value()
+            <E as Environment>::ScalarField::from_str("5").unwrap(),
+            Scalar::<E>::new("5_scalar").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            Fr::from_str("15").unwrap(),
-            Scalar::new("1_5_scalar").unwrap().1.unwrap().to_value()
+            <E as Environment>::ScalarField::from_str("15").unwrap(),
+            Scalar::<E>::new("1_5_scalar").unwrap().1.unwrap().to_value()
         );
     }
 
     #[test]
     fn test_malformed_scalar() {
-        assert!(Scalar::new("5scala_r").is_err());
+        type E = Circuit;
+        assert!(Scalar::<E>::new("5scala_r").is_err());
     }
 }
