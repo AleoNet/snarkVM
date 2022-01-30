@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FftField, FieldParameters};
+use crate::{FftField, FieldError, FieldParameters};
 use snarkvm_utilities::{biginteger::BigInteger, cmp::min, str::FromStr};
 
 /// The interface for a prime field.
-pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters> + FromStr {
+pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters> + FromStr<Err = FieldError> {
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 

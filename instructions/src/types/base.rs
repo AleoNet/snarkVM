@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-use snarkvm_curves::edwards_bls12::Fq;
+use snarkvm_circuits::{Mode, Environment, fields::BaseField, Eject};
 use snarkvm_fields::FieldError;
 
 use nom::{
@@ -26,52 +26,54 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Base(Fq);
+pub struct Base<E: Environment>(BaseField<E>);
 
-impl Base {
+impl<E: Environment> Base<E> {
     pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
         // Parse the digits from the input.
         let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
         // Parse the base field type from the input, and ensure it matches the field type.
         let (input, _) = verify(tag("base"), |t: &str| t == "base")(input)?;
-        // Initialize the base field.
+        // Initialize the base field constant.
         let base = value
             .into_iter()
             .collect::<String>()
-            .parse::<Fq>()
-            .and_then(|v| Ok(Self(v)));
-        // Output the remaining input and the initialized base field.
+            .parse::<E::BaseField>()
+            .and_then(|v| Ok(Self(BaseField::new(Mode::Constant, v))));
+        // Output the remaining input and the initialized base field constant.
         Ok((input, base))
     }
 
-    pub fn to_value(&self) -> Fq {
-        self.0
+    pub fn to_value(&self) -> E::BaseField {
+        self.0.eject_value()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_circuits::Circuit;
+
     use core::str::FromStr;
 
     #[test]
     fn test_base_new() {
         assert_eq!(
-            Fq::from_str("5").unwrap(),
-            Base::new("5base").unwrap().1.unwrap().to_value()
+            <Circuit as Environment>::BaseField::from_str("5").unwrap(),
+            Base::<Circuit>::new("5base").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            Fq::from_str("5").unwrap(),
-            Base::new("5_base").unwrap().1.unwrap().to_value()
+            <Circuit as Environment>::BaseField::from_str("5").unwrap(),
+            Base::<Circuit>::new("5_base").unwrap().1.unwrap().to_value()
         );
         assert_eq!(
-            Fq::from_str("15").unwrap(),
-            Base::new("1_5_base").unwrap().1.unwrap().to_value()
+            <Circuit as Environment>::BaseField::from_str("15").unwrap(),
+            Base::<Circuit>::new("1_5_base").unwrap().1.unwrap().to_value()
         );
     }
 
     #[test]
     fn test_malformed_base() {
-        assert!(Base::new("5ba_se").is_err());
+        assert!( Base::<Circuit>::new("5ba_se").is_err());
     }
 }
