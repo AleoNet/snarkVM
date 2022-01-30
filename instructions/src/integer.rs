@@ -44,7 +44,6 @@ impl Integer {
 
     fn parse(input: &str) -> IResult<&str, (Vec<char>, &str)> {
         let (type_, digits) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
-
         let (remainder, type_) = tag("u8")(type_)?;
         Ok((remainder, (digits, type_)))
     }
@@ -58,7 +57,7 @@ mod tests {
     fn test_u8() {
         assert_eq!(5u8, Integer::new("5u8").unwrap().to_value());
         assert_eq!(5u8, Integer::new("5_u8").unwrap().to_value());
-
+        assert_eq!(15u8, Integer::new("1_5_u8").unwrap().to_value());
     }
 
     #[test]
