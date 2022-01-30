@@ -16,12 +16,12 @@
 
 use crate::ParserResult;
 use snarkvm_circuits::{Affine, Eject, Environment, Mode};
-use snarkvm_fields::FieldError;
 
+use core::iter::FromIterator;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
-    combinator::verify,
+    combinator::{map_res, verify},
     multi::{many0, many1},
     sequence::terminated,
 };
@@ -29,19 +29,15 @@ use nom::{
 pub struct Group<E: Environment>(Affine<E>);
 
 impl<E: Environment> Group<E> {
-    pub fn new(input: &str) -> ParserResult<Result<Self, FieldError>> {
+    pub fn new(input: &str) -> ParserResult<Self> {
         // Parse the digits from the input.
-        let (input, value) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
+        let (input, x_coordinate) = map_res(many1(terminated(one_of("0123456789"), many0(char('_')))), |v| {
+            String::from_iter(v).parse::<E::BaseField>()
+        })(input)?;
         // Parse the group type from the input, and ensure it matches the group type.
         let (input, _) = verify(tag("group"), |t: &str| t == "group")(input)?;
-        // Initialize the group element.
-        let group = value
-            .into_iter()
-            .collect::<String>()
-            .parse::<E::BaseField>()
-            .and_then(|v| Ok(Self(Affine::new(Mode::Constant, v, None))));
-        // Output the remaining input and the initialized group element.
-        Ok((input, group))
+        // Output the remaining input and the initialized group constant.
+        Ok((input, Self(Affine::new(Mode::Constant, x_coordinate, None))))
     }
 
     pub fn to_value(&self) -> E::Affine {
@@ -61,11 +57,11 @@ mod tests {
         type E = Circuit;
         assert_eq!(
             E::affine_from_x_coordinate(<E as Environment>::BaseField::from_str("0").unwrap()),
-            Group::<E>::new("0group").unwrap().1.unwrap().to_value()
+            Group::<E>::new("0group").unwrap().1.to_value()
         );
         assert_eq!(
             E::affine_from_x_coordinate(<E as Environment>::BaseField::from_str("0").unwrap()),
-            Group::<E>::new("0_group").unwrap().1.unwrap().to_value()
+            Group::<E>::new("0_group").unwrap().1.to_value()
         );
     }
 
