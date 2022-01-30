@@ -110,6 +110,11 @@ pub mod integers {
                 fn is_signed() -> bool {
                     $is_signed
                 }
+
+                #[inline]
+                fn type_name() -> &'static str {
+                    std::any::type_name::<$t>()
+                }
             }
         };
     }
@@ -138,5 +143,8 @@ pub mod integers {
 
         /// Returns `true` if Self is a primitive signed integer and `false` otherwise.
         fn is_signed() -> bool;
+
+        /// Returns the name of the integer type as a string slice. (i.e. "u8")
+        fn type_name() -> &'static str;
     }
 }

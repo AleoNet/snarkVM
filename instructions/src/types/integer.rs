@@ -34,9 +34,9 @@ impl<I: IntegerType> Integer<I> {
 
         let value: String = value.into_iter().collect();
 
-        match type_ == "u8" && remainder.is_empty() {
+        match type_ == I::type_name() && remainder.is_empty() {
             true => Ok(Self(value.parse::<I>()?)),
-            false => Err(anyhow!("Failed to parse the u8 value {}", input)),
+            false => Err(anyhow!("Failed to parse the {} value {}", I::type_name(), input)),
         }
     }
 
@@ -46,7 +46,7 @@ impl<I: IntegerType> Integer<I> {
 
     fn parse(input: &str) -> IResult<&str, (Vec<char>, &str)> {
         let (type_, digits) = many1(terminated(one_of("0123456789"), many0(char('_'))))(input)?;
-        let (remainder, type_) = tag("u8")(type_)?;
+        let (remainder, type_) = tag(I::type_name())(type_)?;
         Ok((remainder, (digits, type_)))
     }
 }
