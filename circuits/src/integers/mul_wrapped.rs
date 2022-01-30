@@ -17,6 +17,8 @@
 use super::*;
 use snarkvm_fields::PrimeField;
 
+use std::iter::repeat;
+
 impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
     type Output = Self;
 
@@ -27,7 +29,7 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
             // Compute the product and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_mul(&other.eject_value()))
         } else {
-            if 2 * I::BITS < E::BaseField::size_in_bits() {
+            let mut bits_le = if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
                 // Instead of multiplying the bits of `self` and `other` directly, the integers are
                 // converted into a field elements, and multiplied, before being converted back to integers.
                 // Note: This is safe as the field is larger than the maximum integer type supported.
@@ -36,17 +38,41 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
                 let product = this * that;
 
                 // Extract the integer bits from the field element, with the carry bits.
-                let mut bits_le = product.to_lower_bits_le(2 * I::BITS);
-                // Drop the carry bits as the operation is wrapped multiplication.
-                bits_le.truncate(I::BITS);
+                product.to_lower_bits_le(2 * I::BITS)
+            } else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
+                // Perform multiplication by decomposing it into separate operations on its
+                // upper and lower bits.
+                // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
+                // Note that we follow the naming convention given in the `Basic Step` section of
+                // the above page.
+                let x_1 = BaseField::from_bits_le(Mode::Private, &self.bits_le[(I::BITS / 2)..]);
+                let x_0 = BaseField::from_bits_le(Mode::Private, &self.bits_le[..(I::BITS / 2)]);
+                let y_1 = BaseField::from_bits_le(Mode::Private, &other.bits_le[(I::BITS / 2)..]);
+                let y_0 = BaseField::from_bits_le(Mode::Private, &other.bits_le[..(I::BITS / 2)]);
 
-                // Return the sum of `self` and `other`.
-                Integer {
-                    bits_le,
-                    phantom: Default::default(),
-                }
+                let z_0 = &x_0 * &y_0;
+                let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
+
+                let mut b_m_bits = vec![Boolean::new(Mode::Constant, false); I::BITS / 2];
+                b_m_bits.push(Boolean::new(Mode::Constant, true));
+
+                let b_m = BaseField::from_bits_le(Mode::Constant, &b_m_bits);
+                let z0_plus_z1 = &z_0 + (&z_1 * &b_m);
+
+                z0_plus_z1.to_lower_bits_le(I::BITS + I::BITS / 2 + 1)
             } else {
+                // TODO (@pranav) Do we need to handle this case? The current integers can
+                //   be handled by the code above.
                 todo!()
+            };
+
+            // Remove carry bits.
+            bits_le.truncate(I::BITS);
+
+            // Return the product of `self` and `other`.
+            Integer {
+                bits_le,
+                phantom: Default::default(),
             }
         }
     }
@@ -57,14 +83,14 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::{UniformRand, from_bytes_le_to_bits_le, ToBytes};
 
     use num_traits::{One};
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    fn check_mul_wrapped<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_mul_wrapped<I: IntegerType + ToBytes, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
         a: &IC,
@@ -610,49 +636,49 @@ mod tests {
     #[test]
     fn test_u128_constant_times_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_constant_times_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_public_times_constant() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_private_times_constant() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_public_times_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_public_times_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Private, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_private_times_public() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Private, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_u128_private_times_private() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 131, 132);
+        run_test::<I>(Mode::Private, Mode::Private, 8, 0, 200, 201);
     }
 
     // Tests for i128
@@ -666,48 +692,48 @@ mod tests {
     #[test]
     fn test_i128_constant_times_public() {
         type I = i128;
-        check_overflow::<I>(I::MAX, I::one(), I::MIN, Mode::Constant, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_constant_times_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_public_times_constant() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_private_times_constant() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_public_times_public() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_public_times_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 131, 132);
+        run_test::<I>(Mode::Public, Mode::Private, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_private_times_public() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 131, 132);
+        run_test::<I>(Mode::Private, Mode::Public, 8, 0, 200, 201);
     }
 
     #[test]
     fn test_i128_private_times_private() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 131, 132);
+        run_test::<I>(Mode::Private, Mode::Private, 8, 0, 200, 201);
     }
 }
