@@ -46,7 +46,6 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             // Overflow checks are different for signed and unsigned addition.
             match I::is_signed() {
                 true => {
-                    // TODO (@pranav) Do we need an explicit check for this?
                     // This is safe since I::BITS is always greater than 0.
                     let self_msb = self.bits_le.last().unwrap();
                     let other_msb = other.bits_le.last().unwrap();

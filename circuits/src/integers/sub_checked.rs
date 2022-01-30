@@ -46,7 +46,6 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
             // Underflow conditions are different for signed and unsigned integers.
             match I::is_signed() {
                 true => {
-                    // TODO (@pranav) Do we need an explicit check for this?
                     // This is safe since I::BITS is always greater than 0.
                     let minuend_msb = self.bits_le.last().unwrap();
                     let subtrahend_msb = other.bits_le.last().unwrap();
