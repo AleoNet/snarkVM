@@ -29,11 +29,8 @@ pub struct Integer(u8);
 impl Integer {
     pub fn new(input: &'static str) -> Result<Self> {
         let (remainder, (value, type_)) = Self::parse(input)?;
-
-        let sanitized_value = value.replace("_", "");
-
         match type_ == "u8" && remainder.is_empty() {
-            true => Ok(Self(sanitized_value.parse::<u8>()?)),
+            true => Ok(Self(value.replace("_", "").parse::<u8>()?)),
             false => Err(anyhow!("Failed to parse the u8 value {}", input)),
         }
     }
@@ -44,7 +41,6 @@ impl Integer {
 
     fn parse(input: &str) -> IResult<&str, (&str, &str)> {
         let (type_, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
-
         let (remainder, type_) = tag("u8")(type_)?;
         Ok((remainder, (value, type_)))
     }
@@ -58,6 +54,7 @@ mod tests {
     fn test_u8() {
         assert_eq!(5u8, Integer::new("5u8").unwrap().to_value());
         assert_eq!(5u8, Integer::new("5_u8").unwrap().to_value());
+        assert_eq!(15u8, Integer::new("1_5_u8").unwrap().to_value());
     }
 
     #[test]
