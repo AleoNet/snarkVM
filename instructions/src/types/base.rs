@@ -56,7 +56,7 @@ mod tests {
     use core::str::FromStr;
 
     #[test]
-    fn test_base_field_new() {
+    fn test_base_new() {
         assert_eq!(
             Fq::from_str("5").unwrap(),
             Base::new("5base").unwrap().1.unwrap().to_value()
@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn test_malformed_base_field() {
+    fn test_malformed_base() {
         assert!(Base::new("5ba_se").is_err());
     }
 }

@@ -14,11 +14,47 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod instructions;
-pub use instructions::*;
+use crate::ParserResult;
+use snarkvm_curves::edwards_bls12::Fq;
+use snarkvm_fields::FieldError;
 
-pub mod types;
-pub use types::*;
+use nom::{
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::verify,
+    multi::{many0, many1},
+    sequence::terminated,
+};
 
-pub mod utilities;
-pub use utilities::*;
+pub enum Add {
+
+}
+
+impl Add {
+    pub fn new(input: &str) -> ParserResult<Self> {
+
+    }
+
+    pub fn to_value(&self) -> () {
+
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::str::FromStr;
+
+    #[test]
+    fn test_add_new() {
+        assert_eq!(
+            Fq::from_str("5").unwrap(),
+            Base::new("5base").unwrap().1.unwrap().to_value()
+        );
+    }
+
+    #[test]
+    fn test_malformed_add() {
+        assert!(Base::new("5ba_se").is_err());
+    }
+}

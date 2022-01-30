@@ -15,16 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{keyword, ParserResult};
-use snarkvm_curves::edwards_bls12::Fq;
-use snarkvm_fields::FieldError;
 
 use nom::{
     branch::alt,
-    bytes::complete::tag,
-    character::complete::{char, one_of},
     combinator::value,
-    multi::{many0, many1},
-    sequence::terminated,
 };
 
 pub struct Boolean(bool);
@@ -45,7 +39,6 @@ impl Boolean {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::str::FromStr;
 
     #[test]
     fn test_boolean_new() {
