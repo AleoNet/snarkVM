@@ -62,6 +62,10 @@ pub trait IntegerTrait<I: IntegerType>:
     + AddWrapped<Output = Self>
     + Clone
     + Debug
+    + DivAssign
+    + Div<Output = Self>
+    + DivChecked<Output = Self>
+    + DivWrapped<Output = Self>
     + Eject<Primitive = I>
     + Equal
     + FromBits
@@ -237,6 +241,27 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, enforcing an overflow never occurs.
+pub trait DivChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, bounding the quotient to `MAX` or `MIN` if an overflow occurs.
+pub trait DivSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, wrapping the quotient if an overflow occurs.
+pub trait DivWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for multiplying two values, enforcing an overflow never occurs.

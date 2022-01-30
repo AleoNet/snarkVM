@@ -58,7 +58,7 @@ impl<E: Environment, I: IntegerType> MulAssign<Integer<E, I>> for Integer<E, I> 
 
 impl<E: Environment, I: IntegerType> MulAssign<&Integer<E, I>> for Integer<E, I> {
     fn mul_assign(&mut self, other: &Integer<E, I>) {
-        // Stores the sum of `self` and `other` in `self`.
+        // Stores the product of `self` and `other` in `self`.
         *self = self.mul_checked(other);
     }
 }

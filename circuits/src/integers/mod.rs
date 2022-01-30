@@ -17,6 +17,9 @@
 pub mod add;
 pub mod add_checked;
 pub mod add_wrapped;
+pub mod div;
+pub mod div_checked;
+pub mod div_wrapped;
 pub mod equal;
 pub mod from_bits;
 pub mod mul;
