@@ -17,7 +17,7 @@
 use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{ToBytes, ToMinimalBits};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 

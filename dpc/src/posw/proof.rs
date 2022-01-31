@@ -33,7 +33,6 @@ use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Seri
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PoSWProof<N: Network> {
     NonHiding(N::PoSWProof),
-    Hiding(crate::testnet2::DeprecatedPoSWProof<N>),
 }
 
 impl<N: Network> PoSWProof<N> {
@@ -45,19 +44,11 @@ impl<N: Network> PoSWProof<N> {
     }
 
     ///
-    /// Initializes a new instance of a hiding PoSW proof.
-    ///
-    pub fn new_hiding(proof: crate::testnet2::DeprecatedPoSWProof<N>) -> Self {
-        Self::Hiding(proof)
-    }
-
-    ///
     /// Returns `true` if the PoSW proof is hiding.
     ///
     pub fn is_hiding(&self) -> bool {
         match self {
             Self::NonHiding(..) => false,
-            Self::Hiding(..) => true,
         }
     }
 
@@ -85,27 +76,6 @@ impl<N: Network> PoSWProof<N> {
                     return false;
                 }
             }
-            Self::Hiding(proof) => {
-                let verifying_key =
-                    match <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::VerifyingKey::from_bytes_le(
-                        &verifying_key.to_bytes_le().unwrap(),
-                    ) {
-                        Ok(vk) => vk,
-                        Err(error) => {
-                            eprintln!("Failed to read deprecated PoSW VK from bytes: {}", error);
-                            return false;
-                        }
-                    };
-
-                // Ensure the proof is valid.
-                if !<crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::verify(&verifying_key, &inputs.to_vec(), proof)
-                    .unwrap()
-                {
-                    #[cfg(debug_assertions)]
-                    eprintln!("[deprecated] PoSW proof verification failed");
-                    return false;
-                }
-            }
         }
 
         true
@@ -122,17 +92,11 @@ impl<N: Network> FromBytes for PoSWProof<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
         reader.read_exact(&mut buffer)?;
-        println!("{:?}", buffer);
 
-        if buffer[N::HEADER_PROOF_SIZE_IN_BYTES - 80..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
-            if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES - 80]) {
-                return Ok(Self::NonHiding(proof));
-            }
-        } else if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {
-            return Ok(Self::Hiding(proof));
+        match N::PoSWProof::read_le(&buffer[..]) {
+            Ok(proof) => Ok(Self::NonHiding(proof)),
+            Err(_) => Err(PoSWError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into()),
         }
-
-        Err(PoSWError::Message("Failed to deserialize PoSW proof with FromBytes".to_string()).into())
     }
 }
 
@@ -140,14 +104,7 @@ impl<N: Network> ToBytes for PoSWProof<N> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         match self {
-            Self::NonHiding(proof) => {
-                let mut buffer = proof.to_bytes_le().unwrap(); // TODO (howardwu): Handle this unwrap.
-                if buffer.len() < N::HEADER_PROOF_SIZE_IN_BYTES {
-                    buffer.resize(N::HEADER_PROOF_SIZE_IN_BYTES, 0u8);
-                }
-                buffer.write_le(writer)
-            }
-            Self::Hiding(proof) => proof.write_le(writer),
+            Self::NonHiding(proof) => proof.write_le(writer),
         }
     }
 }
@@ -177,7 +134,6 @@ impl<N: Network> Serialize for PoSWProof<N> {
                 let mut header = serializer.serialize_struct("PoSWProof", 1)?;
                 match self {
                     Self::NonHiding(proof) => header.serialize_field("non_hiding", proof)?,
-                    Self::Hiding(proof) => header.serialize_field("hiding", proof)?,
                 }
                 header.end()
             }
@@ -194,8 +150,6 @@ impl<'de, N: Network> Deserialize<'de> for PoSWProof<N> {
 
                 if let Ok(proof) = serde_json::from_value(proof["non_hiding"].clone()) {
                     Ok(Self::NonHiding(proof))
-                } else if let Ok(proof) = serde_json::from_value(proof["hiding"].clone()) {
-                    Ok(Self::Hiding(proof))
                 } else {
                     Err(anyhow!("Invalid human-readable deserialization")).map_err(de::Error::custom)?
                 }
@@ -225,7 +179,7 @@ mod tests {
         let mut ledger = Ledger::<Testnet2>::new().unwrap();
 
         // Check the genesis block.
-        // This will use a hiding PoSW Marlin mode.
+        // This will use a non-hiding PoSW Marlin mode.
         {
             assert_eq!(0, ledger.latest_block_height());
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
@@ -235,11 +189,11 @@ mod tests {
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
-            assert!(latest_proof.is_hiding());
+            assert!(!latest_proof.is_hiding());
         }
 
         // Check block 1.
-        // This will use a hiding PoSW Marlin mode.
+        // This will use a non-hiding PoSW Marlin mode.
         {
             ledger.mine_next_block(recipient, true, &terminator, rng).unwrap();
             assert_eq!(1, ledger.latest_block_height());
@@ -251,7 +205,7 @@ mod tests {
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
-            assert!(latest_proof.is_hiding());
+            assert!(!latest_proof.is_hiding());
         }
 
         // Check block 2.
@@ -289,7 +243,7 @@ mod tests {
             let block =
                 Block::<Testnet2>::read_le(&snarkvm_parameters::testnet2::GenesisBlock::load_bytes()[..]).unwrap();
             let proof = block.header().proof();
-            assert!(proof.is_hiding());
+            assert!(!proof.is_hiding());
             assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
             assert_eq!(
                 bincode::serialize(&proof).unwrap().len(),
@@ -306,7 +260,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1134, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1441, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize
@@ -319,7 +273,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1258, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1441, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize

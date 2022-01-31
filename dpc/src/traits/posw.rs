@@ -53,7 +53,6 @@ pub trait PoSWScheme<N: Network>: Clone + Send + Sync {
     fn prove_once_unchecked<R: Rng + CryptoRng>(
         &self,
         circuit: &mut PoSWCircuit<N>,
-        block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<PoSWProof<N>, PoSWError>;

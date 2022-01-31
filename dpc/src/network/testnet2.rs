@@ -72,24 +72,6 @@ use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
-// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-#[cfg(test)]
-pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 1_u32;
-#[cfg(not(test))]
-pub const V12_UPGRADE_BLOCK_HEIGHT: u32 = 100_000_u32;
-
-// TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-/// The deprecated Marlin SNARK type used for blocks before `V12_UPGRADE_BLOCK_HEIGHT`.
-pub type DeprecatedPoSWSNARK<N> = MarlinSNARK<
-    <N as Network>::InnerScalarField,
-    <N as Network>::OuterScalarField,
-    SonicKZG10<<N as Network>::InnerCurve>,
-    FiatShamirChaChaRng<<N as Network>::InnerScalarField, <N as Network>::OuterScalarField, Blake2s>,
-    snarkvm_marlin::marlin::MarlinTestnet1Mode,
-    Vec<<N as Network>::InnerScalarField>,
->;
-pub type DeprecatedPoSWProof<N> = AleoObject<<DeprecatedPoSWSNARK<N> as SNARK>::Proof, { hrp4!("hzkp") }, 963>;
-
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
 
@@ -129,8 +111,8 @@ impl Network for Testnet2 {
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 1095;
-    const HEADER_PROOF_SIZE_IN_BYTES: usize = 963;
+    const HEADER_SIZE_IN_BYTES: usize = 1015;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 883;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const RECORD_SIZE_IN_BYTES: usize = 280;

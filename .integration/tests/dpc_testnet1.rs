@@ -26,7 +26,7 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic1kdwe5c93fgm4leh5c67lwwpsu0er8pc620t50wguvegzmmwqlmtwq27vldkcayaw3wjvtwwjc5nszerx7jp".to_string();
+        "ic192ykwfa4yx2jm66pnycf490qwq7yzlh8yqzmzzehgfs6mppsuguuja8739409rzx439cdru2f38qzxey7s8".to_string();
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
