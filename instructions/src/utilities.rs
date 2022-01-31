@@ -55,10 +55,7 @@ pub fn comments(input: &str) -> ParserResult<&str> {
 
 /// Enforces the input is a keyword, meaning the character after the keyword does not imply a continuation (is_alphanumeric or '_').
 pub fn keyword<'a>(input: &'a str) -> impl FnMut(&'a str) -> ParserResult<&'a str> {
-    terminated(
-        tag(input),
-        not(verify(peek(anychar), |&c| c.is_alphanumeric() || c == '_')),
-    )
+    terminated(tag(input), not(verify(peek(anychar), |&c| c.is_alphanumeric() || c == '_')))
 }
 
 /// End-of-input parser.
@@ -67,9 +64,7 @@ pub fn keyword<'a>(input: &'a str) -> impl FnMut(&'a str) -> ParserResult<&'a st
 fn eoi(input: &str) -> ParserResult<()> {
     match input.is_empty() {
         true => Ok((input, ())),
-        false => Err(nom::Err::Error(VerboseError {
-            errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Eof))],
-        })),
+        false => Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Eof))] })),
     }
 }
 
@@ -106,16 +101,9 @@ where
 ///
 /// Discard any leading newline.
 fn str_till_eol(input: &str) -> ParserResult<&str> {
-    map(
-        recognize(till(alt((value((), tag("\\\n")), value((), anychar))), eol)),
-        |i| {
-            if i.as_bytes().last() == Some(&b'\n') {
-                &i[0..i.len() - 1]
-            } else {
-                i
-            }
-        },
-    )(input)
+    map(recognize(till(alt((value((), tag("\\\n")), value((), anychar))), eol)), |i| {
+        if i.as_bytes().last() == Some(&b'\n') { &i[0..i.len() - 1] } else { i }
+    })(input)
 }
 
 /// A version of many0 that discards the result of the parser, preventing allocating.
@@ -139,18 +127,9 @@ mod tests {
         assert_eq!(("hello world", ""), sanitize(" \nhello world").unwrap());
         assert_eq!(("hello world ", ""), sanitize("hello world ").unwrap());
 
-        assert_eq!(
-            ("hello world", "// hello\n"),
-            sanitize("// hello\nhello world").unwrap()
-        );
-        assert_eq!(
-            ("hello world", "/* hello */\n"),
-            sanitize("/* hello */\nhello world").unwrap()
-        );
-        assert_eq!(
-            ("hello world", "/** hello */\n"),
-            sanitize("/** hello */\nhello world").unwrap()
-        );
+        assert_eq!(("hello world", "// hello\n"), sanitize("// hello\nhello world").unwrap());
+        assert_eq!(("hello world", "/* hello */\n"), sanitize("/* hello */\nhello world").unwrap());
+        assert_eq!(("hello world", "/** hello */\n"), sanitize("/** hello */\nhello world").unwrap());
         assert_eq!(("/\nhello world", ""), sanitize("/\nhello world").unwrap());
     }
 
@@ -166,18 +145,9 @@ mod tests {
 
     #[test]
     fn test_comments() {
-        assert_eq!(
-            ("hello world", "// hello\n"),
-            comments("// hello\nhello world").unwrap()
-        );
-        assert_eq!(
-            ("hello world", "/* hello */\n"),
-            comments("/* hello */\nhello world").unwrap()
-        );
-        assert_eq!(
-            ("hello world", "/** hello */\n"),
-            comments("/** hello */\nhello world").unwrap()
-        );
+        assert_eq!(("hello world", "// hello\n"), comments("// hello\nhello world").unwrap());
+        assert_eq!(("hello world", "/* hello */\n"), comments("/* hello */\nhello world").unwrap());
+        assert_eq!(("hello world", "/** hello */\n"), comments("/** hello */\nhello world").unwrap());
         assert_eq!(("/\nhello world", ""), comments("/\nhello world").unwrap());
     }
 }

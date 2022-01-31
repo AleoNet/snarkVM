@@ -37,9 +37,10 @@ pub struct Integer<E: Environment, I: IntegerType>(IntegerCircuit<E, I>);
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     pub fn new(input: &str) -> ParserResult<Self> {
         // Parse the digits from the input.
-        let (input, value) = map_res(many1(terminated(one_of("0123456789"), many0(char('_')))), |v| {
-            String::from_iter(v).parse::<I>()
-        })(input)?;
+        let (input, value) =
+            map_res(many1(terminated(one_of("0123456789"), many0(char('_')))), |v| String::from_iter(v).parse::<I>())(
+                input,
+            )?;
         // Parse the integer type from the input, and ensure it matches the declared `IntegerType`.
         let (input, _) = verify(tag(I::type_name()), |t: &str| t == I::type_name())(input)?;
         // Output the remaining input and the initialized integer.
