@@ -39,7 +39,6 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
-    bw6_761::BW6_761,
     edwards_bls12::{
         EdwardsAffine as EdwardsBls12Affine,
         EdwardsParameters,
@@ -135,9 +134,7 @@ impl Network for Testnet2 {
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
-    type InnerBaseField = <Self::OuterCurve as PairingEngine>::Fr;
-
-    type OuterCurve = BW6_761;
+    type InnerBaseField = <Self::InnerCurve as PairingEngine>::Fq;
 
     type ProgramAffineCurve = EdwardsBls12Affine;
     type ProgramAffineCurveGadget = EdwardsBls12Gadget;

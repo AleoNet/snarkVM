@@ -153,9 +153,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
     type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
-    /// Outer curve type declarations.
-    type OuterCurve: PairingEngine;
-
     /// Program curve type declarations.
     type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
