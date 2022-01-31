@@ -219,7 +219,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InnerCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
-    type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::InnerBaseField>;
     type InnerCircuitID: Bech32Locator<<Self::InnerCircuitIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
@@ -235,7 +234,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH<Output = Self::InnerBaseField>;
-    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::InnerBaseField>;
     type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 

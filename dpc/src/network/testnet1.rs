@@ -53,7 +53,7 @@ use snarkvm_gadgets::{
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
     },
-    curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    curves::edwards_bls12::EdwardsBls12Gadget,
 };
 use snarkvm_marlin::{marlin::MarlinPoswMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
 use snarkvm_parameters::{testnet1::*, Genesis};
@@ -181,7 +181,6 @@ impl Network for Testnet1 {
     type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 85, 63>;
-    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::InnerBaseField, EdwardsBW6Gadget, 85, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -194,7 +193,6 @@ impl Network for Testnet1 {
     type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
-    type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::InnerBaseField, EdwardsBW6Gadget, 16, 48>;
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
