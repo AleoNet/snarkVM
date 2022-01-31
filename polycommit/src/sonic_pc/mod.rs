@@ -186,8 +186,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let h = pp.h;
         let beta_h = pp.beta_h;
         let gamma_g = pp.powers_of_gamma_g[&0];
-        let prepared_h = (&pp.prepared_h).clone();
-        let prepared_beta_h = (&pp.prepared_beta_h).clone();
+        let prepared_h = pp.prepared_h.clone();
+        let prepared_beta_h = pp.prepared_beta_h.clone();
 
         let degree_bounds_and_neg_powers_of_h = if pp.inverse_neg_powers_of_h.is_empty() {
             None

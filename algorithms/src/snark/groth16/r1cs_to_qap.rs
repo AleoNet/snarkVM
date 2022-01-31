@@ -117,8 +117,8 @@ impl R1CStoQAP {
 
         cfg_iter_mut!(a[..num_constraints])
             .zip(cfg_iter_mut!(b[..num_constraints]))
-            .zip(cfg_iter!(&prover.at))
-            .zip(cfg_iter!(&prover.bt))
+            .zip(cfg_iter!(prover.at))
+            .zip(cfg_iter!(prover.bt))
             .for_each(|(((a, b), at_i), bt_i)| {
                 *a = evaluate_constraint::<E>(at_i, &full_input_assignment, num_inputs);
                 *b = evaluate_constraint::<E>(bt_i, &full_input_assignment, num_inputs);

@@ -512,6 +512,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::needless_borrow)]
     fn divide_polynomials_random() {
         let rng = &mut thread_rng();
 

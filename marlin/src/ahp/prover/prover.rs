@@ -653,7 +653,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             cfg_iter!(row_on_K.evaluations).zip(&col_on_K.evaluations).map(|(r, c)| (beta - r) * (alpha - c)).collect();
         batch_inversion(&mut inverses);
 
-        cfg_iter_mut!(&mut inverses)
+        cfg_iter_mut!(inverses)
             .zip(&arithmetization.evals_on_K.val.evaluations)
             .for_each(|(inv, a)| *inv *= v_H_alpha_v_H_beta * a);
         let f_evals_on_K = inverses;

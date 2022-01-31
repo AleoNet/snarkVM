@@ -74,7 +74,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                 0..
             };
             let ck = kzg10::Powers {
-                powers_of_g: (&shifted_powers[powers_range]).into(),
+                powers_of_g: shifted_powers[powers_range].into(),
                 powers_of_gamma_g: self.powers_of_gamma_g.as_slice().into(),
             };
             ck
