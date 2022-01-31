@@ -24,10 +24,7 @@ pub const fn get_params(
     optimization_type: OptimizationType,
 ) -> NonNativeFieldParams {
     let (num_of_limbs, limb_size) = find_parameters(base_field_size, target_field_size, optimization_type);
-    NonNativeFieldParams {
-        num_limbs: num_of_limbs,
-        bits_per_limb: limb_size,
-    }
+    NonNativeFieldParams { num_limbs: num_of_limbs, bits_per_limb: limb_size }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

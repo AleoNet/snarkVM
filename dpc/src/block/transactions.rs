@@ -61,10 +61,7 @@ impl<N: Network> Transactions<N> {
         )?;
 
         // Construct the transactions struct.
-        let transactions = Self {
-            transactions: transactions.to_vec(),
-            tree: Arc::new(tree),
-        };
+        let transactions = Self { transactions: transactions.to_vec(), tree: Arc::new(tree) };
 
         // Ensure the list of transactions are valid.
         match transactions.is_valid() {
@@ -82,12 +79,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !self
-            .transactions
-            .as_parallel_slice()
-            .par_iter()
-            .all(Transaction::is_valid)
-        {
+        if !self.transactions.as_parallel_slice().par_iter().all(Transaction::is_valid) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
@@ -105,11 +97,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure there is 1 coinbase transaction.
-        let num_coinbase = self
-            .transactions
-            .iter()
-            .filter(|t| t.value_balance().is_negative())
-            .count();
+        let num_coinbase = self.transactions.iter().filter(|t| t.value_balance().is_negative()).count();
         if num_coinbase != 1 {
             eprintln!("Block must have exactly 1 coinbase transaction, found {}", num_coinbase);
             return false;
@@ -145,10 +133,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the net value balance, by summing the value balance from all transactions.
     pub fn net_value_balance(&self) -> AleoAmount {
-        self.transactions
-            .iter()
-            .map(Transaction::value_balance)
-            .fold(AleoAmount::ZERO, |a, b| a.add(b))
+        self.transactions.iter().map(Transaction::value_balance).fold(AleoAmount::ZERO, |a, b| a.add(b))
     }
 
     /// Returns the total transaction fees, by summing the value balance from all positive transactions.
@@ -172,10 +157,7 @@ impl<N: Network> Transactions<N> {
         let num_coinbase = coinbase_transaction.len();
         match num_coinbase == 1 {
             true => Ok(coinbase_transaction[0].clone()),
-            false => Err(anyhow!(
-                "Block must have 1 coinbase transaction, found {}",
-                num_coinbase
-            )),
+            false => Err(anyhow!("Block must have 1 coinbase transaction, found {}", num_coinbase)),
         }
     }
 
@@ -198,9 +180,7 @@ impl<N: Network> Transactions<N> {
         &'a self,
         decryption_key: &'a DecryptionKey<N>,
     ) -> impl Iterator<Item = Record<N>> + 'a {
-        self.transactions
-            .iter()
-            .flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
+        self.transactions.iter().flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     }
 }
 
@@ -242,11 +222,7 @@ impl<N: Network> FromStr for Transactions<N> {
 
 impl<N: Network> fmt::Display for Transactions<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
 
@@ -302,9 +278,8 @@ mod tests {
 
         // Craft a Transactions struct with 1 coinbase record.
         let transactions = Transactions::from(&[transaction]).unwrap();
-        let decrypted_records = transactions
-            .to_decrypted_records(&account.view_key().into())
-            .collect::<Vec<Record<Testnet2>>>();
+        let decrypted_records =
+            transactions.to_decrypted_records(&account.view_key().into()).collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = decrypted_records.first().unwrap();
@@ -330,18 +305,11 @@ mod tests {
         // Serialize
         let expected_string = expected_transactions.to_string();
         let candidate_string = serde_json::to_string(&expected_transactions).unwrap();
-        assert_eq!(
-            1006491,
-            candidate_string.len(),
-            "Update me if serialization has changed"
-        );
+        assert_eq!(1006491, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(
-            expected_transactions,
-            Transactions::<Testnet2>::from_str(&candidate_string).unwrap()
-        );
+        assert_eq!(expected_transactions, Transactions::<Testnet2>::from_str(&candidate_string).unwrap());
         assert_eq!(expected_transactions, serde_json::from_str(&candidate_string).unwrap());
     }
 
@@ -357,13 +325,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
-        assert_eq!(
-            expected_transactions,
-            Transactions::<Testnet2>::read_le(&expected_bytes[..]).unwrap()
-        );
-        assert_eq!(
-            expected_transactions,
-            bincode::deserialize(&candidate_bytes[..]).unwrap()
-        );
+        assert_eq!(expected_transactions, Transactions::<Testnet2>::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_transactions, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }

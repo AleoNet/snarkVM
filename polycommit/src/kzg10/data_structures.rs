@@ -215,13 +215,7 @@ impl<E: PairingEngine> Powers<'_, E> {
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Default(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
     pub g: E::G1Affine,
@@ -417,9 +411,7 @@ impl<E: PairingEngine> Randomness<E> {
 
 impl<E: PairingEngine> PCRandomness for Randomness<E> {
     fn empty() -> Self {
-        Self {
-            blinding_polynomial: Polynomial::zero(),
-        }
+        Self { blinding_polynomial: Polynomial::zero() }
     }
 
     fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {

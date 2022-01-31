@@ -83,9 +83,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         level_indices.reverse();
         for &start_index in &level_indices {
             // Iterate over the current level.
-            let hashings = (start_index..upper_bound)
-                .map(|i| (&tree[left_child(i)], &tree[right_child(i)]))
-                .collect::<Vec<_>>();
+            let hashings =
+                (start_index..upper_bound).map(|i| (&tree[left_child(i)], &tree[right_child(i)])).collect::<Vec<_>>();
 
             let hashes = Self::hash_row(&*parameters, &hashings[..])?;
 
@@ -117,13 +116,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         end_timer!(new_time);
 
-        Ok(MerkleTree {
-            tree,
-            padding_tree,
-            hashed_leaves_index: last_level_index,
-            parameters,
-            root: root_hash,
-        })
+        Ok(MerkleTree { tree, padding_tree, hashed_leaves_index: last_level_index, parameters, root: root_hash })
     }
 
     pub fn rebuild<L: ToBytes + Send + Sync>(&self, start_index: usize, new_leaves: &[L]) -> Result<Self, MerkleError> {
@@ -172,9 +165,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             let (parents, children) = tree.split_at_mut(upper_bound);
 
             // Iterate over the current level.
-            crate::cfg_iter_mut!(parents[start_index..upper_bound])
-                .zip(start_index..upper_bound)
-                .try_for_each(|(parent, current_index)| {
+            crate::cfg_iter_mut!(parents[start_index..upper_bound]).zip(start_index..upper_bound).try_for_each(
+                |(parent, current_index)| {
                     let left_index = left_child(current_index);
                     let right_index = right_child(current_index);
 
@@ -194,7 +186,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
                     }
 
                     Ok::<(), MerkleError>(())
-                })?;
+                },
+            )?;
             upper_bound = start_index;
         }
 
@@ -205,9 +198,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // The whole padding tree can be reused if the current hash matches the previous one.
         let new_padding_tree = if current_hash == self.tree[0] {
-            current_hash = self
-                .parameters
-                .hash_inner_node(&self.padding_tree.last().unwrap().0, &empty_hash)?;
+            current_hash = self.parameters.hash_inner_node(&self.padding_tree.last().unwrap().0, &empty_hash)?;
 
             None
         } else {
@@ -298,11 +289,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         if path.len() != Self::DEPTH {
             Err(MerkleError::IncorrectPathLength(path.len()))
         } else {
-            Ok(MerklePath {
-                parameters: self.parameters.clone(),
-                path,
-                leaf_index: index as u64,
-            })
+            Ok(MerklePath { parameters: self.parameters.clone(), path, leaf_index: index as u64 })
         }
     }
 
@@ -312,11 +299,9 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
     ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
         match leaves.len() {
             0 => Ok(vec![]),
-            _ => Ok(vec![
-                crate::cfg_iter!(leaves)
-                    .map(|leaf| parameters.hash_leaf(&leaf).unwrap())
-                    .collect::<Vec<_>>(),
-            ]),
+            _ => {
+                Ok(vec![crate::cfg_iter!(leaves).map(|leaf| parameters.hash_leaf(&leaf).unwrap()).collect::<Vec<_>>()])
+            }
         }
     }
 }

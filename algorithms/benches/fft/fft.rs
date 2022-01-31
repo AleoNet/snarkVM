@@ -52,11 +52,7 @@ pub fn size_range(log_interval: usize, min_degree: usize, max_degree: usize) -> 
 /// min      = ceil(log_2(BENCHMARK_MIN_DEGREE))
 /// max      = ceil(log_2(BENCHMARK_MAX_DEGREE))
 fn default_size_range() -> Vec<usize> {
-    size_range(
-        BENCHMARK_LOG_INTERVAL_DEGREE,
-        BENCHMARK_MIN_DEGREE,
-        BENCHMARK_MAX_DEGREE,
-    )
+    size_range(BENCHMARK_LOG_INTERVAL_DEGREE, BENCHMARK_MIN_DEGREE, BENCHMARK_MAX_DEGREE)
 }
 
 fn setup_bench(c: &mut Criterion, name: &str, bench_fn: fn(&mut Bencher, &usize)) {
@@ -69,9 +65,7 @@ fn setup_bench(c: &mut Criterion, name: &str, bench_fn: fn(&mut Bencher, &usize)
 
 fn create_evaluation_domain<F: PrimeField>(degree: usize) -> (EvaluationDomain<F>, Vec<F>) {
     let domain = EvaluationDomain::new(degree).unwrap();
-    let a = DensePolynomial::<F>::rand(degree - 1, &mut thread_rng())
-        .coeffs()
-        .to_vec();
+    let a = DensePolynomial::<F>::rand(degree - 1, &mut thread_rng()).coeffs().to_vec();
     (domain, a)
 }
 

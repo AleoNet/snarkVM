@@ -165,10 +165,7 @@ fn impl_deserialize_field(ty: &Type) -> (TokenStream, TokenStream) {
         Type::Tuple(tuple) => {
             let (compressed_fields, uncompressed_fields): (Vec<_>, Vec<_>) =
                 tuple.elems.iter().map(impl_deserialize_field).unzip();
-            (
-                quote! { (#(#compressed_fields)*), },
-                quote! { (#(#uncompressed_fields)*), },
-            )
+            (quote! { (#(#compressed_fields)*), }, quote! { (#(#uncompressed_fields)*), })
         }
         _ => (
             quote! { CanonicalDeserialize::deserialize(reader)?, },

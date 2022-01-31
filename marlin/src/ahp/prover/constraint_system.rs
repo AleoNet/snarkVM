@@ -56,11 +56,7 @@ impl<F: Field> ProverConstraintSystem<F> {
     pub(crate) fn make_matrices_square(&mut self) {
         let num_variables = self.num_public_variables + self.num_private_variables;
         make_matrices_square(self, num_variables);
-        assert_eq!(
-            self.num_public_variables + self.num_private_variables,
-            self.num_constraints,
-            "padding failed!"
-        );
+        assert_eq!(self.num_public_variables + self.num_private_variables, self.num_constraints, "padding failed!");
     }
 }
 

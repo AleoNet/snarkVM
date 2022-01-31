@@ -59,11 +59,7 @@ impl SWFlags {
 
     #[inline]
     pub fn from_y_sign(is_positive: bool) -> Self {
-        if is_positive {
-            SWFlags::PositiveY
-        } else {
-            SWFlags::NegativeY
-        }
+        if is_positive { SWFlags::PositiveY } else { SWFlags::NegativeY }
     }
 
     #[inline]
@@ -137,11 +133,7 @@ pub enum EdwardsFlags {
 impl EdwardsFlags {
     #[inline]
     pub fn from_y_sign(is_positive: bool) -> Self {
-        if is_positive {
-            EdwardsFlags::PositiveY
-        } else {
-            EdwardsFlags::NegativeY
-        }
+        if is_positive { EdwardsFlags::PositiveY } else { EdwardsFlags::NegativeY }
     }
 
     #[inline]
@@ -175,11 +167,7 @@ impl Flags for EdwardsFlags {
     #[inline]
     fn from_u8(value: u8) -> Self {
         let x_sign = (value >> 7) & 1 == 1;
-        if x_sign {
-            EdwardsFlags::PositiveY
-        } else {
-            EdwardsFlags::NegativeY
-        }
+        if x_sign { EdwardsFlags::PositiveY } else { EdwardsFlags::NegativeY }
     }
 
     #[inline]

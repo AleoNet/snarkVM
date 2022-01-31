@@ -51,13 +51,7 @@ impl<N: Network> Execution<N> {
         program_proof: N::ProgramProof,
         inner_proof: N::InnerProof,
     ) -> Result<Self> {
-        Ok(Self {
-            program_id,
-            program_path,
-            verifying_key,
-            program_proof,
-            inner_proof,
-        })
+        Ok(Self { program_id, program_path, verifying_key, program_proof, inner_proof })
     }
 
     /// Returns `true` if the program execution is valid.
@@ -152,11 +146,7 @@ impl<N: Network> FromStr for Execution<N> {
 impl<N: Network> fmt::Display for Execution<N> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 

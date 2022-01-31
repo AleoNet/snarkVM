@@ -207,14 +207,8 @@ where
             Zero => Some(*self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let two_inv = P::Fp::one()
-                    .double()
-                    .inverse()
-                    .expect("Two should always have an inverse");
-                let alpha = self
-                    .norm()
-                    .sqrt()
-                    .expect("We are in the QR case, the norm should have a square root");
+                let two_inv = P::Fp::one().double().inverse().expect("Two should always have an inverse");
+                let alpha = self.norm().sqrt().expect("We are in the QR case, the norm should have a square root");
                 let mut delta = (alpha + self.c0) * two_inv;
                 if delta.legendre().is_qnr() {
                     delta -= &alpha;

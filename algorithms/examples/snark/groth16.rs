@@ -16,12 +16,7 @@
 
 #![deny(unused_import_braces, unused_qualifications, trivial_casts, trivial_numeric_casts)]
 #![deny(unused_qualifications, variant_size_differences, stable_features)]
-#![deny(
-    non_shorthand_field_patterns,
-    unused_attributes,
-    unused_imports,
-    unused_extern_crates
-)]
+#![deny(non_shorthand_field_patterns, unused_attributes, unused_imports, unused_extern_crates)]
 #![deny(renamed_and_removed_lints, stable_features, unused_allocation, unused_comparisons)]
 #![deny(unused_must_use, unused_mut, unused_unsafe, private_in_public, unsafe_code)]
 
@@ -135,10 +130,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let verifying_avg = total_verifying / samples;
     let verifying_avg = verifying_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (verifying_avg.as_secs() as f64);
 
-    println!(
-        "=== Benchmarking Groth16 with {} inputs and {} constraints: ====",
-        num_inputs, num_constraints
-    );
+    println!("=== Benchmarking Groth16 with {} inputs and {} constraints: ====", num_inputs, num_constraints);
     println!("Average setup time: {:?} seconds", setup_avg);
     println!("Average proving time: {:?} seconds", proving_avg);
     println!("Average verifying time: {:?} seconds", verifying_avg);

@@ -37,23 +37,12 @@ pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
     println!("\n{}\n", serde_json::to_string_pretty(&genesis_block)?);
 
     println!("Genesis block size - {}\n", genesis_block.to_bytes_le()?.len());
-    println!(
-        "Genesis block header size - {}\n",
-        genesis_block.header().to_bytes_le()?.len()
-    );
-    println!(
-        "Genesis block header proof size - {}\n",
-        genesis_block.header().proof().to_bytes_le()?.len()
-    );
-    println!(
-        "Genesis coinbase transaction size - {}\n",
-        genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len()
-    );
+    println!("Genesis block header size - {}\n", genesis_block.header().to_bytes_le()?.len());
+    println!("Genesis block header proof size - {}\n", genesis_block.header().proof().to_bytes_le()?.len());
+    println!("Genesis coinbase transaction size - {}\n", genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len());
     println!(
         "Genesis coinbase transition size - {}\n",
-        genesis_block.to_coinbase_transaction()?.transitions()[0]
-            .to_bytes_le()?
-            .len()
+        genesis_block.to_coinbase_transaction()?.transitions()[0].to_bytes_le()?.len()
     );
 
     genesis_block.to_bytes_le()

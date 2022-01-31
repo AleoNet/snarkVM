@@ -31,11 +31,7 @@ type Caller<N> = Address<N>;
 type Recipient<N> = Address<N>;
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network")
-)]
+#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"), PartialEq(bound = "N: Network"))]
 pub struct FunctionInputs<N: Network> {
     pub(crate) caller: Caller<N>,
     pub(crate) recipient: Recipient<N>,
@@ -45,19 +41,12 @@ pub struct FunctionInputs<N: Network> {
 
 impl<N: Network> FunctionInputs<N> {
     pub fn new(caller: &Caller<N>, recipient: &Recipient<N>, amount: AleoAmount, record_payload: Payload<N>) -> Self {
-        Self {
-            caller: *caller,
-            recipient: *recipient,
-            amount,
-            record_payload,
-        }
+        Self { caller: *caller, recipient: *recipient, amount, record_payload }
     }
 
     /// Returns a hash of the function inputs.
     pub fn to_hash(&self) -> Result<N::FunctionInputsHash> {
-        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon")
-            .hash_field_elements(&self.to_field_elements()?)?
-            .into())
+        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon").hash_field_elements(&self.to_field_elements()?)?.into())
     }
 
     fn size_in_bytes() -> usize {
@@ -73,12 +62,7 @@ impl<N: Network> FromBytes for FunctionInputs<N> {
         let amount = FromBytes::read_le(&mut reader)?;
         let record_payload = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            caller,
-            recipient,
-            amount,
-            record_payload,
-        })
+        Ok(Self { caller, recipient, amount, record_payload })
     }
 }
 

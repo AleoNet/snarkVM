@@ -26,11 +26,7 @@ use std::{
 };
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derivative(Clone(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
 pub struct ComputeKey<N: Network> {
     /// pk_sig := G^sk_sig.
     pk_sig: N::ProgramAffineCurve,
@@ -127,11 +123,7 @@ impl<N: Network> ToBytes for ComputeKey<N> {
 
 impl<N: Network> fmt::Debug for ComputeKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ComputeKey {{ pk_sig: {:?}, pr_sig: {:?} }}",
-            self.pk_sig, self.pr_sig
-        )
+        write!(f, "ComputeKey {{ pk_sig: {:?}, pr_sig: {:?} }}", self.pk_sig, self.pr_sig)
     }
 }
 

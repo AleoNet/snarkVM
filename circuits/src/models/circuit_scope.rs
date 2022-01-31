@@ -30,19 +30,11 @@ pub struct CircuitScope<F: PrimeField> {
 
 impl<F: PrimeField> CircuitScope<F> {
     pub(super) fn new(circuit: Rc<RefCell<ConstraintSystem<F>>>, scope: Scope, previous: Option<Scope>) -> Self {
-        Self {
-            cs: circuit,
-            scope,
-            previous,
-        }
+        Self { cs: circuit, scope, previous }
     }
 
     pub(super) fn new_scope(self, name: &str) -> Self {
-        Self {
-            cs: self.cs.clone(),
-            scope: format!("{}/{}", self.scope, name),
-            previous: Some(self.scope),
-        }
+        Self { cs: self.cs.clone(), scope: format!("{}/{}", self.scope, name), previous: Some(self.scope) }
     }
 
     pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {

@@ -119,11 +119,7 @@ impl<N: Network> FromStr for PoSWProof<N> {
 
 impl<N: Network> fmt::Display for PoSWProof<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 
@@ -184,10 +180,7 @@ mod tests {
             assert_eq!(0, ledger.latest_block_height());
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
             let latest_proof = latest_block_header.proof();
-            assert_eq!(
-                latest_proof.to_bytes_le().unwrap().len(),
-                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-            ); // NOTE: Marlin proofs use compressed serialization
+            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
             assert!(!latest_proof.is_hiding());
         }
@@ -200,10 +193,7 @@ mod tests {
 
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
             let latest_proof = latest_block_header.proof();
-            assert_eq!(
-                latest_proof.to_bytes_le().unwrap().len(),
-                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-            ); // NOTE: Marlin proofs use compressed serialization
+            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
             assert!(!latest_proof.is_hiding());
         }
@@ -216,10 +206,7 @@ mod tests {
 
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
             let latest_proof = latest_block_header.proof();
-            assert_eq!(
-                latest_proof.to_bytes_le().unwrap().len(),
-                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-            ); // NOTE: Marlin proofs use compressed serialization
+            assert_eq!(latest_proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
             assert!(!latest_proof.is_hiding());
         }
@@ -234,10 +221,7 @@ mod tests {
             let proof = block.header().proof();
             assert!(!proof.is_hiding());
             assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet1::HEADER_PROOF_SIZE_IN_BYTES);
-            assert_eq!(
-                bincode::serialize(&proof).unwrap().len(),
-                Testnet1::HEADER_PROOF_SIZE_IN_BYTES
-            );
+            assert_eq!(bincode::serialize(&proof).unwrap().len(), Testnet1::HEADER_PROOF_SIZE_IN_BYTES);
         }
         {
             let block =
@@ -245,10 +229,7 @@ mod tests {
             let proof = block.header().proof();
             assert!(!proof.is_hiding());
             assert_eq!(proof.to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
-            assert_eq!(
-                bincode::serialize(&proof).unwrap().len(),
-                Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-            );
+            assert_eq!(bincode::serialize(&proof).unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES);
         }
     }
 

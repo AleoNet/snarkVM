@@ -110,12 +110,7 @@ impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignature<TE> {
         let root_public_key = TE::BaseField::read_le(&mut reader)?;
         let root_randomizer = TE::BaseField::read_le(&mut reader)?;
 
-        Ok(Self {
-            prover_response,
-            verifier_challenge,
-            root_public_key,
-            root_randomizer,
-        })
+        Ok(Self { prover_response, verifier_challenge, root_public_key, root_randomizer })
     }
 }
 
@@ -275,12 +270,7 @@ where
     ///
     fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
         // Extract the signature contents.
-        let AleoSignature {
-            prover_response,
-            verifier_challenge,
-            root_public_key,
-            root_randomizer,
-        } = signature;
+        let AleoSignature { prover_response, verifier_challenge, root_public_key, root_randomizer } = signature;
 
         // Recover G^sk_sig.
         let g_sk_sig = Self::recover_from_x_coordinate(root_public_key)?;

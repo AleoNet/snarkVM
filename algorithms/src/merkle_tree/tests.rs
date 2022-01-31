@@ -144,8 +144,7 @@ fn padded_merkle_tree_test<P: MerkleParameters>() {
         let penultimate_right = parameters.hash_empty().unwrap();
 
         // depth 0
-        crh.hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap())
-            .unwrap()
+        crh.hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap()).unwrap()
     };
 
     println!("{} == {}", merkle_tree_root, &expected_root);

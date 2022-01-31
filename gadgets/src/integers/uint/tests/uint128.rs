@@ -255,11 +255,8 @@ fn test_uint128_sub() {
         let expected = a.wrapping_sub(b);
 
         let a_bit = UInt128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u128::MAX / 4 {
-            UInt128::constant(b)
-        } else {
-            UInt128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
-        };
+        let b_bit =
+            if b > u128::MAX / 4 { UInt128::constant(b) } else { UInt128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap() };
 
         let r = a_bit.sub(cs.ns(|| "subtraction"), &b_bit).unwrap();
 
@@ -330,16 +327,10 @@ fn test_uint128_mul() {
         check_all_allocated_bits(expected, r);
 
         // Flip a bit_gadget and see if the multiplication constraint still works
-        if cs
-            .get("multiplication/partial_products/result bit_gadget 0/boolean")
-            .is_zero()
-        {
+        if cs.get("multiplication/partial_products/result bit_gadget 0/boolean").is_zero() {
             cs.set("multiplication/partial_products/result bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set(
-                "multiplication/partial_products/result bit_gadget 0/boolean",
-                Fr::zero(),
-            );
+            cs.set("multiplication/partial_products/result bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());
@@ -382,11 +373,8 @@ fn test_uint128_div() {
         let expected = a.wrapping_div(b);
 
         let a_bit = UInt128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u128::MAX / 2 {
-            UInt128::constant(b)
-        } else {
-            UInt128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
-        };
+        let b_bit =
+            if b > u128::MAX / 2 { UInt128::constant(b) } else { UInt128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap() };
 
         let r = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
 

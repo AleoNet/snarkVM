@@ -91,10 +91,7 @@ impl<
         c: &C,
         rng: &mut R,
     ) -> Result<
-        (
-            CircuitProvingKey<TargetField, BaseField, PC, MM>,
-            CircuitVerifyingKey<TargetField, BaseField, PC, MM>,
-        ),
+        (CircuitProvingKey<TargetField, BaseField, PC, MM>, CircuitVerifyingKey<TargetField, BaseField, PC, MM>),
         MarlinError,
     > {
         let index_time = start_timer!(|| "Marlin::CircuitSpecificSetup");
@@ -115,10 +112,7 @@ impl<
             PC::commit(&committer_key, circuit.iter(), None)?;
         end_timer!(commit_time);
 
-        let circuit_commitments = circuit_commitments
-            .into_iter()
-            .map(|c| c.commitment().clone())
-            .collect();
+        let circuit_commitments = circuit_commitments.into_iter().map(|c| c.commitment().clone()).collect();
         let index_vk = CircuitVerifyingKey {
             circuit_info: circuit.index_info,
             circuit_commitments,
@@ -145,10 +139,7 @@ impl<
         universal_srs: &UniversalSRS<TargetField, BaseField, PC>,
         circuit: &C,
     ) -> Result<
-        (
-            CircuitProvingKey<TargetField, BaseField, PC, MM>,
-            CircuitVerifyingKey<TargetField, BaseField, PC, MM>,
-        ),
+        (CircuitProvingKey<TargetField, BaseField, PC, MM>, CircuitVerifyingKey<TargetField, BaseField, PC, MM>),
         MarlinError,
     > {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
@@ -156,32 +147,22 @@ impl<
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::<_, MM>::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
-            return Err(MarlinError::IndexTooLarge(
-                universal_srs.max_degree(),
-                index.max_degree(),
-            ));
+            return Err(MarlinError::IndexTooLarge(universal_srs.max_degree(), index.max_degree()));
         }
 
         let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&index.index_info);
 
         // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
-        let (committer_key, verifier_key) = PC::trim(
-            universal_srs,
-            index.max_degree(),
-            supported_hiding_bound,
-            Some(&coefficient_support),
-        )?;
+        let (committer_key, verifier_key) =
+            PC::trim(universal_srs, index.max_degree(), supported_hiding_bound, Some(&coefficient_support))?;
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
             PC::commit(&committer_key, index.iter(), None)?;
         end_timer!(commit_time);
 
-        let circuit_commitments = circuit_commitments
-            .into_iter()
-            .map(|c| c.commitment().clone())
-            .collect();
+        let circuit_commitments = circuit_commitments.into_iter().map(|c| c.commitment().clone()).collect();
         let circuit_verifying_key = CircuitVerifyingKey {
             circuit_info: index.index_info,
             circuit_commitments,
@@ -211,11 +192,7 @@ impl<
     }
 
     fn terminate(terminator: &AtomicBool) -> Result<(), MarlinError> {
-        if terminator.load(Ordering::Relaxed) {
-            Err(MarlinError::Terminated)
-        } else {
-            Ok(())
-        }
+        if terminator.load(Ordering::Relaxed) { Err(MarlinError::Terminated) } else { Ok(()) }
     }
 
     /// Same as [`prove`] with an added termination flag, [`terminator`].
@@ -248,11 +225,8 @@ impl<
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
-        let (first_commitments, first_commitment_randomnesses) = PC::commit(
-            &circuit_proving_key.committer_key,
-            prover_first_oracles.iter(),
-            Some(zk_rng),
-        )?;
+        let (first_commitments, first_commitment_randomnesses) =
+            PC::commit(&circuit_proving_key.committer_key, prover_first_oracles.iter(), Some(zk_rng))?;
         end_timer!(first_round_comm_time);
 
         Self::verifier_absorb_labeled(&first_commitments, &prover_first_message, &mut fs_rng);
@@ -350,10 +324,7 @@ impl<
         Self::terminate(terminator)?;
 
         // Sanity check, whose length should be updated if the underlying structs are updated.
-        assert_eq!(
-            polynomials.len(),
-            AHPForR1CS::<TargetField, MM>::polynomial_labels().count()
-        );
+        assert_eq!(polynomials.len(), AHPForR1CS::<TargetField, MM>::polynomial_labels().count());
 
         // Gather commitments in one vector.
         #[rustfmt::skip]
@@ -409,10 +380,8 @@ impl<
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations_unsorted = Vec::new();
         for (label, (_point_name, point)) in &query_set {
-            let lc = lc_s
-                .iter()
-                .find(|lc| &lc.label == label)
-                .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
+            let lc =
+                lc_s.iter().find(|lc| &lc.label == label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
             let evaluation = polynomials.get_lc_eval(lc, *point)?;
             if !AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
                 evaluations_unsorted.push((label.to_string(), evaluation));
@@ -447,12 +416,8 @@ impl<
         Self::terminate(terminator)?;
 
         // Gather prover messages together.
-        let prover_messages = vec![
-            prover_first_message,
-            prover_second_message,
-            prover_third_message,
-            prover_fourth_message,
-        ];
+        let prover_messages =
+            vec![prover_first_message, prover_second_message, prover_third_message, prover_fourth_message];
 
         let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
@@ -525,10 +490,7 @@ impl<
 
             let mut new_input = vec![TargetField::one()];
             new_input.extend_from_slice(public_input);
-            new_input.resize(
-                core::cmp::max(public_input.len(), input_domain.size()),
-                TargetField::zero(),
-            );
+            new_input.resize(core::cmp::max(public_input.len(), input_domain.size()), TargetField::zero());
             new_input
         };
         let public_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);

@@ -225,12 +225,7 @@ impl<F: Field> Add<&LinearCombination<F>> for &LinearCombination<F> {
         } else if self.0.is_empty() {
             return other.clone();
         }
-        op_impl(
-            self,
-            other,
-            |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + other_coeff,
-        )
+        op_impl(self, other, |coeff| coeff, |cur_coeff, other_coeff| cur_coeff + other_coeff)
     }
 }
 
@@ -243,12 +238,7 @@ impl<F: Field> Add<LinearCombination<F>> for &LinearCombination<F> {
         } else if other.0.is_empty() {
             return self.clone();
         }
-        op_impl(
-            self,
-            &other,
-            |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + other_coeff,
-        )
+        op_impl(self, &other, |coeff| coeff, |cur_coeff, other_coeff| cur_coeff + other_coeff)
     }
 }
 
@@ -261,12 +251,7 @@ impl<'a, F: Field> Add<&'a LinearCombination<F>> for LinearCombination<F> {
         } else if self.0.is_empty() {
             return other.clone();
         }
-        op_impl(
-            &self,
-            other,
-            |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + other_coeff,
-        )
+        op_impl(&self, other, |coeff| coeff, |cur_coeff, other_coeff| cur_coeff + other_coeff)
     }
 }
 
@@ -279,12 +264,7 @@ impl<F: Field> Add<LinearCombination<F>> for LinearCombination<F> {
         } else if self.0.is_empty() {
             return other;
         }
-        op_impl(
-            &self,
-            &other,
-            |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + other_coeff,
-        )
+        op_impl(&self, &other, |coeff| coeff, |cur_coeff, other_coeff| cur_coeff + other_coeff)
     }
 }
 
@@ -301,12 +281,7 @@ impl<F: Field> Sub<&LinearCombination<F>> for &LinearCombination<F> {
             return other;
         }
 
-        op_impl(
-            self,
-            other,
-            |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - other_coeff,
-        )
+        op_impl(self, other, |coeff| -coeff, |cur_coeff, other_coeff| cur_coeff - other_coeff)
     }
 }
 
@@ -321,12 +296,7 @@ impl<'a, F: Field> Sub<&'a LinearCombination<F>> for LinearCombination<F> {
             other.negate_in_place();
             return other;
         }
-        op_impl(
-            &self,
-            other,
-            |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - other_coeff,
-        )
+        op_impl(&self, other, |coeff| -coeff, |cur_coeff, other_coeff| cur_coeff - other_coeff)
     }
 }
 
@@ -341,12 +311,7 @@ impl<F: Field> Sub<LinearCombination<F>> for &LinearCombination<F> {
             return self.clone();
         }
 
-        op_impl(
-            self,
-            &other,
-            |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - other_coeff,
-        )
+        op_impl(self, &other, |coeff| -coeff, |cur_coeff, other_coeff| cur_coeff - other_coeff)
     }
 }
 
@@ -360,12 +325,7 @@ impl<F: Field> Sub<LinearCombination<F>> for LinearCombination<F> {
             other.negate_in_place();
             return other;
         }
-        op_impl(
-            &self,
-            &other,
-            |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - other_coeff,
-        )
+        op_impl(&self, &other, |coeff| -coeff, |cur_coeff, other_coeff| cur_coeff - other_coeff)
     }
 }
 
@@ -381,12 +341,7 @@ impl<F: Field> Add<(F, &LinearCombination<F>)> for &LinearCombination<F> {
             other.mul_assign(mul_coeff);
             return other;
         }
-        op_impl(
-            self,
-            other,
-            |coeff| mul_coeff * coeff,
-            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
-        )
+        op_impl(self, other, |coeff| mul_coeff * coeff, |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff))
     }
 }
 
@@ -402,12 +357,7 @@ impl<'a, F: Field> Add<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
             other.mul_assign(mul_coeff);
             return other;
         }
-        op_impl(
-            &self,
-            other,
-            |coeff| mul_coeff * coeff,
-            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
-        )
+        op_impl(&self, other, |coeff| mul_coeff * coeff, |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff))
     }
 }
 
@@ -422,12 +372,7 @@ impl<F: Field> Add<(F, LinearCombination<F>)> for &LinearCombination<F> {
             other.mul_assign(mul_coeff);
             return other;
         }
-        op_impl(
-            self,
-            &other,
-            |coeff| mul_coeff * coeff,
-            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
-        )
+        op_impl(self, &other, |coeff| mul_coeff * coeff, |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff))
     }
 }
 

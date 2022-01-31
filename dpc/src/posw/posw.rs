@@ -53,10 +53,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         let (proving_key, verifying_key) =
             <<N as Network>::PoSWSNARK as SNARK>::setup::<_, R>(&PoSWCircuit::<N>::blank()?, srs)?;
 
-        Ok(Self {
-            proving_key: Some(proving_key),
-            verifying_key,
-        })
+        Ok(Self { proving_key: Some(proving_key), verifying_key })
     }
 
     ///
@@ -106,9 +103,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             if iteration % 100 == 0
                 && Utc::now().timestamp() >= block_template.block_timestamp() + MAXIMUM_MINING_DURATION
             {
-                return Err(PoSWError::Message(
-                    "Failed mine block in the allowed mining duration".to_string(),
-                ));
+                return Err(PoSWError::Message("Failed mine block in the allowed mining duration".to_string()));
             }
 
             // Run one iteration of PoSW.
@@ -239,14 +234,9 @@ mod tests {
         );
 
         // Construct a block header.
-        let block_header = Testnet2::posw()
-            .mine(&block_template, &AtomicBool::new(false), &mut thread_rng())
-            .unwrap();
+        let block_header = Testnet2::posw().mine(&block_template, &AtomicBool::new(false), &mut thread_rng()).unwrap();
 
-        assert_eq!(
-            block_header.proof().to_bytes_le().unwrap().len(),
-            Testnet2::HEADER_PROOF_SIZE_IN_BYTES
-        ); // NOTE: Marlin proofs use compressed serialization
+        assert_eq!(block_header.proof().to_bytes_le().unwrap().len(), Testnet2::HEADER_PROOF_SIZE_IN_BYTES); // NOTE: Marlin proofs use compressed serialization
         assert!(Testnet2::posw().verify_from_block_header(&block_header));
     }
 }

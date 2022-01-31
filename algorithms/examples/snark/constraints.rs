@@ -26,10 +26,7 @@ pub struct Benchmark<F: Field> {
 
 impl<F: Field> Benchmark<F> {
     pub fn new(num_constraints: usize) -> Self {
-        Self {
-            num_constraints,
-            _engine: PhantomData,
-        }
+        Self { num_constraints, _engine: PhantomData }
     }
 }
 
@@ -50,12 +47,7 @@ impl<F: Field> ConstraintSynthesizer<F> for Benchmark<F> {
                 let c_val = a_val * b_val;
                 let c_var = cs.alloc(|| format!("{}", i), || Ok(c_val))?;
 
-                cs.enforce(
-                    || format!("{}: a * b = c", i),
-                    |lc| lc + a_var,
-                    |lc| lc + b_var,
-                    |lc| lc + c_var,
-                );
+                cs.enforce(|| format!("{}: a * b = c", i), |lc| lc + a_var, |lc| lc + b_var, |lc| lc + c_var);
 
                 assignments.push((c_val, c_var));
                 a_val = b_val;

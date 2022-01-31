@@ -142,10 +142,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 
-    let a = generated_proving_key
-        .circuit
-        .index_info
-        .max_degree::<MarlinTestnet1Mode>();
+    let a = generated_proving_key.circuit.index_info.max_degree::<MarlinTestnet1Mode>();
     let b = loaded_proving_key.circuit.index_info.max_degree::<MarlinTestnet1Mode>();
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
@@ -233,52 +230,22 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
             println!("{:?} == {:?}? {}", a, b, a == b);
             assert_eq!(a, b);
 
-            let a = generated_proving_key
-                .circuit
-                .$term
-                .evals_on_K
-                .row
-                .evaluations
-                .len();
+            let a = generated_proving_key.circuit.$term.evals_on_K.row.evaluations.len();
             let b = loaded_proving_key.circuit.$term.evals_on_K.row.evaluations.len();
             println!("{:?} == {:?}? {}", a, b, a == b);
             assert_eq!(a, b);
 
-            let a = generated_proving_key
-                .circuit
-                .$term
-                .evals_on_K
-                .col
-                .evaluations
-                .len();
+            let a = generated_proving_key.circuit.$term.evals_on_K.col.evaluations.len();
             let b = loaded_proving_key.circuit.$term.evals_on_K.col.evaluations.len();
             println!("{:?} == {:?}? {}", a, b, a == b);
             assert_eq!(a, b);
 
-            let a = generated_proving_key
-                .circuit
-                .$term
-                .evals_on_K
-                .row_col
-                .evaluations
-                .len();
-            let b = loaded_proving_key
-                .circuit
-                .$term
-                .evals_on_K
-                .row_col
-                .evaluations
-                .len();
+            let a = generated_proving_key.circuit.$term.evals_on_K.row_col.evaluations.len();
+            let b = loaded_proving_key.circuit.$term.evals_on_K.row_col.evaluations.len();
             println!("{:?} == {:?}? {}", a, b, a == b);
             assert_eq!(a, b);
 
-            let a = generated_proving_key
-                .circuit
-                .$term
-                .evals_on_K
-                .val
-                .evaluations
-                .len();
+            let a = generated_proving_key.circuit.$term.evals_on_K.val.evaluations.len();
             let b = loaded_proving_key.circuit.$term.evals_on_K.val.evaluations.len();
             println!("{:?} == {:?}? {}", a, b, a == b);
             assert_eq!(a, b);

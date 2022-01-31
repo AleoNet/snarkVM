@@ -26,11 +26,7 @@ macro_rules! cond_select_int_impl {
                 use crate::traits::integers::Integer;
 
                 if let Boolean::Constant(cond) = *cond {
-                    if cond {
-                        Ok(first.clone())
-                    } else {
-                        Ok(second.clone())
-                    }
+                    if cond { Ok(first.clone()) } else { Ok(second.clone()) }
                 } else {
                     let mut is_negated = false;
 
@@ -48,11 +44,8 @@ macro_rules! cond_select_int_impl {
 
                     result.negated = is_negated;
 
-                    for (i, (actual, (bit1, bit2))) in result
-                        .to_bits_le()
-                        .iter()
-                        .zip(first.bits.iter().zip(&second.bits))
-                        .enumerate()
+                    for (i, (actual, (bit1, bit2))) in
+                        result.to_bits_le().iter().zip(first.bits.iter().zip(&second.bits)).enumerate()
                     {
                         let expected_bit = Boolean::conditionally_select(
                             &mut cs.ns(|| format!("{}_cond_select_{}", $size, i)),
@@ -108,11 +101,7 @@ macro_rules! uint_impl_common {
                     tmp >>= 1;
                 }
 
-                Self {
-                    bits,
-                    negated: false,
-                    value: Some(value),
-                }
+                Self { bits, negated: false, value: Some(value) }
             }
 
             fn one() -> Self {
@@ -124,11 +113,7 @@ macro_rules! uint_impl_common {
             }
 
             fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self {
-                Self {
-                    bits,
-                    value,
-                    negated: false,
-                }
+                Self { bits, value, negated: false }
             }
 
             fn is_constant(&self) -> bool {
@@ -189,11 +174,7 @@ macro_rules! uint_impl_common {
                     }
                 }
 
-                Self {
-                    value,
-                    negated: false,
-                    bits,
-                }
+                Self { value, negated: false, bits }
             }
 
             fn get_value(&self) -> Option<String> {
@@ -211,30 +192,15 @@ macro_rules! uint_impl {
 
         impl UInt for $name {
             fn negate(&self) -> Self {
-                Self {
-                    bits: self.bits.clone(),
-                    negated: true,
-                    value: self.value,
-                }
+                Self { bits: self.bits.clone(), negated: true, value: self.value }
             }
 
             fn rotr(&self, by: usize) -> Self {
                 let by = by % $size;
 
-                let new_bits = self
-                    .bits
-                    .iter()
-                    .skip(by)
-                    .chain(self.bits.iter())
-                    .take($size)
-                    .cloned()
-                    .collect();
+                let new_bits = self.bits.iter().skip(by).chain(self.bits.iter()).take($size).cloned().collect();
 
-                Self {
-                    bits: new_bits,
-                    negated: false,
-                    value: self.value.map(|v| v.rotate_right(by as u32) as $_type),
-                }
+                Self { bits: new_bits, negated: false, value: self.value.map(|v| v.rotate_right(by as u32) as $_type) }
             }
 
             fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(
@@ -359,11 +325,7 @@ macro_rules! uint_impl {
                 // Enforce that the linear combination equals zero
                 cs.enforce(|| "modular addition", |lc| lc, |lc| lc, |_| lc);
 
-                Ok(Self {
-                    bits: result_bits,
-                    negated: false,
-                    value: modular_value,
-                })
+                Ok(Self { bits: result_bits, negated: false, value: modular_value })
             }
 
             fn mul<F: PrimeField, CS: ConstraintSystem<F>>(
@@ -385,10 +347,8 @@ macro_rules! uint_impl {
 
                 let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
                 let constant_result = Self::constant(0 as $_type);
-                let allocated_result = Self::alloc(
-                    &mut cs.ns(|| format!("allocated_0u{}", $size)),
-                    || Ok(0 as $_type),
-                )?;
+                let allocated_result =
+                    Self::alloc(&mut cs.ns(|| format!("allocated_0u{}", $size)), || Ok(0 as $_type))?;
                 let zero_result = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated"),
                     &is_constant,

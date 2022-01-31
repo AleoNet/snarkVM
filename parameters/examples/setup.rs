@@ -121,16 +121,11 @@ pub fn inner_setup<N: Network>() -> Result<()> {
     const INNER_PROVING_KEY: &str = "inner.proving";
     const INNER_VERIFYING_KEY: &str = "inner.verifying";
 
-    let (inner_proving_key, inner_verifying_key) = N::InnerSNARK::setup(
-        &InnerCircuit::<N>::blank(),
-        &mut SRS::CircuitSpecific(&mut thread_rng()),
-    )?;
+    let (inner_proving_key, inner_verifying_key) =
+        N::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(&mut thread_rng()))?;
 
-    let inner_circuit_id = hex::encode(
-        N::inner_circuit_id_crh()
-            .hash_bits(&inner_verifying_key.to_minimal_bits())?
-            .to_bytes_le()?,
-    );
+    let inner_circuit_id =
+        hex::encode(N::inner_circuit_id_crh().hash_bits(&inner_verifying_key.to_minimal_bits())?.to_bytes_le()?);
     let inner_proving_key = inner_proving_key.to_bytes_le()?;
     let inner_proving_checksum = checksum(&inner_proving_key);
     let inner_verifying_key = inner_verifying_key.to_bytes_le()?;
@@ -168,11 +163,7 @@ pub fn posw_setup<N: Network>() -> Result<()> {
         &FromBytes::read_le(&srs_bytes[..])?,
     ))?;
 
-    let posw_proving_key = posw
-        .proving_key()
-        .as_ref()
-        .expect("posw_proving_key is missing")
-        .to_bytes_le()?;
+    let posw_proving_key = posw.proving_key().as_ref().expect("posw_proving_key is missing").to_bytes_le()?;
     let posw_proving_checksum = checksum(&posw_proving_key);
     let posw_verifying_key = posw.verifying_key().to_bytes_le()?;
 

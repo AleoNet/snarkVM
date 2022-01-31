@@ -189,26 +189,10 @@ mod tests {
         use super::*;
 
         const TEST_AMOUNTS: [AmountDenominationTestCase; 5] = [
-            AmountDenominationTestCase {
-                byte: 0,
-                gate: 0,
-                aleo: 0,
-            },
-            AmountDenominationTestCase {
-                byte: 1_000_000,
-                gate: 1_000,
-                aleo: 1,
-            },
-            AmountDenominationTestCase {
-                byte: 1_000_000_000,
-                gate: 1_000_000,
-                aleo: 1_000,
-            },
-            AmountDenominationTestCase {
-                byte: 1_234_567_000_000_000,
-                gate: 1_234_567_000_000,
-                aleo: 1_234_567_000,
-            },
+            AmountDenominationTestCase { byte: 0, gate: 0, aleo: 0 },
+            AmountDenominationTestCase { byte: 1_000_000, gate: 1_000, aleo: 1 },
+            AmountDenominationTestCase { byte: 1_000_000_000, gate: 1_000_000, aleo: 1_000 },
+            AmountDenominationTestCase { byte: 1_234_567_000_000_000, gate: 1_234_567_000_000, aleo: 1_234_567_000 },
             AmountDenominationTestCase {
                 byte: 1_000_000_000_000_000_000,
                 gate: 1_000_000_000_000_000,
@@ -218,23 +202,17 @@ mod tests {
 
         #[test]
         fn test_byte_conversion() {
-            TEST_AMOUNTS
-                .iter()
-                .for_each(|amounts| test_from_i64(amounts.byte, AleoAmount(amounts.byte)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_i64(amounts.byte, AleoAmount(amounts.byte)));
         }
 
         #[test]
         fn test_gate_conversion() {
-            TEST_AMOUNTS
-                .iter()
-                .for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.byte)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.byte)));
         }
 
         #[test]
         fn test_aleo_conversion() {
-            TEST_AMOUNTS
-                .iter()
-                .for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.byte)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.byte)));
         }
     }
 
@@ -269,21 +247,9 @@ mod tests {
             use super::*;
 
             const INVALID_TEST_AMOUNTS: [AmountDenominationTestCase; 4] = [
-                AmountDenominationTestCase {
-                    byte: 1,
-                    gate: 1,
-                    aleo: 1,
-                },
-                AmountDenominationTestCase {
-                    byte: 10,
-                    gate: 10000,
-                    aleo: 100000000,
-                },
-                AmountDenominationTestCase {
-                    byte: 1234567,
-                    gate: 123,
-                    aleo: 1,
-                },
+                AmountDenominationTestCase { byte: 1, gate: 1, aleo: 1 },
+                AmountDenominationTestCase { byte: 10, gate: 10000, aleo: 100000000 },
+                AmountDenominationTestCase { byte: 1234567, gate: 123, aleo: 1 },
                 AmountDenominationTestCase {
                     byte: 1_000_000_000_000_000_000,
                     gate: 1_000_000_000_000_000,
@@ -294,30 +260,21 @@ mod tests {
             #[should_panic]
             #[test]
             fn test_invalid_gate_conversion() {
-                INVALID_TEST_AMOUNTS
-                    .iter()
-                    .for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.byte)));
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.byte)));
             }
 
             #[should_panic]
             #[test]
             fn test_invalid_aleo_conversion() {
-                INVALID_TEST_AMOUNTS
-                    .iter()
-                    .for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.byte)));
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.byte)));
             }
         }
 
         mod invalid_arithmetic {
             use super::*;
 
-            const TEST_VALUES: [(i64, i64, i64); 5] = [
-                (0, 0, 1),
-                (1, 2, 5),
-                (100000, 1, 100000),
-                (123456789, 123456789, 123456789),
-                (-1000, -1000, 2000),
-            ];
+            const TEST_VALUES: [(i64, i64, i64); 5] =
+                [(0, 0, 1), (1, 2, 5), (100000, 1, 100000), (123456789, 123456789, 123456789), (-1000, -1000, 2000)];
 
             #[should_panic]
             #[test]

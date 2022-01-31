@@ -62,9 +62,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(parameters: (Vec<Vec<G>>, Vec<G>)) -> Self {
-        Self {
-            pedersen: parameters.into(),
-        }
+        Self { pedersen: parameters.into() }
     }
 }
 

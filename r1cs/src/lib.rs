@@ -130,11 +130,7 @@ impl CanonicalDeserialize for Index {
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let is_input = bool::deserialize(reader)?;
         let inner = usize::deserialize(reader)?;
-        Ok(if is_input {
-            Index::Public(inner)
-        } else {
-            Index::Private(inner)
-        })
+        Ok(if is_input { Index::Public(inner) } else { Index::Private(inner) })
     }
 }
 

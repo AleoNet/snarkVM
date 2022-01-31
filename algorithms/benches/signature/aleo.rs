@@ -26,9 +26,7 @@ use rand::{self, thread_rng};
 type SignatureScheme = AleoSignatureScheme<EdwardsParameters>;
 
 fn aleo_signature_setup(c: &mut Criterion) {
-    c.bench_function("Aleo Signature Setup", move |b| {
-        b.iter(|| SignatureScheme::setup("aleo_signature_setup"))
-    });
+    c.bench_function("Aleo Signature Setup", move |b| b.iter(|| SignatureScheme::setup("aleo_signature_setup")));
 }
 
 fn aleo_signature_generate_private_key(c: &mut Criterion) {

@@ -45,10 +45,7 @@ pub mod inner {
 
             println!("{}{:8} {}", indent, start_info, msg);
             NUM_INDENT.fetch_add(1, Ordering::Relaxed);
-            $crate::TimerInfo {
-                msg: msg.to_string(),
-                time: Instant::now(),
-            }
+            $crate::TimerInfo { msg: msg.to_string(), time: Instant::now() }
         }};
     }
 
@@ -88,14 +85,7 @@ pub mod inner {
 
             // Todo: Recursively ensure that *entire* string is of appropriate
             // width (not just message).
-            println!(
-                "{}{:8} {:.<pad$}{}",
-                indent,
-                end_info,
-                message,
-                final_time,
-                pad = 75 - indent_amount
-            );
+            println!("{}{:8} {:.<pad$}{}", indent, end_info, message, final_time, pad = 75 - indent_amount);
         }};
     }
 

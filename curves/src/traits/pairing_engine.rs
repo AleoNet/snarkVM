@@ -59,10 +59,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync 
     fn miller_loop<'a, I>(i: I) -> Self::Fqk
     where
         I: Iterator<
-            Item = (
-                &'a <Self::G1Affine as PairingCurve>::Prepared,
-                &'a <Self::G2Affine as PairingCurve>::Prepared,
-            ),
+            Item = (&'a <Self::G1Affine as PairingCurve>::Prepared, &'a <Self::G2Affine as PairingCurve>::Prepared),
         >;
 
     /// Perform final exponentiation of the result of a miller loop.
@@ -74,10 +71,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync 
     fn product_of_pairings<'a, I>(i: I) -> Self::Fqk
     where
         I: Iterator<
-            Item = (
-                &'a <Self::G1Affine as PairingCurve>::Prepared,
-                &'a <Self::G2Affine as PairingCurve>::Prepared,
-            ),
+            Item = (&'a <Self::G1Affine as PairingCurve>::Prepared, &'a <Self::G2Affine as PairingCurve>::Prepared),
         >,
     {
         Self::final_exponentiation(&Self::miller_loop(i)).unwrap()
@@ -90,11 +84,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync 
         G1: Into<Self::G1Affine>,
         G2: Into<Self::G2Affine>,
     {
-        Self::final_exponentiation(&Self::miller_loop(iter::once((
-            &p.into().prepare(),
-            &q.into().prepare(),
-        ))))
-        .unwrap()
+        Self::final_exponentiation(&Self::miller_loop(iter::once((&p.into().prepare(), &q.into().prepare())))).unwrap()
     }
 }
 
