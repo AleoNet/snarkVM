@@ -52,7 +52,6 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
     fn check_neg<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
@@ -66,14 +65,7 @@ mod tests {
             let case = format!("-{}", candidate.eject_value());
 
             let candidate = -candidate;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
 
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
@@ -83,7 +75,6 @@ mod tests {
         });
     }
 
-    #[rustfmt::skip]
     fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
         let value: I = UniformRand::rand(&mut thread_rng());
         let candidate = Integer::<Circuit, I>::new(mode, value);

@@ -40,7 +40,6 @@ mod tests {
     use super::*;
     use crate::{Circuit, Mode};
 
-    #[rustfmt::skip]
     fn check_adder(
         name: &str,
         expected_sum: bool,

@@ -66,7 +66,6 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    #[rustfmt::skip]
     fn check_is_eq<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: bool,
@@ -81,14 +80,7 @@ mod tests {
             let case = format!("({} == {})", a.eject_value(), b.eject_value());
 
             let candidate = a.is_eq(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
 
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
