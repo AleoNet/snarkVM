@@ -83,17 +83,9 @@ impl AllocatedBit {
 
         // Constrain (a) * (b) = (c), ensuring c is 1 iff
         // a AND b are both 1.
-        cs.enforce(
-            || "and constraint",
-            |lc| lc + a.variable,
-            |lc| lc + b.variable,
-            |lc| lc + result_var,
-        );
+        cs.enforce(|| "and constraint", |lc| lc + a.variable, |lc| lc + b.variable, |lc| lc + result_var);
 
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
+        Ok(AllocatedBit { variable: result_var, value: result_value })
     }
 
     /// Performs an OR operation over the two operands, returning
@@ -127,10 +119,7 @@ impl AllocatedBit {
             |lc| lc + CS::one() - result_var,
         );
 
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
+        Ok(AllocatedBit { variable: result_var, value: result_value })
     }
 
     /// Calculates `a AND (NOT b)`.
@@ -165,10 +154,7 @@ impl AllocatedBit {
             |lc| lc + result_var,
         );
 
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
+        Ok(AllocatedBit { variable: result_var, value: result_value })
     }
 
     /// Calculates `(NOT a) AND (NOT b)`.
@@ -203,10 +189,7 @@ impl AllocatedBit {
             |lc| lc + result_var,
         );
 
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
+        Ok(AllocatedBit { variable: result_var, value: result_value })
     }
 }
 
@@ -252,10 +235,7 @@ impl<F: Field> Xor<F> for AllocatedBit {
             |lc| lc + a.variable + b.variable - result_var,
         );
 
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
+        Ok(AllocatedBit { variable: result_var, value: result_value })
     }
 }
 
@@ -285,12 +265,7 @@ impl<F: Field> AllocGadget<bool, F> for AllocatedBit {
 
         // Constrain: (1 - a) * a = 0
         // This constrains a to be either 0 or 1.
-        cs.enforce(
-            || "boolean constraint",
-            |lc| lc + CS::one() - var,
-            |lc| lc + var,
-            |lc| lc,
-        );
+        cs.enforce(|| "boolean constraint", |lc| lc + CS::one() - var, |lc| lc + var, |lc| lc);
 
         Ok(AllocatedBit { variable: var, value })
     }
@@ -312,12 +287,7 @@ impl<F: Field> AllocGadget<bool, F> for AllocatedBit {
 
         // Constrain: (1 - a) * a = 0
         // This constrains a to be either 0 or 1.
-        cs.enforce(
-            || "boolean constraint",
-            |lc| lc + CS::one() - var,
-            |lc| lc + var,
-            |lc| lc,
-        );
+        cs.enforce(|| "boolean constraint", |lc| lc + CS::one() - var, |lc| lc + var, |lc| lc);
 
         Ok(AllocatedBit { variable: var, value })
     }
@@ -369,10 +339,7 @@ fn cond_select_helper<F: PrimeField, CS: ConstraintSystem<F>>(
         |lc| ConstraintVariable::from(result_var) - &second_var + lc,
     );
 
-    Ok(AllocatedBit {
-        value: result_val,
-        variable: result_var,
-    })
+    Ok(AllocatedBit { value: result_val, variable: result_var })
 }
 
 /// This is a boolean value which may be either a constant or
@@ -416,11 +383,7 @@ impl Boolean {
         for (byte_i, input_byte) in values.iter().enumerate() {
             for bit_i in (0..8).rev() {
                 let cs = cs.ns(|| format!("input_bit_gadget {} {}", byte_i, bit_i));
-                input_bits.push(
-                    AllocatedBit::alloc(cs, || Ok((input_byte >> bit_i) & 1u8 == 1u8))
-                        .unwrap()
-                        .into(),
-                );
+                input_bits.push(AllocatedBit::alloc(cs, || Ok((input_byte >> bit_i) & 1u8 == 1u8)).unwrap().into());
             }
         }
         input_bits
@@ -515,12 +478,7 @@ impl Boolean {
                 Ok(())
             }
             Boolean::Not(ref res) => {
-                cs.enforce(
-                    || "enforce nand",
-                    |lc| lc,
-                    |lc| lc,
-                    |lc| lc + CS::one() - res.get_variable(),
-                );
+                cs.enforce(|| "enforce nand", |lc| lc, |lc| lc, |lc| lc + CS::one() - res.get_variable());
 
                 Ok(())
             }
@@ -557,10 +515,7 @@ impl Boolean {
                 or_result = Boolean::or(&mut cs.ns(|| format!("Check {}-th or", i)), &or_result, should_be_zero)?;
                 let _ = bits_iter.next().unwrap();
             }
-            or_result.enforce_equal(
-                &mut cs.ns(|| "Check that or of extra bits is zero"),
-                &Boolean::constant(false),
-            )?;
+            or_result.enforce_equal(&mut cs.ns(|| "Check that or of extra bits is zero"), &Boolean::constant(false))?;
         }
 
         for b in BitIteratorBE::new(b) {
@@ -672,20 +627,14 @@ impl Boolean {
         if bits.len() > element_num_bits {
             let mut or_result = Boolean::constant(false);
             for (i, should_be_zero) in bits[element_num_bits..].iter().enumerate() {
-                or_result = Boolean::or(
-                    cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
-                    &or_result,
-                    should_be_zero,
-                )?;
+                or_result =
+                    Boolean::or(cs.ns(|| format!("or_result OR should_be_zero_{}", i)), &or_result, should_be_zero)?;
                 let _ = bits_iter.next().unwrap();
             }
             or_result.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::constant(false))?;
         }
 
-        for (i, (b, a)) in BitIteratorBE::new_without_leading_zeros(b)
-            .zip(bits_iter.by_ref())
-            .enumerate()
-        {
+        for (i, (b, a)) in BitIteratorBE::new_without_leading_zeros(b).zip(bits_iter.by_ref()).enumerate() {
             if b {
                 // This is part of a run of ones.
                 current_run.push(*a);
@@ -734,20 +683,14 @@ impl Boolean {
         if bits.len() > element_num_bits {
             let mut or_result = Boolean::constant(false);
             for (i, should_be_zero) in bits[element_num_bits..].iter().enumerate() {
-                or_result = Boolean::or(
-                    cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
-                    &or_result,
-                    should_be_zero,
-                )?;
+                or_result =
+                    Boolean::or(cs.ns(|| format!("or_result OR should_be_zero_{}", i)), &or_result, should_be_zero)?;
                 let _ = bits_iter.next().unwrap();
             }
             or_result.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::constant(false))?;
         }
 
-        for (i, (b, a)) in BitIteratorBE::new_without_leading_zeros(b)
-            .zip(bits_iter.by_ref())
-            .enumerate()
-        {
+        for (i, (b, a)) in BitIteratorBE::new_without_leading_zeros(b).zip(bits_iter.by_ref()).enumerate() {
             if b {
                 // This is part of a run of ones.
                 current_run.push(*a);
@@ -915,12 +858,7 @@ impl<F: Field> ConditionalEqGadget<F> for Boolean {
         if let Constant(false) = condition {
             Ok(())
         } else {
-            cs.enforce(
-                || "conditional_equals",
-                |lc| difference + lc,
-                |lc| condition.lc(one, F::one()) + lc,
-                |lc| lc,
-            );
+            cs.enforce(|| "conditional_equals", |lc| difference + lc, |lc| condition.lc(one, F::one()) + lc, |lc| lc);
             Ok(())
         }
     }
@@ -936,11 +874,7 @@ impl<F: Field> ToBytesGadget<F> for Boolean {
         bits.push(*self);
         bits.reverse();
         let value = self.get_value().map(|val| val as u8);
-        let byte = UInt8 {
-            bits,
-            negated: false,
-            value,
-        };
+        let byte = UInt8 { bits, negated: false, value };
         Ok(vec![byte])
     }
 
@@ -994,10 +928,7 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for [Boolean] {
 
         let mut res = Vec::with_capacity((self.len() + capacity - 1) / capacity);
         for (i, booleans) in self.chunks(capacity).enumerate() {
-            res.push(Boolean::le_bits_to_fp_var(
-                cs.ns(|| format!("combine {}", i)),
-                booleans,
-            )?);
+            res.push(Boolean::le_bits_to_fp_var(cs.ns(|| format!("combine {}", i)), booleans)?);
         }
         Ok(res)
     }
@@ -1197,8 +1128,7 @@ mod test {
                             b = b.not();
                         }
 
-                        a.conditional_enforce_equal(&mut cs, &b, &Boolean::constant(true))
-                            .unwrap();
+                        a.conditional_enforce_equal(&mut cs, &b, &Boolean::constant(true)).unwrap();
 
                         assert_eq!(cs.is_satisfied(), (a_bool ^ a_neg) == (b_bool ^ b_neg));
 
@@ -1457,14 +1387,7 @@ mod test {
                         first_operand,
                         second_operand,
                     );
-                    assert_eq!(
-                        c.get_value(),
-                        if cond.get_value().unwrap() {
-                            a.get_value()
-                        } else {
-                            b.get_value()
-                        }
-                    );
+                    assert_eq!(c.get_value(), if cond.get_value().unwrap() { a.get_value() } else { b.get_value() });
                     assert!(<Boolean as CondSelectGadget<Fr>>::cost() >= after - before);
                 }
             }
@@ -1573,10 +1496,7 @@ mod test {
                         assert_eq!(v.value, Some(false));
                     }
 
-                    _ => panic!(
-                        "this should never be encountered, in case: (a = {:?}, b = {:?}, c = {:?})",
-                        a, b, c
-                    ),
+                    _ => panic!("this should never be encountered, in case: (a = {:?}, b = {:?}, c = {:?})", a, b, c),
                 }
             }
         }
@@ -1715,9 +1635,7 @@ mod test {
 
             let mut bits = vec![];
             for (i, b) in BitIteratorBE::new(Fr::characteristic()).skip(1).enumerate() {
-                bits.push(Boolean::from(
-                    AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
-                ));
+                bits.push(Boolean::from(AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap()));
             }
 
             Boolean::enforce_in_field::<_, _, Fr>(&mut cs, &bits).unwrap();
@@ -1733,9 +1651,7 @@ mod test {
 
             let mut bits = vec![];
             for (i, b) in BitIteratorBE::new(r.to_repr()).skip(1).enumerate() {
-                bits.push(Boolean::from(
-                    AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
-                ));
+                bits.push(Boolean::from(AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap()));
             }
 
             Boolean::enforce_in_field::<_, _, Fr>(&mut cs, &bits).unwrap();

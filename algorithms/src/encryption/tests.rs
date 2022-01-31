@@ -71,9 +71,8 @@ mod ecies {
 
         {
             // Sanity check that the symmetric key matches, when derived from the private key.
-            let candidate_symmetric_key = encryption
-                .generate_symmetric_key(&private_key, ciphertext_randomizer)
-                .unwrap();
+            let candidate_symmetric_key =
+                encryption.generate_symmetric_key(&private_key, ciphertext_randomizer).unwrap();
             assert_eq!(symmetric_key, candidate_symmetric_key);
         }
         {

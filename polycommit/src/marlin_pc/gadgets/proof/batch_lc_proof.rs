@@ -50,10 +50,7 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
-        Self {
-            proofs: self.proofs.clone(),
-            evals: self.evals.clone(),
-        }
+        Self { proofs: self.proofs.clone(), evals: self.evals.clone() }
     }
 }
 
@@ -265,21 +262,14 @@ mod tests {
                 .unwrap();
 
         // Check that the proofs in the batch proof are equivalent.
-        for (i, (proof, proof_gadget)) in batch_lc_proof
-            .proof
-            .iter()
-            .zip(batch_lc_proof_gadget.proofs)
-            .enumerate()
-        {
+        for (i, (proof, proof_gadget)) in batch_lc_proof.proof.iter().zip(batch_lc_proof_gadget.proofs).enumerate() {
             let expected_w_gadget =
                 <PG as PairingGadget<_, _>>::G1Gadget::alloc(cs.ns(|| format!("proof_w_{}", i)), || {
                     Ok(proof.w.into_projective())
                 })
                 .unwrap();
 
-            expected_w_gadget
-                .enforce_equal(cs.ns(|| format!("enforce_equals_w_{}", i)), &proof_gadget.w)
-                .unwrap();
+            expected_w_gadget.enforce_equal(cs.ns(|| format!("enforce_equals_w_{}", i)), &proof_gadget.w).unwrap();
 
             assert_eq!(proof.random_v.is_some(), proof_gadget.random_v.is_some());
 
@@ -294,10 +284,7 @@ mod tests {
         }
 
         // Check that the evaluations in the batch proof are equivalent.
-        assert_eq!(
-            batch_lc_proof.evaluations.is_some(),
-            batch_lc_proof_gadget.evals.is_some()
-        );
+        assert_eq!(batch_lc_proof.evaluations.is_some(), batch_lc_proof_gadget.evals.is_some());
 
         if let (Some(random_vs), Some(random_v_gadgets)) = (batch_lc_proof.evaluations, batch_lc_proof_gadget.evals) {
             for (i, (random_v, random_v_gadget)) in random_vs.iter().zip(random_v_gadgets).enumerate() {

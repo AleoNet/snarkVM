@@ -128,10 +128,8 @@ pub trait GroupGadget<G: Group, F: Field>:
         for (i, (bit, base_power)) in scalar_bits_with_base_powers.enumerate() {
             let new_encoded_plus =
                 self.add_constant(&mut cs.ns(|| format!("Add {}-th base power plus", i)), base_power)?;
-            let new_encoded_minus = self.add_constant(
-                &mut cs.ns(|| format!("Add {}-th base power minus", i)),
-                &base_power.neg(),
-            )?;
+            let new_encoded_minus =
+                self.add_constant(&mut cs.ns(|| format!("Add {}-th base power minus", i)), &base_power.neg())?;
             *self = Self::conditionally_select(
                 &mut cs.ns(|| format!("Conditional Select {}", i)),
                 bit.borrow(),

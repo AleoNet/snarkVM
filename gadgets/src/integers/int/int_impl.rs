@@ -54,10 +54,7 @@ macro_rules! int_impl {
                     }
                 }
 
-                Self {
-                    bits,
-                    value: Some(value),
-                }
+                Self { bits, value: Some(value) }
             }
 
             fn one() -> Self {
@@ -120,10 +117,7 @@ macro_rules! int_impl {
                     }
                 }
 
-                Self {
-                    value: value.map(|x| x as $type_),
-                    bits,
-                }
+                Self { value: value.map(|x| x as $type_), bits }
             }
 
             fn get_value(&self) -> Option<String> {

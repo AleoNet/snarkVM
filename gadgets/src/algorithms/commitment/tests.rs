@@ -32,10 +32,8 @@ use rand::{thread_rng, Rng};
 
 const ITERATIONS: usize = 1000;
 
-fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: CommitmentGadget<Native, Fq>>() -> (
-    <Native as CommitmentScheme>::Output,
-    <Gadget as CommitmentGadget<Native, Fq>>::OutputGadget,
-) {
+fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: CommitmentGadget<Native, Fq>>()
+-> (<Native as CommitmentScheme>::Output, <Gadget as CommitmentGadget<Native, Fq>>::OutputGadget) {
     let rng = &mut thread_rng();
 
     // Generate the input message and randomness.

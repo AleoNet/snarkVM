@@ -26,7 +26,7 @@ use rand_chacha::ChaChaRng;
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic13cstkmt5j4qqzfu5am8jx2rhxm0hqplyzcgzyueefz7n32xl4h53n4xmxvhjyzaq2c0f7l70a4xszau2ryc".to_string();
+        "ic1y5ctxvdmurvheq77wfq7q83c3xa6wrphqgzvag4ra4frd996z05x5hfxj3t898820kmahktp9axqzjk868z".to_string();
     let candidate_inner_circuit_id = <Testnet2 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
@@ -75,9 +75,7 @@ fn dpc_testnet2_integration_test() {
     let timestamp = Utc::now().timestamp();
     let difficulty_target =
         Blocks::<Testnet2>::compute_difficulty_target(previous_block.header(), timestamp, block_height);
-    let cumulative_weight = previous_block
-        .cumulative_weight()
-        .saturating_add((u64::MAX / difficulty_target) as u128);
+    let cumulative_weight = previous_block.cumulative_weight().saturating_add((u64::MAX / difficulty_target) as u128);
 
     // Construct the block template.
     let template = BlockTemplate::new(

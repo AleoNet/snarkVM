@@ -51,13 +51,7 @@ pub struct AffineGadget<P: ShortWeierstrassParameters, F: Field, FG: FieldGadget
 
 impl<P: ShortWeierstrassParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
     pub fn new(x: FG, y: FG, infinity: Boolean) -> Self {
-        Self {
-            x,
-            y,
-            infinity,
-            _parameters: PhantomData,
-            _engine: PhantomData,
-        }
+        Self { x, y, infinity, _parameters: PhantomData, _engine: PhantomData }
     }
 
     pub fn alloc_without_check<Fn: FnOnce() -> Result<SWProjective<P>, SynthesisError>, CS: ConstraintSystem<F>>(
@@ -128,11 +122,7 @@ where
 
     #[inline]
     fn zero<CS: ConstraintSystem<F>>(mut cs: CS) -> Result<Self, SynthesisError> {
-        Ok(Self::new(
-            FG::zero(cs.ns(|| "zero"))?,
-            FG::one(cs.ns(|| "one"))?,
-            Boolean::Constant(true),
-        ))
+        Ok(Self::new(FG::zero(cs.ns(|| "zero"))?, FG::one(cs.ns(|| "one"))?, Boolean::Constant(true)))
     }
 
     #[inline]
@@ -161,9 +151,7 @@ where
 
         let inv = x2_minus_x1.inverse(cs.ns(|| "compute inv"))?;
 
-        let lambda = FG::alloc(cs.ns(|| "lambda"), || {
-            Ok(y2_minus_y1.get_value().get()? * inv.get_value().get()?)
-        })?;
+        let lambda = FG::alloc(cs.ns(|| "lambda"), || Ok(y2_minus_y1.get_value().get()? * inv.get_value().get()?))?;
 
         let x_3 = FG::alloc(&mut cs.ns(|| "x_3"), || {
             let lambda_val = lambda.get_value().get()?;
@@ -184,9 +172,7 @@ where
         lambda.mul_equals(cs.ns(|| "check lambda"), &x2_minus_x1, &y2_minus_y1)?;
 
         // Check x3
-        let x3_plus_x1_plus_x2 = x_3
-            .add(cs.ns(|| "x3 + x1"), &self.x)?
-            .add(cs.ns(|| "x3 + x1 + x2"), &other.x)?;
+        let x3_plus_x1_plus_x2 = x_3.add(cs.ns(|| "x3 + x1"), &self.x)?.add(cs.ns(|| "x3 + x1 + x2"), &other.x)?;
         lambda.mul_equals(cs.ns(|| "check x3"), &lambda, &x3_plus_x1_plus_x2)?;
 
         // Check y3
@@ -227,20 +213,12 @@ where
         let other_x = other.x;
         let other_y = other.y;
 
-        let x2_minus_x1 = self
-            .x
-            .sub_constant(cs.ns(|| "x2 - x1"), &other_x)?
-            .negate(cs.ns(|| "neg1"))?;
-        let y2_minus_y1 = self
-            .y
-            .sub_constant(cs.ns(|| "y2 - y1"), &other_y)?
-            .negate(cs.ns(|| "neg2"))?;
+        let x2_minus_x1 = self.x.sub_constant(cs.ns(|| "x2 - x1"), &other_x)?.negate(cs.ns(|| "neg1"))?;
+        let y2_minus_y1 = self.y.sub_constant(cs.ns(|| "y2 - y1"), &other_y)?.negate(cs.ns(|| "neg2"))?;
 
         let inv = x2_minus_x1.inverse(cs.ns(|| "compute inv"))?;
 
-        let lambda = FG::alloc(cs.ns(|| "lambda"), || {
-            Ok(y2_minus_y1.get_value().get()? * inv.get_value().get()?)
-        })?;
+        let lambda = FG::alloc(cs.ns(|| "lambda"), || Ok(y2_minus_y1.get_value().get()? * inv.get_value().get()?))?;
 
         let x_3 = FG::alloc(&mut cs.ns(|| "x_3"), || {
             let lambda_val = lambda.get_value().get()?;
@@ -261,9 +239,8 @@ where
         lambda.mul_equals(cs.ns(|| "check lambda"), &x2_minus_x1, &y2_minus_y1)?;
 
         // Check x3
-        let x3_plus_x1_plus_x2 = x_3
-            .add(cs.ns(|| "x3 + x1"), &self.x)?
-            .add_constant(cs.ns(|| "x3 + x1 + x2"), &other_x)?;
+        let x3_plus_x1_plus_x2 =
+            x_3.add(cs.ns(|| "x3 + x1"), &self.x)?.add_constant(cs.ns(|| "x3 + x1 + x2"), &other_x)?;
         lambda.mul_equals(cs.ns(|| "check x3"), &lambda, &x3_plus_x1_plus_x2)?;
 
         // Check y3
@@ -313,11 +290,7 @@ where
     }
 
     fn negate<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
-        Ok(Self::new(
-            self.x.clone(),
-            self.y.negate(cs.ns(|| "negate y"))?,
-            self.infinity,
-        ))
+        Ok(Self::new(self.x.clone(), self.y.negate(cs.ns(|| "negate y"))?, self.infinity))
     }
 
     fn cost_of_add() -> usize {
@@ -384,10 +357,8 @@ where
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        self.x
-            .conditional_enforce_equal(&mut cs.ns(|| "X Coordinate Conditional Equality"), &other.x, condition)?;
-        self.y
-            .conditional_enforce_equal(&mut cs.ns(|| "Y Coordinate Conditional Equality"), &other.y, condition)?;
+        self.x.conditional_enforce_equal(&mut cs.ns(|| "X Coordinate Conditional Equality"), &other.x, condition)?;
+        self.y.conditional_enforce_equal(&mut cs.ns(|| "Y Coordinate Conditional Equality"), &other.y, condition)?;
         self.infinity.conditional_enforce_equal(
             &mut cs.ns(|| "Infinity Conditional Equality"),
             &other.infinity,
@@ -409,10 +380,8 @@ where
 {
     #[inline]
     fn enforce_not_equal<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<(), SynthesisError> {
-        self.x
-            .enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
-        self.y
-            .enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
+        self.x.enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
+        self.y.enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
         Ok(())
     }
 
@@ -539,11 +508,7 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
                 }
 
                 if b {
-                    result = if old_seen_one {
-                        result.add(cs.ns(|| "Add"), &ge)?
-                    } else {
-                        ge.clone()
-                    };
+                    result = if old_seen_one { result.add(cs.ns(|| "Add"), &ge)? } else { ge.clone() };
                 }
             }
             Ok(result)
@@ -563,11 +528,7 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
                 }
 
                 if b {
-                    result = if old_seen_one {
-                        result.add(cs.ns(|| "Add"), &ge)?
-                    } else {
-                        ge.clone()
-                    };
+                    result = if old_seen_one { result.add(cs.ns(|| "Add"), &ge)? } else { ge.clone() };
                 }
             }
             let neg_ge = ge.negate(cs.ns(|| "Negate ge"))?;
@@ -728,11 +689,7 @@ where
 
         res.extend_from_slice(&self.x.to_constraint_field(cs.ns(|| "x_to_constraint_field"))?);
         res.extend_from_slice(&self.y.to_constraint_field(cs.ns(|| "y_to_constraint_field"))?);
-        res.extend_from_slice(
-            &self
-                .infinity
-                .to_constraint_field(cs.ns(|| "infinity_to_constraint_field"))?,
-        );
+        res.extend_from_slice(&self.infinity.to_constraint_field(cs.ns(|| "infinity_to_constraint_field"))?);
 
         Ok(res)
     }

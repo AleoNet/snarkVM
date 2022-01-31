@@ -76,12 +76,8 @@ mod test {
         let a_is_eq_b = a.is_eq(cs.ns(|| "a_is_eq_b"), &b).unwrap();
         let a_is_eq_c = a.is_eq(cs.ns(|| "a_is_eq_c"), &c).unwrap();
 
-        a_is_eq_b
-            .enforce_equal(cs.ns(|| " a_is_eq_b is true"), &Boolean::constant(true))
-            .unwrap();
-        a_is_eq_c
-            .enforce_equal(cs.ns(|| " a_is_eq_c is false"), &Boolean::constant(false))
-            .unwrap();
+        a_is_eq_b.enforce_equal(cs.ns(|| " a_is_eq_b is true"), &Boolean::constant(true)).unwrap();
+        a_is_eq_c.enforce_equal(cs.ns(|| " a_is_eq_c is false"), &Boolean::constant(false)).unwrap();
 
         assert!(cs.is_satisfied());
     }

@@ -36,30 +36,15 @@ uint_impl_common!(UInt128, u128, 128);
 impl UInt for UInt128 {
     /// Returns the inverse UInt128
     fn negate(&self) -> Self {
-        Self {
-            bits: self.bits.clone(),
-            negated: true,
-            value: self.value,
-        }
+        Self { bits: self.bits.clone(), negated: true, value: self.value }
     }
 
     fn rotr(&self, by: usize) -> Self {
         let by = by % 128;
 
-        let new_bits = self
-            .bits
-            .iter()
-            .skip(by)
-            .chain(self.bits.iter())
-            .take(128)
-            .cloned()
-            .collect();
+        let new_bits = self.bits.iter().skip(by).chain(self.bits.iter()).take(128).cloned().collect();
 
-        Self {
-            bits: new_bits,
-            negated: false,
-            value: self.value.map(|v| v.rotate_right(by as u32) as u128),
-        }
+        Self { bits: new_bits, negated: false, value: self.value.map(|v| v.rotate_right(by as u32) as u128) }
     }
 
     /// Perform modular addition of several `UInt128` objects.
@@ -90,14 +75,10 @@ impl UInt for UInt128 {
                     // Subtract or add operand
                     if op.negated {
                         // Perform subtraction
-                        big_result_value
-                            .as_mut()
-                            .map(|v| v.sub_noborrow(&BigInteger256::from_u128(val)));
+                        big_result_value.as_mut().map(|v| v.sub_noborrow(&BigInteger256::from_u128(val)));
                     } else {
                         // Perform addition
-                        big_result_value
-                            .as_mut()
-                            .map(|v| v.add_nocarry(&BigInteger256::from_u128(val)));
+                        big_result_value.as_mut().map(|v| v.add_nocarry(&BigInteger256::from_u128(val)));
                     }
                 }
                 None => {
@@ -190,11 +171,7 @@ impl UInt for UInt128 {
         // Enforce that the linear combination equals zero
         cs.enforce(|| "modular addition", |lc| lc, |lc| lc, |_| lc);
 
-        Ok(Self {
-            bits: result_bits,
-            negated: false,
-            value: modular_value,
-        })
+        Ok(Self { bits: result_bits, negated: false, value: modular_value })
     }
 
     /// Bitwise multiplication of two `UInt128` objects.
@@ -297,12 +274,8 @@ impl<F: PrimeField> Pow<F> for UInt128 {
             let cond1 = Boolean::and(cs.ns(|| format!("found_one_{}", i)), &bit.not(), &found_one)?;
             let square = result.mul(cs.ns(|| format!("square_{}", i)), &result).unwrap();
 
-            result = Self::conditionally_select(
-                &mut cs.ns(|| format!("result_or_sqaure_{}", i)),
-                &cond1,
-                &result,
-                &square,
-            )?;
+            result =
+                Self::conditionally_select(&mut cs.ns(|| format!("result_or_sqaure_{}", i)), &cond1, &result, &square)?;
 
             let mul_by_self = result.mul(cs.ns(|| format!("multiply_by_self_{}", i)), self).unwrap();
 

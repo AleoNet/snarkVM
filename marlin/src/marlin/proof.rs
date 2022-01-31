@@ -42,12 +42,7 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF
         prover_messages: Vec<ProverMessage<F>>,
         pc_proof: BatchLCProof<F, CF, PC>,
     ) -> Self {
-        Self {
-            commitments,
-            evaluations,
-            prover_messages,
-            pc_proof,
-        }
+        Self { commitments, evaluations, prover_messages, pc_proof }
     }
 
     /// Prints information about the size of the proof.

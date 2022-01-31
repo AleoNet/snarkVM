@@ -115,11 +115,7 @@ impl<T: CanonicalSerialize> CanonicalSerialize for Option<T> {
 
     #[inline]
     fn serialized_size(&self) -> usize {
-        8 + if let Some(item) = self {
-            item.serialized_size()
-        } else {
-            0
-        }
+        8 + if let Some(item) = self { item.serialized_size() } else { 0 }
     }
 
     #[inline]
@@ -145,11 +141,7 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Option<T> {
     #[inline]
     fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let is_some = bool::deserialize(reader)?;
-        let data = if is_some {
-            Some(T::deserialize_uncompressed(reader)?)
-        } else {
-            None
-        };
+        let data = if is_some { Some(T::deserialize_uncompressed(reader)?) } else { None };
 
         Ok(data)
     }
@@ -458,10 +450,7 @@ where
     }
 
     fn serialized_size(&self) -> usize {
-        8 + self
-            .iter()
-            .map(|(k, v)| k.serialized_size() + v.serialized_size())
-            .sum::<usize>()
+        8 + self.iter().map(|(k, v)| k.serialized_size() + v.serialized_size()).sum::<usize>()
     }
 }
 
@@ -525,11 +514,7 @@ mod test {
 
     #[test]
     fn test_tuple_vec() {
-        test_serialize(vec![
-            (123u64, 234u32, 999u16),
-            (123u64, 234u32, 999u16),
-            (123u64, 234u32, 999u16),
-        ]);
+        test_serialize(vec![(123u64, 234u32, 999u16), (123u64, 234u32, 999u16), (123u64, 234u32, 999u16)]);
     }
 
     #[test]

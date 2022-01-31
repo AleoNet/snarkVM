@@ -40,23 +40,16 @@ macro_rules! impl_local {
 
                 let metadata: serde_json::Value =
                     serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
-                let expected_checksum: String = metadata[concat!($ftype, "_checksum")]
-                    .as_str()
-                    .expect("Failed to parse checksum")
-                    .to_string();
-                let expected_size: usize = metadata[concat!($ftype, "_size")]
-                    .to_string()
-                    .parse()
-                    .expect("Failed to retrieve the file size");
+                let expected_checksum: String =
+                    metadata[concat!($ftype, "_checksum")].as_str().expect("Failed to parse checksum").to_string();
+                let expected_size: usize =
+                    metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
 
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype));
 
                 // Ensure the size matches.
                 if expected_size != buffer.len() {
-                    return Err(crate::errors::ParameterError::SizeMismatch(
-                        expected_size,
-                        buffer.len(),
-                    ));
+                    return Err(crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
                 }
 
                 // Ensure the checksum matches.

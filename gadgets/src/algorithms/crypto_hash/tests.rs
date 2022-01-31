@@ -47,9 +47,7 @@ fn absorb_test() {
     constraint_sponge.absorb(cs.ns(|| "absorb"), absorb_var.iter()).unwrap();
 
     let native_squeeze = native_sponge.squeeze_field_elements(1);
-    let constraint_squeeze = constraint_sponge
-        .squeeze_field_elements(cs.ns(|| "squeeze"), 1)
-        .unwrap();
+    let constraint_squeeze = constraint_sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1).unwrap();
 
     assert_eq!(constraint_squeeze[0].get_value().unwrap(), native_squeeze[0]);
     assert!(cs.is_satisfied());

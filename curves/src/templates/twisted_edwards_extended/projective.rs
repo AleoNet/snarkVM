@@ -117,12 +117,7 @@ impl<P: Parameters> Default for Projective<P> {
 
 impl<P: Parameters> Zero for Projective<P> {
     fn zero() -> Self {
-        Self::new(
-            P::BaseField::zero(),
-            P::BaseField::one(),
-            P::BaseField::zero(),
-            P::BaseField::one(),
-        )
+        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero(), P::BaseField::one())
     }
 
     fn is_zero(&self) -> bool {

@@ -54,11 +54,7 @@ impl<
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            crh: value_gen()?.borrow().clone(),
-            _field: PhantomData,
-            _group: PhantomData,
-        })
+        Ok(Self { crh: value_gen()?.borrow().clone(), _field: PhantomData, _group: PhantomData })
     }
 
     fn alloc<
@@ -136,9 +132,8 @@ impl<
         }
 
         // Allocate new variable for the result.
-        let input_in_bits = input_in_bits
-            .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-            .map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
+        let input_in_bits =
+            input_in_bits.chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE).map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
 
         GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
     }

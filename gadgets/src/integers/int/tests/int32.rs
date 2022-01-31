@@ -213,10 +213,7 @@ fn test_int32_sub() {
         check_all_allocated_bits(expected, r);
 
         // Flip a bit_gadget and see if the subtraction constraint still works
-        if cs
-            .get("subtraction/add_complement/result bit_gadget 0/boolean")
-            .is_zero()
-        {
+        if cs.get("subtraction/add_complement/result bit_gadget 0/boolean").is_zero() {
             cs.set("subtraction/add_complement/result bit_gadget 0/boolean", Fr::one());
         } else {
             cs.set("subtraction/add_complement/result bit_gadget 0/boolean", Fr::zero());
@@ -410,19 +407,10 @@ fn test_int32_pow() {
         check_all_allocated_bits(expected, r);
 
         // Flip a bit_gadget and see if the exponentiation constraint still works
-        if cs
-            .get("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean")
-            .is_zero()
-        {
-            cs.set(
-                "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
-                Fr::one(),
-            );
+        if cs.get("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean").is_zero() {
+            cs.set("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set(
-                "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
-                Fr::zero(),
-            );
+            cs.set("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());

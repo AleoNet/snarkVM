@@ -153,9 +153,7 @@ impl<
 
         // Compute BHP CRH.
         let input = input.to_vec().to_bits_le(cs.ns(|| "to_bits"))?;
-        let mut result = self
-            .bhp_crh_gadget
-            .check_evaluation_gadget_on_bits_inner(cs.ns(|| "BHP hash"), input)?;
+        let mut result = self.bhp_crh_gadget.check_evaluation_gadget_on_bits_inner(cs.ns(|| "BHP hash"), input)?;
 
         // Compute h^r.
         let rand_bits = randomness.0.iter().flat_map(|byte| byte.to_bits_le());

@@ -285,9 +285,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         let mut query_to_labels_map = BTreeMap::new();
 
         for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
+            let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
 
@@ -298,9 +296,8 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             let mut query_comms = Vec::with_capacity(labels.len());
 
             for label in labels {
-                let (polynomial, rand, comm) = poly_rand_comm.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let (polynomial, rand, comm) =
+                    poly_rand_comm.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                 query_polys.push(*polynomial);
                 query_rands.push(*rand);
@@ -309,15 +306,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
 
             pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
-                let proof = Self::open(
-                    ck,
-                    query_polys,
-                    query_comms,
-                    query,
-                    opening_challenge,
-                    query_rands,
-                    None,
-                );
+                let proof = Self::open(ck, query_polys, query_comms, query, opening_challenge, query_rands, None);
                 end_timer!(proof_time);
                 proof
             });
@@ -360,9 +349,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
         for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
+            let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
 
@@ -376,15 +363,11 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::with_capacity(labels.len());
             let mut values = Vec::with_capacity(labels.len());
             for label in labels.into_iter() {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                 let v_i = evaluations
                     .get(&(label.clone(), *query))
-                    .ok_or(Error::MissingEvaluation {
-                        label: label.to_string(),
-                    })?;
+                    .ok_or(Error::MissingEvaluation { label: label.to_string() })?;
 
                 comms.push(commitment);
                 values.push(*v_i);
@@ -419,19 +402,8 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         let polynomials: Vec<_> = polynomials.into_iter().collect();
         let poly_query_set = lc_query_set_to_poly_query_set(linear_combinations.iter().copied(), query_set);
         let poly_evals = evaluate_query_set(polynomials.iter().copied(), &poly_query_set);
-        let proof = Self::batch_open(
-            ck,
-            polynomials,
-            commitments,
-            &poly_query_set,
-            opening_challenge,
-            rands,
-            rng,
-        )?;
-        Ok(BatchLCProof {
-            proof,
-            evaluations: Some(poly_evals.values().copied().collect()),
-        })
+        let proof = Self::batch_open(ck, polynomials, commitments, &poly_query_set, opening_challenge, rands, rng)?;
+        Ok(BatchLCProof { proof, evaluations: Some(poly_evals.values().copied().collect()) })
     }
 
     /// Checks that `evaluations` are the true evaluations at `query_set` of the
@@ -450,37 +422,28 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     where
         Self::Commitment: 'a,
     {
-        let BatchLCProof {
-            proof,
-            evaluations: evals,
-        } = proof;
+        let BatchLCProof { proof, evaluations: evals } = proof;
 
         let lc_s: BTreeMap<_, _> = linear_combinations.into_iter().map(|lc| (lc.label(), lc)).collect();
 
         let poly_query_set = lc_query_set_to_poly_query_set(lc_s.values().copied(), eqn_query_set);
-        let poly_evals: Evaluations<_> = poly_query_set
-            .iter()
-            .map(|(_, point)| point)
-            .cloned()
-            .zip(evals.clone().unwrap())
-            .collect();
+        let poly_evals: Evaluations<_> =
+            poly_query_set.iter().map(|(_, point)| point).cloned().zip(evals.clone().unwrap()).collect();
 
         for &(ref lc_label, (_, point)) in eqn_query_set {
             if let Some(lc) = lc_s.get(lc_label) {
                 let claimed_rhs = *eqn_evaluations
                     .get(&(lc_label.clone(), point))
-                    .ok_or(Error::MissingEvaluation {
-                        label: lc_label.to_string(),
-                    })?;
+                    .ok_or(Error::MissingEvaluation { label: lc_label.to_string() })?;
 
                 let mut actual_rhs = F::zero();
 
                 for (coeff, label) in lc.iter() {
                     let eval = match label {
                         LCTerm::One => F::one(),
-                        LCTerm::PolyLabel(l) => *poly_evals
-                            .get(&(l.clone(), point))
-                            .ok_or(Error::MissingEvaluation { label: l.clone() })?,
+                        LCTerm::PolyLabel(l) => {
+                            *poly_evals.get(&(l.clone(), point)).ok_or(Error::MissingEvaluation { label: l.clone() })?
+                        }
                     };
 
                     actual_rhs += &(*coeff * eval);
@@ -492,15 +455,8 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             }
         }
 
-        let pc_result = Self::batch_check(
-            vk,
-            commitments,
-            &poly_query_set,
-            &poly_evals,
-            proof,
-            opening_challenge,
-            rng,
-        )?;
+        let pc_result =
+            Self::batch_check(vk, commitments, &poly_query_set, &poly_evals, proof, opening_challenge, rng)?;
         if !pc_result {
             eprintln!("Evaluation proofs failed to verify");
             return Ok(false);
@@ -649,15 +605,7 @@ pub mod tests {
             println!("Generated query set");
 
             let opening_challenge = F::rand(rng);
-            let proof = PC::batch_open(
-                &ck,
-                &polynomials,
-                &comms,
-                &query_set,
-                opening_challenge,
-                &rands,
-                Some(rng),
-            )?;
+            let proof = PC::batch_open(&ck, &polynomials, &comms, &query_set, opening_challenge, &rands, Some(rng))?;
             let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
             assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
         }
@@ -726,20 +674,13 @@ pub mod tests {
                     None
                 };
 
-                let hiding_bound = if num_points_in_query_set >= degree {
-                    Some(degree)
-                } else {
-                    Some(num_points_in_query_set)
-                };
+                let hiding_bound =
+                    if num_points_in_query_set >= degree { Some(degree) } else { Some(num_points_in_query_set) };
                 println!("Hiding bound: {:?}", hiding_bound);
 
                 polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
             }
-            let supported_hiding_bound = polynomials
-                .iter()
-                .map(|p| p.hiding_bound().unwrap_or(0))
-                .max()
-                .unwrap_or(0);
+            let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
             println!("supported degree: {:?}", supported_degree);
             println!("supported hiding bound: {:?}", supported_hiding_bound);
             println!("num_points_in_query_set: {:?}", num_points_in_query_set);
@@ -763,15 +704,7 @@ pub mod tests {
             println!("Generated query set");
 
             let opening_challenge = F::rand(rng);
-            let proof = PC::batch_open(
-                &ck,
-                &polynomials,
-                &comms,
-                &query_set,
-                opening_challenge,
-                &rands,
-                Some(rng),
-            )?;
+            let proof = PC::batch_open(&ck, &polynomials, &comms, &query_set, opening_challenge, &rands, Some(rng))?;
             let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
             if !result {
                 println!(
@@ -861,20 +794,13 @@ pub mod tests {
                     None
                 };
 
-                let hiding_bound = if num_points_in_query_set >= degree {
-                    Some(degree)
-                } else {
-                    Some(num_points_in_query_set)
-                };
+                let hiding_bound =
+                    if num_points_in_query_set >= degree { Some(degree) } else { Some(num_points_in_query_set) };
                 println!("Hiding bound: {:?}", hiding_bound);
 
                 polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
             }
-            let supported_hiding_bound = polynomials
-                .iter()
-                .map(|p| p.hiding_bound().unwrap_or(0))
-                .max()
-                .unwrap_or(0);
+            let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
             println!("supported degree: {:?}", supported_degree);
             println!("supported hiding bound: {:?}", supported_hiding_bound);
             println!("num_points_in_query_set: {:?}", num_points_in_query_set);

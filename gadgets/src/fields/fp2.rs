@@ -43,11 +43,7 @@ pub struct Fp2Gadget<P: Fp2Parameters<Fp = F>, F: PrimeField> {
 
 impl<P: Fp2Parameters<Fp = F>, F: PrimeField> Fp2Gadget<P, F> {
     pub fn new(c0: FpGadget<F>, c1: FpGadget<F>) -> Self {
-        Self {
-            c0,
-            c1,
-            _params: PhantomData,
-        }
+        Self { c0, c1, _params: PhantomData }
     }
 
     /// Multiply a FpGadget by quadratic nonresidue P::NONRESIDUE.
@@ -191,9 +187,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
             let b0_plus_b1 = other.c0.add(mul_cs.ns(|| "b0 + b1"), &other.c1)?;
             let a0_plus_a1_times_b0_plus_b1 =
                 a0_plus_a1.mul(&mut mul_cs.ns(|| "(a0 + a1) * (b0 + b1)"), &b0_plus_b1)?;
-            a0_plus_a1_times_b0_plus_b1
-                .sub(mul_cs.ns(|| "res - v0"), &v0)?
-                .sub(mul_cs.ns(|| "res - v0 - v1"), &v1)?
+            a0_plus_a1_times_b0_plus_b1.sub(mul_cs.ns(|| "res - v0"), &v0)?.sub(mul_cs.ns(|| "res - v0 - v1"), &v1)?
         };
         Ok(Self::new(c0, c1))
     }
@@ -247,9 +241,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
         let mut v0 = self.c0.mul(cs.ns(|| "v0"), &self.c1)?;
         let a0_plus_a1 = self.c0.add(cs.ns(|| "a0 + a1"), &self.c1)?;
 
-        let _ = self
-            .c1
-            .mul_by_constant_in_place(cs.ns(|| "non_residue * a1"), &P::NONRESIDUE)?;
+        let _ = self.c1.mul_by_constant_in_place(cs.ns(|| "non_residue * a1"), &P::NONRESIDUE)?;
         let a0_plus_non_residue_c1 = self.c0.add(cs.ns(|| "a0 + non_residue * a1"), &self.c1)?;
         let one_plus_non_residue_v0 =
             v0.mul_by_constant(cs.ns(|| "1 + non_residue * v0"), &(P::Fp::one() + P::NONRESIDUE))?;
@@ -266,9 +258,8 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
 
     #[inline]
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
-        let inverse = Self::alloc(&mut cs.ns(|| "alloc inverse"), || {
-            self.get_value().and_then(|val| val.inverse()).get()
-        })?;
+        let inverse =
+            Self::alloc(&mut cs.ns(|| "alloc inverse"), || self.get_value().and_then(|val| val.inverse()).get())?;
 
         // Karatsuba multiplication for Fp2 with the inverse:
         //     v0 = A.c0 * B.c0
@@ -327,9 +318,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
 
         // Perform second check
         let non_residue_times_v1 = v1.mul_by_constant(mul_cs.ns(|| "non_residue * v0"), &P::NONRESIDUE)?;
-        let rhs = result
-            .c0
-            .sub(mul_cs.ns(|| "sub from result.c0"), &non_residue_times_v1)?;
+        let rhs = result.c0.sub(mul_cs.ns(|| "sub from result.c0"), &non_residue_times_v1)?;
         self.c0.mul_equals(mul_cs.ns(|| "second check"), &other.c0, &rhs)?;
 
         // Last check
@@ -362,8 +351,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
         cs: CS,
         power: usize,
     ) -> Result<&mut Self, SynthesisError> {
-        self.c1
-            .mul_by_constant_in_place(cs, &P::FROBENIUS_COEFF_FP2_C1[power % 2])?;
+        self.c1.mul_by_constant_in_place(cs, &P::FROBENIUS_COEFF_FP2_C1[power % 2])?;
         Ok(self)
     }
 
@@ -439,10 +427,8 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ConditionalEqGadget<F> for Fp2Gadg
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        self.c0
-            .conditional_enforce_equal(&mut cs.ns(|| "c0"), &other.c0, condition)?;
-        self.c1
-            .conditional_enforce_equal(&mut cs.ns(|| "c1"), &other.c1, condition)?;
+        self.c0.conditional_enforce_equal(&mut cs.ns(|| "c0"), &other.c0, condition)?;
+        self.c1.conditional_enforce_equal(&mut cs.ns(|| "c1"), &other.c1, condition)?;
         Ok(())
     }
 
@@ -514,11 +500,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ToBytesGadget<F> for Fp2Gadget<P, 
 
 impl<P: Fp2Parameters<Fp = F>, F: PrimeField> Clone for Fp2Gadget<P, F> {
     fn clone(&self) -> Self {
-        Self {
-            c0: self.c0.clone(),
-            c1: self.c1.clone(),
-            _params: PhantomData,
-        }
+        Self { c0: self.c0.clone(), c1: self.c1.clone(), _params: PhantomData }
     }
 }
 
@@ -594,10 +576,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> AllocGadget<Fp2<P>, F> for Fp2Gadg
                 let fe = *fe.borrow();
                 (Ok(fe.c0), Ok(fe.c1))
             }
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
+            Err(_) => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
         };
 
         let c0 = FpGadget::alloc_constant(&mut cs.ns(|| "c0"), || c0)?;
@@ -616,10 +595,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> AllocGadget<Fp2<P>, F> for Fp2Gadg
                 let fe = *fe.borrow();
                 (Ok(fe.c0), Ok(fe.c1))
             }
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
+            Err(_) => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
         };
 
         let c0 = FpGadget::alloc(&mut cs.ns(|| "c0"), || c0)?;
@@ -638,10 +614,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> AllocGadget<Fp2<P>, F> for Fp2Gadg
                 let fe = *fe.borrow();
                 (Ok(fe.c0), Ok(fe.c1))
             }
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
+            Err(_) => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
         };
 
         let c0 = FpGadget::alloc_input(&mut cs.ns(|| "c0"), || c0)?;

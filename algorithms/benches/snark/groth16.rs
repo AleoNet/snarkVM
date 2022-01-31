@@ -43,10 +43,8 @@ impl<F: Field> ConstraintSynthesizer<F> for Benchmark<F> {
 
         let mut variables: Vec<_> = Vec::with_capacity(self.inputs.len());
         for (i, input) in self.inputs.iter().cloned().enumerate() {
-            let input_var = cs.alloc_input(
-                || format!("input_{}", i),
-                || input.ok_or(SynthesisError::AssignmentMissing),
-            )?;
+            let input_var =
+                cs.alloc_input(|| format!("input_{}", i), || input.ok_or(SynthesisError::AssignmentMissing))?;
             variables.push((input, input_var));
         }
 
@@ -55,10 +53,8 @@ impl<F: Field> ConstraintSynthesizer<F> for Benchmark<F> {
                 let (input_1_val, input_1_var) = variables[i];
                 let (input_2_val, input_2_var) = variables[i + 1];
                 let result_val = input_1_val.and_then(|input_1| input_2_val.map(|input_2| input_1 * input_2));
-                let result_var = cs.alloc(
-                    || format!("result_{}", i),
-                    || result_val.ok_or(SynthesisError::AssignmentMissing),
-                )?;
+                let result_var =
+                    cs.alloc(|| format!("result_{}", i), || result_val.ok_or(SynthesisError::AssignmentMissing))?;
                 cs.enforce(
                     || format!("enforce_constraint_{}", i),
                     |lc| lc + input_1_var,
@@ -85,10 +81,7 @@ fn snark_setup(c: &mut Criterion) {
     c.bench_function("snark_setup", move |b| {
         b.iter(|| {
             Groth16SNARK::setup(
-                &Benchmark::<Fr> {
-                    inputs: vec![None; num_inputs],
-                    num_constraints,
-                },
+                &Benchmark::<Fr> { inputs: vec![None; num_inputs], num_constraints },
                 &mut SRS::CircuitSpecific(rng),
             )
             .unwrap()
@@ -106,26 +99,13 @@ fn snark_prove(c: &mut Criterion) {
     }
 
     let params = Groth16SNARK::setup(
-        &Benchmark::<Fr> {
-            inputs: vec![None; num_inputs],
-            num_constraints,
-        },
+        &Benchmark::<Fr> { inputs: vec![None; num_inputs], num_constraints },
         &mut SRS::CircuitSpecific(rng),
     )
     .unwrap();
 
     c.bench_function("snark_prove", move |b| {
-        b.iter(|| {
-            Groth16SNARK::prove(
-                &params.0,
-                &Benchmark {
-                    inputs: inputs.clone(),
-                    num_constraints,
-                },
-                rng,
-            )
-            .unwrap()
-        })
+        b.iter(|| Groth16SNARK::prove(&params.0, &Benchmark { inputs: inputs.clone(), num_constraints }, rng).unwrap())
     });
 }
 

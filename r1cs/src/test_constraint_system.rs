@@ -107,10 +107,7 @@ impl<F: Field> Default for TestConstraintSystem<F> {
         let mut interned_path_segments = IndexSet::with_hasher(FxBuildHasher::default());
         let path_segment = "ONE".to_owned();
         let interned_path_segment = interned_path_segments.insert_full(path_segment).0;
-        let interned_path = InternedPath {
-            parent_namespace: 0,
-            last_segment: interned_path_segment,
-        };
+        let interned_path = InternedPath { parent_namespace: 0, last_segment: interned_path_segment };
 
         cfg_if! {
             if #[cfg(debug_assertions)] {
@@ -190,19 +187,13 @@ impl<F: Field> TestConstraintSystem<F> {
     }
 
     fn unintern_path(&self, interned_path: InternedPath) -> String {
-        let last_segment = self
-            .interned_path_segments
-            .get_index(interned_path.last_segment)
-            .unwrap();
+        let last_segment = self.interned_path_segments.get_index(interned_path.last_segment).unwrap();
         let mut reversed_uninterned_segments = vec![last_segment];
 
         let mut parent_ns = interned_path.parent_namespace;
         while parent_ns != 0 {
             let interned_parent_ns = self.named_objects.get_index(parent_ns).unwrap().0;
-            let parent_segment = self
-                .interned_path_segments
-                .get_index(interned_parent_ns.last_segment)
-                .unwrap();
+            let parent_segment = self.interned_path_segments.get_index(interned_parent_ns.last_segment).unwrap();
             reversed_uninterned_segments.push(parent_segment);
             parent_ns = interned_parent_ns.parent_namespace;
         }
@@ -275,10 +266,7 @@ impl<F: Field> TestConstraintSystem<F> {
                 Index::Public(index) => self.public_variables[index] = interned_field,
                 Index::Private(index) => self.private_variables[index] = interned_field,
             },
-            Some(e) => panic!(
-                "tried to set path `{}` to value, but `{:?}` already exists there.",
-                path, e
-            ),
+            Some(e) => panic!("tried to set path `{}` to value, but `{:?}` already exists there.", path, e),
             _ => panic!("no variable exists at path: {}", path),
         }
     }
@@ -291,10 +279,7 @@ impl<F: Field> TestConstraintSystem<F> {
                 Index::Public(index) => self.public_variables[index],
                 Index::Private(index) => self.private_variables[index],
             },
-            Some(e) => panic!(
-                "tried to get value of path `{}`, but `{:?}` exists there (not a variable)",
-                path, e
-            ),
+            Some(e) => panic!("tried to get value of path `{}`, but `{:?}` exists there (not a variable)", path, e),
             _ => panic!("no variable exists at path: {}", path),
         };
 
@@ -311,10 +296,7 @@ impl<F: Field> TestConstraintSystem<F> {
             }
             Entry::Occupied(e) => {
                 let interned_segments = e.remove_entry().0;
-                panic!(
-                    "tried to create object at existing path: {}",
-                    self.unintern_path(interned_segments)
-                );
+                panic!("tried to create object at existing path: {}", self.unintern_path(interned_segments));
             }
         }
     }
@@ -330,10 +312,8 @@ impl<F: Field> TestConstraintSystem<F> {
         // only perform the check for segments not seen before
         assert!(!new || !new_segment.contains('/'), "'/' is not allowed in names");
 
-        let interned_path = InternedPath {
-            parent_namespace: self.current_namespace.idx(),
-            last_segment: interned_segment,
-        };
+        let interned_path =
+            InternedPath { parent_namespace: self.current_namespace.idx(), last_segment: interned_segment };
 
         cfg_if! {
             if #[cfg(debug_assertions)] {
@@ -371,11 +351,8 @@ impl<F: Field> TestConstraintSystem<F> {
 
     #[inline]
     fn register_object_in_namespace(&mut self, named_obj: NamedObject) {
-        if let NamedObject::Namespace(ref mut ns) = self
-            .named_objects
-            .get_index_mut(self.current_namespace.idx())
-            .unwrap()
-            .1
+        if let NamedObject::Namespace(ref mut ns) =
+            self.named_objects.get_index_mut(self.current_namespace.idx()).unwrap().1
         {
             ns.push(named_obj);
         }
@@ -467,11 +444,8 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
 
     #[cfg(not(debug_assertions))]
     fn pop_namespace(&mut self) {
-        let namespace = if let NamedObject::Namespace(no) = self
-            .named_objects
-            .swap_remove_index(self.current_namespace.idx())
-            .unwrap()
-            .1
+        let namespace = if let NamedObject::Namespace(no) =
+            self.named_objects.swap_remove_index(self.current_namespace.idx()).unwrap().1
         {
             no
         } else {

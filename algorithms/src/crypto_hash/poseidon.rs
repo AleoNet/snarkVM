@@ -65,13 +65,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonParameters
         for item in &mds {
             assert_eq!(item.len(), RATE + CAPACITY);
         }
-        Self {
-            full_rounds,
-            partial_rounds,
-            alpha,
-            mds,
-            ark,
-        }
+        Self { full_rounds, partial_rounds, alpha, mds, ark }
     }
 }
 
@@ -142,13 +136,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> FromBytes for Pose
             return Err(std::io::ErrorKind::Other.into());
         }
 
-        Ok(Self::new(
-            full_rounds as usize,
-            partial_rounds as usize,
-            alpha,
-            mds,
-            ark,
-        ))
+        Ok(Self::new(full_rounds as usize, partial_rounds as usize, alpha, mds, ark))
     }
 }
 
@@ -178,10 +166,7 @@ pub struct State<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Default for State<F, RATE, CAPACITY> {
     fn default() -> Self {
-        Self {
-            capacity_state: [F::zero(); CAPACITY],
-            rate_state: [F::zero(); RATE],
-        }
+        Self { capacity_state: [F::zero(); CAPACITY], rate_state: [F::zero(); RATE] }
     }
 }
 
@@ -200,26 +185,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAP
     pub fn range(&self, range: Range<usize>) -> impl Iterator<Item = &F> {
         let start = range.start;
         let end = range.end;
-        assert!(
-            start < end,
-            "start < end in range: start is {} but end is {}",
-            start,
-            end
-        );
-        assert!(
-            end <= RATE + CAPACITY,
-            "Range out of bounds: range is {:?} but length is {}",
-            range,
-            RATE + CAPACITY
-        );
+        assert!(start < end, "start < end in range: start is {} but end is {}", start, end);
+        assert!(end <= RATE + CAPACITY, "Range out of bounds: range is {:?} but length is {}", range, RATE + CAPACITY);
         if start >= CAPACITY {
             // Our range is contained entirely in `rate_state`
             self.rate_state[(start - CAPACITY)..(end - CAPACITY)].iter().chain(&[]) // This hack is need for `impl Iterator` to work.
         } else if end > CAPACITY {
             // Our range spans both arrays
-            self.capacity_state[start..]
-                .iter()
-                .chain(self.rate_state[..(end - CAPACITY)].iter())
+            self.capacity_state[start..].iter().chain(self.rate_state[..(end - CAPACITY)].iter())
         } else {
             debug_assert!(end <= CAPACITY);
             debug_assert!(start < CAPACITY);
@@ -233,33 +206,15 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Index<usize> for S
     type Output = F;
 
     fn index(&self, index: usize) -> &Self::Output {
-        assert!(
-            index < RATE + CAPACITY,
-            "Index out of bounds: index is {} but length is {}",
-            index,
-            RATE + CAPACITY
-        );
-        if index < CAPACITY {
-            &self.capacity_state[index]
-        } else {
-            &self.rate_state[index - CAPACITY]
-        }
+        assert!(index < RATE + CAPACITY, "Index out of bounds: index is {} but length is {}", index, RATE + CAPACITY);
+        if index < CAPACITY { &self.capacity_state[index] } else { &self.rate_state[index - CAPACITY] }
     }
 }
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> for State<F, RATE, CAPACITY> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        assert!(
-            index < RATE + CAPACITY,
-            "Index out of bounds: index is {} but length is {}",
-            index,
-            RATE + CAPACITY
-        );
-        if index < CAPACITY {
-            &mut self.capacity_state[index]
-        } else {
-            &mut self.rate_state[index - CAPACITY]
-        }
+        assert!(index < RATE + CAPACITY, "Index out of bounds: index is {} but length is {}", index, RATE + CAPACITY);
+        if index < CAPACITY { &mut self.capacity_state[index] } else { &mut self.rate_state[index - CAPACITY] }
     }
 }
 
@@ -288,16 +243,9 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     #[inline]
     fn apply_mds(&self, state: &mut State<F, RATE, CAPACITY>) {
         let mut new_state = State::default();
-        new_state
-            .iter_mut()
-            .zip(&self.parameters.mds)
-            .for_each(|(new_elem, mds_row)| {
-                *new_elem = state
-                    .iter()
-                    .zip(mds_row)
-                    .map(|(state_elem, &mds_elem)| mds_elem * state_elem)
-                    .sum::<F>();
-            });
+        new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
+            *new_elem = state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| mds_elem * state_elem).sum::<F>();
+        });
         *state = new_state;
     }
 
@@ -343,9 +291,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
             // Are we in the last chunk?
             // If so, let's wrap up.
             if i == total_num_chunks - 1 {
-                self.mode = DuplexSpongeMode::Absorbing {
-                    next_absorb_index: rate_start + chunk.len(),
-                };
+                self.mode = DuplexSpongeMode::Absorbing { next_absorb_index: rate_start + chunk.len() };
                 return;
             } else {
                 self.permute();
@@ -407,9 +353,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
             // Are we in the last chunk?
             // If so, let's wrap up.
             if i == total_num_chunks - 1 {
-                self.mode = DuplexSpongeMode::Squeezing {
-                    next_squeeze_index: (rate_start + chunk.len()),
-                };
+                self.mode = DuplexSpongeMode::Squeezing { next_squeeze_index: (rate_start + chunk.len()) };
                 return;
             } else {
                 self.permute();
@@ -429,11 +373,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize> PoseidonSponge<F, RAT
         let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
-        Self {
-            parameters,
-            state,
-            mode,
-        }
+        Self { parameters, state, mode }
     }
 }
 
@@ -451,11 +391,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
         let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
-        Self {
-            parameters: parameters.clone(),
-            state,
-            mode,
-        }
+        Self { parameters: parameters.clone(), state, mode }
     }
 
     fn absorb(&mut self, input: &[F]) {
@@ -505,11 +441,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize> DefaultCapacityAlgebr
         let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
-        Self {
-            parameters,
-            state,
-            mode,
-        }
+        Self { parameters, state, mode }
     }
 }
 
@@ -531,9 +463,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 
     /// Initializes a new instance of the cryptographic hash function.
     fn setup() -> Self {
-        Self {
-            parameters: Arc::new(F::get_default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()),
-        }
+        Self { parameters: Arc::new(F::get_default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()) }
     }
 
     fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
@@ -551,9 +481,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     From<PoseidonParameters<F, RATE, 1>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     fn from(parameters: PoseidonParameters<F, RATE, 1>) -> Self {
-        Self {
-            parameters: Arc::new(parameters),
-        }
+        Self { parameters: Arc::new(parameters) }
     }
 }
 
@@ -597,11 +525,7 @@ pub trait PoseidonDefaultParametersField: PrimeField {
 pub fn get_default_poseidon_parameters_internal<F: PrimeField, P: PoseidonDefaultParameters, const RATE: usize>(
     optimized_for_weights: bool,
 ) -> Option<PoseidonParameters<F, RATE, 1>> {
-    let params_set = if !optimized_for_weights {
-        P::PARAMS_OPT_FOR_CONSTRAINTS
-    } else {
-        P::PARAMS_OPT_FOR_WEIGHTS
-    };
+    let params_set = if !optimized_for_weights { P::PARAMS_OPT_FOR_CONSTRAINTS } else { P::PARAMS_OPT_FOR_WEIGHTS };
 
     params_set.iter().find(|p| p.rate == RATE).map(|p| {
         let (ark, mds) = find_poseidon_ark_and_mds::<F, RATE>(

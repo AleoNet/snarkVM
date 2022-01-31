@@ -16,12 +16,7 @@
 
 #![deny(unused_import_braces, unused_qualifications, trivial_casts, trivial_numeric_casts)]
 #![deny(unused_qualifications, variant_size_differences, stable_features)]
-#![deny(
-    non_shorthand_field_patterns,
-    unused_attributes,
-    unused_imports,
-    unused_extern_crates
-)]
+#![deny(non_shorthand_field_patterns, unused_attributes, unused_imports, unused_extern_crates)]
 #![deny(renamed_and_removed_lints, stable_features, unused_allocation, unused_comparisons)]
 #![deny(unused_must_use, unused_mut, unused_unsafe, private_in_public, unsafe_code)]
 
@@ -171,11 +166,7 @@ fn test_mimc_groth_16() {
 
     // Create parameters for our circuit
     let params = {
-        let c = MiMCDemo::<Fr> {
-            xl: None,
-            xr: None,
-            constants: &constants,
-        };
+        let c = MiMCDemo::<Fr> { xl: None, xr: None, constants: &constants };
 
         generate_random_parameters::<Bls12_377, _, _>(&c, rng).unwrap()
     };
@@ -206,11 +197,7 @@ fn test_mimc_groth_16() {
         {
             // Create an instance of our circuit (with the
             // witness)
-            let c = MiMCDemo {
-                xl: Some(xl),
-                xr: Some(xr),
-                constants: &constants,
-            };
+            let c = MiMCDemo { xl: Some(xl), xr: Some(xr), constants: &constants };
 
             // Create a groth16 proof with our parameters.
             let proof = create_random_proof(&c, &params, rng).unwrap();

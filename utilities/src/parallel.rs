@@ -29,9 +29,7 @@ impl<'a, T> ExecutionPool<'a, T> {
     }
 
     pub fn with_capacity(cap: usize) -> Self {
-        Self {
-            jobs: Vec::with_capacity(cap),
-        }
+        Self { jobs: Vec::with_capacity(cap) }
     }
 
     #[cfg(feature = "parallel")]
@@ -51,10 +49,7 @@ impl<'a, T> ExecutionPool<'a, T> {
         #[cfg(feature = "parallel")]
         {
             use rayon::prelude::*;
-            self.jobs
-                .into_par_iter()
-                .map(|job| execute_with_threads(job, max_available_threads()))
-                .collect()
+            self.jobs.into_par_iter().map(|job| execute_with_threads(job, max_available_threads())).collect()
         }
         #[cfg(not(feature = "parallel"))]
         {
@@ -94,10 +89,7 @@ pub fn execute_with_max_available_threads(f: impl FnOnce() + Send) {
 #[cfg(feature = "parallel")]
 #[inline(always)]
 fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_threads: usize) -> T {
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .build()
-        .unwrap();
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
     pool.install(f)
 }
 

@@ -38,10 +38,7 @@ fn allocation_test<TargetField: PrimeField, BaseField: PrimeField, CS: Constrain
 
     let a_actual = a.value().unwrap();
     let a_expected = a_native;
-    assert!(
-        a_actual.eq(&a_expected),
-        "allocated value does not equal the expected value"
-    );
+    assert!(a_actual.eq(&a_expected), "allocated value does not equal the expected value");
 }
 
 fn addition_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintSystem<BaseField>, R: RngCore>(
@@ -101,9 +98,7 @@ fn equality_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintS
     let a_times_b_expected_gadget =
         NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc a * b"), || Ok(a_times_b_expected)).unwrap();
 
-    a_times_b
-        .enforce_equal(cs.ns(|| "enforce_equal"), &a_times_b_expected_gadget)
-        .unwrap();
+    a_times_b.enforce_equal(cs.ns(|| "enforce_equal"), &a_times_b_expected_gadget).unwrap();
 }
 
 fn edge_cases_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintSystem<BaseField>, R: RngCore>(
@@ -226,21 +221,12 @@ fn distribution_law_test<
     assert!(a_plus_b.value().unwrap().eq(&a_plus_b_native), "a + b doesn't match");
     assert!(a_times_c.value().unwrap().eq(&a_times_c_native), "a * c doesn't match");
     assert!(b_times_c.value().unwrap().eq(&b_times_c_native), "b * c doesn't match");
+    assert!(a_plus_b_times_c.value().unwrap().eq(&a_plus_b_times_c_native), "(a + b) * c doesn't match");
     assert!(
-        a_plus_b_times_c.value().unwrap().eq(&a_plus_b_times_c_native),
-        "(a + b) * c doesn't match"
-    );
-    assert!(
-        a_times_c_plus_b_times_c
-            .value()
-            .unwrap()
-            .eq(&a_times_c_plus_b_times_c_native),
+        a_times_c_plus_b_times_c.value().unwrap().eq(&a_times_c_plus_b_times_c_native),
         "(a * c) + (b * c) doesn't match"
     );
-    assert!(
-        a_plus_b_times_c_native.eq(&a_times_c_plus_b_times_c_native),
-        "(a + b) * c != (a * c) + (b * c)"
-    );
+    assert!(a_plus_b_times_c_native.eq(&a_times_c_plus_b_times_c_native), "(a + b) * c != (a * c) + (b * c)");
 }
 
 fn randomized_arithmetic_test<
@@ -270,18 +256,15 @@ fn randomized_arithmetic_test<
         match op {
             0 => {
                 num_native += &next_native;
-                num.add_in_place(cs.ns(|| format!("num_add_next_{}", i)), &next)
-                    .unwrap();
+                num.add_in_place(cs.ns(|| format!("num_add_next_{}", i)), &next).unwrap();
             }
             1 => {
                 num_native *= &next_native;
-                num.mul_in_place(cs.ns(|| format!("num_mul_next_{}", i)), &next)
-                    .unwrap();
+                num.mul_in_place(cs.ns(|| format!("num_mul_next_{}", i)), &next).unwrap();
             }
             2 => {
                 num_native -= &next_native;
-                num.sub_in_place(cs.ns(|| format!("num_sub_next_{}", i)), &next)
-                    .unwrap();
+                num.sub_in_place(cs.ns(|| format!("num_sub_next_{}", i)), &next).unwrap();
             }
             _ => (),
         };
@@ -401,12 +384,8 @@ fn square_mul_add_stress_test<
         num_native = num_native * num_native * next_mul_native + next_add_native;
 
         let num_squared = num.mul(cs.ns(|| format!("num_squared_{}", i)), &num).unwrap();
-        let num_squared_times_next_mul = num_squared
-            .mul(cs.ns(|| format!("num_mul_next_{}", i)), &next_mul)
-            .unwrap();
-        num = num_squared_times_next_mul
-            .add(cs.ns(|| format!("num_add_next_{}", i)), &next_add)
-            .unwrap();
+        let num_squared_times_next_mul = num_squared.mul(cs.ns(|| format!("num_mul_next_{}", i)), &next_mul).unwrap();
+        num = num_squared_times_next_mul.add(cs.ns(|| format!("num_add_next_{}", i)), &next_add).unwrap();
 
         assert!(num.value().unwrap().eq(&num_native));
     }
@@ -473,9 +452,7 @@ fn double_stress_test_3<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
         )
         .unwrap();
 
-        num_square
-            .enforce_equal(cs.ns(|| format!("enforce_equal_{}", i)), &num_square_native_gadget)
-            .unwrap();
+        num_square.enforce_equal(cs.ns(|| format!("enforce_equal_{}", i)), &num_square_native_gadget).unwrap();
     }
 }
 
@@ -520,74 +497,19 @@ macro_rules! nonnative_test {
     ($test_name:ident, $test_target_field:ty, $test_base_field:ty) => {
         nonnative_test_individual!(allocation_test, $test_name, $test_target_field, $test_base_field);
         nonnative_test_individual!(addition_test, $test_name, $test_target_field, $test_base_field);
-        nonnative_test_individual!(
-            multiplication_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
+        nonnative_test_individual!(multiplication_test, $test_name, $test_target_field, $test_base_field);
         nonnative_test_individual!(equality_test, $test_name, $test_target_field, $test_base_field);
         nonnative_test_individual!(edge_cases_test, $test_name, $test_target_field, $test_base_field);
-        nonnative_test_individual!(
-            distribution_law_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            randomized_arithmetic_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            addition_stress_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            multiplication_stress_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            mul_and_add_stress_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            square_mul_add_stress_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            double_stress_test_1,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            double_stress_test_2,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            double_stress_test_3,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
-        nonnative_test_individual!(
-            inverse_stress_test,
-            $test_name,
-            $test_target_field,
-            $test_base_field
-        );
+        nonnative_test_individual!(distribution_law_test, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(randomized_arithmetic_test, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(addition_stress_test, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(multiplication_stress_test, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(mul_and_add_stress_test, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(square_mul_add_stress_test, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(double_stress_test_1, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(double_stress_test_2, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(double_stress_test_3, $test_name, $test_target_field, $test_base_field);
+        nonnative_test_individual!(inverse_stress_test, $test_name, $test_target_field, $test_base_field);
     };
 }
 

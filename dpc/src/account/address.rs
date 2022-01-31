@@ -173,13 +173,9 @@ impl<N: Network> fmt::Display for Address<N> {
         // Convert the encryption key to bytes.
         let encryption_key = self.to_bytes_le().expect("Failed to write encryption key as bytes");
 
-        bech32::encode(
-            account_format::ADDRESS_PREFIX,
-            encryption_key.to_base32(),
-            bech32::Variant::Bech32m,
-        )
-        .expect("Failed to encode in bech32m")
-        .fmt(f)
+        bech32::encode(account_format::ADDRESS_PREFIX, encryption_key.to_base32(), bech32::Variant::Bech32m)
+            .expect("Failed to encode in bech32m")
+            .fmt(f)
     }
 }
 
@@ -232,13 +228,7 @@ mod tests {
         // Serialize
         let expected_string = &expected_address.to_string();
         let candidate_string = serde_json::to_string(&expected_address).unwrap();
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
         // Deserialize
         assert_eq!(expected_address, Address::from_str(expected_string).unwrap());

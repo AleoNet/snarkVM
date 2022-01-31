@@ -50,10 +50,8 @@ mod groth16 {
 
             let mut variables: Vec<_> = Vec::with_capacity(self.inputs.len());
             for (i, input) in self.inputs.iter().cloned().enumerate() {
-                let input_var = cs.alloc_input(
-                    || format!("Input {}", i),
-                    || input.ok_or(SynthesisError::AssignmentMissing),
-                )?;
+                let input_var =
+                    cs.alloc_input(|| format!("Input {}", i), || input.ok_or(SynthesisError::AssignmentMissing))?;
                 variables.push((input, input_var));
             }
 
@@ -62,10 +60,8 @@ mod groth16 {
                     let (input_1_val, input_1_var) = variables[i];
                     let (input_2_val, input_2_var) = variables[i + 1];
                     let result_val = input_1_val.and_then(|input_1| input_2_val.map(|input_2| input_1 * input_2));
-                    let result_var = cs.alloc(
-                        || format!("Result {}", i),
-                        || result_val.ok_or(SynthesisError::AssignmentMissing),
-                    )?;
+                    let result_var =
+                        cs.alloc(|| format!("Result {}", i), || result_val.ok_or(SynthesisError::AssignmentMissing))?;
                     cs.enforce(
                         || format!("Enforce constraint {}", i),
                         |lc| lc + input_1_var,
@@ -90,10 +86,7 @@ mod groth16 {
             inputs.push(Some(rng.gen()));
         }
         let params = {
-            let c = Bench::<Fr> {
-                inputs: vec![None; num_inputs],
-                num_constraints,
-            };
+            let c = Bench::<Fr> { inputs: vec![None; num_inputs], num_constraints };
 
             generate_random_parameters(&c, rng).unwrap()
         };
@@ -102,10 +95,7 @@ mod groth16 {
             let proof = {
                 // Create an instance of our circuit (with the
                 // witness)
-                let c = Bench {
-                    inputs: inputs.clone(),
-                    num_constraints,
-                };
+                let c = Bench { inputs: inputs.clone(), num_constraints };
                 // Create a groth16 proof with our parameters.
                 create_random_proof(&c, &params, rng).unwrap()
             };
@@ -148,10 +138,7 @@ mod groth16 {
             inputs.push(Some(rng.gen()));
         }
         let params = {
-            let c = Bench::<Fr> {
-                inputs: vec![None; num_inputs],
-                num_constraints,
-            };
+            let c = Bench::<Fr> { inputs: vec![None; num_inputs], num_constraints };
 
             generate_random_parameters::<Bls12_377, _, _>(&c, rng).unwrap()
         };
@@ -160,10 +147,7 @@ mod groth16 {
             let proof = {
                 // Create an instance of our circuit (with the
                 // witness)
-                let c = Bench {
-                    inputs: inputs.clone(),
-                    num_constraints,
-                };
+                let c = Bench { inputs: inputs.clone(), num_constraints };
                 // Create a groth16 proof with our parameters.
                 create_random_proof(&c, &params, rng).unwrap()
             };
@@ -208,10 +192,7 @@ mod groth16 {
             inputs.push(Some(rng.gen()));
         }
         let params = {
-            let c = Bench::<Fr> {
-                inputs: vec![None; num_inputs],
-                num_constraints,
-            };
+            let c = Bench::<Fr> { inputs: vec![None; num_inputs], num_constraints };
 
             generate_random_parameters(&c, rng).unwrap()
         };
@@ -220,10 +201,7 @@ mod groth16 {
             let proof = {
                 // Create an instance of our circuit (with the
                 // witness)
-                let c = Bench {
-                    inputs: inputs.clone(),
-                    num_constraints,
-                };
+                let c = Bench { inputs: inputs.clone(), num_constraints };
                 // Create a groth16 proof with our parameters.
                 create_random_proof(&c, &params, rng).unwrap()
             };

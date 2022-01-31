@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Circuit verifier key gadget.
-pub mod circuit_verifier_key;
-pub use circuit_verifier_key::*;
-
-/// Prepared circuit verifier key gadget.
-pub mod prepared_circuit_verifier_key;
-pub use prepared_circuit_verifier_key::*;
+/// Third message of the verifier.
+#[derive(Copy, Clone, Debug)]
+pub struct VerifierThirdMessage<F> {
+    /// Randomizer for the h-polynomial for `B`.
+    pub r_b: F,
+    /// Randomizer for the h-polynomial for `C`.
+    pub r_c: F,
+}

@@ -25,11 +25,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 extern crate criterion;
 
 fn hash_to_g1_on_bls12_377(c: &mut Criterion) {
-    let message: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
+    let message: String = thread_rng().sample_iter(&Alphanumeric).take(30).map(char::from).collect();
 
     c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
@@ -39,11 +35,7 @@ fn hash_to_g1_on_bls12_377(c: &mut Criterion) {
 }
 
 fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
-    let message: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
+    let message: String = thread_rng().sample_iter(&Alphanumeric).take(30).map(char::from).collect();
 
     c.bench_function("one_step_of_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
@@ -53,11 +45,7 @@ fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 }
 
 fn hash_to_g2_on_bls12_377(c: &mut Criterion) {
-    let message: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
+    let message: String = thread_rng().sample_iter(&Alphanumeric).take(30).map(char::from).collect();
 
     c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
@@ -67,11 +55,7 @@ fn hash_to_g2_on_bls12_377(c: &mut Criterion) {
 }
 
 fn try_hash_to_g2_on_bls12_377(c: &mut Criterion) {
-    let message: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
+    let message: String = thread_rng().sample_iter(&Alphanumeric).take(30).map(char::from).collect();
 
     c.bench_function("one_step_of_hash_to_g2_on_bls12_377", move |b| {
         b.iter(|| {
