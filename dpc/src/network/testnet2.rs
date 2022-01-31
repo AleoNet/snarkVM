@@ -88,7 +88,7 @@ pub type DeprecatedPoSWSNARK<N> = MarlinSNARK<
     snarkvm_marlin::marlin::MarlinTestnet1Mode,
     Vec<<N as Network>::InnerScalarField>,
 >;
-pub type DeprecatedPoSWProof<N> = AleoObject<<DeprecatedPoSWSNARK<N> as SNARK>::Proof, { hrp4!("hzkp") }, 771>;
+pub type DeprecatedPoSWProof<N> = AleoObject<<DeprecatedPoSWSNARK<N> as SNARK>::Proof, { hrp4!("hzkp") }, 963>;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
@@ -130,7 +130,7 @@ impl Network for Testnet2 {
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 1095;
-    const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 963;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const RECORD_SIZE_IN_BYTES: usize = 280;

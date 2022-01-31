@@ -87,15 +87,15 @@ impl ToBytes for BlockHeaderMetadata {
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
-    /// The Merkle root representing the blocks in the ledger up to the previous block - 32 bytes
+    /// The Merkle root representing the blocks in the ledger up to the previous block
     previous_ledger_root: N::LedgerRoot,
-    /// The Merkle root representing the transactions in the block - 32 bytes
+    /// The Merkle root representing the transactions in the block
     transactions_root: N::TransactionsRoot,
-    /// The block header metadata - 36 bytes
+    /// The block header metadata
     metadata: BlockHeaderMetadata,
-    /// Nonce for Proof of Succinct Work - 32 bytes
+    /// Nonce for Proof of Succinct Work
     nonce: N::PoSWNonce,
-    /// Proof of Succinct Work - 691 bytes
+    /// Proof of Succinct Work
     proof: PoSWProof<N>,
 }
 

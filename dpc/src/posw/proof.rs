@@ -123,6 +123,8 @@ impl<N: Network> FromBytes for PoSWProof<N> {
         let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
         reader.read_exact(&mut buffer)?;
 
+        // if buffer[N::HEADER_PROOF_SIZE_IN_BYTES - 80..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
+        //     if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES - 80]) {
         if buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
             if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
                 return Ok(Self::NonHiding(proof));
@@ -141,7 +143,9 @@ impl<N: Network> ToBytes for PoSWProof<N> {
         match self {
             Self::NonHiding(proof) => {
                 let mut buffer = proof.to_bytes_le().unwrap(); // TODO (howardwu): Handle this unwrap.
-                buffer.resize(N::HEADER_PROOF_SIZE_IN_BYTES, 0u8);
+                if buffer.len() < N::HEADER_PROOF_SIZE_IN_BYTES {
+                    buffer.resize(N::HEADER_PROOF_SIZE_IN_BYTES, 0u8);
+                }
                 buffer.write_le(writer)
             }
             Self::Hiding(proof) => proof.write_le(writer),
