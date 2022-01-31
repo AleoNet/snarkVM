@@ -26,10 +26,7 @@ pub(super) struct R1CS<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
-    constraints: Vec<(
-        Scope,
-        (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
-    )>,
+    constraints: Vec<(Scope, (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>))>,
     counter: Transcript,
 }
 
@@ -165,10 +162,7 @@ impl<F: PrimeField> R1CS<F> {
     /// Returns the constraints in the constraint system.
     pub(super) fn to_constraints(
         &self,
-    ) -> &Vec<(
-        Scope,
-        (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>),
-    )> {
+    ) -> &Vec<(Scope, (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>))> {
         &self.constraints
     }
 }

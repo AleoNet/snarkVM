@@ -43,11 +43,7 @@ impl<E: Environment> ScalarField<E> {
     /// Initializes a new instance of a scalar field from a constant scalar field value.
     ///
     pub fn new(mode: Mode, value: E::ScalarField) -> Self {
-        let bits = value
-            .to_bits_le()
-            .iter()
-            .map(|bit| Boolean::new(mode, *bit))
-            .collect::<Vec<_>>();
+        let bits = value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
 
         Self(bits)
     }

@@ -54,13 +54,9 @@ fn process_window<G: AffineCurve>(
 
     // We only process unit scalars once in the first window.
     if w_start == 0 {
-        scalars
-            .iter()
-            .zip(bases)
-            .filter(|(&s, _)| s == fr_one)
-            .for_each(|(_, base)| {
-                res.add_assign_mixed(base);
-            });
+        scalars.iter().zip(bases).filter(|(&s, _)| s == fr_one).for_each(|(_, base)| {
+            res.add_assign_mixed(base);
+        });
     }
 
     // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
@@ -107,15 +103,11 @@ pub fn msm_standard<G: AffineCurve>(
     let (lowest, window_sums) = window_sums.split_first().unwrap();
 
     // We're traversing windows from high to low.
-    window_sums
-        .iter()
-        .rev()
-        .fold(G::Projective::zero(), |mut total, sum_i| {
-            total += sum_i;
-            for _ in 0..c {
-                total.double_in_place();
-            }
-            total
-        })
-        + lowest
+    window_sums.iter().rev().fold(G::Projective::zero(), |mut total, sum_i| {
+        total += sum_i;
+        for _ in 0..c {
+            total.double_in_place();
+        }
+        total
+    }) + lowest
 }

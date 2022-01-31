@@ -42,10 +42,7 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
-        Self {
-            prepared_comm: self.prepared_comm.clone(),
-            shifted_comm: self.shifted_comm.clone(),
-        }
+        Self { prepared_comm: self.prepared_comm.clone(), shifted_comm: self.shifted_comm.clone() }
     }
 }
 
@@ -72,14 +69,11 @@ where
             prepared_comm.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_constant(
-                cs.ns(|| format!("comm_elem_{}", i)),
-                || {
-                    Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
-                        <TargetCurve as PairingEngine>::G1Affine,
-                    >>::from(*comm_elem))
-                },
-            )?);
+            >>::alloc_constant(cs.ns(|| format!("comm_elem_{}", i)), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<<TargetCurve as PairingEngine>::G1Affine>>::from(
+                    *comm_elem,
+                ))
+            })?);
         }
 
         let shifted_comm = if obj.shifted_comm.is_some() {
@@ -87,18 +81,15 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc_constant(cs.ns(|| "shifted_comm"), || {
-                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
-                    <TargetCurve as PairingEngine>::G1Affine,
-                >>::from(obj.shifted_comm.unwrap().0))
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<<TargetCurve as PairingEngine>::G1Affine>>::from(
+                    obj.shifted_comm.unwrap().0,
+                ))
             })?)
         } else {
             None
         };
 
-        Ok(Self {
-            prepared_comm,
-            shifted_comm,
-        })
+        Ok(Self { prepared_comm, shifted_comm })
     }
 
     fn alloc<
@@ -118,9 +109,9 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc(cs.ns(|| format!("comm_elem_{}", i)), || {
-                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
-                    <TargetCurve as PairingEngine>::G1Affine,
-                >>::from(*comm_elem))
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<<TargetCurve as PairingEngine>::G1Affine>>::from(
+                    *comm_elem,
+                ))
             })?);
         }
 
@@ -129,18 +120,15 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc(cs.ns(|| "shifted_comm"), || {
-                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
-                    <TargetCurve as PairingEngine>::G1Affine,
-                >>::from(obj.shifted_comm.unwrap().0))
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<<TargetCurve as PairingEngine>::G1Affine>>::from(
+                    obj.shifted_comm.unwrap().0,
+                ))
             })?)
         } else {
             None
         };
 
-        Ok(Self {
-            prepared_comm,
-            shifted_comm,
-        })
+        Ok(Self { prepared_comm, shifted_comm })
     }
 
     fn alloc_input<
@@ -159,14 +147,11 @@ where
             prepared_comm.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_input(
-                cs.ns(|| format!("comm_elem_{}", i)),
-                || {
-                    Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
-                        <TargetCurve as PairingEngine>::G1Affine,
-                    >>::from(*comm_elem))
-                },
-            )?);
+            >>::alloc_input(cs.ns(|| format!("comm_elem_{}", i)), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<<TargetCurve as PairingEngine>::G1Affine>>::from(
+                    *comm_elem,
+                ))
+            })?);
         }
 
         let shifted_comm = if obj.shifted_comm.is_some() {
@@ -174,17 +159,14 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc_input(cs.ns(|| "shifted_comm"), || {
-                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
-                    <TargetCurve as PairingEngine>::G1Affine,
-                >>::from(obj.shifted_comm.unwrap().0))
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<<TargetCurve as PairingEngine>::G1Affine>>::from(
+                    obj.shifted_comm.unwrap().0,
+                ))
             })?)
         } else {
             None
         };
 
-        Ok(Self {
-            prepared_comm,
-            shifted_comm,
-        })
+        Ok(Self { prepared_comm, shifted_comm })
     }
 }

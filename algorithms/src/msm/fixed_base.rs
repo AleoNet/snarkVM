@@ -25,11 +25,7 @@ pub struct FixedBaseMSM;
 
 impl FixedBaseMSM {
     pub fn get_mul_window_size(num_scalars: usize) -> usize {
-        if num_scalars < 32 {
-            3
-        } else {
-            (f64::from(num_scalars as u32)).ln().ceil() as usize
-        }
+        if num_scalars < 32 { 3 } else { (f64::from(num_scalars as u32)).ln().ceil() as usize }
     }
 
     pub fn get_window_table<T: ProjectiveCurve>(scalar_size: usize, window: usize, g: T) -> Vec<Vec<T>> {
@@ -48,11 +44,8 @@ impl FixedBaseMSM {
             }
         }
 
-        cfg_iter_mut!(multiples_of_g)
-            .enumerate()
-            .take(outerc)
-            .zip(g_outers)
-            .for_each(|((outer, multiples_of_g), g_outer)| {
+        cfg_iter_mut!(multiples_of_g).enumerate().take(outerc).zip(g_outers).for_each(
+            |((outer, multiples_of_g), g_outer)| {
                 let cur_in_window = if outer == outerc - 1 { last_in_window } else { in_window };
 
                 let mut g_inner = T::zero();
@@ -60,7 +53,8 @@ impl FixedBaseMSM {
                     *inner = g_inner;
                     g_inner += &g_outer;
                 }
-            });
+            },
+        );
         multiples_of_g
     }
 
@@ -98,8 +92,6 @@ impl FixedBaseMSM {
         let outerc = (scalar_size + window - 1) / window;
         assert!(outerc <= table.len());
 
-        crate::cfg_iter!(v)
-            .map(|e| Self::windowed_mul::<T>(outerc, window, table, e))
-            .collect::<Vec<_>>()
+        crate::cfg_iter!(v).map(|e| Self::windowed_mul::<T>(outerc, window, table, e)).collect::<Vec<_>>()
     }
 }

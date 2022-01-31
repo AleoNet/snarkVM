@@ -59,11 +59,7 @@ pub struct AllocatedNonNativeFieldVar<TargetField: PrimeField, BaseField: PrimeF
 impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<TargetField, BaseField> {
     /// Obtain the value of limbs
     pub fn limbs_to_value(limbs: Vec<BaseField>, optimization_type: OptimizationType) -> TargetField {
-        let params = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            optimization_type,
-        );
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
 
         let mut base_repr: <TargetField as PrimeField>::BigInteger = TargetField::one().to_repr();
 
@@ -120,10 +116,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let mut limbs = Vec::new();
 
         for (i, limb_value) in limbs_value.iter().enumerate() {
-            limbs.push(FpGadget::<BaseField>::alloc_constant(
-                cs.ns(|| format!("alloc_constant_limb_{}", i)),
-                || Ok(limb_value),
-            )?);
+            limbs.push(FpGadget::<BaseField>::alloc_constant(cs.ns(|| format!("alloc_constant_limb_{}", i)), || {
+                Ok(limb_value)
+            })?);
         }
 
         Ok(Self {
@@ -200,11 +195,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     ) -> Result<Self, SynthesisError> {
         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
 
-        let params = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            self.get_optimization_type(),
-        );
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), self.get_optimization_type());
 
         // Step 1: Reduce the `other` if needed
         let mut surfeit = overhead!(other.num_of_additions_over_normal_form + BaseField::one()) + 1;
@@ -240,12 +231,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
         // Step 4: The result is self + pad + pad_to_kp - other
         let mut limbs = Vec::new();
-        for (i, ((this_limb, other_limb), pad_to_kp_limb)) in self
-            .limbs
-            .iter()
-            .zip(other.limbs.iter())
-            .zip(pad_to_kp_limbs.iter())
-            .enumerate()
+        for (i, ((this_limb, other_limb), pad_to_kp_limb)) in
+            self.limbs.iter().zip(other.limbs.iter()).zip(pad_to_kp_limbs.iter()).enumerate()
         {
             if i != 0 {
                 let temp = pad_non_top_limb + *pad_to_kp_limb;
@@ -322,9 +309,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
     /// Compute the inverse of a nonnative field element
     pub fn inverse<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
-        let inverse = Self::alloc(&mut cs.ns(|| "alloc"), || {
-            Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero))
-        })?;
+        let inverse =
+            Self::alloc(&mut cs.ns(|| "alloc"), || Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero)))?;
 
         let one = &Self::one(&mut cs.ns(|| "one"))?;
 
@@ -351,11 +337,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         elem: &<TargetField as PrimeField>::BigInteger,
         optimization_type: OptimizationType,
     ) -> Result<Vec<BaseField>, SynthesisError> {
-        let params = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            optimization_type,
-        );
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
 
         // Push the lower limbs first
         let mut limbs: Vec<BaseField> = Vec::new();
@@ -383,11 +365,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     ) -> Result<AllocatedNonNativeFieldMulResultVar<TargetField, BaseField>, SynthesisError> {
         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
 
-        let params = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            self.get_optimization_type(),
-        );
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), self.get_optimization_type());
 
         // Step 1: Reduce `self` and `other` if necessary
         let mut self_reduced = self.clone();
@@ -474,11 +452,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     ) -> Result<(), SynthesisError> {
         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
 
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            self.get_optimization_type(),
-        );
+        let field_parameters =
+            get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), self.get_optimization_type());
 
         // Step 1: Get modulus p
         let p_representations =
@@ -572,11 +547,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
     fn to_bits_be<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            self.get_optimization_type(),
-        );
+        let field_parameters =
+            get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), self.get_optimization_type());
 
         // Reduce to the normal form
         // Though, a malicious prover can make it slightly larger than p
@@ -616,11 +588,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
     fn to_bits_le<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            self.get_optimization_type(),
-        );
+        let field_parameters =
+            get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), self.get_optimization_type());
 
         // Reduce to the normal form
         // Though, a malicious prover can make it slightly larger than p
@@ -734,11 +703,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseFiel
 
         let optimization_type = OptimizationType::Weight;
 
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            optimization_type,
-        );
+        let field_parameters = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
         let mut limbs_constants = Vec::new();
         for _ in 0..field_parameters.num_limbs {
             limbs_constants.push(Vec::new());
@@ -793,11 +758,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget
 
         let optimization_type = OptimizationType::Weight;
 
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            optimization_type,
-        );
+        let field_parameters = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
 
         let mut limbs_constants = Vec::new();
         for _ in 0..field_parameters.num_limbs {
@@ -860,20 +821,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let mut limbs = Vec::new();
 
         for (i, limb) in elem_representations.iter().enumerate() {
-            limbs.push(FpGadget::<BaseField>::alloc_constant(
-                cs.ns(|| format!("alloc_constant_limb_{}", i)),
-                || Ok(limb),
-            )?);
+            limbs.push(FpGadget::<BaseField>::alloc_constant(cs.ns(|| format!("alloc_constant_limb_{}", i)), || {
+                Ok(limb)
+            })?);
         }
 
         let num_of_additions_over_normal_form = BaseField::zero();
 
-        Ok(Self {
-            limbs,
-            num_of_additions_over_normal_form,
-            is_in_the_normal_form: true,
-            target_phantom: PhantomData,
-        })
+        Ok(Self { limbs, num_of_additions_over_normal_form, is_in_the_normal_form: true, target_phantom: PhantomData })
     }
 
     #[inline]
@@ -895,19 +850,12 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let mut limbs = Vec::new();
 
         for (i, limb) in elem_representations.iter().enumerate() {
-            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", i)), || {
-                Ok(limb)
-            })?);
+            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", i)), || Ok(limb))?);
         }
 
         let num_of_additions_over_normal_form = BaseField::zero();
 
-        Ok(Self {
-            limbs,
-            num_of_additions_over_normal_form,
-            is_in_the_normal_form: true,
-            target_phantom: PhantomData,
-        })
+        Ok(Self { limbs, num_of_additions_over_normal_form, is_in_the_normal_form: true, target_phantom: PhantomData })
     }
 
     #[inline]
@@ -918,11 +866,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
     {
         let optimization_type = OptimizationType::Weight;
 
-        let params = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            optimization_type,
-        );
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
         let zero = TargetField::zero();
 
         let elem = match value_gen() {
@@ -934,10 +878,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let mut limbs = Vec::new();
 
         for (i, limb) in elem_representations.iter().enumerate() {
-            limbs.push(FpGadget::<BaseField>::alloc_input(
-                cs.ns(|| format!("alloc_input_{}", i)),
-                || Ok(limb),
-            )?);
+            limbs.push(FpGadget::<BaseField>::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || Ok(limb))?);
         }
 
         let num_of_additions_over_normal_form = BaseField::one();
@@ -958,12 +899,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
             TargetField::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb,
         )?;
 
-        Ok(Self {
-            limbs,
-            num_of_additions_over_normal_form,
-            is_in_the_normal_form: false,
-            target_phantom: PhantomData,
-        })
+        Ok(Self { limbs, num_of_additions_over_normal_form, is_in_the_normal_form: false, target_phantom: PhantomData })
     }
 }
 

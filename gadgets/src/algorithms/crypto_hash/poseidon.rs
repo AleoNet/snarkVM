@@ -151,9 +151,8 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
                     self.state[CAPACITY + i + rate_start_index]
                         .add_in_place(cs.ns(|| format!("absorb {} {}", loop_counter, i)), element)?;
                 }
-                self.mode = DuplexSpongeMode::Absorbing {
-                    next_absorb_index: rate_start_index + remaining_elements.len(),
-                };
+                self.mode =
+                    DuplexSpongeMode::Absorbing { next_absorb_index: rate_start_index + remaining_elements.len() };
 
                 return Ok(());
             }
@@ -187,9 +186,8 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
                 remaining_output.clone_from_slice(
                     &self.state[CAPACITY + rate_start_index..(CAPACITY + remaining_output.len() + rate_start_index)],
                 );
-                self.mode = DuplexSpongeMode::Squeezing {
-                    next_squeeze_index: rate_start_index + remaining_output.len(),
-                };
+                self.mode =
+                    DuplexSpongeMode::Squeezing { next_squeeze_index: rate_start_index + remaining_output.len() };
                 return Ok(());
             }
             // otherwise squeeze (rate - rate_start_index) elements
@@ -266,11 +264,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
         let state = vec![zero; RATE + CAPACITY];
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
-        Self {
-            parameters: parameters.clone(),
-            state,
-            mode,
-        }
+        Self { parameters: parameters.clone(), state, mode }
     }
 
     fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F, RATE, CAPACITY>) -> Self {
@@ -390,9 +384,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         _cs: CS,
         _f: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            field_phantom: PhantomData,
-        })
+        Ok(Self { field_phantom: PhantomData })
     }
 
     fn alloc<

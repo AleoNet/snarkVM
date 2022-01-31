@@ -45,9 +45,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            crh: value_gen()?.borrow().clone(),
-        })
+        Ok(Self { crh: value_gen()?.borrow().clone() })
     }
 
     fn alloc<
@@ -86,10 +84,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
         // Pad the input if necessary.
         let input = {
             let input_size_bits: usize = INPUT_SIZE_FE * <F as PrimeField>::Parameters::CAPACITY as usize;
-            assert!(
-                input.len() <= input_size_bits,
-                "PoseidonCRHGadget input bits exceeds supported input size"
-            );
+            assert!(input.len() <= input_size_bits, "PoseidonCRHGadget input bits exceeds supported input size");
 
             let mut input = Cow::Borrowed(&input);
             if input.len() < input_size_bits {

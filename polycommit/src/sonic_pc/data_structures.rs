@@ -159,25 +159,19 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
         let mut hash_input = powers.to_bytes_le().map_err(|_| error("Could not serialize powers"))?;
 
         hash_input.extend_from_slice(
-            &powers_of_gamma_g
-                .to_bytes_le()
-                .map_err(|_| error("Could not serialize powers_of_gamma_g"))?,
+            &powers_of_gamma_g.to_bytes_le().map_err(|_| error("Could not serialize powers_of_gamma_g"))?,
         );
 
         if let Some(shifted_powers) = &shifted_powers {
             hash_input.extend_from_slice(
-                &shifted_powers
-                    .to_bytes_le()
-                    .map_err(|_| error("Could not serialize shifted_powers"))?,
+                &shifted_powers.to_bytes_le().map_err(|_| error("Could not serialize shifted_powers"))?,
             );
         }
 
         if let Some(shifted_powers_of_gamma_g) = &shifted_powers_of_gamma_g {
             for value in shifted_powers_of_gamma_g.values() {
                 hash_input.extend_from_slice(
-                    &value
-                        .to_bytes_le()
-                        .map_err(|_| error("Could not serialize shifted_power_of_gamma_g"))?,
+                    &value.to_bytes_le().map_err(|_| error("Could not serialize shifted_power_of_gamma_g"))?,
                 );
             }
         }
@@ -251,32 +245,22 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         (self.max_degree as u32).write_le(&mut writer)?;
 
         // Construct the hash of the group elements.
-        let mut hash_input = self
-            .powers
-            .to_bytes_le()
-            .map_err(|_| error("Could not serialize powers"))?;
+        let mut hash_input = self.powers.to_bytes_le().map_err(|_| error("Could not serialize powers"))?;
 
         hash_input.extend_from_slice(
-            &self
-                .powers_of_gamma_g
-                .to_bytes_le()
-                .map_err(|_| error("Could not serialize powers_of_gamma_g"))?,
+            &self.powers_of_gamma_g.to_bytes_le().map_err(|_| error("Could not serialize powers_of_gamma_g"))?,
         );
 
         if let Some(shifted_powers) = &self.shifted_powers {
             hash_input.extend_from_slice(
-                &shifted_powers
-                    .to_bytes_le()
-                    .map_err(|_| error("Could not serialize shifted_powers"))?,
+                &shifted_powers.to_bytes_le().map_err(|_| error("Could not serialize shifted_powers"))?,
             );
         }
 
         if let Some(shifted_powers_of_gamma_g) = &self.shifted_powers_of_gamma_g {
             for value in shifted_powers_of_gamma_g.values() {
                 hash_input.extend_from_slice(
-                    &value
-                        .to_bytes_le()
-                        .map_err(|_| error("Could not serialize shifted_power_of_gamma_g"))?,
+                    &value.to_bytes_le().map_err(|_| error("Could not serialize shifted_power_of_gamma_g"))?,
                 );
             }
         }
@@ -333,13 +317,7 @@ impl<E: PairingEngine> PCCommitterKey for CommitterKey<E> {
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Default(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -370,11 +348,9 @@ impl<E: PairingEngine> VerifierKey<E> {
     }
 
     pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
-        self.degree_bounds_and_prepared_neg_powers_of_h.as_ref().and_then(|v| {
-            v.binary_search_by(|(d, _)| d.cmp(&degree_bound))
-                .ok()
-                .map(|i| v[i].1.clone())
-        })
+        self.degree_bounds_and_prepared_neg_powers_of_h
+            .as_ref()
+            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1.clone()))
     }
 }
 

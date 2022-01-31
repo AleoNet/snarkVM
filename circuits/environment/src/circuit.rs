@@ -170,10 +170,7 @@ impl Environment for Circuit {
             }
         }
 
-        Self::halt(format!(
-            "Failed to recover an affine group from an x-coordinate of {}",
-            x
-        ))
+        Self::halt(format!("Failed to recover an affine group from an x-coordinate of {}", x))
     }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.

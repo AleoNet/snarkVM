@@ -75,19 +75,12 @@ mod aleo {
         assert_eq!(cs.num_constraints(), 235);
 
         let verification = signature_scheme_gadget
-            .verify(
-                cs.ns(|| "verify"),
-                &public_key_gadget,
-                &message_gadget,
-                &signature_gadget,
-            )
+            .verify(cs.ns(|| "verify"), &public_key_gadget, &message_gadget, &signature_gadget)
             .unwrap();
 
         assert_eq!(cs.num_constraints(), 8881);
 
-        verification
-            .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))
-            .unwrap();
+        verification.enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true)).unwrap();
 
         if !cs.is_satisfied() {
             println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
@@ -134,17 +127,10 @@ mod aleo {
             .unwrap();
 
         let verification = signature_scheme_gadget
-            .verify(
-                cs.ns(|| "verify"),
-                &public_key_gadget,
-                &bad_message_gadget,
-                &signature_gadget,
-            )
+            .verify(cs.ns(|| "verify"), &public_key_gadget, &bad_message_gadget, &signature_gadget)
             .unwrap();
 
-        verification
-            .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(false))
-            .unwrap();
+        verification.enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(false)).unwrap();
 
         if !cs.is_satisfied() {
             println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());

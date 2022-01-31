@@ -80,11 +80,7 @@ impl<P: Parameters> Zero for Affine<P> {
 
 impl<P: Parameters> Display for Affine<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        if self.infinity {
-            write!(f, "Affine(Infinity)")
-        } else {
-            write!(f, "Affine(x={}, y={})", self.x, self.y)
-        }
+        if self.infinity { write!(f, "Affine(Infinity)") } else { write!(f, "Affine(x={}, y={})", self.x, self.y) }
     }
 }
 
@@ -163,8 +159,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
-        self.mul_bits(BitIteratorBE::new(P::ScalarField::characteristic()))
-            .is_zero()
+        self.mul_bits(BitIteratorBE::new(P::ScalarField::characteristic())).is_zero()
     }
 
     fn to_x_coordinate(&self) -> Self::BaseField {
@@ -220,11 +215,7 @@ impl<P: Parameters> Neg for Affine<P> {
 
     #[inline]
     fn neg(self) -> Self {
-        if !self.is_zero() {
-            Self::new(self.x, -self.y, false)
-        } else {
-            self
-        }
+        if !self.is_zero() { Self::new(self.x, -self.y, false) } else { self }
     }
 }
 

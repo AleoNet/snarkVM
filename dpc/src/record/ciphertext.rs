@@ -50,16 +50,10 @@ impl<N: Network> Ciphertext<N> {
         record_bytes: Vec<u8>,
     ) -> Result<Self, RecordError> {
         // Compute the commitment.
-        let commitment = N::commitment_scheme()
-            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes]?)?
-            .into();
+        let commitment =
+            N::commitment_scheme().hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes]?)?.into();
 
-        Ok(Self {
-            commitment,
-            randomizer,
-            record_view_key_commitment,
-            record_bytes,
-        })
+        Ok(Self { commitment, randomizer, record_view_key_commitment, record_bytes })
     }
 
     /// Returns `true` if this ciphertext belongs to the given account view key.
@@ -102,9 +96,7 @@ impl<N: Network> Ciphertext<N> {
                 match N::account_encryption_scheme().generate_symmetric_key(account_view_key, *self.randomizer) {
                     Some(candidate_record_view_key) => candidate_record_view_key.into(),
                     None => {
-                        return Err(anyhow!(
-                            "The given account view key does not correspond to this ciphertext"
-                        ));
+                        return Err(anyhow!("The given account view key does not correspond to this ciphertext"));
                     }
                 }
             }
@@ -122,9 +114,7 @@ impl<N: Network> Ciphertext<N> {
                 let plaintext = N::account_encryption_scheme().decrypt(&record_view_key, &self.record_bytes)?;
                 Ok((plaintext, record_view_key))
             }
-            false => Err(anyhow!(
-                "The given record view key does not correspond to this ciphertext"
-            )),
+            false => Err(anyhow!("The given record view key does not correspond to this ciphertext")),
         }
     }
 }
@@ -149,11 +139,7 @@ impl<N: Network> FromBytes for Ciphertext<N> {
         ];
         cursor.read_exact(&mut record_bytes)?;
 
-        Ok(Self::from(
-            ciphertext_randomizer,
-            record_view_key_commitment,
-            record_bytes,
-        )?)
+        Ok(Self::from(ciphertext_randomizer, record_view_key_commitment, record_bytes)?)
     }
 }
 

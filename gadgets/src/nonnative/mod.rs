@@ -83,11 +83,7 @@ macro_rules! overhead {
             }
         }
 
-        if is_power_of_2 {
-            num_bits.len() - skipped_bits
-        } else {
-            num_bits.len() - skipped_bits + 1
-        }
+        if is_power_of_2 { num_bits.len() - skipped_bits } else { num_bits.len() - skipped_bits + 1 }
     }};
 }
 

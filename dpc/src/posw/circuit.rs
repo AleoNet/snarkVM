@@ -42,18 +42,12 @@ impl<N: Network> PoSWCircuit<N> {
     pub fn new(block_template: &BlockTemplate<N>, nonce: N::PoSWNonce) -> Result<Self> {
         let tree = block_template.to_header_tree()?;
 
-        Ok(Self {
-            block_header_root: (*tree.root()).into(),
-            nonce,
-            hashed_leaves: tree.hashed_leaves().to_vec(),
-        })
+        Ok(Self { block_header_root: (*tree.root()).into(), nonce, hashed_leaves: tree.hashed_leaves().to_vec() })
     }
 
     /// Creates a blank PoSW circuit for setup.
     pub fn blank() -> Result<Self> {
-        let empty_hash = N::block_header_root_parameters()
-            .hash_empty()
-            .map_err(|_| SynthesisError::Unsatisfiable)?;
+        let empty_hash = N::block_header_root_parameters().hash_empty().map_err(|_| SynthesisError::Unsatisfiable)?;
 
         Ok(Self {
             block_header_root: Default::default(),
@@ -169,10 +163,7 @@ mod test {
         let mut cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
         // Synthesize the PoSW circuit.
-        PoSWCircuit::<N>::blank()
-            .unwrap()
-            .generate_constraints(&mut cs.ns(|| "PoSW circuit"))
-            .unwrap();
+        PoSWCircuit::<N>::blank().unwrap().generate_constraints(&mut cs.ns(|| "PoSW circuit")).unwrap();
 
         // Check that the constraint system was satisfied.
         if !cs.is_satisfied() {

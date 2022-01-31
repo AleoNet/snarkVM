@@ -81,10 +81,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         let bases = Arc::new(Self::create_generators(message));
         end_timer!(time);
 
-        Self {
-            bases,
-            base_lookup: OnceCell::new(),
-        }
+        Self { bases, base_lookup: OnceCell::new() }
     }
 
     fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
@@ -163,10 +160,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
 
         // overzealous but stack allocation
         let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buf_slice[..num_bits]
-            .iter_mut()
-            .zip(input)
-            .for_each(|(b, i)| *b = *i.borrow());
+        buf_slice[..num_bits].iter_mut().zip(input).for_each(|(b, i)| *b = *i.borrow());
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
@@ -221,10 +215,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
     for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bases: Arc<Vec<Vec<G>>>) -> Self {
-        Self {
-            bases,
-            base_lookup: OnceCell::new(),
-        }
+        Self { bases, base_lookup: OnceCell::new() }
     }
 }
 
@@ -262,10 +253,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
             bases.push(base);
         }
 
-        Ok(Self {
-            bases: Arc::new(bases),
-            base_lookup: OnceCell::new(),
-        })
+        Ok(Self { bases: Arc::new(bases), base_lookup: OnceCell::new() })
     }
 }
 

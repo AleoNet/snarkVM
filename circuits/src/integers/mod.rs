@@ -100,13 +100,10 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     /// Ejects the integer as a constant integer value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        self.bits_le
-            .iter()
-            .rev()
-            .fold(I::zero(), |value, bit| match bit.eject_value() {
-                true => (value << 1) ^ I::one(),
-                false => (value << 1) ^ I::zero(),
-            })
+        self.bits_le.iter().rev().fold(I::zero(), |value, bit| match bit.eject_value() {
+            true => (value << 1) ^ I::one(),
+            false => (value << 1) ^ I::zero(),
+        })
     }
 }
 

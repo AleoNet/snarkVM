@@ -30,10 +30,9 @@ impl<E: Environment> FromBits for BaseField<E> {
         let mut bits_le = bits_le.to_vec();
         match bits_le.len() <= 253 {
             true => bits_le.resize(253, Boolean::new(Mode::Constant, false)),
-            false => E::halt(format!(
-                "Attempted to instantiate a 253-bit base field element with {} bits",
-                bits_le.len()
-            )),
+            false => {
+                E::halt(format!("Attempted to instantiate a 253-bit base field element with {} bits", bits_le.len()))
+            }
         }
 
         // Construct the field value from the given bits.
@@ -41,10 +40,7 @@ impl<E: Environment> FromBits for BaseField<E> {
             &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
         )) {
             Ok(value) => value,
-            Err(error) => E::halt(format!(
-                "Failed to convert a list of booleans into a base field element. {}",
-                error
-            )),
+            Err(error) => E::halt(format!("Failed to convert a list of booleans into a base field element. {}", error)),
         };
 
         let output = BaseField::new(mode, witness);

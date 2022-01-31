@@ -48,11 +48,7 @@ pub struct G2Prepared<P: BW6Parameters> {
 }
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "P: BW6Parameters"),
-    Copy(bound = "P: BW6Parameters"),
-    Debug(bound = "P: BW6Parameters")
-)]
+#[derivative(Clone(bound = "P: BW6Parameters"), Copy(bound = "P: BW6Parameters"), Debug(bound = "P: BW6Parameters"))]
 struct G2HomProjective<P: BW6Parameters> {
     x: P::Fp,
     y: P::Fp,
@@ -106,30 +102,18 @@ impl<P: BW6Parameters> FromBytes for G2Prepared<P> {
 
         let infinity: bool = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            ell_coeffs_1,
-            ell_coeffs_2,
-            infinity,
-        })
+        Ok(Self { ell_coeffs_1, ell_coeffs_2, infinity })
     }
 }
 
 impl<P: BW6Parameters> From<G2Affine<P>> for G2Prepared<P> {
     fn from(q: G2Affine<P>) -> Self {
         if q.is_zero() {
-            return Self {
-                ell_coeffs_1: vec![],
-                ell_coeffs_2: vec![],
-                infinity: true,
-            };
+            return Self { ell_coeffs_1: vec![], ell_coeffs_2: vec![], infinity: true };
         }
 
         // f_{u+1,Q}(P)
-        let mut r = G2HomProjective {
-            x: q.x,
-            y: q.y,
-            z: P::Fp::one(),
-        };
+        let mut r = G2HomProjective { x: q.x, y: q.y, z: P::Fp::one() };
 
         let bit_iterator = BitIteratorBE::new(P::ATE_LOOP_COUNT_1);
         let mut ell_coeffs_1 = Vec::with_capacity(bit_iterator.len());
@@ -144,11 +128,7 @@ impl<P: BW6Parameters> From<G2Affine<P>> for G2Prepared<P> {
 
         // f_{u^3-u^2-u,Q}(P)
         let mut ell_coeffs_2 = Vec::with_capacity(P::ATE_LOOP_COUNT_2.len());
-        let mut r = G2HomProjective {
-            x: q.x,
-            y: q.y,
-            z: P::Fp::one(),
-        };
+        let mut r = G2HomProjective { x: q.x, y: q.y, z: P::Fp::one() };
 
         let negq = q.neg();
 
@@ -167,11 +147,7 @@ impl<P: BW6Parameters> From<G2Affine<P>> for G2Prepared<P> {
             }
         }
 
-        Self {
-            ell_coeffs_1,
-            ell_coeffs_2,
-            infinity: false,
-        }
+        Self { ell_coeffs_1, ell_coeffs_2, infinity: false }
     }
 }
 

@@ -77,11 +77,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TE:
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(
-            UInt8::constant_vec(&private_key),
-            PhantomData,
-            PhantomData,
-        ))
+        Ok(ECIESPoseidonEncryptionPrivateKeyGadget(UInt8::constant_vec(&private_key), PhantomData, PhantomData))
     }
 
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::ScalarField>, CS: ConstraintSystem<F>>(
@@ -188,10 +184,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(ECIESPoseidonEncryptionRandomnessGadget(
-            UInt8::constant_vec(&randomness),
-            PhantomData,
-        ))
+        Ok(ECIESPoseidonEncryptionRandomnessGadget(UInt8::constant_vec(&randomness), PhantomData))
     }
 
     fn alloc<
@@ -203,10 +196,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(ECIESPoseidonEncryptionRandomnessGadget(
-            UInt8::alloc_vec(cs, &randomness)?,
-            PhantomData,
-        ))
+        Ok(ECIESPoseidonEncryptionRandomnessGadget(UInt8::alloc_vec(cs, &randomness)?, PhantomData))
     }
 
     fn alloc_input<
@@ -218,10 +208,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(ECIESPoseidonEncryptionRandomnessGadget(
-            UInt8::alloc_input_vec_le(cs, &randomness)?,
-            PhantomData,
-        ))
+        Ok(ECIESPoseidonEncryptionRandomnessGadget(UInt8::alloc_input_vec_le(cs, &randomness)?, PhantomData))
     }
 }
 
@@ -265,9 +252,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let ciphertext_randomizer = Self::recover_ciphertext_randomizer(*value_gen()?.borrow())?;
-        Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || {
-            Ok(ciphertext_randomizer)
-        })?))
+        Ok(Self(TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(ciphertext_randomizer))?))
     }
 
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
@@ -275,9 +260,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let ciphertext_randomizer = Self::recover_ciphertext_randomizer(*value_gen()?.borrow())?;
-        Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || {
-            Ok(ciphertext_randomizer)
-        })?))
+        Ok(Self(TEAffineGadget::<TE, F>::alloc_checked(cs, || Ok(ciphertext_randomizer))?))
     }
 
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TE::BaseField>, CS: ConstraintSystem<F>>(
@@ -295,9 +278,7 @@ where
         let allocated_gadget =
             TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point))?;
 
-        allocated_gadget
-            .x
-            .enforce_equal(cs.ns(|| "check x consistency"), &x_coordinate_gadget)?;
+        allocated_gadget.x.enforce_equal(cs.ns(|| "check x consistency"), &x_coordinate_gadget)?;
 
         Ok(Self(allocated_gadget))
     }
@@ -366,10 +347,7 @@ where
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            encryption: (*value_gen()?.borrow()).clone(),
-            f_phantom: PhantomData,
-        })
+        Ok(Self { encryption: (*value_gen()?.borrow()).clone(), f_phantom: PhantomData })
     }
 
     fn alloc<
@@ -432,20 +410,14 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let point = if let Ok(pk) = value_gen() {
-            *pk.borrow()
-        } else {
-            TEAffine::<TE>::default()
-        };
+        let point = if let Ok(pk) = value_gen() { *pk.borrow() } else { TEAffine::<TE>::default() };
 
         let x_coordinate_gadget =
             FpGadget::<TE::BaseField>::alloc_input(cs.ns(|| "input x coordinate"), || Ok(point.x))?;
         let allocated_gadget =
             TEAffineGadget::<TE, F>::alloc_checked(cs.ns(|| "input the allocated point"), || Ok(point))?;
 
-        allocated_gadget
-            .x
-            .enforce_equal(cs.ns(|| "check x consistency"), &x_coordinate_gadget)?;
+        allocated_gadget.x.enforce_equal(cs.ns(|| "check x consistency"), &x_coordinate_gadget)?;
 
         Ok(Self(allocated_gadget))
     }
@@ -497,10 +469,7 @@ fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"))
     })?;
-    sponge.absorb(
-        cs.ns(|| "absorb"),
-        IntoIterator::into_iter([&domain_separator, symmetric_key]),
-    )?;
+    sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain the symmetric key commitment from Poseidon.
     Ok(sponge.squeeze_field_elements(cs.ns(|| "squeeze for symmetric key commitment"), 1)?[0].clone())
@@ -519,10 +488,7 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"))
     })?;
-    sponge.absorb(
-        cs.ns(|| "absorb"),
-        IntoIterator::into_iter([&domain_separator, symmetric_key]),
-    )?;
+    sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Convert the message into bits.
     let mut bits = Vec::with_capacity(message.len() * 8);
@@ -537,10 +503,7 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
     let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
     for (i, chunk) in bits.chunks(capacity).enumerate() {
-        res.push(Boolean::le_bits_to_fp_var(
-            cs.ns(|| format!("convert a bit to a field element {}", i)),
-            chunk,
-        )?);
+        res.push(Boolean::le_bits_to_fp_var(cs.ns(|| format!("convert a bit to a field element {}", i)), chunk)?);
     }
 
     // Obtain random field elements from Poseidon.
@@ -548,10 +511,7 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
 
     // Add the random field elements to the packed bits.
     for (i, sponge_randomizer) in sponge_randomizers.iter().enumerate() {
-        res[i].add_in_place(
-            cs.ns(|| format!("add the sponge field element {}", i)),
-            sponge_randomizer,
-        )?;
+        res[i].add_in_place(cs.ns(|| format!("add the sponge field element {}", i)), sponge_randomizer)?;
     }
 
     let ciphertext = res.to_bytes(cs.ns(|| "convert the masked results into bytes"))?;

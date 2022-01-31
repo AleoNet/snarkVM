@@ -25,12 +25,7 @@ pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedV
     let gamma_g2_neg_pc = vk.gamma_g2.neg().prepare();
     let delta_g2_neg_pc = vk.delta_g2.neg().prepare();
 
-    PreparedVerifyingKey {
-        vk,
-        alpha_g1_beta_g2,
-        gamma_g2_neg_pc,
-        delta_g2_neg_pc,
-    }
+    PreparedVerifyingKey { vk, alpha_g1_beta_g2, gamma_g2_neg_pc, delta_g2_neg_pc }
 }
 
 pub fn verify_proof<E: PairingEngine>(
@@ -39,10 +34,7 @@ pub fn verify_proof<E: PairingEngine>(
     public_inputs: &[E::Fr],
 ) -> Result<bool, SynthesisError> {
     if (public_inputs.len() + 1) != pvk.gamma_abc_g1().len() {
-        return Err(SynthesisError::MalformedVerifyingKey(
-            public_inputs.len() + 1,
-            pvk.gamma_abc_g1().len(),
-        ));
+        return Err(SynthesisError::MalformedVerifyingKey(public_inputs.len() + 1, pvk.gamma_abc_g1().len()));
     }
 
     let mut g_ic = pvk.gamma_abc_g1()[0];

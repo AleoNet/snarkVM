@@ -75,19 +75,7 @@ pub fn group_test<G: Group>(a: G, mut b: G) {
     let a_six = a.mul(fr_three * fr_two);
     assert_eq!(a_two.mul(fr_three), a_six, "(a * 2) * 3 != a * (2 * 3)");
 
-    assert_eq!(
-        a_rand1.mul(fr_rand2),
-        a_rand2.mul(fr_rand1),
-        "(a * r1) * r2 != (a * r2) * r1"
-    );
-    assert_eq!(
-        a_rand2.mul(fr_rand1),
-        a.mul(fr_rand1 * fr_rand2),
-        "(a * r2) * r1 != a * (r1 * r2)"
-    );
-    assert_eq!(
-        a_rand1.mul(fr_rand2),
-        a.mul(fr_rand1 * fr_rand2),
-        "(a * r1) * r2 != a * (r1 * r2)"
-    );
+    assert_eq!(a_rand1.mul(fr_rand2), a_rand2.mul(fr_rand1), "(a * r1) * r2 != (a * r2) * r1");
+    assert_eq!(a_rand2.mul(fr_rand1), a.mul(fr_rand1 * fr_rand2), "(a * r2) * r1 != a * (r1 * r2)");
+    assert_eq!(a_rand1.mul(fr_rand2), a.mul(fr_rand1 * fr_rand2), "(a * r1) * r2 != a * (r1 * r2)");
 }

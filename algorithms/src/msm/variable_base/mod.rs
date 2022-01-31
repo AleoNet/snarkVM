@@ -82,9 +82,7 @@ mod tests {
         let mut rng = XorShiftRng::seed_from_u64(seed);
 
         let v = (0..samples).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
-        let g = (0..samples)
-            .map(|_| G1Projective::rand(&mut rng).into_affine())
-            .collect::<Vec<_>>();
+        let g = (0..samples).map(|_| G1Projective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
 
         (g, v)
     }

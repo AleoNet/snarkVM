@@ -51,13 +51,7 @@ impl<N: Network> InnerPublicVariables<N> {
         local_transitions_root: N::TransactionID,
         program_id: Option<N::ProgramID>,
     ) -> Self {
-        Self {
-            transition_id,
-            value_balance,
-            ledger_root,
-            local_transitions_root,
-            program_id,
-        }
+        Self { transition_id, value_balance, ledger_root, local_transitions_root, program_id }
     }
 
     /// Returns the transition ID.

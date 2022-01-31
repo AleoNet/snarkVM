@@ -20,7 +20,11 @@ use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerial
 
 use anyhow::Result;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
+use std::{
+    fmt,
+    io::{Error, ErrorKind, Read, Result as IoResult, Write},
+    str::FromStr,
+};
 
 /// Program ID, program path, verifying key, and proof.
 #[derive(Derivative)]
@@ -47,13 +51,7 @@ impl<N: Network> Execution<N> {
         program_proof: N::ProgramProof,
         inner_proof: N::InnerProof,
     ) -> Result<Self> {
-        Ok(Self {
-            program_id,
-            program_path,
-            verifying_key,
-            program_proof,
-            inner_proof,
-        })
+        Ok(Self { program_id, program_path, verifying_key, program_proof, inner_proof })
     }
 
     /// Returns `true` if the program execution is valid.
@@ -136,6 +134,22 @@ impl<N: Network> ToBytes for Execution<N> {
     }
 }
 
+impl<N: Network> FromStr for Execution<N> {
+    type Err = anyhow::Error;
+
+    #[inline]
+    fn from_str(execution: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(execution)?)
+    }
+}
+
+impl<N: Network> fmt::Display for Execution<N> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
+    }
+}
+
 impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -170,5 +184,42 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testnet2::Testnet2;
+
+    #[test]
+    fn test_execution_serde_json() {
+        let coinbase_transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+        let execution = coinbase_transaction.transitions()[0].execution().clone();
+
+        // Serialize
+        let expected_string = execution.to_string();
+        let candidate_string = serde_json::to_string(&execution).unwrap();
+        assert_eq!(expected_string, candidate_string);
+
+        // Deserialize
+        assert_eq!(execution, Execution::<Testnet2>::from_str(&candidate_string).unwrap());
+        assert_eq!(execution, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    #[test]
+    fn test_execution_bincode() {
+        let coinbase_transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+        let execution = coinbase_transaction.transitions()[0].execution().clone();
+
+        // Serialize
+        let expected_bytes = execution.to_bytes_le().unwrap();
+        let candidate_bytes = bincode::serialize(&execution).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
+
+        // Deserialize
+        assert_eq!(execution, Execution::<Testnet2>::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(execution, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }

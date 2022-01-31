@@ -19,8 +19,6 @@
 pub struct VerifierFirstMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
-    /// Randomizer for the lincheck for `A`.
-    pub eta_a: F,
     /// Randomizer for the lincheck for `B`.
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.

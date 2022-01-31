@@ -54,10 +54,7 @@ impl<N: Network> BlockTemplate<N> {
         transactions: Transactions<N>,
         coinbase_record: Record<N>,
     ) -> Self {
-        assert!(
-            !(*transactions).is_empty(),
-            "Cannot create a block with no transactions"
-        );
+        assert!(!(*transactions).is_empty(), "Cannot create a block with no transactions");
 
         Self {
             previous_block_hash,
@@ -203,11 +200,7 @@ impl<N: Network> FromStr for BlockTemplate<N> {
 
 impl<N: Network> fmt::Display for BlockTemplate<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
 
@@ -292,18 +285,11 @@ mod tests {
         // Serialize
         let expected_string = expected_template.to_string();
         let candidate_string = serde_json::to_string(&expected_template).unwrap();
-        assert_eq!(
-            1007018,
-            candidate_string.len(),
-            "Update me if serialization has changed"
-        );
+        assert_eq!(1007509, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
-        assert_eq!(
-            expected_template,
-            BlockTemplate::<Testnet2>::from_str(&candidate_string).unwrap()
-        );
+        assert_eq!(expected_template, BlockTemplate::<Testnet2>::from_str(&candidate_string).unwrap());
         assert_eq!(expected_template, serde_json::from_str(&candidate_string).unwrap());
     }
 
@@ -325,15 +311,12 @@ mod tests {
         // Serialize
         let expected_bytes = expected_template.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_template).unwrap();
-        assert_eq!(503135, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(503390, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
-        assert_eq!(
-            expected_template,
-            BlockTemplate::<Testnet2>::read_le(&expected_bytes[..]).unwrap()
-        );
+        assert_eq!(expected_template, BlockTemplate::<Testnet2>::read_le(&expected_bytes[..]).unwrap());
         assert_eq!(expected_template, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }
