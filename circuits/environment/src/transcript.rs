@@ -28,12 +28,12 @@ pub(super) struct Transcript {
 
 impl Transcript {
     pub(super) fn push(&mut self, name: &str) -> Result<(), String> {
-        match name.contains(".") {
+        match name.contains('.') {
             true => Err("Scope names cannot contain periods (\".\")".to_string()),
             false => {
                 // Construct the scope name.
                 let scope = match self.scope.is_empty() {
-                    true => format!("{}", name),
+                    true => name.to_string(),
                     false => format!("{}.{}", self.scope, name),
                 };
 
@@ -41,7 +41,7 @@ impl Transcript {
                 self.parents.push((self.scope.clone(), self.constants, self.public, self.private, self.constraints));
 
                 // Initialize the new scope members.
-                self.scope = scope.clone();
+                self.scope = scope;
                 self.constants = 0;
                 self.public = 0;
                 self.private = 0;
