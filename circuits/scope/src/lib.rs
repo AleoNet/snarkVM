@@ -63,7 +63,7 @@ fn get_scope_name(metadata: proc_macro::TokenStream, function_name: &str) -> (Ty
         }
 
         match argument_type.trim() {
-            "custom" => (Type::Custom, name.to_string()),
+            "custom" => (Type::Custom, name),
             "method" => (Type::Method, format!("{}()", name)),
             "circuit" => (Type::Circuit, format!("{}::{}()", name, function_name)),
             _ => panic!("Invalid argument. Specify `custom = XX`, `method = XX`, or `circuit = XX`"),
