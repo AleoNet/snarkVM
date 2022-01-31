@@ -122,11 +122,10 @@ impl<N: Network> FromBytes for PoSWProof<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut buffer = vec![0u8; N::HEADER_PROOF_SIZE_IN_BYTES];
         reader.read_exact(&mut buffer)?;
+        println!("{:?}", buffer);
 
-        // if buffer[N::HEADER_PROOF_SIZE_IN_BYTES - 80..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
-        //     if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES - 80]) {
-        if buffer[691..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
-            if let Ok(proof) = N::PoSWProof::read_le(&buffer[..691]) {
+        if buffer[N::HEADER_PROOF_SIZE_IN_BYTES - 80..N::HEADER_PROOF_SIZE_IN_BYTES] == [0u8; 80] {
+            if let Ok(proof) = N::PoSWProof::read_le(&buffer[..N::HEADER_PROOF_SIZE_IN_BYTES - 80]) {
                 return Ok(Self::NonHiding(proof));
             }
         } else if let Ok(proof) = crate::testnet2::DeprecatedPoSWProof::<N>::read_le(&buffer[..]) {

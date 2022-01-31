@@ -408,8 +408,9 @@ mod tests {
 
     #[test]
     fn test_block_header_size() {
-        assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
-        assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
+        // TODO (howardwu): TEMPORARY - Remove this 80 after removing the testnet2 v12 compatibility changes.
+        assert_eq!(get_expected_size::<Testnet1>() - 80, Testnet1::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet1>() - 80, Testnet1::HEADER_SIZE_IN_BYTES);
 
         assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
         assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
@@ -448,7 +449,7 @@ mod tests {
         // Serialize
         let expected_string = block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1612, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1919, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
