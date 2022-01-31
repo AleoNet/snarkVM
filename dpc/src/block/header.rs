@@ -87,15 +87,15 @@ impl ToBytes for BlockHeaderMetadata {
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
-    /// The Merkle root representing the blocks in the ledger up to the previous block - 32 bytes
+    /// The Merkle root representing the blocks in the ledger up to the previous block
     previous_ledger_root: N::LedgerRoot,
-    /// The Merkle root representing the transactions in the block - 32 bytes
+    /// The Merkle root representing the transactions in the block
     transactions_root: N::TransactionsRoot,
-    /// The block header metadata - 36 bytes
+    /// The block header metadata
     metadata: BlockHeaderMetadata,
-    /// Nonce for Proof of Succinct Work - 32 bytes
+    /// Nonce for Proof of Succinct Work
     nonce: N::PoSWNonce,
-    /// Proof of Succinct Work - 691 bytes
+    /// Proof of Succinct Work
     proof: PoSWProof<N>,
 }
 
@@ -154,7 +154,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.
-        let proof = N::posw().prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
+        let proof = N::posw().prove_once_unchecked(&mut circuit, terminator, rng)?;
 
         // Construct a block header.
         Ok(Self {
@@ -448,7 +448,7 @@ mod tests {
         // Serialize
         let expected_string = block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1612, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1795, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize

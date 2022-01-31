@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use crate::{
     ahp::{
         indexer::CircuitInfo,
-        verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
+        verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState, VerifierThirdMessage},
         AHPError,
         AHPForR1CS,
     },
@@ -46,31 +46,33 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             return Err(AHPError::NonSquareMatrix);
         }
 
-        let domain_h =
+        let constraint_domain =
             EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_k =
-            EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_a_domain =
+            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let elems = fs_rng.squeeze_nonnative_field_elements(4, OptimizationType::Weight)?;
+        let non_zero_b_domain =
+            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let non_zero_c_domain =
+            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let elems = fs_rng.squeeze_nonnative_field_elements(3, OptimizationType::Weight)?;
         let alpha = elems[0];
-        let eta_a = elems[1];
-        let eta_b = elems[2];
-        let eta_c = elems[3];
-        assert!(!domain_h.evaluate_vanishing_polynomial(alpha).is_zero());
+        let eta_b = elems[1];
+        let eta_c = elems[2];
+        assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
 
-        let message = VerifierFirstMessage {
-            alpha,
-            eta_a,
-            eta_b,
-            eta_c,
-        };
+        let message = VerifierFirstMessage { alpha, eta_b, eta_c };
 
         let new_state = VerifierState {
-            domain_h,
-            domain_k,
+            constraint_domain,
+            non_zero_a_domain,
+            non_zero_b_domain,
+            non_zero_c_domain,
             first_round_message: Some(message),
             second_round_message: None,
+            third_round_message: None,
             gamma: None,
             mode: PhantomData,
         };
@@ -85,7 +87,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let beta = elems[0];
-        assert!(!state.domain_h.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = VerifierSecondMessage { beta };
         state.second_round_message = Some(message);
@@ -95,6 +97,20 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: VerifierState<TargetField, MM>,
+        fs_rng: &mut R,
+    ) -> Result<(VerifierThirdMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(2, OptimizationType::Weight)?;
+        let r_b = elems[0];
+        let r_c = elems[1];
+        let message = VerifierThirdMessage { r_b, r_c };
+
+        state.third_round_message = Some(message);
+        Ok((message, state))
+    }
+
+    /// Output the third message and next round state.
+    pub fn verifier_fourth_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         mut state: VerifierState<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<VerifierState<TargetField, MM>, AHPError> {
@@ -110,8 +126,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         state: VerifierState<TargetField, MM>,
         _: &'a mut R,
     ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField, MM>) {
-        let with_vanishing = MM::RECURSION;
-        let alpha = state.first_round_message.unwrap().alpha;
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
@@ -130,7 +144,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         //      vec![
         //          (F::one(), "mask_poly".into()),
         //
-        //          (r_alpha_at_beta * (eta_a + eta_c * z_b_at_beta), "z_a".into()),
+        //          (r_alpha_at_beta * (1 + eta_c * z_b_at_beta), "z_a".into()),
         //          (r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One),
         //
         //          (-t_at_beta * v_X_at_beta, "w".into()),
@@ -142,10 +156,8 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         //  )
         //  LinearCombination::new("z_b", vec![(F::one(), z_b)])
         //  LinearCombination::new("g_1", vec![(F::one(), g_1)], rhs::new(g_1_at_beta))
-        //  LinearCombination::new("t", vec![(F::one(), t)])
         query_set.insert(("g_1".into(), ("beta".into(), beta)));
         query_set.insert(("z_b".into(), ("beta".into(), beta)));
-        query_set.insert(("t".into(), ("beta".into(), beta)));
         query_set.insert(("outer_sumcheck".into(), ("beta".into(), beta)));
 
         // For the second linear combination
@@ -177,9 +189,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         //      ],
         //  )
         //
-        // let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
-        // let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
-        // let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
+        // let v_H_at_alpha = constraint_domain.evaluate_vanishing_polynomial(alpha);
+        // let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
+        // let v_K_at_gamma = non_zero_domain.evaluate_vanishing_polynomial(gamma);
         //
         // let a_poly_lc *= v_H_at_alpha * v_H_at_beta;
         // let b_lc = denom
@@ -188,14 +200,10 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         // // This LC is the only one that is evaluated:
         // let inner_sumcheck = a_poly_lc - (b_lc * (gamma * g_2_at_gamma + (t_at_beta / &k_size))) - h_lc
         // main_lc.set_label("inner_sumcheck");
-        query_set.insert(("g_2".into(), ("gamma".into(), gamma)));
+        query_set.insert(("g_a".into(), ("gamma".into(), gamma)));
+        query_set.insert(("g_b".into(), ("gamma".into(), gamma)));
+        query_set.insert(("g_c".into(), ("gamma".into(), gamma)));
         query_set.insert(("inner_sumcheck".into(), ("gamma".into(), gamma)));
-
-        if with_vanishing {
-            query_set.insert(("vanishing_poly_h_alpha".into(), ("alpha".into(), alpha)));
-            query_set.insert(("vanishing_poly_h_beta".into(), ("beta".into(), beta)));
-            query_set.insert(("vanishing_poly_k_gamma".into(), ("gamma".into(), gamma)));
-        }
 
         (query_set, state)
     }

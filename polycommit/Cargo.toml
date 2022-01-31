@@ -35,6 +35,7 @@ edition = "2018"
 path = "../algorithms"
 version = "0.7.5"
 default-features = false
+features = [ "fft", "msm", "crh" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"

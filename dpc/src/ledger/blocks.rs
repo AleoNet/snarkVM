@@ -243,14 +243,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the expected difficulty target is met.
         let expected_difficulty_target =
-            if N::NETWORK_ID == 2 && block.height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-                Blocks::<N>::compute_difficulty_target(current_block.header(), block.timestamp(), block.height())
-            } else if N::NETWORK_ID == 2 {
-                let anchor_block_header = self.get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
-                Blocks::<N>::compute_difficulty_target(anchor_block_header, block.timestamp(), block.height())
-            } else {
-                Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height())
-            };
+            Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height());
         if block.difficulty_target() != expected_difficulty_target {
             return Err(anyhow!(
                 "The given block difficulty target is incorrect. Found {}, but expected {}",
@@ -412,52 +405,14 @@ impl<N: Network> Blocks<N> {
         block_timestamp: i64,
         block_height: u32,
     ) -> u64 {
-        if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-            Self::bitcoin_retarget(
-                anchor_block_header.timestamp(),
-                anchor_block_header.difficulty_target(),
-                block_timestamp,
-                N::ALEO_BLOCK_TIME_IN_SECS,
-            )
-        } else {
-            Self::asert_retarget(
-                anchor_block_header.timestamp(),
-                anchor_block_header.difficulty_target(),
-                anchor_block_header.height(),
-                block_timestamp,
-                block_height,
-                N::ALEO_BLOCK_TIME_IN_SECS,
-            )
-        }
-    }
-
-    /// Bitcoin difficulty retarget algorithm.
-    ///     T_{i+1} = T_i * (S / (M * B)).
-    ///     M = Number of blocks per retarget.
-    ///     B = Expected time per block.
-    ///     S = Time elapsed between the last M blocks.
-    fn bitcoin_retarget(
-        previous_timestamp: i64,
-        previous_difficulty: u64,
-        block_timestamp: i64,
-        target_block_time: i64,
-    ) -> u64 {
-        const NUM_BLOCKS_PER_RETARGET: i64 = 1i64;
-
-        let time_elapsed = block_timestamp.saturating_sub(previous_timestamp);
-        let time_elapsed = match time_elapsed > 0 {
-            true => time_elapsed,
-            false => 1,
-        };
-
-        let difficulty_factor = time_elapsed as f64 / (NUM_BLOCKS_PER_RETARGET * target_block_time) as f64;
-
-        let new_difficulty = (previous_difficulty as f64) * difficulty_factor;
-
-        match new_difficulty.is_finite() {
-            true => new_difficulty as u64,
-            false => u64::MAX,
-        }
+        Self::asert_retarget(
+            anchor_block_header.timestamp(),
+            anchor_block_header.difficulty_target(),
+            anchor_block_header.height(),
+            block_timestamp,
+            block_height,
+            N::ALEO_BLOCK_TIME_IN_SECS,
+        )
     }
 
     /// ASERT difficulty retarget algorithm based on https://www.reference.cash/protocol/forks/2020-11-15-asert.
@@ -563,39 +518,6 @@ mod tests {
     use crate::testnet2::Testnet2;
 
     use rand::{thread_rng, Rng};
-
-    #[test]
-    fn test_bitcoin_difficulty_target() {
-        let rng = &mut thread_rng();
-
-        let mut block_difficulty_target = u64::MAX;
-        let mut current_timestamp = 0;
-
-        for _ in 0..1000 {
-            // Simulate a random block time.
-            let simulated_block_time =
-                rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS / 2..Testnet2::ALEO_BLOCK_TIME_IN_SECS * 2);
-            let new_timestamp = current_timestamp + simulated_block_time;
-
-            let new_target = Blocks::<Testnet2>::bitcoin_retarget(
-                current_timestamp,
-                block_difficulty_target,
-                new_timestamp,
-                Testnet2::ALEO_BLOCK_TIME_IN_SECS,
-            );
-
-            if simulated_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                // If the block was found faster than expected, the difficulty should increase.
-                assert!(new_target < block_difficulty_target);
-            } else if simulated_block_time >= Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                // If the block was found slower than expected, the difficulty should decrease.
-                assert!(new_target >= block_difficulty_target);
-            }
-
-            current_timestamp = new_timestamp;
-            block_difficulty_target = new_target;
-        }
-    }
 
     #[test]
     fn test_asert_difficulty_target_simple() {

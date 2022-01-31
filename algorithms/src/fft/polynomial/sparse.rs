@@ -16,7 +16,7 @@
 
 //! A sparse polynomial represented in coefficient form.
 
-use crate::fft::{DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations};
+use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
@@ -144,17 +144,6 @@ impl<'a, F: PrimeField> core::ops::Mul<F> for &'a SparsePolynomial<F> {
         let mut result = self.clone();
         result *= other;
         result
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<F: Field> Into<DensePolynomial<F>> for SparsePolynomial<F> {
-    fn into(self) -> DensePolynomial<F> {
-        let mut other = vec![F::zero(); self.degree() + 1];
-        for (i, coeff) in self.coeffs {
-            other[i] = coeff;
-        }
-        DensePolynomial::from_coefficients_vec(other)
     }
 }
 

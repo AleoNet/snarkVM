@@ -17,6 +17,7 @@
 use crate::{
     ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
     marlin::MarlinMode,
+    prover::ProverMessage,
     String,
     ToString,
     Vec,
@@ -40,44 +41,34 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The labels for the polynomials output by the AHP indexer.
     #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS: [&'static str; 6] = [
+    pub const INDEXER_POLYNOMIALS: [&'static str; 12] = [
         // Polynomials for M
-        "row", "col", "a_val", "b_val", "c_val", "row_col",
-    ];
-    /// The labels for the polynomials output and vanishing polynomials by the AHP indexer.
-    #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS_WITH_VANISHING: [&'static str; 8] = [
-        // Polynomials for M
-        "row", "col", "a_val", "b_val", "c_val", "row_col",
-        // Vanishing polynomials
-        "vanishing_poly_h", "vanishing_poly_k"
+        "row_a", "col_a", "val_a", "row_col_a",
+        "row_b", "col_b", "val_b", "row_col_b",
+        "row_c", "col_c", "val_c", "row_col_c",
     ];
     /// The linear combinations that are statically known to evaluate to zero.
     #[rustfmt::skip]
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["inner_sumcheck", "outer_sumcheck"];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 8] = [
+    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 9] = [
         // First sumcheck
-        "w", "z_a", "z_b", "t", "g_1", "h_1",
+        "w", "z_a", "z_b", "g_1", "h_1",
         // Second sumcheck
-        "g_2", "h_2",
+        "g_a", "g_b", "g_c", "h_2",
     ];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 9] = [
+    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 10] = [
         // First sumcheck
-        "w", "z_a", "z_b", "mask_poly", "t", "g_1", "h_1",
+        "w", "z_a", "z_b", "mask_poly", "g_1", "h_1",
         // Second sumcheck
-        "g_2", "h_2",
+        "g_a", "g_b", "g_c", "h_2",
     ];
 
     pub(crate) fn indexer_polynomials() -> impl Iterator<Item = &'static str> {
-        if MM::RECURSION {
-            Self::INDEXER_POLYNOMIALS_WITH_VANISHING.as_ref().iter().copied()
-        } else {
-            Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
-        }
+        Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
     }
 
     pub(crate) fn prover_polynomials() -> impl Iterator<Item = &'static str> {
@@ -111,22 +102,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, AHPError> {
         let padded_matrix_dim = matrices::padded_matrix_dim(num_variables, num_constraints);
         let zk_bound = 1;
-        let domain_h_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
+        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero)
+        let non_zero_domain_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         Ok(*[
-            2 * domain_h_size + zk_bound - 2,
+            2 * constraint_domain_size + zk_bound - 2,
             if MM::ZK {
-                3 * domain_h_size + 2 * zk_bound - 3
+                3 * constraint_domain_size + 2 * zk_bound - 3
             } else {
                 0
             }, //  mask_poly
-            domain_h_size,
-            domain_h_size,
-            domain_k_size - 1,
-            domain_k_size, //  due to vanishing polynomial; for convenience, we increase the number by one regardless of the mode.
+            constraint_domain_size,
+            constraint_domain_size,
+            non_zero_domain_size - 1,
+            non_zero_domain_size, //  due to vanishing polynomial; for convenience, we increase the number by one regardless of the mode.
         ]
         .iter()
         .max()
@@ -134,16 +125,35 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds(info: &CircuitInfo<F>) -> [usize; 2] {
-        let mut degree_bounds = [0usize; 2];
+    pub fn get_degree_bounds(info: &CircuitInfo<F>) -> [usize; 4] {
         let num_constraints = info.num_constraints;
-        let num_non_zero = info.num_non_zero;
-        let h_size = EvaluationDomain::<F>::compute_size_of_domain(num_constraints).unwrap();
-        let k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).unwrap();
+        let num_non_zero_a = info.num_non_zero_a;
+        let num_non_zero_b = info.num_non_zero_b;
+        let num_non_zero_c = info.num_non_zero_c;
+        [
+            EvaluationDomain::<F>::compute_size_of_domain(num_constraints).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_a).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_b).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_c).unwrap() - 2,
+        ]
+    }
 
-        degree_bounds[0] = h_size - 2;
-        degree_bounds[1] = k_size - 2;
-        degree_bounds
+    pub fn max_non_zero_domain(info: &CircuitInfo<F>) -> EvaluationDomain<F> {
+        let non_zero_a_domain = EvaluationDomain::new(info.num_non_zero_a).unwrap();
+        let non_zero_b_domain = EvaluationDomain::new(info.num_non_zero_b).unwrap();
+        let non_zero_c_domain = EvaluationDomain::new(info.num_non_zero_c).unwrap();
+        Self::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain)
+    }
+
+    fn max_non_zero_domain_helper(
+        domain_a: EvaluationDomain<F>,
+        domain_b: EvaluationDomain<F>,
+        domain_c: EvaluationDomain<F>,
+    ) -> EvaluationDomain<F> {
+        [domain_a, domain_b, domain_c]
+            .into_iter()
+            .max_by_key(|d| d.size())
+            .unwrap()
     }
 
     /// Construct the linear combinations that are checked by the AHP.
@@ -152,44 +162,60 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],
         evals: &E,
+        prover_third_message: &ProverMessage<F>,
         state: &verifier::VerifierState<F, MM>,
     ) -> Result<Vec<LinearCombination<F>>, AHPError> {
-        let domain_h = state.domain_h;
-        let domain_k = state.domain_k;
-        let k_size = domain_k.size_as_field_element;
+        let constraint_domain = state.constraint_domain;
+        let non_zero_a_domain = state.non_zero_a_domain;
+        let non_zero_b_domain = state.non_zero_b_domain;
+        let non_zero_c_domain = state.non_zero_c_domain;
+        let largest_non_zero_domain = Self::max_non_zero_domain_helper(
+            state.non_zero_a_domain,
+            state.non_zero_b_domain,
+            state.non_zero_c_domain,
+        );
 
         let public_input = ProverConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
             return Err(AHPError::InvalidPublicInputLength);
         }
-        let x_domain = EvaluationDomain::new(public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let input_domain = EvaluationDomain::new(public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let first_round_msg = state.first_round_message.unwrap();
         let alpha = first_round_msg.alpha;
-        let eta_a = first_round_msg.eta_a;
+        let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
+
+        let a_at_beta = prover_third_message.field_elements[0];
+        let b_at_beta = prover_third_message.field_elements[1];
+        let c_at_beta = prover_third_message.field_elements[2];
+        #[rustfmt::skip]
+        let t_at_beta =
+            eta_a * state.non_zero_a_domain.size_as_field_element * a_at_beta +
+            eta_b * state.non_zero_b_domain.size_as_field_element * b_at_beta +
+            eta_c * state.non_zero_c_domain.size_as_field_element * c_at_beta;
+        let r_b = state.third_round_message.as_ref().unwrap().r_b;
+        let r_c = state.third_round_message.as_ref().unwrap().r_c;
 
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = Vec::with_capacity(9);
 
-        // Outer sumchecK:
+        // Outer sumcheck:
         let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
         let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
-        let t = LinearCombination::new("t", vec![(F::one(), "t")]);
 
-        let r_alpha_at_beta = domain_h.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
-        let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
-        let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
-        let v_X_at_beta = x_domain.evaluate_vanishing_polynomial(beta);
+        let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
+        let v_H_at_alpha = constraint_domain.evaluate_vanishing_polynomial(alpha);
+        let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
+        let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
         let z_b_at_beta = evals.get_lc_eval(&z_b, beta)?;
-        let t_at_beta = evals.get_lc_eval(&t, beta)?;
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
-        let x_at_beta = x_domain
+        let x_at_beta = input_domain
             .evaluate_all_lagrange_coefficients(beta)
             .into_iter()
             .zip(public_input)
@@ -210,56 +236,104 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             lc_terms.push((-beta * g_1_at_beta, LCTerm::One));
             LinearCombination::new("outer_sumcheck", lc_terms)
         };
-        debug_assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
+        assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
 
         linear_combinations.push(z_b);
         linear_combinations.push(g_1);
-        linear_combinations.push(t);
         linear_combinations.push(outer_sumcheck);
 
         //  Inner sumcheck:
-        let beta_alpha = beta * alpha;
-        let g_2 = LinearCombination::new("g_2", vec![(F::one(), "g_2")]);
+        let mut inner_sumcheck = LinearCombination::empty("inner_sumcheck");
 
-        let g_2_at_gamma = evals.get_lc_eval(&g_2, gamma)?;
+        let g_a = LinearCombination::new("g_a", vec![(F::one(), "g_a")]);
+        let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
+        let selector_a = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_a_domain, gamma);
+        let lhs_a = Self::construct_lhs(
+            "a",
+            alpha,
+            beta,
+            gamma,
+            v_H_at_alpha * v_H_at_beta,
+            g_a_at_gamma,
+            a_at_beta,
+            selector_a,
+        );
+        inner_sumcheck += &lhs_a;
 
-        let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
+        let g_b = LinearCombination::new("g_b", vec![(F::one(), "g_b")]);
+        let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
+        let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_b_domain, gamma);
+        let lhs_b = Self::construct_lhs(
+            "b",
+            alpha,
+            beta,
+            gamma,
+            v_H_at_alpha * v_H_at_beta,
+            g_b_at_gamma,
+            b_at_beta,
+            selector_b,
+        );
+        inner_sumcheck += (r_b, &lhs_b);
 
-        let mut a = LinearCombination::new("a_poly", vec![(eta_a, "a_val"), (eta_b, "b_val"), (eta_c, "c_val")]);
-        a *= v_H_at_alpha * v_H_at_beta;
+        let g_c = LinearCombination::new("g_c", vec![(F::one(), "g_c")]);
+        let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
+        let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_c_domain, gamma);
+        let lhs_c = Self::construct_lhs(
+            "c",
+            alpha,
+            beta,
+            gamma,
+            v_H_at_alpha * v_H_at_beta,
+            g_c_at_gamma,
+            c_at_beta,
+            selector_c,
+        );
+        inner_sumcheck += (r_c, &lhs_c);
 
-        let mut b = LinearCombination::new("denom", vec![
-            (beta_alpha, LCTerm::One),
-            (-alpha, "row".into()),
-            (-beta, "col".into()),
-            (F::one(), "row_col".into()),
-        ]);
-        b *= gamma * g_2_at_gamma + (t_at_beta / k_size);
-
-        let mut inner_sumcheck = a;
-        inner_sumcheck -= &b;
-        inner_sumcheck -= &LinearCombination::new("h_2", vec![(v_K_at_gamma, "h_2")]);
-        inner_sumcheck.label = "inner_sumcheck".into();
+        inner_sumcheck -= &LinearCombination::new("h_2", vec![(
+            largest_non_zero_domain.evaluate_vanishing_polynomial(gamma),
+            "h_2",
+        )]);
         debug_assert!(evals.get_lc_eval(&inner_sumcheck, gamma)?.is_zero());
 
-        linear_combinations.push(g_2);
+        linear_combinations.push(g_a);
+        linear_combinations.push(g_b);
+        linear_combinations.push(g_c);
         linear_combinations.push(inner_sumcheck);
 
-        if MM::RECURSION {
-            let vanishing_poly_h_alpha =
-                LinearCombination::new("vanishing_poly_h_alpha", vec![(F::one(), "vanishing_poly_h")]);
-            let vanishing_poly_h_beta =
-                LinearCombination::new("vanishing_poly_h_beta", vec![(F::one(), "vanishing_poly_h")]);
-            let vanishing_poly_k_gamma =
-                LinearCombination::new("vanishing_poly_k_gamma", vec![(F::one(), "vanishing_poly_k")]);
-
-            linear_combinations.push(vanishing_poly_h_alpha);
-            linear_combinations.push(vanishing_poly_h_beta);
-            linear_combinations.push(vanishing_poly_k_gamma);
-        }
-
-        linear_combinations.sort_by(|a, b| a.label.cmp(&b.label));
+        linear_combinations.sort_by_key(|a| a.label.clone());
         Ok(linear_combinations)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn construct_lhs(
+        label: &str,
+        alpha: F,
+        beta: F,
+        gamma: F,
+        v_h_at_alpha_beta: F,
+        g_at_gamma: F,
+        sum: F,
+        selector_at_gamma: F,
+    ) -> LinearCombination<F> {
+        let a = LinearCombination::new("a_poly_".to_string() + label, vec![(
+            v_h_at_alpha_beta,
+            "val_".to_string() + label,
+        )]);
+        let alpha_beta = alpha * beta;
+
+        let mut b = LinearCombination::new("denom_".to_string() + label, vec![
+            (alpha_beta, LCTerm::One),
+            (-alpha, ("row_".to_string() + label).into()),
+            (-beta, ("col_".to_string() + label).into()),
+            (F::one(), ("row_col_".to_string() + label).into()),
+        ]);
+        b *= gamma * g_at_gamma + sum;
+
+        let mut lhs = a;
+        lhs -= &b;
+        lhs *= selector_at_gamma;
+        lhs
     }
 }
 
@@ -339,10 +413,24 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     }
 }
 
+/// Given two domains H and K such that H \subseteq K,
+/// construct polynomial that outputs 0 on all elements in K \ H, but 1 on all elements of H.
+pub trait SelectorPolynomial<F: PrimeField> {
+    fn evaluate_selector_polynomial(&self, other: EvaluationDomain<F>, point: F) -> F;
+}
+
+impl<F: PrimeField> SelectorPolynomial<F> for EvaluationDomain<F> {
+    fn evaluate_selector_polynomial(&self, other: EvaluationDomain<F>, point: F) -> F {
+        let numerator = self.evaluate_vanishing_polynomial(point) * other.size_as_field_element;
+        let denominator = other.evaluate_vanishing_polynomial(point) * self.size_as_field_element;
+        numerator / denominator
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::fft::{DenseOrSparsePolynomial, DensePolynomial};
+    use snarkvm_algorithms::fft::{DensePolynomial, Evaluations};
     use snarkvm_curves::bls12_377::fr::Fr;
     use snarkvm_fields::{One, Zero};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
@@ -398,61 +486,32 @@ mod tests {
 
     #[test]
     fn test_alternator_polynomial() {
-        use snarkvm_algorithms::fft::Evaluations;
-        let domain_k = EvaluationDomain::<Fr>::new(1 << 4).unwrap();
-        let domain_h = EvaluationDomain::<Fr>::new(1 << 3).unwrap();
-        let domain_h_elems = domain_h.elements().collect::<std::collections::HashSet<_>>();
-        let alternator_poly_evals = domain_k
-            .elements()
-            .map(|e| {
-                if domain_h_elems.contains(&e) {
-                    Fr::one()
-                } else {
-                    Fr::zero()
+        for i in 1..10 {
+            for j in 1..i {
+                let domain_i = EvaluationDomain::<Fr>::new(1 << i).unwrap();
+                let domain_j = EvaluationDomain::<Fr>::new(1 << j).unwrap();
+                let point = domain_j.sample_element_outside_domain(&mut snarkvm_utilities::test_rng());
+                let j_elements = domain_j.elements().collect::<Vec<_>>();
+                let slow_selector = {
+                    let evals = domain_i
+                        .elements()
+                        .map(|e| if j_elements.contains(&e) { Fr::one() } else { Fr::zero() })
+                        .collect();
+                    Evaluations::from_vec_and_domain(evals, domain_i).interpolate()
+                };
+                assert_eq!(
+                    slow_selector.evaluate(point),
+                    domain_i.evaluate_selector_polynomial(domain_j, point)
+                );
+
+                for element in domain_i.elements() {
+                    if j_elements.contains(&element) {
+                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {} vs {}", i, j);
+                    } else {
+                        assert_eq!(slow_selector.evaluate(element), Fr::zero());
+                    }
                 }
-            })
-            .collect();
-        let v_k: DenseOrSparsePolynomial<_> = domain_k.vanishing_polynomial().into();
-        let v_h: DenseOrSparsePolynomial<_> = domain_h.vanishing_polynomial().into();
-        let (divisor, remainder) = v_k.divide_with_q_and_r(&v_h).unwrap();
-        assert!(remainder.is_zero());
-        println!("Divisor: {:?}", divisor);
-        println!(
-            "{:#?}",
-            divisor
-                .coeffs
-                .iter()
-                .filter_map(|f| if !f.is_zero() { Some(f.to_repr()) } else { None })
-                .collect::<Vec<_>>()
-        );
-
-        for e in domain_h.elements() {
-            println!("{:?}", divisor.evaluate(e));
+            }
         }
-        // Let p = v_K / v_H;
-        // The alternator polynomial is p * t, where t is defined as
-        // the LDE of p(h)^{-1} for all h in H.
-        //
-        // Because for each h in H, p(h) equals a constant c, we have that t
-        // is the constant polynomial c^{-1}.
-        //
-        // Q: what is the constant c? Why is p(h) constant? What is the easiest
-        // way to calculate c?
-        let alternator_poly = Evaluations::from_vec_and_domain(alternator_poly_evals, domain_k).interpolate();
-        let (quotient, remainder) = DenseOrSparsePolynomial::from(alternator_poly.clone())
-            .divide_with_q_and_r(&DenseOrSparsePolynomial::from(divisor))
-            .unwrap();
-        assert!(remainder.is_zero());
-        println!("quotient: {:?}", quotient);
-        println!(
-            "{:#?}",
-            quotient
-                .coeffs
-                .iter()
-                .filter_map(|f| if !f.is_zero() { Some(f.to_repr()) } else { None })
-                .collect::<Vec<_>>()
-        );
-
-        println!("{:?}", alternator_poly);
     }
 }

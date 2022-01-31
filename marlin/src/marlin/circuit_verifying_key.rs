@@ -40,11 +40,10 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use core::{fmt, marker::PhantomData, str::FromStr};
-use derivative::Derivative;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(derivative::Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Stores information about the size of the circuit, as well as its defined field.
@@ -69,19 +68,20 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 
         let prepared_verifier_key = self.verifier_key.prepare();
 
-        let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let domain_k = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-
-        let domain_h_size = domain_h.size();
-        let domain_k_size = domain_k.size();
+        let constraint_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u64;
+        let non_zero_a_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_non_zero_a).unwrap() as u64;
+        let non_zero_b_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u64;
+        let non_zero_c_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u64;
 
         PreparedCircuitVerifyingKey::<F, CF, PC, MM> {
-            domain_h_size: domain_h_size as u64,
-            domain_k_size: domain_k_size as u64,
+            constraint_domain_size,
+            non_zero_a_domain_size,
+            non_zero_b_domain_size,
+            non_zero_c_domain_size,
             prepared_index_comms,
             prepared_verifier_key,
             orig_vk: (*self).clone(),
@@ -109,25 +109,45 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
     for CircuitVerifyingKey<F, CF, PC, MM>
 {
     fn to_minimal_bits(&self) -> Vec<bool> {
-        let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
+        let constraint_domain = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
-        let domain_k = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
+        let non_zero_domain_a = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero_a)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let non_zero_domain_b = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero_b)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let non_zero_domain_c = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero_c)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
 
-        assert!(domain_h.size() < u64::MAX as usize);
-        assert!(domain_k.size() < u64::MAX as usize);
+        assert!(constraint_domain.size() < u64::MAX as usize);
+        assert!(non_zero_domain_a.size() < u64::MAX as usize);
+        assert!(non_zero_domain_b.size() < u64::MAX as usize);
+        assert!(non_zero_domain_c.size() < u64::MAX as usize);
 
-        let domain_h_size = domain_h.size() as u64;
-        let domain_k_size = domain_k.size() as u64;
+        let constraint_domain_size = constraint_domain.size() as u64;
+        let non_zero_domain_a_size = non_zero_domain_a.size() as u64;
+        let non_zero_domain_b_size = non_zero_domain_b.size() as u64;
+        let non_zero_domain_c_size = non_zero_domain_c.size() as u64;
 
-        let domain_h_size_bits = domain_h_size
+        let constraint_domain_size_bits = constraint_domain_size
             .to_le_bytes()
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
             .collect::<Vec<bool>>();
-        let domain_k_size_bits = domain_k_size
+        let non_zero_domain_size_a_bits = non_zero_domain_a_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        let non_zero_domain_size_b_bits = non_zero_domain_b_size
+            .to_le_bytes()
+            .iter()
+            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
+            .collect::<Vec<bool>>();
+        let non_zero_domain_size_c_bits = non_zero_domain_c_size
             .to_le_bytes()
             .iter()
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
@@ -135,7 +155,14 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
 
         let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 
-        [domain_h_size_bits, domain_k_size_bits, circuit_commitments_bits].concat()
+        [
+            constraint_domain_size_bits,
+            non_zero_domain_size_a_bits,
+            non_zero_domain_size_b_bits,
+            non_zero_domain_size_c_bits,
+            circuit_commitments_bits,
+        ]
+        .concat()
     }
 }
 
@@ -168,16 +195,20 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
     for CircuitVerifyingKey<F, CF, PC, MM>
 {
     fn to_field_elements(&self) -> Result<Vec<CF>, ConstraintFieldError> {
-        let domain_h = EvaluationDomain::<CF>::new(self.circuit_info.num_constraints)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let domain_k = EvaluationDomain::<CF>::new(self.circuit_info.num_non_zero)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
+        let constraint_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u128;
+        let non_zero_a_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_non_zero_a).unwrap() as u128;
+        let non_zero_b_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u128;
+        let non_zero_c_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(self.circuit_info.num_non_zero_c).unwrap() as u128;
 
         let mut res = Vec::new();
-        res.append(&mut CF::from(domain_h.size() as u128).to_field_elements()?);
-        res.append(&mut CF::from(domain_k.size() as u128).to_field_elements()?);
+        res.append(&mut CF::from(constraint_domain_size).to_field_elements()?);
+        res.append(&mut CF::from(non_zero_a_domain_size).to_field_elements()?);
+        res.append(&mut CF::from(non_zero_b_domain_size).to_field_elements()?);
+        res.append(&mut CF::from(non_zero_c_domain_size).to_field_elements()?);
         for comm in self.circuit_commitments.iter() {
             res.append(&mut comm.to_field_elements()?);
         }

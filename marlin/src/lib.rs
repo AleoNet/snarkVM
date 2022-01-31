@@ -31,38 +31,31 @@
 extern crate snarkvm_profiler;
 
 #[cfg(not(feature = "std"))]
-#[macro_use]
 extern crate alloc;
 
 #[rustfmt::skip]
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::{BTreeSet, BTreeMap},
+pub use alloc::{
+    collections::BTreeMap,
     string::{String, ToString},
     vec::Vec,
 };
 
 #[cfg(not(feature = "std"))]
-use core::marker::PhantomData;
+pub use core::marker::PhantomData;
 
 #[cfg(not(feature = "std"))]
-use snarkvm_utilities::io::{
-    Read,
-    Result as IoResult,
-    Write,
-    {self},
-};
+pub use snarkvm_utilities::io::{self, Read, Result as IoResult, Write};
 
 #[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
-    collections::{BTreeSet, BTreeMap},
+    collections::BTreeMap,
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
-    io::{Read, Write, Result as IoResult, {self}},
+    io::{Read, Write, Result as IoResult, self},
 };
-use snarkvm_polycommit::PolynomialCommitment;
 
 #[cfg(not(feature = "std"))]
 macro_rules! eprintln {
@@ -77,11 +70,9 @@ extern crate snarkvm_utilities;
 pub mod ahp;
 pub use ahp::*;
 
-/// Implements the Marlin verification gadget.
-pub mod constraints;
-
 /// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;
+pub use marlin::MarlinSNARK;
 
 /// RNGs for the Marlin SNARK.
 pub mod fiat_shamir;
