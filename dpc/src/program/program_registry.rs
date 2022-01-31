@@ -113,11 +113,6 @@ impl<N: Network> ProgramRegistry<N> {
 
     /// Adds all given programs to the tree.
     pub(crate) fn add_all(&mut self, programs: Vec<(N::ProgramID, ProgramFunctions<N>)>) -> Result<()> {
-        // Ensure the list of given programs is non-empty.
-        if programs.is_empty() {
-            return Err(anyhow!("The list of given programs must be non-empty"));
-        }
-
         // TODO (raychu86): Optimize this operation.
         for program in programs {
             self.add(program)?;
