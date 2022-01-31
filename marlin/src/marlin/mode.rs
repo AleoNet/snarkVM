@@ -18,9 +18,6 @@ use core::fmt::Debug;
 
 /// A trait to specify the Marlin mode.
 pub trait MarlinMode: Clone + Debug + 'static + Sync + Send {
-    /// Specifies whether this is for a recursive proof of at least depth-1.
-    const RECURSION: bool;
-
     const ZK: bool;
 }
 
@@ -30,7 +27,6 @@ pub trait MarlinMode: Clone + Debug + 'static + Sync + Send {
 pub struct MarlinTestnet1Mode;
 
 impl MarlinMode for MarlinTestnet1Mode {
-    const RECURSION: bool = false;
     const ZK: bool = true;
 }
 
@@ -39,7 +35,6 @@ impl MarlinMode for MarlinTestnet1Mode {
 pub struct MarlinTestnet2Mode;
 
 impl MarlinMode for MarlinTestnet2Mode {
-    const RECURSION: bool = true;
     const ZK: bool = true;
 }
 
@@ -48,7 +43,6 @@ impl MarlinMode for MarlinTestnet2Mode {
 pub struct MarlinRecursiveMode;
 
 impl MarlinMode for MarlinRecursiveMode {
-    const RECURSION: bool = true;
     const ZK: bool = true;
 }
 
@@ -57,6 +51,5 @@ impl MarlinMode for MarlinRecursiveMode {
 pub struct MarlinPoswMode;
 
 impl MarlinMode for MarlinPoswMode {
-    const RECURSION: bool = false;
     const ZK: bool = false;
 }

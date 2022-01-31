@@ -255,6 +255,7 @@ mod tests {
                 MultiPC,
                 FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
                 MarlinRecursiveMode,
+                Vec<Fr>,
             >;
 
             let rng = &mut test_rng();

@@ -56,12 +56,7 @@ use snarkvm_gadgets::{
     },
     curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
-use snarkvm_marlin::{
-    constraints::snark::MarlinSNARK,
-    marlin::MarlinPoswMode,
-    FiatShamirAlgebraicSpongeRng,
-    PoseidonSponge,
-};
+use snarkvm_marlin::{marlin::MarlinPoswMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
 use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
@@ -109,8 +104,8 @@ impl Network for Testnet1 {
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 903;
-    const HEADER_PROOF_SIZE_IN_BYTES: usize = 771;
+    const HEADER_SIZE_IN_BYTES: usize = 1015;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 883;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 193;
     const RECORD_SIZE_IN_BYTES: usize = 280;

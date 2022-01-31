@@ -42,6 +42,10 @@ pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
         genesis_block.header().to_bytes_le()?.len()
     );
     println!(
+        "Genesis block header proof size - {}\n",
+        genesis_block.header().proof().to_bytes_le()?.len()
+    );
+    println!(
         "Genesis coinbase transaction size - {}\n",
         genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len()
     );

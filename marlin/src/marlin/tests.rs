@@ -83,12 +83,14 @@ mod marlin {
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
+    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode, Vec<Fr>>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
-    type MarlinSonicInst = MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
+    type MarlinSonicInst =
+        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode, Vec<Fr>>;
 
-    type MarlinSonicPoswInst = MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinPoswMode>;
+    type MarlinSonicPoswInst =
+        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinPoswMode, Vec<Fr>>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
@@ -319,6 +321,7 @@ mod marlin_recursion {
         MultiPC,
         FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
         MarlinRecursiveMode,
+        Vec<Fr>,
     >;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
