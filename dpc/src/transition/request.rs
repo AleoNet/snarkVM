@@ -54,15 +54,7 @@ impl<N: Network> Request<N> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
-        Self::new(
-            &burner,
-            vec![],
-            vec![LedgerProof::default(); N::NUM_INPUT_RECORDS],
-            operation,
-            fee,
-            is_public,
-            rng,
-        )
+        Self::new(&burner, vec![], vec![LedgerProof::default(); N::NUM_INPUT_RECORDS], operation, fee, is_public, rng)
     }
 
     /// Initializes a new transfer request.
@@ -92,15 +84,7 @@ impl<N: Network> Request<N> {
             records.push(Record::new_noop(noop_address, rng)?);
         }
 
-        Self::new(
-            &noop_private_key,
-            records,
-            ledger_proofs,
-            Operation::Noop,
-            AleoAmount::ZERO,
-            false,
-            rng,
-        )
+        Self::new(&noop_private_key, records, ledger_proofs, Operation::Noop, AleoAmount::ZERO, false, rng)
     }
 
     /// Signs and returns a new instance of a request.
@@ -145,14 +129,7 @@ impl<N: Network> Request<N> {
         signature: N::AccountSignature,
         is_public: bool,
     ) -> Result<Self> {
-        let request = Self {
-            records,
-            operation,
-            ledger_proofs,
-            fee,
-            signature,
-            is_public,
-        };
+        let request = Self { records, operation, ledger_proofs, fee, signature, is_public };
 
         match request.is_valid() {
             true => Ok(request),
@@ -302,10 +279,7 @@ impl<N: Network> Request<N> {
     pub fn caller(&self) -> Result<Address<N>> {
         let owners: HashSet<Address<N>> = self.records.iter().map(Record::owner).collect();
         match owners.len() == 1 {
-            true => owners
-                .into_iter()
-                .next()
-                .ok_or(anyhow!("Failed to retrieve the request caller")),
+            true => owners.into_iter().next().ok_or(anyhow!("Failed to retrieve the request caller")),
             false => Err(anyhow!("Request records do not contain the same owner")),
         }
     }

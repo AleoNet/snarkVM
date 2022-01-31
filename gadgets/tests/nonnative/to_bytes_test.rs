@@ -34,12 +34,7 @@ fn to_bytes_test() {
         )
         .unwrap();
 
-    let target_to_bytes: Vec<u8> = target_test_gadget
-        .to_bytes(cs)
-        .unwrap()
-        .iter()
-        .map(|v| v.value.unwrap())
-        .collect();
+    let target_to_bytes: Vec<u8> = target_test_gadget.to_bytes(cs).unwrap().iter().map(|v| v.value.unwrap()).collect();
 
     // 123456 = 65536 + 226 * 256 + 64
     assert_eq!(target_to_bytes[0], 64);

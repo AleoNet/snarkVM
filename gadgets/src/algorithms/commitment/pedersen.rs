@@ -47,10 +47,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Peder
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(PedersenRandomnessGadget(
-            UInt8::alloc_vec(cs, &randomness)?,
-            PhantomData,
-        ))
+        Ok(PedersenRandomnessGadget(UInt8::alloc_vec(cs, &randomness)?, PhantomData))
     }
 
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
@@ -58,10 +55,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Peder
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
-        Ok(PedersenRandomnessGadget(
-            UInt8::alloc_input_vec_le(cs, &randomness)?,
-            PhantomData,
-        ))
+        Ok(PedersenRandomnessGadget(UInt8::alloc_input_vec_le(cs, &randomness)?, PhantomData))
     }
 }
 
@@ -101,11 +95,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            pedersen: value_gen()?.borrow().clone(),
-            _group_gadget: PhantomData,
-            _field: PhantomData,
-        })
+        Ok(Self { pedersen: value_gen()?.borrow().clone(), _group_gadget: PhantomData, _field: PhantomData })
     }
 
     fn alloc<
@@ -156,9 +146,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         let mut padded_input = Cow::Borrowed(input);
         // Pad if input length is less than `WINDOW_SIZE * NUM_WINDOWS`.
         if (input.len() * 8) < WINDOW_SIZE * NUM_WINDOWS {
-            padded_input
-                .to_mut()
-                .resize((WINDOW_SIZE * NUM_WINDOWS) / 8, UInt8::constant(0u8))
+            padded_input.to_mut().resize((WINDOW_SIZE * NUM_WINDOWS) / 8, UInt8::constant(0u8))
         }
         assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
 

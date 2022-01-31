@@ -12,7 +12,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     env:
-        RUSTFLAGS: -Awarnings
+        RUSTFLAGS: -Dwarnings
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -21,7 +21,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
           override: true
           components: clippy
 

@@ -42,6 +42,10 @@ pub use prepared_circuit_verifying_key::*;
 mod proof;
 pub use proof::*;
 
+/// Implementation of the `SNARK` trait for [`MarlinSNARK`].
+mod snark;
+pub use snark::*;
+
 #[cfg(test)]
 pub mod tests;
 

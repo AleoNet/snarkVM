@@ -247,10 +247,7 @@ where
     fn miller_loop<'a, I>(i: I) -> Self::Fqk
     where
         I: Iterator<
-            Item = (
-                &'a <Self::G1Affine as PairingCurve>::Prepared,
-                &'a <Self::G2Affine as PairingCurve>::Prepared,
-            ),
+            Item = (&'a <Self::G1Affine as PairingCurve>::Prepared, &'a <Self::G2Affine as PairingCurve>::Prepared),
         >,
     {
         // Alg.5 in https://eprint.iacr.org/2020/351.pdf

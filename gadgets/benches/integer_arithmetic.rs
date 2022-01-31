@@ -38,10 +38,8 @@ macro_rules! create_addmany_bench {
                 let b_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: b (addmany)", bench_run_id)), || Ok(b)).unwrap();
                 let c_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: c (addmany)", bench_run_id)), || Ok(c)).unwrap();
 
-                <$bit_type>::addmany(cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)), &[
-                    a_bit, b_bit, c_bit,
-                ])
-                .unwrap();
+                <$bit_type>::addmany(cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)), &[a_bit, b_bit, c_bit])
+                    .unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -69,10 +67,8 @@ macro_rules! create_addmany_const_bench {
                 let b_bit = <$bit_type>::constant(b);
                 let c_bit = <$bit_type>::constant(c);
 
-                <$bit_type>::addmany(cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)), &[
-                    a_bit, b_bit, c_bit,
-                ])
-                .unwrap();
+                <$bit_type>::addmany(cs.ns(|| format!("{}: addmany &[a, b, c]", bench_run_id)), &[a_bit, b_bit, c_bit])
+                    .unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -98,9 +94,7 @@ macro_rules! create_sub_bench {
                 let a_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: a (sub)", bench_run_id)), || Ok(a)).unwrap();
                 let b_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: b (sub)", bench_run_id)), || Ok(b)).unwrap();
 
-                a_bit
-                    .sub(cs.ns(|| format!("{}: a sub b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.sub(cs.ns(|| format!("{}: a sub b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -126,9 +120,7 @@ macro_rules! create_sub_const_bench {
                 let a_bit = <$bit_type>::constant(a);
                 let b_bit = <$bit_type>::constant(b);
 
-                a_bit
-                    .sub(cs.ns(|| format!("{}: a sub b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.sub(cs.ns(|| format!("{}: a sub b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -154,9 +146,7 @@ macro_rules! create_mul_bench {
                 let a_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: a (mul)", bench_run_id)), || Ok(a)).unwrap();
                 let b_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: b (mul)", bench_run_id)), || Ok(b)).unwrap();
 
-                a_bit
-                    .mul(cs.ns(|| format!("{}: a mul b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.mul(cs.ns(|| format!("{}: a mul b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -182,9 +172,7 @@ macro_rules! create_mul_const_bench {
                 let a_bit = <$bit_type>::constant(a);
                 let b_bit = <$bit_type>::constant(b);
 
-                a_bit
-                    .mul(cs.ns(|| format!("{}: a mul b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.mul(cs.ns(|| format!("{}: a mul b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -210,9 +198,7 @@ macro_rules! create_div_bench {
                 let a_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: a (div)", bench_run_id)), || Ok(a)).unwrap();
                 let b_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: b (div)", bench_run_id)), || Ok(b)).unwrap();
 
-                a_bit
-                    .div(cs.ns(|| format!("{}: a div b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.div(cs.ns(|| format!("{}: a div b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -238,9 +224,7 @@ macro_rules! create_div_const_bench {
                 let a_bit = <$bit_type>::constant(a);
                 let b_bit = <$bit_type>::constant(b);
 
-                a_bit
-                    .div(cs.ns(|| format!("{}: a div b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.div(cs.ns(|| format!("{}: a div b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -266,9 +250,7 @@ macro_rules! create_pow_bench {
                 let a_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: a (pow)", bench_run_id)), || Ok(a)).unwrap();
                 let b_bit = <$bit_type>::alloc(cs.ns(|| format!("{}: b (pow)", bench_run_id)), || Ok(b)).unwrap();
 
-                a_bit
-                    .pow(cs.ns(|| format!("{}: a pow b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.pow(cs.ns(|| format!("{}: a pow b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -294,9 +276,7 @@ macro_rules! create_pow_const_bench {
                 let a_bit = <$bit_type>::constant(a);
                 let b_bit = <$bit_type>::constant(b);
 
-                a_bit
-                    .pow(cs.ns(|| format!("{}: a pow b", bench_run_id)), &b_bit)
-                    .unwrap();
+                a_bit.pow(cs.ns(|| format!("{}: a pow b", bench_run_id)), &b_bit).unwrap();
             }
 
             let mut cs = TestConstraintSystem::<Fr>::new();
@@ -341,34 +321,10 @@ create_pow_bench!(bench_u16_pow, "u16_pow", u16_pow, u16, UInt16);
 // create_pow_bench!(bench_u128_pow, "u128_pow", u128_pow, u128, UInt128);
 
 create_addmany_const_bench!(bench_u8_addmany_const, "u8_addmany_const", u8_addmany_const, u8, UInt8);
-create_addmany_const_bench!(
-    bench_u16_addmany_const,
-    "u16_addmany_const",
-    u16_addmany_const,
-    u16,
-    UInt16
-);
-create_addmany_const_bench!(
-    bench_u32_addmany_const,
-    "u32_addmany_const",
-    u32_addmany_const,
-    u32,
-    UInt32
-);
-create_addmany_const_bench!(
-    bench_u64_addmany_const,
-    "u64_addmany_const",
-    u64_addmany_const,
-    u64,
-    UInt64
-);
-create_addmany_const_bench!(
-    bench_u128_addmany_const,
-    "u128_addmany_const",
-    u128_addmany_const,
-    u128,
-    UInt128
-);
+create_addmany_const_bench!(bench_u16_addmany_const, "u16_addmany_const", u16_addmany_const, u16, UInt16);
+create_addmany_const_bench!(bench_u32_addmany_const, "u32_addmany_const", u32_addmany_const, u32, UInt32);
+create_addmany_const_bench!(bench_u64_addmany_const, "u64_addmany_const", u64_addmany_const, u64, UInt64);
+create_addmany_const_bench!(bench_u128_addmany_const, "u128_addmany_const", u128_addmany_const, u128, UInt128);
 
 create_sub_const_bench!(bench_u8_sub_const, "u8_sub_const", u8_sub_const, u8, UInt8);
 create_sub_const_bench!(bench_u16_sub_const, "u16_sub_const", u16_sub_const, u16, UInt16);

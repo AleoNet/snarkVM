@@ -436,9 +436,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
                     Self::Var(v) => v.clone(),
                 };
 
-                Ok(Self::Var(AllocatedNonNativeFieldVar::conditionally_select(
-                    cs, cond, &first, &second,
-                )?))
+                Ok(Self::Var(AllocatedNonNativeFieldVar::conditionally_select(cs, cond, &first, &second)?))
             }
         }
     }

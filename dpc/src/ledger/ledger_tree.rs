@@ -93,10 +93,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         };
 
         self.block_hashes.extend(
-            block_hashes
-                .iter()
-                .enumerate()
-                .map(|(index, block_hash)| (*block_hash, start_index + index as u32)),
+            block_hashes.iter().enumerate().map(|(index, block_hash)| (*block_hash, start_index + index as u32)),
         );
         self.current_index += num_block_hashes as u32;
         let end_index = self.current_index - 1;

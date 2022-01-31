@@ -129,9 +129,7 @@ impl<P: Bls12Parameters> G2PreparedGadget<P> {
         let d = r.x.add(cs.ns(|| "r.x + q.x"), &q.x)?;
         let x3 = c.square(cs.ns(|| "c^2"))?.sub(cs.ns(|| "sub d"), &d)?;
 
-        let e =
-            r.x.sub(cs.ns(|| "r.x - x3"), &x3)?
-                .mul(cs.ns(|| "c * (r.x - x3)"), &c)?;
+        let e = r.x.sub(cs.ns(|| "r.x - x3"), &x3)?.mul(cs.ns(|| "c * (r.x - x3)"), &c)?;
         let y3 = e.sub(cs.ns(|| "calc y3"), &r.y)?;
         let g = c.mul(cs.ns(|| "c*r.x"), &r.x)?.sub(cs.ns(|| "calc g"), &r.y)?;
         let mut f = c;
@@ -348,12 +346,8 @@ impl<P: Bls12Parameters> SumGadget<<P as Bls12Parameters>::Fp> for G2PreparedGad
         let mut res = Self::zero(cs.ns(|| "zero"))?;
         for (i, elem) in elems.iter().enumerate() {
             for (j, (l_coeff, r_coeff)) in elem.ell_coeffs.iter().enumerate() {
-                res.ell_coeffs[j].0 = res.ell_coeffs[j]
-                    .0
-                    .add(cs.ns(|| format!("sum_{}_{}_entry_0", i, j)), l_coeff)?;
-                res.ell_coeffs[j].1 = res.ell_coeffs[j]
-                    .1
-                    .add(cs.ns(|| format!("sum_{}_{}_entry_1", i, j)), r_coeff)?;
+                res.ell_coeffs[j].0 = res.ell_coeffs[j].0.add(cs.ns(|| format!("sum_{}_{}_entry_0", i, j)), l_coeff)?;
+                res.ell_coeffs[j].1 = res.ell_coeffs[j].1.add(cs.ns(|| format!("sum_{}_{}_entry_1", i, j)), r_coeff)?;
             }
         }
 

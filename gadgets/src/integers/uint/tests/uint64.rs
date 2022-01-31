@@ -260,11 +260,8 @@ fn test_uint64_sub() {
         let expected = a.wrapping_sub(b);
 
         let a_bit = UInt64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u64::MAX / 4 {
-            UInt64::constant(b)
-        } else {
-            UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
-        };
+        let b_bit =
+            if b > u64::MAX / 4 { UInt64::constant(b) } else { UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap() };
 
         let r = a_bit.sub(cs.ns(|| "subtraction"), &b_bit).unwrap();
 
@@ -321,11 +318,8 @@ fn test_uint64_mul() {
         let expected = a.wrapping_mul(b);
 
         let a_bit = UInt64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > (u64::MAX / 2) {
-            UInt64::constant(b)
-        } else {
-            UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
-        };
+        let b_bit =
+            if b > (u64::MAX / 2) { UInt64::constant(b) } else { UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap() };
 
         let r = a_bit.mul(cs.ns(|| "multiplication"), &b_bit).unwrap();
 
@@ -336,16 +330,10 @@ fn test_uint64_mul() {
         check_all_allocated_bits(expected, r);
 
         // Flip a bit_gadget and see if the multiplication constraint still works
-        if cs
-            .get("multiplication/partial_products/result bit_gadget 0/boolean")
-            .is_zero()
-        {
+        if cs.get("multiplication/partial_products/result bit_gadget 0/boolean").is_zero() {
             cs.set("multiplication/partial_products/result bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set(
-                "multiplication/partial_products/result bit_gadget 0/boolean",
-                Fr::zero(),
-            );
+            cs.set("multiplication/partial_products/result bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());
@@ -388,11 +376,8 @@ fn test_uint64_div() {
         let expected = a.wrapping_div(b);
 
         let a_bit = UInt64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u64::MAX / 2 {
-            UInt64::constant(b)
-        } else {
-            UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
-        };
+        let b_bit =
+            if b > u64::MAX / 2 { UInt64::constant(b) } else { UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap() };
 
         let r = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
 
@@ -403,10 +388,7 @@ fn test_uint64_div() {
         check_all_allocated_bits(expected, r);
 
         // Flip a bit_gadget and see if the division constraint still works
-        if cs
-            .get("division/r_sub_d_result_0/allocated bit_gadget 0/boolean")
-            .is_zero()
-        {
+        if cs.get("division/r_sub_d_result_0/allocated bit_gadget 0/boolean").is_zero() {
             cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::one());
         } else {
             cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::zero());
@@ -463,19 +445,10 @@ fn test_uint64_pow() {
         check_all_allocated_bits(expected, r);
 
         // Flip a bit_gadget and see if the exponentiation constraint still works
-        if cs
-            .get("exponentiation/multiply_by_self_0/partial_products/result bit_gadget 0/boolean")
-            .is_zero()
-        {
-            cs.set(
-                "exponentiation/multiply_by_self_0/partial_products/result bit_gadget 0/boolean",
-                Fr::one(),
-            );
+        if cs.get("exponentiation/multiply_by_self_0/partial_products/result bit_gadget 0/boolean").is_zero() {
+            cs.set("exponentiation/multiply_by_self_0/partial_products/result bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set(
-                "exponentiation/multiply_by_self_0/partial_products/result bit_gadget 0/boolean",
-                Fr::zero(),
-            );
+            cs.set("exponentiation/multiply_by_self_0/partial_products/result bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());

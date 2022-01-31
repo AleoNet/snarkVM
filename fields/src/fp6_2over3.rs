@@ -177,10 +177,7 @@ impl<P: Fp6Parameters> Fp6<P> {
 
 impl<P: Fp6Parameters> Zero for Fp6<P> {
     fn zero() -> Self {
-        Fp6 {
-            c0: Fp3::zero(),
-            c1: Fp3::zero(),
-        }
+        Fp6 { c0: Fp3::zero(), c1: Fp3::zero() }
     }
 
     fn is_zero(&self) -> bool {
@@ -190,10 +187,7 @@ impl<P: Fp6Parameters> Zero for Fp6<P> {
 
 impl<P: Fp6Parameters> One for Fp6<P> {
     fn one() -> Self {
-        Fp6 {
-            c0: Fp3::one(),
-            c1: Fp3::zero(),
-        }
+        Fp6 { c0: Fp3::one(), c1: Fp3::zero() }
     }
 
     fn is_one(&self) -> bool {
@@ -299,11 +293,7 @@ impl<P: Fp6Parameters> Ord for Fp6<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         let c1_cmp = self.c1.cmp(&other.c1);
-        if c1_cmp == Ordering::Equal {
-            self.c0.cmp(&other.c0)
-        } else {
-            c1_cmp
-        }
+        if c1_cmp == Ordering::Equal { self.c0.cmp(&other.c0) } else { c1_cmp }
     }
 }
 

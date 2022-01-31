@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::identity_op)]
 #![allow(clippy::module_inception)]
+#![allow(clippy::needless_borrow)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 

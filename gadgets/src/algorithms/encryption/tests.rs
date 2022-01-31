@@ -65,10 +65,7 @@ mod ecies_poseidon {
             .unwrap();
 
         expected_public_key_gadget
-            .enforce_equal(
-                cs.ns(|| "Check that declared and computed public keys are equal"),
-                &public_key_gadget,
-            )
+            .enforce_equal(cs.ns(|| "Check that declared and computed public keys are equal"), &public_key_gadget)
             .unwrap();
 
         println!("number of constraints total: {}", cs.num_constraints());
@@ -129,10 +126,7 @@ mod ecies_poseidon {
             .unwrap();
 
         expected_ciphertext_gadget
-            .enforce_equal(
-                cs.ns(|| "Check that declared and computed ciphertexts are equal"),
-                &ciphertext_gadget,
-            )
+            .enforce_equal(cs.ns(|| "Check that declared and computed ciphertexts are equal"), &ciphertext_gadget)
             .unwrap();
 
         println!("number of constraints total: {}", cs.num_constraints());
@@ -219,10 +213,7 @@ mod ecies_poseidon {
             .unwrap();
 
         expected_ciphertext_gadget
-            .enforce_equal(
-                cs.ns(|| "Check that declared and computed ciphertexts are equal"),
-                &ciphertext_gadget,
-            )
+            .enforce_equal(cs.ns(|| "Check that declared and computed ciphertexts are equal"), &ciphertext_gadget)
             .unwrap();
 
         println!("number of constraints total: {}", cs.num_constraints());

@@ -88,21 +88,13 @@ impl<P: Fp3Parameters> Fp3<P> {
     // Returns the value of QNR^T.
     #[inline]
     pub fn two_adic_root_of_unity() -> Self {
-        Self::new(
-            P::QUADRATIC_NONRESIDUE_TO_T.0,
-            P::QUADRATIC_NONRESIDUE_TO_T.1,
-            P::QUADRATIC_NONRESIDUE_TO_T.2,
-        )
+        Self::new(P::QUADRATIC_NONRESIDUE_TO_T.0, P::QUADRATIC_NONRESIDUE_TO_T.1, P::QUADRATIC_NONRESIDUE_TO_T.2)
     }
 }
 
 impl<P: Fp3Parameters> Zero for Fp3<P> {
     fn zero() -> Self {
-        Fp3 {
-            c0: P::Fp::zero(),
-            c1: P::Fp::zero(),
-            c2: P::Fp::zero(),
-        }
+        Fp3 { c0: P::Fp::zero(), c1: P::Fp::zero(), c2: P::Fp::zero() }
     }
 
     fn is_zero(&self) -> bool {
@@ -112,11 +104,7 @@ impl<P: Fp3Parameters> Zero for Fp3<P> {
 
 impl<P: Fp3Parameters> One for Fp3<P> {
     fn one() -> Self {
-        Fp3 {
-            c0: P::Fp::one(),
-            c1: P::Fp::zero(),
-            c2: P::Fp::zero(),
-        }
+        Fp3 { c0: P::Fp::one(), c1: P::Fp::zero(), c2: P::Fp::zero() }
     }
 
     fn is_one(&self) -> bool {

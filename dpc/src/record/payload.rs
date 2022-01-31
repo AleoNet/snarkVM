@@ -128,10 +128,7 @@ mod tests {
             let expected_payload = (0..i).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
             let candidate_payload = Payload::<Testnet2>::from(&expected_payload).to_bytes_le().unwrap();
             assert_eq!(expected_payload, candidate_payload[0..i]);
-            assert_eq!(
-                vec![0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES - i],
-                candidate_payload[i..]
-            );
+            assert_eq!(vec![0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES - i], candidate_payload[i..]);
         }
     }
 
@@ -140,21 +137,13 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_payload = Payload::<Testnet2>::from(
-            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
-                .map(|_| u8::rand(rng))
-                .collect::<Vec<u8>>(),
+            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES).map(|_| u8::rand(rng)).collect::<Vec<u8>>(),
         );
 
         // Serialize
         let expected_string = &expected_payload.to_string();
         let candidate_string = serde_json::to_string(&expected_payload).unwrap();
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
         // Deserialize
         assert_eq!(expected_payload, Payload::from_str(expected_string).unwrap());
@@ -166,9 +155,7 @@ mod tests {
         let rng = &mut thread_rng();
 
         let expected_payload = Payload::<Testnet2>::from(
-            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES)
-                .map(|_| u8::rand(rng))
-                .collect::<Vec<u8>>(),
+            &(0..Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES).map(|_| u8::rand(rng)).collect::<Vec<u8>>(),
         );
 
         // Serialize

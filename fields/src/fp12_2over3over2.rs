@@ -436,11 +436,7 @@ impl<P: Fp12Parameters> Ord for Fp12<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         let c1_cmp = self.c1.cmp(&other.c1);
-        if c1_cmp == Ordering::Equal {
-            self.c0.cmp(&other.c0)
-        } else {
-            c1_cmp
-        }
+        if c1_cmp == Ordering::Equal { self.c0.cmp(&other.c0) } else { c1_cmp }
     }
 }
 

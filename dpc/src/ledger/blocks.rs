@@ -57,9 +57,7 @@ impl<N: Network> Blocks<N> {
         };
 
         blocks.ledger_tree.add(&genesis_block.hash())?;
-        blocks
-            .previous_hashes
-            .insert(height, genesis_block.previous_block_hash());
+        blocks.previous_hashes.insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
 
@@ -167,11 +165,7 @@ impl<N: Network> Blocks<N> {
     /// Returns `true` if the given ledger root exists.
     pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
         *ledger_root == self.latest_ledger_root()
-            || self
-                .headers
-                .values()
-                .map(BlockHeader::previous_ledger_root)
-                .any(|root| root == *ledger_root)
+            || self.headers.values().map(BlockHeader::previous_ledger_root).any(|root| root == *ledger_root)
     }
 
     /// Returns `true` if the given block hash exists.
@@ -181,10 +175,7 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given transaction exists.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        self.transactions
-            .values()
-            .flat_map(|transactions| &**transactions)
-            .any(|tx| *tx == *transaction)
+        self.transactions.values().flat_map(|transactions| &**transactions).any(|tx| *tx == *transaction)
     }
 
     /// Returns `true` if the given serial number exists.
@@ -246,14 +237,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the expected difficulty target is met.
         let expected_difficulty_target =
-            if N::NETWORK_ID == 2 && block.height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-                Blocks::<N>::compute_difficulty_target(current_block.header(), block.timestamp(), block.height())
-            } else if N::NETWORK_ID == 2 {
-                let anchor_block_header = self.get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
-                Blocks::<N>::compute_difficulty_target(anchor_block_header, block.timestamp(), block.height())
-            } else {
-                Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height())
-            };
+            Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height());
         if block.difficulty_target() != expected_difficulty_target {
             return Err(anyhow!(
                 "The given block difficulty target is incorrect. Found {}, but expected {}",
@@ -263,9 +247,8 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the expected cumulative weight is computed correctly.
-        let expected_cumulative_weight = current_block
-            .cumulative_weight()
-            .saturating_add((u64::MAX / expected_difficulty_target) as u128);
+        let expected_cumulative_weight =
+            current_block.cumulative_weight().saturating_add((u64::MAX / expected_difficulty_target) as u128);
         if block.cumulative_weight() != expected_cumulative_weight {
             return Err(anyhow!(
                 "The given cumulative weight is incorrect. Found {}, but expected {}",
@@ -299,10 +282,7 @@ impl<N: Network> Blocks<N> {
                     deployed_programs.push(deployed_program.clone());
                 }
                 // Ensure that every executed program exists in the program registry.
-                else if !self
-                    .program_registry
-                    .contains_program(&transition.execution().program_id)
-                {
+                else if !self.program_registry.contains_program(&transition.execution().program_id) {
                     return Err(anyhow!("Program does not exist in the registry"));
                 }
             }
@@ -380,12 +360,10 @@ impl<N: Network> Blocks<N> {
         let block_height = self
             .transactions
             .iter()
-            .filter_map(
-                |(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
-                    true => Some(block_height),
-                    false => None,
-                },
-            )
+            .filter_map(|(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
+                true => Some(block_height),
+                false => None,
+            })
             .collect::<Vec<_>>();
         assert_eq!(1, block_height.len()); // TODO (howardwu): Clean this up with a proper error handler.
         let block_height = *block_height[0];
@@ -436,52 +414,14 @@ impl<N: Network> Blocks<N> {
         block_timestamp: i64,
         block_height: u32,
     ) -> u64 {
-        if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-            Self::bitcoin_retarget(
-                anchor_block_header.timestamp(),
-                anchor_block_header.difficulty_target(),
-                block_timestamp,
-                N::ALEO_BLOCK_TIME_IN_SECS,
-            )
-        } else {
-            Self::asert_retarget(
-                anchor_block_header.timestamp(),
-                anchor_block_header.difficulty_target(),
-                anchor_block_header.height(),
-                block_timestamp,
-                block_height,
-                N::ALEO_BLOCK_TIME_IN_SECS,
-            )
-        }
-    }
-
-    /// Bitcoin difficulty retarget algorithm.
-    ///     T_{i+1} = T_i * (S / (M * B)).
-    ///     M = Number of blocks per retarget.
-    ///     B = Expected time per block.
-    ///     S = Time elapsed between the last M blocks.
-    fn bitcoin_retarget(
-        previous_timestamp: i64,
-        previous_difficulty: u64,
-        block_timestamp: i64,
-        target_block_time: i64,
-    ) -> u64 {
-        const NUM_BLOCKS_PER_RETARGET: i64 = 1i64;
-
-        let time_elapsed = block_timestamp.saturating_sub(previous_timestamp);
-        let time_elapsed = match time_elapsed > 0 {
-            true => time_elapsed,
-            false => 1,
-        };
-
-        let difficulty_factor = time_elapsed as f64 / (NUM_BLOCKS_PER_RETARGET * target_block_time) as f64;
-
-        let new_difficulty = (previous_difficulty as f64) * difficulty_factor;
-
-        match new_difficulty.is_finite() {
-            true => new_difficulty as u64,
-            false => u64::MAX,
-        }
+        Self::asert_retarget(
+            anchor_block_header.timestamp(),
+            anchor_block_header.difficulty_target(),
+            anchor_block_header.height(),
+            block_timestamp,
+            block_height,
+            N::ALEO_BLOCK_TIME_IN_SECS,
+        )
     }
 
     /// ASERT difficulty retarget algorithm based on https://www.reference.cash/protocol/forks/2020-11-15-asert.
@@ -587,39 +527,6 @@ mod tests {
     use crate::testnet2::Testnet2;
 
     use rand::{thread_rng, Rng};
-
-    #[test]
-    fn test_bitcoin_difficulty_target() {
-        let rng = &mut thread_rng();
-
-        let mut block_difficulty_target = u64::MAX;
-        let mut current_timestamp = 0;
-
-        for _ in 0..1000 {
-            // Simulate a random block time.
-            let simulated_block_time =
-                rng.gen_range(Testnet2::ALEO_BLOCK_TIME_IN_SECS / 2..Testnet2::ALEO_BLOCK_TIME_IN_SECS * 2);
-            let new_timestamp = current_timestamp + simulated_block_time;
-
-            let new_target = Blocks::<Testnet2>::bitcoin_retarget(
-                current_timestamp,
-                block_difficulty_target,
-                new_timestamp,
-                Testnet2::ALEO_BLOCK_TIME_IN_SECS,
-            );
-
-            if simulated_block_time < Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                // If the block was found faster than expected, the difficulty should increase.
-                assert!(new_target < block_difficulty_target);
-            } else if simulated_block_time >= Testnet2::ALEO_BLOCK_TIME_IN_SECS {
-                // If the block was found slower than expected, the difficulty should decrease.
-                assert!(new_target >= block_difficulty_target);
-            }
-
-            current_timestamp = new_timestamp;
-            block_difficulty_target = new_target;
-        }
-    }
 
     #[test]
     fn test_asert_difficulty_target_simple() {
@@ -741,10 +648,7 @@ mod tests {
                 // Only check the difficulty targets that naturally fall below u64::MAX,
                 // which is determined by approximating (flooring) the expected difficulty ratio
                 // and seeing if the new difficulty target overflows or not.
-                if anchor_difficulty_target
-                    .checked_mul(expected_difficulty_ratio as u64)
-                    .is_some()
-                {
+                if anchor_difficulty_target.checked_mul(expected_difficulty_ratio as u64).is_some() {
                     let percentage_difference =
                         100f64 * (expected_difficulty_ratio - difficulty_ratio).abs() / difficulty_ratio;
                     assert!(percentage_difference < 1f64);

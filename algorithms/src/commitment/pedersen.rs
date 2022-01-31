@@ -53,11 +53,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         // If the input is too long, return an error.
         if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CommitmentError::IncorrectInputLength(
-                input.len(),
-                WINDOW_SIZE,
-                NUM_WINDOWS,
-            ));
+            return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
         let mut output = self.crh.hash(input)?.into_projective();
@@ -82,10 +78,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
     for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from((bases, random_base): (Vec<Vec<G>>, Vec<G>)) -> Self {
-        Self {
-            crh: bases.into(),
-            random_base,
-        }
+        Self { crh: bases.into(), random_base }
     }
 }
 
@@ -135,10 +128,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
             random_base.push(g);
         }
 
-        Ok(Self {
-            crh: PedersenCRH::from(bases),
-            random_base,
-        })
+        Ok(Self { crh: PedersenCRH::from(bases), random_base })
     }
 }
 

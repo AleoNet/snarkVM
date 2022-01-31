@@ -95,12 +95,7 @@ impl<N: Network> Transaction<N> {
     ) -> Result<Self> {
         let transaction_id = Self::compute_transaction_id(&transitions)?;
 
-        let transaction = Self {
-            transaction_id,
-            inner_circuit_id,
-            ledger_root,
-            transitions,
-        };
+        let transaction = Self { transaction_id, inner_circuit_id, ledger_root, transitions };
 
         match transaction.is_valid() {
             true => Ok(transaction),
@@ -164,10 +159,7 @@ impl<N: Network> Transaction<N> {
 
         // Returns `false` if the transaction is not a coinbase, and has a transition with a negative value balance.
         if self.transitions.len() > 1
-            && self
-                .transitions
-                .iter()
-                .any(|transition| transition.value_balance().is_negative())
+            && self.transitions.iter().any(|transition| transition.value_balance().is_negative())
         {
             eprintln!("Transaction contains a transition with a negative value balance");
             return false;
@@ -236,17 +228,12 @@ impl<N: Network> Transaction<N> {
 
     /// Returns `true` if the given transition ID exists.
     pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
-        self.transitions
-            .iter()
-            .map(Transition::transition_id)
-            .contains(transition_id)
+        self.transitions.iter().map(Transition::transition_id).contains(transition_id)
     }
 
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
-        self.transitions
-            .iter()
-            .any(|t| (*t).contains_serial_number(serial_number))
+        self.transitions.iter().any(|t| (*t).contains_serial_number(serial_number))
     }
 
     /// Returns `true` if the given commitment exists.
@@ -299,10 +286,7 @@ impl<N: Network> Transaction<N> {
     /// Returns the value balance.
     #[inline]
     pub fn value_balance(&self) -> AleoAmount {
-        self.transitions
-            .iter()
-            .map(Transition::value_balance)
-            .fold(AleoAmount::ZERO, |a, b| a.add(*b))
+        self.transitions.iter().map(Transition::value_balance).fold(AleoAmount::ZERO, |a, b| a.add(*b))
     }
 
     /// Returns the events.
@@ -323,9 +307,7 @@ impl<N: Network> Transaction<N> {
         &'a self,
         decryption_key: &'a DecryptionKey<N>,
     ) -> impl Iterator<Item = Record<N>> + 'a {
-        self.transitions
-            .iter()
-            .flat_map(move |transition| transition.to_decrypted_records(decryption_key))
+        self.transitions.iter().flat_map(move |transition| transition.to_decrypted_records(decryption_key))
     }
 
     /// Returns the decrypted records using record view key events, if they exist.
@@ -393,11 +375,7 @@ impl<N: Network> FromStr for Transaction<N> {
 
 impl<N: Network> fmt::Display for Transaction<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 
@@ -471,9 +449,8 @@ mod tests {
         // Craft a transaction with 1 coinbase record.
         let (transaction, expected_record) =
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
-        let decrypted_records = transaction
-            .to_decrypted_records(&account.view_key().into())
-            .collect::<Vec<Record<Testnet2>>>();
+        let decrypted_records =
+            transaction.to_decrypted_records(&account.view_key().into()).collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
 
         let candidate_record = decrypted_records.first().unwrap();
@@ -516,11 +493,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(
-            1005993,
-            candidate_string.len(),
-            "Update me if serialization has changed"
-        );
+        assert_eq!(1006484, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -540,15 +513,12 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(502754, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(503009, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
         assert_eq!(expected_transaction, Transaction::read_le(&expected_bytes[..]).unwrap());
-        assert_eq!(
-            expected_transaction,
-            bincode::deserialize(&candidate_bytes[..]).unwrap()
-        );
+        assert_eq!(expected_transaction, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }

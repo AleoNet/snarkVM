@@ -141,16 +141,8 @@ fn test_fft_correctness() {
         let rand_poly_from_subgroup = DensePolynomial::from_coefficients_vec(domain.ifft(&poly_evals));
         let rand_poly_from_coset = DensePolynomial::from_coefficients_vec(domain.coset_ifft(&poly_coset_evals));
 
-        assert_eq!(
-            rand_poly, rand_poly_from_subgroup,
-            "degree = {}, domain size = {}",
-            degree, domain_size
-        );
-        assert_eq!(
-            rand_poly, rand_poly_from_coset,
-            "degree = {}, domain size = {}",
-            degree, domain_size
-        );
+        assert_eq!(rand_poly, rand_poly_from_subgroup, "degree = {}, domain size = {}", degree, domain_size);
+        assert_eq!(rand_poly, rand_poly_from_coset, "degree = {}, domain size = {}", degree, domain_size);
     }
 }
 

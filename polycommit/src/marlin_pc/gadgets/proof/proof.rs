@@ -45,10 +45,7 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
-        Self {
-            w: self.w.clone(),
-            random_v: self.random_v.clone(),
-        }
+        Self { w: self.w.clone(), random_v: self.random_v.clone() }
     }
 }
 
@@ -73,10 +70,9 @@ where
 
             let random_v = match random_v {
                 None => None,
-                Some(random_v_inner) => Some(NonNativeFieldVar::alloc_constant(
-                    cs.ns(|| "alloc_constant_random_v"),
-                    || Ok(random_v_inner),
-                )?),
+                Some(random_v_inner) => {
+                    Some(NonNativeFieldVar::alloc_constant(cs.ns(|| "alloc_constant_random_v"), || Ok(random_v_inner))?)
+                }
             };
 
             Ok(Self { w, random_v })
@@ -97,9 +93,9 @@ where
 
             let random_v = match random_v {
                 None => None,
-                Some(random_v_inner) => Some(NonNativeFieldVar::alloc(cs.ns(|| "alloc_random_v"), || {
-                    Ok(random_v_inner)
-                })?),
+                Some(random_v_inner) => {
+                    Some(NonNativeFieldVar::alloc(cs.ns(|| "alloc_random_v"), || Ok(random_v_inner))?)
+                }
             };
 
             Ok(Self { w, random_v })
@@ -120,10 +116,9 @@ where
 
             let random_v = match random_v {
                 None => None,
-                Some(random_v_inner) => Some(NonNativeFieldVar::alloc_input(
-                    cs.ns(|| "alloc_input_random_v"),
-                    || Ok(random_v_inner),
-                )?),
+                Some(random_v_inner) => {
+                    Some(NonNativeFieldVar::alloc_input(cs.ns(|| "alloc_input_random_v"), || Ok(random_v_inner))?)
+                }
             };
 
             Ok(Self { w, random_v })
@@ -179,16 +174,9 @@ mod tests {
         let point = Fr::rand(rng);
         let challenge = Fr::rand(rng);
 
-        let proof = PC::open(
-            &committer_key,
-            labeled_polynomials,
-            &commitments,
-            point,
-            challenge,
-            &randomness,
-            Some(rng),
-        )
-        .unwrap();
+        let proof =
+            PC::open(&committer_key, labeled_polynomials, &commitments, point, challenge, &randomness, Some(rng))
+                .unwrap();
 
         let proof_gadget = ProofVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_proof"), || Ok(proof)).unwrap();
 
@@ -196,18 +184,14 @@ mod tests {
             <PG as PairingGadget<_, _>>::G1Gadget::alloc(cs.ns(|| "proof_w"), || Ok(proof.w.into_projective()))
                 .unwrap();
 
-        expected_w_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_w"), &proof_gadget.w)
-            .unwrap();
+        expected_w_gadget.enforce_equal(cs.ns(|| "enforce_equals_w"), &proof_gadget.w).unwrap();
 
         assert_eq!(proof.random_v.is_some(), proof_gadget.random_v.is_some());
 
         if let (Some(random_v), Some(random_v_gadget)) = (proof.random_v, proof_gadget.random_v) {
             let expected_random_v = NonNativeFieldVar::alloc(cs.ns(|| "expected_random_v"), || Ok(random_v)).unwrap();
 
-            expected_random_v
-                .enforce_equal(cs.ns(|| "enforce_equal_random_v"), &random_v_gadget)
-                .unwrap();
+            expected_random_v.enforce_equal(cs.ns(|| "enforce_equal_random_v"), &random_v_gadget).unwrap();
         }
 
         assert!(cs.is_satisfied());

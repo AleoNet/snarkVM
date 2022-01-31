@@ -177,10 +177,7 @@ impl Environment for Circuit {
             }
         }
 
-        Self::halt(format!(
-            "Failed to recover an affine element from an x-coordinate of {:?}",
-            x
-        ))
+        Self::halt(format!("Failed to recover an affine element from an x-coordinate of {:?}", x))
     }
 
     fn halt<S: Into<String>, T>(message: S) -> T {

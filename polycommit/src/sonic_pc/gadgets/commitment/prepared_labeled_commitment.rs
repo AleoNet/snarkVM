@@ -108,9 +108,8 @@ mod tests {
                 })
                 .unwrap();
 
-            let prepared_commitment_gadget = commitment_gadget
-                .prepare(cs.ns(|| format!("prepare_commitment_{}", i)))
-                .unwrap();
+            let prepared_commitment_gadget =
+                commitment_gadget.prepare(cs.ns(|| format!("prepare_commitment_{}", i))).unwrap();
 
             for (j, (comm_element, comm_element_gadget)) in prepared_commitment
                 .0

@@ -66,14 +66,7 @@ impl<N: Network> Transition<N> {
         let events = response.events().clone();
 
         // Construct the transition.
-        Self::from(
-            transition_id,
-            serial_numbers,
-            ciphertexts,
-            value_balance,
-            events,
-            execution,
-        )
+        Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, execution)
     }
 
     /// Constructs an instance of a transition from the given inputs.
@@ -276,17 +269,9 @@ impl<N: Network> Transition<N> {
         // Construct the leaves of the transition tree.
         let leaves: Vec<Vec<u8>> = vec![
             // Leaf 0, 1 := serial numbers
-            serial_numbers
-                .iter()
-                .take(N::NUM_INPUT_RECORDS)
-                .map(ToBytes::to_bytes_le)
-                .collect::<Result<Vec<_>>>()?,
+            serial_numbers.iter().take(N::NUM_INPUT_RECORDS).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
             // Leaf 2, 3 := commitments
-            commitments
-                .iter()
-                .take(N::NUM_OUTPUT_RECORDS)
-                .map(ToBytes::to_bytes_le)
-                .collect::<Result<Vec<_>>>()?,
+            commitments.iter().take(N::NUM_OUTPUT_RECORDS).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
         ]
         .concat();
 
@@ -322,15 +307,8 @@ impl<N: Network> FromBytes for Transition<N> {
 
         let execution: Execution<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
-            transition_id,
-            serial_numbers,
-            ciphertexts,
-            value_balance,
-            events,
-            execution,
-        )
-        .expect("Failed to deserialize a transition from bytes"))
+        Ok(Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, execution)
+            .expect("Failed to deserialize a transition from bytes"))
     }
 }
 
@@ -357,11 +335,7 @@ impl<N: Network> FromStr for Transition<N> {
 
 impl<N: Network> fmt::Display for Transition<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 
@@ -430,7 +404,7 @@ mod tests {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(502671, transition_bytes.len(),);
+            assert_eq!(502927, transition_bytes.len(),);
         }
     }
 
@@ -442,11 +416,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(
-            1005696,
-            candidate_string.len(),
-            "Update me if serialization has changed"
-        );
+        assert_eq!(1006211, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -462,7 +432,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(502671, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(502927, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

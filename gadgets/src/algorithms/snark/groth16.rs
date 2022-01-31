@@ -70,11 +70,7 @@ impl<PairingE: PairingEngine, P: PairingGadget<PairingE>>
         let alpha_g1_pc = P::prepare_g1(&mut cs.ns(|| "Prepare alpha_g1"), self.alpha_g1.clone())?;
         let beta_g2_pc = P::prepare_g2(&mut cs.ns(|| "Prepare beta_g2"), self.beta_g2.clone())?;
 
-        let alpha_g1_beta_g2 = P::pairing(
-            &mut cs.ns(|| "Precompute e(alpha_g1, beta_g2)"),
-            alpha_g1_pc,
-            beta_g2_pc,
-        )?;
+        let alpha_g1_beta_g2 = P::pairing(&mut cs.ns(|| "Precompute e(alpha_g1, beta_g2)"), alpha_g1_pc, beta_g2_pc)?;
 
         let gamma_g2_neg = self.gamma_g2.negate(&mut cs.ns(|| "Negate gamma_g2"))?;
         let gamma_g2_neg_pc = P::prepare_g2(&mut cs.ns(|| "Prepare gamma_g2_neg"), gamma_g2_neg)?;
@@ -140,12 +136,8 @@ where
         public_inputs: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
-        let PreparedVerifyingKeyGadget {
-            alpha_g1_beta_g2,
-            gamma_g2_neg_pc,
-            delta_g2_neg_pc,
-            mut gamma_abc_g1,
-        } = pvk.clone();
+        let PreparedVerifyingKeyGadget { alpha_g1_beta_g2, gamma_g2_neg_pc, delta_g2_neg_pc, mut gamma_abc_g1 } =
+            pvk.clone();
 
         assert!(public_inputs.val.len() + 1 == gamma_abc_g1.len());
 
@@ -193,14 +185,7 @@ where
         let delta_g2_booleans = self.delta_g2.to_minimal_bits(cs.ns(|| "delta_g2"))?;
         let gamma_abc_g1_booleans = self.gamma_abc_g1.to_minimal_bits(cs.ns(|| "gamma_abc_g1"))?;
 
-        Ok([
-            alpha_g1_booleans,
-            beta_g2_booleans,
-            gamma_g2_booleans,
-            delta_g2_booleans,
-            gamma_abc_g1_booleans,
-        ]
-        .concat())
+        Ok([alpha_g1_booleans, beta_g2_booleans, gamma_g2_booleans, delta_g2_booleans, gamma_abc_g1_booleans].concat())
     }
 }
 
@@ -238,13 +223,7 @@ where
         T: Borrow<VerifyingKey<PairingE>>,
     {
         value_gen().and_then(|vk| {
-            let VerifyingKey {
-                alpha_g1,
-                beta_g2,
-                gamma_g2,
-                delta_g2,
-                gamma_abc_g1,
-            } = vk.borrow();
+            let VerifyingKey { alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1 } = vk.borrow();
             let alpha_g1 = P::G1Gadget::alloc(cs.ns(|| "alpha_g1"), || Ok(alpha_g1.into_projective()))?;
             let beta_g2 = P::G2Gadget::alloc(cs.ns(|| "beta_g2"), || Ok(beta_g2.into_projective()))?;
             let gamma_g2 = P::G2Gadget::alloc(cs.ns(|| "gamma_g2"), || Ok(gamma_g2.into_projective()))?;
@@ -254,18 +233,10 @@ where
                 .iter()
                 .enumerate()
                 .map(|(i, gamma_abc_i)| {
-                    P::G1Gadget::alloc(cs.ns(|| format!("gamma_abc_{}", i)), || {
-                        Ok(gamma_abc_i.into_projective())
-                    })
+                    P::G1Gadget::alloc(cs.ns(|| format!("gamma_abc_{}", i)), || Ok(gamma_abc_i.into_projective()))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(Self {
-                alpha_g1,
-                beta_g2,
-                gamma_g2,
-                delta_g2,
-                gamma_abc_g1,
-            })
+            Ok(Self { alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1 })
         })
     }
 
@@ -276,13 +247,7 @@ where
         T: Borrow<VerifyingKey<PairingE>>,
     {
         value_gen().and_then(|vk| {
-            let VerifyingKey {
-                alpha_g1,
-                beta_g2,
-                gamma_g2,
-                delta_g2,
-                gamma_abc_g1,
-            } = vk.borrow();
+            let VerifyingKey { alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1 } = vk.borrow();
             let alpha_g1 = P::G1Gadget::alloc_input(cs.ns(|| "alpha_g1"), || Ok(alpha_g1.into_projective()))?;
             let beta_g2 = P::G2Gadget::alloc_input(cs.ns(|| "beta_g2"), || Ok(beta_g2.into_projective()))?;
             let gamma_g2 = P::G2Gadget::alloc_input(cs.ns(|| "gamma_g2"), || Ok(gamma_g2.into_projective()))?;
@@ -292,19 +257,11 @@ where
                 .iter()
                 .enumerate()
                 .map(|(i, gamma_abc_i)| {
-                    P::G1Gadget::alloc_input(cs.ns(|| format!("gamma_abc_{}", i)), || {
-                        Ok(gamma_abc_i.into_projective())
-                    })
+                    P::G1Gadget::alloc_input(cs.ns(|| format!("gamma_abc_{}", i)), || Ok(gamma_abc_i.into_projective()))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
-            Ok(Self {
-                alpha_g1,
-                beta_g2,
-                gamma_g2,
-                delta_g2,
-                gamma_abc_g1,
-            })
+            Ok(Self { alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1 })
         })
     }
 }
